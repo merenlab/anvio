@@ -824,9 +824,11 @@ class TRNASeqDataset:
             for normalized_seq_info
             in Dereplicator([trimmed_seq.representative_name for trimmed_seq in self.trimmed_trna_seqs],
                             [trimmed_seq.string[::-1] for trimmed_seq in self.trimmed_trna_seqs], # change sequence string orientation to 3'-5' to dereplicate from 3' end
-                            extras=self.trimmed_trna_seqs).prefix_dereplicate()[0]]
+                            extras=self.trimmed_trna_seqs).prefix_dereplicate()]
 
         self.progress.end()
+        print("Normalized tRNA count")
+        print(len(self.normalized_trna_seqs))
 
 
     def get_unprofiled_nonthreeprime_queries(self):

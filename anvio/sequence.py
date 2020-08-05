@@ -546,28 +546,11 @@ class Dereplicator:
                        (seq B, [seq B name, ...], seq B extra info),
                        ...]
         """
+        # self.progress.new("Prefix dereplicating")
+        kmer_size = min(map(len, self.seqs))
 
-        # Get unique input sequences to speed up the prefix k-mer search.
-        unique_names = []
-        unique_seqs = []
-        unique_extras = []
-        replicate_dict = {}
-        for cluster in self.full_length_dereplicate():
-            unique_name = cluster[1][0]
-            unique_names.append(unique_name)
-            unique_seqs.append(cluster[0])
-            if self.extras:
-                unique_extras.append(cluster[2][0])
-                replicate_dict[unique_name] = list(zip(cluster[1][1: ], cluster[2][1: ]))
-            else:
-                replicate_dict[unique_name] = cluster[1][1: ]
-
-        hashed_seqs = [sha224(seq.encode('utf-8')).hexdigest() for seq in unique_seqs]
-
-        prefix_dict = Kmerizer(unique_names,
-                               unique_seqs,
-                               num_threads=self.num_threads).get_kmer_superdict(only_prefixes=True,
-                                                                                include_full_length=False)
+        # self.progress.update("Extracting prefix k-mers")
+        kmer_dict = Kmerizer(self.names, self.seqs).get_prefix_kmer_dict1(kmer_size)
 
         # Example `hit_dict` format:
         # hit_dict = {seq X name: [seq A name, seq B name, ...],
@@ -585,214 +568,58 @@ class Dereplicator:
         #                 ...}
         # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
 
+        # self.progress.update("Forming dereplicated sequence clusters")
+        hashed_prefixes = [sha224(seq[: kmer_size].encode('utf-8')).hexdigest() for seq in self.seqs]
+
         hit_dict = {}
         cluster_dict = {}
 
-        if unique_extras:
-            extra_iter = iter(unique_extras)
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                query_extra_item = next(extra_iter)
+        for query_name, query_seq, query_extra_item, query_prefix_hash in zip(self.names, self.seqs, self.extras, hashed_prefixes):
+            if query_prefix_hash not in kmer_dict:
+                continue
 
-                kmer_dict = prefix_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
+            # Record which target sequences contain the query sequence as a prefix subsequence.
+            for target_name, target_seq in kmer_dict[query_prefix_hash].items():
+                hit_names = []
+                if query_seq == target_seq[: len(query_seq)]:
+                    if len(query_seq) != len(target_seq):
+                        hit_names.append(target_name)
+                if hit_names:
+                    hit_dict[query_name] = hit_names
 
-                hit_names = kmer_dict[query_hash]
-                # Record which target sequences contain the query sequence as a prefix subsequence.
-                hit_dict[query_name] = hit_names
-
-                if replicate_dict:
-                    # Record information on the query replicates.
-                    member_items = [(query_name, len(query_seq), query_extra_item)]
-                    for replicate_name, replicate_extra_item in replicate_dict[query_name]:
-                        member_items.append((replicate_name, len(query_seq), replicate_extra_item))
-
-                    # Make preliminary clusters for each target sequence containing the query sequence.
-                    for seed_name in hit_names:
-                        if seed_name in cluster_dict:
-                            cluster_dict[seed_name].extend(member_items)
-                        else:
-                            cluster_dict[seed_name] = member_items
+            member_item = (query_name, len(query_seq), query_extra_item)
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for name in hit_names:
+                if name in cluster_dict:
+                    cluster_dict[name].append(member_item)
                 else:
-                    member_item = (query_name, len(query_seq), query_extra_item)
-                    # Make preliminary clusters for each target sequence containing the query sequence.
-                    for seed_name in hit_names:
-                        if seed_name in cluster_dict:
-                            cluster_dict[seed_name].append(member_item)
-                        else:
-                            cluster_dict[seed_name] = [member_item]
-        else:
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                kmer_dict = prefix_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-
-                hit_names = kmer_dict[query_hash]
-                # Record which target sequences contain the query sequence as a prefix subsequence.
-                hit_dict[query_name] = hit_names
-
-                if replicate_dict:
-                    # Record information on the query replicates.
-                    member_items = [(query_name, len(query_seq))]
-                    for replicate_name in replicate_dict[query_name]:
-                        member_items.append((replicate_name, len(query_seq)))
-
-                    # Make preliminary clusters for each target sequence containing the query sequence.
-                    for seed_name in hit_names:
-                        if seed_name in cluster_dict:
-                            cluster_dict[seed_name].extend(member_items)
-                        else:
-                            cluster_dict[seed_name] = member_items
-                else:
-                    member_item = (query_name, len(query_seq))
-                    # Make preliminary clusters for each target sequence containing the query sequence.
-                    for seed_name in hit_names:
-                        if seed_name in cluster_dict:
-                            cluster_dict[seed_name].append(member_item)
-                        else: # new cluster
-                            cluster_dict[seed_name] = [member_item]
+                    cluster_dict[name] = [member_item]
 
         clusters = []
-        memberships = []
-        if unique_extras:
-            for query_name, query_seq, query_extra_item in zip(unique_names, unique_seqs, unique_extras):
-                if query_name in hit_dict:
-                    # The query is not a seed because it is a prefix of other sequences.
-                    continue
+        for query_name, query_seq, query_extra_item in zip(self.names, self.seqs, self.extras):
+            if query_name in hit_dict:
+                # The query is not a cluster seed because it is a prefix of other sequences.
+                continue
 
-                if replicate_dict:
-                    replicate_items = replicate_dict[query_name]
-                    cluster_items_for_seed = [(query_name, len(query_seq), query_extra_item)]
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    for replicate_name, replicate_extra_item in replicate_items:
-                        cluster_items_for_seed.append((replicate_name, len(query_seq), replicate_extra_item))
+            if query_name in cluster_dict:
+                # Other query sequences are prefixes of this query.
+                member_items = cluster_dict[query_name]
+                # Sort members in descending order of sequence length.
+                member_items.sort(key=lambda member_item: -member_item[1])
+                # The seed seq is added as a member of its own cluster.
+                clusters.append((query_name, query_seq, [(query_name, len(query_seq), query_extra_item)] + member_items))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed and the sole member of the cluster.
+                clusters.append((query_name, query_seq, [(query_name, len(query_seq), query_extra_item)]))
 
-                    if query_name in cluster_dict:
-                        # Other query sequences are prefixes of this query.
-                        member_items = cluster_dict[query_name]
-                        # Sort members in descending order of sequence length.
-                        member_items.sort(key=lambda member_item: -member_item[1])
-                        # The seed seq and identical seqs are added as members of the seed's cluster.
-                        member_items = cluster_items_for_seed + member_items
-                        clusters.append((query_name, query_seq, member_items))
-                    else:
-                        # No other query sequences were prefixes of this query.
-                        # Make a cluster with the query as the seed
-                        # and the query and its replicates as members of the cluster.
-                        clusters.append((query_name, query_seq, cluster_items_for_seed))
-
-                    # Seed and identical sequences are the only members of the seed's cluster.
-                    memberships.append((query_name, [query_name], query_extra_item))
-                    for replicate_name, replicate_extra_item in replicate_items:
-                        memberships.append((replicate_name, [query_name], replicate_extra_item))
-                else:
-                    if query_name in cluster_dict:
-                        # Other query sequences are prefixes of this query.
-                        member_items = cluster_dict[query_name]
-                        # Sort members in descending order of sequence length.
-                        member_items.sort(key=lambda member_item: -member_item[1])
-                        # The seed seq is added as a member of its own cluster.
-                        member_items.insert(0, (query_name, len(query_seq), query_extra_item))
-                        clusters.append((query_name, query_seq, member_items))
-                    else:
-                        # No other query sequences were prefixes of this query.
-                        # Make a cluster with the query as the seed and the sole member of the cluster.
-                        member_items = [(query_name, len(query_seq), query_extra_item)]
-                        clusters.append((query_name, query_seq, member_items))
-
-                    # Seed sequences are the only members of their own cluster.
-                    memberships.append((query_name, [query_name], query_extra_item))
-        else:
-            for query_name, query_seq in zip(unique_names, unique_seqs):
-                if query_name in hit_dict:
-                    # The query is not a seed because it is a prefix of other sequences.
-                    continue
-
-                if replicate_dict:
-                    replicate_names = replicate_dict[query_name]
-                    cluster_items_for_seed = [(query_name, len(query_seq))]
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    for replicate_name in replicate_names:
-                        cluster_items_for_seed.append((replicate_name, len(query_seq)))
-
-                    if query_name in cluster_dict:
-                        # Other query sequences are prefixes of this query.
-                        member_items = cluster_dict[query_name]
-                        # Sort members in descending order of sequence length.
-                        member_items.sort(key=lambda member_item: -member_item[1])
-                        # The seed seq and identical seqs are added as members of the seed's cluster.
-                        member_items = cluster_items_for_seed + member_items
-                        clusters.append((query_name, query_seq, member_items))
-                    else:
-                        # No other query sequences were prefixes of this query.
-                        # Make a cluster with the query as the seed
-                        # and the query and its replicates as members of the cluster.
-                        clusters.append((query_name, query_seq, cluster_items_for_seed))
-
-                    # Seed and identical sequences are the only members of the seed's cluster.
-                    memberships.append((query_name, [query_name]))
-                    for replicate_name in replicate_names:
-                        memberships.append((replicate_name, [query_name]))
-                else:
-                    if query_name in cluster_dict:
-                        # Other query sequences are prefixes of this query.
-                        member_items = cluster_dict[query_name]
-                        # Sort members in descending order of sequence length.
-                        member_items.sort(key=lambda member_item: -member_item[1])
-                        # The seed seq is added as a member of its own cluster.
-                        member_items.insert(0, (query_name, len(query_seq)))
-                        clusters.append((query_name, query_seq, member_items))
-                    else:
-                        # No other query sequences were prefixes of this query.
-                        # Make a cluster with the query as the seed and the sole member of the cluster.
-                        member_items = [(query_name, len(query_seq))]
-                        clusters.append((query_name, query_seq, member_items))
-
-                    # Seed sequences are the only members of their own cluster.
-                    memberships.append((query_name, [query_name]))
-
-        # Record memberships of query sequences that were not found to be seed sequences.
-        # To determine cluster memberships, search hashed input sequences against hashed prefixes of cluster seed sequences.
-        # This is more efficient than searching input sequence names against every cluster's list of member sequence names.
-        seed_names, seed_seqs, _ = zip(*clusters)
-        seed_prefix_dict = Kmerizer(seed_names,
-                                    seed_seqs,
-                                    num_threads=self.num_threads).get_kmer_superdict(min_kmer_size=min([len(seq) for seq in unique_seqs]),
-                                                                                     only_prefixes=True,
-                                                                                     include_full_length=False)
-
-        if unique_extras:
-            for query_name, query_seq, query_hash, query_extra_item in zip(unique_names, unique_seqs, hashed_seqs, unique_extras):
-                kmer_dict = seed_prefix_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-
-                seed_names = kmer_dict[query_hash]
-                memberships.append((query_name, seed_names, query_extra_item))
-                if replicate_dict:
-                    for replicate_name, replicate_extra_item in replicate_dict[query_name]:
-                        memberships.append((replicate_name, seed_names, replicate_extra_item))
-                else:
-                    memberships.append((query_name, seed_names, extra_query_item))
-        else:
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                kmer_dict = seed_prefix_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-
-                seed_names = kmer_dict[query_hash]
-                memberships.append((query_name, seed_names))
-                if replicate_dict:
-                    for replicate_name in replicate_dict[query_name]:
-                        memberships.append((replicate_name, seed_names))
-                else:
-                    memberships.append((query_name, seed_names))
-
-        # Sort by cluster/membership size and then by seed/member name.
+        # self.progress.update("Sorting clusters")
+        # Sort by cluster size and then by seed name.
         clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
-        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
 
-        return clusters, memberships
+        # self.progress.end()
+
+        return clusters
 
 
     def subseq_dereplicate(self):
@@ -1193,14 +1020,12 @@ class Aligner:
 
 
     def match_prefixes(self, max_matches_per_query=float('inf')):
-
-        kmer_size = min(map(len, self.query_names))
-
         self.progress.new("Matching queries to target prefixes")
 
+        kmer_size = min(map(len, self.query_seqs))
+
         self.progress.update("Extracting prefix k-mers from target sequences")
-        kmer_dict = Kmerizer(self.target_names,
-                             self.target_seqs).get_prefix_kmer_dict1(kmer_size)
+        kmer_dict = Kmerizer(self.target_names, self.target_seqs).get_prefix_kmer_dict1(kmer_size)
 
         pool = multiprocessing.Pool(self.num_threads)
         num_queries_matching_targets = 0
