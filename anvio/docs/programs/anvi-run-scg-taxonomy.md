@@ -1,6 +1,6 @@
 This program **associates the single-copy core genes in your %(contigs-db)s with taxnomy information.**  
 
-Once this information is stored in your %(contigs-db)s (in the form of a %(scgs-taxonomy)s artifact), you can run %(anvi-estimate-scg-taxonomy)s or use the %(anvi-interactive)s and enable "Realtime taxonomy estimate for bins."
+Once this information is stored in your %(contigs-db)s (in the form of a %(scgs-taxonomy)s artifact), you can run %(anvi-estimate-scg-taxonomy)s or use the %(anvi-interactive)s and enable "Realtime taxonomy estimate for bins." Check out [this tutorial](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/) for more information. 
 
 In order to run this program, you'll need a %(scgs-taxonomy-db)s, which you can set up by running %(anvi-setup-scg-taxonomy)s. 
 
