@@ -976,26 +976,23 @@ class TRNASeqDataset:
 
 
     def agglomerate(self):
-        self.progress.new("Agglomerating normalized tRNA sequences")
+        self.progress.new("Aligning normalized sequences to themselves")
         self.progress.update("...")
 
         normalized_names, normalized_seqs = zip(*[(normalized_seq.representative_name, normalized_seq.string)
                                                   for normalized_seq in self.normalized_trna_seqs])
 
-        # self.progress.update("Aligning normalized sequences to themselves")
         aligned_query_dict, aligned_target_dict = Aligner(normalized_names,
                                                           normalized_seqs,
                                                           normalized_names,
                                                           normalized_seqs,
                                                           num_threads=self.num_threads).align(max_mismatch_freq=2/75)
-        # self.progress.end() # Agglomerator has its own progress
+        self.progress.end() # Agglomerator has its own progress
 
         agglomerator = Agglomerator(aligned_query_dict, aligned_target_dict, progress=self.progress)
         agglomerator.agglomerate(query_can_occur_in_multiple_agglomerations=True)
         agglomerated_aligned_query_dict = agglomerator.agglomerated_aligned_query_dict
         agglomerated_aligned_reference_dict = agglomerator.agglomerated_aligned_reference_dict
-
-        self.progress.end()
 
         self.progress.new("Finding modified nucleotides")
         self.progress.update("...")
