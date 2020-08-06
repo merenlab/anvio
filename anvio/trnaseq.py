@@ -821,12 +821,18 @@ class TRNASeqDataset:
         #                                    (trimmed seq name B, trimmed seq string B, TrimmedSeq B), ...]),
         #  (seed name X, ...), ...]
 
+        clusters = Dereplicator([trimmed_seq.representative_name for trimmed_seq in self.trimmed_trna_seqs],
+                                [trimmed_seq.string[::-1] for trimmed_seq in self.trimmed_trna_seqs], # change sequence string orientation to 3'-5' to dereplicate from 3' end
+                                extras=self.trimmed_trna_seqs).prefix_dereplicate()
+
+        import pickle
+        with open(os.path.join(self.output_dir, 'clusters.pkl'), 'wb') as f:
+            pickle.dump(clusters, f)
+        print("Normalized seqs: %d" % len(self.normalized_trna_seqs))
+
         self.normalized_trna_seqs = [
             NormalizedSeq([trimmed_seqs_info[2] for trimmed_seqs_info in normalized_seq_info[2]], skip_init=True)
-            for normalized_seq_info
-            in Dereplicator([trimmed_seq.representative_name for trimmed_seq in self.trimmed_trna_seqs],
-                            [trimmed_seq.string[::-1] for trimmed_seq in self.trimmed_trna_seqs], # change sequence string orientation to 3'-5' to dereplicate from 3' end
-                            extras=self.trimmed_trna_seqs).prefix_dereplicate()]
+            for normalized_seq_info in clusters]
 
         self.progress.end()
 
