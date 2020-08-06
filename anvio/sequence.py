@@ -1136,26 +1136,32 @@ class Aligner:
 
         kmer_dict = Kmerizer(target_names, target_seqs, num_threads=self.num_threads).get_kmer_dict(seed_size)
 
-        # self.progress.new("Aligning sequences without indels")
-        # self.progress.update("...")
+        self.progress.new("Aligning sequences without indels")
+        self.progress.update("...")
 
         aligned_query_dict = {}
         aligned_target_dict = {}
 
         target_seq_dict = dict(zip(target_names, target_seqs))
 
-        pool = multiprocessing.Pool(self.num_threads)
-        # num_processed_queries = 0
-        # total_query_count = len(query_names)
-        for (query_name,
-             query_seq,
-             alignment_info) in pool.imap_unordered(functools.partial(find_alignment,
-                                                                      kmer_dict=kmer_dict,
-                                                                      seed_size=seed_size,
-                                                                      target_seq_dict=target_seq_dict,
-                                                                      max_mismatch_freq=max_mismatch_freq),
-                                                    zip(query_names, query_seqs),
-                                                    chunksize=int(len(query_names) / self.num_threads) + 1):
+        # pool = multiprocessing.Pool(self.num_threads)
+        num_processed_queries = 0
+        total_query_count = len(query_names)
+        for name_seq_pair in zip(query_names, query_seqs):
+            query_name, query_seq, alignment_info = find_alignment(name_seq_pair,
+                                                                   kmer_dict,
+                                                                   seed_size,
+                                                                   target_seq_dict,
+                                                                   max_mismatch_freq=max_mismatch_freq)
+        # for (query_name,
+        #      query_seq,
+        #      alignment_info) in pool.imap_unordered(functools.partial(find_alignment,
+        #                                                               kmer_dict=kmer_dict,
+        #                                                               seed_size=seed_size,
+        #                                                               target_seq_dict=target_seq_dict,
+        #                                                               max_mismatch_freq=max_mismatch_freq),
+        #                                             zip(query_names, query_seqs),
+        #                                             chunksize=int(len(query_names) / self.num_threads) + 1):
             if alignment_info:
                 aligned_query = AlignedQuery(query_seq, name=query_name)
                 aligned_query_dict[query_name] = aligned_query
@@ -1169,13 +1175,13 @@ class Aligner:
                     aligned_query.alignments.append(alignment)
                     aligned_target.alignments.append(alignment)
 
-            # num_processed_queries += 1
-            # if num_processed_queries % 1000 == 0:
-            #     self.progress.update("%d/%d query sequences have been processed" % (num_processed_queries, total_query_count))
-        pool.close()
-        pool.join()
+            num_processed_queries += 1
+            if num_processed_queries % 10000 == 0:
+                self.progress.update("%d/%d query sequences have been processed" % (num_processed_queries, total_query_count))
+        # pool.close()
+        # pool.join()
 
-        # self.progress.end()
+        self.progress.end()
 
         return aligned_query_dict, aligned_target_dict
 

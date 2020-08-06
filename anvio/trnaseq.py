@@ -882,7 +882,7 @@ class TRNASeqDataset:
             else:
                 nonthreeprime_target_names.append(normalized_name + "_0_0_" + str(normalized_index)) # no extra 5' bases
                 nonthreeprime_target_seqs.append(normalized_string)
-        # self.progress.end()
+        self.progress.end()
 
         aligned_query_dict, aligned_target_dict = Aligner(nonthreeprime_query_names,
                                                           nonthreeprime_query_seqs,
@@ -982,12 +982,12 @@ class TRNASeqDataset:
         normalized_names, normalized_seqs = zip(*[(normalized_seq.representative_name, normalized_seq.string)
                                                   for normalized_seq in self.normalized_trna_seqs])
 
+        self.progress.end()
         aligned_query_dict, aligned_target_dict = Aligner(normalized_names,
                                                           normalized_seqs,
                                                           normalized_names,
                                                           normalized_seqs,
                                                           num_threads=self.num_threads).align(max_mismatch_freq=2/75)
-        self.progress.end() # Agglomerator has its own progress
 
         agglomerator = Agglomerator(aligned_query_dict, aligned_target_dict, progress=self.progress)
         agglomerator.agglomerate(query_can_occur_in_multiple_agglomerations=True)
