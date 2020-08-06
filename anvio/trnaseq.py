@@ -894,8 +894,6 @@ class TRNASeqDataset:
         # self.progress.update("Filtering unprofiled queries aligning with the interior or 5' end of targets")
         nontrna_indices = []
         mapping_dict = {}
-        interior_mapped_count = 0
-        fiveprime_mapped_count = 0
         for query_name, aligned_query in aligned_query_dict.items():
             for alignment in aligned_query.alignments:
                 reference_alignment_start = alignment.target_start
@@ -956,18 +954,20 @@ class TRNASeqDataset:
                 normalized_seq.start_positions.append(normalized_start_position)
                 normalized_seq.end_positions.append(normalized_end_position)
 
-                if trimmed_seq.unique_seqs[0].extra_fiveprime_length > 0:
-                    fiveprime_mapped_count += trimmed_seq.input_count
-                else:
-                    interior_mapped_count += trimmed_seq.input_count
-
         for normalized_seq in self.normalized_trna_seqs:
             normalized_seq.init()
 
+        interior_mapped_count = 0
+        fiveprime_mapped_count = 0
         for nontrna_index in sorted(set(nontrna_indices), reverse=True):
             unique_mapped_seq = self.unique_nontrna_seqs.pop(nontrna_index)
             self.trimmed_trna_seqs.append(
                 TrimmedSeq(unique_mapped_seq.string[unique_mapped_seq.extra_fiveprime_length: ], [unique_mapped_seq]))
+
+            if unique_mapped_seq.extra_fiveprime_length > 0:
+                fiveprime_mapped_count += unique_mapped_seq.input_count
+            else:
+                interior_mapped_count += unique_mapped_seq.input_count
 
         self.progress.end()
 
