@@ -310,28 +310,27 @@ class Kmerizer:
             as a given k-mer can occur multiple times in the sequence.
         """
 
-        self.progress.new("Extracting k-mers of length %d" % kmer_size)
+        # self.progress.new("Extracting k-mers of length %d" % kmer_size)
 
         pool = multiprocessing.Pool(self.num_threads)
         all_seq_kmer_items = []
-        total_seq_count = len(self.names)
-        num_extracted_kmers = 0
-        for num_processed_seqs, seq_kmer_item in enumerate(
-            pool.imap_unordered(functools.partial(get_kmers,
-                                                  kmer_size=kmer_size,
-                                                  include_full_length=include_full_length),
-                                zip(self.names, self.seqs),
-                                chunksize=int(len(self.names) / self.num_threads) + 1)):
+        # total_seq_count = len(self.names)
+        # num_extracted_kmers = 0
+        for seq_kmer_item in pool.imap_unordered(functools.partial(get_kmers,
+                                                                   kmer_size=kmer_size,
+                                                                   include_full_length=include_full_length),
+                                                 zip(self.names, self.seqs),
+                                                 chunksize=int(len(self.names) / self.num_threads) + 1):
             all_seq_kmer_items.append(seq_kmer_item)
-            num_extracted_kmers += len(seq_kmer_item)
-            if num_processed_seqs % 50000 == 0:
-                self.progress.update("%d k-mers have been extracted from %d/%d sequences" % (num_extracted_kmers,
-                                                                                             num_processed_seqs,
-                                                                                             total_seq_count))
+            # num_extracted_kmers += len(seq_kmer_item)
+            # if num_processed_seqs % 50000 == 0:
+            #     self.progress.update("%d k-mers have been extracted from %d/%d sequences" % (num_extracted_kmers,
+            #                                                                                  num_processed_seqs,
+            #                                                                                  total_seq_count))
         pool.close()
         pool.join()
 
-        self.progress.update("Grouping k-mers")
+        # self.progress.update("Grouping k-mers")
         kmer_dict = {}
         for hashed_kmer, kmer_items in itertools.groupby(sorted([kmer_item
                                                                  for seq_kmer_items in all_seq_kmer_items
@@ -348,7 +347,7 @@ class Kmerizer:
                                           for hashed_kmer, name, seq_start_indices, seq_length
                                           in kmer_items]
 
-        self.progress.end()
+        # self.progress.end()
 
         return kmer_dict
 
@@ -571,7 +570,7 @@ class Dereplicator:
         # self.progress.update("Forming dereplicated sequence clusters")
         hashed_prefixes = [sha224(seq[: kmer_size].encode('utf-8')).hexdigest() for seq in self.seqs]
 
-        hit_dict = {}
+        names_of_queries_with_hits = []
         cluster_dict = {}
 
         for query_name, query_seq, query_extra_item, query_prefix_hash in zip(self.names, self.seqs, self.extras, hashed_prefixes):
@@ -579,25 +578,26 @@ class Dereplicator:
                 continue
 
             # Record which target sequences contain the query sequence as a prefix subsequence.
+            hit_names = []
             for target_name, target_seq in kmer_dict[query_prefix_hash].items():
-                hit_names = []
                 if query_seq == target_seq[: len(query_seq)]:
                     if len(query_seq) != len(target_seq):
                         hit_names.append(target_name)
-                if hit_names:
-                    hit_dict[query_name] = hit_names
 
-            member_item = (query_name, len(query_seq), query_extra_item)
-            # Make preliminary clusters for each target sequence containing the query sequence.
-            for name in hit_names:
-                if name in cluster_dict:
-                    cluster_dict[name].append(member_item)
-                else:
-                    cluster_dict[name] = [member_item]
+            if hit_names:
+                names_of_queries_with_hits.append(query_name)
+
+                member_item = (query_name, len(query_seq), query_extra_item)
+                # Make preliminary clusters for each target sequence containing the query sequence.
+                for name in hit_names:
+                    if name in cluster_dict:
+                        cluster_dict[name].append(member_item)
+                    else:
+                        cluster_dict[name] = [member_item]
 
         clusters = []
         for query_name, query_seq, query_extra_item in zip(self.names, self.seqs, self.extras):
-            if query_name in hit_dict:
+            if query_name in names_of_queries_with_hits:
                 # The query is not a cluster seed because it is a prefix of other sequences.
                 continue
 
@@ -1020,16 +1020,16 @@ class Aligner:
 
 
     def match_prefixes(self, max_matches_per_query=float('inf')):
-        self.progress.new("Matching queries to target prefixes")
+        # self.progress.new("Matching queries to target prefixes")
 
         kmer_size = min(map(len, self.query_seqs))
 
-        self.progress.update("Extracting prefix k-mers from target sequences")
+        # self.progress.update("Extracting prefix k-mers from target sequences")
         kmer_dict = Kmerizer(self.target_names, self.target_seqs).get_prefix_kmer_dict1(kmer_size)
 
         pool = multiprocessing.Pool(self.num_threads)
-        num_queries_matching_targets = 0
-        total_query_count = len(self.query_names)
+        # num_queries_matching_targets = 0
+        # total_query_count = len(self.query_names)
         all_query_matches = []
         for (num_processed_queries,
              query_matches) in enumerate(pool.imap(functools.partial(find_prefix_match,
@@ -1039,12 +1039,12 @@ class Aligner:
                                                    self.query_seqs,
                                                    chunksize=int(len(self.query_names) / self.num_threads) + 1)):
             all_query_matches.append(query_matches)
-            if query_matches:
-                num_queries_matching_targets += 1
-            if num_processed_queries % 50000 == 0:
-                self.progress.update("%d queries of %d/%d processed match target prefixes"
-                                     % (num_queries_matching_targets, num_processed_queries, total_query_count))
-        self.progress.end()
+            # if query_matches:
+            #     num_queries_matching_targets += 1
+            # if num_processed_queries % 50000 == 0:
+            #     self.progress.update("%d queries of %d/%d processed match target prefixes"
+            #                          % (num_queries_matching_targets, num_processed_queries, total_query_count))
+        # self.progress.end()
 
         return all_query_matches
 
@@ -1136,8 +1136,8 @@ class Aligner:
 
         kmer_dict = Kmerizer(target_names, target_seqs, num_threads=self.num_threads).get_kmer_dict(seed_size)
 
-        self.progress.new("Aligning sequences without indels")
-        self.progress.update("...")
+        # self.progress.new("Aligning sequences without indels")
+        # self.progress.update("...")
 
         aligned_query_dict = {}
         aligned_target_dict = {}
@@ -1145,8 +1145,8 @@ class Aligner:
         target_seq_dict = dict(zip(target_names, target_seqs))
 
         pool = multiprocessing.Pool(self.num_threads)
-        num_processed_queries = 0
-        total_query_count = len(query_names)
+        # num_processed_queries = 0
+        # total_query_count = len(query_names)
         for (query_name,
              query_seq,
              alignment_info) in pool.imap_unordered(functools.partial(find_alignment,
@@ -1169,13 +1169,13 @@ class Aligner:
                     aligned_query.alignments.append(alignment)
                     aligned_target.alignments.append(alignment)
 
-            num_processed_queries += 1
-            if num_processed_queries % 1000 == 0:
-                self.progress.update("%d/%d query sequences have been processed" % (num_processed_queries, total_query_count))
+            # num_processed_queries += 1
+            # if num_processed_queries % 1000 == 0:
+            #     self.progress.update("%d/%d query sequences have been processed" % (num_processed_queries, total_query_count))
         pool.close()
         pool.join()
 
-        self.progress.end()
+        # self.progress.end()
 
         return aligned_query_dict, aligned_target_dict
 

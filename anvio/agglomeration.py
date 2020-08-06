@@ -29,25 +29,25 @@ class Agglomerator:
 
     def agglomerate(self, query_can_occur_in_multiple_agglomerations=False):
 
-        self.progress.new("Agglomerating sequence alignments")
+        # self.progress.new("Agglomerating sequence alignments")
 
-        processed_reference_count = 0
-        input_reference_count = len(self.aligned_target_dict)
+        # processed_reference_count = 0
+        # input_reference_count = len(self.aligned_target_dict)
         for reference_name, aligned_target in sorted(self.aligned_target_dict.items(),
                                                      key=lambda aligned_target_item: (-len(aligned_target_item[1].seq),
                                                                                       aligned_target_item[0])):
             self.agglomerated_aligned_reference = deepcopy(aligned_target)
             self.agglomerated_aligned_reference.alignments = []
             self.remap_queries(reference_name, query_can_occur_in_multiple_agglomerations=query_can_occur_in_multiple_agglomerations)
-            processed_reference_count += 1
+            # processed_reference_count += 1
 
-            self.progress.update("%d/%d sequences processed: %d agglomerated references found"
-                                 % (processed_reference_count, input_reference_count, self.agglomerated_reference_count))
+            # self.progress.update("%d/%d sequences processed: %d agglomerated references found"
+            #                      % (processed_reference_count, input_reference_count, self.agglomerated_reference_count))
 
         for reference_name in self.agglomerated_aligned_reference_dict:
             self.agglomerated_aligned_query_dict.pop(reference_name)
 
-        self.progress.end()
+        # self.progress.end()
 
 
     def remap_queries(self,

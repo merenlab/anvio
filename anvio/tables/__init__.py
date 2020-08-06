@@ -308,8 +308,8 @@ trnaseq_normalized_table_structure      = ['name', 'trimmed_seq_count', 'input_s
 trnaseq_normalized_table_types          = ['str' , 'numeric'          , 'numeric'        , 'numeric'                       , 'numeric'                            , 'numeric'                          , 'numeric'                          , 'numeric'                        , 'numeric'                           , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
 trnaseq_modified_table_name             = 'modified'
-trnaseq_modified_table_structure        = ['name', 'modification_positions', 'consensus_sequence', 'normalized_names', 'normalized_seq_count', 'input_seq_count', 'mapped_threeprime_input_seq_count', 'mapped_interior_input_seq_count', 'mapped_fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
-trnaseq_modified_table_types            = ['str' , 'str'                   , 'str'               , 'str'             , 'numeric'             , 'numeric'        , 'numeric'                          , 'numeric'                        , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANTS]
+trnaseq_modified_table_structure        = ['name', 'modification_positions', 'consensus_sequence', 'normalized_names', 'normalized_seq_count', 'input_seq_count', 'average_input_seq_multiplicity', 'mapped_threeprime_input_seq_count', 'mapped_interior_input_seq_count', 'mapped_fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
+trnaseq_modified_table_types            = ['str' , 'str'                   , 'str'               , 'str'             , 'numeric'             , 'numeric'        , 'numeric'                       , 'numeric'                          , 'numeric'                        , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
 ####################################################################################################
 #
