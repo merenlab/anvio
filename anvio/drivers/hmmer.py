@@ -233,6 +233,8 @@ class HMMer:
         for worker in workers:
             worker.join()
 
+        self.progress.end()
+
         output_file_paths = []
         for output in desired_output:
             output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
