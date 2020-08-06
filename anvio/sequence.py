@@ -246,6 +246,25 @@ class Kmerizer:
         return kmer_dict
 
 
+    def get_prefix_kmer_dict2(self, kmer_size):
+        kmer_dict = {}
+        target_seqs = []
+        for name, seq in zip(self.names, self.seqs):
+            if kmer_size > len(seq):
+                continue
+
+            aligned_target = AlignedTarget(seq)
+            target_seqs.append(aligned_target)
+
+            hashed_kmer = sha224(seq[: kmer_size].encode('utf-8')).hexdigest()
+            if hashed_kmer in kmer_dict:
+                kmer_dict[hashed_kmer][name] = aligned_target
+            else:
+                kmer_dict[hashed_kmer] = {name: aligned_target}
+
+        return kmer_dict, target_seqs
+
+
     def get_prefix_kmer_dict(self, kmer_size, include_full_length=True):
         """Get k-mers of a given size from the beginning of input sequences.
 
@@ -547,9 +566,13 @@ class Dereplicator:
         """
         # self.progress.new("Prefix dereplicating")
         kmer_size = min(map(len, self.seqs))
+        print("prefix_dereplicate kmer size: %d" % kmer_size)
 
+        import time
+        t0 = time.time()
         # self.progress.update("Extracting prefix k-mers")
-        kmer_dict = Kmerizer(self.names, self.seqs).get_prefix_kmer_dict1(kmer_size)
+        kmer_dict, aligned_targets = Kmerizer(self.names, self.seqs).get_prefix_kmer_dict2(kmer_size)
+        print("kmerize time: %.2f" % (time.time() - t0))
 
         # Example `hit_dict` format:
         # hit_dict = {seq X name: [seq A name, seq B name, ...],
@@ -567,55 +590,49 @@ class Dereplicator:
         #                 ...}
         # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
 
+        t0 = time.time()
         # self.progress.update("Forming dereplicated sequence clusters")
         hashed_prefixes = [sha224(seq[: kmer_size].encode('utf-8')).hexdigest() for seq in self.seqs]
 
-        names_of_queries_with_hits = []
-        cluster_dict = {}
-
-        for query_name, query_seq, query_extra_item, query_prefix_hash in zip(self.names, self.seqs, self.extras, hashed_prefixes):
+        for query_name, query_seq, query_extra_item, query_prefix_hash, query_aligned_target in zip(self.names, self.seqs, self.extras, hashed_prefixes, aligned_targets):
             if query_prefix_hash not in kmer_dict:
+                query_aligned_target.hit_another_target = False
                 continue
 
             # Record which target sequences contain the query sequence as a prefix subsequence.
-            hit_names = []
-            for target_name, target_seq in kmer_dict[query_prefix_hash].items():
-                if query_seq == target_seq[: len(query_seq)]:
-                    if len(query_seq) != len(target_seq):
-                        hit_names.append(target_name)
-
-            if hit_names:
-                names_of_queries_with_hits.append(query_name)
-
-                member_item = (query_name, len(query_seq), query_extra_item)
-                # Make preliminary clusters for each target sequence containing the query sequence.
-                for name in hit_names:
-                    if name in cluster_dict:
-                        cluster_dict[name].append(member_item)
-                    else:
-                        cluster_dict[name] = [member_item]
+            hit_found = False
+            for target_name, aligned_target in kmer_dict[query_prefix_hash].items():
+                if query_seq == aligned_target.seq[: len(query_seq)]:
+                    if len(query_seq) != len(aligned_target.seq):
+                        aligned_target.alignments.append((query_name, len(query_seq), query_extra_item))
+                        hit_found = True
+            if hit_found:
+                query_aligned_target.hit_another_target = True
+            else:
+                query_aligned_target.hit_another_target = False
 
         clusters = []
-        for query_name, query_seq, query_extra_item in zip(self.names, self.seqs, self.extras):
-            if query_name in names_of_queries_with_hits:
-                # The query is not a cluster seed because it is a prefix of other sequences.
+        for query_name, query_extra_item, aligned_target in zip(self.names, self.extras, aligned_targets):
+            if aligned_target.hit_another_target:
                 continue
 
-            if query_name in cluster_dict:
-                # Other query sequences are prefixes of this query.
-                member_items = cluster_dict[query_name]
-                # Sort members in descending order of sequence length.
-                member_items.sort(key=lambda member_item: -member_item[1])
-                # The seed seq is added as a member of its own cluster.
-                clusters.append((query_name, query_seq, [(query_name, len(query_seq), query_extra_item)] + member_items))
+            if aligned_target.alignments:
+                clusters.append((query_name,
+                                 aligned_target.seq,
+                                 [(query_name, len(aligned_target.seq), query_extra_item)]
+                                 + sorted(aligned_target.alignments, key=lambda query_item: -query_item[1])))
             else:
-                # No other query sequences were prefixes of this query.
-                # Make a cluster with the query as the seed and the sole member of the cluster.
-                clusters.append((query_name, query_seq, [(query_name, len(query_seq), query_extra_item)]))
+                clusters.append((query_name,
+                                 aligned_target.seq,
+                                 [(query_name, len(aligned_target.seq), query_extra_item)]))
 
+        print("cluster formation time: %.2f" % (time.time() - t0))
+
+        t0 = time.time()
         # self.progress.update("Sorting clusters")
         # Sort by cluster size and then by seed name.
         clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        print("cluster sort time: %.2f" % (time.time() - t0))
 
         # self.progress.end()
 
