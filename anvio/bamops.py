@@ -1056,6 +1056,7 @@ class ReadsMappingToARange:
 
     def process_range(self, input_bam_paths, contig_name, start, end):
         if end <= start:
+            progress.reset()
             raise ConfigError("The end of range cannot be equal or smaller than the start of it :/")
 
         data = []
