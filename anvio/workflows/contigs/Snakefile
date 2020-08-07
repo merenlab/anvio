@@ -213,7 +213,8 @@ rule anvi_gen_contigs_database:
                                           {params.skip_predict_frame} \
                                           {params.skip_gene_calling} \
                                           {params.prodigal_translation_table} \
-                                          {params.description} >> {log} 2>&1")
+                                          {params.description} \
+                                          -T {threads} >> {log} 2>&1")
 
 
 rule reformat_external_functions:
