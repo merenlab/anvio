@@ -58,4 +58,4 @@ You also have the option to only classify bins above a certain minimum size as M
 
 ### Example 3: An example use case in a workflow
 
-For an example use case, on [this page](http://merenlab.org/tutorials/infant-gut/#renaming-bins-in-your-collection-from-chaos-to-order), anvi-rename-bins is used to create a new collection called `MAGs` that contains differenciates bins that have a completion stat of more than 70 percent, and renames all of those bins with the prefix `IGD`. 
+For an example use case, on [this page](http://merenlab.org/tutorials/infant-gut/#renaming-bins-in-your-collection-from-chaos-to-order), anvi-rename-bins is used to create a new collection called `MAGs` that contains differenciates bins that have a completion stat of more than 70 percent, and renames all of those bins with the prefix `IGD` (which stands for infant gut dataset). 
