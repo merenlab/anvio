@@ -2886,7 +2886,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we use module output mode because that gets us all the relevant information in the dataframe
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_single_data_frame=True)
         df.set_index(['db_name', 'kegg_module'], inplace=True)
 
 
@@ -2910,7 +2910,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
         # now we make a KO hit count matrix
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_single_data_frame=True)
         df.set_index(['db_name'], inplace=True)
         ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
