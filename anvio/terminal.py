@@ -370,7 +370,9 @@ class Run:
         if not display_only:
             self.info_dict[key] = value
 
-        if isinstance(value, bool):
+        if value is None:
+            value = "None"
+        elif isinstance(value, bool):
             value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
