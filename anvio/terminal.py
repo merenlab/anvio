@@ -336,7 +336,7 @@ class Run:
 
 
     def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan',
-             mc='yellow', progress=None, align_long_values=False):
+             mc='yellow', progress=None, align_long_values=True):
         """
         This function prints information nicely to the terminal in the form:
         key ........: value
