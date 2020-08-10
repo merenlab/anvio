@@ -80,7 +80,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko"],
+                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko", "ko_definition"],
                     'only_complete': False,
                     'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
@@ -2458,10 +2458,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+        self.setup_ko_dict()
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
-            headers_to_include = set(["unique_id", self.name_header, "ko", "modules_with_ko", "gene_caller_id", "contig"])
+            headers_to_include = set(OUTPUT_MODES["kofam_hits"]["headers"])
         else:
             headers_to_include = set(headers_to_include)
 
@@ -2490,6 +2491,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         else:
                             mod_list = "None"
                         d[unique_id]["modules_with_ko"] = mod_list
+                    if "ko_definition" in headers_to_include:
+                        d[unique_id]["ko_definition"] = self.ko_dict[ko]['definition']
 
                     unique_id += 1
 
