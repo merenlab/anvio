@@ -2790,7 +2790,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         return df
 
 
-    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, ko_superdict_multi, output_mode, as_data_frame=False):
+    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, ko_superdict_multi, output_mode, as_single_data_frame=False, as_data_frame_per_metagenome=False):
         """Arranges the multi-contigs DB metabolism data into a better format for printing
 
         PARAMETERS
@@ -2801,13 +2801,20 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             the ko hit data for multiple different contigs DBs
         output_mode : string
             which output format to use
-        as_data_frame : boolean
+        as_single_data_frame : boolean
             whether to return the formatted data in a data frame rather than a dictionary
+        as_data_frame_per_metagenome : boolean
+            whether to return the formatted data as a list of data frames, one per metagenome
 
         RETURNS
         =======
         Metabolism data, either in a formatted dictionary or a data frame
         """
+
+        if as_single_data_frame and as_data_frame_per_metagenome:
+            raise ConfigError("Tsk, tsk. Someone has requested get_metabolism_superdict_multi_for_output() to return both "
+                              "a single data frame and a list of data frames (one per metagenome). This simply will not do, "
+                              "so anvi'o is giving up and walking away now.")
 
         kegg_metabolism_superdict_multi_output_version = {}
 
@@ -2837,8 +2844,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
             kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
 
-        if as_data_frame:
+        if as_single_data_frame:
             return self.get_metabolism_superdict_multi_as_data_frame(kegg_metabolism_superdict_multi_output_version)
+        elif as_data_frame_per_metagenome:
+            df_list = []
+            for metagenome_name, single_dict in kegg_metabolism_superdict_multi_output_version.items():
+                if anvio.DEBUG:
+                    self.run.info_single(f"get_metabolism_superdict_multi_for_output(): Appending {metagenome_name} data frame to list")
+                multi_formatted_single_dict = {metagenome_name : single_dict}
+                single_df = self.get_metabolism_superdict_multi_as_data_frame(multi_formatted_single_dict)
+                df_list.append(single_df)
+            return df_list
         else:
             return kegg_metabolism_superdict_multi_output_version
 
