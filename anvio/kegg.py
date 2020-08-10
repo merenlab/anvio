@@ -3465,6 +3465,28 @@ class KeggModulesDatabase(KeggContext):
         return " ".join(def_lines)
 
 
+    def get_ko_definition_from_modules_table(self, ko_num):
+        """This function returns the definition for the given KO from the modules data table.
+
+        Note that the modules table will only contain information for KOs that belong to modules, so this
+        function returns None for those KOs that are not in modules. If your use case depends on accessing
+        definitions for all modules, you are better off calling KeggContext.setup_ko_dict() and taking the
+        definition from that dictionary.
+        """
+
+        where_clause_string = "data_name = 'ORTHOLOGY' AND data_value = '%s'" % (ko_num)
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True, error_if_no_data=False)
+        print(dict_from_mod_table)
+        if not dict_from_mod_table:
+            self.run.warning("get_ko_definition() speaking: No ORTHOLOGY entry found for KO %s - returning None."
+                            % (ko_num))
+            return None
+        else:
+            # there could be several rows for the same KO in different modules, but each definition should be
+            # the same or similar, so we arbitrarily return the first one
+            return dict_from_mod_table[0]['data_definition']
+
+
     def unroll_module_definition(self, mnum):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
         returns the list of all paths.
