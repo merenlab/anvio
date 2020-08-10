@@ -1356,7 +1356,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
+            desc_str = header_meta['description']
+            type_str = header_meta['mode_type']
+            mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_hits_and_splits(self):
@@ -2672,7 +2675,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
+            desc_str = header_meta['description']
+            type_str = header_meta['mode_type']
+            mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_metagenomes(self):
