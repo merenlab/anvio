@@ -193,6 +193,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'mode_type': 'kofams',
                         'description': 'A comma-separated list of modules that the KO belongs to'
                         },
+                  'ko_definition': {
+                        'cdict_key': None,
+                        'mode_type': 'kofams',
+                        'description': 'The functional annotation associated with the KO number'
+                        },
                   }
 
 
