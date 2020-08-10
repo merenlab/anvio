@@ -387,7 +387,7 @@ class Run:
         if align_long_values:
             terminal_width = os.get_terminal_size()[0]
             wrap_width = terminal_width - self.width - 3
-            wrapped_value_lines = textwrap.wrap(value, width=wrap_width)
+            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
             aligned_value_str = wrapped_value_lines[0]
             for line in wrapped_value_lines[1:]:
                 aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
