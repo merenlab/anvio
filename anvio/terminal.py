@@ -371,7 +371,7 @@ class Run:
             self.info_dict[key] = value
 
         if isinstance(value, bool):
-            pass
+            value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
         elif isinstance(value, int):
