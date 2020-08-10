@@ -2006,7 +2006,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.run.info("Module completion threshold", self.module_completion_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
-            self.run.info("Complete modules", ", ".join(complete_mods))
+            self.run.info("Complete modules", ", ".join(complete_mods), align_long_values=True)
 
         return metabolism_dict_for_list_of_splits
 
