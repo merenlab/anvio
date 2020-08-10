@@ -382,6 +382,17 @@ class Run:
         info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
+        if align_long_values:
+            terminal_width = os.get_terminal_size()[0]
+            wrap_width = terminal_width - self.width - 3
+            wrapped_value_lines = textwrap.wrap(value, width=wrap_width)
+            aligned_value_str = wrapped_value_lines[0]
+            for line in wrapped_value_lines[1:]:
+                aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                             '.' * (self.width - len(label)),
+                                             c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.clear()
