@@ -2863,10 +2863,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """Stores the multi-contigs DB metabolism data in long format (tab-delimited files, one per requested output mode)"""
 
         for mode in self.output_modes:
-            df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode=mode, as_data_frame=True)
+            df_list = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode=mode, as_data_frame_per_metagenome=True)
 
             output_file_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
-            df.to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+            if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
+                if anvio.DEBUG:
+                    self.run.info("Removing existing output file", output_file_path)
+                os.remove(output_file_path)
+
+            df_list[0].to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+            for single_df in df_list[1:]:
+                single_df.to_csv(output_file_path, mode='a', header=False, index=True, index_label="unique_id", sep='\t', na_rep='NA')
 
             self.run.info("Long-format output", output_file_path)
 
