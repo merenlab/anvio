@@ -1348,7 +1348,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
 
         for mode, mode_meta in self.available_modes.items():
-            self.run.info(mode, mode_meta['description'], align_long_values=True)
+            self.run.info(mode, mode_meta['description'])
 
 
     def list_output_headers(self):
@@ -1359,7 +1359,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             desc_str = header_meta['description']
             type_str = header_meta['mode_type']
             mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
-            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]", align_long_values=True)
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_hits_and_splits(self):
@@ -2006,7 +2006,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.run.info("Module completion threshold", self.module_completion_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
-            self.run.info("Complete modules", ", ".join(complete_mods), align_long_values=True)
+            self.run.info("Complete modules", ", ".join(complete_mods))
 
         return metabolism_dict_for_list_of_splits
 
@@ -2635,7 +2635,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
 
         for mode, mode_meta in self.available_modes.items():
-            self.run.info(mode, mode_meta['description'], align_long_values=True)
+            self.run.info(mode, mode_meta['description'])
 
     def update_available_headers_for_multi(self):
         """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
@@ -2678,7 +2678,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             desc_str = header_meta['description']
             type_str = header_meta['mode_type']
             mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
-            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]", align_long_values=True)
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_metagenomes(self):
