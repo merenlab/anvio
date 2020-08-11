@@ -372,7 +372,7 @@ class Run:
 
         if value is None:
             value = "None"
-        elif isinstance(value, bool) or isinstance(value, float):
+        elif isinstance(value, bool) or isinstance(value, float) or isinstance(value, list):
             value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
@@ -388,9 +388,12 @@ class Run:
             terminal_width = get_terminal_size()[0]
             wrap_width = terminal_width - self.width - 3
             wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
-            aligned_value_str = wrapped_value_lines[0]
-            for line in wrapped_value_lines[1:]:
-                aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+            if len(wrapped_value_lines) == 0:
+                aligned_value_str = value
+            else:
+                aligned_value_str = wrapped_value_lines[0]
+                for line in wrapped_value_lines[1:]:
+                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
 
             info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
                                              '.' * (self.width - len(label)),
