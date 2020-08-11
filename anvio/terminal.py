@@ -385,7 +385,7 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
         if align_long_values:
-            terminal_width = os.get_terminal_size()[0]
+            terminal_width = get_terminal_size()[0]
             wrap_width = terminal_width - self.width - 3
             wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
             aligned_value_str = wrapped_value_lines[0]
