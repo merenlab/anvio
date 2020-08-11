@@ -71,7 +71,7 @@ class NGram(object):
         self.skip_init_functions = A('skip_init_functions')
         self.genome_names_to_focus = A('genome_names')
         self.ngram_source = A("ngram_source")
-        self.take_first_cog = A("take_first_cog")
+        self.first_functional_hit_only = A("first_functional_hit_only")
         self.annotation_source_dict = {}
 
         self.pan_db_path = A('pan_db')
@@ -324,18 +324,15 @@ class NGram(object):
         # Annotate window based on user input
         gene_annotation_dict = {}
         for annotation_source, annotations_dict in self.annotation_source_dict.items():
-            if self.take_first_cog:
-                if annotation_source == 'COG_FUNCTION':
-                    ngram_annotation = []
-                    for g in window:
-                        annotation = annotations_dict[g]
-                        if "!!!" in annotation:
-                            annotation = annotation.split("!!!")[0]
-                            ngram_annotation.append(annotation)
-                        else:
-                            ngram_annotation.append(annotation)
-                else:
-                   ngram_annotation = [annotations_dict[g] for g in window]
+            if self.first_functional_hit_only:
+                ngram_annotation = []
+                for g in window:
+                    annotation = annotations_dict[g]
+                    if "!!!" in annotation:
+                        annotation_first = annotation.split("!!!")[0]
+                        ngram_annotation.append(annotation_first)
+                    else:
+                        ngram_annotation.append(annotation)
 
                 ngram_annotation = tuple(ngram_annotation)
 
