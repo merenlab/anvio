@@ -540,7 +540,7 @@ class MultipleRuns:
         self.run.info('merged_sample_ids', sample_ids_list)
         self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
-        self.run.info('cmd_line', utils.get_cmd_line())
+        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
 
         self.merge_split_coverage_data()
