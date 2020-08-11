@@ -62,8 +62,11 @@ if __name__ == '__main__':
                         help="Provide this flag if you want anvi-analyze-synteny to report "
                               'Ngrams that contain gene calls that have no annotation.')
     groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {"required": False}))
-    groupC.add_argument('--take-first-cog',action="store_true",
-                        help="When TRUE, this flag will only take the best COG annotation")
+    groupC.add_argument('--first-functional-hit-only',action="store_true",
+                        help="Use this flag if you want to use on the first functional annotation when making ngrams and assigning annotations. "
+                             "In some cases, anvio reports more than one annotation when there are multiple good hits to the gene. "
+                             "When this happens, all annotations will be reported in order of alignment score and delimited by '!!!' e.g. 'COG123!!!COG456!!!COG789'. "
+                             "This flag will report 'COG123!!!COG456!!!COG789' as 'COG123'.")
     args = anvio.get_args(parser)
 
     try:
