@@ -62,6 +62,8 @@ if __name__ == '__main__':
                         help="Provide this flag if you want anvi-analyze-synteny to report "
                               'Ngrams that contain gene calls that have no annotation.')
     groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {"required": False}))
+    groupC.add_argument('--take-first-cog',action="store_true",
+                        help="When TRUE, this flag will only take the best COG annotation")
     args = anvio.get_args(parser)
 
     try:
