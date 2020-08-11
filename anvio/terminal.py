@@ -372,7 +372,7 @@ class Run:
 
         if value is None:
             value = "None"
-        elif isinstance(value, bool):
+        elif isinstance(value, bool) or isinstance(value, float):
             value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
