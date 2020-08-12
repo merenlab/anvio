@@ -307,7 +307,7 @@ class NGram(object):
         """This method annotates a gene-callers-id window
 
         This method will annotate a gene-callers-id window based using annotation sources provided
-        by the user (e.g. COGs, pan_db). If the user provided the `take_first_cog` flag, the COG
+        by the user (e.g. COGs, pan_db). If the user provided the `first_functional_hit_only` flag, the COG
         annotation will be split by "!!!" and the first (best hit) item will be used.
 
         Parameters
