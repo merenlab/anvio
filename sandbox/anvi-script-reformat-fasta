@@ -78,6 +78,7 @@ def reformat_FASTA(args):
     total_num_nucleotides = 0
     total_num_contigs = 0
     total_num_nucleotides_removed = 0
+    total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
     while next(fasta):
@@ -92,6 +93,7 @@ def reformat_FASTA(args):
             for char in fasta.seq:
                 if char not in acceptable_chars:
                     seq.append(replacement)
+                    total_num_nucleotides_modified += 1
                 else:
                     seq.append(char)
             fasta.seq = ''.join(seq)
@@ -141,6 +143,7 @@ def reformat_FASTA(args):
     run.info('Total num nucleotides', total_num_nucleotides)
     run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
     run.info('Nucleotides removed', '%d (%.2f%% of all)' % (total_num_nucleotides_removed, total_num_nucleotides_removed * 100.0 / total_num_nucleotides), mc='green')
+    run.info('Nucleotides modified', '%d (%.2f%% of all)' % (total_num_nucleotides_modified, total_num_nucleotides_modified * 100.0 / total_num_nucleotides), mc='green')
     run.info('Deflines simplified', args.simplify_names, mc='green')
 
 
