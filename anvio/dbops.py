@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 import sys
 import time
 import copy
@@ -3767,10 +3768,15 @@ class ContigsDatabase:
         else:
             description = ''
 
-        # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
+        # go through the FASTA file to make sure there are no surprises with deflines, sequence
+        # lengths, or sequence characters.
         self.progress.new('Checking deflines and contig lengths')
         self.progress.update('tick tock ...')
         fasta = u.SequenceSource(contigs_fasta)
+
+        # we only A, C, T, G, N, a, c, t, g, n
+        character_regex = re.compile(r'^[ACGTNactgn]+$')
+
         while next(fasta):
             if not utils.check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
@@ -3787,6 +3793,12 @@ class ContigsDatabase:
                                   "with such short contigs, but the length of each contig must be at least as long as your `k` for "
                                   "k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short "
                                   "contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+
+            if not bool(character_regex.search(fasta.seq)):
+                raise ConfigError(f"Tough. {fasta.id} contains characters that are not any of A, C, T, G, N, a, c, t, g, n. To "
+                                  f"save you from later headaches, anvi'o will not make a database. We recommend you identify "
+                                  f"what's up with your sequences. If you want to continue, first reformat the FASTA file "
+                                  f"(you could use anvi-script-reformat-fasta with the parameter --seq-type NT, and that would fix the problem)")
 
             try:
                 int(fasta.id)
