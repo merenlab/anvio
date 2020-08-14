@@ -47,6 +47,7 @@
     font-size: 10px;
     padding-top: 14px;
     right: 0px;
+    z-index: 999;
 }
 
 #settings-panel {
@@ -62,6 +63,7 @@
     padding: 10px;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
+    z-index: 999;
 }
 
 #settings-panel code {
