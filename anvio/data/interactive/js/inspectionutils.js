@@ -248,7 +248,7 @@ function removeGeneChart() {
 }
 
 
-function drawArrows(_start, _stop, colortype, color_genes) {
+function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -257,7 +257,7 @@ function drawArrows(_start, _stop, colortype, color_genes) {
 
     paths = contextSvg.append('svg:g')
       .attr('id', 'gene-arrow-chart')
-      .attr('transform', 'translate(50, -10)');
+      .attr('transform', 'translate(50, ' + (gene_offset_y-10) + ')');
 
     paths.selectAll('path');
 

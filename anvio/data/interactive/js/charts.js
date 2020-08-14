@@ -42,14 +42,40 @@ var charts;
 var brush;
 var inspect_mode;
 var show_nucleotides = true;
+var gene_offset_y = 0;
 
 // for testing
 var mcags;
-var cog_colors, kegg_colors, source_colors;
 
-//var db_color_mode; // -- can be cog, kegg, null --> or just directly from menu?
 var cog_annotated = false, kegg_annotated = false;
 
+// note: not called on console open
+$(window).resize(function() {
+  VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+  if(contextSvg != null && $("#highlight_boxes").length > 0) {
+    $('#highlight_boxes').attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
+  }
+});
+
+window.onscroll = function() {
+  var boxes = document.getElementById("highlight-boxes");
+  var boxH = window.innerHeight - contextSvg.attr("height")
+                                + contextSvg.select("#DNA_sequence")[0][0].getBBox().height
+                                + 50;
+
+  var el_top = parseFloat(boxes.getBoundingClientRect().top);
+      el_top -= parseFloat(boxes.style.top);
+      el_top += 50;
+      el_top *= -1;
+
+  if(el_top > 0){
+    boxes.style.top = el_top + "px";
+    $("#highlight_boxes").attr("height", boxH);
+  } else{
+    boxes.style.top = "0px";
+    $("#highlight_boxes").attr("height", boxH + el_top);
+  }
+}
 
 function loadAll() {
     $.ajaxPrefilter(function(options) {
@@ -292,7 +318,7 @@ function loadAll() {
                       brush(d3.select(".brush").transition());
                       brush.event(d3.select(".brush").transition());
 
-                      drawArrows(start, end, $('#gene_color_order').val());
+                      drawArrows(start, end, $('#gene_color_order').val(), gene_offset_y);
                       display_nucleotides();
                     }
                 });
@@ -489,7 +515,7 @@ function redrawArrows() {
           .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
   });
 
-  drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), !isEmpty(state['highlight-genes']) ? Object.keys(state['highlight-genes']) : null);
+  drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, !isEmpty(state['highlight-genes']) ? Object.keys(state['highlight-genes']) : null);
 }
 
 function resetFunctionColors(fn_colors=null) {
@@ -523,6 +549,10 @@ function toggle_nucleotide_display() {
     contextSvg.select("#AA_sequence").remove();
     contextSvg.select("#solids").remove();
     contextSvg.attr("height", 150);
+    $("#gene-chart").attr("transform", "translate(50, 10)");
+    $("#context-chart").attr("transform", "translate(50, 80)");
+    $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
+    gene_offset_y = 0;
     $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
   }
 }
@@ -546,6 +576,10 @@ function display_nucleotides() {
 
   if(end - start > 300 || end - start < 30) {
     contextSvg.attr("height", 150);
+    $("#gene-chart").attr("transform", "translate(50, 10)");
+    $("#context-chart").attr("transform", "translate(50, 80)");
+    $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
+    gene_offset_y = 0;
     return;
   }
 
@@ -603,10 +637,10 @@ function display_nucleotides() {
   var nucl_text_font = width/((end-start)*.6002738402061856);
                    nucl_sequence.attr("font-size", nucl_text_font);
   var dna_seq_height = contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
-  var nucl_text_y = 140 + .75*dna_seq_height;
+  var nucl_text_y = .75*dna_seq_height;
                    nucl_sequence.attr("y", nucl_text_y)
                                 .attr("font-family", "monospace")
-                                .attr("transform", "translate(" + (margin.left) + ", 0)");
+                                .attr("transform", "translate(" + (margin.left) + ", 10)");
 
   var show_AAs = false;
   geneParser["data"].forEach(function(gene){
@@ -660,7 +694,7 @@ function display_nucleotides() {
                      .attr("height", dna_seq_height)
                      .attr("width", 3*textWidth)
                      .attr("x", rect_x)
-                     .attr("y", nucl_text_y + offset_y)
+                     .attr("y", dna_seq_height/*nucl_text_y*/ + offset_y)
                      .attr("fill", i % 2 == 0 ? "rgb(144,137,250)" : "rgb(81,68,211)");
           rect_x += (3*textWidth);
         }
@@ -671,14 +705,14 @@ function display_nucleotides() {
                   .attr("font-family", "monospace")
                   .attr("fill", "white")
                   .attr("x", buffer*textWidth)
-                  .attr("y", nucl_text_y + .67*dna_seq_height + offset_y);
+                  .attr("y", dna_seq_height/*nucl_text_y*/ + .67*dna_seq_height + offset_y);
 
         if(gene.direction == "r") {
           aa_sequence.append("rect")
                      .attr("height", 1.1*dna_seq_height)
                      .attr("width", aas_in_window.length*3*textWidth)
                      .attr("x", buffer*textWidth)
-                     .attr("y", nucl_text_y + offset_y)
+                     .attr("y", dna_seq_height/*nucl_text_y*/ + offset_y)
                      .attr("fill", "red")
                      .attr("fill-opacity", 0.1);
         }
@@ -687,9 +721,17 @@ function display_nucleotides() {
     }
   }
 
-  contextSvg.attr("height", 150 + dna_seq_height +
-    (show_AAs? dna_seq_height : 0) +
-    (overlapping_genes? 5+dna_seq_height : 0));
+  var extra_y = dna_seq_height +
+                (show_AAs? dna_seq_height : 0) +
+                (overlapping_genes? 5+dna_seq_height : 0);
+
+  contextSvg.attr("height", 150 + extra_y);
+
+  // reposition gene arrow chart
+  $("#gene-chart").attr("transform", "translate(50, " + (20+extra_y) + ")");
+  $("#context-chart").attr("transform", "translate(50, " + (90+extra_y) + ")");
+  $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
+  gene_offset_y = 10+extra_y;
 }
 
 function show_selected_sequence() {
@@ -1099,11 +1141,6 @@ function processState(state_name, state) {
     toggleUnmarkedGenes();
     this.state = state;
     redrawArrows();
-    /* TODO
-        - save states separately for different functions? local vars for each? ==> use a foreach here to load them in?
-        - save which function was selected (probably unnecessary)
-        - show default state?
-    */
 
     current_state_name = state_name;
 
@@ -1158,8 +1195,6 @@ function createCharts(state){
       if (parseFloat(state['layers'][layer_id]['height']) > 0)
         visible_layers++;
     }
-
-    //geneParser = new GeneParser(genes);
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
@@ -1240,15 +1275,37 @@ function createCharts(state){
 
     }
 
-
     contextSvg = d3.select("#context-container").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", 150);
+
+    var highlightBoxes = d3.select("#highlight-boxes").append("svg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", window.innerHeight-contextSvg.attr("height"));
+
+    $('#highlight-boxes').css("width", (width + 150) + "px");
+    highlightBoxes.attr("id", "highlight_boxes")
+                  .attr("height", 0);
+
+    if(sequence.length <= 300 && sequence.length >= 30) {
+      highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
+      for(var i = 0; i < sequence.length; i++) {
+        highlightBoxes.append("rect")
+                      .attr("class", "highlightbox")
+                      .attr("x", i*(width/range))
+                      .attr("width", (width/range))
+                      .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
+                      .attr("fill", "blue")
+                      .attr("fill-opacity", 0)
+                      .attr("transform", "translate(50,20)");
+      }
+    }
 
     var defs = contextSvg.append('svg:defs')
                          .attr('id', 'contextSvgDefs');
 
     contextSvg.append("rect")
+       .attr("id", "gene-chart")
        .attr("width", width)
        .attr("height", "60px")
        .attr("fill", "black")
@@ -1320,6 +1377,7 @@ function createCharts(state){
                 .on("brushend", onBrush);
 
     var context = contextSvg.append("g")
+                .attr("id", "context-chart")
                 .attr("class","context")
                 .attr("transform", "translate(" + (margin.left) + ", 80)");
 
@@ -1358,10 +1416,26 @@ function createCharts(state){
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
         }
-        drawArrows(b[0], b[1], $('#gene_color_order').val());
+        drawArrows(b[0], b[1], $('#gene_color_order').val(), gene_offset_y);
+
+        highlightBoxes.empty();
+        highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
+        var range = $('#brush_end').val() - $('#brush_start').val();
+        if(range <= 300 && range >= 30) {
+          for(var i = 0; i < range; i++) {
+            highlightBoxes.append("rect")
+                          .attr("class", "highlightbox")
+                          .attr("x", i*(width/range))
+                          .attr("width", (width/range))
+                          .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
+                          .attr("fill", "blue")
+                          .attr("fill-opacity", 0)
+                          .attr("transform", "translate(50,20)");
+          }
+        }
     }
 
-    drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val());
+    drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y);
 }
 
 
@@ -1463,7 +1537,6 @@ function Chart(options){
     this.gcContainer   = this.svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
-
 
     /* Add both into the page */
     this.chartContainer.append("path")

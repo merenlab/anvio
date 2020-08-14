@@ -8,11 +8,22 @@
     padding: 20px 30px;
 }
 
+#chart-container {
+  position: absolute;
+  z-index: 1;
+}
+
 #context-container {
   position: fixed;
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
+  z-index: 2;
+}
+
+#highlight-boxes {
+  z-index: 3;
+  position: relative;
 }
 
 #display-container h2 {
@@ -236,4 +247,12 @@ a{
    -ms-user-select: none;
    user-select: none;
    pointer-events: none;
+}
+
+.highlightbox:hover {
+  fill-opacity: 0.25;
+}
+
+.highlightbox:mouseleave {
+  fill-opacity: 0;
 }
