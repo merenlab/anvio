@@ -10,7 +10,7 @@ from anvio.parsers.krakenuniq import KrakenUniq
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.centrifuge import Centrifuge
 from anvio.parsers.kaiju import Kaiju
-from anvio.parsers.hmmscan import HMMScan
+from anvio.parsers.hmmer import HMMERTableOutput, HMMERStandardOutput
 from anvio.parsers.concoct import CONCOCT
 from anvio.parsers.interproscan import InterProScan
 
@@ -28,7 +28,7 @@ parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
 parser_modules['taxonomy_layers'] = {"krakenuniq": KrakenUniq}
 parser_modules['functions']       = {"interproscan": InterProScan}
-parser_modules['search']          = {"hmmscan": HMMScan}
+parser_modules['search']          = {"hmmer_table_output": HMMERTableOutput, "hmmer_std_output": HMMERStandardOutput}
 parser_modules['collections']     = {"concoct": CONCOCT}
 
 run = terminal.Run()
@@ -42,7 +42,7 @@ def get_parser_names(module):
 def get_parser_module(module):
     if module not in parser_modules:
         raise ConfigError("Anvi'o parser modules do not recognize any module called '%s'. But it has "
-                          "these in case if your honour would change their minds: '%s'." % \
+                          "these in case your honour would change their minds: '%s'." % \
                                 (module, ', '.join(list(parser_modules.keys()))))
 
     return parser_modules[module]

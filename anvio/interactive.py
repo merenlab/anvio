@@ -34,7 +34,12 @@ from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
-from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
+from anvio.tables.miscdata import (
+    TableForItemAdditionalData,
+    TableForLayerAdditionalData,
+    TableForLayerOrders,
+    TableForAminoAcidAdditionalData,
+)
 from anvio.tables.collections import TablesForCollections
 
 
@@ -1437,10 +1442,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        # splits
-        self.bin_id = A('bin_id', null)
-        self.collection_name = A('collection_name', null)
-        self.splits_of_interest_path = A('splits_of_interest', null)
         # database
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
@@ -1471,6 +1472,10 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         self.sanity_check()
 
         ContigsSuperclass.__init__(self, self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+        # Init the amino acid additional data table object
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.amino_acid_additional_data = TableForAminoAcidAdditionalData(args)
 
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
@@ -1656,7 +1661,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         FIND_MIN = lambda c, buff=0.01: var.data[c].min() - buff if c in var.data.columns else 0
         FIND_MAX = lambda c, buff=0.01: var.data[c].max() + buff if c in var.data.columns else 1
-
 
         info = [
             {
@@ -2158,8 +2162,11 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
         summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
-        summary['residue_info'] = structure_db.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
         structure_db.disconnect()
+
+        residue_info, residue_info_types = self.get_residue_info_for_gene(gene_callers_id)
+        summary['residue_info'] = residue_info.to_json(orient='index')
+        summary['residue_info_types'] = residue_info_types.to_json(orient='index')
 
         summary['histograms'] = {}
         for engine in self.available_engines:
@@ -2167,6 +2174,30 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                                                                 self.variability_storage[gene_callers_id][engine]['column_info'])
 
         return summary
+
+
+    def get_residue_info_for_gene(self, gene_callers_id):
+        """Grab the residue info from both the structure database and the contigs database
+
+        This grabs residue info from both `residue_info` in the structure database as well as
+        any potential data present in `amino_acid_additional_data` in the contigs database.
+        """
+
+        # Get residue info from `residue_info`
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        from_structure_db = structure_db.get_residue_info_for_gene(gene_callers_id)
+        structure_db.disconnect()
+
+        # Get residue info from `amino_acid_additional_data`
+        from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
+
+        residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
+        residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
+
+        residue_info_types = residue_info.drop('codon_number', axis=1).aggregate([numpy.min, numpy.max, numpy.dtype]).T
+        residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
+
+        return residue_info, residue_info_types
 
 
     def get_variability(self, options):

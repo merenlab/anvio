@@ -428,6 +428,12 @@ anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db
                                         -c $output_dir/CONTIGS.db \
                                         -O $output_dir/MERGED
 
+INFO "Export gene coverage and detection data for a single gene"
+anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                                        -c $output_dir/CONTIGS.db \
+                                        --gene-caller-id 1 \
+                                        -O $output_dir/MERGED-GENE-01
+
 INFO "Show all available HMM sources"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db \
                                 -o /dev/null \
