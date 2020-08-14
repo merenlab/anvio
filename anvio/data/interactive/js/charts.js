@@ -41,6 +41,7 @@ var sequence;
 var charts;
 var brush;
 var inspect_mode;
+var highlightBoxes;
 var show_nucleotides = true;
 var gene_offset_y = 0;
 
@@ -52,12 +53,14 @@ var cog_annotated = false, kegg_annotated = false;
 // note: not called on console open
 $(window).resize(function() {
   VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-  if(contextSvg != null && $("#highlight_boxes").length > 0) {
-    $('#highlight_boxes').attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
+  if($("#DNA_sequence").length > 0) {
+    highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
   }
 });
 
 window.onscroll = function() {
+  if($("#DNA_sequence").length == 0) return;
+
   var boxes = document.getElementById("highlight-boxes");
   var boxH = window.innerHeight - contextSvg.attr("height")
                                 + contextSvg.select("#DNA_sequence")[0][0].getBBox().height
@@ -70,10 +73,10 @@ window.onscroll = function() {
 
   if(el_top > 0){
     boxes.style.top = el_top + "px";
-    $("#highlight_boxes").attr("height", boxH);
+    highlightBoxes.attr("height", boxH);
   } else{
     boxes.style.top = "0px";
-    $("#highlight_boxes").attr("height", boxH + el_top);
+    if(boxH + el_top >= 0) highlightBoxes.attr("height", boxH + el_top);
   }
 }
 
@@ -352,6 +355,26 @@ function loadAll() {
 
 }
 
+function drawHighlightBoxes() {
+  if($("#DNA_sequence").length == 0) return;
+
+  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+5);
+  highlightBoxes.empty();
+  var range = $('#brush_end').val() - $('#brush_start').val();
+  if(range <= 300 && range >= 30) {
+    for(var i = 0; i < range; i++) {
+      highlightBoxes.append("rect")
+                    .attr("class", "highlightbox")
+                    .attr("x", i*(width/range))
+                    .attr("width", (width/range))
+                    .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
+                    .attr("fill", "blue")
+                    .attr("fill-opacity", 0)
+                    .attr("transform", "translate(50,20)");
+    }
+  }
+}
+
 /*
  *  Generates KEGG color table html given a color palette.
  *
@@ -552,6 +575,7 @@ function toggle_nucleotide_display() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
+    $("#highlightBoxesSvg").empty();
     gene_offset_y = 0;
     $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
   }
@@ -732,6 +756,8 @@ function display_nucleotides() {
   $("#context-chart").attr("transform", "translate(50, " + (90+extra_y) + ")");
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
+
+  drawHighlightBoxes();
 }
 
 function show_selected_sequence() {
@@ -1279,27 +1305,11 @@ function createCharts(state){
             .attr("width", width + margin.left + margin.right)
             .attr("height", 150);
 
-    var highlightBoxes = d3.select("#highlight-boxes").append("svg")
-                            .attr("width", width + margin.left + margin.right)
-                            .attr("height", window.innerHeight-contextSvg.attr("height"));
-
+    highlightBoxes = d3.select("#highlight-boxes").append("svg")
+                                                  .attr("id", "highlightBoxesSvg")
+                                                  .attr("width", width + margin.left + margin.right)
+                                                  .attr("height", 0);
     $('#highlight-boxes').css("width", (width + 150) + "px");
-    highlightBoxes.attr("id", "highlight_boxes")
-                  .attr("height", 0);
-
-    if(sequence.length <= 300 && sequence.length >= 30) {
-      highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
-      for(var i = 0; i < sequence.length; i++) {
-        highlightBoxes.append("rect")
-                      .attr("class", "highlightbox")
-                      .attr("x", i*(width/range))
-                      .attr("width", (width/range))
-                      .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
-                      .attr("fill", "blue")
-                      .attr("fill-opacity", 0)
-                      .attr("transform", "translate(50,20)");
-      }
-    }
 
     var defs = contextSvg.append('svg:defs')
                          .attr('id', 'contextSvgDefs');
@@ -1417,22 +1427,6 @@ function createCharts(state){
             charts[i].showOnly(b);
         }
         drawArrows(b[0], b[1], $('#gene_color_order').val(), gene_offset_y);
-
-        highlightBoxes.empty();
-        highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
-        var range = $('#brush_end').val() - $('#brush_start').val();
-        if(range <= 300 && range >= 30) {
-          for(var i = 0; i < range; i++) {
-            highlightBoxes.append("rect")
-                          .attr("class", "highlightbox")
-                          .attr("x", i*(width/range))
-                          .attr("width", (width/range))
-                          .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
-                          .attr("fill", "blue")
-                          .attr("fill-opacity", 0)
-                          .attr("transform", "translate(50,20)");
-          }
-        }
     }
 
     drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y);
