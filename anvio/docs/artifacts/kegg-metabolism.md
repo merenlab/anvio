@@ -48,12 +48,12 @@ The `kofam_hits` output file will have the suffix `kofam_hits.txt`. Unlike the p
 
 Here is an example of this output mode (also from the Infant Gut dataset):
 
-unique_id | db_name | genome_name | ko | gene_caller_id | contig | modules_with_ko
-|:--|:--|:--|:--|:--|:--|:--|
-0 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00845 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00892,M00909
-1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01810 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00114,M00892,M00909
-2 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00850 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345
-|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+unique_id | db_name | genome_name | ko | gene_caller_id | contig | modules_with_ko | definition
+|:--|:--|:--|:--|:--|:--|:--|:--|
+0 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00845 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00892,M00909 | glucokinase [EC:2.7.1.2]
+1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01810 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00114,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9]
+2 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00850 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
+(...) |(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 ### Custom Mode (for module data)
 

@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 import sys
 import time
 import copy
@@ -2670,7 +2671,7 @@ class ProfileSuperclass(object):
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([])):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
@@ -2781,7 +2782,10 @@ class ProfileSuperclass(object):
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+            if len(gene_caller_ids_of_interest):
+                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest, **parameters))
+            else:
+                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
 
             if callback and counter % callback_interval == 0:
                 callback()
@@ -2952,7 +2956,6 @@ class ProfileSuperclass(object):
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
                                       zeros_are_outliers=False, mode=None, gene_caller_ids_of_interest=set([])):
-
         # sanity check
         if not isinstance(gene_caller_ids_of_interest, set):
             raise ConfigError("`gene_caller_ids_of_interest` must be of type `set`")
@@ -4443,6 +4446,7 @@ class tRNASeqDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
+
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path
@@ -4676,10 +4680,15 @@ class ContigsDatabase:
         else:
             description = ''
 
-        # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
+        # go through the FASTA file to make sure there are no surprises with deflines, sequence
+        # lengths, or sequence characters.
         self.progress.new('Checking deflines and contig lengths')
         self.progress.update('tick tock ...')
         fasta = u.SequenceSource(contigs_fasta)
+
+        # we only A, C, T, G, N, a, c, t, g, n
+        character_regex = re.compile(r'^[ACGTNactgn]+$')
+
         while next(fasta):
             if not utils.check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
@@ -4696,6 +4705,12 @@ class ContigsDatabase:
                                   "with such short contigs, but the length of each contig must be at least as long as your `k` for "
                                   "k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short "
                                   "contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+
+            if not bool(character_regex.search(fasta.seq)):
+                raise ConfigError(f"Tough. {fasta.id} contains characters that are not any of A, C, T, G, N, a, c, t, g, n. To "
+                                  f"save you from later headaches, anvi'o will not make a database. We recommend you identify "
+                                  f"what's up with your sequences. If you want to continue, first reformat the FASTA file "
+                                  f"(you could use anvi-script-reformat-fasta with the parameter --seq-type NT, and that would fix the problem)")
 
             try:
                 int(fasta.id)
