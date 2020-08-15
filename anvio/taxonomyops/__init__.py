@@ -1167,7 +1167,11 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
         search_output = []
 
+        item_sequences_fate = {}
+
         for item_name in item_sequences_dict:
+            item_sequences_fate[item_name] = {'in_contigs_db': len(item_sequences_dict[item_name]), 'in_search_results': 0}
+
             sequence = ""
             for entry in item_sequences_dict[item_name].values():
                 if 'sequence' not in entry or 'gene_name' not in entry:
@@ -1223,6 +1227,9 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                 if self.write_buffer_size > 0 and len(search_output) % self.write_buffer_size == 0:
                     self.tables_for_taxonomy.add(search_output)
+                    for s in search_output:
+                        item_sequences_fate[s[1]]['in_search_results'] += 1
+
                     search_output = []
 
                 num_finished_processes += 1
@@ -1240,11 +1247,33 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
         # finally the remaining hits are written to the database, and we are done
         self.tables_for_taxonomy.add(search_output)
+        for s in search_output:
+            item_sequences_fate[s[1]]['in_search_results'] += 1
 
         # time to update the self table:
         self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=database_version)
 
         self.progress.end()
+
+        # let user know about what happened to their sequences in the database
+        header = [f"{self._ITEM}", "in_contigs_db", "in_search_results", "percent_annotation"]
+        table = []
+
+        for item_name in item_sequences_fate:
+            table.append([item_name, item_sequences_fate[item_name]['in_contigs_db'], item_sequences_fate[item_name]['in_search_results'], round(item_sequences_fate[item_name]['in_search_results'] * 100 / item_sequences_fate[item_name]['in_contigs_db'], 1)])
+
+        table.sort(key=lambda x: x[0])
+
+        self.run.warning(f"Please take a careful look at the table below. It shows the number of sequences found in the contigs database "
+                         f"for a given {self._ITEM}, and how many of them actually was annotated based on sequences in GTDB. The discrepancy "
+                         f"between these two numbers can occur due to multiple reasons. You may have bacterial or archaeal sequences in your "
+                         f"data that are way too novel to hit anything in the GTDB above the percent identity cutoff set by the parameter"
+                         f"`--min-percent-identity` to report alignments (which is set to {self.min_pct_id} in the current run). Or, "
+                         f"you may have a lot of eukaryotic organisms, {self._SOURCE_DATA} sequences of which may have no representation "
+                         f"in the GTDB, in which case decreasing `--min-percent-identity` will only give you erronous results.")
+
+        anvio.TABULATE(table, header, numalign="center")
+
 
 
     def store_hits_gene_callers_id(self, gene_callers_id, gene_sequence, item_name, hits):
