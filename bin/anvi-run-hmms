@@ -58,6 +58,10 @@ def main(args):
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
+        if args.installed_hmm_profile == "Transfer_RNAs":
+            raise ConfigError("Sorry, it is not you, it is anvi'o :/ Transfer RNAs behave identically to HMMs, but "
+                              "to run transfer RNA profiles on a contigs database you must use the program "
+                              "`anvi-scan-trnas`.")
         if args.installed_hmm_profile not in available_hmm_sources:
             raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are "
                               "these: %s." % (', '.join(available_hmm_sources)))
