@@ -110,6 +110,12 @@ class SCGTaxonomyContext(AccessionIdToTaxonomy):
 
         self.accession_to_taxonomy_dict = {}
 
+        # set version for ctx, so we know what version of the databases are on disk
+        if os.path.exists(self.database_version_file_path):
+            self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
+        else:
+            self.scg_taxonomy_database_version = None
+
         # populate `self.accession_to_taxonomy_dict`
         AccessionIdToTaxonomy.__init__(self)
 
