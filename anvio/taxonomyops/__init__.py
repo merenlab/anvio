@@ -1048,6 +1048,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         TerminologyHelper.__init__(self)
 
         if self.contigs_db_path:
+            utils.is_contigs_db(self.contigs_db_path)
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
             contigs_db.disconnect()
