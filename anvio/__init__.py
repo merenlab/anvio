@@ -34,11 +34,11 @@ def P(d, dont_exit=False):
         sys.exit()
 
 
-def TABULATE(table, header):
+def TABULATE(table, header, numalign="right"):
     """Encoding-safe `tabulate`"""
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
-    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign="right"))
+    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign))
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
