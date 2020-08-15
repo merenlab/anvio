@@ -59,6 +59,10 @@ $(window).resize(function() {
 });
 
 window.onscroll = function() {
+  stickyBoxes();
+}
+
+function stickyBoxes() {
   if($("#DNA_sequence").length == 0) return;
 
   var boxes = document.getElementById("highlight-boxes");
@@ -373,6 +377,8 @@ function drawHighlightBoxes() {
                     .attr("transform", "translate(50,20)");
     }
   }
+
+  stickyBoxes();
 }
 
 /*
@@ -603,6 +609,7 @@ function display_nucleotides() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
+    $("#highlightBoxesSvg").empty();
     gene_offset_y = 0;
     return;
   }
