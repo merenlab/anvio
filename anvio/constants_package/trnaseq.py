@@ -51,3 +51,5 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
 # ref: Santesmasses, Mariotti & Guigo, 2017, "Computational identification of the selenocysteine tRNA (tRNASec) in genomes," PLoS Comp. Biol., 13(2): e1005383
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
 LONGEST_KNOWN_TRNA_LENGTH = 101
+
+DISCRIMINATOR_THROUGH_FIVEPRIME_T_STEM_STRAND_LENGTH = 13
