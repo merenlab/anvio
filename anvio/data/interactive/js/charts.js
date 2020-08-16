@@ -363,11 +363,12 @@ function drawHighlightBoxes() {
   if($("#DNA_sequence").length == 0) return;
 
   highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+5);
-  highlightBoxes.empty();
+  $("#highlightBoxesSvg").attr("height", 0).empty();
   var range = $('#brush_end').val() - $('#brush_start').val();
   if(range <= 300 && range >= 30) {
     for(var i = 0; i < range; i++) {
       highlightBoxes.append("rect")
+                    .attr("id", "highlight_" + i)
                     .attr("class", "highlightbox")
                     .attr("x", i*(width/range))
                     .attr("width", (width/range))
@@ -379,6 +380,26 @@ function drawHighlightBoxes() {
   }
 
   stickyBoxes();
+}
+
+function drawAAHighlightBoxes() {
+  $('#context-container').on('mouseover', function(e) {
+    if(!e.target.id.startsWith("AA_")) return;
+    var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25);
+  }).mouseout(function(e) {
+    if(!e.target.id.startsWith("AA_")) return;
+    var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
+  });
+}
+
+function get_box_id_for_AA(aa, id_start) {
+  var aa_x = Math.round($(aa).attr("x")*100)/100;
+  var id = $('[id^=' + id_start + ']').filter(function() {
+    return Math.round($(this).attr("x")*100)/100 == aa_x;
+  }).attr("id");
+  return id;
 }
 
 /*
@@ -581,8 +602,9 @@ function toggle_nucleotide_display() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
-    $("#highlightBoxesSvg").empty();
+    $("#highlightBoxesSvg").attr("height", 0).empty();
     gene_offset_y = 0;
+    $('#context-container').off('mouseover mouseout');
     $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
   }
 }
@@ -609,8 +631,9 @@ function display_nucleotides() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
-    $("#highlightBoxesSvg").empty();
+    $("#highlightBoxesSvg").attr("height", 0).empty();
     gene_offset_y = 0;
+    $('#context-container').off('mouseover mouseout');
     return;
   }
 
@@ -722,10 +745,11 @@ function display_nucleotides() {
         }
         for(var i = 0; i < aas_in_window.length; i++) {
           aa_sequence.append("rect")
+                     .attr("id", "AA_" + i)
                      .attr("height", dna_seq_height)
                      .attr("width", 3*textWidth)
                      .attr("x", rect_x)
-                     .attr("y", dna_seq_height/*nucl_text_y*/ + offset_y)
+                     .attr("y", dna_seq_height + offset_y)
                      .attr("fill", i % 2 == 0 ? "rgb(144,137,250)" : "rgb(81,68,211)");
           rect_x += (3*textWidth);
         }
@@ -736,14 +760,14 @@ function display_nucleotides() {
                   .attr("font-family", "monospace")
                   .attr("fill", "white")
                   .attr("x", buffer*textWidth)
-                  .attr("y", dna_seq_height/*nucl_text_y*/ + .67*dna_seq_height + offset_y);
+                  .attr("y", dna_seq_height + .67*dna_seq_height + offset_y);
 
         if(gene.direction == "r") {
           aa_sequence.append("rect")
                      .attr("height", 1.1*dna_seq_height)
                      .attr("width", aas_in_window.length*3*textWidth)
                      .attr("x", buffer*textWidth)
-                     .attr("y", dna_seq_height/*nucl_text_y*/ + offset_y)
+                     .attr("y", dna_seq_height + offset_y)
                      .attr("fill", "red")
                      .attr("fill-opacity", 0.1);
         }
@@ -765,6 +789,7 @@ function display_nucleotides() {
   gene_offset_y = 10+extra_y;
 
   drawHighlightBoxes();
+  drawAAHighlightBoxes();
 }
 
 function show_selected_sequence() {
