@@ -302,8 +302,8 @@ class TRNASeqDataset:
         self.unique_trna_count = 0
         self.trna_containing_anticodon_count = 0
         self.mature_trna_count = 0
-        self.trna_with_one_to_five_extra_fiveprime_bases_count = 0
-        self.trna_with_more_than_five_extra_fiveprime_bases_count = 0
+        self.trna_with_one_to_three_extra_fiveprime_bases_count = 0
+        self.trna_with_more_than_three_extra_fiveprime_bases_count = 0
         self.trna_with_extrapolated_fiveprime_feature_count = 0
         self.trna_with_threeprime_cca_count = 0
         self.trna_with_threeprime_cc_count = 0
@@ -492,10 +492,10 @@ class TRNASeqDataset:
             else:
                 self.trna_with_threeprime_nca_cna_ccn_count += num_replicates
 
-            if trna_profile.num_extra_fiveprime > 5:
-                self.trna_with_more_than_five_extra_fiveprime_bases_count += num_replicates
+            if trna_profile.num_extra_fiveprime > 3:
+                self.trna_with_more_than_three_extra_fiveprime_bases_count += num_replicates
             elif trna_profile.num_extra_fiveprime > 0:
-                self.trna_with_one_to_five_extra_fiveprime_bases_count += num_replicates
+                self.trna_with_one_to_three_extra_fiveprime_bases_count += num_replicates
 
             trnaseq_sequences_table_entries.append((output_name, num_replicates, output_seq))
 
@@ -582,8 +582,8 @@ class TRNASeqDataset:
         trnaseq_db.db.set_meta_value('num_unique_trna_seqs', self.unique_trna_count)
         trnaseq_db.db.set_meta_value('num_trna_reads_containing_anticodon', self.trna_containing_anticodon_count)
         trnaseq_db.db.set_meta_value('num_mature_trna_reads', self.mature_trna_count)
-        trnaseq_db.db.set_meta_value('num_trna_with_one_to_five_extra_fiveprime_bases', self.trna_with_one_to_five_extra_fiveprime_bases_count)
-        trnaseq_db.db.set_meta_value('num_trna_with_more_than_five_extra_fiveprime_bases', self.trna_with_more_than_five_extra_fiveprime_bases_count)
+        trnaseq_db.db.set_meta_value('num_trna_with_one_to_three_extra_fiveprime_bases', self.trna_with_one_to_three_extra_fiveprime_bases_count)
+        trnaseq_db.db.set_meta_value('num_trna_with_more_than_three_extra_fiveprime_bases', self.trna_with_more_than_three_extra_fiveprime_bases_count)
         trnaseq_db.db.set_meta_value('num_trna_reads_with_extrapolated_fiveprime_feature', self.trna_with_extrapolated_fiveprime_feature_count)
         trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_cca', self.trna_with_threeprime_cca_count)
         trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_cc', self.trna_with_threeprime_cc_count)
@@ -598,8 +598,8 @@ class TRNASeqDataset:
         self.run.info("Unique profiled tRNA sequences", self.unique_trna_count)
         self.run.info("Profiled reads with anticodon", self.trna_containing_anticodon_count)
         self.run.info("Profiled reads spanning acceptor stem", self.mature_trna_count)
-        self.run.info("Profiled reads with 1-5 extra 5' bases", self.trna_with_one_to_five_extra_fiveprime_bases_count)
-        self.run.info("Profiled reads with >5 extra 5' bases", self.trna_with_more_than_five_extra_fiveprime_bases_count)
+        self.run.info("Profiled reads with 1-3 extra 5' bases", self.trna_with_one_to_three_extra_fiveprime_bases_count)
+        self.run.info("Profiled reads with >3 extra 5' bases", self.trna_with_more_than_three_extra_fiveprime_bases_count)
         self.run.info("Profiled reads with extrapolated 5' feature", self.trna_with_extrapolated_fiveprime_feature_count)
         self.run.info("Profiled reads ending in 3'-CCA", self.trna_with_threeprime_cca_count)
         self.run.info("Profiled reads ending in 3'-CC", self.trna_with_threeprime_cc_count)
