@@ -19,9 +19,11 @@ sys.setrecursionlimit(10000)
 class Agglomerator:
     def __init__(self, aligned_query_dict, aligned_reference_dict, num_threads=1, progress=terminal.Progress()):
 
-        self.aligned_query_dict = aligned_query_dict
+        # The `aligned_query_dict` object is modified by `agglomerate`.
+        # It can have great recursive depth, preventing a `deepcopy` operation,
+        # so alternative ways to preserve the input dict, like pickling, may be better.
+        self.agglomerated_aligned_query_dict = aligned_query_dict
         self.aligned_reference_dict = aligned_reference_dict
-        self.agglomerated_aligned_query_dict = deepcopy(self.aligned_query_dict)
         for agglomerated_aligned_query in self.agglomerated_aligned_query_dict.values():
             agglomerated_aligned_query.alignments = []
         self.agglomerated_aligned_reference_dict = {}
