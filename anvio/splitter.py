@@ -611,16 +611,17 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
                 tables[table_name] = ('contig', self.split_names)
 
-
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless
         # of what the values were, we will set the absolut correct ones.
         if self.skip_variability_tables:
             bin_profile_db.db.update_meta_value('SNVs_profiled', False)
             bin_profile_db.db.update_meta_value('SCVs_profiled', False)
+            bin_profile_db.db.update_meta_value('INDELs_profiled', False)
         else:
             tables[t.variable_nts_table_name] = ('split_name', self.split_names)
             tables[t.variable_codons_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+            tables[t.indels_table_name] = ('split_name', self.split_names)
 
         bin_profile_db.disconnect()
 
