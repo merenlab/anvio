@@ -3,7 +3,7 @@
 
 import anvio.terminal as terminal
 
-from anvio.sequence import AlignedTarget, Alignment
+from anvio.sequence import Aligner, AlignedTarget, Alignment
 
 import functools
 import multiprocessing
@@ -17,28 +17,36 @@ sys.setrecursionlimit(10000)
 
 
 class Agglomerator:
-    def __init__(self, aligned_query_dict, aligned_reference_dict, num_threads=1, progress=terminal.Progress()):
-
-        # The `aligned_query_dict` object is modified by `agglomerate`.
-        # It can have great recursive depth, preventing a `deepcopy` operation,
-        # so alternative ways to preserve the input dict, like pickling, may be better.
-        self.agglomerated_aligned_query_dict = aligned_query_dict
-        self.aligned_reference_dict = aligned_reference_dict
-        for agglomerated_aligned_query in self.agglomerated_aligned_query_dict.values():
-            agglomerated_aligned_query.alignments = []
-        self.agglomerated_aligned_reference_dict = {}
+    def __init__(self, seq_names, seq_strings, max_mismatch_freq=0, num_threads=1, progress=None):
+        self.seq_names = seq_names
+        self.seq_strings = seq_strings
+        self.max_mismatch_freq = max_mismatch_freq
 
         self.num_threads = num_threads
         self.progress = progress
 
 
     def agglomerate(self):
-        self.progress.new("Agglomerating sequence alignments")
+        if self.progress:
+            self.progress.update("Aligning sequences to themselves")
+        # The `aligned_query_dict` output of `Aligner.align`
+        # is named `agglomerated_aligned_query_dict` and modified during agglomeration.
+        (agglomerated_aligned_query_dict,
+         aligned_reference_dict) = Aligner(self.seq_names,
+                                           self.seq_strings,
+                                           self.seq_names,
+                                           self.seq_strings,
+                                           num_threads=self.num_threads,
+                                           progress=self.progress).align(max_mismatch_freq=self.max_mismatch_freq)
+        for agglomerated_aligned_query in agglomerated_aligned_query_dict.values():
+            agglomerated_aligned_query.alignments = []
 
+        if self.progress:
+            self.progress.update("Agglomerating alignments")
         # Agglomerated clusters should preferentially be seeded
         # by the longest reference sequences with the most alignments.
         ordered_reference_names = [aligned_reference.name for aligned_reference
-                                   in sorted(self.aligned_reference_dict.values(),
+                                   in sorted(aligned_reference_dict.values(),
                                              key=lambda aligned_reference: (-len(aligned_reference.seq_string),
                                                                             -len(aligned_reference.alignments),
                                                                             aligned_reference.name))]
@@ -62,8 +70,8 @@ class Agglomerator:
         # Set static parameters in the multiprocessing target function.
         target = functools.partial(remap_queries,
                                    processed_reference_dict=processed_reference_dict,
-                                   aligned_reference_dict=self.aligned_reference_dict,
-                                   agglomerated_aligned_query_dict=self.agglomerated_aligned_query_dict)
+                                   aligned_reference_dict=aligned_reference_dict,
+                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict)
 
         # The lock used with the shared dict, `processed_reference_dict`,
         # cannot be serialized and so cannot be passed to spawned processes.
@@ -82,13 +90,18 @@ class Agglomerator:
             processed_input_count += 1
 
             if processed_input_count % 10000 == 0:
-                self.progress.update("%d/%d sequences processed" % (processed_input_count, total_input_count))
-        self.progress.update("%d/%d sequences processed" % (total_input_count, total_input_count))
+                if self.progress:
+                    self.progress.update("%d/%d sequences processed in agglomerative remapping"
+                                        % (processed_input_count, total_input_count))
         pool.close()
         pool.join() # allow processes to terminate
+        if self.progress:
+            self.progress.update("%d/%d sequences processed in agglomerative remapping"
+                                % (total_input_count, total_input_count))
 
         removal_indices = []
-        candidate_agglomerated_reference_names = [agglomerated_reference.name for agglomerated_reference in agglomerated_references]
+        candidate_agglomerated_reference_names = [agglomerated_reference.name
+                                                  for agglomerated_reference in agglomerated_references]
         for reference_name, lowest_reference_index in processed_reference_dict.items():
             if reference_name in candidate_agglomerated_reference_names:
                 if lowest_reference_index < ordered_reference_names.index(reference_name):
@@ -97,10 +110,10 @@ class Agglomerator:
         for removal_index in removal_indices:
             agglomerated_references.pop(removal_index)
 
-        self.agglomerated_aligned_reference_dict = {agglomerated_reference.name: agglomerated_reference
-                                                    for agglomerated_reference in agglomerated_references}
+        agglomerated_aligned_reference_dict = {agglomerated_reference.name: agglomerated_reference
+                                               for agglomerated_reference in agglomerated_references}
 
-        self.progress.end()
+        return agglomerated_aligned_query_dict, agglomerated_aligned_reference_dict
 
 
 def initialize(_lock):
