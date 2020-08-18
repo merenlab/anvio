@@ -1152,163 +1152,6 @@ class DSSPClass(object):
         return pd.DataFrame(d, index=self.fields).T.set_index('codon_order_in_gene').drop(drop, axis=1)
 
 
-class Structure(object):
-    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
-        """Object to handle the analysis of PDB files"""
-
-        self.distances_methods_dict = {
-            'CA': self.calc_CA_dist,
-        }
-
-
-    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
-        p = PDBParser()
-        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        structure = model[chain]
-
-        return structure
-
-
-    def get_contact_map(self, pdb_path, distance_method='CA', compressed=False, c='order'):
-        """Returns a contact map (pairwise distances in Angstroms)
-
-        Parameters
-        ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
-        distance_method : str, 'CA'
-            Which distance method? 'CA' is for alpha carbon distances. See
-            self.distances_methods_dict for options
-
-        compressed : bool, False
-            Converts to long-form format (3 columns instead of square matrix)
-
-        c : str, 'order'
-            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
-            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
-            'number' for codon_number. Valid only if compressed == True.
-
-        Returns
-        =======
-        output: NxN 2-dim array
-            Where N is the # of AAs
-
-        Notes
-        =====
-        - See also `get_boolean_contact_map`
-        """
-
-        structure = self.load_pdb_file(pdb_path)
-
-        contact_map = np.zeros((len(structure), len(structure)))
-        for i, residue1 in enumerate(structure):
-            for j, residue2 in enumerate(structure):
-                if i > j:
-                    contact_map[i, j] = contact_map[j, i]
-                else:
-                    contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
-
-        if compressed:
-            return self.get_compressed_representation(contact_map, c=c)
-        else:
-            return contact_map
-
-
-    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6, compressed=False, c='order'):
-        """Returns a boolean contact map (1 for touching, 0 for not)
-
-        Parameters
-        ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
-        distance_method : str, 'CA'
-            Which distance method? 'CA' is for alpha carbon distances. See
-            self.distances_methods_dict for options
-
-        threshold : int or float, 6
-            Residues are considered touching if their distances are less than or equal to this
-            amount. Units are in Angstroms
-
-        compressed : bool, False
-            Converts to long-form format (3 columns instead of square matrix)
-
-        c : str, 'order'
-            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
-            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
-            'number' for codon_number. Valid only if compressed == True.
-
-        Returns
-        =======
-        output: NxN 2-dim array
-            Where N is the # of AAs
-
-        Notes
-        =====
-        - See also `get_contact_map`
-        """
-
-        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method, compressed=False)
-
-        contact_map[contact_map <= threshold] = 1
-        contact_map[contact_map >  threshold] = 0
-
-        if compressed:
-            return self.get_compressed_representation(contact_map, c=c)
-        else:
-            return contact_map
-
-
-    def get_compressed_representation(self, contact_map, c='order'):
-        """Converts contact map into condensed representation
-
-        Parameters
-        ==========
-        c : str, 'order'
-            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
-            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
-            'number' for codon_number
-
-        Returns
-        =======
-        output : pandas DataFrame
-            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
-            which it will be), and 'contacts'
-        """
-
-        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
-
-        contacts_dict = {
-            col_name: [],
-            'contacts': [],
-        }
-
-        for codon_order_in_gene in range(contact_map.shape[0]):
-            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
-
-            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
-            if c == 'order':
-                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
-                index = codon_order_in_gene
-            else:
-                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
-
-            # residues are not contacts with themselves
-            contacts = contacts[contacts != index]
-
-            contacts_dict[col_name].append(index)
-            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
-
-        return pd.DataFrame(contacts_dict)
-
-
-    def calc_CA_dist(self, residue1, residue2):
-        """Returns the C-alpha distance between two residues"""
-
-        return residue1["CA"] - residue2["CA"]
-
-
 class PDBDatabase(object):
     """This class manages the PDB database generated and managed by anvi-setup-pdb-database
 
@@ -1752,5 +1595,166 @@ class PDBDatabase(object):
 
     def size_of_database(self):
         return utils.human_readable_file_size(os.path.getsize(self.db_path))
+
+
+class Structure(object):
+    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
+        """Object to handle the analysis of PDB files"""
+
+        self.distances_methods_dict = {
+            'CA': self.calc_CA_dist,
+        }
+
+
+    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+        p = PDBParser()
+        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
+        structure = model[chain]
+
+        return structure
+
+
+    def get_contact_map(self, pdb_path, distance_method='CA', compressed=False, c='order'):
+        """Returns a contact map (pairwise distances in Angstroms)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_boolean_contact_map`
+        """
+
+        structure = self.load_pdb_file(pdb_path)
+
+        contact_map = np.zeros((len(structure), len(structure)))
+        for i, residue1 in enumerate(structure):
+            for j, residue2 in enumerate(structure):
+                if i > j:
+                    contact_map[i, j] = contact_map[j, i]
+                else:
+                    contact_map[i, j] = self.get_distance(residue1, residue2, distance_method)
+
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
+
+
+    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6, compressed=False, c='order'):
+        """Returns a boolean contact map (1 for touching, 0 for not)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        threshold : int or float, 6
+            Residues are considered touching if their distances are less than or equal to this
+            amount. Units are in Angstroms
+
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_contact_map`
+        """
+
+        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method, compressed=False)
+
+        contact_map[contact_map <= threshold] = 1
+        contact_map[contact_map >  threshold] = 0
+
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
+
+
+    def get_compressed_representation(self, contact_map, c='order'):
+        """Converts contact map into condensed representation
+
+        Parameters
+        ==========
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number
+
+        Returns
+        =======
+        output : pandas DataFrame
+            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
+            which it will be), and 'contacts'
+        """
+
+        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
+
+        contacts_dict = {
+            col_name: [],
+            'contacts': [],
+        }
+
+        for codon_order_in_gene in range(contact_map.shape[0]):
+            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
+
+            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
+            if c == 'order':
+                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
+                index = codon_order_in_gene
+            else:
+                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
+
+            # residues are not contacts with themselves
+            contacts = contacts[contacts != index]
+
+            contacts_dict[col_name].append(index)
+            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
+
+        return pd.DataFrame(contacts_dict)
+
+
+    def get_distance(self, residue1, residue2, method='CA'):
+        return self.distances_methods_dict[method](residue1, residue2)
+
+
+    def calc_CA_dist(self, residue1, residue2):
+        """Returns the C-alpha distance between two residues"""
+
+        return residue1["CA"] - residue2["CA"]
 
 
