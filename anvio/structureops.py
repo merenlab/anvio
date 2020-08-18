@@ -365,7 +365,6 @@ class StructureSuperclass(object):
             self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         # init annotation sources
-        self.contactmap = ContactMap()
         self.dssp = DSSPClass(skip_sanity_check=self.skip_DSSP) # If we skip DSSP, skip sanity_check
 
         self.sanity_check()
@@ -859,8 +858,7 @@ class StructureSuperclass(object):
         """Returns the contact map in compressed form with index 'codon_order_in_gene' and column 'contact_numbers'"""
 
         # Run ContactMap class
-        contact_map = self.contactmap.get_boolean_contact_map(pdb_path)
-        compressed_rep = self.contactmap.get_compressed_representation(contact_map, c='number')
+        contact_map_long_form = Structure(pdb_path).get_boolean_contact_map(compressed=True, c='number')
 
         # Customize for this class and return
         column_rename = {
@@ -868,9 +866,9 @@ class StructureSuperclass(object):
             'contacts': 'contact_numbers',
         }
 
-        compressed_rep['codon_number'] -= 1
+        contact_map_long_form['codon_number'] -= 1
 
-        return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
+        return contact_map_long_form.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
     def run_modeller(self, target_fasta_path, directory):
@@ -1060,7 +1058,7 @@ class DSSPClass(object):
         # run DSSP
         try:
             test_residue_annotation = DSSP(test_model, test_input, dssp = self.executable, acc_array = "Wilke")
-        except Exception as e:
+        except Exception:
             raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
                               'that your version is working correctly, please visit '
                               'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
@@ -1154,8 +1152,10 @@ class DSSPClass(object):
         return pd.DataFrame(d, index=self.fields).T.set_index('codon_order_in_gene').drop(drop, axis=1)
 
 
-class ContactMap(object):
+class Structure(object):
     def __init__(self, p=terminal.Progress(), r=terminal.Run()):
+        """Object to handle the analysis of PDB files"""
+
         self.distances_methods_dict = {
             'CA': self.calc_CA_dist,
         }
@@ -1169,7 +1169,7 @@ class ContactMap(object):
         return structure
 
 
-    def get_contact_map(self, pdb_path, distance_method='CA'):
+    def get_contact_map(self, pdb_path, distance_method='CA', compressed=False, c='order'):
         """Returns a contact map (pairwise distances in Angstroms)
 
         Parameters
@@ -1180,6 +1180,14 @@ class ContactMap(object):
         distance_method : str, 'CA'
             Which distance method? 'CA' is for alpha carbon distances. See
             self.distances_methods_dict for options
+
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
 
         Returns
         =======
@@ -1201,10 +1209,13 @@ class ContactMap(object):
                 else:
                     contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
 
-        return contact_map
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
 
 
-    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6):
+    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6, compressed=False, c='order'):
         """Returns a boolean contact map (1 for touching, 0 for not)
 
         Parameters
@@ -1220,6 +1231,14 @@ class ContactMap(object):
             Residues are considered touching if their distances are less than or equal to this
             amount. Units are in Angstroms
 
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
+
         Returns
         =======
         output: NxN 2-dim array
@@ -1230,12 +1249,15 @@ class ContactMap(object):
         - See also `get_contact_map`
         """
 
-        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method)
+        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method, compressed=False)
 
         contact_map[contact_map <= threshold] = 1
         contact_map[contact_map >  threshold] = 0
 
-        return contact_map
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
 
 
     def get_compressed_representation(self, contact_map, c='order'):
