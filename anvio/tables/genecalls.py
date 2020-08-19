@@ -383,7 +383,7 @@ class TablesForGeneCalls(Table):
                 except ConfigError as non_divisible_by_3_error:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
                                       "anvi'o is willing to strike you a deal, but it will require you to trust her a bit more and give her "
-                                      "the power power to modify the external gene calls you provided. In your external gene calls file you "
+                                      "the power to modify the external gene calls you provided. In your external gene calls file you "
                                       "have at least one gene call for which you did not provide an amino acid sequence, and marked it as a "
                                       "CODING type gene call. But becasue YOU ELECTED TO SKIP anvi'o frame prediction to estimate a proper amino "
                                       "acid sequence, anvi'o simply tried to translate your DNA sequence from the start to the end. But as you "
