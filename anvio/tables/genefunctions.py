@@ -123,13 +123,11 @@ class TableForGeneFunctions(Table):
         # disconnect like a pro.
         database.disconnect()
 
-        self.run.info('Gene functions', '%d function calls from %d sources for %d unique gene calls has\
-                                         been added to the contigs database.' % \
-                                            (len(functions_dict), len(gene_function_sources), unique_num_genes))
+        sources_string = ", ".join(gene_function_sources)
+        self.run.info('Gene functions', f"{len(functions_dict)} function calls from {len(gene_function_sources)} sources ({sources_string}) "
+                                        f"for {unique_num_genes} unique gene calls has\
+                                         been added to the contigs database.")
 
 
     def sanity_check(self):
         pass
-
-
-
