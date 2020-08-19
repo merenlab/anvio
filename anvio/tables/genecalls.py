@@ -531,7 +531,7 @@ class TablesForGeneCalls(Table):
         db_entries = [tuple([gene_callers_id] + [gene_calls_dict[gene_callers_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
 
-        db_entries = [tuple([gene_callers_id, amino_acid_sequences[gene_callers_id]]) for gene_callers_id in gene_calls_dict]
+        db_entries = [tuple([gene_callers_id, amino_acid_sequences[gene_callers_id] if gene_callers_id in amino_acid_sequences else '']) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_amino_acid_sequences_table_name, db_entries)
 
         self.progress.end()
