@@ -10,10 +10,7 @@ import multiprocessing
 import sys
 
 from copy import deepcopy
-
-
-# For huge datasets, the default recursion limit of 1,000 can be exceeded.
-sys.setrecursionlimit(10000)
+from collections import deque
 
 
 class Agglomerator:
@@ -121,158 +118,169 @@ def initialize(_lock):
     lock = _lock
 
 
-def remap_queries(current_reference_item,
+class RemappingItem:
+    def __init__(self,
+                 reference_name,
+                 aligned_reference,
+                 reference_start_in_agglomerated_reference,
+                 agglomerated_reference_mismatch_dict,
+                 reference_mismatches_to_agglomerated_reference):
+        self.reference_name = reference_name
+        self.aligned_reference = aligned_reference
+        self.reference_start_in_agglomerated_reference = reference_start_in_agglomerated_reference
+        self.agglomerated_reference_mismatch_dict = agglomerated_reference_mismatch_dict
+        self.reference_mismatches_to_agglomerated_reference = reference_mismatches_to_agglomerated_reference
+
+
+def remap_queries(reference_input_item,
                   processed_reference_dict,
                   aligned_reference_dict,
-                  agglomerated_aligned_query_dict,
-                  recursion_count=0,
-                  agglomerated_aligned_reference=None,
-                  processed_reference_names_in_recursion=None,
-                  current_reference_start_in_agglomerated_reference=0,
-                  agglomerated_reference_mismatch_dict=None,
-                  current_reference_mismatches_to_agglomerated_reference=None):
-    current_reference_name, agglomerated_reference_priority = current_reference_item
+                  agglomerated_aligned_query_dict):
+    input_reference_name, agglomerated_reference_priority = reference_input_item
 
-    if recursion_count == 0:
-        with lock:
-            if agglomerated_reference_priority >= processed_reference_dict[current_reference_name]:
-                # The reference sequence has already been processed,
-                # as it mapped to another reference sequence that had been processed.
-                return None
+    with lock:
+        if agglomerated_reference_priority >= processed_reference_dict[input_reference_name]:
+            # The reference sequence has already been processed,
+            # as it mapped to another reference sequence that had been processed.
+            return None
 
-            processed_reference_dict[current_reference_name] = agglomerated_reference_priority
+        processed_reference_dict[input_reference_name] = agglomerated_reference_priority
 
-        aligned_reference = aligned_reference_dict[current_reference_name]
-        agglomerated_aligned_reference = AlignedTarget(aligned_reference.seq_string, name=current_reference_name)
+    aligned_reference = aligned_reference_dict[input_reference_name]
+    agglomerated_aligned_reference = AlignedTarget(aligned_reference.seq_string, name=input_reference_name)
 
-        # Track the references processed in the initial and recursive function calls.
-        processed_reference_names_in_recursion = [current_reference_name]
+    # Track the references processed within this function call.
+    presently_processed_reference_names = [input_reference_name]
+
+    remapping_stack = deque()
+    remapping_stack.append(RemappingItem(input_reference_name, aligned_reference, 0, {}, []))
+
+    while remapping_stack:
+        remapping_item = remapping_stack.pop()
         # Record mismatches between query sequences and the agglomerated reference sequence,
         # with the coordinate system being nucleotide positions in the agglomerated reference.
-        agglomerated_reference_mismatch_dict = {}
-        current_reference_mismatches_to_agglomerated_reference = []
-    else:
-        aligned_reference = aligned_reference_dict[current_reference_name]
+        current_reference_start_in_agglomerated_reference = remapping_item.reference_start_in_agglomerated_reference
+        agglomerated_reference_mismatch_dict = remapping_item.agglomerated_reference_mismatch_dict
+        current_reference_mismatches_to_agglomerated_reference = remapping_item.reference_mismatches_to_agglomerated_reference
 
-    for alignment in aligned_reference.alignments:
-        alignment_length = alignment.alignment_length
-        aligned_query = alignment.aligned_query
-        query_name = aligned_query.name
-        query_seq_string = aligned_query.seq_string
+        next_remapping_items = []
+        for alignment in remapping_item.aligned_reference.alignments:
+            alignment_length = alignment.alignment_length
+            aligned_query = alignment.aligned_query
+            query_name = aligned_query.name
+            query_seq_string = aligned_query.seq_string
 
-        if query_name == current_reference_name:
-            # Ignore a sequence mapping to itself.
-            continue
-
-        if query_name in processed_reference_names_in_recursion:
-            # The query was already processed as a reference in a previous layer of recursion.
-            continue
-
-        # Get the mismatches between the query and the current reference,
-        # with the coordinate system being nucleotide positions in the current reference.
-        query_mismatches_to_current_reference_in_alignment_frame = []
-        current_reference_seq_string = alignment.aligned_target.seq_string
-        alignment_start_in_current_reference = alignment.target_start
-        current_reference_index = alignment_start_in_current_reference
-        for cigartuple in alignment.cigartuples:
-            if cigartuple[0] == 8:
-                for incremental_index in range(cigartuple[1]):
-                    mismatch_index = current_reference_index + incremental_index
-                    current_reference_nucleotide = current_reference_seq_string[mismatch_index]
-                    query_mismatches_to_current_reference_in_alignment_frame.append((mismatch_index - alignment_start_in_current_reference,
-                                                                                     current_reference_nucleotide))
-            current_reference_index += cigartuple[1]
-
-        # Position of the alignment in the coordinate system of the agglomerated reference sequence.
-        alignment_start_in_agglomerated_reference = current_reference_start_in_agglomerated_reference + alignment_start_in_current_reference
-        alignment_end_in_agglomerated_reference = alignment_start_in_agglomerated_reference + alignment_length
-
-        # Record mismatches between the query and current reference
-        # that are also mismatches between the query and agglomerated reference.
-        # When a new mismatch with the agglomerated reference is encountered,
-        # it is added to the dict of all agglomerated reference mismatches.
-        query_mismatches_to_agglomerated_reference = []
-        query_mismatches_to_agglomerated_reference_in_alignment_frame = []
-        for alignment_index, current_reference_nucleotide in query_mismatches_to_current_reference_in_alignment_frame:
-            agglomerated_reference_index = alignment_index + alignment_start_in_agglomerated_reference
-            if agglomerated_reference_index in agglomerated_reference_mismatch_dict:
-                agglomerated_reference_nucleotide = agglomerated_reference_mismatch_dict[agglomerated_reference_index]
-                query_nucleotide = query_seq_string[alignment_index]
-                if agglomerated_reference_nucleotide == query_nucleotide:
-                    continue
-            else:
-                agglomerated_reference_nucleotide = current_reference_nucleotide
-                agglomerated_reference_mismatch_dict[agglomerated_reference_index] = agglomerated_reference_nucleotide
-            query_mismatches_to_agglomerated_reference.append((agglomerated_reference_index,
-                                                               agglomerated_reference_nucleotide))
-            query_mismatches_to_agglomerated_reference_in_alignment_frame.append((alignment_index,
-                                                                                  agglomerated_reference_nucleotide))
-
-        # In addition to mismatches between the query and current reference
-        # that are also mismatches to the agglomerated reference,
-        # record mismatches between the query and agglomerated reference
-        # at positions where the current reference matches the agglomerated reference.
-        query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices = [alignment_index + alignment_start_in_agglomerated_reference
-                                                                                       for alignment_index, _
-                                                                                       in query_mismatches_to_current_reference_in_alignment_frame]
-        for agglomerated_reference_index, agglomerated_reference_nucleotide in current_reference_mismatches_to_agglomerated_reference:
-            if agglomerated_reference_index in query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices:
-                # The mismatch position has already been considered,
-                # as there is a mismatch between the query and current reference at this position as well.
+            if query_name == remapping_item.reference_name:
+                # Ignore a sequence mapping to itself.
                 continue
-            if alignment_start_in_agglomerated_reference <= agglomerated_reference_index < alignment_end_in_agglomerated_reference:
-                # Ignore mismatches that lie outside the bounds of the alignment between the query and current reference.
+
+            if query_name in presently_processed_reference_names:
+                # The query was already processed in this function call,
+                # as it mapped to another agglomerated query.
+                continue
+
+            # In the next iteration, the current query sequence will be investigated as a reference.
+            presently_processed_reference_names.append(query_name)
+            with lock:
+                if agglomerated_reference_priority < processed_reference_dict[query_name]:
+                    processed_reference_dict[query_name] = agglomerated_reference_priority
+
+            # Get the mismatches between the query and the current reference,
+            # with the coordinate system being nucleotide positions in the current reference.
+            query_mismatches_to_current_reference_in_alignment_frame = []
+            current_reference_seq_string = alignment.aligned_target.seq_string
+            alignment_start_in_current_reference = alignment.target_start
+            current_reference_index = alignment_start_in_current_reference
+            for cigartuple in alignment.cigartuples:
+                if cigartuple[0] == 8:
+                    for incremental_index in range(cigartuple[1]):
+                        mismatch_index = current_reference_index + incremental_index
+                        current_reference_nucleotide = current_reference_seq_string[mismatch_index]
+                        query_mismatches_to_current_reference_in_alignment_frame.append((mismatch_index - alignment_start_in_current_reference,
+                                                                                         current_reference_nucleotide))
+                current_reference_index += cigartuple[1]
+
+            # Position of the alignment in the coordinate system of the agglomerated reference sequence.
+            alignment_start_in_agglomerated_reference = current_reference_start_in_agglomerated_reference + alignment_start_in_current_reference
+            alignment_end_in_agglomerated_reference = alignment_start_in_agglomerated_reference + alignment_length
+
+            # Record mismatches between the query and current reference
+            # that are also mismatches between the query and agglomerated reference.
+            # When a new mismatch with the agglomerated reference is encountered,
+            # it is added to the dict of all agglomerated reference mismatches.
+            query_mismatches_to_agglomerated_reference = []
+            query_mismatches_to_agglomerated_reference_in_alignment_frame = []
+            for alignment_index, current_reference_nucleotide in query_mismatches_to_current_reference_in_alignment_frame:
+                agglomerated_reference_index = alignment_index + alignment_start_in_agglomerated_reference
+                if agglomerated_reference_index in agglomerated_reference_mismatch_dict:
+                    agglomerated_reference_nucleotide = agglomerated_reference_mismatch_dict[agglomerated_reference_index]
+                    query_nucleotide = query_seq_string[alignment_index]
+                    if agglomerated_reference_nucleotide == query_nucleotide:
+                        continue
+                else:
+                    agglomerated_reference_nucleotide = current_reference_nucleotide
+                    agglomerated_reference_mismatch_dict[agglomerated_reference_index] = agglomerated_reference_nucleotide
                 query_mismatches_to_agglomerated_reference.append((agglomerated_reference_index,
                                                                    agglomerated_reference_nucleotide))
-                query_mismatches_to_agglomerated_reference_in_alignment_frame.append((agglomerated_reference_index - alignment_start_in_agglomerated_reference,
+                query_mismatches_to_agglomerated_reference_in_alignment_frame.append((alignment_index,
                                                                                       agglomerated_reference_nucleotide))
 
-        # In the next layer of recursion, the current query sequence will be investigated as a reference.
-        processed_reference_names_in_recursion.append(query_name)
-        with lock:
-            if agglomerated_reference_priority < processed_reference_dict[query_name]:
-                processed_reference_dict[query_name] = agglomerated_reference_priority
+            # In addition to mismatches between the query and current reference
+            # that are also mismatches to the agglomerated reference,
+            # record mismatches between the query and agglomerated reference
+            # at positions where the current reference matches the agglomerated reference.
+            query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices = [alignment_index + alignment_start_in_agglomerated_reference
+                                                                                           for alignment_index, _
+                                                                                           in query_mismatches_to_current_reference_in_alignment_frame]
+            for agglomerated_reference_index, agglomerated_reference_nucleotide in current_reference_mismatches_to_agglomerated_reference:
+                if agglomerated_reference_index in query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices:
+                    # The mismatch position has already been considered,
+                    # as there is a mismatch between the query and current reference at this position as well.
+                    continue
+                if alignment_start_in_agglomerated_reference <= agglomerated_reference_index < alignment_end_in_agglomerated_reference:
+                    # Ignore mismatches that lie outside the bounds of the alignment between the query and current reference.
+                    query_mismatches_to_agglomerated_reference.append((agglomerated_reference_index,
+                                                                       agglomerated_reference_nucleotide))
+                    query_mismatches_to_agglomerated_reference_in_alignment_frame.append((agglomerated_reference_index - alignment_start_in_agglomerated_reference,
+                                                                                          agglomerated_reference_nucleotide))
 
-        remap_queries((query_name, agglomerated_reference_priority),
-                       processed_reference_dict,
-                       aligned_reference_dict,
-                       agglomerated_aligned_query_dict,
-                       recursion_count=recursion_count + 1,
-                       agglomerated_aligned_reference=agglomerated_aligned_reference,
-                       processed_reference_names_in_recursion=processed_reference_names_in_recursion,
-                       current_reference_start_in_agglomerated_reference=alignment_start_in_agglomerated_reference,
-                       agglomerated_reference_mismatch_dict=dict(agglomerated_reference_mismatch_dict.items()),
-                       current_reference_mismatches_to_agglomerated_reference=[t for t in query_mismatches_to_agglomerated_reference])
-
-        # Change the properties of the alignment to reflect remapping to the agglomerated reference.
-        cigartuples = []
-        # Sort mismatches by position.
-        query_mismatches_to_agglomerated_reference_in_alignment_frame.sort(key=lambda query_mismatch_item: query_mismatch_item[0])
-        prev_alignment_index = -1
-        prev_agglomerated_reference_nucleotide = ''
-        for alignment_index, agglomerated_reference_nucleotide in query_mismatches_to_agglomerated_reference_in_alignment_frame:
-            if alignment_index > prev_alignment_index + 1:
-                cigartuples.append((7, alignment_index - prev_alignment_index - 1))
-            if cigartuples:
-                if cigartuples[-1][0] == 8:
-                    cigartuples[-1] = (8, cigartuples[-1][1] + 1)
+            # Change the properties of the alignment to reflect remapping to the agglomerated reference.
+            cigartuples = []
+            # Sort mismatches by position.
+            query_mismatches_to_agglomerated_reference_in_alignment_frame.sort(key=lambda query_mismatch_item: query_mismatch_item[0])
+            prev_alignment_index = -1
+            prev_agglomerated_reference_nucleotide = ''
+            for alignment_index, agglomerated_reference_nucleotide in query_mismatches_to_agglomerated_reference_in_alignment_frame:
+                if alignment_index > prev_alignment_index + 1:
+                    cigartuples.append((7, alignment_index - prev_alignment_index - 1))
+                if cigartuples:
+                    if cigartuples[-1][0] == 8:
+                        cigartuples[-1] = (8, cigartuples[-1][1] + 1)
+                    else:
+                        cigartuples.append((8, 1))
                 else:
                     cigartuples.append((8, 1))
-            else:
-                cigartuples.append((8, 1))
-            prev_alignment_index = alignment_index
-            prev_agglomerated_reference_nucleotide = agglomerated_reference_nucleotide
-        if alignment_length > prev_alignment_index + 1:
-            cigartuples.append((7, alignment_length - prev_alignment_index - 1))
+                prev_alignment_index = alignment_index
+                prev_agglomerated_reference_nucleotide = agglomerated_reference_nucleotide
+            if alignment_length > prev_alignment_index + 1:
+                cigartuples.append((7, alignment_length - prev_alignment_index - 1))
 
-        agglomerated_aligned_query = agglomerated_aligned_query_dict[query_name]
-        agglomerated_alignment = Alignment(alignment.query_start,
-                                           alignment_start_in_agglomerated_reference,
-                                           cigartuples,
-                                           aligned_query=agglomerated_aligned_query,
-                                           aligned_target=agglomerated_aligned_reference)
-        agglomerated_aligned_query.alignments.append(agglomerated_alignment)
-        agglomerated_aligned_reference.alignments.append(agglomerated_alignment)
+            agglomerated_aligned_query = agglomerated_aligned_query_dict[query_name]
+            agglomerated_alignment = Alignment(alignment.query_start,
+                                               alignment_start_in_agglomerated_reference,
+                                               cigartuples,
+                                               aligned_query=agglomerated_aligned_query,
+                                               aligned_target=agglomerated_aligned_reference)
+            agglomerated_aligned_query.alignments.append(agglomerated_alignment)
+            agglomerated_aligned_reference.alignments.append(agglomerated_alignment)
 
-    if recursion_count == 0:
-        return agglomerated_aligned_reference
+            next_remapping_items.append(RemappingItem(query_name,
+                                                      aligned_reference_dict[query_name],
+                                                      alignment_start_in_agglomerated_reference,
+                                                      dict(agglomerated_reference_mismatch_dict.items()),
+                                                      [mismatch_tuple for mismatch_tuple in current_reference_mismatches_to_agglomerated_reference]))
+
+        for next_remapping_item in next_remapping_items[::-1]:
+            remapping_stack.append(next_remapping_item)
+
+    return agglomerated_aligned_reference
