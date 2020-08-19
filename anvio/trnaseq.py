@@ -964,7 +964,7 @@ class TRNASeqDataset:
 
 
     def find_modifications(self):
-        self.progress.new("Finding modifications in normalized sequences")
+        self.progress.new("Finding modifications")
 
         normalized_names, normalized_seq_strings = zip(*[(normalized_seq.representative_name, normalized_seq.seq_string)
                                                   for normalized_seq in self.normalized_trna_seqs])
@@ -974,9 +974,9 @@ class TRNASeqDataset:
                                     max_mismatch_freq=2/75,
                                     num_threads=self.num_threads,
                                     progress=self.progress)
-        agglomerated_aligned_query_dict, agglomerated_aligned_reference_dict = agglomerator.agglomerate()
+        _, agglomerated_aligned_reference_dict = agglomerator.agglomerate()
 
-        self.progress.update("Separating modification-induced mutations from biological sequence variants")
+        self.progress.update("Separating modification-induced mutations from \"inter-strain\" variants")
 
         normalized_seq_dict = {normalized_seq.representative_name: normalized_seq
                                for normalized_seq in self.normalized_trna_seqs}
