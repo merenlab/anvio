@@ -13,6 +13,14 @@ from copy import deepcopy
 from collections import deque
 
 
+# Increase the recursion limit from the default of 1,000.
+# Multiprocessing can raise an exception when returning results when pickle hits the recursion limit.
+# The multiprocessing chunk size is set to the relatively small value (for tRNA-seq datasets) of 1,000,
+# limiting the number of items returned, but the size of each item can still be large, so play it safe.
+sys.setrecursionlimit(10000)
+chunksize=1000
+
+
 class Agglomerator:
     def __init__(self, seq_names, seq_strings, max_mismatch_freq=0, num_threads=1, progress=None):
         self.seq_names = seq_names
@@ -81,7 +89,7 @@ class Agglomerator:
 
         for agglomerated_reference in pool.imap_unordered(target,
                                                           ordered_reference_inputs,
-                                                          chunksize=int(len(ordered_reference_names) / self.num_threads) + 1):
+                                                          chunksize=chunksize):
             if agglomerated_reference:
                 agglomerated_references.append(agglomerated_reference)
             processed_input_count += 1
