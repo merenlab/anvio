@@ -1598,20 +1598,21 @@ class PDBDatabase(object):
 
 
 class Structure(object):
-    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
+    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
         """Object to handle the analysis of PDB files"""
 
         self.distances_methods_dict = {
             'CA': self.calc_CA_dist,
         }
 
+        self.path = pdb_path
+        self._load_pdb_file(self.path)
 
-    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+
+    def _load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
         p = PDBParser()
         model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        structure = model[chain]
-
-        return structure
+        self.structure = model[chain]
 
 
     def get_contact_map(self, pdb_path, distance_method='CA', compressed=False, c='order'):
@@ -1644,11 +1645,9 @@ class Structure(object):
         - See also `get_boolean_contact_map`
         """
 
-        structure = self.load_pdb_file(pdb_path)
-
-        contact_map = np.zeros((len(structure), len(structure)))
-        for i, residue1 in enumerate(structure):
-            for j, residue2 in enumerate(structure):
+        contact_map = np.zeros((len(self.structure), len(self.structure)))
+        for i, residue1 in enumerate(self.structure):
+            for j, residue2 in enumerate(self.structure):
                 if i > j:
                     contact_map[i, j] = contact_map[j, i]
                 else:
