@@ -6,9 +6,9 @@
 import functools
 import itertools
 import multiprocessing
+import numpy as np
 
-from collections import OrderedDict
-from copy import deepcopy
+from itertools import groupby
 from hashlib import sha224
 from operator import itemgetter
 
@@ -144,90 +144,17 @@ class Composition:
             self.GC_content = (self.G + self.C) * 1.0 / length
 
 
-def _get_kmer_worker(name_seq_pair, kmer_size, include_full_length=True):
-    """Get information on each k-mer of a certain size in the input sequence.
-
-    This function is located outside `Kmerizer` to allow multithreading.
-
-    Parameters
-    ==========
-    name_seq_pair : tuple
-        A length two tuple of the sequence name string and sequence string
-
-    kmer_size : int
-        Length of the k-mers to be extracted
-
-    Returns
-    =======
-    kmer_items : list
-        Contains a tuple for each unique k-mer in the input sequence
-        Tuples contain four items:
-            k-mer hash string,
-            input sequence name,
-            tuple of k-mer start indices in the input sequence (the k-mer may occur more than once),
-            length of the input sequence
-    """
-    name, seq_string = name_seq_pair
-
-    if include_full_length:
-        # Include input seqs as k-mers.
-        if kmer_size > len(seq_string):
-            return []
-    elif kmer_size >= len(seq_string):
-        # Do not include input seqs as k-mers.
-        return []
-
-    hashed_kmers = []
-
-    # List every occurrence of every k-mer in the sequence before consolidating items for identical k-mers.
-    prelim_kmer_items = []
-    for start_index, stop_index in zip(range(0, len(seq_string) - kmer_size + 1),
-                                       range(kmer_size, len(seq_string) + 1)):
-        hashed_kmer = sha224(seq_string[start_index: stop_index].encode('utf-8')).hexdigest()
-        hashed_kmers.append(hashed_kmer)
-        prelim_kmer_items.append([hashed_kmer, name, [start_index], len(seq_string)])
-
-    kmer_items = []
-    if len(set(hashed_kmers)) < len(hashed_kmers):
-        # Consolidate identical k-mers drawn from the same sequence.
-        prelim_kmer_items.sort(key=itemgetter(0))
-
-        prev_kmer_item = prelim_kmer_items[0]
-        prev_hashed_kmer = prev_kmer_item[0]
-        for prelim_kmer_item in prelim_kmer_items[1: ]:
-            hashed_kmer = prelim_kmer_item[0]
-            if hashed_kmer == prev_hashed_kmer:
-                # Add the start index of the identical k-mer to the list of start indices for the k-mer.
-                prev_kmer_item[2] += prelim_kmer_item[2]
-            else:
-                prev_kmer_item[2] = tuple(prev_kmer_item[2])
-                kmer_items.append(tuple(prev_kmer_item))
-                prev_kmer_item = prelim_kmer_item
-            prev_hashed_kmer = hashed_kmer
-
-        # Add the last k-mer.
-        prev_kmer_item[2] = tuple(prev_kmer_item[2])
-        kmer_items.append(tuple(prev_kmer_item))
-    else:
-        # The sequence did not contain multiple instances of the k-mer.
-        for kmer_item in prelim_kmer_items:
-            kmer_item[2] = tuple(kmer_item[2])
-            kmer_items.append(tuple(kmer_item))
-
-    return kmer_items
-
-
 class Kmerizer:
-    def __init__(self, names, seq_strings, num_threads=1, progress=None):
+    def __init__(self, names, seqs, num_threads=1, progress=None):
         """Gets hashed k-mers from input sequences.
 
         Parameters
         ==========
         names : list
-            Name strings corresponding to sequences in `seq_strings`
+            Name strings corresponding to sequences in `seqs`
 
-        seq_strings : list
-            Sequence strings
+        seqs : list
+            Sequence strings or numpy arrays (only supported now with `get_prefix_kmer_dict`)
 
         num_threads : int, 1
             Available threads
@@ -236,13 +163,17 @@ class Kmerizer:
             Updates existing Progress if provided
         """
 
-        if len(names) != len(seq_strings):
+        if len(names) != len(seqs):
             raise ConfigError("Your Kmerizer input lists were not the same length. "
-                              "`names` had a length of %d, while `seq_strings` had a length of %d."
-                              % (len(names), len(seq_strings)))
+                              "`names` had a length of %d, while `seqs` had a length of %d."
+                              % (len(names), len(seqs)))
 
         self.names = names
-        self.seq_strings = seq_strings
+        self.seqs = seqs
+        if isinstance(seqs[0], np.ndarray):
+            self.as_array = True
+        else:
+            self.as_array = False
         self.num_threads = num_threads
         self.progress = progress
 
@@ -266,7 +197,7 @@ class Kmerizer:
             self.progress.update("Relating prefix subsequences to parent sequences")
 
         kmer_dict = {}
-        for name, seq_string in zip(self.names, self.seq_strings):
+        for name, seq_string in zip(self.names, self.seqs):
             if kmer_size > len(seq_string):
                 continue
 
@@ -282,11 +213,11 @@ class Kmerizer:
     def get_prefix_target_dict(self, kmer_size):
         kmer_dict = {}
         targets = []
-        for name, seq_string in zip(self.names, self.seq_strings):
+        for name, seq_string in zip(self.names, self.seqs):
             if kmer_size > len(seq_string):
                 continue
 
-            target = AlignedTarget(seq_string)
+            target = MappableAlignedTarget(seq_string)
             targets.append(target)
 
             hashed_kmer = sha224(seq_string[: kmer_size].encode('utf-8')).hexdigest()
@@ -365,20 +296,21 @@ class Kmerizer:
         """
 
         pool = multiprocessing.Pool(self.num_threads)
-        all_seq_kmer_items = pool.map(functools.partial(_get_kmer_worker,
+        all_seq_kmer_items = pool.map(functools.partial(get_kmer_worker,
                                                         kmer_size=kmer_size,
-                                                        include_full_length=include_full_length),
-                                      zip(self.names, self.seq_strings),
+                                                        include_full_length=include_full_length,
+                                                        as_array=self.as_array),
+                                      zip(self.names, self.seqs),
                                       chunksize=int(len(self.names) / self.num_threads) + 1)
         pool.close()
         pool.join()
 
         kmer_dict = {}
-        for hashed_kmer, kmer_items in itertools.groupby(sorted([kmer_item
-                                                                 for seq_kmer_items in all_seq_kmer_items
-                                                                 for kmer_item in seq_kmer_items],
-                                                                key=itemgetter(0)),
-                                                         key=itemgetter(0)):
+        for hashed_kmer, kmer_items in groupby(sorted([kmer_item
+                                                       for seq_kmer_items in all_seq_kmer_items
+                                                       for kmer_item in seq_kmer_items],
+                                                      key=itemgetter(0)),
+                                               key=itemgetter(0)):
             if sort_kmer_items:
                 kmer_dict[hashed_kmer] = tuple((name, seq_start_indices)
                                                for hashed_kmer, name, seq_start_indices, seq_length
@@ -392,77 +324,101 @@ class Kmerizer:
         return kmer_dict
 
 
-    def _check_kmer_size_bounds(self, min_kmer_size=None, max_kmer_size=None):
-        """Checks that the range of k-mer sizes to be extracted makes sense in terms of input sequence length.
+def get_kmer_worker(name_seq_pair, kmer_size, include_full_length=True, as_array=False):
+    """Get information on each k-mer of a certain size in the input sequence.
 
-        Parameters
-        ==========
-        min_kmer_size : int
-            Min k-mer length to be extracted from input sequences
+    This function is located outside `Kmerizer` to allow multithreading.
 
-        max_kmer_size : int
-            Max k-mer length to be extracted from input sequences
-        """
-        if min_kmer_size:
-            if min_kmer_size < 1:
-                raise ConfigError("`min_kmer_size` in Kmerizer must be at least 1, not %d." % min_kmer_size)
+    Parameters
+    ==========
+    name_seq_pair : tuple
+        A length two tuple of the sequence name string and sequence string
 
-        seq_lengths = [len(seq) for seq in self.seqs]
+    kmer_size : int
+        Length of the k-mers to be extracted
 
-        if max_kmer_size:
-            if max_kmer_size > max(seq_lengths):
-                raise ConfigError("`max_kmer_size` in Kmerizer cannot exceed the length of the longest sequence in `seqs`. "
-                                  "You provided a value of %d, exceeding the longest length, %d."
-                                  % (max_kmer_size, max(seq_lengths)))
+    include_full_length : bool, True
+        Include input sequences as k-mers
 
+    as_array : bool, False
+        Sequences are provided as a numpy array
 
-    def get_kmer_superdict(self, min_kmer_size=None, max_kmer_size=None, only_prefixes=False, include_full_length=True):
-        """Get k-mers of a range of lengths from input sequences.
+    Returns
+    =======
+    kmer_items : list
+        Contains a tuple for each unique k-mer in the input sequence
+        Tuples contain four items:
+            k-mer hash string,
+            input sequence name,
+            tuple of k-mer start indices in the input sequence (the k-mer may occur more than once),
+            length of the input sequence
+    """
 
-        Parameters
-        ==========
-        min_kmer_size : int
-            Min k-mer length to be extracted from input sequences
+    name, seq = name_seq_pair
 
-        max_kmer_size : int
-            Max k-mer length to be extracted from input sequences,
-            which cannot exceed the length of the longest sequence in `seqs`
+    if include_full_length:
+        # Include input seqs as k-mers.
+        if kmer_size > len(seq):
+            return []
+    elif kmer_size >= len(seq):
+        # Do not include input seqs as k-mers.
+        return []
 
-        only_prefixes : False
-            Whether to only retrieve k-mers from the beginning of the input sequences
+    hashed_kmers = []
 
-        include_full_length : bool, True
-            Whether to include or ignore full-length input sequences among the hashed k-mers
+    # List every occurrence of every k-mer in the sequence before consolidating items for identical k-mers.
+    prelim_kmer_items = []
+    if as_array:
+        for start_index, stop_index in zip(range(0, seq.size - kmer_size + 1),
+                                           range(kmer_size, seq.size + 1)):
+            hashed_kmer = sha224(seq[start_index: stop_index].tobytes()).hexdigest()
+            hashed_kmers.append(hashed_kmer)
+            prelim_kmer_items.append([hashed_kmer, name, [start_index], seq.size])
+    else:
+        for start_index, stop_index in zip(range(0, len(seq) - kmer_size + 1),
+                                           range(kmer_size, len(seq) + 1)):
+            hashed_kmer = sha224(seq[start_index: stop_index].encode('utf-8')).hexdigest()
+            hashed_kmers.append(hashed_kmer)
+            prelim_kmer_items.append([hashed_kmer, name, [start_index], len(seq)])
 
-        Returns
-        =======
-        kmer_superdict : dict
-            This is a dict of dicts.
-            The outer dict is keyed by k-mer size, ints spanning [min_kmer_size, max_kmer_size].
-            The inner dict values are output from `get_kmer_dict`.
-        """
+    kmer_items = []
+    if len(set(hashed_kmers)) < len(hashed_kmers):
+        # Consolidate identical k-mers drawn from the same sequence.
+        prelim_kmer_items.sort(key=itemgetter(0))
 
-        # By default, min_kmer_size and max_kmer_size are determined from self.seqs.
-        self._check_kmer_size_bounds(min_kmer_size, max_kmer_size)
-
-        if min_kmer_size is None or max_kmer_size is None:
-            if min_kmer_size is None:
-                min_kmer_size = min(map(len, self.seqs))
-            if max_kmer_size is None:
-                # If `include_full_length` is False, then there will be an empty dict for the max kmer size.
-                max_kmer_size = max(map(len, self.seqs))
-
-        kmer_superdict = {}
-        for kmer_size in range(min_kmer_size, max_kmer_size + 1):
-            if only_prefixes:
-                kmer_superdict[kmer_size] = self.get_kmer_dict(kmer_size, include_full_length=include_full_length)
+        prev_kmer_item = prelim_kmer_items[0]
+        prev_hashed_kmer = prev_kmer_item[0]
+        for prelim_kmer_item in prelim_kmer_items[1: ]:
+            hashed_kmer = prelim_kmer_item[0]
+            if hashed_kmer == prev_hashed_kmer:
+                # Add the start index of the identical k-mer to the list of start indices for the k-mer.
+                prev_kmer_item[2] += prelim_kmer_item[2]
             else:
-                kmer_superdict[kmer_size] = self.get_kmer_dict(kmer_size, include_full_length=include_full_length)
+                prev_kmer_item[2] = tuple(prev_kmer_item[2])
+                kmer_items.append(tuple(prev_kmer_item))
+                prev_kmer_item = prelim_kmer_item
+            prev_hashed_kmer = hashed_kmer
 
-        return kmer_superdict
+        # Add the last k-mer.
+        prev_kmer_item[2] = tuple(prev_kmer_item[2])
+        kmer_items.append(tuple(prev_kmer_item))
+    else:
+        # The sequence did not contain multiple instances of the k-mer.
+        for kmer_item in prelim_kmer_items:
+            kmer_item[2] = tuple(kmer_item[2])
+            kmer_items.append(tuple(kmer_item))
+
+    return kmer_items
 
 
 class Cluster:
+    __slots__ = ['representative_name',
+                 'representative_seq_string',
+                 'representative_extra',
+                 'member_names',
+                 'member_seqs',
+                 'member_extras']
+
     def __init__(self):
         self.representative_name = None
         self.representative_seq_string = None
@@ -470,10 +426,6 @@ class Cluster:
         self.member_names = []
         self.member_seqs = []
         self.member_extras = []
-
-
-class Clusters(list):
-    pass
 
 
 class Dereplicator:
@@ -516,7 +468,7 @@ class Dereplicator:
 
 
     def full_length_dereplicate(self):
-        """ Cluster identical sequences.
+        """Cluster identical sequences.
 
         Returns
         =======
@@ -531,7 +483,7 @@ class Dereplicator:
 
         if self.extras:
             seq_info = sorted(zip(self.seq_strings, zip(self.names, self.extras)), key=lambda x: (x[0], x[1][0]))
-            for _, group in itertools.groupby(seq_info, key=itemgetter(0)):
+            for _, group in groupby(seq_info, key=itemgetter(0)):
                 # Ex.: list(group) = [(<seq_string 1>, (<name 1>, <extra 1>)), (<seq_string 2>, (<name 2>, <extra 2>)), ...]
                 cluster = Cluster()
                 for member_info in group:
@@ -543,7 +495,7 @@ class Dereplicator:
 
         else:
             seq_info = sorted(zip(self.seq_strings, self.names), key=itemgetter(0, 1))
-            for _, group in itertools.groupby(seq_info, key=itemgetter(0)):
+            for _, group in groupby(seq_info, key=itemgetter(0)):
                 # Ex.: list(group) = [(<seq_string 1>, <name 1>), (<seq_string 2>, <name 2>), ...]
                 cluster = Cluster()
                 for member_info in group:
@@ -579,7 +531,6 @@ class Dereplicator:
 
         for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names, self.seq_strings, self.extras, hashed_prefixes, targets):
             if prefix_hash not in kmer_dict:
-                query_as_target.hit_another_target = False
                 continue
 
             # Record which target sequences contain the query sequence as a prefix subsequence.
@@ -591,8 +542,6 @@ class Dereplicator:
                         hit_found = True
             if hit_found:
                 query_as_target.hit_another_target = True
-            else:
-                query_as_target.hit_another_target = False
 
         clusters = []
         for query_name, query_extra_item, query_as_target in zip(self.names, self.extras, targets):
@@ -616,287 +565,43 @@ class Dereplicator:
         return clusters
 
 
-    def subseq_dereplicate(self):
-        """Cluster input sequences matching one or more subsequences of a longer (seed) input sequence.
-
-        Returns
-        =======
-        clusters : list
-        memberships : list
-
-        Sequences can occur in multiple clusters, as they may be subsequences of distinct seed sequences, e.g.:
-        Cluster 1:
-        ACGTACGTACGTACGT    (seed, seq A)
-         CGTACGTACGT        (seq X, start index 1)
-             CGTACGTACGT    (seq X, start index 5)
-        ACGTACGTACGTACG     (seq Y, start index 0)
-        Cluster 2:
-        ACGTACGTACGTACGG    (seed, seq B)
-         CGTACGTACGT        (seq X, start index 1)
-        ACGTACGTACGTACG     (seq Y, start index 0)
-
-        Here is an example of the format of the `clusters` list when extra sequence information is NOT provided:
-        clusters = [(seed seq A name, seed seq A, [(seq A name, seq A length, [seq A start position in A = 0]),
-                                                   (seq X name, seq X length, [seq X start position in A = 1, seq X start position in A = 5]),
-                                                   (seq Y name, seq Y length, [seq Y start position in A = 0])]),
-                    (seed seq B name, seed seq B, [(seq B name, seq B length, [seq B start position in B = 0]),
-                                                   (seq X name, seq X length, [seq X start position in B = 1]),
-                                                   (seq Y name, seq Y length, [seq Y start position in B = 0])]),
-                    ...]
-        Here is an example of the format when extra sequence information is provided:
-        clusters = [(seed seq A name, seed seq A, [(seq A name, seq A length, [seq A start position in A = 0], seq A extra info),
-                                                   (seq X name, seq X length, [seq X start position in A = 1, seq X start position in A = 5], seq X extra info),
-                                                   (seq Y name, seq Y length, [seq Y start position in A = 0], seq Y extra info)]),
-                    (seed seq B name, seed seq B, [(seq B name, seq B length, [seq B start position in B = 0], seq B extra info),
-                                                   (seq X name, seq X length, [seq X start position in B = 1], seq X extra info),
-                                                   (seq Y name, seq Y length, [seq Y start position in B = 0], seq Y extra info)]),
-                    ...]
-
-        The membership list has an entry for each input sequence.
-        Here is an example of the format when extra sequence information is NOT provided:
-        memberships = [(seq A, [seq A name, ...], [[seq A start position in A = 0], ...]),
-                       (seq X, [seq A name, seq B name, ...], [[seq X start position in A = 1, seq X start position in A = 5], (seq X start position in B = 1], ...]),
-                       (seq Y, [seq A name, seq B name, ...], [[seq Y start position in A = 0], [seq Y start position in A = 0], ...]),
-                       (seq B, [seq B name, ...], [[seq B start position in B = 0], ...]),
-                       ...]
-        Here is an example when extra sequence information is provided:
-        memberships = [(seq A, [seq A name, ...], [[seq A start position in A = 0], ...], seq A extra info),
-                       (seq X, [seq A name, seq B name, ...], [[seq X start position in A = 1, seq X start position in A = 5], [seq X start position in B = 1], ...], seq X extra info),
-                       (seq Y, [seq A name, seq B name, ...], [[seq Y start position in A = 0], [seq Y start position in A = 0], ...], seq Y extra info),
-                       (seq B, [seq B name, ...], [[seq B start position in B = 0], ...], seq B extra info),
-                       ...]
-        """
-
-        # Get unique input sequences to speed up the subsequence k-mer search.
-        unique_names = []
-        unique_seqs = []
-        unique_extras = []
-        replicate_dict = {}
-        for cluster in self.full_length_dereplicate():
-            unique_name = cluster[1][0]
-            unique_names.append(unique_name)
-            unique_seqs.append(cluster[0])
-            if self.extras:
-                unique_extras.append(cluster[2][0])
-                replicate_dict[unique_name] = list(zip(cluster[1][1: ], cluster[2][1: ]))
-            else:
-                replicate_dict[unique_name] = cluster[1][1: ]
-
-        hashed_seqs = [sha224(seq.encode('utf-8')).hexdigest() for seq in self.seqs]
-
-        subseq_dict = Kmerizer(self.names, self.seqs).get_kmer_superdict()
-
-        # Example `hit_dict` format:
-        # hit_dict = {seq X name: [seq A name, seq B name, ...],
-        #             seq Y name: [seq A name, seq B name, ...],
-        #             ...}
-        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
-
-        # Example `cluster_dict` format (with extra seq info):
-        # cluster_dict = {seed seq A name: [(seq X name, seq X length, [<seq X start indices in seq A>], seq X extra),
-        #                                   (seq Y name, seq Y length, [<seq Y start indices in seq A>], seq Y extra),
-        #                                   ...]],
-        #                 seed seq B name: [(seq X name, seq X length, [<seq X start indices in seq B>], seq X extra),
-        #                                   (seq Y name, seq Y length, [<seq Y start indices in seq B>], seq Y extra),
-        #                                   ...]],
-        #                 ...}
-        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
-
-        hit_dict = {}
-        cluster_dict = {}
-
-        if unique_extras:
-            extra_iter = iter(unique_extras)
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                query_extra_item = next(extra_iter)
-
-                kmer_dict = subseq_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-
-                hits = kmer_dict[query_hash]
-                # Record which target sequences contain the query sequence as a subsequence.
-                # A query sequence may hit a target sequence at different indices, producing multiple hits.
-                hit_dict[query_name] = hits
-
-                # Make preliminary clusters for each target sequence containing the query sequence.
-                for seed_name, seed_start_indices in hits:
-                    if seed_name in cluster_dict:
-                        member_items = cluster_dict[seed_name]
-                        member_items.append((query_name, len(query_seq), seed_start_indices, query_extra_item))
-                    else:
-                        member_items = [(query_name, len(query_seq), seed_start_indices, query_extra_item)]
-                        cluster_dict[seed_name] = member_items
-
-                    if replicate_dict:
-                        # Record information on the query replicates.
-                        for replicate_name, replicate_extra_item in replicate_dict[query_name]:
-                            member_items.append((replicate_name, len(query_seq), seed_start_indices, replicate_extra_item))
-        else:
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                kmer_dict = subseq_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-
-                hits = kmer_dict[query_hash]
-                # Record which target sequences contain the query sequence as a subsequence.
-                # A query sequence may hit a target sequence at different indices, producing multiple hits.
-                hit_dict[query_name] = hits
-
-                # Make preliminary clusters for each target sequence containing the query sequence.
-                for seed_name, seed_start_indices in hits:
-                    if seed_name in cluster_dict:
-                        member_items = cluster_dict[seed_name]
-                        member_items.append((query_name, len(query_seq), seed_start_indices))
-                    else:
-                        member_items = [(query_name, len(query_seq), seed_start_indices)]
-                        cluster_dict[seed_name] = member_items
-
-                    if replicate_dict:
-                        # Record information on the query replicates.
-                        for replicate_name in replicate_dict[query_name]:
-                            member_items.append((replicate_name, len(query_seq), seed_start_indices))
-
-        clusters = []
-        memberships = []
-
-        if unique_extras:
-            for query_name, query_seq, query_extra_item in zip(unique_names, unique_seqs, unique_extras):
-                if query_name in hit_dict:
-                    # The query is not a seed because it is a prefix of other sequences.
-                    continue
-
-                if replicate_dict:
-                    replicate_items = replicate_dict[query_name]
-                    member_items_for_seed = [(query_name, len(query_seq), [0], query_extra_item)]
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    for replicate_name, replicate_extra_item in replicate_items:
-                        member_items_for_seed.append((replicate_name, len(query_seq), [0], replicate_extra_item))
-
-                if query_name in cluster_dict:
-                    # Other query sequences are subseqs of this query.
-                    member_items = cluster_dict[query_name]
-                    # Sort members in descending order of sequence length.
-                    member_items.sort(key=lambda member_item: -member_item[1])
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    member_items = member_items_for_seed + member_items
-                    clusters.append((query_name, query_seq, member_items))
-                else:
-                    # No other query sequences were prefixes of this query.
-                    # Make a cluster with the query as the seed
-                    # and the query and its replicates as members of the cluster.
-                    member_items = member_items_for_seed
-                    clusters.append((query_name, query_seq, member_items))
-
-                # Seed and identical sequences are the only members of the seed's cluster.
-                memberships.append((query_name, [query_name], [0], query_extra_item))
-
-                if replicate_dict:
-                    for replicate_name, replicate_extra_item in replicate_items:
-                        memberships.append((replicate_name, [query_name], [0], replicate_extra_item))
-        else:
-            for query_name, query_seq in zip(unique_names, unique_seqs):
-                if query_name in hit_dict:
-                    # The query is not a seed because it is a prefix of other sequences.
-                    continue
-
-                if replicate_dict:
-                    replicate_names = replicate_dict[query_name]
-                    member_items_for_seed = [(query_name, len(query_seq), [0])]
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    for replicate_name in replicate_names:
-                        member_items_for_seed.append((replicate_name, len(query_seq), [0]))
-
-                if query_name in cluster_dict:
-                    # Other query sequences are subseqs of this query.
-                    member_items = cluster_dict[query_name]
-                    # Sort members in descending order of sequence length.
-                    member_items.sort(key=lambda member_item: -member_item[1])
-                    # The seed seq and identical seqs are added as members of the seed's cluster.
-                    member_items = member_items_for_seed + member_items
-                    clusters.append((query_name, query_seq, member_items))
-                else:
-                    # No other query sequences were prefixes of this query.
-                    # Make a cluster with the query as the seed
-                    # and the query and its replicates as members of the cluster.
-                    member_items = member_items_for_seed
-                    clusters.append((query_name, query_seq, member_items))
-
-                # Seed and identical sequences are the only members of the seed's cluster.
-                memberships.append((query_name, [query_name], [0]))
-
-                if replicate_dict:
-                    for replicate_name in replicate_names:
-                        memberships.append((replicate_name, [query_name], [0]))
-
-        # Record memberships of query sequences that were not found to be seed sequences.
-        # To determine cluster memberships, search hashed input sequences against hashed subsequences of cluster seed sequences.
-        # This is more efficient than searching input sequence names against every cluster's list of member sequence names.
-        seed_names, seed_seqs, _ = zip(*clusters)
-        seed_subseq_dict = Kmerizer(seed_names, seed_seqs).get_kmer_superdict(min_kmer_size=min([len(seq) for seq in unique_seqs]))
-
-        if unique_extras:
-            for query_name, query_seq, query_hash, query_extra_item in zip(unique_names, unique_seqs, hashed_seqs, unique_extras):
-                kmer_dict = seed_subseq_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-                seed_names, seed_start_indices = zip(*kmer_dict[query_hash])
-                memberships.append((query_name, seed_names, seed_start_indices, query_extra_item))
-
-                if replicate_dict:
-                    for replicate_name, replicate_extra_item in replicate_dict[query_name]:
-                        memberships.append((replicate_name, seed_names, seed_start_indices, replicate_extra_item))
-        else:
-            for query_name, query_seq, query_hash in zip(unique_names, unique_seqs, hashed_seqs):
-                kmer_dict = seed_subseq_dict[len(query_seq)]
-                if query_hash not in kmer_dict:
-                    continue
-                seed_names, seed_start_indices = zip(*kmer_dict[query_hash])
-                memberships.append((query_name, seed_names, seed_start_indices))
-
-                if replicate_dict:
-                    for replicate_name in replicate_dict[query_name]:
-                        memberships.append((replicate_name, seed_names, seed_start_indices))
-
-        # Sort by cluster/membership size and then by seed/member name.
-        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
-        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
-
-        return clusters, memberships
-
-
 class AlignedQuery:
+    __slots__ = ['seq_string', 'name', 'alignments']
+
     def __init__(self, seq_string, name=None):
         self.seq_string = seq_string
         self.name = name
         self.alignments = []
-
-
-    def add_alignment(self, alignment):
-        self.alignments.append(alignment)
 
 
 class AlignedTarget:
+    __slots__ = ['seq_string', 'name', 'alignments']
+
     def __init__(self, seq_string, name=None):
         self.seq_string = seq_string
         self.name = name
         self.alignments = []
 
 
-    def add_alignment(self, alignment):
-        self.alignments.append(alignment)
+class MappableAlignedTarget:
+    __slots__ = ['seq_string', 'name', 'alignments', 'hit_another_target']
+
+    def __init__(self, seq_string, name=None):
+        self.seq_string = seq_string
+        self.name = name
+        self.alignments = []
+        self.hit_another_target = False
 
 
 class Alignment:
+    __slots__ = ['query_start', 'target_start', 'cigartuples', 'alignment_length', 'aligned_query', 'aligned_target']
+
     def __init__(self, query_start, target_start, cigartuples, aligned_query=None, aligned_target=None):
         self.query_start = query_start
         self.target_start = target_start
         self.cigartuples = cigartuples
         # For now, assume there are no indels in the alignment.
         self.alignment_length = sum(cigartuple[1] for cigartuple in cigartuples)
-        self.query_end = self.query_start + self.alignment_length
-        self.target_end = self.target_start + self.alignment_length
-
         self.aligned_query = aligned_query
         self.aligned_target = aligned_target
 
@@ -968,43 +673,48 @@ class Aligner:
         if max_mismatch_freq == 0:
             long_seed_size = None
             short_query_names = self.query_names
-            short_query_seq_strings = self.query_seq_strings
+            short_query_seq_arrays = [np.frombuffer(s.encode('ascii'), np.uint8) for s in self.query_seq_strings]
             long_query_names = []
-            long_query_seq_strings = []
+            long_query_seq_arrays = []
         else:
             long_seed_size = int(round(0.5 / max_mismatch_freq, 0))
             short_query_threshold = 2 * long_seed_size
             short_query_names = []
-            short_query_seq_strings = []
+            short_query_seq_arrays = []
             long_query_names = []
-            long_query_seq_strings = []
+            long_query_seq_arrays = []
             for query_name, query_seq_string in zip(self.query_names, self.query_seq_strings):
                 if len(query_seq_string) <= short_query_threshold:
                     short_query_names.append(query_name)
-                    short_query_seq_strings.append(query_seq_string)
+                    short_query_seq_arrays.append(np.frombuffer(query_seq_string.encode('ascii'), np.uint8))
                 else:
                     long_query_names.append(query_name)
-                    long_query_seq_strings.append(query_seq_string)
+                    long_query_seq_arrays.append(np.frombuffer(query_seq_string.encode('ascii'), np.uint8))
 
-        if short_query_seq_strings:
+        target_seq_arrays = [np.frombuffer(s.encode('ascii'), np.uint8) for s in self.target_seq_strings]
+
+        if short_query_seq_arrays:
             if self.progress:
-                self.progress.update("Aligning shorter queries...")
+                if max_mismatch_freq == 0:
+                    self.progress.update("Aligning...")
+                else:
+                    self.progress.update("Aligning shorter queries...")
             aligned_short_query_dict, aligned_short_target_dict = self.align_without_indels(short_query_names,
-                                                                                            short_query_seq_strings,
+                                                                                            short_query_seq_arrays,
                                                                                             self.target_names,
-                                                                                            self.target_seq_strings,
+                                                                                            target_seq_arrays,
                                                                                             short_seed_size,
                                                                                             max_mismatch_freq=0)
         else:
             aligned_short_query_dict, aligned_short_target_dict = {}, {}
 
-        if long_query_seq_strings:
+        if long_query_seq_arrays:
             if self.progress:
                 self.progress.update("Aligning longer queries...")
             aligned_long_query_dict, aligned_long_target_dict = self.align_without_indels(long_query_names,
-                                                                                          long_query_seq_strings,
+                                                                                          long_query_seq_arrays,
                                                                                           self.target_names,
-                                                                                          self.target_seq_strings,
+                                                                                          target_seq_arrays,
                                                                                           long_seed_size,
                                                                                           max_mismatch_freq=max_mismatch_freq)
         else:
@@ -1014,6 +724,84 @@ class Aligner:
         aligned_short_target_dict.update(aligned_long_target_dict)
         aligned_query_dict = aligned_short_query_dict
         aligned_target_dict = aligned_short_target_dict
+
+        return aligned_query_dict, aligned_target_dict
+
+
+    def align_without_indels(self,
+                             query_names,
+                             query_seq_arrays,
+                             target_names,
+                             target_seq_arrays,
+                             seed_size,
+                             max_mismatch_freq=0):
+        """Match input queries to input targets without indels.
+
+        Parameters
+        ==========
+        query_names : list
+
+        query_seq_arrays : list
+
+        target_names : list
+
+        target_seq_arrays : list
+
+        seed_size : int
+
+        max_mismatch_freq : float, 0
+
+        Returns
+        =======
+        aligned_query_dict : dict
+            Keys are query names and values are AlignedQuery objects.
+
+        aligned_target_dict : dict
+            Keys are target names and values are AlignedTarget objects.
+        """
+
+        kmer_dict = Kmerizer(target_names, target_seq_arrays, num_threads=self.num_threads).get_kmer_dict(seed_size)
+
+        aligned_query_dict = {}
+        aligned_target_dict = {}
+
+        target_seq_dict = dict(zip(target_names, target_seq_arrays))
+
+        pool = multiprocessing.Pool(self.num_threads)
+        num_processed_queries = 0
+        total_query_count = len(query_names)
+        for (query_name,
+             query_seq_array,
+             alignment_info) in pool.imap_unordered(functools.partial(align_without_indels_worker,
+                                                                      kmer_dict=kmer_dict,
+                                                                      seed_size=seed_size,
+                                                                      target_seq_dict=target_seq_dict,
+                                                                      max_mismatch_freq=max_mismatch_freq),
+                                                    zip(query_names, query_seq_arrays),
+                                                    chunksize=int(len(query_names) / self.num_threads) + 1):
+            if alignment_info:
+                aligned_query = AlignedQuery(''.join(map(chr, query_seq_array)), name=query_name)
+                aligned_query_dict[query_name] = aligned_query
+                for target_name, target_seq_array, alignment_target_start, cigartuples in alignment_info:
+                    if target_name in aligned_target_dict:
+                        aligned_target = aligned_target_dict[target_name]
+                    else:
+                        aligned_target = AlignedTarget(''.join(map(chr, target_seq_array)), name=target_name)
+                        aligned_target_dict[target_name] = aligned_target
+                    alignment = Alignment(0, alignment_target_start, cigartuples, aligned_query, aligned_target)
+                    aligned_query.alignments.append(alignment)
+                    aligned_target.alignments.append(alignment)
+
+            num_processed_queries += 1
+            if self.progress:
+                if num_processed_queries % 10000 == 0:
+                    self.progress.update("%d/%d queries aligned without indels"
+                                         % (num_processed_queries, total_query_count))
+        pool.close()
+        pool.join()
+        if self.progress:
+            self.progress.update("%d/%d queries aligned without indels"
+                                 % (total_query_count, total_query_count))
 
         return aligned_query_dict, aligned_target_dict
 
@@ -1053,135 +841,54 @@ class Aligner:
         return matched_target_names
 
 
-    def match_subseqs(self):
-        """Match input queries to input targets without mismatches or indels.
+def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
+    query_name, query_seq_array = name_seq_pair
+    mismatch_limit = int(max_mismatch_freq * query_seq_array.size)
 
-        Returns
-        =======
-        aligned_query_dict : dict
-            Keys are query names and values are AlignedQuery objects
+    encountered_alignment_sites = []
+    alignment_info = []
+    for seed_query_start, seed_query_stop in zip(range(0, query_seq_array.size - seed_size + 1),
+                                                 range(seed_size, query_seq_array.size + 1)):
+        seed_hash = sha224(query_seq_array[seed_query_start: seed_query_stop].tobytes()).hexdigest()
 
-        aligned_target_dict : dict
-            Keys are target names and values are AlignedTarget objects
-        """
+        if seed_hash not in kmer_dict:
+            continue
 
-        target_seq_dict = dict(zip(self.target_names, self.target_seqs))
-
-        aligned_query_dict = {}
-        aligned_target_dict = {}
-
-        queries_grouped_by_length = [list(group) for length, group in
-                                     itertools.groupby(sorted(zip(self.query_names, self.query_seqs), key=lambda t: len(t[1])),
-                                                       key=lambda t: len(t[1]))]
-        for query_group in queries_grouped_by_length:
-            kmer_size = len(query_group[1][1])
-            kmer_dict = Kmerizer(self.target_names, self.target_seqs, num_threads=self.num_threads).get_kmer_dict(kmer_size)
-            for query_name, query_seq in query_group:
-                query_hash = sha224(query_seq.encode('utf-8')).hexdigest()
-
-                if query_hash not in kmer_dict:
+        for target_name, seed_target_starts in kmer_dict[seed_hash]:
+            for seed_target_start in seed_target_starts:
+                if seed_target_start < seed_query_start:
                     continue
-                hits = kmer_dict[query_hash]
 
-                aligned_query = AlignedQuery(query_seq, name=query_name)
-                aligned_query_dict[query_name] = aligned_query
+                target_seq_array = target_seq_dict[target_name]
+                seed_target_stop = seed_target_start + seed_size
 
-                for target_name, target_start_indices in hits:
-                    if target_name in aligned_target_dict:
-                        aligned_target = aligned_target_dict[target_name]
+                if target_seq_array.size - seed_target_stop < query_seq_array.size - seed_query_stop:
+                    continue
+
+                alignment_target_start = seed_target_start - seed_query_start
+
+                if (target_name, alignment_target_start) in encountered_alignment_sites:
+                    continue
+
+                cigartuples = []
+                mismatch_count = 0
+                for is_match, group in groupby(query_seq_array == target_seq_array[alignment_target_start: alignment_target_start + query_seq_array.size]):
+                    if is_match:
+                        cigartuples.append((7, sum(1 for _ in group)))
                     else:
-                        target_seq = target_seq_dict[target_name]
-                        aligned_target = AlignedTarget(target_seq, name=target_name)
-                        aligned_target_dict[target_name] = aligned_target
+                        num_mismatches = sum(1 for _ in group)
+                        cigartuples.append((8, num_mismatches))
+                        mismatch_count += num_mismatches
+                if mismatch_count > mismatch_limit:
+                    continue
 
-                    for target_start_index in target_start_indices:
-                        alignment = Alignment(0,
-                                            target_start_index,
-                                            [(7, len(query_seq))],
-                                            aligned_query=aligned_query,
-                                            aligned_target=aligned_target)
-                        aligned_query.add_alignment(alignment)
-                        aligned_target.add_alignment(alignment)
+                alignment_info.append((target_name,
+                                       target_seq_array,
+                                       alignment_target_start,
+                                       cigartuples))
+                encountered_alignment_sites.append((target_name, alignment_target_start))
 
-        return aligned_query_dict, aligned_target_dict
-
-
-    def align_without_indels(self,
-                             query_names,
-                             query_seq_strings,
-                             target_names,
-                             target_seq_strings,
-                             seed_size,
-                             max_mismatch_freq=0):
-        """Match input queries to input targets without indels.
-
-        Parameters
-        ==========
-        query_names : list
-
-        query_seq_strings : list
-
-        target_names : list
-
-        target_seq_strings : list
-
-        seed_size : int
-
-        max_mismatch_freq : float, 0
-
-        Returns
-        =======
-        aligned_query_dict : dict
-            Keys are query names and values are AlignedQuery objects.
-
-        aligned_target_dict : dict
-            Keys are target names and values are AlignedTarget objects.
-        """
-
-        kmer_dict = Kmerizer(target_names, target_seq_strings, num_threads=self.num_threads).get_kmer_dict(seed_size)
-
-        aligned_query_dict = {}
-        aligned_target_dict = {}
-
-        target_seq_dict = dict(zip(target_names, target_seq_strings))
-
-        pool = multiprocessing.Pool(self.num_threads)
-        num_processed_queries = 0
-        total_query_count = len(query_names)
-        for (query_name,
-             query_seq_string,
-             alignment_info) in pool.imap_unordered(functools.partial(align_without_indels_worker,
-                                                                      kmer_dict=kmer_dict,
-                                                                      seed_size=seed_size,
-                                                                      target_seq_dict=target_seq_dict,
-                                                                      max_mismatch_freq=max_mismatch_freq),
-                                                    zip(query_names, query_seq_strings),
-                                                    chunksize=int(len(query_names) / self.num_threads) + 1):
-            if alignment_info:
-                aligned_query = AlignedQuery(query_seq_string, name=query_name)
-                aligned_query_dict[query_name] = aligned_query
-                for target_name, target_seq_string, alignment_target_start, cigartuples in alignment_info:
-                    if target_name in aligned_target_dict:
-                        aligned_target = aligned_target_dict[target_name]
-                    else:
-                        aligned_target = AlignedTarget(target_seq_string, name=target_name)
-                        aligned_target_dict[target_name] = aligned_target
-                    alignment = Alignment(0, alignment_target_start, cigartuples, aligned_query, aligned_target)
-                    aligned_query.alignments.append(alignment)
-                    aligned_target.alignments.append(alignment)
-
-            num_processed_queries += 1
-            if num_processed_queries % 10000 == 0:
-                if self.progress:
-                    self.progress.update("%d/%d queries aligned without indels"
-                                         % (num_processed_queries, total_query_count))
-        pool.close()
-        pool.join()
-        if self.progress:
-            self.progress.update("%d/%d queries aligned without indels"
-                                 % (total_query_count, total_query_count))
-
-        return aligned_query_dict, aligned_target_dict
+    return query_name, query_seq_array, alignment_info
 
 
 def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=float('inf')):
@@ -1219,86 +926,3 @@ def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=f
                 break
 
     return matched_target_names
-
-
-def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
-    query_name, query_seq_string = name_seq_pair
-    mismatch_limit = int(max_mismatch_freq * len(query_seq_string))
-
-    encountered_alignment_sites = []
-    alignment_info = []
-    for seed_query_start, seed_query_end in zip(range(0, len(query_seq_string) - seed_size + 1),
-                                                range(seed_size, len(query_seq_string) + 1)):
-        seed_hash = sha224(query_seq_string[seed_query_start: seed_query_end].encode('utf-8')).hexdigest()
-
-        if seed_hash not in kmer_dict:
-            continue
-
-        for target_name, seed_target_starts in kmer_dict[seed_hash]:
-            for seed_target_start in seed_target_starts:
-                if seed_target_start < seed_query_start:
-                    continue
-                target_seq_string = target_seq_dict[target_name]
-                seed_target_end = seed_target_start + seed_size
-                if len(target_seq_string) - seed_target_end < len(query_seq_string) - seed_query_end:
-                    continue
-                alignment_target_start = seed_target_start - seed_query_start
-
-                if (target_name, alignment_target_start) in encountered_alignment_sites:
-                    continue
-
-                cigartuples = []
-                mismatch_count = 0
-                for query_base, target_base in zip(query_seq_string[0: seed_query_start],
-                                                   target_seq_string[alignment_target_start: seed_target_start]):
-                    if query_base == target_base:
-                        if cigartuples:
-                            if cigartuples[-1][0] == 7:
-                                cigartuples[-1][1] += 1
-                            else:
-                                cigartuples.append([7, 1])
-                        else:
-                            cigartuples.append([7, 1])
-                    else:
-                        mismatch_count += 1
-                        if cigartuples:
-                            if cigartuples[-1][0] == 8:
-                                cigartuples[-1][1] += 1
-                            else:
-                                cigartuples.append([8, 1])
-                        else:
-                            cigartuples.append([8, 1])
-                if mismatch_count > mismatch_limit:
-                    continue
-
-                if cigartuples:
-                    if cigartuples[-1][0] == 7:
-                        cigartuples[-1][1] += seed_size
-                    else:
-                        cigartuples.append([7, seed_size])
-                else:
-                    cigartuples.append([7, seed_size])
-
-                for query_base, target_base in zip(query_seq_string[seed_query_end: len(query_seq_string)],
-                                                   target_seq_string[seed_target_end: seed_target_end + len(query_seq_string) - seed_query_end]):
-                    if query_base == target_base:
-                        if cigartuples[-1][0] == 7:
-                            cigartuples[-1][1] += 1
-                        else:
-                            cigartuples.append([7, 1])
-                    else:
-                        mismatch_count += 1
-                        if cigartuples[-1][0] == 8:
-                            cigartuples[-1][1] += 1
-                        else:
-                            cigartuples.append([8, 1])
-                if mismatch_count > mismatch_limit:
-                    continue
-
-                alignment_info.append((target_name,
-                                       target_seq_string,
-                                       alignment_target_start,
-                                       [tuple(cigartuple) for cigartuple in cigartuples]))
-                encountered_alignment_sites.append((target_name, alignment_target_start))
-
-    return query_name, query_seq_string, alignment_info

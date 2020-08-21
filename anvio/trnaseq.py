@@ -37,7 +37,17 @@ __email__ = "samuelmiller10@gmail.com"
 
 
 class UniqueSeq:
+    __slots__ = ['seq_string',
+                 'input_names',
+                 'identification_method',
+                 'acceptor_length',
+                 'extra_fiveprime_length',
+                 'input_count',
+                 'representative_name']
+
     def __init__(self, seq_string, input_names, identification_method=None, acceptor_length=None, extra_fiveprime_length=None, skip_init=False):
+        """A dereplicated tRNA-seq read, with information from tRNA feature profiling"""
+
         self.seq_string = seq_string
         self.input_names = input_names
         self.identification_method = identification_method # 'profiled' or 'mapped' if tRNA
@@ -52,12 +62,25 @@ class UniqueSeq:
 
 
     def init(self):
+        """Set attributes representative of a final set of dereplicated reads"""
+
         self.input_count = len(self.input_names)
         self.representative_name = self.input_names[0]
 
 
 class TrimmedSeq:
+    __slots__ = ['seq_string',
+                 'unique_seqs',
+                 'input_count',
+                 'unique_with_extra_fiveprime_count',
+                 'input_with_extra_fiveprime_count',
+                 'representative_name',
+                 'input_acceptor_variant_count_dict',
+                 'identification_method']
+
     def __init__(self, seq_string, unique_seqs, skip_init=False):
+        """A tRNA sequence with bases trimmed 5' of the acceptor stem and 3' of the discriminator"""
+
         self.seq_string = seq_string
         self.unique_seqs = unique_seqs # list of UniqueSeq objects
 
@@ -73,6 +96,8 @@ class TrimmedSeq:
 
 
     def init(self):
+        """Set attributes representative of a final set of input `UniqueSeq` objects"""
+
         self.input_count = sum([len(unique_seq.input_names) for unique_seq in self.unique_seqs])
 
         self.unique_with_extra_fiveprime_count = sum([1 if unique_seq.extra_fiveprime_length else 0
@@ -122,7 +147,24 @@ class TrimmedSeq:
 
 
 class NormalizedSeq:
+    __slots__ = ['trimmed_seqs',
+                 'representative_name',
+                 'seq_string',
+                 'start_positions',
+                 'end_positions',
+                 'input_count',
+                 'input_with_extra_fiveprime_count',
+                 'input_acceptor_variant_count_dict',
+                 'count_of_trimmed_seqs_mapped_to_threeprime_end',
+                 'count_of_input_seqs_mapped_to_threeprime_end',
+                 'count_of_trimmed_seqs_mapped_to_interior',
+                 'count_of_input_seqs_mapped_to_interior',
+                 'count_of_trimmed_seqs_mapped_to_fiveprime_end',
+                 'count_of_input_seqs_mapped_to_fiveprime_end']
+
     def __init__(self, trimmed_seqs, start_positions=None, end_positions=None, skip_init=False):
+        """A longer tRNA sequence consolidated from shorter tRNA fragments"""
+
         self.trimmed_seqs = trimmed_seqs # list of TrimmedSeq objects
         self.representative_name = trimmed_seqs[0].representative_name
         self.seq_string = trimmed_seqs[0].seq_string
@@ -153,6 +195,8 @@ class NormalizedSeq:
 
 
     def init(self):
+        """Set attributes representative of a final set of `TrimmedSeq` objects"""
+
         self.input_count = sum([trimmed_seq.input_count for trimmed_seq in self.trimmed_seqs])
 
         self.input_with_extra_fiveprime_count = sum([trimmed_seq.input_with_extra_fiveprime_count for trimmed_seq in self.trimmed_seqs])
@@ -194,8 +238,20 @@ class NormalizedSeq:
 
 
 class ModifiedSeq:
-    # Mirrors NormalizedSeq in many ways.
+    __slots__ = ['normalized_seqs',
+                 'representative_name',
+                 'modification_indices',
+                 'seq_string',
+                 'input_count',
+                 'input_with_extra_fiveprime_count',
+                 'input_acceptor_variant_count_dict',
+                 'count_of_input_seqs_mapped_to_threeprime_end',
+                 'count_of_input_seqs_mapped_to_interior',
+                 'count_of_input_seqs_mapped_to_fiveprime_end']
+
     def __init__(self, normalized_seqs, modification_dict=None, skip_init=False):
+        """A tRNA sequence with sites of predicted modification-induced mutations"""
+
         self.normalized_seqs = normalized_seqs # list of NormalizedSeq objects
         self.representative_name = normalized_seqs[0].representative_name
         if modification_dict:
@@ -222,6 +278,8 @@ class ModifiedSeq:
 
 
     def init(self):
+        """Set attributes representative of a final set of `NormalizedSeq` objects"""
+
         self.input_count = sum([normalized_seq.input_count for normalized_seq in self.normalized_seqs])
 
         self.input_with_extra_fiveprime_count = sum([normalized_seq.input_with_extra_fiveprime_count for normalized_seq in self.normalized_seqs])
@@ -234,24 +292,15 @@ class ModifiedSeq:
                     input_acceptor_variant_count_dict[acceptor_seq_string] += input_count
         self.input_acceptor_variant_count_dict = input_acceptor_variant_count_dict
 
-        count_of_trimmed_seqs_mapped_to_threeprime_end = 0
         count_of_input_seqs_mapped_to_threeprime_end = 0
-        count_of_trimmed_seqs_mapped_to_interior = 0
         count_of_input_seqs_mapped_to_interior = 0
-        count_of_trimmed_seqs_mapped_to_fiveprime_end = 0
         count_of_input_seqs_mapped_to_fiveprime_end = 0
         for normalized_seq in self.normalized_seqs:
-            count_of_trimmed_seqs_mapped_to_threeprime_end += normalized_seq.count_of_trimmed_seqs_mapped_to_threeprime_end
             count_of_input_seqs_mapped_to_threeprime_end += normalized_seq.count_of_input_seqs_mapped_to_threeprime_end
-            count_of_trimmed_seqs_mapped_to_interior += normalized_seq.count_of_trimmed_seqs_mapped_to_interior
             count_of_input_seqs_mapped_to_interior += normalized_seq.count_of_input_seqs_mapped_to_interior
-            count_of_trimmed_seqs_mapped_to_fiveprime_end += normalized_seq.count_of_trimmed_seqs_mapped_to_fiveprime_end
             count_of_input_seqs_mapped_to_fiveprime_end += normalized_seq.count_of_input_seqs_mapped_to_fiveprime_end
-        self.count_of_trimmed_seqs_mapped_to_threeprime_end = count_of_trimmed_seqs_mapped_to_threeprime_end
         self.count_of_input_seqs_mapped_to_threeprime_end = count_of_input_seqs_mapped_to_threeprime_end
-        self.count_of_trimmed_seqs_mapped_to_interior = count_of_trimmed_seqs_mapped_to_interior
         self.count_of_input_seqs_mapped_to_interior = count_of_input_seqs_mapped_to_interior
-        self.count_of_trimmed_seqs_mapped_to_fiveprime_end = count_of_trimmed_seqs_mapped_to_fiveprime_end
         self.count_of_input_seqs_mapped_to_fiveprime_end = count_of_input_seqs_mapped_to_fiveprime_end
 
 
@@ -271,6 +320,8 @@ class TRNASeqDataset:
                                 'CCATA', 'CCATC', 'CCATG', 'CCATT']
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
+        """Class for processing tRNA-seq dataset"""
+
         self.args = args
         self.run = run
         self.progress = progress
@@ -333,6 +384,8 @@ class TRNASeqDataset:
 
 
     def sanity_check(self):
+        """Check inputs before proceeding."""
+
         if os.path.exists(self.output_dir):
             raise ConfigError("The directory that was specified by --output-dir or -o, %s, already exists. "
                               "Please try again with a non-existent directory." % self.output_dir)
@@ -356,22 +409,31 @@ class TRNASeqDataset:
             ConfigError("The write buffer size must be a positive integer. Try again!")
 
         self.run.info("Input FASTA file", self.input_fasta_path)
+
         utils.check_fasta_id_uniqueness(self.input_fasta_path)
+
         if not self.skip_fasta_check:
             self.progress.new("Checking input FASTA defline format")
             self.progress.update("...")
+
             utils.check_fasta_id_formatting(self.input_fasta_path)
+
             self.progress.end()
+
             self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green')
 
 
-    def generate_trnaseq_db(self):
+    def create_trnaseq_db(self):
+        """Create an unfilled tRNA-seq database."""
+
         meta_values = {'project_name': self.project_name,
                        'description': self.description if self.description else '_No description is provided_'}
         TRNASeqDatabase(self.trnaseq_db_path, quiet=False).create(meta_values)
 
 
     def get_unique_input_seqs(self):
+        """Dereplicate input reads"""
+
         self.progress.new("Finding unique input sequences")
         self.progress.update("...")
 
@@ -483,8 +545,7 @@ class TRNASeqDataset:
 
 
     def get_write_points(self, item_count):
-        """
-        Helper function to determine the points when to write multiprocessed outputs.
+        """Helper function to determine the points when to write multiprocessed outputs.
         Write points are cumulative numbers of items processed.
         """
 
@@ -682,7 +743,8 @@ class TRNASeqDataset:
 
 
     def map_threeprime(self):
-        """
+        """Map any unprofiled short 3' fragments to longer profiled tRNA sequences.
+
         Input sequences not successfully profiled as tRNA may include 3' tRNA fragments not long enough for profiling,
         i.e., fragments not spanning the 3' end through the T arm.
         Try to salvage some of these sequences, excluding exceedingly short fragments,
@@ -826,7 +888,8 @@ class TRNASeqDataset:
 
 
     def map_nonthreeprime(self):
-        """
+        """Map unprofiled tRNA fragments not from the 3' end to longer profiled tRNA sequences.
+
         tRNA fragments may not start at the 3' end of the tRNA molecule and thereby go unprofiled.
         Try to salvage fragments from the interior and 5' end of tRNA by mapping to profiled tRNA.
 
@@ -887,7 +950,7 @@ class TRNASeqDataset:
         for query_name, aligned_query in aligned_query_dict.items():
             for alignment in aligned_query.alignments:
                 reference_alignment_start = alignment.target_start
-                reference_alignment_end = alignment.target_end
+                reference_alignment_end = alignment.target_start + alignment.alignment_length
 
                 (reference_name,
                  reference_fiveprime_length,
@@ -991,7 +1054,7 @@ class TRNASeqDataset:
             padded_query_seq_strings = []
             query_seq_starts = []
             for alignment in aligned_reference.alignments:
-                if reference_length - alignment.target_end == 0:
+                if reference_length - alignment.target_start - alignment.alignment_length == 0:
                     # Normalized sequences should only align at the 3' end.
                     # Avoid false positive alignments in the interior of a sequence.
                     query_normalized_seq = normalized_seq_dict[alignment.aligned_query.name]
@@ -1321,7 +1384,7 @@ class TRNASeqDataset:
     def process(self):
         self.sanity_check()
 
-        self.generate_trnaseq_db()
+        self.create_trnaseq_db()
 
         # Profile each input sequence for tRNA features.
         self.profile_trna(self.get_unique_input_seqs())
