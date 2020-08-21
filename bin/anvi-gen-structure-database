@@ -93,7 +93,7 @@ if __name__ == '__main__':
                         """If a protein in the database has a percent identity to the gene of
                         interest that is less than this parameter, then
                         it is not considered as a template. The default is %(default)f.""")
-    groupM.add_argument("--alignment-cutoff", "-a", type=float, default=80, help = \
+    groupM.add_argument("--alignment-cutoff", "-a", type=float, default=0.80, help = \
                         """If a protein in the database aligns to a fraction of the gene of interest
                         that is less than this parameter, the template is not considered. For example,
                         if --alignment-cutoff is set to 0.90, and the fraction of the gene of interest
