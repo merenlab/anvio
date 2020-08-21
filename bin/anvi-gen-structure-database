@@ -90,16 +90,16 @@ if __name__ == '__main__':
                         optimization is so crude that all models will likely converge to the same
                         solution.""")
     groupM.add_argument("--percent-cutoff", "-p", type=float, default=30, help = \
-                        """If a protein in the database has a proper percent identity to the gene of
-                        interest that is greater than or equal to --percent-identical-cutoff, then
-                        it is used as a template. Otherwise it is not. Here we define proper percent
-                        identity as the percentage of amino acids in the gene of interest that are
-                        identical to an entry in the database given the sequence length of the gene
-                        of interest. For example, if there is 100%% identity between the gene of
-                        interest and the template over the length of the alignment, but the
-                        alignment length is only half of the gene of interest sequence length, then
-                        the proper percent identical is 50%%. (This helps us avoid the inflation of
-                        identity scores due to only partially good matches). The default is %(default)f.""")
+                        """If a protein in the database has a percent identity to the gene of
+                        interest that is less than this parameter, then
+                        it is not considered as a template. The default is %(default)f.""")
+    groupM.add_argument("--alignment-cutoff", "-p", type=float, default=80, help = \
+                        """If a protein in the database aligns to a fraction of the gene of interest
+                        that is less than this parameter, the template is not considered. For example,
+                        if --alignment-cutoff is set to 0.90, and the fraction of the gene of interest
+                        that is covered by a potential template is 0.80 in their alignment, the template
+                        does not align to enough of the gene of interest to be considered. The default
+                        is %(default)f.""")
     groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help = \
                         """Generally speaking it is best to use as many templates as possible given
                         that they have high proper percent identity to the gene of interest. Taken
