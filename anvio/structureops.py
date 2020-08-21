@@ -90,6 +90,7 @@ class StructureDatabase(object):
         run_params_dict['modeller_database'] = self.db.get_meta_value('modeller_database', try_as_type_int=False)
         run_params_dict['scoring_method'] = self.db.get_meta_value('scoring_method', try_as_type_int=False)
         run_params_dict['percent_identical_cutoff'] = float(self.db.get_meta_value('percent_identical_cutoff', try_as_type_int=False))
+        run_params_dict['alignment_fraction_cutoff'] = float(self.db.get_meta_value('alignment_fraction_cutoff', try_as_type_int=False))
         run_params_dict['very_fast'] = bool(self.db.get_meta_value('very_fast', try_as_type_int=True))
         run_params_dict['deviation'] = float(self.db.get_meta_value('deviation', try_as_type_int=False))
         run_params_dict['max_number_templates'] = self.db.get_meta_value('max_number_templates', try_as_type_int=True)
@@ -156,6 +157,7 @@ class StructureDatabase(object):
                 'scoring_method': 'DOPE_score',
                 'max_number_templates': 5,
                 'percent_identical_cutoff': 30,
+                'alignment_fraction_cutoff': 80,
                 'num_models': 1,
                 'deviation': 4.0,
                 'very_fast': True
@@ -395,6 +397,7 @@ class StructureSuperclass(object):
             'scoring_method': A('scoring_method', null),
             'max_number_templates': A('max_number_templates', null),
             'percent_identical_cutoff': A('percent_identical_cutoff', null),
+            'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
             'num_models': A('num_models', null),
             'deviation': A('deviation', null),
             'very_fast': A('very_fast', bool),
