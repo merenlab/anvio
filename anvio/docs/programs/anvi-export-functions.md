@@ -9,6 +9,7 @@ anvi-export-functions -c %(contigs-db)s
 You can also get annotations for only a specific list of sources. For example:
 
 {{ codestart }}
-anvi-export-functions --annotation-sources source_1,source_2,source_3
+anvi-export-functions -c %(contigs-db)s \
+                      --annotation-sources source_1,source_2,source_3
 {{ codestop }}
 
