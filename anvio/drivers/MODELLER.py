@@ -124,7 +124,7 @@ class MODELLER:
 
         # as reward, whoever called this class will receive self.out when they run self.process()
         self.out = {
-            "templates"                 : {"pdb_id": [], "chain_id": [], "ppi": [], "align_fraction":[]},
+            "templates"                 : {"pdb_id": [], "chain_id": [], "proper_percent_similarity": [], "percent_similarity": [], "align_fraction":[]},
             "models"                    : {"molpdf": [], "GA341_score": [], "DOPE_score": [], "picked_as_best": []},
             "corresponding_gene_call"   : self.corresponding_gene_call,
             "structure_exists"          : False,
@@ -147,7 +147,7 @@ class MODELLER:
 
 
     def get_corresponding_gene_call_from_target_fasta_path(self):
-        """corresponding_gene_call is assumed to be the definline of self.argstarget_fast_path"""
+        """corresponding_gene_call is assumed to be the defline of self.args.target_fasta_path"""
 
         target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         while next(target_fasta):
@@ -581,16 +581,18 @@ class MODELLER:
         # update user on which templates are used, and write the templates to self.out
         for i in range(len(self.list_of_template_code_and_chain_ids)):
             pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
-            ppi = search_df["pident"].iloc[i]
+            proper_percent_similarity = search_df["proper_pident"].iloc[i]
+            percent_similarity = search_df["pident"].iloc[i]
             align_fraction = search_df["align_fraction"].iloc[i]
 
             self.out["templates"]["pdb_id"].append(pdb_id)
             self.out["templates"]["chain_id"].append(chain_id)
-            self.out["templates"]["ppi"].append(ppi)
+            self.out["templates"]["proper_percent_similarity"].append(proper_percent_similarity)
+            self.out["templates"]["percent_similarity"].append(percent_similarity)
             self.out["templates"]["align_fraction"].append(align_fraction)
 
             self.run.info("Template {}".format(i+1),
-                          "Protein ID: {}, Chain {} ({:.1f}% identical, {:.2f} align fraction)".format(pdb_id, chain_id, ppi, align_fraction))
+                          "Protein ID: {}, Chain {} ({:.1f}% identical, {:.2f} align fraction)".format(pdb_id, chain_id, percent_similarity, align_fraction))
 
 
     def check_database(self):
