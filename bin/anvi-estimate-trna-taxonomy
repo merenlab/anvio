@@ -37,19 +37,26 @@ def main(args):
     if args.dna_sequence:
         # learn about the anticodon
         import anvio.trnaidentifier as trnaidentifier
-        anticodon = trnaidentifier.Profile(args.dna_sequence).anticodon_seq
+
+        sequence_profile = trnaidentifier.GeneProfile(args.dna_sequence)
+        if not sequence_profile.predicted_genomic_seq:
+            raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
+
+        genomic_sequence = sequence_profile.predicted_genomic_seq
+        anticodon = sequence_profile.predicted_profile.anticodon_seq
 
         if not anticodon:
             raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps not a proper tRNA sequence?")
 
         # setup search
-        fasta_formatted_sequence = f'>{anticodon}\n{args.dna_sequence}'
+        fasta_formatted_sequence = f'>{anticodon}\n{genomic_sequence}'
 
         # go
         log_file_path = filesnpaths.get_temp_file_path(just_the_path=True)
         trnataxonomyops.PopulateContigsDatabaseWithTRNATaxonomy(args).get_gene_estimation_output(anticodon,
                                                                                                  fasta_formatted_sequence,
-                                                                                                 log_file_path=log_file_path)
+                                                                                                 log_file_path=log_file_path,
+                                                                                                 show_all_hits=True)
 
         if not anvio.DEBUG:
             os.remove(log_file_path)
