@@ -10,6 +10,8 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
+import statistics
+
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -81,8 +83,20 @@ def reformat_FASTA(args):
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
+    # Get stats for arg.filter_third_quartile
+    percent_of_gaps_list = []
     while next(fasta):
+        l = len(fasta.seq)
+        percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
+        percent_of_gaps_list.append(percentage_of_gaps)
+    standard_deviation = statistics.pstdev(percent_of_gaps_list)
+    average = statistics.mean(percent_of_gaps_list)
+    third_quartile = average + standard_deviation
 
+    # Reopen fasta
+    fasta = u.SequenceSource(args.contigs_fasta)
+
+    while next(fasta):
         l = len(fasta.seq)
 
         total_num_nucleotides += l
@@ -118,6 +132,12 @@ def reformat_FASTA(args):
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
+
+        if args.filter_third_quartile_gaps == True:
+            if percentage_of_gaps >= third_quartile:
+                total_num_nucleotides_removed += l
+                total_num_contigs_removed += 1
+                continue
 
         if args.simplify_names:
             if prefix:
@@ -160,6 +180,10 @@ if __name__ == '__main__':
                         help="Maximum fraction of gaps in a sequence (any sequence with \
                               more gaps will be removed from the output FASTA file). The \
                               default is %(default)f.")
+    parser.add_argument('--filter-third-quartile-gaps', type=bool, default=False, metavar='PERCENTAGE',
+                        help="Sequences with a percentage of gaps greater than the third  \
+                              quartile of the gap percentage distribution will be removed \
+                              more gaps will be removed from the output FASTA file (Boolean).")
     parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")
