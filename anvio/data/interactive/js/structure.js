@@ -676,6 +676,8 @@ function get_model_info_table_html(model_data) {
                 formatted_value = '<a href="https://www.rcsb.org/structure/' + value + '" target=_"blank">' + value.toUpperCase() + '</a>'
             } else if (col_name == '%Identity') {
                 formatted_value = Number(value).toFixed(2);
+            } else if (col_name == 'Align fraction') {
+                formatted_value = Number(value).toFixed(3);
             } else {
                 formatted_value = value
             }
