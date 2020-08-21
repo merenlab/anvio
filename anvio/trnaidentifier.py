@@ -1271,7 +1271,8 @@ class GeneProfile:
     __slots__ = ['unencoded_acceptor_profile',
                  'encoded_acceptor_profile',
                  'predicted_profile',
-                 'has_encoded_acceptor']
+                 'has_encoded_acceptor',
+                 'predicted_genomic_seq']
 
     def __init__(self, input_seq, name='', check_encoded_acceptor=True):
         """Profile the tRNA features in a gene sequence
@@ -1285,17 +1286,22 @@ class GeneProfile:
             if self.unencoded_acceptor_profile.is_predicted_trna and not self.encoded_acceptor_profile.is_predicted_trna:
                 self.predicted_profile = self.unencoded_acceptor_profile
                 self.has_encoded_acceptor = False
+                self.predicted_genomic_seq = input_seq
             elif self.encoded_acceptor_profile.is_predicted_trna and not self.unencoded_acceptor_profile.is_predicted_trna:
                 self.predicted_profile = self.encoded_acceptor_profile
                 self.has_encoded_acceptor = True
+                self.predicted_genomic_seq = input_seq[:-3]
             else:
                 self.predicted_profile = None
                 self.has_encoded_acceptor = None
+                self.predicted_genomic_seq = None
         else:
             self.encoded_acceptor_profile = None
             if self.unencoded_acceptor_profile.is_predicted_trna:
                 self.predicted_profile = self.unencoded_acceptor_profile
                 self.has_encoded_acceptor = False
+                self.predicted_genomic_seq = input_seq
             else:
                 self.predicted_profile = None
                 self.has_encoded_acceptor = None
+                self.predicted_genomic_seq = None
