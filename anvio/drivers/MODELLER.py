@@ -86,6 +86,7 @@ class MODELLER:
         self.modeller_database = A('modeller_database', str) or 'pdb_95'
         self.max_number_templates = A('max_number_templates', null) or 5
         self.percent_identical_cutoff = A('percent_identical_cutoff', null) or 30
+        self.alignment_fraction_cutoff = A('alignment_fraction_cutoff', null) or 0.80
         self.deviation = A('deviation', null) or 4
         self.pdb_db_path = A('pdb_db', null)
         self.offline_mode = A('offline_mode', null)
