@@ -85,7 +85,7 @@ class MODELLER:
         self.num_models = A('num_models', int) or 5
         self.modeller_database = A('modeller_database', str) or 'pdb_95'
         self.max_number_templates = A('max_number_templates', null) or 5
-        self.percent_identical_cutoff = A('percent_identical_cutoff', null) or 30
+        self.percent_cutoff = A('percent_cutoff', null) or 30
         self.alignment_fraction_cutoff = A('alignment_fraction_cutoff', null) or 0.80
         self.deviation = A('deviation', null) or 4
         self.pdb_db_path = A('pdb_db', null)
@@ -124,17 +124,18 @@ class MODELLER:
 
         # as reward, whoever called this class will receive self.out when they run self.process()
         self.out = {
-            "templates"                : {"pdb_id": [],"chain_id": [],"ppi": []},
-            "models"                   : {"molpdf": [],"GA341_score": [],"DOPE_score": [],"picked_as_best": []},
-            "corresponding_gene_call"  : self.corresponding_gene_call,
-            "structure_exists"         : False,
-            "best_model_path"          : None,
-            "best_score"               : None,
-            "scoring_method"           : self.scoring_method,
-            "percent_identical_cutoff" : self.percent_identical_cutoff,
-            "very_fast"                : self.very_fast,
-            "deviation"                : self.deviation,
-            "directory"                : self.directory,
+            "templates"                 : {"pdb_id": [], "chain_id": [], "ppi": [], "align_fraction":[]},
+            "models"                    : {"molpdf": [], "GA341_score": [], "DOPE_score": [], "picked_as_best": []},
+            "corresponding_gene_call"   : self.corresponding_gene_call,
+            "structure_exists"          : False,
+            "best_model_path"           : None,
+            "best_score"                : None,
+            "scoring_method"            : self.scoring_method,
+            "percent_cutoff"  : self.percent_cutoff,
+            "alignment_fraction_cutoff" : self.alignment_fraction_cutoff,
+            "very_fast"                 : self.very_fast,
+            "deviation"                 : self.deviation,
+            "directory"                 : self.directory,
         }
 
         # copy fasta into the working directory
@@ -502,9 +503,11 @@ class MODELLER:
         # Change to MODELLER working directory
         os.chdir(self.directory)
 
+        columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gaps', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
         driver = diamond.Diamond(
             query_fasta=self.target_fasta_path,
             target_fasta=J(self.database_dir, self.modeller_database + '.dmnd'),
+            outfmt=' '.join(['6'] + columns),
             run=terminal.Run(verbose=False),
             progress=terminal.Progress(verbose=False),
         )
@@ -521,37 +524,47 @@ class MODELLER:
             self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
             raise self.EndModeller
 
-        # We need the gene length for proper_pident
+        # We need the gene length for pident
         target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         while next(target_fasta):
             gene_length = len(target_fasta.seq)
 
         # add some useful columns
-        search_df["proper_pident"] = search_df["pident"] * search_df["length"] / gene_length
         search_df["code"] = search_df["sseqid"].str[:-1]
         search_df["chain"] = search_df["sseqid"].str[-1]
+        search_df["align_fraction"] = (search_df["length"] - search_df["gaps"]) / gene_length
+        search_df["proper_pident"] = search_df["pident"] * search_df["align_fraction"]
 
-        # filter results by self.percent_identical_cutoff.
-        max_pident_found = search_df["proper_pident"].max()
-        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
-        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
+        # Find best match for align fraction and pident
+        code_chain_id_of_best = tuple(search_df.iloc[search_df['proper_pident'].argmax()][['code', 'chain']].values)
+        best_hit = search_df.loc[
+            (search_df['code'] == code_chain_id_of_best[0]) & \
+            (search_df['chain'] == code_chain_id_of_best[1]), ['pident', 'align_fraction']
+        ].iloc[0]
 
+        # filter results by self.percent_cutoff and self.alignment_fraction_cutoff
+        search_df = search_df[search_df["pident"] >= self.percent_cutoff]
+        search_df = search_df[search_df["align_fraction"] >= self.alignment_fraction_cutoff]
+
+        # Rank by the alignment fraction times the percent id
         search_df = search_df.sort_values("proper_pident", ascending=False)
 
         # If more than 1 template in 1 PDB id, just choose 1
         search_df = search_df.drop_duplicates('code', keep='first')
 
-        # Order them and take the first self.modeller.max_number_templates.
+        # Take the first self.modeller.max_number_templates.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
-            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
-                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
-                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
+            self.run.warning("Gene {} did not have a search result with percent identicalness above or equal "
+                             "to {}% and alignment fraction above {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
+                             "percent identicalness of {:.2f}% and an alignment fraction of {:.3f}. No structure will be modelled.".\
                               format(self.corresponding_gene_call,
-                                     self.percent_identical_cutoff,
-                                     id_of_max_pident[1],
-                                     id_of_max_pident[0],
-                                     max_pident_found))
+                                     self.percent_cutoff,
+                                     self.alignment_fraction_cutoff,
+                                     code_chain_id_of_best[1],
+                                     code_chain_id_of_best[0],
+                                     best_hit['pident'],
+                                     best_hit['align_fraction']))
             raise self.EndModeller
 
         # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
@@ -562,20 +575,22 @@ class MODELLER:
 
         self.run.info("Max number of templates allowed", self.max_number_templates)
         self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
+        self.run.info("After >{}% identical filter".format(self.percent_cutoff), matches_after_filter)
         self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
 
         # update user on which templates are used, and write the templates to self.out
         for i in range(len(self.list_of_template_code_and_chain_ids)):
             pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
-            ppi = search_df["proper_pident"].iloc[i]
+            ppi = search_df["pident"].iloc[i]
+            align_fraction = search_df["align_fraction"].iloc[i]
 
             self.out["templates"]["pdb_id"].append(pdb_id)
             self.out["templates"]["chain_id"].append(chain_id)
             self.out["templates"]["ppi"].append(ppi)
+            self.out["templates"]["align_fraction"].append(align_fraction)
 
             self.run.info("Template {}".format(i+1),
-                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
+                          "Protein ID: {}, Chain {} ({:.1f}% identical, {:.2f} align fraction)".format(pdb_id, chain_id, ppi, align_fraction))
 
 
     def check_database(self):
