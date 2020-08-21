@@ -1,329 +1,284 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import anvio.fastalib
-import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
 
-import argparse
-import os
-import pandas as pd
-import pysam
-import re
-import sys
-import tempfile
+from anvio.sequence import Aligner, AlignedTarget, Alignment
 
-from anvio.errors import ConfigError, FilesNPathsError
+import functools
+import multiprocessing
+import sys
 
 from copy import deepcopy
+from collections import deque
 
 
-# For huge datasets, the default recursion limit of 1,000 can be exceeded.
+# Increase the recursion limit from the default of 1,000 to near the maximum.
+# Multiprocessing can raise an exception when returning results when pickle hits the recursion limit.
+# Set the multiprocessing chunk size to the relatively small value (for tRNA-seq datasets) of 1,000,
+# limiting the number of items returned.
+# However, the size of each item can still be large, so play it safe with the recursion limit.
 sys.setrecursionlimit(10000)
+chunksize=1000
+
 
 class Agglomerator:
-    def __init__(
-        self,
-        input_fasta_path=None,
-        input_bam_path=None,
-        output_fasta_path=None,
-        output_bam_path=None,
-        replicates_path=None,
-        order_by_replicate_abundance=True,
-        max_possible_alignments=2,
-        sort_index_bam_output=True,
-        run=None,
-        progress=None,
-        verbose=False):
+    def __init__(self, seq_names, seq_strings, max_mismatch_freq=0, num_threads=1, progress=None):
+        self.seq_names = seq_names
+        self.seq_strings = seq_strings
+        self.max_mismatch_freq = max_mismatch_freq
 
-        self.input_fasta_path = input_fasta_path
-        self.input_bam_path = input_bam_path
-        self.output_bam_path = output_bam_path
-        self.replicates_path = replicates_path
-        self.order_by_replicate_abundance = order_by_replicate_abundance
-        self.max_possible_alignments = max_possible_alignments
-        self.sort_index_bam_output = sort_index_bam_output
-        self.output_fasta_path = output_fasta_path
-        if run:
-            self.run = run
-        else:
-            self.run = terminal.Run()
-        if progress:
-            self.progress = progress
-        else:
-            self.progress = terminal.Progress()
-            self.progress.new("Agglomerating sequence alignments")
-        self.verbose = verbose
-
-        self.seed_count = 0
-
-        self.make_entries_for_replicate_seqs = False
-        self.replicate_name_dict = None
-
-        self.processed_ref_names = []
-        self.ref_seq = None
-
-        self.sanity_check()
-
-        self.init()
-
-
-    def sanity_check(self):
-        if not filesnpaths.is_file_exists(self.input_fasta_path, dont_raise=True):
-            raise FilesNPathsError(
-                "Your `input_fasta_path`, %s, does not exist." % self.input_fasta_path)
-
-        if not filesnpaths.is_file_exists(self.input_bam_path, dont_raise=True):
-            raise FilesNPathsError(
-                "Your `input_bam_path`, %s, does not exist." % self.input_bam_path)
-
-        if filesnpaths.is_file_exists(self.output_bam_path, dont_raise=True):
-            raise FilesNPathsError(
-                "Your `output_bam_path`, %s, already exists." % self.output_bam_path)
-
-        if filesnpaths.is_file_exists(self.output_fasta_path, dont_raise=True):
-            raise FilesNPathsError(
-                "Your `output_fasta_path`, %s, already exists." % self.output_fasta_path)
-
-        if self.replicates_path:
-            if not filesnpaths.is_file_exists(self.replicates_path, dont_raise=True):
-                raise FilesNPathsError(
-                    "Your `replicates_path`, %s, does not exist." % self.replicates_path)
-
-        if self.max_possible_alignments < 2:
-            raise ConfigError(
-                "Your value for `max_possible_alignments`, %d, "
-                "was less than the required minimum value of 2." % self.max_possible_alignments)
-
-
-    def init(self):
-        if self.replicates_path is None and self.order_by_replicate_abundance is True:
-            self.order_by_replicate_abundance = False
-
-        self.input_fasta = anvio.fastalib.SequenceSource(self.input_fasta_path, lazy_init=False)
-        self.ref_seq_count = self.input_fasta.total_seq
-
-        self.input_bam = pysam.AlignmentFile(self.input_bam_path, 'rb')
-
-        if self.sort_index_bam_output:
-            self.raw_output_bam_path = os.path.splitext(self.output_bam_path)[0] + "-RAW.bam"
-        else:
-            self.raw_output_bam_path = self.output_bam_path
-        self.raw_output_bam = pysam.AlignmentFile(
-            self.raw_output_bam_path, 'wb', header=self.input_bam.header.as_dict())
-
-        self.output_fasta = anvio.fastalib.FastaOutput(self.output_fasta_path)
-
-        if not self.replicates_path:
-            return
-
-        replicates_df = pd.read_csv(self.replicates_path, sep='\t', header=0)
-        if len(replicates_df.columns) == 2:
-            replicates_df.columns = ['ref_name', 'replicate_count']
-        elif len(replicates_df.columns) == 3:
-            replicates_df.columns = ['ref_name', 'replicate_count', 'replicate_names']
-            self.make_entries_for_replicate_seqs = True
-            self.replicate_name_dict = {}
-            for ref_name, replicate_names in zip(
-                replicates_df['ref_name'], replicates_df['replicate_names']):
-                self.replicate_name_dict[ref_name] = replicate_names.split(',')
-        else:
-            raise ConfigError(
-                "Your `replicates_txt` file, %s, "
-                "should have two or three tab-separated columns without headers. "
-                "The first two columns should always be sequence name and replicate count. "
-                "The third column should be provided "
-                "if you need individual entries for each replicate sequence in the output BAM file. "
-                "The third column is replicate sequence names. "
-                "Each entry is replicate sequence names separated by commas, "
-                "e.g., seq1,seq2,seq3" % self.replicates_path)
+        self.num_threads = num_threads
+        self.progress = progress
 
 
     def agglomerate(self):
+        if self.progress:
+            self.progress.update("Aligning sequences to themselves")
+        # The `aligned_query_dict` output of `Aligner.align`
+        # is named `agglomerated_aligned_query_dict` and modified during agglomeration.
+        (agglomerated_aligned_query_dict,
+         aligned_reference_dict) = Aligner(self.seq_names,
+                                           self.seq_strings,
+                                           self.seq_names,
+                                           self.seq_strings,
+                                           num_threads=self.num_threads,
+                                           progress=self.progress).align(max_mismatch_freq=self.max_mismatch_freq)
+        for agglomerated_aligned_query in agglomerated_aligned_query_dict.values():
+            agglomerated_aligned_query.alignments = []
 
-        num_processed_ref_seqs = 0
-        while next(self.input_fasta):
-            self.ref_seq = self.input_fasta.seq
-            self.remap_queries(self.input_fasta.id)
+        if self.progress:
+            self.progress.update("Agglomerating alignments")
+        # Agglomerated clusters should preferentially be seeded
+        # by the longest reference sequences with the most alignments.
+        ordered_reference_names = [aligned_reference.name for aligned_reference
+                                   in sorted(aligned_reference_dict.values(),
+                                             key=lambda aligned_reference: (-len(aligned_reference.seq_string),
+                                                                            -len(aligned_reference.alignments),
+                                                                            aligned_reference.name))]
+        ordered_reference_inputs = [(ordered_reference_name, i)
+                                    for i, ordered_reference_name in enumerate(ordered_reference_names)]
 
-            num_processed_ref_seqs += 1
-            self.progress.increment(num_processed_ref_seqs)
-            if self.verbose:
-                self.progress.update(
-                    "%d/%d sequences processed" % (num_processed_ref_seqs, self.ref_seq_count))
+        # This dict is used to track which sequences have been agglomerated.
+        # Keys are sequence names; values are agglomerated reference index from `ordered_reference_names`.
+        # When a sequence is agglomerated, either as the seed of a cluster or a member,
+        # this dict is updated with the index of its agglomerated reference sequence
+        # IF the index is lower than the existing index for the sequence in the dict.
+        # After multiprocessing, this dict indicates which clusters are spurious
+        # due to their seeds also being queries aligned to higher-priority seeds (lower index in `ordered_reference_names`).
+        # Spurious clusters that need to be removed post facto are an inevitability of parallelization
+        # due to lower-priority references occasionally being processed before higher-priority references in different processes.
+        manager = multiprocessing.Manager()
+        processed_reference_dict = manager.dict([(ordered_reference_name, len(ordered_reference_names))
+                                                 for ordered_reference_name in ordered_reference_names])
+        lock = multiprocessing.Lock()
 
-        self.raw_output_bam.close()
-        self.output_fasta.close()
+        # Set static parameters in the multiprocessing target function.
+        target = functools.partial(remap_queries,
+                                   processed_reference_dict=processed_reference_dict,
+                                   aligned_reference_dict=aligned_reference_dict,
+                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict)
 
-        if self.sort_index_bam_output:
-            pysam.sort('-o', self.output_bam_path, self.raw_output_bam_path)
-            pysam.index(self.output_bam_path)
-            os.remove(self.raw_output_bam_path)
+        # The lock used with the shared dict, `processed_reference_dict`,
+        # cannot be serialized and so cannot be passed to spawned processes.
+        # This is circumvented by including the lock as a global variable in the forked parent process.
+        pool = multiprocessing.Pool(self.num_threads, initializer=initialize, initargs=(lock, ))
 
-        self.run.info("Seed sequences found", self.seed_count)
+        agglomerated_references = []
+        processed_input_count = 0
+        total_input_count = len(ordered_reference_inputs)
+
+        for agglomerated_reference in pool.imap_unordered(target,
+                                                          ordered_reference_inputs,
+                                                          chunksize=chunksize):
+            if agglomerated_reference:
+                agglomerated_references.append(agglomerated_reference)
+            processed_input_count += 1
+
+            if self.progress:
+                if processed_input_count % 10000 == 0:
+                    self.progress.update("%d/%d sequences processed in agglomerative remapping"
+                                        % (processed_input_count, total_input_count))
+        pool.close()
+        pool.join() # allow processes to terminate
+        if self.progress:
+            self.progress.update("%d/%d sequences processed in agglomerative remapping"
+                                % (total_input_count, total_input_count))
+
+        removal_indices = []
+        candidate_agglomerated_reference_names = [agglomerated_reference.name
+                                                  for agglomerated_reference in agglomerated_references]
+        for reference_name, lowest_reference_index in processed_reference_dict.items():
+            if reference_name in candidate_agglomerated_reference_names:
+                if lowest_reference_index < ordered_reference_names.index(reference_name):
+                    removal_indices.append(candidate_agglomerated_reference_names.index(reference_name))
+        removal_indices.sort(reverse=True)
+        for removal_index in removal_indices:
+            agglomerated_references.pop(removal_index)
+
+        agglomerated_aligned_reference_dict = {agglomerated_reference.name: agglomerated_reference
+                                               for agglomerated_reference in agglomerated_references}
+
+        return agglomerated_aligned_query_dict, agglomerated_aligned_reference_dict
 
 
-    def remap_queries(
-        self,
-        rn_name,
-        recursion_count=0,
-        r0_name=None,
-        r_name_in_recursion_list=None,
-        rn_start_in_r0=0,
-        m0_dict=None,
-        rn_m0_in_r0_list=None):
+def initialize(_lock):
+    global lock
+    lock = _lock
 
-        """
-        ABBREVIATIONS
-        =============
-        Root reference = r0
-        Current reference = rn
-        Query = q
-        Mismatch relative to current reference = mn
-        Mismatch relative to root reference = m0
-        Mismatched nucleotide position index in current reference = mni
-        Mismatched root nucleotide position index in root reference = m0i
-        Mismatched root nucleotide position index in alignment = m0ai
-        Nucleotide = nt
-        Alignment = a
-        Start position index = start
-        End position index = end
-        """
 
-        if recursion_count == 0:
-            if rn_name in self.processed_ref_names:
-                # The reference sequence has already been processed,
-                # because it mapped to another reference sequence which was processed.
-                return
-            self.processed_ref_names.append(rn_name)
+def remap_queries(reference_input_item,
+                  processed_reference_dict,
+                  aligned_reference_dict,
+                  agglomerated_aligned_query_dict):
+    input_reference_name, agglomerated_reference_priority = reference_input_item
 
-            r0_name = rn_name
-            # Track the references processed in the root and recursive function calls.
-            r_name_in_recursion_list = [rn_name]
-            m0_dict = {}
-            # Record mismatches between query sequences and the root reference sequence,
-            # with the coordinate system being nucleotide positions in the root reference.
-            rn_m0_in_r0_list = []
+    with lock:
+        if agglomerated_reference_priority >= processed_reference_dict[input_reference_name]:
+            # The reference sequence has already been processed,
+            # as it mapped to another reference sequence that had been processed.
+            return None
 
-        # These are AlignedSegment objects,
-        # each recording a mapping of a query to the current reference.
-        alis = [ali for ali in self.input_bam.fetch(rn_name)]
-        for ali in alis:
-            q_name = ali.query_name
+        processed_reference_dict[input_reference_name] = agglomerated_reference_priority
 
-            if q_name == rn_name:
-                # Ignore a reference sequence mapping to itself.
+    aligned_reference = aligned_reference_dict[input_reference_name]
+    agglomerated_aligned_reference = AlignedTarget(aligned_reference.seq_string, name=input_reference_name)
+
+    # Track the references processed within this function call.
+    presently_processed_reference_names = [input_reference_name]
+
+    remapping_stack = deque()
+    remapping_stack.append((input_reference_name, aligned_reference, 0, {}, []))
+
+    while remapping_stack:
+        remapping_item = remapping_stack.pop()
+        current_reference_name = remapping_item[0]
+        current_aligned_reference = remapping_item[1]
+        # Record mismatches between query sequences and the agglomerated reference sequence,
+        # with the coordinate system being nucleotide positions in the agglomerated reference.
+        current_reference_start_in_agglomerated_reference = remapping_item[2]
+        agglomerated_reference_mismatch_dict = remapping_item[3]
+        current_reference_mismatches_to_agglomerated_reference = remapping_item[4]
+
+        next_remapping_items = []
+        for alignment in current_aligned_reference.alignments:
+            alignment_length = alignment.alignment_length
+            aligned_query = alignment.aligned_query
+            query_name = aligned_query.name
+            query_seq_string = aligned_query.seq_string
+
+            if query_name == current_reference_name:
+                # Ignore a sequence mapping to itself.
                 continue
 
-            if q_name in r_name_in_recursion_list:
-                # The query was already processed as a reference in a previous layer of recursion.
+            if query_name in presently_processed_reference_names:
+                # The query was already processed in this function call,
+                # as it mapped to another agglomerated query.
                 continue
 
-            if q_name in self.processed_ref_names:
-                # The query was already processed as a reference,
-                # but not within the current recursive call tree.
-                continue
+            # In the next iteration, the current query sequence will be investigated as a reference.
+            presently_processed_reference_names.append(query_name)
+            with lock:
+                if agglomerated_reference_priority < processed_reference_dict[query_name]:
+                    processed_reference_dict[query_name] = agglomerated_reference_priority
 
             # Get the mismatches between the query and the current reference,
             # with the coordinate system being nucleotide positions in the current reference.
-            q_mn_in_rn_list = self.get_q_mn_in_rn_list(ali.get_tag('MD'))
+            query_mismatches_to_current_reference_in_alignment_frame = []
+            current_reference_seq_string = alignment.aligned_target.seq_string
+            alignment_start_in_current_reference = alignment.target_start
+            current_reference_index = alignment_start_in_current_reference
+            for cigartuple in alignment.cigartuples:
+                if cigartuple[0] == 8:
+                    for incremental_index in range(cigartuple[1]):
+                        mismatch_index = current_reference_index + incremental_index
+                        current_reference_nucleotide = current_reference_seq_string[mismatch_index]
+                        query_mismatches_to_current_reference_in_alignment_frame.append((mismatch_index - alignment_start_in_current_reference,
+                                                                                         current_reference_nucleotide))
+                current_reference_index += cigartuple[1]
 
-            # Position of the alignment in the coordinate system of the root reference sequence.
-            a_start_in_r0 = rn_start_in_r0 + ali.reference_start
+            # Position of the alignment in the coordinate system of the agglomerated reference sequence.
+            alignment_start_in_agglomerated_reference = current_reference_start_in_agglomerated_reference + alignment_start_in_current_reference
+            alignment_end_in_agglomerated_reference = alignment_start_in_agglomerated_reference + alignment_length
 
-            # Add newly found mismatch positions to lists
-            # relating the positions of mismatches in the root reference
-            # to the nucleotide in the root reference.
-            # The first list uses positions in the root reference.
-            q_m0_in_r0_list = []
-            # The second dictionary uses positions in the current reference.
-            q_m0_in_a_list = []
-            for mni, mn_nt in q_mn_in_rn_list:
-                m0i = mni + rn_start_in_r0
-                if m0i in m0_dict:
-                    m0_nt = m0_dict[m0i]
+            # Record mismatches between the query and current reference
+            # that are also mismatches between the query and agglomerated reference.
+            # When a new mismatch with the agglomerated reference is encountered,
+            # it is added to the dict of all agglomerated reference mismatches.
+            query_mismatches_to_agglomerated_reference = []
+            query_mismatches_to_agglomerated_reference_in_alignment_frame = []
+            for alignment_index, current_reference_nucleotide in query_mismatches_to_current_reference_in_alignment_frame:
+                agglomerated_reference_index = alignment_index + alignment_start_in_agglomerated_reference
+                if agglomerated_reference_index in agglomerated_reference_mismatch_dict:
+                    agglomerated_reference_nucleotide = agglomerated_reference_mismatch_dict[agglomerated_reference_index]
+                    query_nucleotide = query_seq_string[alignment_index]
+                    if agglomerated_reference_nucleotide == query_nucleotide:
+                        continue
                 else:
-                    m0_nt = mn_nt
-                    m0_dict[m0i] = m0_nt
-                q_m0_in_r0_list.append((m0i, m0_nt))
-                q_m0_in_a_list.append((mni, m0_nt))
+                    agglomerated_reference_nucleotide = current_reference_nucleotide
+                    agglomerated_reference_mismatch_dict[agglomerated_reference_index] = agglomerated_reference_nucleotide
+                query_mismatches_to_agglomerated_reference.append((agglomerated_reference_index,
+                                                                   agglomerated_reference_nucleotide))
+                query_mismatches_to_agglomerated_reference_in_alignment_frame.append((alignment_index,
+                                                                                      agglomerated_reference_nucleotide))
 
-            # Find all mismatches between the query and root reference.
-            # Mismatches between the query and the current reference were just found,
-            # but in previous recursive layers,
-            # other mismatches between references and the root reference were found.
-            # Ignore mismatches that lie outside the bounds of the current alignment.
-            q_m0i_list = [t[0] for t in q_m0_in_r0_list]
-            for rn_m0i, rn_m0_nt in rn_m0_in_r0_list:
-                if rn_m0i in q_m0i_list:
-                    # The mismatch position has already been considered.
-                    # Multiple mutations in different recursive layers
-                    # separate the query from the root reference at this position.
+            # In addition to mismatches between the query and current reference
+            # that are also mismatches to the agglomerated reference,
+            # record mismatches between the query and agglomerated reference
+            # at positions where the current reference matches the agglomerated reference.
+            query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices = [alignment_index + alignment_start_in_agglomerated_reference
+                                                                                           for alignment_index, _
+                                                                                           in query_mismatches_to_current_reference_in_alignment_frame]
+            for agglomerated_reference_index, agglomerated_reference_nucleotide in current_reference_mismatches_to_agglomerated_reference:
+                if agglomerated_reference_index in query_mismatch_to_current_reference_in_agglomerated_reference_frame_indices:
+                    # The mismatch position has already been considered,
+                    # as there is a mismatch between the query and current reference at this position as well.
                     continue
-                if rn_m0i >= a_start_in_r0:
-                    q_m0_in_r0_list.append((rn_m0i, rn_m0_nt))
-                    q_m0_in_a_list.append((rn_m0i - a_start_in_r0, rn_m0_nt))
+                if alignment_start_in_agglomerated_reference <= agglomerated_reference_index < alignment_end_in_agglomerated_reference:
+                    # Ignore mismatches that lie outside the bounds of the alignment between the query and current reference.
+                    query_mismatches_to_agglomerated_reference.append((agglomerated_reference_index,
+                                                                       agglomerated_reference_nucleotide))
+                    query_mismatches_to_agglomerated_reference_in_alignment_frame.append((agglomerated_reference_index - alignment_start_in_agglomerated_reference,
+                                                                                          agglomerated_reference_nucleotide))
 
-            # In the next recursion, the query sequence is investigated as a reference.
-            r_name_in_recursion_list.append(q_name)
-            self.processed_ref_names.append(q_name)
+            # Change the properties of the alignment to reflect remapping to the agglomerated reference.
+            cigartuples = []
+            # Sort mismatches by position.
+            query_mismatches_to_agglomerated_reference_in_alignment_frame.sort(key=lambda query_mismatch_item: query_mismatch_item[0])
+            prev_alignment_index = -1
+            prev_agglomerated_reference_nucleotide = ''
+            for alignment_index, agglomerated_reference_nucleotide in query_mismatches_to_agglomerated_reference_in_alignment_frame:
+                if alignment_index > prev_alignment_index + 1:
+                    cigartuples.append((7, alignment_index - prev_alignment_index - 1))
+                if cigartuples:
+                    if cigartuples[-1][0] == 8:
+                        cigartuples[-1] = (8, cigartuples[-1][1] + 1)
+                    else:
+                        cigartuples.append((8, 1))
+                else:
+                    cigartuples.append((8, 1))
+                prev_alignment_index = alignment_index
+                prev_agglomerated_reference_nucleotide = agglomerated_reference_nucleotide
+            if alignment_length > prev_alignment_index + 1:
+                cigartuples.append((7, alignment_length - prev_alignment_index - 1))
 
-            self.remap_queries(
-                q_name,
-                recursion_count=recursion_count + 1,
-                r0_name=r0_name,
-                r_name_in_recursion_list=r_name_in_recursion_list,
-                rn_start_in_r0=a_start_in_r0,
-                m0_dict=deepcopy(m0_dict),
-                rn_m0_in_r0_list=deepcopy(q_m0_in_r0_list))
+            agglomerated_aligned_query = agglomerated_aligned_query_dict[query_name]
+            agglomerated_alignment = Alignment(alignment.query_start,
+                                               alignment_start_in_agglomerated_reference,
+                                               cigartuples,
+                                               aligned_query=agglomerated_aligned_query,
+                                               aligned_target=agglomerated_aligned_reference)
+            agglomerated_aligned_query.alignments.append(agglomerated_alignment)
+            agglomerated_aligned_reference.alignments.append(agglomerated_alignment)
 
-            # Change the alignment object to reflect the remapping to the root reference.
-            ali.reference_name = r0_name
-            ali.reference_start = a_start_in_r0
-            ali.set_tag('NM', len(q_m0_in_r0_list))
-            ali.set_tag('XM', len(q_m0_in_r0_list))
+            next_remapping_items.append((query_name,
+                                         aligned_reference_dict[query_name],
+                                         alignment_start_in_agglomerated_reference,
+                                         dict(agglomerated_reference_mismatch_dict.items()),
+                                         [mismatch_tuple for mismatch_tuple
+                                          in current_reference_mismatches_to_agglomerated_reference]))
 
-            md_tag = ''
-            # Sort the mismatches by position.
-            q_m0_in_a_list.sort(key=lambda t: t[0])
-            prev_m0ai = -1
-            prev_m0_nt = ''
-            for m0ai, m0_nt in q_m0_in_a_list:
-                md_tag += str(m0ai - prev_m0ai - 1) + m0_nt
-                prev_m0ai = m0ai
-                prev_m0_nt = m0_nt
-            md_tag += str(ali.alen - prev_m0ai - 1)
-            ali.set_tag('MD', md_tag)
+        for next_remapping_item in next_remapping_items[::-1]:
+            remapping_stack.append(next_remapping_item)
 
-            if self.make_entries_for_replicate_seqs:
-                # The user wanted an identical entry in the BAM file for each replicate sequence.
-                for replicate_name in self.replicate_name_dict[q_name]:
-                    ali.query_name = replicate_name
-                    self.raw_output_bam.write(ali)
-            else:
-                self.raw_output_bam.write(ali)
-
-        if recursion_count == 0:
-            # Write a FASTA file of root, or "seed", sequences.
-            self.output_fasta.write_id(rn_name)
-            self.output_fasta.write_seq(self.ref_seq, split=False)
-            self.seed_count += 1
-
-        return
-
-
-    def get_q_mn_in_rn_list(self, md_tag):
-        # The format of an MD tag is [0-9]+(([A-Z]|\^[A-Z]+)[0-9]+)*
-        # If two mismatches or deletions are adjacent
-        # without a run of identical bases between them,
-        # a ‘0’ (indicating a 0-length run) separates them.
-        md_parts = re.split('(\D+)', md_tag)
-        q_mn_in_rn_list = []
-
-        mi = int(md_parts[0])
-
-        iterator = iter(md_parts[1:])
-        for s in iterator:
-            q_mn_in_rn_list.append((mi, s))
-            mi += int(next(iterator)) + 1
-        return q_mn_in_rn_list
+    return agglomerated_aligned_reference

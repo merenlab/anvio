@@ -303,14 +303,17 @@ trnaseq_unpaired_table_name             = 'unpaired_nucleotides'
 trnaseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
 trnaseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
 
-trnaseq_normalization_table_name        = 'normalization'
-trnaseq_normalization_table_structure   = ['name', 'unique_seq_count', 'input_seq_count', 'sequence', 'fiveprime_unique_seq_count', 'fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
-trnaseq_normalization_table_types       = ['str' , 'numeric'         , 'numeric'        , 'str'     , 'numeric'                   , 'numeric'                  ] + ['numeric' for _ in THREEPRIME_VARIANTS]
+trnaseq_trimmed_table_name              = 'trimmed'
+trnaseq_trimmed_table_structure         = ['name', 'unique_seq_count', 'input_seq_count', 'sequence', 'normalized_seq_representation', 'fiveprime_unique_seq_count', 'fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
+trnaseq_trimmed_table_types             = ['str' , 'numeric'         , 'numeric'        , 'str'     , 'numeric'                      , 'numeric'                   , 'numeric'                  ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
-trnaseq_subseq_derep_table_name           = 'subseq_dereplication'
-trnaseq_subseq_derep_table_structure      = ['name', 'normalized_seq_count', 'input_seq_count', 'average_subsequence_multiplicity', 'interior_unique_seq_count', 'interior_input_seq_count', 'fiveprime_unique_seq_count', 'fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
-trnaseq_subseq_derep_table_types          = ['str' , 'numeric'             , 'numeric'        , 'numeric'                         , 'numeric'                  , 'numeric'                 , 'numeric'                   , 'numeric'                  ] + ['numeric' for _ in THREEPRIME_VARIANTS]
+trnaseq_normalized_table_name           = 'normalized'
+trnaseq_normalized_table_structure      = ['name', 'trimmed_seq_count', 'input_seq_count', 'average_input_seq_multiplicity', 'mapped_threeprime_trimmed_seq_count', 'mapped_threeprime_input_seq_count', 'mapped_interior_trimmed_seq_count', 'mapped_interior_input_seq_count', 'mapped_fiveprime_trimmed_seq_count', 'mapped_fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
+trnaseq_normalized_table_types          = ['str' , 'numeric'          , 'numeric'        , 'numeric'                       , 'numeric'                            , 'numeric'                          , 'numeric'                          , 'numeric'                        , 'numeric'                           , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
+trnaseq_modified_table_name             = 'modified'
+trnaseq_modified_table_structure        = ['name', 'modification_positions', 'consensus_sequence', 'normalized_names', 'normalized_seq_count', 'input_seq_count', 'average_input_seq_multiplicity', 'mapped_threeprime_input_seq_count', 'mapped_interior_input_seq_count', 'mapped_fiveprime_input_seq_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
+trnaseq_modified_table_types            = ['str' , 'str'                   , 'str'               , 'str'             , 'numeric'             , 'numeric'        , 'numeric'                       , 'numeric'                          , 'numeric'                        , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
 ####################################################################################################
 #
@@ -406,6 +409,7 @@ requires_unique_entry_id = {
     trnaseq_features_table_name: False,
     trnaseq_unconserved_table_name: False,
     trnaseq_unpaired_table_name: False,
-    trnaseq_normalization_table_name: False,
-    trnaseq_subseq_derep_table_name: False
+    trnaseq_trimmed_table_name: False,
+    trnaseq_normalized_table_name: False,
+    trnaseq_modified_table_name: False
 }
