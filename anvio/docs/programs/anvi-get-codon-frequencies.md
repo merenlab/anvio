@@ -7,9 +7,9 @@ anvi-get-codon-frequencies -c %(contigs-db)s \
                 -o name/of/output_file.txt 
 {{ codestop }}
 
-The output of this is a %(codon-frequencies-txt)s that counts the number of each codon that appears in all of your genes.
+The output of this is a %(codon-frequencies-txt)s that counts the number of times each codon appears in all of your genes.
 
-If instead you want to calculate the data for the amino acids (this time looking at only a specific gene), run 
+If instead you want to calculate the data for the amino acids, run 
 
 {{ codestart }}
 anvi-get-codon-frequencies -c %(contigs-db)s \ 
@@ -18,4 +18,6 @@ anvi-get-codon-frequencies -c %(contigs-db)s \
                 --gene-caller-id MY_FAVORITE_GENE
 {{ codestop }}
 
-You can also return the data as a percent of the total number of codons or amino acids in the gene (`--percent-normalize`), or calculate the percent that each codon encoding the same amino acid appears in the gene (for example, 0.4 GCT and 0.6 GCC for alanine) (`--merens-codon-normalization`). 
+In this example, the flag `gene-caller-id` means that it will only count the amino acid frequencies of a single gene, namely `MY_FAVORITE_GENE`.
+
+You can also return the data as a percent of the total number of codons or amino acids in the gene (with the flag `--percent-normalize`) or calculate the percent that each codon encoding the same amino acid appears in the gene (for example, 0.4 GCT and 0.6 GCC for alanine) (with the flag `--merens-codon-normalization`). 
