@@ -14,8 +14,8 @@ This will import the collection indicated in `my_bins.txt` into your %(profile-d
 
 `my_bins.txt` should be a tab-delimited file where the first column lists a split name and the second lists the bin that it is placed in. You can see an example of this [here](https://github.com/merenlab/anvio/blob/master/anvio/tests/sandbox/example_files_for_external_binning_results/external_binning_of_splits.txt). 
 
-You can also provide this information by listing your contigs instead of your splits (like [this](https://github.com/merenlab/anvio/blob/master/anvio/tests/sandbox/example_files_for_external_binning_results/external_binning_of_contigs.txt)), by adding the `--contigs-mode` tag. 
+You can also provide this information by listing your contigs instead of your splits (like [this](https://github.com/merenlab/anvio/blob/master/anvio/tests/sandbox/example_files_for_external_binning_results/external_binning_of_contigs.txt)). Just add the `--contigs-mode` tag. 
 
-You can also provide an information file to describe the source and/or colors of your bins. [This file](https://github.com/merenlab/anvio/blob/master/anvio/tests/sandbox/example_files_for_external_binning_results/example_bins_info_file.txt) is an example of that information file. 
+You can also provide an information file to describe the source and/or colors of your bins. [This file](https://github.com/merenlab/anvio/blob/master/anvio/tests/sandbox/example_files_for_external_binning_results/example_bins_info_file.txt) is an example of such an information file. 
 
 
