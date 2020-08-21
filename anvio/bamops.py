@@ -65,7 +65,7 @@ class BAMFileObject(pysam.AlignmentFile):
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
         """Returns an read iterator that trims overhanging reads
 
-        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
+        Like pysam.AlignmentFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop.
         """
 
@@ -219,16 +219,7 @@ class Read:
         self.reference_end = read.reference_end
 
         if read.has_tag('MD'):
-            try:
-                self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
-            except AssertionError:
-                print(read.reference_name)
-                print(read.query_name)
-                print(read.query_sequence)
-                print(self.cigartuples)
-                print(self.reference_start)
-                print(self.reference_end)
-                self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
+            self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         else:
             self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
 
