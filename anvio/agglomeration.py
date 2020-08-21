@@ -13,10 +13,11 @@ from copy import deepcopy
 from collections import deque
 
 
-# Increase the recursion limit from the default of 1,000.
+# Increase the recursion limit from the default of 1,000 to near the maximum.
 # Multiprocessing can raise an exception when returning results when pickle hits the recursion limit.
-# The multiprocessing chunk size is set to the relatively small value (for tRNA-seq datasets) of 1,000,
-# limiting the number of items returned, but the size of each item can still be large, so play it safe.
+# Set the multiprocessing chunk size to the relatively small value (for tRNA-seq datasets) of 1,000,
+# limiting the number of items returned.
+# However, the size of each item can still be large, so play it safe with the recursion limit.
 sys.setrecursionlimit(10000)
 chunksize=1000
 
@@ -70,13 +71,15 @@ class Agglomerator:
         manager = multiprocessing.Manager()
         processed_reference_dict = manager.dict([(ordered_reference_name, len(ordered_reference_names))
                                                  for ordered_reference_name in ordered_reference_names])
+        max_remapping_depth = manager.Value("i", 0)
         lock = multiprocessing.Lock()
 
         # Set static parameters in the multiprocessing target function.
         target = functools.partial(remap_queries,
                                    processed_reference_dict=processed_reference_dict,
                                    aligned_reference_dict=aligned_reference_dict,
-                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict)
+                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict,
+                                   max_remapping_depth=max_remapping_depth)
 
         # The lock used with the shared dict, `processed_reference_dict`,
         # cannot be serialized and so cannot be passed to spawned processes.
@@ -94,8 +97,8 @@ class Agglomerator:
                 agglomerated_references.append(agglomerated_reference)
             processed_input_count += 1
 
-            if processed_input_count % 10000 == 0:
-                if self.progress:
+            if self.progress:
+                if processed_input_count % 10000 == 0:
                     self.progress.update("%d/%d sequences processed in agglomerative remapping"
                                         % (processed_input_count, total_input_count))
         pool.close()
@@ -103,6 +106,7 @@ class Agglomerator:
         if self.progress:
             self.progress.update("%d/%d sequences processed in agglomerative remapping"
                                 % (total_input_count, total_input_count))
+        print("Maximum remapping depth: %d" % max_remapping_depth.value, flush=True)
 
         removal_indices = []
         candidate_agglomerated_reference_names = [agglomerated_reference.name
@@ -126,24 +130,11 @@ def initialize(_lock):
     lock = _lock
 
 
-class RemappingItem:
-    def __init__(self,
-                 reference_name,
-                 aligned_reference,
-                 reference_start_in_agglomerated_reference,
-                 agglomerated_reference_mismatch_dict,
-                 reference_mismatches_to_agglomerated_reference):
-        self.reference_name = reference_name
-        self.aligned_reference = aligned_reference
-        self.reference_start_in_agglomerated_reference = reference_start_in_agglomerated_reference
-        self.agglomerated_reference_mismatch_dict = agglomerated_reference_mismatch_dict
-        self.reference_mismatches_to_agglomerated_reference = reference_mismatches_to_agglomerated_reference
-
-
 def remap_queries(reference_input_item,
                   processed_reference_dict,
                   aligned_reference_dict,
-                  agglomerated_aligned_query_dict):
+                  agglomerated_aligned_query_dict,
+                  max_remapping_depth):
     input_reference_name, agglomerated_reference_priority = reference_input_item
 
     with lock:
@@ -161,24 +152,31 @@ def remap_queries(reference_input_item,
     presently_processed_reference_names = [input_reference_name]
 
     remapping_stack = deque()
-    remapping_stack.append(RemappingItem(input_reference_name, aligned_reference, 0, {}, []))
+    remapping_stack.append((input_reference_name, aligned_reference, 0, {}, [], 0))
 
     while remapping_stack:
         remapping_item = remapping_stack.pop()
+        current_reference_name = remapping_item[0]
+        current_aligned_reference = remapping_item[1]
         # Record mismatches between query sequences and the agglomerated reference sequence,
         # with the coordinate system being nucleotide positions in the agglomerated reference.
-        current_reference_start_in_agglomerated_reference = remapping_item.reference_start_in_agglomerated_reference
-        agglomerated_reference_mismatch_dict = remapping_item.agglomerated_reference_mismatch_dict
-        current_reference_mismatches_to_agglomerated_reference = remapping_item.reference_mismatches_to_agglomerated_reference
+        current_reference_start_in_agglomerated_reference = remapping_item[2]
+        agglomerated_reference_mismatch_dict = remapping_item[3]
+        current_reference_mismatches_to_agglomerated_reference = remapping_item[4]
+        remapping_depth = remapping_item[5]
+
+        with lock:
+            if remapping_depth > max_remapping_depth.value:
+                max_remapping_depth.value = remapping_depth
 
         next_remapping_items = []
-        for alignment in remapping_item.aligned_reference.alignments:
+        for alignment in current_aligned_reference.alignments:
             alignment_length = alignment.alignment_length
             aligned_query = alignment.aligned_query
             query_name = aligned_query.name
             query_seq_string = aligned_query.seq_string
 
-            if query_name == remapping_item.reference_name:
+            if query_name == current_reference_name:
                 # Ignore a sequence mapping to itself.
                 continue
 
@@ -282,11 +280,13 @@ def remap_queries(reference_input_item,
             agglomerated_aligned_query.alignments.append(agglomerated_alignment)
             agglomerated_aligned_reference.alignments.append(agglomerated_alignment)
 
-            next_remapping_items.append(RemappingItem(query_name,
-                                                      aligned_reference_dict[query_name],
-                                                      alignment_start_in_agglomerated_reference,
-                                                      dict(agglomerated_reference_mismatch_dict.items()),
-                                                      [mismatch_tuple for mismatch_tuple in current_reference_mismatches_to_agglomerated_reference]))
+            next_remapping_items.append((query_name,
+                                         aligned_reference_dict[query_name],
+                                         alignment_start_in_agglomerated_reference,
+                                         dict(agglomerated_reference_mismatch_dict.items()),
+                                         [mismatch_tuple for mismatch_tuple
+                                          in current_reference_mismatches_to_agglomerated_reference],
+                                        remapping_depth + 1))
 
         for next_remapping_item in next_remapping_items[::-1]:
             remapping_stack.append(next_remapping_item)
