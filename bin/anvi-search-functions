@@ -24,10 +24,10 @@ __provides__ = ['functions-txt',]
 __description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one "
                    "or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates "
                    "multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes "
-                   "with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs "
+                   "with functions matching to search terms you used. This file is only useful to quickly highlight matching contigs "
                    "in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also "
                    "request a much more comprehensive report, which gives you anything you might need to know, including the matching "
-                   "gene caller id, functional annotation source, and full function name for each hit and serach term.")
+                   "gene caller id, functional annotation source, and full function name for each hit and search term.")
 
 
 run = terminal.Run()

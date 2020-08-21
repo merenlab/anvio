@@ -965,7 +965,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ProfileSuperclass.init_items_additional_data(self)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
-        # all the split sequences since only now we know the mun_contig_length that was used to profile
+        # all the split sequences since only now we know the min_contig_length that was used to profile
         # this stuff
         self.init_split_sequences(min_contig_length=self.p_meta['min_contig_length'])
 
