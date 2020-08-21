@@ -4,7 +4,6 @@ Interface to MODELLER (https://salilab.org/modeller/).
 """
 
 import os
-import sys
 import anvio
 import shutil
 import argparse
@@ -18,7 +17,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers import diamond
-from anvio.errors import ConfigError, ModellerError, ModellerScriptError
+from anvio.errors import ConfigError, ModellerError, ModellerScriptError, FilesNPathsError
 
 __author__ = "Evan Kiefl"
 __copyright__ = "Copyright 2016, The anvio Project"
@@ -209,7 +208,7 @@ class MODELLER:
 
             self.out["structure_exists"] = True
 
-        except self.EndModeller as e:
+        except self.EndModeller:
             pass
 
         except ModellerScriptError as e:
@@ -276,9 +275,6 @@ class MODELLER:
 
 
     def sanity_check(self, skip_warnings=False):
-        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null = lambda x: x
-
         # the directory files will be dumped into (can exist but must be empty)
         if filesnpaths.is_file_exists(self.directory, dont_raise=True):
             filesnpaths.is_output_dir_writable(self.directory)
@@ -853,7 +849,7 @@ def check_MODELLER(executable=None):
 
     try:
         utils.is_program_exists(executable)
-    except ConfigError as e:
+    except ConfigError:
         *prefix, sub_version = up_to_date_modeller_exec.split('.')
         prefix, sub_version = ''.join(prefix), int(sub_version)
         for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
