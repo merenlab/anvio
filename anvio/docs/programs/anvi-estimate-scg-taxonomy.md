@@ -4,9 +4,9 @@ This is the final step in the scg-taxonomy workflow (described in its entirety [
 
 [This tutorial](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/#estimating-taxonomy-in-the-terminal) also includes a comprehensive overview of what this program can do. See that page for more information on all of the features described below. 
 
-Keep in mind that this uses single-copy core genes and their hits in the [GTDB](https://gtdb.ecogenomic.org/) database, so it will not work well in bins with low completion or for Eukaryotic organisms. 
+Keep in mind that this uses single-copy core genes and their hits in  [GTDB](https://gtdb.ecogenomic.org/), so it will not work well in bins with low completion or for Eukaryotic organisms. 
 
-This program is implicitly run in the interactive interface, when you turn on "Realtime taxonomy estimation for bins (whenever possible)." So if you've ever wondered where those estimates were coming from, now you know. 
+This program is implicitly run in the interactive interface, when you turn on "Realtime taxonomy estimation for bins (whenever possible)." So, if you've ever wondered where those estimates were coming from, now you know. 
 
 So, what can this program do?
 
@@ -36,7 +36,7 @@ anvi-estimate-scg-taxonomy -c %(contigs-db)s \
                            --metagenome-mode 
 {{ codestop }}
 
-If you want to look at a specific gene (instead of the one with the most hits), you can also tell it to do that. For example, to tell it to look at Ribosomal_S9,
+If you want to look at a specific gene (instead of the one with the most hits), you can also tell it to do that. For example, to tell it to look at Ribosomal_S9, run
 
 {{ codestart }}
 anvi-estimate-scg-taxonomy -c %(contigs-db)s \
@@ -46,7 +46,7 @@ anvi-estimate-scg-taxonomy -c %(contigs-db)s \
 
 ### 3. Look at relative abundance across multiple samples 
 
-If you provide a %(profile-db)s or %(single-profile-db)s, then you'll be able to look at the relative abundance of your taxonomy hits (through a single-copy core gene) across your samples. Essentially, adds additional columns to your output (one per sample) that descrbe the relative abundance of each hit in each sample. 
+If you provide a %(profile-db)s or %(single-profile-db)s, then you'll be able to look at the relative abundance of your taxonomy hits (through a single-copy core gene) across your samples. Essentially, this adds additional columns to your output (one per sample) that descrbe the relative abundance of each hit in each sample. 
 
 Running this will look something like this, 
 {{ codestart }}
@@ -56,7 +56,7 @@ anvi-estimate-scg-taxonomy -c %(contigs-db)s \
                            --compute-scg-coverages
 {{ codestop }}
 
-For an example, take a look at [this](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/#contigs-db--profile-db).
+For an example output, take a look at [this page](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/#contigs-db--profile-db).
 
 ### 4. Estimate the taxonomy of your bins 
 
