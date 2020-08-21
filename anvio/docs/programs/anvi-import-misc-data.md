@@ -41,7 +41,7 @@ Basically, you can add additional information to the interactive interface by ru
 
 ## Nucleotides, Amino Acids, and Contigs Databases
 
-This feature lets you import additional data about specfic residues or specific base pairs in your %(contigs-db)s. This is especially useful for strucutral analysis (so when running programs like %(anvi-3dev)s) and will be very relevant to the InteracDome functionality when it's added in anvi'o v7 (though curious readers can look [here](http://merenlab.org/2020/07/22/interacdome/)). 
+This feature lets you import additional data about specfic residues or specific base pairs into your %(contigs-db)s. This is especially useful for strucutral analysis (so when running programs like %(anvi-3dev)s) and will be very relevant to the InteracDome functionality when it's added in anvi'o v7 (curious readers can take a look at [this blog post](http://merenlab.org/2020/07/22/interacdome/)). 
 
 When adding additional data, unlike with layers and items, you do not have to provide values for every single nucleotide in your database. With this program, you can easily provide data for only a select few. 
 
