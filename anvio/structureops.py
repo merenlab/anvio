@@ -1618,14 +1618,11 @@ class Structure(object):
         self.structure = model[chain]
 
 
-    def get_contact_map(self, pdb_path, distance_method='CA', compressed=False, c='order'):
+    def get_contact_map(self, distance_method='CA', compressed=False, c='order'):
         """Returns a contact map (pairwise distances in Angstroms)
 
         Parameters
         ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
         distance_method : str, 'CA'
             Which distance method? 'CA' is for alpha carbon distances. See
             self.distances_methods_dict for options
@@ -1662,14 +1659,11 @@ class Structure(object):
             return contact_map
 
 
-    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6, compressed=False, c='order'):
+    def get_boolean_contact_map(self, distance_method='CA', threshold=6, compressed=False, c='order'):
         """Returns a boolean contact map (1 for touching, 0 for not)
 
         Parameters
         ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
         distance_method : str, 'CA'
             Which distance method? 'CA' is for alpha carbon distances. See
             self.distances_methods_dict for options
@@ -1696,7 +1690,7 @@ class Structure(object):
         - See also `get_contact_map`
         """
 
-        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method, compressed=False)
+        contact_map = self.get_contact_map(distance_method=distance_method, compressed=False)
 
         contact_map[contact_map <= threshold] = 1
         contact_map[contact_map >  threshold] = 0
