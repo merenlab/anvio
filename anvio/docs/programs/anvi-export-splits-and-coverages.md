@@ -1,8 +1,19 @@
 This program **gives you the coverage information in your %(profile-db)s as external files**. Basically, if you want to take that information in your %(profile-db)s out of anvio, this is for you. 
 
-Once you input your %(profile-db)s and the %(contigs-db)s you used to generate it, it will create a %(contigs-fasta)s that lists your contigs for you, as well as a %(coverages-txt)s, which describes coverage information. 
+Once you input your %(profile-db)s and the %(contigs-db)s you used to generate it, it will create a %(contigs-fasta)s that lists your contigs for you, as well as a %(coverages-txt)s, which describes your coverage information. 
 
-*Note: if your coverages are skewed by outlier positions, consider using Q2Q3-coverages instead.*
+{{ codestart }}
+anvi-export-splits-and-coverages -p %(profile-db)s \
+                                 -c %(contigs-db)s
+{{ codestop }}
+
+If your coverages are skewed by outlier positions, consider using Q2Q3-coverages instead.
+
+{{ codestart }}
+anvi-export-splits-and-coverages -p %(profile-db)s \
+                                 -c %(contigs-db)s \
+                                 --use-Q2Q3-coverages
+{{ codestop }}
 
 ### Contigs or splits?
 
