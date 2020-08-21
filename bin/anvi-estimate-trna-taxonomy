@@ -85,6 +85,7 @@ if __name__ == '__main__':
                                                     that if you use parameters defined under this optin, none of the other standard\
                                                     parameters for this program will be taken into consideration.")
     groupD.add_argument(*anvio.A('dna-sequence'), **anvio.K('dna-sequence'))
+    groupD.add_argument(*anvio.A('max-num-target-sequences'), **anvio.K('max-num-target-sequences'))
 
     groupE = parser.add_argument_group('OUTPUT AND FORMATTING', "Anvi'o will do its best to offer you some fancy output tables for your viewing \
                                                                  pleasure by default. But in addition to that, you can ask the resulting information \
