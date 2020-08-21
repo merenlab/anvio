@@ -71,15 +71,13 @@ class Agglomerator:
         manager = multiprocessing.Manager()
         processed_reference_dict = manager.dict([(ordered_reference_name, len(ordered_reference_names))
                                                  for ordered_reference_name in ordered_reference_names])
-        max_remapping_depth = manager.Value("i", 0)
         lock = multiprocessing.Lock()
 
         # Set static parameters in the multiprocessing target function.
         target = functools.partial(remap_queries,
                                    processed_reference_dict=processed_reference_dict,
                                    aligned_reference_dict=aligned_reference_dict,
-                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict,
-                                   max_remapping_depth=max_remapping_depth)
+                                   agglomerated_aligned_query_dict=agglomerated_aligned_query_dict)
 
         # The lock used with the shared dict, `processed_reference_dict`,
         # cannot be serialized and so cannot be passed to spawned processes.
@@ -106,7 +104,6 @@ class Agglomerator:
         if self.progress:
             self.progress.update("%d/%d sequences processed in agglomerative remapping"
                                 % (total_input_count, total_input_count))
-        print("Maximum remapping depth: %d" % max_remapping_depth.value, flush=True)
 
         removal_indices = []
         candidate_agglomerated_reference_names = [agglomerated_reference.name
@@ -133,8 +130,7 @@ def initialize(_lock):
 def remap_queries(reference_input_item,
                   processed_reference_dict,
                   aligned_reference_dict,
-                  agglomerated_aligned_query_dict,
-                  max_remapping_depth):
+                  agglomerated_aligned_query_dict):
     input_reference_name, agglomerated_reference_priority = reference_input_item
 
     with lock:
@@ -152,7 +148,7 @@ def remap_queries(reference_input_item,
     presently_processed_reference_names = [input_reference_name]
 
     remapping_stack = deque()
-    remapping_stack.append((input_reference_name, aligned_reference, 0, {}, [], 0))
+    remapping_stack.append((input_reference_name, aligned_reference, 0, {}, []))
 
     while remapping_stack:
         remapping_item = remapping_stack.pop()
@@ -163,11 +159,6 @@ def remap_queries(reference_input_item,
         current_reference_start_in_agglomerated_reference = remapping_item[2]
         agglomerated_reference_mismatch_dict = remapping_item[3]
         current_reference_mismatches_to_agglomerated_reference = remapping_item[4]
-        remapping_depth = remapping_item[5]
-
-        with lock:
-            if remapping_depth > max_remapping_depth.value:
-                max_remapping_depth.value = remapping_depth
 
         next_remapping_items = []
         for alignment in current_aligned_reference.alignments:
@@ -285,8 +276,7 @@ def remap_queries(reference_input_item,
                                          alignment_start_in_agglomerated_reference,
                                          dict(agglomerated_reference_mismatch_dict.items()),
                                          [mismatch_tuple for mismatch_tuple
-                                          in current_reference_mismatches_to_agglomerated_reference],
-                                        remapping_depth + 1))
+                                          in current_reference_mismatches_to_agglomerated_reference]))
 
         for next_remapping_item in next_remapping_items[::-1]:
             remapping_stack.append(next_remapping_item)
