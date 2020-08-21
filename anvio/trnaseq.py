@@ -2,30 +2,27 @@
 # pylint: disable=line-too-long
 """ Classes for tRNA-seq dataset operations. anvi-trnaseq is the default client using this module. """
 
+import os
 import itertools
 import multiprocessing
-import os
-import pysam
-import shutil
 
-from collections import OrderedDict
 from itertools import combinations
-from operator import itemgetter
+from collections import OrderedDict
 
 import anvio
-import anvio.fastalib as fastalib
-import anvio.filesnpaths as filesnpaths
+import anvio.utils as utils
 import anvio.tables as tables
 import anvio.terminal as terminal
+import anvio.fastalib as fastalib
+import anvio.filesnpaths as filesnpaths
 import anvio.trnaidentifier as trnaidentifier
-import anvio.utils as utils
 
+from anvio.errors import ConfigError
 from anvio.agglomeration import Agglomerator
-from anvio.constants_package.trnaseq import THREEPRIME_VARIANTS, TRNA_FEATURE_NAMES, DISCRIMINATOR_THROUGH_FIVEPRIME_T_STEM_STRAND_LENGTH
-from anvio.dbops_package.trnaseq import TRNASeqDatabase
-from anvio.drivers.bowtie2 import Bowtie2
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Aligner, Dereplicator
+from anvio.dbops_package.trnaseq import TRNASeqDatabase
+from anvio.constants_package.trnaseq import THREEPRIME_VARIANTS, TRNA_FEATURE_NAMES, DISCRIMINATOR_THROUGH_FIVEPRIME_T_STEM_STRAND_LENGTH
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -202,7 +199,6 @@ class NormalizedSeq:
         self.input_with_extra_fiveprime_count = sum([trimmed_seq.input_with_extra_fiveprime_count for trimmed_seq in self.trimmed_seqs])
 
         input_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        input_acceptor_variant_counts = []
         for trimmed_seq in self.trimmed_seqs:
             for acceptor_seq_string, input_count in trimmed_seq.input_acceptor_variant_count_dict.items():
                 if input_count > 0:
@@ -285,7 +281,6 @@ class ModifiedSeq:
         self.input_with_extra_fiveprime_count = sum([normalized_seq.input_with_extra_fiveprime_count for normalized_seq in self.normalized_seqs])
 
         input_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        input_acceptor_variant_counts = []
         for normalized_seq in self.normalized_seqs:
             for acceptor_seq_string, input_count in normalized_seq.input_acceptor_variant_count_dict.items():
                 if input_count > 0:
