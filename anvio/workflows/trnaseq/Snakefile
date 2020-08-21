@@ -185,7 +185,8 @@ rule anvi_trnaseq:
     resources: nodes = M.T('anvi_trnaseq')
     params:
         skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
-        write_buffer_size = M.get_rule_param('write_buffer_size', '--write-buffer-size')
+        write_buffer_size = M.get_rule_param('write_buffer_size', '--write-buffer-size'),
+        max_possible_alignments = M.get_rule_param('max_possible_alignments', '--max-possible-alignments')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
@@ -193,7 +194,7 @@ rule anvi_trnaseq:
             decompressed_fasta = input[0]
         output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
         os.rmdir(output_dir)
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.skip_fasta_check} {params.write_buffer_size} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
+        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.skip_fasta_check} {params.write_buffer_size} {params.max_possible_alignments} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
