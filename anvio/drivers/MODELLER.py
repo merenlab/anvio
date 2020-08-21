@@ -498,10 +498,6 @@ class MODELLER:
     def run_search_and_parse_results(self):
         """Align the protein against the database based on only sequence"""
 
-        if not self.percent_identical_cutoff or not self.max_number_templates:
-            raise ConfigError("run_search_and_parse_results :: You initiated this class without providing values for percent_identical_cutoff "
-                              "and max_number_templates, which is required for this function.")
-
         # Change to MODELLER working directory
         os.chdir(self.directory)
 
