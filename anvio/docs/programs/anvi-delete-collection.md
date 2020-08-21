@@ -13,5 +13,5 @@ Then, you can easily delete a collection with the command
 
 {{ codestart }}
 anvi-delete-collection -p %(profile-db)s \
-                       --C %(collection)s
+                       -C %(collection)s
 {{ codestop }}
