@@ -119,7 +119,7 @@ Import the collection `merens`:
                        -C merens
 {{ codestop }}
 
-Then run the program to,
+Then run the program to
 
 ### Learn available HMM sources
 
