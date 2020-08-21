@@ -89,7 +89,7 @@ class StructureDatabase(object):
 
         run_params_dict['modeller_database'] = self.db.get_meta_value('modeller_database', try_as_type_int=False)
         run_params_dict['scoring_method'] = self.db.get_meta_value('scoring_method', try_as_type_int=False)
-        run_params_dict['percent_identical_cutoff'] = float(self.db.get_meta_value('percent_identical_cutoff', try_as_type_int=False))
+        run_params_dict['percent_cutoff'] = float(self.db.get_meta_value('percent_cutoff', try_as_type_int=False))
         run_params_dict['alignment_fraction_cutoff'] = float(self.db.get_meta_value('alignment_fraction_cutoff', try_as_type_int=False))
         run_params_dict['very_fast'] = bool(self.db.get_meta_value('very_fast', try_as_type_int=True))
         run_params_dict['deviation'] = float(self.db.get_meta_value('deviation', try_as_type_int=False))
@@ -156,7 +156,7 @@ class StructureDatabase(object):
                 'modeller_database': 'pdb_95',
                 'scoring_method': 'DOPE_score',
                 'max_number_templates': 5,
-                'percent_identical_cutoff': 30,
+                'percent_cutoff': 30,
                 'alignment_fraction_cutoff': 80,
                 'num_models': 1,
                 'deviation': 4.0,
@@ -396,7 +396,7 @@ class StructureSuperclass(object):
             'modeller_database': A('modeller_database', null),
             'scoring_method': A('scoring_method', null),
             'max_number_templates': A('max_number_templates', null),
-            'percent_identical_cutoff': A('percent_identical_cutoff', null),
+            'percent_cutoff': A('percent_cutoff', null),
             'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
             'num_models': A('num_models', null),
             'deviation': A('deviation', null),
@@ -419,11 +419,11 @@ class StructureSuperclass(object):
 
 
     def sanity_check(self):
-        # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
-        if self.modeller_params['percent_identical_cutoff'] < 25:
+        # if self.percent_cutoff is < 25, you should be careful about accuracy of models
+        if self.modeller_params['percent_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
                              "to the quality of the proteins... Keep in mind random sequence are expected to share "
-                             "around 10% identity.".format(self.modeller_params['percent_identical_cutoff']))
+                             "around 10% identity.".format(self.modeller_params['percent_cutoff']))
 
         if self.skip_DSSP:
             self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
