@@ -2,7 +2,7 @@ An HMM source is a collection of one or more HMMs. See the page for %(anvi-run-h
 
 HMMs for any set of genes can be put together and run on any anvi'o %(contigs-db)s which would yield an %(hmm-hits)s.
 
-HMM hits in a %(contigs-db)s for a given HMM source will be accessible to anvi'o programs globally (i.e. to recover aligned or non-aligned sequences as %(fasta)s files, or display contigs that contain HMM hits in interactive interfaces, to report hits in summary outputs, etc).
+HMM hits in a %(contigs-db)s for a given HMM source will be accessible to anvi'o programs globally (i.e., to recover aligned or non-aligned sequences as %(fasta)s files, or display contigs that contain HMM hits in interactive interfaces, to report hits in summary outputs, etc).
 
 Running %(anvi-db-info)s on an anvi'o contigs database will list HMM sources available in it.
 

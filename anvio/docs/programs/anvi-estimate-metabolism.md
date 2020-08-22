@@ -44,7 +44,7 @@ Each line in the `bin_ids.txt` file should be a bin name from the %(collection)s
 
 ## Running metabolism estimation on multiple contigs databases
 
-If you have a set of contigs databases of the same type (i.e. all of them are single genomes or all are binned metagenomes), you can analyze them all at once. What you need to do is put the relevant information for each %(contigs-db)s into a text file and pass that text file to %(anvi-estimate-metabolism)s. The program will then run estimation individually on each contigs database in the file. The estimation results for each database will be aggregated and printed to the same output file(s).
+If you have a set of contigs databases of the same type (i.e., all of them are single genomes or all are binned metagenomes), you can analyze them all at once. What you need to do is put the relevant information for each %(contigs-db)s into a text file and pass that text file to %(anvi-estimate-metabolism)s. The program will then run estimation individually on each contigs database in the file. The estimation results for each database will be aggregated and printed to the same output file(s).
 
 ### Estimation for multiple single genomes
 
