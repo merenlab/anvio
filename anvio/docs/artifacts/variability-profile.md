@@ -2,15 +2,15 @@ In the context of anvi'o, variability means divergence of environmental populati
 
 Here, the term "population" describes an assemblage of co-existing microbial genomes in an environment that are similar enough to map to the context of the same reference genome.
 
-Variability profile of a metagenome enables studies of [microbial population genetics with anvi'o](http://merenlab.org/2015/07/20/analyzing-variability/).
+The variability profile of a metagenome enables studies of [microbial population genetics with anvi'o](http://merenlab.org/2015/07/20/analyzing-variability/).
 
-There are two types of variability the program %(anvi-profile)s can characterize and store: substitutions, and indels.
+There are two types of variability the program %(anvi-profile)s can characterize and store: substitutions and indels.
 
 ### Substitutions: SNVs, SCVs, SAAVs
 
-Anvi'o can make sense of single-nucleotide variants (SNVs), single-codon variants (SCVs), and single-amino acid variants (SAAVs). See [this article]((http://merenlab.org/2015/07/20/analyzing-variability).
+Anvi'o can make sense of single-nucleotide variants (SNVs), single-codon variants (SCVs), and single-amino acid variants (SAAVs). See [this article](http://merenlab.org/2015/07/20/analyzing-variability) for more information.
 
-You can learn the name of the table in which anvi'o stores in a given %(profile-db)s by running this command in your anvi'o environment:
+You can learn the name of the table in which anvi'o stores this in a given %(profile-db)s by running this command in your anvi'o environment:
 
 ``` bash
 python -c 'import anvio.tables as t; print(t.variable_nts_table_name)'
