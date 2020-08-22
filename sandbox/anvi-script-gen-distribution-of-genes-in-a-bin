@@ -20,7 +20,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["contigs-db", "profile-db", "collection", "bin"]
 __description__ = ("Quantify the detection of genes in genomes in metagenomes to identify the "
-                   "environmental core. This is a helper script for anvi'o metapangenomic workflow.")
+                   "environmental core. This is a helper script for anvi'o metapangenomic workflow")
 
 
 run = terminal.Run()

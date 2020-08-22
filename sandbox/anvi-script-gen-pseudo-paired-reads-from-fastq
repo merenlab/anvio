@@ -23,7 +23,7 @@ __description__ =  ("Take a FASTQ file and convert it into 2 FASTQ files. Each r
                     "original FASTQ file halved, where one half is put in the R1 FASTQ and "
                     "the other half is reverse complemented and put in the R2 FASTQ. If you've "
                     "ended up here, things have clearly not gone very well for you, and as I "
-                    "write this sentence, I wholeheartedly sympathize.")
+                    "write this sentence, I wholeheartedly sympathize")
 
 run = terminal.Run()
 progress = terminal.Progress()

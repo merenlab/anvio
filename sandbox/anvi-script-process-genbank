@@ -22,7 +22,7 @@ __requires__ = ["genbank-file"]
 __description__ = ("This script takes a GenBank file, and outputs a FASTA file, as well as two "
                    "additional TAB-delimited output files for external gene calls and gene "
                    "functions that can be used with the programs `anvi-gen-contigs-database` "
-                   "and `anvi-import-functions`.")
+                   "and `anvi-import-functions`")
 
 
 run = terminal.Run()

@@ -25,7 +25,7 @@ __email__ = "a.murat.eren@gmail.com"
 __provides__ = ["collection", "bin"]
 __requires__ = ["pan-db", "profile-db", "contigs-db"]
 __description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with "
-                   "a bin named 'EVERYTHING' that describes all items available in the profile database.")
+                   "a bin named 'EVERYTHING' that describes all items available in the profile database")
 
 pp = terminal.pretty_print
 run = terminal.Run()
