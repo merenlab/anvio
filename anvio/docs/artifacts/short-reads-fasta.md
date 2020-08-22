@@ -5,5 +5,5 @@ Short reads usually refer to the initial pieces of sequencing data that you had 
 In anvi'o, you can currently get short reads from four sources:
 * from a %(bam-file)s by running the program %(anvi-get-short-reads-from-bam)s 
 * from a gene in a %(contigs-db)s by running the program %(anvi-get-short-reads-mapping-to-a-gene)s
-* from something (like a contig) within a %(fasta)s file by running the program %(anvi-script-get-short-reads-mapping-to-something)s
+* from something (like a contig) within a %(fasta)s file by running the program %(anvi-script-get-short-reads-matching-something)s
 * by generating mock short read data from assembled contigs (as done in the program %(anvi-script-gen-short-reads)s). 
