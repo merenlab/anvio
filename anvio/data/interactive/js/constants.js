@@ -116,6 +116,13 @@ var named_functional_sources = {
                                 }),
     },
 
+    'KEGG_Module': {
+        'accession_decorator': (function (d) {
+                                    var maps = d.split(', ').map((function (m){return '<a href="http://www.genome.jp/dbget-bin/www_bget?' + m +'" target=_"blank">' + m + '</a>';}));
+                                    return maps.join(', ');
+                                }),
+    },
+
     'GO_TERMS': {
         'annotation_decorator': (function (d) {
                                     var gos = d.split(', ').map((function (g){return '<a href="http://amigo.geneontology.org/amigo/term/' + g +'" target=_"blank">' + g + '</a>';}));
