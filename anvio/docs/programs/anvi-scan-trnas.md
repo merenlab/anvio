@@ -10,7 +10,7 @@ anvi-scan-trnas -c CONTIGS_DB
 
 What counts as a tRNA gene? That could be up to you. 
 
-The default minimum score for a gene to be counted is 20.  However, you can set this cutoff to anywhere between 0-100. This value is actually used by the module tRNAScan-SE, so view their documentation for details (here is a [link](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6768409/) to their paper). For example, to find more non-cononical tRNA genes, a user could lower the cutoff score to 10 as follows:
+The default minimum score for a gene to be counted is 20.  However, you can set this cutoff to anywhere between 0-100. This value is actually used by the module tRNAScan-SE, so view [their documentation](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6768409/) for details. For example, to find more non-cononical tRNA genes, a user could lower the cutoff score to 10 as follows:
 
 {{ codestart }}
 anvi-scan-trnas -c CONTIGS_DB --trna-cut-off-score 10
