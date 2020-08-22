@@ -29,8 +29,8 @@ Other programs you can run to populate a contigs database include
 
 ### Analysis on a populated contigs database 
 
-Other essential programs that read from a contigs database and yield key information include %(anvi-estimate-genome-completeness)s, %(anvi-get-sequences-for-hmm-hits)s, %(anvi-estimate-scg-taxonomy)s.
+Other essential programs that read from a contigs database and yield key information include %(anvi-estimate-genome-completeness)s, %(anvi-get-sequences-for-hmm-hits)s, and %(anvi-estimate-scg-taxonomy)s.
 
-If you wish to run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s, you'll need to first use your contigs database to create a %(profile-db)s.
+If you wish to run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s, or view your database with %(anvi-interactive)s, you'll need to first use your contigs database to create a %(profile-db)s.
 
 
