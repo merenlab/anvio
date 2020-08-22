@@ -1,4 +1,4 @@
-### Converting a FASTA file to a contigs FASTA
+This program **converts a %(fasta)s file to a %(contigs-fasta)s.** In other words, it reformats your FASTA formatted file to meet the conditions required of a %(contigs-fasta)s, which is able to be used by other anvi'o programs.
 
 {{ codestart }}
 anvi-script-reformat-fasta %(fasta)s \
@@ -11,7 +11,7 @@ If you use the flag *--report-file*, it will also create a TAB-delimited file fo
 
 ### Removing short reads from FASTA
 
-Removing short contigs from a FASTA file will improve the performance of the %(contigs-db)s later. Running the same command this way will also remove sequences that are shorter than 1,000 nts:
+Removing short contigs from a FASTA file will improve the performance of the %(contigs-db)s later. The example below runs the same command while also removing sequences that are shorter than 1,000 nts:
 
 {{ codestart }}
 anvi-script-reformat-fasta %(fasta)s \
