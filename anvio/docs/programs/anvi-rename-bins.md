@@ -1,10 +1,10 @@
-This program **creates a new %(collection)s from the %(bin)ss in another %(collection)s with specific guidelines.** This is especially helpful when you want to merge multiple collections later or share your project with someone, and you want all of your bins to have nicer names than the default `bin_01`, `bin_02`, etc. based on the order you binned them in. 
+This program **creates a new %(collection)s from the %(bin)ss in another collection with specific guidelines.** This is especially helpful when you want to merge multiple collections later or share your project with someone, and you want all of your bins to have nicer names than the default `bin_01`, `bin_02`, etc. based on the order you binned them in. 
 
 So let's take a look at what this program can do with a simple example. 
 
 ### Example 1: Renaming all bins in a collection 
 
-Let's say you have a collection called `MY_COLLECTION`, which has four bins: `really`, `bad`, `bin`, and `names`. These names just won't do. Let's get to renaming all of these things. To rename all of my bins and put them into a collection called `SURFACE_OCEAN_SAMPLES`, you could run 
+Let's say you have a collection called `MY_COLLECTION`, which has four bins: `really`, `bad`, `bin`, and `names`. These names just won't do, so let's get to renaming. To rename all of my bins and put them into a collection called `SURFACE_OCEAN_SAMPLES`, you could run 
 
 {{ codestart }}
 anvi-rename-bins -c %(contigs-db)s \
@@ -15,7 +15,7 @@ anvi-rename-bins -c %(contigs-db)s \
                  --report-file rename.txt
 {{ codestop }}
 
-And voila! Now you have a second collection named `SURFACE_OCEAN_SAMPLES` that contains your three bins, now named  `SURFACE_OCEAN_Bin_00001`, `SURFACE_OCEAN_Bin_00002`, `SURFACE_OCEAN_Bin_00003`, and `SURFACE_OCEAN_Bin_00004`. The order that the numbers are in represents the quality of the bin as a MAG, given by the completion minus redunancy. 
+And voila! Now you have a second collection named `SURFACE_OCEAN_SAMPLES` that contains your four bins, now named  `SURFACE_OCEAN_Bin_00001`, `SURFACE_OCEAN_Bin_00002`, `SURFACE_OCEAN_Bin_00003`, and `SURFACE_OCEAN_Bin_00004`. The order that the numbers are in represents the quality of the bin as a MAG, given by the completion minus redunancy. 
 
 The file `rename.txt` is just a tab-delimited file that contains a summary of your renaming process. The first column has the original name of the bins that you renamed, the second has their new names, and the remaining columns contain information about those bins (like their completion, redundency, and size). 
 
@@ -36,7 +36,7 @@ anvi-rename-bins -c %(contigs-db)s \
                  --min-completition-for-MAG 70 
 {{ codestop }}
 
-Now, the collection `SURFACE_OCEAN_MAGS` will include  `SURFACE_OCEAN_MAG_00001` and `SURFACE_OCEAN_MAG_00002`, and `SURFACE_OCEAN_MAG_00003`, and `SURFACE_OCEAN_Bin_00004`. These are exactly the same bins that the collection contained before, but now the names differenciate the wheat from the chaff. 
+Now, the collection `SURFACE_OCEAN_MAGS` will include  `SURFACE_OCEAN_MAG_00001`, `SURFACE_OCEAN_MAG_00002`, `SURFACE_OCEAN_MAG_00003`, and `SURFACE_OCEAN_Bin_00004`. These are exactly the same bins that the collection contained before, but now the names differenciate the wheat from the chaff. 
 
 Now, let's make that same collection (still called `SURFACE_OCEAN_MAGS`) that doesn't include `SURFACE_OCEAN_Bin_00003` as a MAG, since the redundency is too high for what we want to look at right now. 
 
@@ -52,7 +52,7 @@ anvi-rename-bins -c %(contigs-db)s \
                  --call-MAGs
 {{ codestop }}
 
-Now `SURFACE_OCEAN_MAGS`   will include  `SURFACE_OCEAN_MAG_00001` and `SURFACE_OCEAN_MAG_00002`, and `SURFACE_OCEAN_Bin_00003`, and `SURFACE_OCEAN_Bin_00004`.
+Now `SURFACE_OCEAN_MAGS`   will include  `SURFACE_OCEAN_MAG_00001`  `SURFACE_OCEAN_MAG_00002`,  `SURFACE_OCEAN_Bin_00003`, and `SURFACE_OCEAN_Bin_00004`.
 
 You also have the option to only classify bins above a certain minimum size as MAGs. 
 
