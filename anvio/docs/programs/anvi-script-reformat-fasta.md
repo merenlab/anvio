@@ -9,7 +9,7 @@ anvi-script-reformat-fasta %(fasta)s \
 {:.notice}
 If you use the flag *--report-file*, it will also create a TAB-delimited file for you to keep track of which defline in the new file corresponds to which defline in the original file.
 
-### Removing short reads from FASTA
+### Removing the short reads
 
 Removing short contigs from a FASTA file will improve the performance of the %(contigs-db)s later. The example below runs the same command while also removing sequences that are shorter than 1,000 nts:
 
