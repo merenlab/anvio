@@ -3,14 +3,14 @@
 
 import sys
 
+import numpy as np
+
 import anvio
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
-import statistics
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -90,9 +90,7 @@ def reformat_FASTA(args):
             l = len(fasta.seq)
             percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
             percent_of_gaps_list.append(percentage_of_gaps)
-        standard_deviation = statistics.pstdev(percent_of_gaps_list)
-        average = statistics.mean(percent_of_gaps_list)
-        third_quartile = average + standard_deviation
+        cutoff_percentile = np.percentile(percent_of_gaps_list, 75)
 
     # Reopen fasta
     fasta = u.SequenceSource(args.contigs_fasta)
@@ -135,7 +133,7 @@ def reformat_FASTA(args):
             continue
 
         if args.filter_third_quartile_gaps == True:
-            if percentage_of_gaps >= third_quartile:
+            if percentage_of_gaps >= cutoff_percentile:
                 total_num_nucleotides_removed += l
                 total_num_contigs_removed += 1
                 continue
