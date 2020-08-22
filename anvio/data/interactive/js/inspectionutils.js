@@ -306,7 +306,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
           category = "None";
         }
       }
-      if(color_genes != null && color_genes.includes("" + gene.gene_callers_id)) {
+      if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
         category = gene.gene_callers_id;
       }
 

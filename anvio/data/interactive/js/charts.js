@@ -44,6 +44,7 @@ var inspect_mode;
 var highlightBoxes;
 var show_nucleotides = true;
 var gene_offset_y = 0;
+var snv_boxes = {};
 
 // for testing
 var mcags;
@@ -325,8 +326,8 @@ function loadAll() {
                       brush(d3.select(".brush").transition());
                       brush.event(d3.select(".brush").transition());
 
-                      drawArrows(start, end, $('#gene_color_order').val(), gene_offset_y);
                       display_nucleotides();
+                      drawArrows(start, end, $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
                     }
                 });
 
@@ -362,7 +363,7 @@ function loadAll() {
 function drawHighlightBoxes() {
   if($("#DNA_sequence").length == 0) return;
 
-  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+5);
+  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
   $("#highlightBoxesSvg").attr("height", 0).empty();
   var range = $('#brush_end').val() - $('#brush_start').val();
   if(range <= 300 && range >= 30) {
@@ -386,7 +387,7 @@ function drawAAHighlightBoxes() {
   $('#context-container').on('mouseover', function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25);
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.1);
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
@@ -565,7 +566,7 @@ function redrawArrows() {
           .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
   });
 
-  drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, !isEmpty(state['highlight-genes']) ? Object.keys(state['highlight-genes']) : null);
+  drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
 }
 
 function resetFunctionColors(fn_colors=null) {
@@ -792,6 +793,31 @@ function display_nucleotides() {
   drawAAHighlightBoxes();
 }
 
+function setSNVListener() {
+  if(!show_snvs) return;
+
+  $('[class="SNV_text"]').each(function(i) {
+    snv_boxes[i] = {"left"  : $(this).offset().left,
+                    "right" : $(this).offset().left + this.getBoundingClientRect().width,
+                    "top"   : $(this).offset().top,
+                    "bottom": $(this).offset().top + this.getBoundingClientRect().height};
+  });
+
+  $(".highlightbox").off("mouseover mouseout");
+  $(".highlightbox").on("mouseover", function(e) {
+    var x = e.pageX, y = e.pageY;
+    Object.keys(snv_boxes).forEach(function(i) {
+      var box = snv_boxes[i];
+      if(box.left <= x && x <= box.right && box.top <= y && y <= box.bottom) {
+        $("#highlight-boxes").hide();
+        return;
+      }
+    });
+  }).mouseout(function(e) {
+    $("#highlight-boxes").delay(1000).show(0);
+  });
+}
+
 function show_selected_sequence() {
     let range = charts[0].xScale.domain();
 
@@ -910,7 +936,6 @@ function showSetMaxValuesDialog() {
     $('#setMaxValuesDialog .modal-body').empty().append(table + '</tbody></table>');
     $('#setMaxValuesDialog').modal('show');
 }
-
 
 function applyMaxValues() {
     var max_values = []
@@ -1436,6 +1461,7 @@ function createCharts(state){
                 .attr("height", contextHeight);
 
     display_nucleotides();
+    setSNVListener();
 
     function onBrush(){
         /* this will return a date range to pass into the chart object */
@@ -1458,10 +1484,12 @@ function createCharts(state){
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
         }
-        drawArrows(b[0], b[1], $('#gene_color_order').val(), gene_offset_y);
+        drawArrows(b[0], b[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
+
+        if(show_snvs) setSNVListener();
     }
 
-    drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y);
+    drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
 }
 
 
@@ -1614,6 +1642,7 @@ function Chart(options){
                                 .data(d3.entries(this.competing_nucleotides))
                                 .enter()
                                 .append("text")
+                                .attr("class", "SNV_text")
                                 .attr("x", function (d) { return xS(d.key); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")

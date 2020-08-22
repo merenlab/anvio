@@ -258,7 +258,7 @@ a{
 }
 
 .highlightbox:hover {
-  fill-opacity: 0.25;
+  fill-opacity: 0.1;
 }
 
 .highlightbox:mouseleave {
