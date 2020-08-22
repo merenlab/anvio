@@ -1268,11 +1268,11 @@ class Profile:
 
 
 class GeneProfile:
-    __slots__ = ['unencoded_acceptor_profile',
+    __slots__ = ('unencoded_acceptor_profile',
                  'encoded_acceptor_profile',
                  'predicted_profile',
                  'has_encoded_acceptor',
-                 'predicted_genomic_seq']
+                 'predicted_genomic_seq')
 
     def __init__(self, input_seq, name='', check_encoded_acceptor=True):
         """Profile the tRNA features in a gene sequence

@@ -418,12 +418,12 @@ def get_kmer_worker(name_seq_pair, kmer_size, include_full_length=True, as_array
 
 
 class Cluster:
-    __slots__ = ['representative_name',
+    __slots__ = ('representative_name',
                  'representative_seq_string',
                  'representative_extra',
                  'member_names',
                  'member_seqs',
-                 'member_extras']
+                 'member_extras')
 
     def __init__(self):
         self.representative_name = None
@@ -572,7 +572,7 @@ class Dereplicator:
 
 
 class AlignedQuery:
-    __slots__ = ['seq_string', 'name', 'alignments']
+    __slots__ = ('seq_string', 'name', 'alignments')
 
     def __init__(self, seq_string, name=None):
         self.seq_string = seq_string
@@ -581,7 +581,7 @@ class AlignedQuery:
 
 
 class AlignedTarget:
-    __slots__ = ['seq_string', 'name', 'alignments']
+    __slots__ = ('seq_string', 'name', 'alignments')
 
     def __init__(self, seq_string, name=None):
         self.seq_string = seq_string
@@ -590,7 +590,7 @@ class AlignedTarget:
 
 
 class MappableAlignedTarget:
-    __slots__ = ['seq_string', 'name', 'alignments', 'hit_another_target']
+    __slots__ = ('seq_string', 'name', 'alignments', 'hit_another_target')
 
     def __init__(self, seq_string, name=None):
         self.seq_string = seq_string
@@ -600,7 +600,12 @@ class MappableAlignedTarget:
 
 
 class Alignment:
-    __slots__ = ['query_start', 'target_start', 'cigartuples', 'alignment_length', 'aligned_query', 'aligned_target']
+    __slots__ = ('query_start',
+                 'target_start',
+                 'cigartuples',
+                 'alignment_length',
+                 'aligned_query',
+                 'aligned_target')
 
     def __init__(self, query_start, target_start, cigartuples, aligned_query=None, aligned_target=None):
         self.query_start = query_start

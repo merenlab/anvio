@@ -34,13 +34,13 @@ __email__ = "samuelmiller10@gmail.com"
 
 
 class UniqueSeq:
-    __slots__ = ['seq_string',
+    __slots__ = ('seq_string',
                  'input_names',
                  'identification_method',
                  'acceptor_length',
                  'extra_fiveprime_length',
                  'input_count',
-                 'representative_name']
+                 'representative_name')
 
     def __init__(self, seq_string, input_names, identification_method=None, acceptor_length=None, extra_fiveprime_length=None, skip_init=False):
         """A dereplicated tRNA-seq read, with information from tRNA feature profiling"""
@@ -66,14 +66,14 @@ class UniqueSeq:
 
 
 class TrimmedSeq:
-    __slots__ = ['seq_string',
+    __slots__ = ('seq_string',
                  'unique_seqs',
                  'input_count',
                  'unique_with_extra_fiveprime_count',
                  'input_with_extra_fiveprime_count',
                  'representative_name',
                  'input_acceptor_variant_count_dict',
-                 'identification_method']
+                 'identification_method')
 
     def __init__(self, seq_string, unique_seqs, skip_init=False):
         """A tRNA sequence with bases trimmed 5' of the acceptor stem and 3' of the discriminator"""
@@ -144,7 +144,7 @@ class TrimmedSeq:
 
 
 class NormalizedSeq:
-    __slots__ = ['trimmed_seqs',
+    __slots__ = ('trimmed_seqs',
                  'representative_name',
                  'seq_string',
                  'start_positions',
@@ -157,7 +157,7 @@ class NormalizedSeq:
                  'count_of_trimmed_seqs_mapped_to_interior',
                  'count_of_input_seqs_mapped_to_interior',
                  'count_of_trimmed_seqs_mapped_to_fiveprime_end',
-                 'count_of_input_seqs_mapped_to_fiveprime_end']
+                 'count_of_input_seqs_mapped_to_fiveprime_end')
 
     def __init__(self, trimmed_seqs, start_positions=None, end_positions=None, skip_init=False):
         """A longer tRNA sequence consolidated from shorter tRNA fragments"""
@@ -234,7 +234,7 @@ class NormalizedSeq:
 
 
 class ModifiedSeq:
-    __slots__ = ['normalized_seqs',
+    __slots__ = ('normalized_seqs',
                  'representative_name',
                  'modification_indices',
                  'seq_string',
@@ -243,7 +243,7 @@ class ModifiedSeq:
                  'input_acceptor_variant_count_dict',
                  'count_of_input_seqs_mapped_to_threeprime_end',
                  'count_of_input_seqs_mapped_to_interior',
-                 'count_of_input_seqs_mapped_to_fiveprime_end']
+                 'count_of_input_seqs_mapped_to_fiveprime_end')
 
     def __init__(self, normalized_seqs, modification_dict=None, skip_init=False):
         """A tRNA sequence with sites of predicted modification-induced mutations"""
