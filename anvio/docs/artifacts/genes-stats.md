@@ -5,7 +5,7 @@ It is a tab-delimited text file where each row represents a specific gene and ea
 As of now, the only program that returns data in this format is %(anvi-script-gen_stats_for_single_copy_genes.py)s, which returns this information for the single copy core genes in your %(contigs-db)s. 
 
 From left to right, these tell you 
-* Source for this gene (ex `Protista_83`)
+* The source for this gene (ex `Protista_83`)
 * The name of the contig that this gene is a part of
 * The gene name 
-* e-value (of the HMM hit that was used to find this gene)
+* The e-value (of the HMM hit that was used to find this gene)
