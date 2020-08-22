@@ -9,7 +9,7 @@ import multiprocessing
 import numpy as np
 
 from itertools import groupby
-from hashlib import sha224
+from hashlib import sha1
 from operator import itemgetter
 
 import anvio
@@ -201,7 +201,7 @@ class Kmerizer:
             if kmer_size > len(seq_string):
                 continue
 
-            hashed_kmer = sha224(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
             if hashed_kmer in kmer_dict:
                 kmer_dict[hashed_kmer][name] = seq_string
             else:
@@ -220,7 +220,7 @@ class Kmerizer:
             target = MappableAlignedTarget(seq_string)
             targets.append(target)
 
-            hashed_kmer = sha224(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
             if hashed_kmer in kmer_dict:
                 kmer_dict[hashed_kmer][name] = target
             else:
@@ -258,7 +258,7 @@ class Kmerizer:
                 # Do not include input seqs as k-mers.
                 continue
 
-            hashed_kmer = sha224(seq[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq[: kmer_size].encode('utf-8')).hexdigest()
             if hashed_kmer in kmer_dict:
                 kmer_dict[hashed_kmer].append((name, len(seq)))
             else:
@@ -371,13 +371,13 @@ def get_kmer_worker(name_seq_pair, kmer_size, include_full_length=True, as_array
     if as_array:
         for start_index, stop_index in zip(range(0, seq.size - kmer_size + 1),
                                            range(kmer_size, seq.size + 1)):
-            hashed_kmer = sha224(seq[start_index: stop_index].tobytes()).hexdigest()
+            hashed_kmer = sha1(seq[start_index: stop_index].tobytes()).hexdigest()
             hashed_kmers.append(hashed_kmer)
             prelim_kmer_items.append([hashed_kmer, name, [start_index], seq.size])
     else:
         for start_index, stop_index in zip(range(0, len(seq) - kmer_size + 1),
                                            range(kmer_size, len(seq) + 1)):
-            hashed_kmer = sha224(seq[start_index: stop_index].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq[start_index: stop_index].encode('utf-8')).hexdigest()
             hashed_kmers.append(hashed_kmer)
             prelim_kmer_items.append([hashed_kmer, name, [start_index], len(seq)])
 
@@ -527,7 +527,7 @@ class Dereplicator:
 
         kmer_dict, targets = Kmerizer(self.names, self.seq_strings).get_prefix_target_dict(kmer_size)
 
-        hashed_prefixes = [sha224(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in self.seq_strings]
+        hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in self.seq_strings]
 
         for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names, self.seq_strings, self.extras, hashed_prefixes, targets):
             if prefix_hash not in kmer_dict:
@@ -849,7 +849,7 @@ def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_
     alignment_info = []
     for seed_query_start, seed_query_stop in zip(range(0, query_seq_array.size - seed_size + 1),
                                                  range(seed_size, query_seq_array.size + 1)):
-        seed_hash = sha224(query_seq_array[seed_query_start: seed_query_stop].tobytes()).hexdigest()
+        seed_hash = sha1(query_seq_array[seed_query_start: seed_query_stop].tobytes()).hexdigest()
 
         if seed_hash not in kmer_dict:
             continue
@@ -913,7 +913,7 @@ def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=f
     matched_target_names : list
         List of target names with prefix subsequence match to query; max length equal to `int(max_matches_per_query)`
     """
-    query_hash = sha224(query_seq[: kmer_size].encode('utf-8')).hexdigest()
+    query_hash = sha1(query_seq[: kmer_size].encode('utf-8')).hexdigest()
 
     matched_target_names = []
     if query_hash not in kmer_dict:
