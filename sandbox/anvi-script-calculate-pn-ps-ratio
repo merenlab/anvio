@@ -36,7 +36,7 @@ __requires__ = ['contigs-db', 'variability-profile-txt']
 __description__ = ("This program calculates for each gene the ratio of pN/pS (the metagenomic analogy "
                    "of dN/dS; see doi:10.1038/nature11711 and doi:10.7717/peerj.2959) based on metagenomic "
                    "read recruitment, however, unlike standard pN/pS calculations, it relies on "
-                   "codons rather than nucleotides for accurate estimations of synonimity.")
+                   "codons rather than nucleotides for accurate estimations of synonimity")
 
 
 progress = terminal.Progress()
