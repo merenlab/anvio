@@ -2,7 +2,10 @@ This program **associates genes in your %(contigs-db)s with functions using the 
 
 Before you run this program, you'll have to set up the Pfam database on your computer with the program %(anvi-setup-pfams)s.  
 
-The Pfam database is based on protein sequences, so anvi'o will convert your genetic information into protein sequences and then use HMMs to compare them to the database. (*Unsure what an HMM is? Check out [our vocab page](http://merenlab.org/vocabulary/#hmm)*)
+The Pfam database is based on protein sequences, so anvi'o will convert your genetic information into protein sequences and then use HMMs to compare them to the database. 
+
+{:.notice}
+Unsure what an HMM is? Check out [our vocab page](http://merenlab.org/vocabulary/#hmm)
 
 To run, you'll need to provide a %(contigs-db)s. If you stored the %(pfams-data)s that you got from running %(anvi-setup-pfams)s in a custom location, you'll need to provide that path as well. The output is a %(functions)s artifact. 
 
@@ -10,7 +13,7 @@ Here is a default run:
 
 {{ codestart }}
 anvi-run-ncbi-cogs -c %(contigs-db)s \
-            --pfam-data-dir %(pfams-data)s \
+            --pfam-data-dir %(pfams-data)s 
 {{ codestop }}
 
 By default, this uses `hmmsearch` to run HMMs. You can choose to use `hmmscan` instead by running
