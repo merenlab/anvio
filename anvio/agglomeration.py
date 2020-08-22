@@ -19,7 +19,7 @@ from collections import deque
 # limiting the number of items returned.
 # However, the size of each item can still be large, so play it safe with the recursion limit.
 sys.setrecursionlimit(10000)
-chunksize=1000
+MP_CHUNKSIZE = 1000
 
 
 class Agglomerator:
@@ -90,7 +90,7 @@ class Agglomerator:
 
         for agglomerated_reference in pool.imap_unordered(target,
                                                           ordered_reference_inputs,
-                                                          chunksize=chunksize):
+                                                          chunksize=MP_CHUNKSIZE):
             if agglomerated_reference:
                 agglomerated_references.append(agglomerated_reference)
             processed_input_count += 1
