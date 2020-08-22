@@ -84,14 +84,15 @@ def reformat_FASTA(args):
     total_num_contigs_removed = 0
 
     # Get stats for arg.filter_third_quartile
-    percent_of_gaps_list = []
-    while next(fasta):
-        l = len(fasta.seq)
-        percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
-        percent_of_gaps_list.append(percentage_of_gaps)
-    standard_deviation = statistics.pstdev(percent_of_gaps_list)
-    average = statistics.mean(percent_of_gaps_list)
-    third_quartile = average + standard_deviation
+    if args.filter_third_quartile_gaps == True:
+        percent_of_gaps_list = []
+        while next(fasta):
+            l = len(fasta.seq)
+            percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
+            percent_of_gaps_list.append(percentage_of_gaps)
+        standard_deviation = statistics.pstdev(percent_of_gaps_list)
+        average = statistics.mean(percent_of_gaps_list)
+        third_quartile = average + standard_deviation
 
     # Reopen fasta
     fasta = u.SequenceSource(args.contigs_fasta)
