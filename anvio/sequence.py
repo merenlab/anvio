@@ -849,7 +849,7 @@ def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_
     alignment_info = []
     for seed_query_start, seed_query_stop in zip(range(0, query_seq_array.size - seed_size + 1),
                                                  range(seed_size, query_seq_array.size + 1)):
-        seed_hash = sha1(query_seq_array[seed_query_start: seed_query_stop].tobytes()).hexdigest()
+        seed_hash = sha1(query_seq_array[seed_query_start:  ].tobytes()).hexdigest()
 
         if seed_hash not in kmer_dict:
             continue
@@ -872,7 +872,30 @@ def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_
 
                 cigartuples = []
                 mismatch_count = 0
-                for is_match, group in groupby(query_seq_array == target_seq_array[alignment_target_start: alignment_target_start + query_seq_array.size]):
+                # Process the part of the alignment preceding the seed.
+                for is_match, group in groupby(query_seq_array[0: seed_query_start]
+                                               == target_seq_array[alignment_target_start: seed_target_start]):
+                    if is_match:
+                        cigartuples.append((7, sum(1 for _ in group)))
+                    else:
+                        num_mismatches = sum(1 for _ in group)
+                        cigartuples.append((8, num_mismatches))
+                        mismatch_count += num_mismatches
+                if mismatch_count > mismatch_limit:
+                    continue
+
+                # Process the matching seed in the alignment.
+                if cigartuples:
+                    if cigartuples[-1][0] == 7:
+                        cigartuples[-1] = (7, cigartuples[-1][1] + seed_size)
+                    else:
+                        cigartuples.append((7, seed_size))
+                else:
+                    cigartuples.append((7, seed_size))
+
+                # Process the part of the alignment following the seed.
+                for is_match, group in groupby(query_seq_array[seed_query_stop: ]
+                                               == target_seq_array[seed_target_stop: seed_target_stop + query_seq_array.size - seed_query_stop]):
                     if is_match:
                         cigartuples.append((7, sum(1 for _ in group)))
                     else:
