@@ -1,16 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import anvio
 import anvio.terminal as terminal
 
 from anvio.sequence import Aligner, AlignedTarget, Alignment
 
+import sys
 import functools
 import multiprocessing
-import sys
 
 from copy import deepcopy
 from collections import deque
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Samuel Miller"
+__email__ = "samuelmiller10@gmail.com"
+__status__ = "Development"
 
 
 # Increase the recursion limit from the default of 1,000 to near the maximum.
