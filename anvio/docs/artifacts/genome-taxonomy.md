@@ -1,6 +1,6 @@
 This artifact is the output tables that are displayed when you run %(anvi-estimate-scg-taxonomy)s. 
 
-By default, they won't be outputed anywhere, just displayed in the terminal for your viewing pleasure. If you want them in a tab-delimited file (as a %(genome-taxnomy-txt)s), just provide the `-o` or the `-O` prefix and anvi'o will do that for you.
+By default, they won't be outputed anywhere, just displayed in the terminal for your viewing pleasure. If you want them in a tab-delimited file (as a %(genome-taxonomy-txt)s), just provide the `-o` or the `-O` prefix and anvi'o will do that for you.
 
 The content of these tables will depend on how you ran %(anvi-estimate-scg-taxonomy)s. [This blog post](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/#estimating-taxonomy-in-the-terminal) gives you examples of what this looks like for each of the input scenarios. They will also be briefly described below. 
 
