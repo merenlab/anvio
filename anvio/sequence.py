@@ -29,6 +29,12 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+# Multiprocessing currently uses a version of pickle with a maximum byte string size of 4 GB.
+# See https://bugs.python.org/issue17560#msg289548
+# Large alignment and dereplication results may exceed this limit, so chunk the tasks.
+MP_CHUNKSIZE = 10000
+
+
 class Codon:
     def __init__(self):
         pass
@@ -778,7 +784,7 @@ class Aligner:
                                                                       target_seq_dict=target_seq_dict,
                                                                       max_mismatch_freq=max_mismatch_freq),
                                                     zip(query_names, query_seq_arrays),
-                                                    chunksize=int(len(query_names) / self.num_threads) + 1):
+                                                    chunksize=MP_CHUNKSIZE):
             if alignment_info:
                 aligned_query = AlignedQuery(''.join(map(chr, query_seq_array)), name=query_name)
                 aligned_query_dict[query_name] = aligned_query
