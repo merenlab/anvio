@@ -5,16 +5,16 @@
 
 import functools
 import itertools
-import multiprocessing
 import numpy as np
+import multiprocessing as mp
 
-from itertools import groupby
 from hashlib import sha1
+from itertools import groupby
 from operator import itemgetter
 
 import anvio
-import anvio.constants as constants
 import anvio.terminal as terminal
+import anvio.constants as constants
 
 from anvio.errors import ConfigError
 
@@ -32,7 +32,7 @@ __status__ = "Development"
 # Multiprocessing currently uses a version of pickle with a maximum byte string size of 4 GB.
 # See https://bugs.python.org/issue17560#msg289548
 # Large alignment and dereplication results may exceed this limit, so chunk the tasks.
-MP_CHUNKSIZE = 10000
+MP_CHUNK_SIZE = 10000
 # The chunk size for k-mer dict formation from target sequences in alignment.
 TARGET_CHUNK_SIZE = 100000
 
@@ -303,7 +303,7 @@ class Kmerizer:
             as a given k-mer can occur multiple times in the sequence.
         """
 
-        pool = multiprocessing.Pool(self.num_threads)
+        pool = mp.Pool(self.num_threads)
         all_seq_kmer_items = pool.map(functools.partial(get_kmer_worker,
                                                         kmer_size=kmer_size,
                                                         include_full_length=include_full_length,
@@ -773,7 +773,7 @@ class Aligner:
             Keys are target names and values are AlignedTarget objects.
         """
 
-        pool = multiprocessing.Pool(self.num_threads)
+        pool = mp.Pool(self.num_threads)
 
         aligned_query_dict = {}
         aligned_target_dict = {}
@@ -787,10 +787,10 @@ class Aligner:
             if self.progress:
                 if target_chunk_stop <= len(target_names):
                     self.progress.update("Mapping to targets %d-%d"
-                                        % (target_chunk_start + 1, target_chunk_stop))
+                                         % (target_chunk_start + 1, target_chunk_stop))
                 else:
                     self.progress.update("Mapping to targets %d-%d"
-                                        % (target_chunk_start + 1, len(target_names)))
+                                         % (target_chunk_start + 1, len(target_names)))
 
             kmer_dict = Kmerizer(target_names[target_chunk_start: target_chunk_stop],
                                  target_seq_arrays[target_chunk_start: target_chunk_stop],
@@ -806,7 +806,7 @@ class Aligner:
                                                                           target_seq_dict=target_seq_dict,
                                                                           max_mismatch_freq=max_mismatch_freq),
                                                         zip(query_names, query_seq_arrays),
-                                                        chunksize=MP_CHUNKSIZE):
+                                                        chunksize=MP_CHUNK_SIZE):
                 if alignment_info:
                     try:
                         aligned_query = aligned_query_dict[query_name]
@@ -870,7 +870,7 @@ class Aligner:
         # Do not update Progress with prefix k-mer extraction.
         kmer_dict = Kmerizer(self.target_names, self.target_seq_strings).get_prefix_full_seq_dict(kmer_size)
 
-        pool = multiprocessing.Pool(self.num_threads)
+        pool = mp.Pool(self.num_threads)
         matched_target_names = pool.map(functools.partial(prefix_match_worker,
                                                           kmer_size=kmer_size,
                                                           kmer_dict=kmer_dict,
