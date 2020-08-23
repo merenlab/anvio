@@ -8,7 +8,7 @@ from anvio.sequence import Aligner, AlignedTarget, Alignment
 
 import sys
 import functools
-import multiprocessing
+import multiprocessing as mp
 
 from copy import deepcopy
 from collections import deque
@@ -79,10 +79,10 @@ class Agglomerator:
         # due to their seeds also being queries aligned to higher-priority seeds (lower index in `ordered_reference_names`).
         # Spurious clusters that need to be removed post facto are an inevitability of parallelization
         # due to lower-priority references occasionally being processed before higher-priority references in different processes.
-        manager = multiprocessing.Manager()
+        manager = mp.Manager()
         processed_reference_dict = manager.dict([(ordered_reference_name, len(ordered_reference_names))
                                                  for ordered_reference_name in ordered_reference_names])
-        lock = multiprocessing.Lock()
+        lock = mp.Lock()
 
         # Set static parameters in the multiprocessing target function.
         target = functools.partial(remap_queries,
@@ -93,7 +93,7 @@ class Agglomerator:
         # The lock used with the shared dict, `processed_reference_dict`,
         # cannot be serialized and so cannot be passed to spawned processes.
         # This is circumvented by including the lock as a global variable in the forked parent process.
-        pool = multiprocessing.Pool(self.num_threads, initializer=initialize, initargs=(lock, ))
+        pool = mp.Pool(self.num_threads, initializer=initialize, initargs=(lock, ))
 
         agglomerated_references = []
         processed_input_count = 0
