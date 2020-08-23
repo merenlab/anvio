@@ -577,8 +577,18 @@ function resetFunctionColors(fn_colors=null) {
 }
 
 function toggleUnmarkedGenes() {
-  if(!state.hasOwnProperty('cog-colors')) return;
-  for(var cag in state['cog-colors']) {
+  var db = function(selection){
+    switch(selection.val()) {
+      case "Source":
+        return state['source-colors'];
+      case "COG":
+        return state['cog-colors'];
+      case "KEGG":
+        return state['kegg-colors'];
+    }
+  }($('#gene_color_order'));
+
+  for(var cag in db) {
     if($('#picker_' + cag).attr('color') == "gray") {
       var row = document.getElementById("picker_row_" + cag);
       if(row.style.display == "") {
@@ -683,14 +693,15 @@ function display_nucleotides() {
     }
   }
 
+  /* width of monospaced character per font size */
+  var nucl_text_font = width/((end-start)*.6002738402061856);
+
   var nucl_sequence = contextSvg.append("text")
                                 .text(sequence.substring(start, end))
                                 .attr("id", "DNA_sequence")
                                 .attr("fill", "url(#solids)")
-                                .attr("class", "noselect");
-  /* width of monospaced character per font size */
-  var nucl_text_font = width/((end-start)*.6002738402061856);
-                   nucl_sequence.attr("font-size", nucl_text_font);
+                                .attr("class", "noselect")
+                                .attr("font-size", nucl_text_font);
   var dna_seq_height = contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
   var nucl_text_y = .75*dna_seq_height;
                    nucl_sequence.attr("y", nucl_text_y)
