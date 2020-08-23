@@ -4,7 +4,7 @@
 
 import os
 import itertools
-import multiprocessing
+import multiprocessing as mp
 
 from itertools import combinations
 from collections import OrderedDict
@@ -31,6 +31,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
+
+
+# Multiprocessing chunk sizes for tRNA feature profiling.
+MP_CHUNK_SIZE = 500000
+DB_CHUNK_SIZE = 50000
 
 
 class UniqueSeq:
@@ -341,9 +346,6 @@ class TRNASeqDataset:
 
         self.trnaseq_db_path = os.path.join(self.output_dir, self.project_name + "-TRNASEQ.db")
 
-        self.profiled_unique_seq_count = 0 # tracks reads placed in profile input queue
-        self.retrieved_profile_count = 0 # tracks reads retrieved from profile output queue
-
         self.trna_count = 0
         self.unique_trna_count = 0
         self.trna_containing_anticodon_count = 0
@@ -396,9 +398,9 @@ class TRNASeqDataset:
 
         self.run.log_path = self.log_path
 
-        if not 1 < self.num_threads < multiprocessing.cpu_count():
+        if not 1 < self.num_threads < mp.cpu_count():
             ConfigError("The number of threads to use must be a positive integer "
-                        "less than or equal to %d. Try again!" % multiprocessing.cpu_count())
+                        "less than or equal to %d. Try again!" % mp.cpu_count())
 
         if self.write_buffer_size < 1:
             ConfigError("The write buffer size must be a positive integer. Try again!")
@@ -461,47 +463,42 @@ class TRNASeqDataset:
             List of UniqueSeq objects
         """
 
-        self.progress.new("Profiling input sequences for tRNA features")
+        self.progress.new("Profiling tRNA features in input sequences")
         self.progress.update("...")
 
-        write_points = self.get_write_points(len(unique_input_seqs))
-        write_point_index = 0
+        pool = mp.Pool(self.num_threads)
 
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
-        processes = [multiprocessing.Process(target=trnaidentifier.profile_wrapper, args=(input_queue, output_queue))
-                     for _ in range(self.num_threads)]
-        for process in processes:
-            process.start()
-
-
-        chunk_dict = {} # map unique seq names to UniqueSeq objects
+        num_processed_seqs = 0
+        unique_input_seqs_to_write_dict = {}
+        trna_profiles = []
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        for unique_seq in unique_input_seqs:
-            # Profile each unique input sequence.
-            input_queue.put((unique_seq.representative_name, unique_seq.seq_string))
-            self.profiled_unique_seq_count += 1
-            chunk_dict[unique_seq.representative_name] = unique_seq
+        for unique_input_seq, profile in pool.imap_unordered(profile_worker,
+                                                             unique_input_seqs,
+                                                             chunksize=MP_CHUNK_SIZE):
+            unique_input_seqs_to_write_dict[unique_input_seq.representative_name] = unique_input_seq
+            trna_profiles.append(profile)
 
-            if self.profiled_unique_seq_count != write_points[write_point_index]:
-                # Keep adding sequences to the profiling queue until the write point is hit.
-                continue
+            num_processed_seqs += 1
 
-            unique_trna_seqs_chunk, unique_nontrna_seqs_chunk = self.write_profile_results(output_queue, chunk_dict, trnaseq_db)
-            self.unique_trna_seqs.extend(unique_trna_seqs_chunk)
-            self.unique_nontrna_seqs.extend(unique_nontrna_seqs_chunk)
-            chunk_dict = {}
+            if num_processed_seqs % DB_CHUNK_SIZE == 0:
+                unique_trna_seqs, unique_nontrna_seqs = self.write_profile_results(trna_profiles,
+                                                                                   unique_input_seqs_to_write_dict,
+                                                                                   trnaseq_db)
+                self.unique_trna_seqs.extend(unique_trna_seqs)
+                self.unique_nontrna_seqs.extend(unique_nontrna_seqs)
 
-            self.progress.update("%d of %d unique sequences have been profiled"
-                                 % (self.profiled_unique_seq_count, len(unique_input_seqs)))
+                trna_profiles.clear()
 
-            write_point_index += 1
-            if write_point_index == len(write_points):
-                break
+                self.progress.update("%d of %d unique sequences have been profiled"
+                                     % (num_processed_seqs, len(unique_input_seqs)))
+        unique_trna_seqs, unique_nontrna_seqs = self.write_profile_results(trna_profiles,
+                                                                           unique_input_seqs_to_write_dict,
+                                                                           trnaseq_db)
+        self.unique_trna_seqs.extend(unique_trna_seqs)
+        self.unique_nontrna_seqs.extend(unique_nontrna_seqs)
 
-        for process in processes:
-            process.terminate()
+        pool.close()
+        pool.join()
 
         trnaseq_db.db.set_meta_value('num_input_reads_processed', self.input_seq_count)
         trnaseq_db.db.set_meta_value('num_trna_reads', self.trna_count)
@@ -522,6 +519,9 @@ class TRNASeqDataset:
         self.unique_trna_seqs.sort(key=lambda unique_seq: unique_seq.representative_name)
         self.unique_nontrna_seqs.sort(key=lambda unique_seq: unique_seq.representative_name)
 
+        self.progress.update("%d of %d unique sequences have been profiled"
+                             % (len(unique_input_seqs), len(unique_input_seqs)))
+
         self.progress.end()
 
         self.run.info("Reads processed", self.input_seq_count)
@@ -539,27 +539,7 @@ class TRNASeqDataset:
         self.run.info("Profiled reads ending in 3'-CCAN/CCANN", self.trna_with_threeprime_ccan_ccann_count)
 
 
-    def get_write_points(self, item_count):
-        """Helper function to determine the points when to write multiprocessed outputs.
-        Write points are cumulative numbers of items processed.
-        """
-
-        num_chunks = item_count // self.write_buffer_size
-        if num_chunks == 0:
-            num_chunks += 1
-            write_points = [item_count]
-        else:
-            write_points = [self.write_buffer_size * (i + 1) for i in range(num_chunks)]
-            if item_count % num_chunks > 0:
-                num_chunks += 1
-                write_points.append(item_count)
-
-        return write_points
-
-
-    def write_profile_results(self, output_queue, chunk_dict, trnaseq_db):
-        """Helper function for `get_unique_input_seqs` to write profiling results to database."""
-
+    def write_profile_results(self, trna_profiles, unique_input_seqs_to_write_dict, trnaseq_db):
         # List of entries for each table
         trnaseq_sequences_table_entries = []
         trnaseq_info_table_entries = []
@@ -570,19 +550,16 @@ class TRNASeqDataset:
         unique_trna_seqs = []
         unique_nontrna_seqs = []
 
-        while self.retrieved_profile_count < self.profiled_unique_seq_count:
-            # Retrieve profiles from the output queue and write tRNA profiles to the database.
-            trna_profile = output_queue.get()
-            self.retrieved_profile_count += 1
-
+        for trna_profile in trna_profiles:
             output_name = trna_profile.name
             output_seq = trna_profile.input_seq
 
+            unique_seq = unique_input_seqs_to_write_dict.pop(output_name)
+
             if not trna_profile.is_predicted_trna:
-                unique_nontrna_seqs.append(chunk_dict[output_name])
+                unique_nontrna_seqs.append(unique_seq)
                 continue
 
-            unique_seq = chunk_dict[output_name]
             unique_seq.identification_method = 'profiled'
             unique_seq.acceptor_length = len(trna_profile.acceptor_variant_string)
             unique_seq.extra_fiveprime_length = trna_profile.num_extra_fiveprime
@@ -1410,3 +1387,8 @@ class TRNASeqDataset:
         self.write_uniqued_trna_supplement()
         self.write_trimmed_supplement()
         self.write_normalized_supplement()
+
+
+def profile_worker(unique_seq):
+    return unique_seq, trnaidentifier.Profile(unique_seq.seq_string,
+                                              name=unique_seq.representative_name)
