@@ -2,6 +2,9 @@ Output text files produced by %(anvi-estimate-metabolism)s that describe the pre
 
 Depending on the output options used when running %(anvi-estimate-metabolism)s, these files will have different formats.
 
+### How to get to this output
+![A beautiful workflow of metabolism reconstruction in anvi'o](../../images/metabolism_reconstruction.png)
+
 ## Long format output modes
 
 The long format output modes produce tab-delimited files. Each line in the file (except for the header line) is indexed by an integer in the `unique_id` column. Different output "modes" will result in output files with different information.

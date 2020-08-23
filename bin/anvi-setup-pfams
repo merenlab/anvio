@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __provides__ = ['pfams-data']
-__description__ = "Download and setup Pfam data from the EBI."
+__description__ = "Download and setup Pfam data from the EBI"
 
 
 if __name__ == '__main__':

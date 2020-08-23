@@ -28,7 +28,7 @@ __description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this
                    "output for what is described in a given collection. The output directory will contain almost everything any "
                    "downstream analysis may need, and can be displayed using a browser without the need for an anvi'o installation. "
                    "For this reason alone, reporting summary outputs as supplementary data with publications is a great idea for "
-                   "transparency and reproducibility.")
+                   "transparency and reproducibility")
 
 run = terminal.Run()
 progress = terminal.Progress()

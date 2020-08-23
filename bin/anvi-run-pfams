@@ -17,7 +17,7 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['contigs-db', 'pfams-data',]
 __provides__ = ['functions',]
-__description__ = "Run Pfam on Contigs Database."
+__description__ = "Run Pfam on Contigs Database"
 
 
 @time_program

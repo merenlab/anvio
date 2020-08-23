@@ -29,8 +29,8 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'hmm-source',]
 __provides__ = ['hmm-hits',]
 __description__ = ("This program deals with populating tables that store HMM hits in an "
-                   "anvi'o contigs database.")
-
+                   "anvi'o contigs database")
+__resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 run = terminal.Run()
 progress = terminal.Progress()
