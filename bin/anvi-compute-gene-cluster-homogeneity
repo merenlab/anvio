@@ -21,6 +21,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
+__requires__ = ["pan-db", "genomes-storage-db"]
+__provides__ = []
 __description__ = "Compute homogeneity for gene clusters"
 
 

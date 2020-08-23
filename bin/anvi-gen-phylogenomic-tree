@@ -24,7 +24,7 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['concatenated-gene-alignment-fasta']
 __provides__ = ['phylogeny']
-__description__ = "Generate phylogenomic tree from aligment file."
+__description__ = "Generate phylogenomic tree from aligment file"
 
 
 run = terminal.Run()

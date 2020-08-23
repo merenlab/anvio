@@ -3,7 +3,7 @@ An estimate of the completeness of purity of a genome based on single-copy core 
 {:.notice}
 See [this blog post](http://merenlab.org/2016/06/09/assessing-completion-and-contamination-of-MAGs/) for more information, and [this paper](https://doi.org/10.1038/nbt.3893) for the community standards for metagenome-assembled and single-amplified genomes.
 
-There are two essential features to this metric: **completion**, and **redundancy**.
+There are two essential features to this metric: **completion** and **redundancy**.
 
 ### Completion
 

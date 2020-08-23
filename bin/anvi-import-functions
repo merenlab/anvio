@@ -24,7 +24,7 @@ __resources__ = [("Importing functions", "http://merenlab.org/2016/06/18/importi
                  ("Importing VirSorter phage annotaions", "http://merenlab.org/2018/02/08/importing-virsorter-annotations/")]
 __requires__ = ['contigs-db', 'functions-txt',]
 __provides__ = ['functions',]
-__description__ = "Parse and store functional annotation of genes."
+__description__ = "Parse and store functional annotation of genes"
 
 
 run = terminal.Run()

@@ -17,7 +17,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi'o database or config file to a newer version."
+__description__ = "Migrate an anvi'o database or config file to a newer version"
 
 run = terminal.Run()
 progress = terminal.Progress()

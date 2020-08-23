@@ -28,7 +28,7 @@ __description__ = ("Split an anvi'o pan or profile database into smaller, self-c
                    "self-contained smaller anvi'o projects. We know you don't read this far into "
                    "these help menus, but please remember: you will either need to provide a profile & "
                    "contigs database pair, or a pan & genomes storage pair. The rest will be taken "
-                   "care of. Magic.")
+                   "care of. Magic")
 
 
 if __name__ == '__main__':

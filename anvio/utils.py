@@ -3810,7 +3810,7 @@ def check_h5py_module():
     except:
         raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
                           "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environmnet "
+                          "and really unimportant. If you run `pip install h5py` in your Python virtual environment "
                           "for anvi'o, and try running the migration program again things should be alright.")
 
 

@@ -25,7 +25,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["contigs-db", "profile-db", "external-genomes", "collection"]
 __provides__ = ["completion"]
-__description__ = "Estimate completion and redundancy using domain-specific single-copy core genes."
+__description__ = "Estimate completion and redundancy using domain-specific single-copy core genes"
 
 
 pp = terminal.pretty_print

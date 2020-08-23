@@ -26,7 +26,7 @@ __requires__ = ['misc-data-layers-category', 'pan-db', 'genomes-storage-db',]
 __provides__ = ['functional-enrichment-txt',]
 __description__ = ("A program that takes a pangenome, and a categorical layers additional data item, and "
                    "generates the input for anvi-get-enriched-functions-per-pan-group. If requested a "
-                   "functional occurrence table across genomes is also generated.")
+                   "functional occurrence table across genomes is also generated")
 
 
 run = terminal.Run()

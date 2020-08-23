@@ -20,8 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-item-orders-txt', 'dendrogram', 'phylogeny',]
-__provides__ = ['misc-data-item-orders',]
+__requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-items-order-txt', 'dendrogram', 'phylogeny',]
+__provides__ = ['misc-data-items-order',]
 __description__ = "Import a new items order into an anvi'o database"
 
 run = terminal.Run()
