@@ -32,9 +32,9 @@ __status__ = "Development"
 # Multiprocessing currently uses a version of pickle with a maximum byte string size of 4 GB.
 # See https://bugs.python.org/issue17560#msg289548
 # Large alignment and dereplication results may exceed this limit, so chunk the tasks.
-MP_CHUNK_SIZE = 10000
+MP_CHUNK_SIZE = 1000
 # The chunk size for k-mer dict formation from target sequences in alignment.
-TARGET_CHUNK_SIZE = 100000
+TARGET_CHUNK_SIZE = 5000
 
 
 class Codon:

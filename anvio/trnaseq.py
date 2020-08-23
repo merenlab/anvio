@@ -33,8 +33,9 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
-# Multiprocessing chunk sizes for tRNA feature profiling.
-MP_CHUNK_SIZE = 500000
+# Multiprocessing chunk size for tRNA feature profiling.
+MP_CHUNK_SIZE = 10000
+# Chunk size for writing tRNA features to database.
 DB_CHUNK_SIZE = 50000
 
 
