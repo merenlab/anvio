@@ -80,7 +80,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko"],
+                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko", "ko_definition"],
                     'only_complete': False,
                     'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
@@ -192,6 +192,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': 'modules',
                         'mode_type': 'kofams',
                         'description': 'A comma-separated list of modules that the KO belongs to'
+                        },
+                  'ko_definition': {
+                        'cdict_key': None,
+                        'mode_type': 'kofams',
+                        'description': 'The functional annotation associated with the KO number'
                         },
                   }
 
@@ -906,8 +911,9 @@ class KeggSetup(KeggContext):
 
 
 class KeggRunHMMs(KeggContext):
-    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
+    """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
+    Parameters
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-run-kegg-kofams
@@ -1014,7 +1020,7 @@ class KeggRunHMMs(KeggContext):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
         # get an instance of gene functions table
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -1034,7 +1040,7 @@ class KeggRunHMMs(KeggContext):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         if self.keep_all_hits:
             run.info_single("All HMM hits will be kept regardless of score.")
             if self.log_bitscores:
@@ -1350,7 +1356,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
+            desc_str = header_meta['description']
+            type_str = header_meta['mode_type']
+            mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_hits_and_splits(self):
@@ -2457,10 +2466,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+        self.setup_ko_dict()
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
-            headers_to_include = set(["unique_id", self.name_header, "ko", "modules_with_ko", "gene_caller_id", "contig"])
+            headers_to_include = set(OUTPUT_MODES["kofam_hits"]["headers"])
         else:
             headers_to_include = set(headers_to_include)
 
@@ -2489,6 +2499,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         else:
                             mod_list = "None"
                         d[unique_id]["modules_with_ko"] = mod_list
+                    if "ko_definition" in headers_to_include:
+                        d[unique_id]["ko_definition"] = self.ko_dict[ko]['definition']
 
                     unique_id += 1
 
@@ -2663,7 +2675,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
+            desc_str = header_meta['description']
+            type_str = header_meta['mode_type']
+            mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
+            self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
 
     def init_metagenomes(self):
@@ -2786,7 +2801,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         return df
 
 
-    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, ko_superdict_multi, output_mode, as_data_frame=False):
+    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, ko_superdict_multi, output_mode, as_single_data_frame=False, as_data_frame_per_metagenome=False):
         """Arranges the multi-contigs DB metabolism data into a better format for printing
 
         PARAMETERS
@@ -2797,13 +2812,20 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             the ko hit data for multiple different contigs DBs
         output_mode : string
             which output format to use
-        as_data_frame : boolean
+        as_single_data_frame : boolean
             whether to return the formatted data in a data frame rather than a dictionary
+        as_data_frame_per_metagenome : boolean
+            whether to return the formatted data as a list of data frames, one per metagenome
 
         RETURNS
         =======
         Metabolism data, either in a formatted dictionary or a data frame
         """
+
+        if as_single_data_frame and as_data_frame_per_metagenome:
+            raise ConfigError("Tsk, tsk. Someone has requested get_metabolism_superdict_multi_for_output() to return both "
+                              "a single data frame and a list of data frames (one per metagenome). This simply will not do, "
+                              "so anvi'o is giving up and walking away now.")
 
         kegg_metabolism_superdict_multi_output_version = {}
 
@@ -2833,8 +2855,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
             kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
 
-        if as_data_frame:
+        if as_single_data_frame:
             return self.get_metabolism_superdict_multi_as_data_frame(kegg_metabolism_superdict_multi_output_version)
+        elif as_data_frame_per_metagenome:
+            df_list = []
+            for metagenome_name, single_dict in kegg_metabolism_superdict_multi_output_version.items():
+                if anvio.DEBUG:
+                    self.run.info_single(f"get_metabolism_superdict_multi_for_output(): Appending {metagenome_name} data frame to list")
+                multi_formatted_single_dict = {metagenome_name : single_dict}
+                single_df = self.get_metabolism_superdict_multi_as_data_frame(multi_formatted_single_dict)
+                df_list.append(single_df)
+            return df_list
         else:
             return kegg_metabolism_superdict_multi_output_version
 
@@ -2843,10 +2874,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """Stores the multi-contigs DB metabolism data in long format (tab-delimited files, one per requested output mode)"""
 
         for mode in self.output_modes:
-            df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode=mode, as_data_frame=True)
+            df_list = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode=mode, as_data_frame_per_metagenome=True)
 
             output_file_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
-            df.to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+            if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
+                if anvio.DEBUG:
+                    self.run.info("Removing existing output file", output_file_path)
+                os.remove(output_file_path)
+
+            df_list[0].to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+            for single_df in df_list[1:]:
+                single_df.to_csv(output_file_path, mode='a', header=False, index=True, index_label="unique_id", sep='\t', na_rep='NA')
 
             self.run.info("Long-format output", output_file_path)
 
@@ -2859,7 +2897,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we use module output mode because that gets us all the relevant information in the dataframe
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_single_data_frame=True)
         df.set_index(['db_name', 'kegg_module'], inplace=True)
 
 
@@ -2883,7 +2921,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
         # now we make a KO hit count matrix
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_single_data_frame=True)
         df.set_index(['db_name'], inplace=True)
         ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
@@ -3459,6 +3497,28 @@ class KeggModulesDatabase(KeggContext):
 
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         return " ".join(def_lines)
+
+
+    def get_ko_definition_from_modules_table(self, ko_num):
+        """This function returns the definition for the given KO from the modules data table.
+
+        Note that the modules table will only contain information for KOs that belong to modules, so this
+        function returns None for those KOs that are not in modules. If your use case depends on accessing
+        definitions for all modules, you are better off calling KeggContext.setup_ko_dict() and taking the
+        definition from that dictionary.
+        """
+
+        where_clause_string = "data_name = 'ORTHOLOGY' AND data_value = '%s'" % (ko_num)
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True, error_if_no_data=False)
+        print(dict_from_mod_table)
+        if not dict_from_mod_table:
+            self.run.warning("get_ko_definition() speaking: No ORTHOLOGY entry found for KO %s - returning None."
+                            % (ko_num))
+            return None
+        else:
+            # there could be several rows for the same KO in different modules, but each definition should be
+            # the same or similar, so we arbitrarily return the first one
+            return dict_from_mod_table[0]['data_definition']
 
 
     def unroll_module_definition(self, mnum):

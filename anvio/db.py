@@ -702,7 +702,9 @@ class DB:
         else:
             table_structure = self.get_table_structure(table_name)
 
-        if not columns_of_interest:
+        if columns_of_interest:
+            columns_of_interest = list(columns_of_interest)
+        else:
             columns_of_interest = table_structure
 
         if where_clause:

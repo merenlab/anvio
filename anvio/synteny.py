@@ -71,7 +71,7 @@ class NGram(object):
         self.skip_init_functions = A('skip_init_functions')
         self.genome_names_to_focus = A('genome_names')
         self.ngram_source = A("ngram_source")
-
+        self.first_functional_hit_only = A("first_functional_hit_only")
         self.annotation_source_dict = {}
 
         self.pan_db_path = A('pan_db')
@@ -114,7 +114,7 @@ class NGram(object):
         if self.list_annotation_sources:
             self.run.info('Available functional annotation sources', ', '.join(self.gene_function_source_set))
             sys.exit()
- 
+
         # This houses the ngrams' data
         self.ngram_attributes_list = []
 
@@ -277,6 +277,7 @@ class NGram(object):
         ngram_counts_dict = Counter({})
         annotations_dict = {}
         gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
+
         for window in gene_callers_id_windows:
 
             annotated_window_dict = self.annotate_window(window)
@@ -291,16 +292,13 @@ class NGram(object):
             if ngram[1] == True:
                 annotated_window_dict_ordered = {}
                 for annotation_source, annotation in annotated_window_dict.items():
-                    if annotation_source == self.ngram_source:
-                        pass
-                    else:
-                        annotated_window_flipped = annotation[::-1]
-                        annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+                    annotated_window_flipped = annotation[::-1]
+                    annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+                    annotations_dict[ngram[0]] = annotated_window_dict_ordered # record flipped version of annotation
             else:
-                pass
+                annotations_dict[ngram[0]] = annotated_window_dict
 
             ngram_counts_dict[ngram[0]] += 1
-            annotations_dict[ngram[0]] = annotated_window_dict
 
         return ngram_counts_dict, annotations_dict
 
@@ -309,7 +307,8 @@ class NGram(object):
         """This method annotates a gene-callers-id window
 
         This method will annotate a gene-callers-id window based using annotation sources provided
-        by the user (e.g. COGs, pan_db)
+        by the user (e.g. COGs, pan_db). If the user provided the `first_functional_hit_only` flag, the COG
+        annotation will be split by "!!!" and the first (best hit) item will be used.
 
         Parameters
         ==========
@@ -325,8 +324,22 @@ class NGram(object):
         # Annotate window based on user input
         gene_annotation_dict = {}
         for annotation_source, annotations_dict in self.annotation_source_dict.items():
-            ngram_annotation = tuple([annotations_dict[g] for g in window])
-            gene_annotation_dict[annotation_source] = ngram_annotation 
+            if self.first_functional_hit_only:
+                ngram_annotation = []
+                for g in window:
+                    annotation = annotations_dict[g]
+                    if "!!!" in annotation:
+                        annotation_first = annotation.split("!!!")[0]
+                        ngram_annotation.append(annotation_first)
+                    else:
+                        ngram_annotation.append(annotation)
+
+                ngram_annotation = tuple(ngram_annotation)
+
+            else:
+                ngram_annotation = tuple([annotations_dict[g] for g in window])
+
+            gene_annotation_dict[annotation_source] = ngram_annotation
 
         return gene_annotation_dict
 
