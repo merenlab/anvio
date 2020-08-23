@@ -38,6 +38,7 @@ requirements:
     - illumina-utils
     - tabulate
     - numba
+    - sqlite >=3.31.1
     - paste
     # these three are critical versions. any changes must be
     # tested with extra attention:

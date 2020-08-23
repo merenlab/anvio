@@ -74,7 +74,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits', '--log-bitscores']
+        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits', '--log-bitscores', '--just-do-it']
 
         self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
 

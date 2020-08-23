@@ -5,6 +5,7 @@ var stages = {};
 var variability = {};
 var histogram_data;
 var residue_info;
+var residue_info_types;
 var column_info;
 var sample_groups;
 var pdb_content;
@@ -243,6 +244,20 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         if( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
+            if ($('#surface_color_type').val() == 'Static') {
+                var color_value = $('#color_static_surface').attr('color');
+            } else if ($('#surface_color_type').val() == 'Dynamic') {
+                // Show range error if min is greater than max
+                if (parseFloat($('#surface_color_min').val()) >= parseFloat($('#surface_color_max').val())) {
+                    $('#dynamic_surface_color_error').show();
+                } else {
+                    $('#dynamic_surface_color_error').hide();
+                }
+                var color_value = getSurfaceColorScheme();
+            } else {
+                var color_value = $('#surface_color_type').val()
+            }
+
             surface_rep_params = {
                 surfaceType: "av",
                 smooth: 3,
@@ -252,17 +267,11 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 scaleFactor: 3.0,
                 opacity: parseFloat($('#surface_opacity').val()),
                 lowResolution: false,
-            }
-            if ($('#surface_type').val() == 'plain') {
-                surface_rep_params['color'] = $('#color_plain').attr('color')
-            } else {
-                surface_rep_params['colorScheme'] = $('#surface_type').val()
+                color: color_value
             }
             component.addRepresentation("surface", surface_rep_params);
         }
 
-        // FIXME does not work as expected. When loading structure residue info create
-        // manual labels
         if ($('#show_residue_labels').is(':checked')) {
             component.addRepresentation("label", {
             sele: ".CA",
@@ -273,16 +282,31 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         }
 
         if ($('#show_backbone').is(':checked')) {
+
+            if ($('#backbone_color_type').val() == 'Static') {
+                var color_value = $('#color_static_backbone').attr('color');
+            } else if ($('#backbone_color_type').val() == 'Dynamic') {
+                // Show range error if min is greater than max
+                if (parseFloat($('#backbone_color_min').val()) >= parseFloat($('#backbone_color_max').val())) {
+                    $('#dynamic_backbone_color_error').show();
+                } else {
+                    $('#dynamic_backbone_color_error').hide();
+                }
+                var color_value = getBackboneColorScheme();
+            } else {
+                var color_value = $('#backbone_color_type').val()
+            }
+
             backbone_type = $('#backbone_type').val()
 
             if (backbone_type == 'rocket+loop') {
                 // custom
                 component.addRepresentation('rocket', {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     scale: 1.8,
                 });
                 component.addRepresentation('tube', {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     sele: 'not helix',
                     scale: 2.0,
                     aspectRatio: 1.0,
@@ -292,7 +316,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 null
             } else {
                 component.addRepresentation(backbone_type, {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     scale: 1.5,
                     aspectRatio: 3.0,
                 });
@@ -373,6 +397,19 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 if (residue_info[residue].hasOwnProperty('rel_solvent_acc')) {tooltip_HTML_body += `<tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('phi')) {tooltip_HTML_body += `<tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('contact_numbers')) {tooltip_HTML_body += `<tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>`}
+
+                if ($('#backbone_color_type').val() == 'Dynamic') {
+                    let name = $('#backbone_color_variable').val();
+                    if (!tooltip_HTML_body.includes(name)) {
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                    }
+                }
+                if ($('#surface_color_type').val() == 'Dynamic') {
+                    let name = $('#surface_color_variable').val();
+                    if (!tooltip_HTML_body.includes(name)) {
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                    }
+                }
 
                 // Variant data is available if a variant exists at hovered residue
                 if (variability[group].hasOwnProperty(residue)) {
@@ -471,6 +508,88 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     return defer.promise();
 }
 
+function getBackboneColorScheme() {
+
+    var schemeId_backbone = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.atomColor = function (atom) {
+        let name = $('#backbone_color_variable').val();
+        let val = residue_info[atom.resno][name]
+
+        if (val == null) {
+            // Value is null, return the min value color
+            return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
+        }
+
+        let min_value = parseFloat($('#backbone_color_min').val());
+        let max_value = parseFloat($('#backbone_color_max').val());
+        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+        val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+        var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
+        return '0x' + hex.substring(1, 7).toUpperCase()
+      }
+    })
+
+    return schemeId_backbone;
+}
+
+function getSurfaceColorScheme() {
+
+    var schemeId_surface = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.atomColor = function (atom) {
+        let name = $('#surface_color_variable').val();
+        let val = residue_info[atom.resno][name]
+
+        if (val == null) {
+            // Value is null, return the min value color
+            return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
+        }
+
+        let min_value = parseFloat($('#surface_color_min').val());
+        let max_value = parseFloat($('#surface_color_max').val());
+        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+        val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+        var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
+        return '0x' + hex.substring(1, 7).toUpperCase()
+      }
+    })
+
+    return schemeId_surface;
+}
+
+function backbone_rule(element) {
+    if ($(element).val() == 'Static') {
+        $('.static-color-backbone').show();
+        $('.dynamic-color-backbone').hide();
+    } else if ($(element).val() == 'Dynamic') {
+        $('.static-color-backbone').hide();
+        $('.dynamic-color-backbone').show();
+    } else {
+        $('.static-color-backbone').hide();
+        $('.dynamic-color-backbone').hide();
+    }
+
+    create_ngl_views(fetch_variability=false);
+}
+
+
+function surface_rule(element) {
+    if ($(element).val() == 'Static') {
+        $('.static-color-surface').show();
+        $('.dynamic-color-surface').hide();
+    } else if ($(element).val() == 'Dynamic') {
+        $('.static-color-surface').hide();
+        $('.dynamic-color-surface').show();
+    } else {
+        $('.static-color-surface').hide();
+        $('.dynamic-color-surface').hide();
+    }
+
+    create_ngl_views(fetch_variability=false);
+}
+
+
 function load_protein() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     var defer = $.Deferred();
@@ -485,6 +604,7 @@ function load_protein() {
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
             residue_info = move_codon_number_to_index(JSON.parse(data['residue_info']));
+            residue_info_types = JSON.parse(data['residue_info_types']);
             defer.resolve();
         }
     });
@@ -877,6 +997,8 @@ function create_ui() {
 
             $('#color_target_column').empty();
             $('#size_target_column').empty();
+            $('#backbone_color_variable').empty();
+            $('#surface_color_variable').empty();
 
             if (!color_legend.hasOwnProperty(engine)) {
                 color_legend[engine] = {};
@@ -884,6 +1006,14 @@ function create_ui() {
 
             if (!size_legend.hasOwnProperty(engine)) {
                 size_legend[engine] = {};
+            }
+
+            for (const [info_name, types] of Object.entries(residue_info_types)) {
+                if (types["dtype"] != "object") {
+                    // Ok this is some type of numerical data form. We can include it
+                    $('#backbone_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
+                    $('#surface_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
+                }
             }
 
             column_info.forEach((item) => {
@@ -960,6 +1090,37 @@ function create_ui() {
     });
 
    return defer.promise();
+}
+
+
+function onTargetResidueInfoChange(element) {
+    let name = $(element).val();
+    let type_info = residue_info_types[name];
+
+    $(`#backbone_numerical_panel`).show();
+    $(`#backbone_color_min`).val(type_info['amin']);
+    $(`#backbone_color_max`).val(type_info['amax']);
+
+    $('.colorpicker-legend').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function(cal) {
+            let el = $(cal).data('colpick').el;
+            color_legend[$(el).attr('data-engine')][$(el).attr('data-column')][$(el).attr('data-key')] = $(el).attr('color');
+            draw_variability();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    create_ngl_views(fetch_variability=false);
 }
 
 
@@ -1280,7 +1441,8 @@ function gen_pymol_script() {
         } : null;
     }
 
-    var bb_color = hexToRgb($('#backbone_color').attr('color'));
+    // FIXME Uses static backbone color
+    var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
 
     // s is the full PyMOL script string
     var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
@@ -1288,10 +1450,10 @@ function gen_pymol_script() {
             `bg_color white\n` +
             `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
 
-    // Add a surface
+    // FIXME Add a surface (uses static surface color)
     if ($('#show_surface').is(':checked')) {
         // disregards colorScheme and picks 'plain' surface color
-        var surface_color = hexToRgb($('#color_plain').attr('color'));
+        var surface_color = hexToRgb($('#color_static_surface').attr('color'));
         var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
         var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
         s += `cmd.show('surface', struct_obj)\n` +

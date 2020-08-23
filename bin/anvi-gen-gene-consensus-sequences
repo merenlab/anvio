@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     try:
         c = variabilityops.ConsensusSequences(args)
-        c.process()
+        c.process(exit_if_data_empty=False)
         c.report()
     except ConfigError as e:
         print(e)
