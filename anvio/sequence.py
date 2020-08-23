@@ -33,6 +33,8 @@ __status__ = "Development"
 # See https://bugs.python.org/issue17560#msg289548
 # Large alignment and dereplication results may exceed this limit, so chunk the tasks.
 MP_CHUNKSIZE = 10000
+# The chunk size for k-mer dict formation from target sequences in alignment.
+TARGET_CHUNK_SIZE = 100000
 
 
 class Codon:
@@ -771,47 +773,76 @@ class Aligner:
             Keys are target names and values are AlignedTarget objects.
         """
 
-        kmer_dict = Kmerizer(target_names, target_seq_arrays, num_threads=self.num_threads).get_kmer_dict(seed_size)
+        pool = multiprocessing.Pool(self.num_threads)
 
         aligned_query_dict = {}
         aligned_target_dict = {}
 
-        target_seq_dict = dict(zip(target_names, target_seq_arrays))
-
-        pool = multiprocessing.Pool(self.num_threads)
-        num_processed_queries = 0
         total_query_count = len(query_names)
-        for (query_name,
-             query_seq_array,
-             alignment_info) in pool.imap_unordered(functools.partial(align_without_indels_worker,
-                                                                      kmer_dict=kmer_dict,
-                                                                      seed_size=seed_size,
-                                                                      target_seq_dict=target_seq_dict,
-                                                                      max_mismatch_freq=max_mismatch_freq),
-                                                    zip(query_names, query_seq_arrays),
-                                                    chunksize=MP_CHUNKSIZE):
-            if alignment_info:
-                aligned_query = AlignedQuery(''.join(map(chr, query_seq_array)), name=query_name)
-                aligned_query_dict[query_name] = aligned_query
-                for target_name, target_seq_array, alignment_target_start, cigartuples in alignment_info:
-                    if target_name in aligned_target_dict:
-                        aligned_target = aligned_target_dict[target_name]
-                    else:
-                        aligned_target = AlignedTarget(''.join(map(chr, target_seq_array)), name=target_name)
-                        aligned_target_dict[target_name] = aligned_target
-                    alignment = Alignment(0, alignment_target_start, cigartuples, aligned_query, aligned_target)
-                    aligned_query.alignments.append(alignment)
-                    aligned_target.alignments.append(alignment)
 
-            num_processed_queries += 1
+        target_chunk_start = 0
+        target_chunk = 1
+        target_chunk_stop = TARGET_CHUNK_SIZE * target_chunk
+        while target_chunk_start < len(target_names):
             if self.progress:
-                if num_processed_queries % 10000 == 0:
-                    self.progress.update("%d/%d queries aligned without indels"
-                                         % (num_processed_queries, total_query_count))
+                if target_chunk_stop <= len(target_names):
+                    self.progress.update("Mapping to targets %d-%d"
+                                        % (target_chunk_start + 1, target_chunk_stop))
+                else:
+                    self.progress.update("Mapping to targets %d-%d"
+                                        % (target_chunk_start + 1, len(target_names)))
+
+            kmer_dict = Kmerizer(target_names[target_chunk_start: target_chunk_stop],
+                                 target_seq_arrays[target_chunk_start: target_chunk_stop],
+                                 num_threads=self.num_threads).get_kmer_dict(seed_size)
+            target_seq_dict = dict(zip(target_names, target_seq_arrays))
+
+            num_processed_queries = 0
+            for (query_name,
+                 query_seq_array,
+                 alignment_info) in pool.imap_unordered(functools.partial(align_without_indels_worker,
+                                                                          kmer_dict=kmer_dict,
+                                                                          seed_size=seed_size,
+                                                                          target_seq_dict=target_seq_dict,
+                                                                          max_mismatch_freq=max_mismatch_freq),
+                                                        zip(query_names, query_seq_arrays),
+                                                        chunksize=MP_CHUNKSIZE):
+                if alignment_info:
+                    try:
+                        aligned_query = aligned_query_dict[query_name]
+                    except KeyError:
+                        aligned_query = AlignedQuery(''.join(map(chr, query_seq_array)), name=query_name)
+                        aligned_query_dict[query_name] = aligned_query
+
+                    for target_name, target_seq_array, alignment_target_start, cigartuples in alignment_info:
+                        try:
+                            aligned_target = aligned_target_dict[target_name]
+                        except KeyError:
+                            aligned_target = AlignedTarget(''.join(map(chr, target_seq_array)), name=target_name)
+                            aligned_target_dict[target_name] = aligned_target
+                        alignment = Alignment(0, alignment_target_start, cigartuples, aligned_query, aligned_target)
+                        aligned_query.alignments.append(alignment)
+                        aligned_target.alignments.append(alignment)
+
+                num_processed_queries += 1
+                if self.progress:
+                    if num_processed_queries % 10000 == 0:
+                        self.progress.update("%d/%d queries processed for the given targets"
+                                             % (num_processed_queries, total_query_count))
+
+            target_chunk += 1
+            target_chunk_start = target_chunk_stop
+            target_chunk_stop = TARGET_CHUNK_SIZE * target_chunk
+
+            if self.progress:
+                self.progress.update("%d/%d queries processed for the given targets"
+                                    % (total_query_count, total_query_count))
+
         pool.close()
         pool.join()
+
         if self.progress:
-            self.progress.update("%d/%d queries aligned without indels"
+            self.progress.update("%d/%d queries processed for the given targets"
                                  % (total_query_count, total_query_count))
 
         return aligned_query_dict, aligned_target_dict
