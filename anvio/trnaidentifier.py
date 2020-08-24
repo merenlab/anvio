@@ -750,15 +750,6 @@ class Acceptor(_Sequence):
                     self.meets_conserved_thresh = True
 
 
-def profile_wrapper(input_queue, output_queue):
-    """Takes from a Queue of FASTA records and adds to a Queue of tRNA profiles"""
-
-    while True:
-        # A record is a tuple of input sequence name and sequence.
-        name, input_seq = input_queue.get(True)
-        output_queue.put(Profile(input_seq, name))
-
-
 class Profile:
     FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES = _TRNAFeature.list_all_tRNA_features()
     THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES = FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES[::-1]

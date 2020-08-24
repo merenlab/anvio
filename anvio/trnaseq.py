@@ -33,42 +33,33 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
-# Multiprocessing chunk size for tRNA feature profiling.
-MP_CHUNK_SIZE = 10000
 # Chunk size for writing tRNA features to database.
-DB_CHUNK_SIZE = 50000
+DB_CHUNK_SIZE = 100000
 
 
 class UniqueSeq:
     __slots__ = ('seq_string',
-                 'input_names',
+                 'representative_name',
+                 'input_count',
                  'identification_method',
                  'acceptor_length',
-                 'extra_fiveprime_length',
-                 'input_count',
-                 'representative_name')
+                 'extra_fiveprime_length')
 
-    def __init__(self, seq_string, input_names, identification_method=None, acceptor_length=None, extra_fiveprime_length=None, skip_init=False):
+    def __init__(self,
+                 seq_string,
+                 representative_name,
+                 input_count,
+                 identification_method=None,
+                 acceptor_length=None,
+                 extra_fiveprime_length=None):
         """A dereplicated tRNA-seq read, with information from tRNA feature profiling"""
 
         self.seq_string = seq_string
-        self.input_names = input_names
+        self.representative_name = representative_name
+        self.input_count = input_count
         self.identification_method = identification_method # 'profiled' or 'mapped' if tRNA
         self.acceptor_length = acceptor_length
         self.extra_fiveprime_length = extra_fiveprime_length
-
-        if skip_init:
-            self.input_count = None
-            self.representative_name = None
-        else:
-            self.init()
-
-
-    def init(self):
-        """Set attributes representative of a final set of dereplicated reads"""
-
-        self.input_count = len(self.input_names)
-        self.representative_name = self.input_names[0]
 
 
 class TrimmedSeq:
@@ -101,11 +92,11 @@ class TrimmedSeq:
     def init(self):
         """Set attributes representative of a final set of input `UniqueSeq` objects"""
 
-        self.input_count = sum([len(unique_seq.input_names) for unique_seq in self.unique_seqs])
+        self.input_count = sum([unique_seq.input_count for unique_seq in self.unique_seqs])
 
         self.unique_with_extra_fiveprime_count = sum([1 if unique_seq.extra_fiveprime_length else 0
                                                       for unique_seq in self.unique_seqs])
-        self.input_with_extra_fiveprime_count = sum([len(unique_seq.input_names) if unique_seq.extra_fiveprime_length else 0
+        self.input_with_extra_fiveprime_count = sum([unique_seq.input_count if unique_seq.extra_fiveprime_length else 0
                                                      for unique_seq in self.unique_seqs])
 
         # The representative name is chosen as follows:
@@ -306,8 +297,7 @@ class ModifiedSeq:
 
 
 class TRNASeqDataset:
-    UNIQUED_NONTRNA_HEADER = ["representative_name", "input_names", "input_count", "sequence"]
-    UNIQUED_TRNA_HEADER = ["representative_name", "input_names"]
+    UNIQUED_NONTRNA_HEADER = ["representative_name", "input_count", "sequence"]
     TRIMMED_ENDS_HEADER = ["representative_name", "unique_name", "fiveprime_sequence", "threeprime_sequence", "input_seq_count"]
     NORMALIZED_FRAGMENTS_HEADER = ["representative_name", "trimmed_name", "start", "end"]
 
@@ -343,22 +333,7 @@ class TRNASeqDataset:
         if not self.output_dir:
             raise ConfigError("Please provide a non-existent output directory using --output-dir or -o.")
 
-        self.input_seq_count = 0
-
         self.trnaseq_db_path = os.path.join(self.output_dir, self.project_name + "-TRNASEQ.db")
-
-        self.trna_count = 0
-        self.unique_trna_count = 0
-        self.trna_containing_anticodon_count = 0
-        self.full_length_trna_count = 0
-        self.trna_with_one_to_three_extra_fiveprime_bases_count = 0
-        self.trna_with_more_than_three_extra_fiveprime_bases_count = 0
-        self.trna_with_extrapolated_fiveprime_feature_count = 0
-        self.trna_with_threeprime_cca_count = 0
-        self.trna_with_threeprime_cc_count = 0
-        self.trna_with_threeprime_c_count = 0
-        self.trna_with_threeprime_nca_cna_ccn_count = 0
-        self.trna_with_threeprime_ccan_ccann_count = 0
 
         self.uniqued_nontrna_path = os.path.join(self.output_dir, self.project_name + "-UNIQUED_NONTRNA.txt")
         self.uniqued_trna_path = os.path.join(self.output_dir, self.project_name + "-UNIQUED_TRNA.txt")
@@ -448,7 +423,9 @@ class TRNASeqDataset:
 
         clusters = Dereplicator(names, seqs, progress=self.progress).full_length_dereplicate()
 
-        unique_input_seqs = [UniqueSeq(cluster.representative_seq_string, cluster.member_names) for cluster in clusters]
+        unique_input_seqs = [UniqueSeq(cluster.representative_seq_string,
+                                       cluster.member_names[0],
+                                       len(cluster.member_names)) for cluster in clusters]
 
         self.progress.end()
 
@@ -467,217 +444,223 @@ class TRNASeqDataset:
         self.progress.new("Profiling tRNA features in input sequences")
         self.progress.update("...")
 
-        pool = mp.Pool(self.num_threads)
+        processed_read_count = 0
+        processed_seq_count = 0
+        trna_read_count = 0
+        unique_trna_count = 0
+        trna_containing_anticodon_read_count = 0
+        full_length_trna_read_count = 0
+        trna_with_one_to_three_extra_fiveprime_bases_read_count = 0
+        trna_with_more_than_three_extra_fiveprime_bases_read_count = 0
+        trna_with_extrapolated_fiveprime_feature_read_count = 0
+        trna_with_threeprime_cca_read_count = 0
+        trna_with_threeprime_cc_read_count = 0
+        trna_with_threeprime_c_read_count = 0
+        trna_with_threeprime_nca_cna_ccn_read_count = 0
+        trna_with_threeprime_ccan_ccann_read_count = 0
 
-        num_processed_seqs = 0
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        processes = [mp.Process(target=profile_worker, args=(input_queue, output_queue))
+                     for _ in range(self.num_threads)]
+        for p in processes:
+            p.start()
+
+        write_point_iterator = iter([DB_CHUNK_SIZE * (i + 1) for i in range(len(unique_input_seqs) // DB_CHUNK_SIZE)]
+                                    + [len(unique_input_seqs), None])
+        write_point = next(write_point_iterator)
+        fetched_profile_count = 0
         unique_input_seqs_to_write_dict = {}
-        trna_profiles = []
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        for unique_input_seq, profile in pool.imap_unordered(profile_worker,
-                                                             unique_input_seqs,
-                                                             chunksize=MP_CHUNK_SIZE):
+        for unique_input_seq in unique_input_seqs:
+            input_queue.put((unique_input_seq.seq_string, unique_input_seq.representative_name))
             unique_input_seqs_to_write_dict[unique_input_seq.representative_name] = unique_input_seq
-            trna_profiles.append(profile)
+            processed_read_count += unique_input_seq.input_count
+            processed_seq_count += 1
 
-            num_processed_seqs += 1
+            if processed_seq_count == write_point:
+                # Write a chunk of sequence results.
+                write_point = next(write_point_iterator)
 
-            if num_processed_seqs % DB_CHUNK_SIZE == 0:
-                unique_trna_seqs, unique_nontrna_seqs = self.write_profile_results(trna_profiles,
-                                                                                   unique_input_seqs_to_write_dict,
-                                                                                   trnaseq_db)
-                self.unique_trna_seqs.extend(unique_trna_seqs)
-                self.unique_nontrna_seqs.extend(unique_nontrna_seqs)
+                # List of entries for each tRNA-seq database table
+                trnaseq_sequences_table_entries = []
+                trnaseq_info_table_entries = []
+                trnaseq_features_table_entries = []
+                trnaseq_unconserved_table_entries = []
+                trnaseq_unpaired_table_entries = []
 
-                trna_profiles.clear()
+                while fetched_profile_count < processed_seq_count:
+                    trna_profile = output_queue.get()
+                    fetched_profile_count += 1
+                    output_name = trna_profile.name
+                    output_seq = trna_profile.input_seq
+
+                    unique_seq = unique_input_seqs_to_write_dict.pop(output_name)
+
+                    if not trna_profile.is_predicted_trna:
+                        self.unique_nontrna_seqs.append(unique_seq)
+                        continue
+
+                    unique_seq.identification_method = 'profiled'
+                    unique_seq.acceptor_length = len(trna_profile.acceptor_variant_string)
+                    unique_seq.extra_fiveprime_length = trna_profile.num_extra_fiveprime
+                    self.unique_trna_seqs.append(unique_seq)
+
+                    unique_trna_count += 1
+                    output_seq_length = len(output_seq)
+
+                    num_replicates = unique_seq.input_count
+                    trna_read_count += num_replicates
+
+                    # Recover nucleotides that did not fit expectation,
+                    # either by not being the expected nucleotide or type of nucleotide
+                    # or by not base pairing in a stem.
+                    unconserved_info = trna_profile.get_unconserved_positions()
+                    unpaired_info = trna_profile.get_unpaired_positions()
+
+                    if trna_profile.anticodon_seq:
+                        trna_containing_anticodon_read_count += num_replicates
+                    if trna_profile.has_complete_feature_set:
+                        full_length_trna_read_count += num_replicates
+                    if trna_profile.num_in_extrapolated_fiveprime_feature > 0:
+                        trna_with_extrapolated_fiveprime_feature_read_count += num_replicates
+
+                    if trna_profile.num_extra_threeprime > 0:
+                        trna_with_threeprime_ccan_ccann_read_count += num_replicates
+                    elif trna_profile.acceptor_variant_string == 'CCA':
+                        trna_with_threeprime_cca_read_count += num_replicates
+                    elif trna_profile.acceptor_variant_string == 'CC':
+                        trna_with_threeprime_cc_read_count += num_replicates
+                    elif trna_profile.acceptor_variant_string == 'C':
+                        trna_with_threeprime_c_read_count += num_replicates
+                    else:
+                        trna_with_threeprime_nca_cna_ccn_read_count += num_replicates
+
+                    if trna_profile.num_extra_fiveprime > 3:
+                        trna_with_more_than_three_extra_fiveprime_bases_read_count += num_replicates
+                    elif trna_profile.num_extra_fiveprime > 0:
+                        trna_with_one_to_three_extra_fiveprime_bases_read_count += num_replicates
+
+                    trnaseq_sequences_table_entries.append((output_name, num_replicates, output_seq))
+
+                    # The alpha and beta regions of the D loop vary in length.
+                    # Record their start and stop positions in the sequence if they were profiled.
+                    # These are included in the info table rather than the feature table,
+                    # because they are subfeatures of the D loop feature,
+                    # and the positions of the features in the feature table are not overlapping.
+                    alpha_start = trna_profile.alpha_start if trna_profile.alpha_start else '??'
+                    alpha_stop = trna_profile.alpha_stop - 1 if trna_profile.alpha_stop else '??'
+                    beta_start = trna_profile.beta_start if trna_profile.beta_start else '??'
+                    beta_stop = trna_profile.beta_stop - 1 if trna_profile.beta_stop else '??'
+
+                    trnaseq_info_table_entries.append(
+                        (output_name,
+                        trna_profile.has_complete_feature_set,
+                        trna_profile.anticodon_seq,
+                        trna_profile.anticodon_aa,
+                        output_seq_length,
+                        # Zero-based start index of identified tRNA features within the input sequence.
+                        output_seq_length - len(trna_profile.profiled_seq),
+                        # Stop index of features (real stop position, not Pythonic stop index for slicing).
+                        output_seq_length - trna_profile.num_extra_threeprime - 1,
+                        trna_profile.num_conserved,
+                        trna_profile.num_unconserved,
+                        trna_profile.num_paired,
+                        trna_profile.num_unpaired,
+                        trna_profile.num_in_extrapolated_fiveprime_feature,
+                        trna_profile.num_extra_fiveprime,
+                        trna_profile.num_extra_threeprime,
+                        alpha_start,
+                        alpha_stop,
+                        beta_start,
+                        beta_stop))
+
+                    trnaseq_features_table_entries.append(
+                        (output_name, )
+                        # When tRNA features were not found at the 5' end of the read,
+                        # their start and stop indices also were not found.
+                        + tuple(['?' * 2 for _ in range((len(TRNA_FEATURE_NAMES) - len(trna_profile.features)))]) * 2
+                        + tuple(itertools.chain(*zip(
+                            [str(feature.start_index) if hasattr(feature, 'start_index')
+                                else ','.join(map(str, feature.start_indices))
+                                for feature in trna_profile.features],
+                            # Convert Pythonic stop index for slicing to real stop position of feature.
+                            [str(feature.stop_index - 1) if hasattr(feature, 'stop_index')
+                                else ','.join(map(str, [stop_index - 1 for stop_index in feature.stop_indices]))
+                                for feature in trna_profile.features]))))
+
+                    for unconserved_tuple in unconserved_info:
+                        trnaseq_unconserved_table_entries.append((output_name, ) + unconserved_tuple)
+
+                    for unpaired_tuple in unpaired_info:
+                        trnaseq_unpaired_table_entries.append((output_name, ) + unpaired_tuple)
+
+                if len(trnaseq_sequences_table_entries) > 0:
+                    trnaseq_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (%s)'''
+                        % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
+                        trnaseq_sequences_table_entries)
+                    trnaseq_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (%s)'''
+                        % ('basic_info', ','.join('?' * len(tables.trnaseq_info_table_structure))),
+                        trnaseq_info_table_entries)
+                    trnaseq_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (%s)'''
+                        % ('features', ','.join('?' * len(tables.trnaseq_features_table_structure))),
+                        trnaseq_features_table_entries)
+                    trnaseq_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (%s)'''
+                        % ('unconserved_nucleotides', ','.join('?' * len(tables.trnaseq_unconserved_table_structure))),
+                        trnaseq_unconserved_table_entries)
+                    trnaseq_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (%s)'''
+                        % ('unpaired_nucleotides', ','.join('?' * len(tables.trnaseq_unpaired_table_structure))),
+                        trnaseq_unpaired_table_entries)
 
                 self.progress.update("%d of %d unique sequences have been profiled"
-                                     % (num_processed_seqs, len(unique_input_seqs)))
-        unique_trna_seqs, unique_nontrna_seqs = self.write_profile_results(trna_profiles,
-                                                                           unique_input_seqs_to_write_dict,
-                                                                           trnaseq_db)
-        self.unique_trna_seqs.extend(unique_trna_seqs)
-        self.unique_nontrna_seqs.extend(unique_nontrna_seqs)
+                                    % (fetched_profile_count, len(unique_input_seqs)))
 
-        pool.close()
-        pool.join()
-
-        trnaseq_db.db.set_meta_value('num_input_reads_processed', self.input_seq_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads', self.trna_count)
-        trnaseq_db.db.set_meta_value('num_unique_trna_seqs', self.unique_trna_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_containing_anticodon', self.trna_containing_anticodon_count)
-        trnaseq_db.db.set_meta_value('num_full_length_trna_reads', self.full_length_trna_count)
-        trnaseq_db.db.set_meta_value('num_trna_with_one_to_three_extra_fiveprime_bases', self.trna_with_one_to_three_extra_fiveprime_bases_count)
-        trnaseq_db.db.set_meta_value('num_trna_with_more_than_three_extra_fiveprime_bases', self.trna_with_more_than_three_extra_fiveprime_bases_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_extrapolated_fiveprime_feature', self.trna_with_extrapolated_fiveprime_feature_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_cca', self.trna_with_threeprime_cca_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_cc', self.trna_with_threeprime_cc_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_c', self.trna_with_threeprime_c_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_nca_cna_ccn', self.trna_with_threeprime_nca_cna_ccn_count)
-        trnaseq_db.db.set_meta_value('num_trna_reads_with_threeprime_ccan_ccann', self.trna_with_threeprime_ccan_ccann_count)
-        trnaseq_db.disconnect()
+        for p in processes:
+            p.terminate()
+            p.join()
 
         # Profiled seqs were added to the output queue as they were processed, so sort by name.
         self.unique_trna_seqs.sort(key=lambda unique_seq: unique_seq.representative_name)
         self.unique_nontrna_seqs.sort(key=lambda unique_seq: unique_seq.representative_name)
 
-        self.progress.update("%d of %d unique sequences have been profiled"
-                             % (len(unique_input_seqs), len(unique_input_seqs)))
+        trnaseq_db.db.set_meta_value('input_reads_processed', processed_read_count)
+        trnaseq_db.db.set_meta_value('unique_input_seqs_processed', processed_seq_count)
+        trnaseq_db.db.set_meta_value('trna_reads', trna_read_count)
+        trnaseq_db.db.set_meta_value('unique_trna_seqs', unique_trna_count)
+        trnaseq_db.db.set_meta_value('trna_reads_containing_anticodon', trna_containing_anticodon_read_count)
+        trnaseq_db.db.set_meta_value('full_length_trna_reads', full_length_trna_read_count)
+        trnaseq_db.db.set_meta_value('trna_with_one_to_three_extra_fiveprime_bases', trna_with_one_to_three_extra_fiveprime_bases_read_count)
+        trnaseq_db.db.set_meta_value('trna_with_more_than_three_extra_fiveprime_bases', trna_with_more_than_three_extra_fiveprime_bases_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_extrapolated_fiveprime_feature', trna_with_extrapolated_fiveprime_feature_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_cca', trna_with_threeprime_cca_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_cc', trna_with_threeprime_cc_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_c', trna_with_threeprime_c_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_nca_cna_ccn', trna_with_threeprime_nca_cna_ccn_read_count)
+        trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_ccan_ccann', trna_with_threeprime_ccan_ccann_read_count)
+        trnaseq_db.disconnect()
 
         self.progress.end()
 
-        self.run.info("Reads processed", self.input_seq_count)
-        self.run.info("Reads profiled as tRNA", self.trna_count)
-        self.run.info("Unique profiled tRNA sequences", self.unique_trna_count)
-        self.run.info("Profiled reads with anticodon", self.trna_containing_anticodon_count)
-        self.run.info("Profiled reads spanning acceptor stem", self.full_length_trna_count)
-        self.run.info("Profiled reads with 1-3 extra 5' bases", self.trna_with_one_to_three_extra_fiveprime_bases_count)
-        self.run.info("Profiled reads with >3 extra 5' bases", self.trna_with_more_than_three_extra_fiveprime_bases_count)
-        self.run.info("Profiled reads with extrapolated 5' feature", self.trna_with_extrapolated_fiveprime_feature_count)
-        self.run.info("Profiled reads ending in 3'-CCA", self.trna_with_threeprime_cca_count)
-        self.run.info("Profiled reads ending in 3'-CC", self.trna_with_threeprime_cc_count)
-        self.run.info("Profiled reads ending in 3'-C", self.trna_with_threeprime_c_count)
-        self.run.info("Profiled reads ending in 3'-NCA/CNA/CCN", self.trna_with_threeprime_nca_cna_ccn_count)
-        self.run.info("Profiled reads ending in 3'-CCAN/CCANN", self.trna_with_threeprime_ccan_ccann_count)
-
-
-    def write_profile_results(self, trna_profiles, unique_input_seqs_to_write_dict, trnaseq_db):
-        # List of entries for each table
-        trnaseq_sequences_table_entries = []
-        trnaseq_info_table_entries = []
-        trnaseq_features_table_entries = []
-        trnaseq_unconserved_table_entries = []
-        trnaseq_unpaired_table_entries = []
-
-        unique_trna_seqs = []
-        unique_nontrna_seqs = []
-
-        for trna_profile in trna_profiles:
-            output_name = trna_profile.name
-            output_seq = trna_profile.input_seq
-
-            unique_seq = unique_input_seqs_to_write_dict.pop(output_name)
-
-            if not trna_profile.is_predicted_trna:
-                unique_nontrna_seqs.append(unique_seq)
-                continue
-
-            unique_seq.identification_method = 'profiled'
-            unique_seq.acceptor_length = len(trna_profile.acceptor_variant_string)
-            unique_seq.extra_fiveprime_length = trna_profile.num_extra_fiveprime
-            unique_trna_seqs.append(unique_seq)
-
-            self.unique_trna_count += 1
-            output_seq_length = len(output_seq)
-
-            num_replicates = len(unique_seq.input_names)
-            self.trna_count += num_replicates
-
-            # Recover nucleotides that did not fit expectation,
-            # either by not being the expected nucleotide or type of nucleotide
-            # or by not base pairing in a stem.
-            unconserved_info = trna_profile.get_unconserved_positions()
-            unpaired_info = trna_profile.get_unpaired_positions()
-
-            if trna_profile.anticodon_seq:
-                self.trna_containing_anticodon_count += num_replicates
-            if trna_profile.has_complete_feature_set:
-                self.full_length_trna_count += num_replicates
-            if trna_profile.num_in_extrapolated_fiveprime_feature > 0:
-                self.trna_with_extrapolated_fiveprime_feature_count += num_replicates
-
-            if trna_profile.num_extra_threeprime > 0:
-                self.trna_with_threeprime_ccan_ccann_count += num_replicates
-            elif trna_profile.acceptor_variant_string == 'CCA':
-                self.trna_with_threeprime_cca_count += num_replicates
-            elif trna_profile.acceptor_variant_string == 'CC':
-                self.trna_with_threeprime_cc_count += num_replicates
-            elif trna_profile.acceptor_variant_string == 'C':
-                self.trna_with_threeprime_c_count += num_replicates
-            else:
-                self.trna_with_threeprime_nca_cna_ccn_count += num_replicates
-
-            if trna_profile.num_extra_fiveprime > 3:
-                self.trna_with_more_than_three_extra_fiveprime_bases_count += num_replicates
-            elif trna_profile.num_extra_fiveprime > 0:
-                self.trna_with_one_to_three_extra_fiveprime_bases_count += num_replicates
-
-            trnaseq_sequences_table_entries.append((output_name, num_replicates, output_seq))
-
-            # The alpha and beta regions of the D loop vary in length.
-            # Record their start and stop positions in the sequence if they were profiled.
-            # These are included in the info table rather than the feature table,
-            # because they are subfeatures of the D loop feature,
-            # and the positions of the features in the feature table are not overlapping.
-            alpha_start = trna_profile.alpha_start if trna_profile.alpha_start else '??'
-            alpha_stop = trna_profile.alpha_stop - 1 if trna_profile.alpha_stop else '??'
-            beta_start = trna_profile.beta_start if trna_profile.beta_start else '??'
-            beta_stop = trna_profile.beta_stop - 1 if trna_profile.beta_stop else '??'
-
-            trnaseq_info_table_entries.append(
-                (output_name,
-                 trna_profile.has_complete_feature_set,
-                 trna_profile.anticodon_seq,
-                 trna_profile.anticodon_aa,
-                 output_seq_length,
-                 # Zero-based start index of identified tRNA features within the input sequence.
-                 output_seq_length - len(trna_profile.profiled_seq),
-                 # Stop index of features (real stop position, not Pythonic stop index for slicing).
-                 output_seq_length - trna_profile.num_extra_threeprime - 1,
-                 trna_profile.num_conserved,
-                 trna_profile.num_unconserved,
-                 trna_profile.num_paired,
-                 trna_profile.num_unpaired,
-                 trna_profile.num_in_extrapolated_fiveprime_feature,
-                 trna_profile.num_extra_fiveprime,
-                 trna_profile.num_extra_threeprime,
-                 alpha_start,
-                 alpha_stop,
-                 beta_start,
-                 beta_stop))
-
-            trnaseq_features_table_entries.append(
-                (output_name, )
-                # When tRNA features were not found at the 5' end of the read,
-                # their start and stop indices also were not found.
-                + tuple(['?' * 2 for _ in range((len(TRNA_FEATURE_NAMES) - len(trna_profile.features)))]) * 2
-                + tuple(itertools.chain(*zip(
-                    [str(feature.start_index) if hasattr(feature, 'start_index')
-                        else ','.join(map(str, feature.start_indices))
-                        for feature in trna_profile.features],
-                    # Convert Pythonic stop index for slicing to real stop position of feature.
-                    [str(feature.stop_index - 1) if hasattr(feature, 'stop_index')
-                        else ','.join(map(str, [stop_index - 1 for stop_index in feature.stop_indices]))
-                        for feature in trna_profile.features]))))
-
-            for unconserved_tuple in unconserved_info:
-                trnaseq_unconserved_table_entries.append((output_name, ) + unconserved_tuple)
-
-            for unpaired_tuple in unpaired_info:
-                trnaseq_unpaired_table_entries.append((output_name, ) + unpaired_tuple)
-
-        if len(trnaseq_sequences_table_entries) > 0:
-            trnaseq_db.db._exec_many(
-                '''INSERT INTO %s VALUES (%s)'''
-                % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
-                trnaseq_sequences_table_entries)
-            trnaseq_db.db._exec_many(
-                '''INSERT INTO %s VALUES (%s)'''
-                % ('basic_info', ','.join('?' * len(tables.trnaseq_info_table_structure))),
-                trnaseq_info_table_entries)
-            trnaseq_db.db._exec_many(
-                '''INSERT INTO %s VALUES (%s)'''
-                % ('features', ','.join('?' * len(tables.trnaseq_features_table_structure))),
-                trnaseq_features_table_entries)
-            trnaseq_db.db._exec_many(
-                '''INSERT INTO %s VALUES (%s)'''
-                % ('unconserved_nucleotides', ','.join('?' * len(tables.trnaseq_unconserved_table_structure))),
-                trnaseq_unconserved_table_entries)
-            trnaseq_db.db._exec_many(
-                '''INSERT INTO %s VALUES (%s)'''
-                % ('unpaired_nucleotides', ','.join('?' * len(tables.trnaseq_unpaired_table_structure))),
-                trnaseq_unpaired_table_entries)
-
-        return unique_trna_seqs, unique_nontrna_seqs
+        self.run.info("Reads processed", processed_read_count)
+        self.run.info("Unique sequences processed", processed_seq_count)
+        self.run.info("Reads profiled as tRNA", trna_read_count)
+        self.run.info("Unique profiled tRNA sequences", unique_trna_count)
+        self.run.info("Profiled reads with anticodon", trna_containing_anticodon_read_count)
+        self.run.info("Profiled reads spanning acceptor stem", full_length_trna_read_count)
+        self.run.info("Profiled reads with 1-3 extra 5' bases", trna_with_one_to_three_extra_fiveprime_bases_read_count)
+        self.run.info("Profiled reads with >3 extra 5' bases", trna_with_more_than_three_extra_fiveprime_bases_read_count)
+        self.run.info("Profiled reads with extrapolated 5' feature", trna_with_extrapolated_fiveprime_feature_read_count)
+        self.run.info("Profiled reads ending in 3'-CCA", trna_with_threeprime_cca_read_count)
+        self.run.info("Profiled reads ending in 3'-CC", trna_with_threeprime_cc_read_count)
+        self.run.info("Profiled reads ending in 3'-C", trna_with_threeprime_c_read_count)
+        self.run.info("Profiled reads ending in 3'-NCA/CNA/CCN", trna_with_threeprime_nca_cna_ccn_read_count)
+        self.run.info("Profiled reads ending in 3'-CCAN/CCANN", trna_with_threeprime_ccan_ccann_read_count)
 
 
     def trim_ends(self, unique_trna_seqs, report_progress=True):
@@ -1293,22 +1276,8 @@ class TRNASeqDataset:
             nontrna_file.write("\t".join(self.UNIQUED_NONTRNA_HEADER) + "\n")
             for unique_seq in self.unique_nontrna_seqs:
                 nontrna_file.write(unique_seq.representative_name + "\t"
-                                   + ",".join(unique_seq.input_names) + "\t"
                                    + str(unique_seq.input_count) + "\t"
                                    + unique_seq.seq_string + "\n")
-
-        self.progress.end()
-
-
-    def write_uniqued_trna_supplement(self):
-        self.progress.new("Writing a file showing which input sequences formed unique tRNA sequences")
-        self.run.info("Output uniqued tRNA file", self.uniqued_trna_path)
-
-        with open(self.uniqued_trna_path, 'w') as uniqued_file:
-            uniqued_file.write("\t".join(self.UNIQUED_TRNA_HEADER) + "\n")
-            for unique_seq in self.unique_trna_seqs:
-                uniqued_file.write(unique_seq.representative_name + "\t"
-                                   + ",".join(unique_seq.input_names) + "\n")
 
         self.progress.end()
 
@@ -1385,11 +1354,11 @@ class TRNASeqDataset:
         self.write_modified_table()
 
         self.write_uniqued_nontrna_supplement()
-        self.write_uniqued_trna_supplement()
         self.write_trimmed_supplement()
         self.write_normalized_supplement()
 
 
-def profile_worker(unique_seq):
-    return unique_seq, trnaidentifier.Profile(unique_seq.seq_string,
-                                              name=unique_seq.representative_name)
+def profile_worker(input_queue, output_queue):
+    while True:
+        seq_string, seq_name = input_queue.get()
+        output_queue.put(trnaidentifier.Profile(seq_string, name=seq_name))
