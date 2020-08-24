@@ -22,6 +22,20 @@
   pointer-events: none;
 }
 
+.fulljustify {
+    	text-align:justify;
+    }
+    .fulljustify:after {
+        content: "";
+        display: inline-block;
+        width: 100%;
+    }
+    #DNA_sequence {
+        height: 80px;
+        overflow: hidden;
+        line-height: 80px; /* vert-center */
+    }
+
 [id^="gene_"], [id^="AA_"] {
   pointer-events: all;
 }
@@ -258,7 +272,7 @@ a{
 }
 
 .highlightbox:hover {
-  fill-opacity: 0.1;
+  fill-opacity: 0.25;
 }
 
 .highlightbox:mouseleave {
