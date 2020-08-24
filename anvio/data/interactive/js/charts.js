@@ -54,9 +54,7 @@ var cog_annotated = false, kegg_annotated = false;
 // note: not called on console open
 $(window).resize(function() {
   VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-  if($("#DNA_sequence").length > 0) {
-    highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
-  }
+  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + $("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0);
 });
 
 window.onscroll = function() {
@@ -64,12 +62,11 @@ window.onscroll = function() {
 }
 
 function stickyBoxes() {
-  if($("#DNA_sequence").length == 0) return;
+  var nucl_shown = $("#DNA_sequence").length > 0;
 
   var boxes = document.getElementById("highlight-boxes");
   var boxH = window.innerHeight - contextSvg.attr("height")
-                                + contextSvg.select("#DNA_sequence")[0][0].getBBox().height
-                                + 50;
+                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
 
   var el_top = parseFloat(boxes.getBoundingClientRect().top);
       el_top -= parseFloat(boxes.style.top);
@@ -361,23 +358,23 @@ function loadAll() {
 }
 
 function drawHighlightBoxes() {
-  if($("#DNA_sequence").length == 0) return;
+  var nucl_shown = $("#DNA_sequence").length > 0;
 
-  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height")+contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50);
+  var width = VIEWER_WIDTH * .80;
+
+  highlightBoxes.attr("height", window.innerHeight - contextSvg.attr("height") + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35));
   $("#highlightBoxesSvg").attr("height", 0).empty();
-  var range = $('#brush_end').val() - $('#brush_start').val();
-  if(range <= 300 && range >= 30) {
-    for(var i = 0; i < range; i++) {
-      highlightBoxes.append("rect")
-                    .attr("id", "highlight_" + i)
-                    .attr("class", "highlightbox")
-                    .attr("x", i*(width/range))
-                    .attr("width", (width/range))
-                    .attr("height", window.innerHeight-parseFloat($("#DNA_sequence").attr("y")))
-                    .attr("fill", "blue")
-                    .attr("fill-opacity", 0)
-                    .attr("transform", "translate(50,20)");
-    }
+  var nBoxes = $('#brush_end').val() - $('#brush_start').val();
+  for(var i = 0; i < nBoxes; i++) {
+    highlightBoxes.append("rect")
+                  .attr("id", "highlight_" + i)
+                  .attr("class", "highlightbox")
+                  .attr("x", i*(width/nBoxes))
+                  .attr("width", (width/nBoxes))
+                  .attr("height", window.innerHeight - (nucl_shown ? parseFloat($("#DNA_sequence").attr("y")) : contextSvg.attr("height")-50))
+                  .attr("fill", "blue")
+                  .attr("fill-opacity", 0)
+                  .attr("transform", "translate(50,20)");
   }
 
   stickyBoxes();
@@ -387,7 +384,7 @@ function drawAAHighlightBoxes() {
   $('#context-container').on('mouseover', function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.1);
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25);
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
@@ -613,7 +610,6 @@ function toggle_nucleotide_display() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
-    $("#highlightBoxesSvg").attr("height", 0).empty();
     gene_offset_y = 0;
     $('#context-container').off('mouseover mouseout');
     $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
@@ -642,7 +638,6 @@ function display_nucleotides() {
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
-    $("#highlightBoxesSvg").attr("height", 0).empty();
     gene_offset_y = 0;
     $('#context-container').off('mouseover mouseout');
     return;
@@ -800,7 +795,6 @@ function display_nucleotides() {
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
 
-  drawHighlightBoxes();
   drawAAHighlightBoxes();
 }
 
@@ -1471,6 +1465,7 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
+    drawHighlightBoxes();
     display_nucleotides();
     setSNVListener();
 
@@ -1488,6 +1483,8 @@ function createCharts(state){
 
         $('#brush_start').val(b[0]);
         $('#brush_end').val(b[1]);
+
+        drawHighlightBoxes();
 
         // rescale nucleotide display
         if(show_nucleotides) display_nucleotides();
