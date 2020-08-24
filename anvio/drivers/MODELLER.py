@@ -552,7 +552,6 @@ class MODELLER:
         # If more than 1 template in 1 PDB id, just choose 1
         search_df = search_df.drop_duplicates('code', keep='first')
 
-        # Take the first self.modeller.max_number_templates.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
             self.run.warning("Gene {} did not have a search result with percent identicalness above or equal "
@@ -566,6 +565,10 @@ class MODELLER:
                                      best_hit['pident'],
                                      best_hit['align_fraction']))
             raise self.EndModeller
+
+        # Filter out templates with proper_pident more than 5% less than best match
+        # http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#how-much-do-templates-matter
+        search_df = search_df[search_df['proper_pident'] >= (search_df['proper_pident'].max() - 5)]
 
         # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
         search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
