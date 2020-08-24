@@ -237,6 +237,8 @@ class StructureDatabase(object):
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
+        return filepath
+
 
     def export_pdbs(self, genes_of_interest, output_dir, ok_if_exists=False):
         """Exports the pdbs of a collection of genes to an output dir (calls self.export_pdb_content)"""
