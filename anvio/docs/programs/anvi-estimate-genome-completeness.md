@@ -1,7 +1,7 @@
 This program estimates the completeness and redundancy of genomes provided to it, based on domain-level single-copy core genes. 
 
 {:.notice}
-Wondering about what single-copy core genes anvi'o uses by default? Check out %(hmm-source)s.
+Wondering what single-copy core genes anvi'o uses? Check out %(hmm-source)s. It uses the tables populated when you ran %(anvi-run-hmms)s on your %(contigs-db)s. 
 
 Genomes provided to this program must be contained in either a %(bin)s (within a %(collection)s) or a %(contigs-db)s (which can be provided alone or as part of an %(external-genomes)s). 
 
