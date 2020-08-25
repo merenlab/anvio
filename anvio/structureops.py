@@ -1756,6 +1756,12 @@ class Structure(object):
         return self.distances_methods_dict[method](residue1, residue2)
 
 
+    def get_residue(self, codon_order_in_gene):
+        """Return the residue object for a given codon_order_in_gene aka the 0-indexed residue position"""
+
+        return self.structure.child_list[codon_order_in_gene]
+
+
     def calc_CA_dist(self, residue1, residue2):
         """Returns the C-alpha distance between two residues"""
 
