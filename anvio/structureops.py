@@ -1659,7 +1659,7 @@ class Structure(object):
                 if i > j:
                     contact_map[i, j] = contact_map[j, i]
                 else:
-                    contact_map[i, j] = self.get_distance(residue1, residue2, distance_method)
+                    contact_map[i, j] = self.get_residue_to_residue_distance(residue1, residue2, distance_method)
 
         if compressed:
             return self.get_compressed_representation(contact_map, c=c)
@@ -1752,7 +1752,7 @@ class Structure(object):
         return pd.DataFrame(contacts_dict)
 
 
-    def get_distance(self, residue1, residue2, method='CA'):
+    def get_residue_to_residue_distance(self, residue1, residue2, method='CA'):
         return self.distances_methods_dict[method](residue1, residue2)
 
 
