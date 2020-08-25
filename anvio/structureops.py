@@ -1613,7 +1613,8 @@ class Structure(object):
         """Object to handle the analysis of PDB files"""
 
         self.distances_methods_dict = {
-            'CA': self.calc_CA_dist,
+            'CA': self.calc_CA_dist, # alpha-carbon distances
+            'COM': self.calc_COM_dist, # side chain centroid (center-of-mass) distances
         }
 
         self.path = pdb_path
@@ -1762,9 +1763,34 @@ class Structure(object):
         return self.structure.child_list[codon_order_in_gene]
 
 
+    def get_residue_center_of_mass(self, residue):
+        """Return the CoM of the sidechain of a Residue object (alpha-carbon included)"""
+
+        M = 0
+        weighted_coords = np.zeros(3)
+
+        backbone = {'C', 'N', 'O'}
+
+        for name, atom in residue.child_dict.items():
+            if name in backbone:
+                continue
+
+            M += atom.mass
+            weighted_coords += atom.coord * atom.mass
+
+        return weighted_coords/M
+
+
     def calc_CA_dist(self, residue1, residue2):
         """Returns the C-alpha distance between two residues"""
 
         return residue1["CA"] - residue2["CA"]
 
 
+    def calc_COM_dist(self, residue1, residue2):
+        """Returns the distance between the sidechain center of masses between two residues"""
+
+        COM1 = self.get_residue_center_of_mass(residue1)
+        COM2 = self.get_residue_center_of_mass(residue2)
+
+        return np.sqrt(np.sum((COM1 - COM2)**2))
