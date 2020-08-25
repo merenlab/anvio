@@ -3,7 +3,7 @@
 
 import sys
 
-import numpy as np
+import pandas as pd
 
 import anvio
 import anvio.fastalib as u
@@ -83,17 +83,7 @@ def reformat_FASTA(args):
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
-    # Get stats for arg.filter_third_quartile
-    if args.filter_third_quartile_gaps == True:
-        percent_of_gaps_list = []
-        while next(fasta):
-            l = len(fasta.seq)
-            percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
-            percent_of_gaps_list.append(percentage_of_gaps)
-        cutoff_percentile = np.percentile(percent_of_gaps_list, 75)
-
-    # Reopen fasta
-    fasta = u.SequenceSource(args.contigs_fasta)
+    num_gaps_list = []
 
     while next(fasta):
         l = len(fasta.seq)
@@ -126,17 +116,20 @@ def reformat_FASTA(args):
             total_num_contigs_removed += 1
             continue
 
-        percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
+        num_gaps = fasta.seq.count('-')
+        sequence_num_gaps_list = [fasta.id, num_gaps, fasta.seq]
+        num_gaps_list.append(sequence_num_gaps_list)
+        percentage_of_gaps = num_gaps * 100.0 / l
+
         if percentage_of_gaps >= args.max_percentage_gaps:
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
 
-        if args.filter_third_quartile_gaps == True:
-            if percentage_of_gaps >= cutoff_percentile:
-                total_num_nucleotides_removed += l
-                total_num_contigs_removed += 1
-                continue
+        if num_gaps >= args.max_gaps:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
 
         if args.simplify_names:
             if prefix:
@@ -151,6 +144,10 @@ def reformat_FASTA(args):
                 report_file.write('%s\t%s\n' % (defline, fasta.id))
         else:
             output.store(fasta, split = False)
+
+    if args.export_gap_counts_table:
+        df = pd.DataFrame(num_gaps_list, columns=["header", "num_gaps", "sequence"])
+        df.to_csv(args.export_gap_counts_table + ".tsv", sep='\t', index=False)
 
     if report_file:
         report_file.close()
@@ -179,14 +176,15 @@ if __name__ == '__main__':
                         help="Maximum fraction of gaps in a sequence (any sequence with \
                               more gaps will be removed from the output FASTA file). The \
                               default is %(default)f.")
-    parser.add_argument('--filter-third-quartile-gaps', type=bool, default=False, metavar='PERCENTAGE',
-                        help="Sequences with a percentage of gaps greater than the third  \
-                              quartile of the gap percentage distribution will be removed \
-                              more gaps will be removed from the output FASTA file (Boolean).")
+    parser.add_argument('-M','--max-gaps', type=float, default=1000000,
+                        help="Maximum amount of gaps allowed per sequence in the alignment.")
     parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")
-    parser.add_argument('-I', '--keep-ids', required=False, metavar='TXT FILE',
+    parser.add_argument('--export-gap-counts-table', required=False, metavar='TSV FILE',
+                        help="Export a table with the number of gaps per sequence. \
+                              Please provide a prefix to name the file.")
+    parser.add_argument('-I', '--keep-ids', type=str, required=False, metavar='TXT FILE',
                         help="If provided, all IDs not in this file will be excluded from the\
                               reformatted FASTA file. Any additional filters (such as --min-len)\
                               will still be applied to the IDs in this file. You cannot provide both\
