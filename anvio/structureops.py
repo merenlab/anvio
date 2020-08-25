@@ -253,6 +253,12 @@ class StructureDatabase(object):
         self.run.info('PDB file output', output_dir)
 
 
+    def get_structure(self, corresponding_gene_call):
+        """Return a anvio.structureops.Structure object for a given gene"""
+
+        return Structure(self.export_pdb_content(corresponding_gene_call, filesnpaths.get_temp_file_path()))
+
+
     def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
         """Get residue info for gene as a dataframe
 
