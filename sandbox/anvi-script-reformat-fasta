@@ -119,7 +119,7 @@ def reformat_FASTA(args):
 
         num_gaps = fasta.seq.count('-')
         if args.export_gap_counts_table:
-            gaps_info_list.append([fasta.id, num_gaps, fasta.seq])
+            gaps_info_list.append([fasta.id, num_gaps])
 
         percentage_of_gaps = num_gaps * 100.0 / l
         if percentage_of_gaps >= args.max_percentage_gaps:
@@ -147,7 +147,7 @@ def reformat_FASTA(args):
             output.store(fasta, split = False)
 
     if args.export_gap_counts_table:
-        df = pd.DataFrame(gaps_info_list, columns=["header", "num_gaps", "sequence"])
+        df = pd.DataFrame(gaps_info_list, columns=["header", "num_gaps"])
         df.to_csv(args.export_gap_counts_table + ".tsv", sep='\t', index=False)
 
     if report_file:
