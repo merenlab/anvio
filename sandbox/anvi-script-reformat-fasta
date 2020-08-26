@@ -69,6 +69,9 @@ def reformat_FASTA(args):
     else:
         replace_chars = False
 
+    if args.export_gap_counts_table:
+        gaps_info_list = []
+
     output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
 
@@ -82,9 +85,6 @@ def reformat_FASTA(args):
     total_num_nucleotides_removed = 0
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
-
-    if args.export_gap_counts_table:
-        gaps_info_list = []
 
     while next(fasta):
         l = len(fasta.seq)
@@ -178,7 +178,9 @@ if __name__ == '__main__':
                               more gaps will be removed from the output FASTA file). The \
                               default is %(default)f.")
     parser.add_argument('-M','--max-gaps', type=float, default=1000000,
-                        help="Maximum amount of gaps allowed per sequence in the alignment.")
+                        help="Maximum amount of gaps allowed per sequence in the alignment. \
+                              Don't know which threshold to pick? Use --export-gap-counts-table \
+                              to explore the gap counts per sequence distribution!")
     parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")
