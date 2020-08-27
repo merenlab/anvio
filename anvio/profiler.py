@@ -692,7 +692,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       profile_SCVs=self.profile_SCVs,
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
-                                                      min_coverage=self.min_coverage_for_variability,
+                                                      min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity)
 

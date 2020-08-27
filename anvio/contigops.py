@@ -182,7 +182,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False,
+    def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False, profile_SCVs=False,
                  skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
@@ -190,7 +190,7 @@ class Auxiliary:
 
         self.split = split
         self.variation_density = 0.0
-        self.min_coverage = min_coverage
+        self.min_coverage_for_variability = min_coverage_for_variability
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
@@ -385,7 +385,7 @@ class Auxiliary:
                 allele_counts=allele_counts,
                 allele_to_array_index=self.cdn_to_array_index,
                 sequence=reference_codon_sequences[gene_id],
-                min_coverage=1,
+                min_coverage_for_variability=1,
             )
 
             # By design, we include SCVs only if they contain a SNV--filter out those that do not
@@ -528,7 +528,7 @@ class Auxiliary:
             allele_to_array_index=self.nt_to_array_index,
             sequence=self.split.sequence,
             sequence_as_index=split_as_index,
-            min_coverage=self.min_coverage,
+            min_coverage_for_variability=self.min_coverage_for_variability,
             test_class=test_class,
             additional_per_position_data=additional_per_position_data,
         )
@@ -551,7 +551,7 @@ class Auxiliary:
                     indel_coverage = indel['coverage']
                     pos_coverage = split_coverage[indel['start_in_split']]
 
-                    if pos_coverage < self.min_coverage:
+                    if pos_coverage < self.min_coverage_for_variability:
                         indel_hashes_to_remove.add(indel_hash)
 
                     elif indel_coverage/pos_coverage < min_indel_fraction:
