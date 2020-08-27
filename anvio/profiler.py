@@ -237,7 +237,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('profile_db', self.profile_db_path, display_only=True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
-        self.run.info('cmd_line', utils.get_cmd_line())
+        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
         self.run.info('merged', False)
         self.run.info('blank', self.blank)
         self.run.info('split_length', self.a_meta['split_length'])

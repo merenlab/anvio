@@ -167,13 +167,13 @@ class TablesForCollections(Table):
         num_bins_to_report = 50
         if not drop_collection:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names added to this collection: {}.".format(",".join(bins_to_report))
+            bin_report_msg = "Here is a full list of the bin names added to this collection: {}.".format(", ".join(bins_to_report))
         elif num_bins <= num_bins_to_report:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(",".join(bins_to_report))
+            bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(", ".join(bins_to_report))
         else:
             bins_to_report = bin_names[:num_bins_to_report]
-            bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ",".join(bins_to_report))
+            bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ", ".join(bins_to_report))
 
         if drop_collection:
             self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\

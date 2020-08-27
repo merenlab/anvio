@@ -27,6 +27,8 @@ anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
 
 ### Learn available genes in a given HMM source
 
+Please note that the flag `--list-available-gene-names` will give you the list of genes in an **HMM collection** (for example, for `Bacteria_71` in the following use case), and it will not give you the list of genes in your genomes or metagenomes that are matching to them. You can generate a table of HMMs across your genomes or metagenomes with another program, %(anvi-script-gen-hmm-hits-matrix-across-genomes)s.
+
 {{ codestart }}
 anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
                                 --hmm-source Bacteria_71 \
