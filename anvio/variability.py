@@ -363,6 +363,50 @@ class ProcessIndelCounts(object):
 
         Parameters
         ==========
+        indels : dictionary
+            A dictionary that looks like this:
+
+                {
+                    6279666787066445523: OrderedDict([
+                        ('split_name', 'IGD_000000000532_split_00001'),
+                        ('pos', 2),
+                        ('pos_in_contig', 2),
+                        ('corresponding_gene_call', 25396),
+                        ('in_noncoding_gene_call', 0),
+                        ('in_coding_gene_call', 1),
+                        ('base_pos_in_codon', 3),
+                        ('codon_order_in_gene', 0),
+                        ('cov_outlier_in_split', 1),
+                        ('cov_outlier_in_contig', 1),
+                        ('reference', 'T'),
+                        ('type', 'INS'),
+                        ('sequence', 'CTGACGGCT'),
+                        ('length', 9),
+                        ('count', 1)
+                    ]),
+                    -5035942137885303221: OrderedDict([
+                        ('split_name', 'IGD_000000000532_split_00001'),
+                        ('pos', 0),
+                        ('pos_in_contig', 0),
+                        ('corresponding_gene_call', 25396),
+                        ('in_noncoding_gene_call', 0),
+                        ('in_coding_gene_call', 1),
+                        ('base_pos_in_codon', 1),
+                        ('codon_order_in_gene', 0),
+                        ('cov_outlier_in_split', 1),
+                        ('cov_outlier_in_contig', 1),
+                        ('reference', 'G'),
+                        ('type', 'INS'),
+                        ('sequence', 'CTCACGG'),
+                        ('length', 7),
+                        ('count', 1)
+                    ]),
+                    ...
+                }
+
+            The keys are unique identifiers. The OrderedDicts should have at least the key `pos`,
+            but there are no restrictions on what other keys it may have.
+
         coverage : array
             What is the coverage for the sequence this is for? This should have length equal to sequence
 

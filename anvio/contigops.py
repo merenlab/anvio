@@ -446,14 +446,28 @@ class Auxiliary:
         See `variability-profile` artifact under anvio/docs/artifacts for details.
         """
 
+        additional_per_position_data = self.split.per_position_info
+        additional_per_position_data.update({
+            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
+        })
+
         if not self.skip_INDEL_profiling:
             indels = {}
             get_indel_entry = lambda indel_type, seq, pos: OrderedDict([
                 ('split_name', self.split.name),
+                ('pos', pos),
+                ('pos_in_contig', pos + self.split.start),
+                ('corresponding_gene_call', additional_per_position_data['corresponding_gene_call'][pos]),
+                ('in_noncoding_gene_call', additional_per_position_data['in_noncoding_gene_call'][pos]),
+                ('in_coding_gene_call', additional_per_position_data['in_coding_gene_call'][pos]),
+                ('base_pos_in_codon', additional_per_position_data['base_pos_in_codon'][pos]),
+                ('codon_order_in_gene', additional_per_position_data['codon_order_in_gene'][pos]),
+                ('cov_outlier_in_split', additional_per_position_data['cov_outlier_in_split'][pos]),
+                ('cov_outlier_in_contig', additional_per_position_data['cov_outlier_in_contig'][pos]),
+                ('reference', self.split.sequence[pos]),
                 ('type', indel_type),
                 ('sequence', seq),
-                ('start_in_contig', int(pos)),
-                ('start_in_split', int(pos - self.split.start)),
                 ('length', len(seq)),
                 ('count', 1),
             ])
@@ -486,7 +500,7 @@ class Auxiliary:
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
                     # Get the position and sequence of the insertion, create hash as a key for storage
                     ins_seq = ''.join([chr(x) for x in ins_segment[:, 1]])
-                    ins_pos = ins_segment[0, 0]
+                    ins_pos = ins_segment[0, 0] - self.split.start
                     indel_hash = hash((ins_pos, ins_seq))
 
                     if indel_hash in indels:
@@ -497,7 +511,7 @@ class Auxiliary:
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
                     # Get the position and sequence of the deletion, create hash as a key for storage
                     del_seq = ''
-                    del_pos = del_segment[0, 0]
+                    del_pos = del_segment[0, 0] - self.split.start
                     indel_hash = hash((del_pos, del_seq))
 
                     if indel_hash in indels:
@@ -509,16 +523,8 @@ class Auxiliary:
 
         if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
-        additional_per_position_data = self.split.per_position_info
-        additional_per_position_data.update({
-            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
-            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
-        })
-
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
-
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
-
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
             allele_to_array_index=self.nt_to_array_index,
