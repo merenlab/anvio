@@ -166,8 +166,8 @@ variable_nts_table_structure         = ['sample_id', 'split_name',   'pos'  , 'p
 variable_nts_table_types             = [   'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 indels_table_name                    = 'indels'
-indels_table_structure               = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage', 'pos_coverage']
-indels_table_types                   = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' , 'integer']
+indels_table_structure               = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'sequence', 'length' , 'count'  , 'coverage']
+indels_table_types                   = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text'    , 'integer', 'integer', 'integer']
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
