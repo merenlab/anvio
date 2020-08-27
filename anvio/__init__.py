@@ -2054,6 +2054,16 @@ D = {
                      "not attempt to make sense of variation in a given nucleotide position if it is covered less than "
                      "%(default)dX. You can change that minimum using this parameter."}
                 ),
+    'min-indel-fraction': (
+            ['-I', '--min-indel-fraction'],
+            {'metavar': 'FLOAT',
+             'default': 0.05,
+             'type': float,
+             'help': "Anvi'o profiles indels, and with this parameter you can control what anvi'o considers worth reporting. "
+                     "Basically, anvi'o doesn't want to report an indel if it does not occur in enough reads. If the fraction "
+                     "of times the indel is observed divided by the nucleotide coverage at the position in the contig the indel "
+                     "starts at is less than this parameter, the indel is discarded. The default is %(default)f."}
+                ),
     'contigs-and-positions': (
             ['--contigs-and-positions'],
             {'metavar': 'CONTIGS_AND_POS',
