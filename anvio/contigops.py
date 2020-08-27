@@ -445,6 +445,15 @@ class Auxiliary:
 
         if not self.skip_INDEL_profiling:
             indels_profiles = {}
+            get_indel_entry = lambda indel_type, seq, pos: OrderedDict([
+                ('split_name', self.split.name),
+                ('type', indel_type),
+                ('sequence', seq),
+                ('start_in_contig', int(pos)),
+                ('start_in_split', int(pos - self.split.start)),
+                ('length', len(seq)),
+                ('coverage', 1),
+            ])
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -480,15 +489,7 @@ class Auxiliary:
                     if indel_hash in indels_profiles:
                         indels_profiles[indel_hash]['coverage'] += 1
                     else:
-                        indels_profiles[indel_hash] = OrderedDict([
-                            ('split_name', self.split.name),
-                            ('type', 'INS'),
-                            ('sequence', ins_seq),
-                            ('start_in_contig', int(ins_pos)),
-                            ('start_in_split', int(ins_pos - self.split.start)),
-                            ('length', len(ins_seq)),
-                            ('coverage', 1),
-                        ])
+                        indels_profiles[indel_hash] = get_indel_entry('INS', ins_seq, ins_pos)
 
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
                     # Get the position and sequence of the deletion, create hash as a key for storage
@@ -499,15 +500,7 @@ class Auxiliary:
                     if indel_hash in indels_profiles:
                         indels_profiles[indel_hash]['coverage'] += 1
                     else:
-                        indels_profiles[indel_hash] = OrderedDict([
-                            ('split_name', self.split.name),
-                            ('type', 'DEL'),
-                            ('sequence', ''),
-                            ('start_in_contig', int(del_pos)),
-                            ('start_in_split', int(del_pos - self.split.start)),
-                            ('length', del_segment.shape[0]),
-                            ('coverage', 1),
-                        ])
+                        indels_profiles[indel_hash] = get_indel_entry('DEL', del_seq, del_pos)
 
             read_count += 1
 
