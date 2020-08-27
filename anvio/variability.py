@@ -46,7 +46,7 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, sequence_as_index=None, min_coverage=1, test_class=None, additional_per_position_data={}):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, sequence_as_index=None, min_coverage_for_variability=1, test_class=None, additional_per_position_data={}):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -72,7 +72,7 @@ class ProcessAlleleCounts:
             the sequence as an index, be sure you provide it here. If you don't provide anything, it
             will be calculated at high cost
 
-        min_coverage : int, 1
+        min_coverage_for_variability : int, 1
             positions below this coverage value will be filtered out
 
         test_class : VariablityTestFactory, None
@@ -112,7 +112,7 @@ class ProcessAlleleCounts:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d rows, but the allele_to_array_index dictionary has %d." \
                               % (allele_counts.shape[0], len(allele_to_array_index)))
 
-        self.min_coverage = min_coverage
+        self.min_coverage_for_variability = min_coverage_for_variability
         self.test_class = test_class
 
         # dictionaries to convert to/from array-row-index and allele
@@ -129,8 +129,8 @@ class ProcessAlleleCounts:
         else:
             self.sequence_as_index_provided = False
 
-        if self.min_coverage < 1:
-            raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
+        if self.min_coverage_for_variability < 1:
+            raise ConfigError("ProcessAlleleCounts :: self.min_coverage_for_variability must be at least 1, currently %d" % self.min_coverage_for_variability)
 
 
     def process(self, skip_competing_items=False):
@@ -150,7 +150,7 @@ class ProcessAlleleCounts:
         self.d['coverage'] = self.get_coverage()
 
         # Filter if some positions are not well-covered
-        indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage)
+        indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage_for_variability)
         self.filter_or_dont(indices_to_keep)
         if self.get_data_length() == 0:
             return False
@@ -298,7 +298,7 @@ class ProcessAlleleCounts:
             coverage = self.get_coverage()
 
         if threshold is None:
-            threshold = self.min_coverage
+            threshold = self.min_coverage_for_variability
 
         return np.where(coverage >= threshold)[0]
 
