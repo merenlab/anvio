@@ -662,9 +662,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig = contigops.Contig(contig_name)
         contig.length = contig_length
         contig.split_length = self.a_meta['split_length']
-        contig.min_coverage_for_variability = self.min_coverage_for_variability
         contig.skip_SNV_profiling = self.skip_SNV_profiling
-        contig.report_variability_full = self.report_variability_full
         timer.make_checkpoint('Initialization done')
 
         # populate contig with empty split objects

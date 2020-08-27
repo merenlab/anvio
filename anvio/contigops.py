@@ -84,7 +84,6 @@ class Contig:
         self.abundance = 0.0
         self.coverage = anvio.bamops.Coverage()
 
-        self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
 
 
