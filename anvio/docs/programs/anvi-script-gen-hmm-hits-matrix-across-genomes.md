@@ -10,7 +10,7 @@ anvi-script-gen-hmm-hits-matrix-across-genomes -i %(internal-genomes)s \
                                                -o output.txt
 {{ codestop }}
 
-To list the %(hmm-source)s common to the datasets that you're analyzing, just add the flag `--list-hmm-sources`, as so: 
+To list the %(hmm-source)ss common to the datasets that you're analyzing, just add the flag `--list-hmm-sources`, as so: 
 
 {{ codestart }}
 anvi-script-gen-hmm-hits-matrix-across-genomes -e %(external-genomes)s \
