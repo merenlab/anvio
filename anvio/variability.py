@@ -379,7 +379,7 @@ class ProcessIndelCounts(object):
         self.min_coverage_for_variability = min_coverage_for_variability
 
 
-    def should_process(self):
+    def should_filter(self):
         """Decide whether or not indels even need to be processed"""
 
         if self.min_coverage_for_variability <= 1 and self.min_indel_fraction <= 0:
@@ -392,23 +392,27 @@ class ProcessIndelCounts(object):
     def process(self):
         """Modify self.indels"""
 
-        if not self.should_process():
-            return
+        if self.should_filter():
+            indel_hashes_to_remove = set()
+            for indel_hash in self.indels:
 
-        indel_hashes_to_remove = set()
-        for indel_hash in self.indels:
+                indel = self.indels[indel_hash]
 
-            indel = self.indels[indel_hash]
+                if self.coverage[indel['pos']] < self.min_coverage_for_variability:
+                    # coverage of corresponding position is not high enough
+                    indel_hashes_to_remove.add(indel_hash)
+                    continue
 
-            if self.coverage[indel['pos']] < self.min_coverage_for_variability:
-                # coverage of corresponding position is not high enough
-                indel_hashes_to_remove.add(indel_hash)
-                continue
+                if indel['count']/self.coverage[indel['pos']] < self.min_indel_fraction:
+                    # indel fraction does not pass minimum threshold
+                    indel_hashes_to_remove.add(indel_hash)
+                    continue
 
-            if indel['count']/self.coverage[indel['pos']] < self.min_indel_fraction:
-                # indel fraction does not pass minimum threshold
-                indel_hashes_to_remove.add(indel_hash)
-                continue
+                self.indels[indel_hash]['coverage'] = self.coverage[indel['pos']]
+        else:
+            for indel_hash in self.indels:
+                indel = self.indels[indel_hash]
+                self.indels[indel_hash]['coverage'] = self.coverage[indel['pos']]
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
 
