@@ -162,7 +162,7 @@ class Split:
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
-        self.indels_profiles = {}
+        self.INDEL_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -536,7 +536,7 @@ class Auxiliary:
                 min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
             )
             indel_profile.process()
-            self.split.indels_profiles = indel_profile.indels
+            self.split.INDEL_profiles = indel_profile.indels
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
@@ -839,5 +839,4 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
-
 
