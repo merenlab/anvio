@@ -23,7 +23,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -48,8 +48,8 @@ def gen_split_name(parent_name, order):
 
 
 def get_atomic_data_dicts(sample_id, contigs):
-    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data
-       dictionaries"""
+    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data dictionaries"""
+
     atomic_data_contigs = {}
     atomic_data_splits = {}
 
@@ -159,6 +159,7 @@ class Split:
         self.abundance = 0.0
         self.auxiliary = None
         self.num_SNV_entries = 0
+        self.num_INDEL_entries = 0
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
@@ -406,6 +407,8 @@ class Auxiliary:
                 # self.split.SCV_profiles
                 pass
 
+        if anvio.DEBUG: self.run.info_single('%d SCVs to report' % (sum(self.split.num_SCV_entries.values())), nl_before=0, nl_after=0, level=2)
+
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
         """Helper for run_SCVs"""
@@ -539,7 +542,11 @@ class Auxiliary:
             self.split.INDEL_profiles = indel_profile.indels
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
+        self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
+
+        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
