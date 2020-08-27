@@ -166,8 +166,8 @@ variable_nts_table_structure         = ['sample_id', 'split_name',   'pos'  , 'p
 variable_nts_table_types             = [   'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 indels_table_name                    = 'indels'
-indels_table_structure               = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']
-indels_table_types                   = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' ]
+indels_table_structure               = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage', 'pos_coverage']
+indels_table_types                   = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' , 'numeric']
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
