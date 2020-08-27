@@ -544,6 +544,9 @@ class Auxiliary:
                     indel_coverage = indel['coverage']
                     pos_coverage = split_coverage[indel['start_in_split']]
 
+                    # sneak in the positions coverage into the indel data structure
+                    indels_profiles[indel_hash]['pos_coverage'] = pos_coverage
+
                     if pos_coverage < self.min_coverage_for_variability:
                         indel_hashes_to_remove.add(indel_hash)
 
