@@ -555,6 +555,6 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
-    },"
+    }
     
 }
