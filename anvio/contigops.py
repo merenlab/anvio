@@ -538,7 +538,6 @@ class Auxiliary:
         self.split.SNV_profiles = nt_profile.d
 
         min_indel_fraction = 0.05
-        min_pos_coverage_for_indel_reporting = 10
         indel_hashes_to_remove = set()
         if not self.skip_INDEL_profiling:
             if self.report_variability_full:
@@ -552,7 +551,7 @@ class Auxiliary:
                     indel_coverage = indel['coverage']
                     pos_coverage = split_coverage[indel['start_in_split']]
 
-                    if pos_coverage < min_pos_coverage_for_indel_reporting:
+                    if pos_coverage < self.min_coverage:
                         indel_hashes_to_remove.add(indel_hash)
 
                     elif indel_coverage/pos_coverage < min_indel_fraction:
