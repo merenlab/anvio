@@ -444,7 +444,7 @@ class Auxiliary:
         """
 
         if not self.skip_INDEL_profiling:
-            indels_profiles = {}
+            indels = {}
             get_indel_entry = lambda indel_type, seq, pos: OrderedDict([
                 ('split_name', self.split.name),
                 ('type', indel_type),
@@ -452,7 +452,7 @@ class Auxiliary:
                 ('start_in_contig', int(pos)),
                 ('start_in_split', int(pos - self.split.start)),
                 ('length', len(seq)),
-                ('coverage', 1),
+                ('count', 1),
             ])
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
@@ -486,10 +486,10 @@ class Auxiliary:
                     ins_pos = ins_segment[0, 0]
                     indel_hash = hash((ins_pos, ins_seq))
 
-                    if indel_hash in indels_profiles:
-                        indels_profiles[indel_hash]['coverage'] += 1
+                    if indel_hash in indels:
+                        indels[indel_hash]['count'] += 1
                     else:
-                        indels_profiles[indel_hash] = get_indel_entry('INS', ins_seq, ins_pos)
+                        indels[indel_hash] = get_indel_entry('INS', ins_seq, ins_pos)
 
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
                     # Get the position and sequence of the deletion, create hash as a key for storage
@@ -497,10 +497,10 @@ class Auxiliary:
                     del_pos = del_segment[0, 0]
                     indel_hash = hash((del_pos, del_seq))
 
-                    if indel_hash in indels_profiles:
-                        indels_profiles[indel_hash]['coverage'] += 1
+                    if indel_hash in indels:
+                        indels[indel_hash]['count'] += 1
                     else:
-                        indels_profiles[indel_hash] = get_indel_entry('DEL', del_seq, del_pos)
+                        indels[indel_hash] = get_indel_entry('DEL', del_seq, del_pos)
 
             read_count += 1
 
@@ -525,39 +525,19 @@ class Auxiliary:
             test_class=test_class,
             additional_per_position_data=additional_per_position_data,
         )
-
         nt_profile.process()
-
         self.split.SNV_profiles = nt_profile.d
 
-        # NOTE If this processing gets ANY bigger, a ProcessIndelCounts should be made in variability.py
         if not self.skip_INDEL_profiling:
-            split_coverage = allele_counts_array.sum(axis=0)
+            indel_profile = ProcessIndelCounts(
+                indels=indels,
+                coverage=allele_counts_array.sum(axis=0),
+                min_indel_fraction=self.min_indel_fraction if not self.report_variability_full else 0.0,
+                min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
+            )
+            indel_profile.process()
+            self.split.indels_profiles = indel_profile.indels
 
-            if not self.report_variability_full:
-                indel_hashes_to_remove = set()
-
-                for indel_hash in indels_profiles:
-                    indel = indels_profiles[indel_hash]
-                    indel_coverage = indel['coverage']
-                    pos_coverage = split_coverage[indel['start_in_split']]
-
-                    # sneak in the positions coverage into the indel data structure
-                    indels_profiles[indel_hash]['pos_coverage'] = pos_coverage
-
-                    if pos_coverage < self.min_coverage_for_variability:
-                        indel_hashes_to_remove.add(indel_hash)
-
-                    elif indel_coverage/pos_coverage < self.min_indel_fraction:
-                        indel_hashes_to_remove.add(indel_hash)
-
-                indels_profiles = {k: v for k, v in indels_profiles.items() if k not in indel_hashes_to_remove}
-            else:
-                for indel_hash in indels_profiles:
-                    # sneak in the positions coverage into the indel data structure
-                    indels_profiles[indel_hash]['pos_coverage'] = split_coverage[indels_profiles[indel_hash]['start_in_split']]
-
-        self.split.indels_profiles = indels_profiles
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 

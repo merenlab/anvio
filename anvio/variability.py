@@ -354,3 +354,62 @@ class ProcessCodonCounts(ProcessAlleleCounts):
         return p
 
 
+class ProcessIndelCounts(object):
+    def __init__(self, indels, coverage, min_indel_fraction=0, min_coverage_for_variability=1):
+        """A class to process raw variability information for a given allele counts array
+
+        Creates self.d, a dictionary of equal-length arrays that describes information related to
+        variability.
+
+        Parameters
+        ==========
+        coverage : array
+            What is the coverage for the sequence this is for? This should have length equal to sequence
+
+        min_indel_fraction : float, 0
+            indels with a count divided by the position coverage less than this value will be filtered out.
+
+        min_coverage_for_variability : int, 1
+            positions below this coverage value will be filtered out
+        """
+
+        self.indels = indels
+        self.coverage = coverage
+        self.min_indel_fraction = min_indel_fraction
+        self.min_coverage_for_variability = min_coverage_for_variability
+
+
+    def should_process(self):
+        """Decide whether or not indels even need to be processed"""
+
+        if self.min_coverage_for_variability <= 1 and self.min_indel_fraction <= 0:
+            # Save ourselves the effot
+            return False
+
+        return True
+
+
+    def process(self):
+        """Modify self.indels"""
+
+        if not self.should_process():
+            return
+
+        indel_hashes_to_remove = set()
+        for indel_hash in self.indels:
+
+            indel = self.indels[indel_hash]
+
+            if self.coverage[indel['pos']] < self.min_coverage_for_variability:
+                # coverage of corresponding position is not high enough
+                indel_hashes_to_remove.add(indel_hash)
+                continue
+
+            if indel['count']/self.coverage[indel['pos']] < self.min_indel_fraction:
+                # indel fraction does not pass minimum threshold
+                indel_hashes_to_remove.add(indel_hash)
+                continue
+
+        self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
+
+
