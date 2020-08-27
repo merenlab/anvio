@@ -84,6 +84,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt', 'metavar': 'VARIABILITY_PROFILE'}))
     groupH.add_argument(*anvio.A('include-contig-names'), **anvio.K('include-contig-names'))
     groupH.add_argument(*anvio.A('include-split-names'), **anvio.K('include-split-names'))
+    groupH.add_argument(*anvio.A('include-additional-data'), **anvio.K('include-additional-data'))
     groupH.add_argument(*anvio.A('compute-gene-coverage-stats'), **anvio.K('compute-gene-coverage-stats'))
 
     args = anvio.get_args(parser)

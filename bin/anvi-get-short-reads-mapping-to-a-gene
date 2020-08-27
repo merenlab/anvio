@@ -43,6 +43,10 @@ def main(args):
         raise ConfigError("You either should define a single gene caller id, or a list of "
                           "gene callers of interest. Not both")
 
+    if not (args.genes_of_interest or args.gene_caller_id):
+        raise ConfigError("You must provide either a single gene caller id, or a file with one or more gene "
+                          "caller ids. You provided none of these. Well .. *starts quietly taking notes*.")
+
     if args.genes_of_interest:
         genes_of_interest = set([int(g) for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
     else:
@@ -74,8 +78,8 @@ def main(args):
     progress.update("...")
     for gene_caller_id in genes_of_interest:
         gene_call = c.genes_in_contigs_dict[gene_caller_id]
-        mapping_range_start = gene_call['start'] + args.leeway
-        mapping_range_stop = gene_call['stop'] - args.leeway
+        mapping_range_start = gene_call['start'] - args.leeway
+        mapping_range_stop = gene_call['stop'] + args.leeway
         gene_length = gene_call['stop'] - gene_call['start']
 
         progress.increment()

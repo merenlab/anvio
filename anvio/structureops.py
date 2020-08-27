@@ -340,6 +340,11 @@ class StructureSuperclass(object):
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
+            self.run.warning("Anvi'o will use 'MODELLER' by Webb and Sali (DOI: 10.1002/cpbi.3) to model "
+                             "protein structures. If you publish your findings, please do not forget to "
+                             "properly credit their work.", lc='green', header="CITATION")
+
+
         # init StructureDatabase
         self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 

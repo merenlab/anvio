@@ -536,8 +536,29 @@ class Auxiliary:
         nt_profile.process()
 
         self.split.SNV_profiles = nt_profile.d
+
+        min_indel_fraction = 0.05
+        min_pos_coverage_for_indel_reporting = 10
+        indel_hashes_to_remove = set()
         if not self.skip_INDEL_profiling:
-            self.split.indels_profiles = indels_profiles
+            if self.report_variability_full:
+                self.split.indels_profiles = indels_profiles
+            else:
+                # If this processing gets any bigger, a ProcessIndelCounts should be made in variability.py
+                split_coverage = allele_counts_array.sum(axis=0)
+
+                for indel_hash in indels_profiles:
+                    indel = indels_profiles[indel_hash]
+                    indel_coverage = indel['coverage']
+                    pos_coverage = split_coverage[indel['start_in_split']]
+
+                    if pos_coverage < min_pos_coverage_for_indel_reporting:
+                        indel_hashes_to_remove.add(indel_hash)
+
+                    elif indel_coverage/pos_coverage < min_indel_fraction:
+                        indel_hashes_to_remove.add(indel_hash)
+
+                self.split.indels_profiles = {k: v for k, v in indels_profiles.items() if k not in indel_hashes_to_remove}
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length

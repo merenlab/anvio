@@ -329,34 +329,6 @@ class ProcessNucleotideCounts(ProcessAlleleCounts):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
 
     def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_nts')
-
-
-class ProcessAminoAcidCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_aas')
-
-
-class ProcessCodonCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_codons')
-        self.rename_key('pos', 'codon_order_in_gene')
-
-# FIXME: it seems the following classes are redundant and should be removed? Ping @evan
-class ProcessNucleotideCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
         p = ProcessAlleleCounts.process(self, *args, **kwargs)
         self.rename_key('competing_items', 'competing_nts')
         return p
