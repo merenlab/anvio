@@ -101,8 +101,7 @@ class ProcessAlleleCounts:
         for key in self.d:
             if len(self.d[key]) != allele_counts.shape[1]:
                 raise ConfigError("ProcessAlleleCounts :: key '%s' in your passed data dictionary \
-                                   has %d positions, but sequence has %d." \
-                                   % (key, len(sequence), len(self.d[key])))
+                                   has %d positions, but sequence has %d." % (key, len(self.d[key]), len(sequence)))
 
         if len(sequence) != allele_counts.shape[1]:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
