@@ -182,8 +182,8 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False, profile_SCVs=False,
-                 skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
+    def __init__(self, split, min_coverage_for_variability=10, min_indel_fraction=0.05, report_variability_full=False,
+                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -191,6 +191,7 @@ class Auxiliary:
         self.split = split
         self.variation_density = 0.0
         self.min_coverage_for_variability = min_coverage_for_variability
+        self.min_indel_fraction = min_indel_fraction
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
@@ -531,27 +532,31 @@ class Auxiliary:
         self.split.SNV_profiles = nt_profile.d
 
         # NOTE If this processing gets ANY bigger, a ProcessIndelCounts should be made in variability.py
-        if not self.skip_INDEL_profiling and not self.report_variability_full:
-            min_indel_fraction = 0.05
-            indel_hashes_to_remove = set()
-
+        if not self.skip_INDEL_profiling:
             split_coverage = allele_counts_array.sum(axis=0)
 
-            for indel_hash in indels_profiles:
-                indel = indels_profiles[indel_hash]
-                indel_coverage = indel['coverage']
-                pos_coverage = split_coverage[indel['start_in_split']]
+            if not self.report_variability_full:
+                indel_hashes_to_remove = set()
 
-                # sneak in the positions coverage into the indel data structure
-                indels_profiles[indel_hash]['pos_coverage'] = pos_coverage
+                for indel_hash in indels_profiles:
+                    indel = indels_profiles[indel_hash]
+                    indel_coverage = indel['coverage']
+                    pos_coverage = split_coverage[indel['start_in_split']]
 
-                if pos_coverage < self.min_coverage_for_variability:
-                    indel_hashes_to_remove.add(indel_hash)
+                    # sneak in the positions coverage into the indel data structure
+                    indels_profiles[indel_hash]['pos_coverage'] = pos_coverage
 
-                elif indel_coverage/pos_coverage < min_indel_fraction:
-                    indel_hashes_to_remove.add(indel_hash)
+                    if pos_coverage < self.min_coverage_for_variability:
+                        indel_hashes_to_remove.add(indel_hash)
 
-            indels_profiles = {k: v for k, v in indels_profiles.items() if k not in indel_hashes_to_remove}
+                    elif indel_coverage/pos_coverage < self.min_indel_fraction:
+                        indel_hashes_to_remove.add(indel_hash)
+
+                indels_profiles = {k: v for k, v in indels_profiles.items() if k not in indel_hashes_to_remove}
+            else:
+                for indel_hash in indels_profiles:
+                    # sneak in the positions coverage into the indel data structure
+                    indels_profiles[indel_hash]['pos_coverage'] = split_coverage[indels_profiles[indel_hash]['start_in_split']]
 
         self.split.indels_profiles = indels_profiles
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
