@@ -804,6 +804,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+            self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
+
+        if not self.skip_INDEL_profiling:
+            self.layer_additional_data['num_INDELs_reported'] = TableForIndels(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_INDELs_reported')
+            self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if self.profile_SCVs:
+            self.layer_additional_data['num_SCVs_reported'] = TableForCodonFrequencies(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_SCVs_reported')
+            self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
         if self.total_reads_kept != self.num_reads_mapped:
             # Num reads in profile do not equal num reads in bam
@@ -933,6 +944,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+            self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
+
+        if not self.skip_INDEL_profiling:
+            self.layer_additional_data['num_INDELs_reported'] = TableForIndels(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_INDELs_reported')
+            self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if self.profile_SCVs:
+            self.layer_additional_data['num_SCVs_reported'] = TableForCodonFrequencies(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_SCVs_reported')
+            self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
         if self.total_reads_kept != self.num_reads_mapped:
             # Num reads in profile do not equal num reads in bam
