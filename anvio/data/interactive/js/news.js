@@ -4,6 +4,15 @@ $(document).ready(function() {
 
 function checkNews() {
     $('#news-panel-inner').empty();
+
+    if(getNews() == null) {
+      $('#news-mark-read').remove();
+      $('#news-panel-inner').append('<div id="news-not-found"> \
+                                      <p>Anvi\'o failed to retrieve any news for you :( But see the news page <a href="">here</a></p> \
+                                    </div>');
+      return;
+    }
+	
     $.ajax({
         type: 'GET',
         cache: false,
@@ -51,4 +60,11 @@ function newsMarkRead() {
     $('#news-mark-read').remove();
     $('#toggle-panel-right-3').off('mouseover');
     createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
+}
+
+/*
+ *  Return the raw contents of the news file, or null if request failed
+ */
+function getNews() {
+  return null;
 }
