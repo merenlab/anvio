@@ -443,17 +443,7 @@ class ProcessIndelCounts(object):
                 indel = self.indels[indel_hash]
                 pos = indel['pos']
 
-                if self.coverage[pos] < self.min_coverage_for_variability:
-                    # coverage of corresponding position is not high enough
-                    indel_hashes_to_remove.add(indel_hash)
-                    continue
-
-                if indel['count']/self.coverage[pos] < self.min_indel_fraction:
-                    # indel fraction does not pass minimum threshold
-                    indel_hashes_to_remove.add(indel_hash)
-                    continue
-
-                # Add coverage
+                # Calculate coverage
                 if indel['type'] == 'INS':
                     if pos == len(self.coverage):
                         # This is the last position in the sequence. so coverage based off only the
@@ -466,6 +456,18 @@ class ProcessIndelCounts(object):
                 else:
                     # The coverage is the average of the NT coverages that the deletion occurs over
                     cov = np.mean(self.coverage[pos:pos+indel['length']])
+
+                # Filter the entry if need be
+                if cov < self.min_coverage_for_variability:
+                    # coverage of corresponding position is not high enough
+                    indel_hashes_to_remove.add(indel_hash)
+                    continue
+
+                if indel['count']/cov < self.min_indel_fraction:
+                    # indel fraction does not pass minimum threshold
+                    indel_hashes_to_remove.add(indel_hash)
+                    continue
+
 
                 self.indels[indel_hash]['coverage'] = cov
         else:
