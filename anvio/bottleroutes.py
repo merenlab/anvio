@@ -304,7 +304,7 @@ class BottleApplication(Bottle):
     def get_news(self):
         ret = []
         try:
-            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
+            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md', timeout=3)
             news_items = news_markdown.text.split("***")
 
             """ FORMAT
@@ -327,6 +327,8 @@ class BottleApplication(Bottle):
                         'title': news_item.split("#")[1].split("(")[0].strip(),
                         'content': news_item.split("#\n")[1].strip()
                     })
+        except requests.exceptions.Timeout as e:
+            print e
         except:
             ret.append({
                     'date': '',
