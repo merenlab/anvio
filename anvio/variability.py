@@ -445,7 +445,7 @@ class ProcessIndelCounts(object):
 
                 # Calculate coverage
                 if indel['type'] == 'INS':
-                    if pos == len(self.coverage):
+                    if pos == len(self.coverage)-1:
                         # This is the last position in the sequence. so coverage based off only the
                         # NT left of the indel
                         cov = self.coverage[pos]
@@ -477,7 +477,7 @@ class ProcessIndelCounts(object):
 
                 # Add coverage
                 if indel['type'] == 'INS':
-                    if pos == len(self.coverage):
+                    if pos == len(self.coverage)-1:
                         # This is the last position in the sequence. so coverage based off only the
                         # NT left of the indel
                         cov = self.coverage[pos]
