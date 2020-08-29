@@ -514,19 +514,19 @@ class Auxiliary:
                         )
 
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
-                    # Get the position and sequence of the deletion, create hash as a key for storage
-                    del_seq = ''
+                    # Get the position and length of the deletion, create hash as a key for storage
+                    del_len = del_segment.shape[0]
                     del_pos = del_segment[0, 0] - self.split.start
-                    indel_hash = hash((del_pos, del_seq))
+                    indel_hash = hash((del_pos, del_len))
 
                     if indel_hash in indels:
                         indels[indel_hash]['count'] += 1
                     else:
                         indels[indel_hash] = get_indel_entry(
                             indel_type='DEL',
-                            seq=del_seq,
+                            seq='',
                             pos=del_pos,
-                            length=del_segment.shape[0],
+                            length=del_len,
                         )
 
             read_count += 1
