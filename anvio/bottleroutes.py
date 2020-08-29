@@ -328,6 +328,11 @@ class BottleApplication(Bottle):
                         'content': news_item.split("#\n")[1].strip()
                     })
         except requests.exceptions.Timeout as e:
+            ret.append({
+                    'date': '',
+                    'title': 'News not found',
+                    'content': 'Anvi\'o failed to retrieve any news for you, but see the news page [here]()'
+                })
             print(e)
         except:
             ret.append({
