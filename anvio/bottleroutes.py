@@ -328,7 +328,7 @@ class BottleApplication(Bottle):
                         'content': news_item.split("#\n")[1].strip()
                     })
         except requests.exceptions.Timeout as e:
-            print e
+            print(e)
         except:
             ret.append({
                     'date': '',
