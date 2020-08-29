@@ -458,7 +458,7 @@ class ProcessIndelCounts(object):
                     if pos == len(self.coverage):
                         # This is the last position in the sequence. so coverage based off only the
                         # NT left of the indel
-                        cov = -1
+                        cov = self.coverage[pos]
                     else:
                         # The coverage is the average of the coverage left and right of the
                         # insertion
