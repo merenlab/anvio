@@ -454,7 +454,7 @@ class Auxiliary:
 
         if not self.skip_INDEL_profiling:
             indels = {}
-            get_indel_entry = lambda indel_type, seq, pos: OrderedDict([
+            get_indel_entry = lambda indel_type, seq, pos, length: OrderedDict([
                 ('split_name', self.split.name),
                 ('pos', pos),
                 ('pos_in_contig', pos + self.split.start),
@@ -468,7 +468,7 @@ class Auxiliary:
                 ('reference', self.split.sequence[pos]),
                 ('type', indel_type),
                 ('sequence', seq),
-                ('length', len(seq)),
+                ('length', length),
                 ('count', 1),
             ])
 
@@ -506,18 +506,28 @@ class Auxiliary:
                     if indel_hash in indels:
                         indels[indel_hash]['count'] += 1
                     else:
-                        indels[indel_hash] = get_indel_entry('INS', ins_seq, ins_pos)
+                        indels[indel_hash] = get_indel_entry(
+                            indel_type='INS',
+                            seq=ins_seq,
+                            pos=ins_pos,
+                            length=len(ins_seq),
+                        )
 
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
-                    # Get the position and sequence of the deletion, create hash as a key for storage
-                    del_seq = ''
+                    # Get the position and length of the deletion, create hash as a key for storage
+                    del_len = del_segment.shape[0]
                     del_pos = del_segment[0, 0] - self.split.start
-                    indel_hash = hash((del_pos, del_seq))
+                    indel_hash = hash((del_pos, del_len))
 
                     if indel_hash in indels:
                         indels[indel_hash]['count'] += 1
                     else:
-                        indels[indel_hash] = get_indel_entry('DEL', del_seq, del_pos)
+                        indels[indel_hash] = get_indel_entry(
+                            indel_type='DEL',
+                            seq='',
+                            pos=del_pos,
+                            length=del_len,
+                        )
 
             read_count += 1
 
@@ -762,7 +772,6 @@ class GenbankToAnvio:
 
                 start = location[0] # start coordinate
                 end = location[1] # end coordinate
-
 
                 # setting direction to "f" or "r":
                 if gene.strand == 1:

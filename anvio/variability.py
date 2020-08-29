@@ -441,22 +441,53 @@ class ProcessIndelCounts(object):
             for indel_hash in self.indels:
 
                 indel = self.indels[indel_hash]
+                pos = indel['pos']
 
-                if self.coverage[indel['pos']] < self.min_coverage_for_variability:
+                if self.coverage[pos] < self.min_coverage_for_variability:
                     # coverage of corresponding position is not high enough
                     indel_hashes_to_remove.add(indel_hash)
                     continue
 
-                if indel['count']/self.coverage[indel['pos']] < self.min_indel_fraction:
+                if indel['count']/self.coverage[pos] < self.min_indel_fraction:
                     # indel fraction does not pass minimum threshold
                     indel_hashes_to_remove.add(indel_hash)
                     continue
 
-                self.indels[indel_hash]['coverage'] = self.coverage[indel['pos']]
+                # Add coverage
+                if indel['type'] == 'INS':
+                    if pos == len(self.coverage):
+                        # This is the last position in the sequence. so coverage based off only the
+                        # NT left of the indel
+                        cov = -1
+                    else:
+                        # The coverage is the average of the coverage left and right of the
+                        # insertion
+                        cov = (self.coverage[pos] + self.coverage[pos+1])/2
+                else:
+                    # The coverage is the average of the NT coverages that the deletion occurs over
+                    cov = np.mean(self.coverage[pos:pos+indel['length']])
+
+                self.indels[indel_hash]['coverage'] = cov
         else:
             for indel_hash in self.indels:
                 indel = self.indels[indel_hash]
-                self.indels[indel_hash]['coverage'] = self.coverage[indel['pos']]
+                pos = indel['pos']
+
+                # Add coverage
+                if indel['type'] == 'INS':
+                    if pos == len(self.coverage):
+                        # This is the last position in the sequence. so coverage based off only the
+                        # NT left of the indel
+                        cov = self.coverage[pos]
+                    else:
+                        # The coverage is the average of the coverage left and right of the
+                        # insertion
+                        cov = (self.coverage[pos] + self.coverage[pos+1])/2
+                else:
+                    # The coverage is the average of the NT coverages that the deletion occurs over
+                    cov = np.mean(self.coverage[pos:pos+indel['length']])
+
+                self.indels[indel_hash]['coverage'] = cov
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
 
