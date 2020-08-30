@@ -23,7 +23,7 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin', 'bam-file']
 __provides__ = ['short-reads-fasta']
 __description__ = ("Get short reads back from a BAM file with options for compression, splitting of "
-                   "forward and reverse reads, etc.")
+                   "forward and reverse reads, etc")
 
 
 if __name__ == '__main__':

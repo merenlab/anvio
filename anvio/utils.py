@@ -5,13 +5,15 @@
 
 import os
 import sys
+import ssl
+import yaml
 import gzip
-import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
+import tarfile
 import hashlib
 import textwrap
 import linecache
@@ -520,6 +522,25 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
 
     f.close()
     return output_path
+
+
+def multi_index_pivot(df, index = None, columns = None, values = None):
+    # https://github.com/pandas-dev/pandas/issues/23955
+    output_df = df.copy(deep = True)
+    if index is None:
+        names = list(output_df.index.names)
+        output_df = output_df.reset_index()
+    else:
+        names = index
+    output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
+    if isinstance(columns, list):
+        output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
+        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values) 
+        output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
+    else:
+        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)    
+    output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
+    return output_df
 
 
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
@@ -1414,6 +1435,47 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
             os.remove(f)
 
     return dest_file
+
+
+def get_chunk(stream, separator, read_size=4096):
+    """Read from a file chunk by chunk based on a separator substring
+
+    This utility of this function is to avoid reading in the entire contents of a file all at once.
+    Instead, you can read in a chunk, process it, then read in the next chunk, and repeat this until
+    the EOF.
+
+    Parameters
+    ==========
+    stream : _io.TextIOWrapper
+        A file handle, e.g. stream = open('<path_to_file>', 'r')
+
+    separator : str
+        Each value returned will be the string from the last `separator` to the next `separator`
+
+    read_size : int, 4096
+        How big should each read size be? Bigger means faster reading, but higher memory usage. This
+        has no effect on what is returned, but can greatly influence speed. Default is 4MB.
+
+    References
+    ==========
+    https://stackoverflow.com/questions/47927039/reading-a-file-until-a-specific-character-in-python
+    """
+
+    contents_buffer = ''
+    while True:
+        chunk = stream.read(read_size)
+        if not chunk:
+            yield contents_buffer
+            break
+
+        contents_buffer += chunk
+        while True:
+            try:
+                part, contents_buffer = contents_buffer.split(separator, 1)
+            except ValueError:
+                break
+            else:
+                yield part
 
 
 def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
@@ -2975,6 +3037,7 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
 
 def anvio_hmm_target_term_to_alphabet_and_context(target):
     """Alphabet and context recovery from the target term in anvi'o HMM source directories."""
+
     alphabet = None
     context = None
     fields = target.split(':')
@@ -3514,18 +3577,36 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
 
-def download_file(url, output_file_path, progress=progress, run=run):
+def get_yaml_as_dict(file_path):
+    """YAML parser"""
+
+    filesnpaths.is_file_plain_text(file_path)
+
+    try:
+        return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
+
+
+def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
-        response = urllib.request.urlopen(url)
+        if check_certificate:
+            response = urllib.request.urlopen(url)
+        else:
+            response = urllib.request.urlopen(url, context=ssl._create_unverified_context())
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the "
-                           "problem: '%s'" % e)
+        raise ConfigError(f"Something went wrong with your download attempt. Here is the "
+                          f"problem for the url {url}: '{e}'")
 
     file_size = 0
     if 'Content-Length' in response.headers:
@@ -3729,7 +3810,7 @@ def check_h5py_module():
     except:
         raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
                           "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environmnet "
+                          "and really unimportant. If you run `pip install h5py` in your Python virtual environment "
                           "for anvi'o, and try running the migration program again things should be alright.")
 
 

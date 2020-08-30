@@ -17,7 +17,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __provides__ = ['cogs-data']
-__description__ = "Download and setup NCBI's Clusters of Orthologous Groups database."
+__description__ = "Download and setup NCBI's Clusters of Orthologous Groups database"
 
 
 run = terminal.Run()

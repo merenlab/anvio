@@ -51,72 +51,52 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-# This is the most critical part of this entire operation. The following hard-coded dict translates
-# between locally known 'HMM' names to FASTA files from GTDB. If one day you have to update this
-# list, this is what you should do:
-#
-#   - find a FASTA file for a complete bacterial genome.
-#   - generate an anvi'o contigs database, and run all default, installed SCG HMMs.
-#   - export sequences for those HMMs that matches to the keys of the dictionary below (under all
-#     circumstances these names must match to HMM sources in anvi'o Bacteria_71). you can do
-#     something like this:
-#
-#             anvi-get-sequences-for-hmm-hits -c CONTIGS.db \
-#                                             -o Local_HMMs_export.fa \
-#                                             --hmm-source Bacteria_71 \
-#                                             --get-aa-sequences \
-#                                             --return-best-hit \
-#                                             --gene-names "Ribosomal_S2,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S8,Ribosomal_S9,Ribosomal_S11,Ribosomal_S20p,Ribosomal_L1,Ribosomal_L2,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,ribosomal_L24,Ribosomal_L27A"
-#             sed -i '' 's/___.*$//g' Local_HMMs_export.fa
-#
-#   - Then, BLAST sequences in Local_HMMs_export.fa to the entire collection of individual MSA FASTA
-#     files from GTDB. For this, you could do something like this in msa_individual_genes directory
-#     anvi'o generates, and carefully survey the OUTPUT.
-#
-#             for i in *faa; do makeblastdb -in $i -dbtype prot; done
-#             for i in *faa; do echo; echo; echo $i; echo; echo; blastp -query Local_HMMs_export.fa -db $i -outfmt 6 -evalue 1e-10 -max_target_seqs 10; done > OUTPUT
-#
-#   - Update the list carefully based on the output.
-#   - Find a FASTA file for a complete archaeal genome. Do the same :)
-locally_known_HMMs_to_remote_FASTAs = {'Ribosomal_S2': ['ar122_TIGR01012.faa', 'bac120_TIGR01011.faa'],
-                                       'Ribosomal_S3_C': ['ar122_TIGR01008.faa', 'bac120_TIGR01009.faa'],
-                                       'Ribosomal_S6': ['bac120_TIGR00166.faa'],
-                                       'Ribosomal_S7': ['ar122_TIGR01028.faa', 'bac120_TIGR01029.faa'],
-                                       'Ribosomal_S8': ['ar122_PF00410.14.faa', 'bac120_PF00410.14.faa'],
-                                       'Ribosomal_S9': ['ar122_TIGR03627.faa', 'bac120_PF00380.14.faa'],
-                                       'Ribosomal_S11': ['ar122_TIGR03628.faa', 'bac120_TIGR03632.faa'],
-                                       'Ribosomal_S20p': ['bac120_TIGR00029.faa'],
-                                       'Ribosomal_L1': ['bac120_TIGR01169.faa', 'ar122_PF00687.16.faa'],
-                                       'Ribosomal_L2': ['bac120_TIGR01171.faa'],
-                                       'Ribosomal_L3': ['ar122_TIGR03626.faa', 'bac120_TIGR03625.faa'],
-                                       'Ribosomal_L4': ['bac120_TIGR03953.faa'],
-                                       'Ribosomal_L6': ['ar122_TIGR03653.faa', 'bac120_TIGR03654.faa'],
-                                       'Ribosomal_L9_C': ['bac120_TIGR00158.faa'],
-                                       'Ribosomal_L13': ['ar122_TIGR01077.faa', 'bac120_TIGR01066.faa'],
-                                       'Ribosomal_L16': ['ar122_TIGR00279.faa', 'bac120_TIGR01164.faa'],
-                                       'Ribosomal_L17': ['bac120_TIGR00059.faa'],
-                                       'Ribosomal_L20': ['bac120_TIGR01032.faa'],
-                                       'Ribosomal_L21p': ['bac120_TIGR00061.faa'],
-                                       'Ribosomal_L22': ['ar122_TIGR01038.faa', 'bac120_TIGR01044.faa'],
-                                       'ribosomal_L24': ['bac120_TIGR01079.faa', 'ar122_TIGR01080.faa'],
-                                       'Ribosomal_L27A': ['bac120_TIGR01071.faa']
-                                       }
+# if you need to change this, you're in trouble :) not really, but yes, you are..
+locally_known_SCG_names = ['Ribosomal_S2',
+                           'Ribosomal_S3_C',
+                           'Ribosomal_S6',
+                           'Ribosomal_S7',
+                           'Ribosomal_S8',
+                           'Ribosomal_S9',
+                           'Ribosomal_S11',
+                           'Ribosomal_S20p',
+                           'Ribosomal_L1',
+                           'Ribosomal_L2',
+                           'Ribosomal_L3',
+                           'Ribosomal_L4',
+                           'Ribosomal_L6',
+                           'Ribosomal_L9_C',
+                           'Ribosomal_L13',
+                           'Ribosomal_L16',
+                           'Ribosomal_L17',
+                           'Ribosomal_L20',
+                           'Ribosomal_L21p',
+                           'Ribosomal_L22',
+                           'ribosomal_L24',
+                           'Ribosomal_L27A']
 
 
 class SCGTaxonomyContext(object):
     """The purpose of this base class is ot define file paths and constants for all single-copy
        core gene taxonomy operations.
     """
-    def __init__(self, scgs_taxonomy_data_dir=None, scgs_taxonomy_remote_database_url=None, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, scgs_taxonomy_data_dir=None, database_release=None, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
 
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
-        self.target_database = "GTDB"
-        self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
-        self.target_database_files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv',
-                                      'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
+        self.target_database_name = "GTDB"
+        self.target_database_release = database_release or 'v95.0'
+
+        self.target_database_releases_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/GTDB-RELEASES.yaml')
+        self.target_database_releases = utils.get_yaml_as_dict(self.target_database_releases_yaml)
+
+        if self.target_database_release not in self.target_database_releases:
+            raise ConfigError(f"Anvi'o doesn't know a release called {self.target_database_release}. It knows about "
+                              f"{', '.join(self.target_database_releases)}, though.")
+
+        self.target_database = self.target_database_releases[self.target_database_release]
 
         # some variables from anvi'o constants
         self.hmm_source_for_scg_taxonomy = constants.default_hmm_source_for_scg_taxonomy
@@ -126,12 +106,11 @@ class SCGTaxonomyContext(object):
 
         # these are all the user accessible paths. defaults will serve well for all applications,
         # but these can be used for debugging.
-        self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
+        self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database_name))
         self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
         self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt.gz')
         self.database_version_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'VERSION')
         self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
-        self.target_database_URL = scgs_taxonomy_remote_database_url or self.target_database_URL
 
         # some dictionaries for convenience. we set them up here, but the proper place to sanity check
         # them may be somewhere else. for instance, when this class is inheritded by SetupLocalSCGTaxonomyData
@@ -140,12 +119,6 @@ class SCGTaxonomyContext(object):
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
         self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
-
-        # set version for ctx, so we know what version of the databases are on disk
-        if os.path.exists(self.database_version_file_path):
-            self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
-        else:
-            self.scg_taxonomy_database_version = None
 
         self.accession_to_taxonomy_dict = None
         if os.path.exists(self.accession_to_taxonomy_file_path):
@@ -212,7 +185,7 @@ class SanityCheck(object):
 
 
     def sanity_check(self):
-        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.ctx.default_scgs_for_taxonomy):
+        if sorted(list(locally_known_SCG_names)) != sorted(self.ctx.default_scgs_for_taxonomy):
             raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py "
                               "are not the same names described in locally known HMMs to remote FASTA files "
                               "conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero "
@@ -299,12 +272,12 @@ class SanityCheck(object):
                     raise ConfigError("It seems the SCG taxonomy tables were not populated in this contigs database :/ Luckily it "
                                       "is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
 
-                if scg_taxonomy_database_version != self.ctx.scg_taxonomy_database_version:
+                if scg_taxonomy_database_version != self.ctx.target_database_release:
                     self.progress.reset()
                     self.run.warning("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
                                      "stored in your contigs database (%s). This is not a problem and things will most likely continue to work "
                                      "fine, but we wanted to let you know. You can get rid of this warning by re-running `anvi-run-scg-taxonomy` "
-                                     "on your database." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
+                                     "on your database." % (self.ctx.target_database_release, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -482,14 +455,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
                              "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
                              "version of it). Anvi'o found these versions across your metagenomes: '%s'." % \
-                                        (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
-        elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
+                                        (self.ctx.target_database_release, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
+        elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.target_database_release:
             self.progress.reset()
             self.run.warning("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s, "
                               "this version differs from what is installed on your system, which is %s. If you don't do anything, "
                               "things will continue to work. But if you would like to get rid of this warning you will need to "
                               "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
-                                        (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
+                                        (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.target_database_release))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
@@ -1857,6 +1830,13 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         self.reset = A("reset") # complete start-over (downloading everything from GTDB)
         self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
+        self.gtdb_release = A('gtdb_release')
+
+        global ctx
+
+        if self.gtdb_release:
+            # re-initializing the context with the right release
+            ctx = SCGTaxonomyContext(database_release=self.gtdb_release)
 
         self.ctx = ctx
 
@@ -1902,17 +1882,17 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         elif self.reset:
             self.run.info("Local directory to setup", self.ctx.SCGs_taxonomy_data_dir)
             self.run.info("Reset the directory first", self.reset, mc="red")
-            self.run.info("Remote database", self.ctx.target_database, nl_before=1, mc="green")
-            self.run.info("Remote URL to download files", self.ctx.target_database_URL)
-            self.run.info("Remote files of interest", ', '.join(self.ctx.target_database_files))
+            self.run.info("Remote database", self.ctx.target_database_name, nl_before=1, mc="green")
+            self.run.info("Database version", self.ctx.target_database_release, mc="green")
+            self.run.info("Base URL", self.ctx.target_database['base_url'])
 
-            self.progress.new("%s setup" % self.ctx.target_database)
+            self.progress.new("%s setup" % self.ctx.target_database_name)
             self.progress.update("Reading the VERSION file...")
-            content = utils.get_remote_file_content(self.ctx.target_database_URL + 'VERSION')
+            content = utils.get_remote_file_content('/'.join([self.ctx.target_database['base_url'], self.ctx.target_database['files']['VERSION']]))
             version, release_date  = content.strip().split('\n')[0].strip(), content.strip().split('\n')[2].strip()
             self.progress.end()
 
-            self.run.info("%s release found" % self.ctx.target_database, "%s (%s)" % (version, release_date), mc="green")
+            self.run.info("%s release found" % self.ctx.target_database_name, "%s (%s)" % (version, release_date), mc="green")
 
             self.download_and_format_files()
 
@@ -1943,20 +1923,20 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         os.remove(self.ctx.accession_to_taxonomy_file_path) if os.path.exists(self.ctx.accession_to_taxonomy_file_path) else None
         os.remove(temp_accession_to_taxonomy_file_path) if os.path.exists(temp_accession_to_taxonomy_file_path) else None
 
-        for remote_file_name in self.ctx.target_database_files:
-            remote_file_url = '/'.join([self.ctx.target_database_URL, remote_file_name])
-            local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, remote_file_name)
+        for file_key in self.ctx.target_database['files']:
+            remote_file_url = '/'.join([self.ctx.target_database['base_url'], self.ctx.target_database['files'][file_key]])
+            local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, file_key)
 
             utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
 
-            if local_file_path.endswith('individual_genes.tar.gz'):
+            if file_key in ['MSA_ARCHAEA.tar.gz', 'MSA_BACTERIA.tar.gz']:
                 self.progress.new("Downloaded file patrol")
                 self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
                 shutil.unpack_archive(local_file_path, extract_dir=self.ctx.msa_individual_genes_dir_path)
                 os.remove(local_file_path)
                 self.progress.end()
 
-            if local_file_path.endswith('_taxonomy.tsv'):
+            if file_key in ['TAX_ARCHAEA.tsv', 'TAX_BACTERIA.tsv']:
                 with open(temp_accession_to_taxonomy_file_path, 'a') as f:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
@@ -1994,7 +1974,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         # whether whether FASTA files in the directory are suitable for the conversion
         self.progress.update("Checking the conversion dict and FASTA files ...")
         msa_individual_gene_names_required = []
-        [msa_individual_gene_names_required.extend(n) for n in locally_known_HMMs_to_remote_FASTAs.values()]
+        for SCG in locally_known_SCG_names:
+            msa_individual_gene_names_required.extend(self.ctx.target_database['genes'][SCG])
 
         fasta_file_paths = glob.glob(self.ctx.msa_individual_genes_dir_path + '/*.faa')
         msa_individual_gene_names_downloaded = [os.path.basename(f) for f in fasta_file_paths]
@@ -2015,13 +1996,13 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
             self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place. "
                                  "Anvi'o is now ready to to merge %d FASTA files that correspond to %d SCGs, and "
                                  "create individual search databases for them." % \
-                                        (len(msa_individual_gene_names_required), len(locally_known_HMMs_to_remote_FASTAs)), nl_before=1, nl_after=1, mc="green")
+                                        (len(msa_individual_gene_names_required), len(locally_known_SCG_names)), nl_before=1, nl_after=1, mc="green")
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
-        for SCG in locally_known_HMMs_to_remote_FASTAs:
+        for SCG in locally_known_SCG_names:
             self.progress.update("Working on %s ..." % (SCG))
 
-            files_to_concatenate = [os.path.join(self.ctx.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
+            files_to_concatenate = [os.path.join(self.ctx.msa_individual_genes_dir_path, f) for f in self.ctx.target_database['genes'][SCG]]
             FASTA_file_for_SCG = os.path.join(self.ctx.search_databases_dir_path, SCG)
 
             # concatenate from the dictionary into the new destination
@@ -2170,7 +2151,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
             # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
+            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
 
             # return empty handed like a goose in the job market in 2020
             return None
@@ -2270,7 +2251,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.tables_for_taxonomy.add(blastp_search_output)
 
         # time to update the self table:
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
 
         self.progress.end()
 

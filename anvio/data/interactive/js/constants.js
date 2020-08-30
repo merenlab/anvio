@@ -406,8 +406,8 @@ var named_layers = {
 };
 
 named_category_colors = {
-    'KNOWN'    : '#00AA00',
-    'UNKNOWN'  : '#F0F0F0',
+    'KNOWN'    : '#233B43',
+    'UNKNOWN'  : '##65ADC',
     'ECG'      : '#00AA00',
     'EAG'      : '#AA0000',
     'NA'       : '#F0F0F0',

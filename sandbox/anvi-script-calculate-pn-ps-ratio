@@ -32,10 +32,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+__requires__ = ['contigs-db', 'variability-profile-txt']
 __description__ = ("This program calculates for each gene the ratio of pN/pS (the metagenomic analogy "
                    "of dN/dS; see doi:10.1038/nature11711 and doi:10.7717/peerj.2959) based on metagenomic "
                    "read recruitment, however, unlike standard pN/pS calculations, it relies on "
-                   "codons rather than nucleotides for accurate estimations of synonimity.")
+                   "codons rather than nucleotides for accurate estimations of synonimity")
 
 
 progress = terminal.Progress()
@@ -73,12 +74,11 @@ def load_variability(args, contigs_db):
     # concat the two engine-specific dataframes into a master dataframe
     df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
 
-    # identify gene calls that are partial
+    # identify gene calls that are noncoding
     gene_caller_ids_for_noncoding_gene_calls = [g for g in df['corresponding_gene_call'].unique()
                                                 if contigs_db.genes_in_contigs_dict[g]['call_type'] != constants.gene_call_types['CODING']]
-
-
     if gene_caller_ids_for_noncoding_gene_calls:
+        # This should never happen with >v6.2
         df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_noncoding_gene_calls)].index, inplace=True)
 
         progress.reset()
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.1, 'help': \
                             'Variants (either SCVs or SAAVs) will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
-                            The default value is "%(default).2f".'}))
+                            The default value is %(default).2f.'}))
     groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes with less than this number\
                             of single codon variants. This avoids being impressed by pN/pS values of infinite, when in reality the gene had\
                             a single SAAV and no synonymous SCVs. The default is %(default)d to ensure a default value with some level of \

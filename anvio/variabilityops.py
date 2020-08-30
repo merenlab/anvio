@@ -28,6 +28,7 @@ import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -539,9 +540,11 @@ class VariabilitySuper(VariabilityFilter, object):
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
+        self.include_additional_data_in_output = A('include_additional_data', null)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
+        self.genes_with_structure = set([])
         self.table_provided = False if self.data.empty else True
         self.load_all_genes = True
         self.load_all_samples = True
@@ -563,23 +566,27 @@ class VariabilitySuper(VariabilityFilter, object):
         # f = function called in self.process
         # **kwargs = parameters passed to function
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions = [F(self.init_commons),
-                                  F(self.load_variability_data),
-                                  F(self.load_structure_data),
-                                  F(self.apply_preliminary_filters),
-                                  F(self.set_unique_pos_identification_numbers),
-                                  F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
-                                  F(self.compute_additional_fields),
-                                  F(self.filter_data, criterion="departure_from_consensus",
-                                                      min_filter=self.min_departure_from_consensus,
-                                                      min_condition=self.min_departure_from_consensus > 0,
-                                                      max_filter=self.max_departure_from_consensus,
-                                                      max_condition=self.max_departure_from_consensus < 1),
-                                  F(self.recover_base_frequencies_for_all_samples),
-                                  F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
-                                  F(self.compute_comprehensive_variability_scores),
-                                  F(self.compute_gene_coverage_fields),
-                                  F(self.get_residue_structure_information,)]
+        self.process_functions = [
+            F(self.init_commons),
+            F(self.load_variability_data),
+            F(self.load_structure_data),
+            F(self.load_additional_data),
+            F(self.apply_preliminary_filters),
+            F(self.set_unique_pos_identification_numbers),
+            F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
+            F(self.compute_additional_fields),
+            F(self.filter_data, criterion="departure_from_consensus",
+                                min_filter=self.min_departure_from_consensus,
+                                min_condition=self.min_departure_from_consensus > 0,
+                                max_filter=self.max_departure_from_consensus,
+                                max_condition=self.max_departure_from_consensus < 1),
+            F(self.recover_base_frequencies_for_all_samples),
+            F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
+            F(self.compute_comprehensive_variability_scores),
+            F(self.compute_gene_coverage_fields),
+            F(self.merge_residue_structure_info,),
+            F(self.merge_additional_data,),
+        ]
 
         if not self.skip_sanity_check:
             self.sanity_check()
@@ -650,9 +657,11 @@ class VariabilitySuper(VariabilityFilter, object):
             ],
             'structural': [
             ],
+            'additional_data': [
+            ],
         }
         self.columns_to_report_order = ['position_identifiers', 'sample_info', 'gene_info', 'coverage_info',
-                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural']
+                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural', 'additional_data']
 
 
 
@@ -938,7 +947,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
-        self.progress.update('Making sure you are not playing games ..')
+        self.progress.update('Making sure you are not playing games ...')
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
         self.table_structure = t.variable_nts_table_structure if self.engine ==  'NT' else t.variable_codons_table_structure
@@ -969,6 +978,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
             raise ConfigError('You provided a structure database, which is only compatible with --engine AA and --engine CDN')
+
+        if self.include_additional_data_in_output and self.engine not in ["AA", "CDN"]:
+            raise ConfigError('Currently, --include-additional-data is only implemented for --engine AA and --engine CDN')
 
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -1010,10 +1022,20 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def gen_sqlite_where_clause_for_variability_table(self):
-        """It is impractical to load the entire variability table and then filter it according to our
-           splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
-           genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
-           not included here? Because split_name is not a column in the variable codon table."""
+        """Gen sqlite query to avoid loading in entire variability table
+
+        It is impractical to load the entire variability table and then filter it according to our
+        splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, if
+        genes_of_interest is a single gene in a variability table with 6.7 million genes, we should
+        use sqlite filters to avoid clogging memory usage to load the entire 6.7M genes' worth of
+        data into memory.
+
+        Notes
+        =====
+        - FIXME. `variable_codons` does not have a `splits_of_interest` column, but it should (just
+          as `variable_nucleotides` does). This prevents us fom SQL-querying by splits of interest.
+        """
+
         R = lambda x, y: self.run.info("%s that variability data will be fetched for" % \
                          (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
@@ -1051,6 +1073,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
+
         if self.table_provided:
             return
 
@@ -1069,7 +1092,9 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
                                                              columns_of_interest=self.table_structure,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
+            self.check_if_data_is_empty()
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
@@ -1079,12 +1104,14 @@ class VariabilitySuper(VariabilityFilter, object):
                                    profiles :(")
 
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
             self.check_if_data_is_empty()
 
             # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
             # needs to be turned into AAs if the engine is AA.
             if self.engine == 'AA':
+                self.progress.end()
                 self.convert_item_coverages()
                 self.convert_reference_info()
 
@@ -1092,9 +1119,36 @@ class VariabilitySuper(VariabilityFilter, object):
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
+        self.data["codon_number"] = self.data["codon_number"].astype(int)
 
         # we're done here. bye.
         profile_db.disconnect()
+        self.progress.end()
+
+
+    def load_additional_data(self):
+        """Loads additional data from the contigs db as self.additional_data"""
+
+        if not self.include_additional_data_in_output:
+            return
+
+        self.progress.new('Loading additional data')
+        self.progress.update('Fetching dataframe ...')
+
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.ad = TableForAminoAcidAdditionalData(args)
+        self.additional_data = self.ad.get_multigene_dataframe(self.genes_of_interest)
+        self.additional_data.rename(columns={'gene_callers_id': 'corresponding_gene_call'}, inplace=True)
+
+        if self.additional_data.empty:
+            self.run.warning("There is no additional data in the `amino_acid_additional_data` table of your contigs db "
+                             "that matches your genes of interest. Therefore no additional data will be output, despite your "
+                             "flag --include-additional-data.")
+            self.include_additional_data_in_output = False
+            self.progress.end()
+            return
+
+        self.genes_with_additional_data = set(self.additional_data['corresponding_gene_call'].unique())
         self.progress.end()
 
 
@@ -1137,6 +1191,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def check_if_data_is_empty(self):
         if self.data.empty:
+            if self.progress.pid is not None:
+                self.progress.end()
+
             raise self.EndProcess
 
 
@@ -1184,6 +1241,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def is_available_samples_compatible_with_sample_ids_of_interest(self):
         self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)), progress=self.progress)
+
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
@@ -1670,14 +1728,13 @@ class VariabilitySuper(VariabilityFilter, object):
         try:
             for func, kwargs in process_functions:
                 func(**kwargs)
-
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
             e.end(exit_if_data_empty, msg)
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
-        """ Return a histogram (counts and bins) for a specified column of self.data
+        """Return a histogram (counts and bins) for a specified column of self.data
 
         Parameters
         ==========
@@ -1720,8 +1777,8 @@ class VariabilitySuper(VariabilityFilter, object):
         return values, bins
 
 
-    def get_residue_structure_information(self):
-        """ Merges self.structure_residue_info with self.data
+    def merge_additional_data(self):
+        """Merges self.additional_data with self.data
 
         Notes
         =====
@@ -1729,6 +1786,53 @@ class VariabilitySuper(VariabilityFilter, object):
           with structure, this function raises a warning and the structure columns are not added to
           the table. Otherwise this function appends the columns from residue_info to self.data
         """
+
+        if not self.include_additional_data_in_output:
+            return
+
+        genes_with_var = list(self.data["corresponding_gene_call"].unique())
+        genes_with_var_and_additional_data = [g for g in self.genes_with_additional_data if g in genes_with_var]
+        if not genes_with_var_and_additional_data:
+            self.run.warning("After filtering, there is no overlap between residues with "
+                             "variability and residues with additional data. As a result, "
+                             "no additional data columns will be added.")
+            self.include_additional_data_in_output = False
+            return
+
+        self.progress.new("Adding additional data")
+        self.progress.update("Merging columns...")
+
+        self.data = self.data.merge(
+            self.additional_data,
+            on=['corresponding_gene_call', 'codon_order_in_gene'],
+            how='left',
+        )
+
+        # There may be many columns in self.additional_data, many of which could have mostly NaN
+        # values. After filtering self.data, its possible that columns have _all_ NaN values, so we
+        # remove such columns
+        self.data.dropna(axis=1, how='all', inplace=True)
+
+        # Add types to output. This assumes each data_key has only 1 data_type, and it would be
+        # pretty messed up if that wasn't the case.
+        types = dict(zip(self.ad.df['data_key'], self.ad.df['data_type']))
+        dtypes_convert = {'str': str, 'int': int, 'float': float, 'stackedbar': str, 'unknown': str}
+        types = list(tuple({k: dtypes_convert[v] for k, v in types.items()}.items()))
+        self.columns_to_report['additional_data'].extend(types)
+
+        self.progress.end()
+
+
+    def merge_residue_structure_info(self):
+        """Merges self.structure_residue_info with self.data
+
+        Notes
+        =====
+        - If by the end of all filtering there is no overlap between genes with variability and genes
+          with structure, this function raises a warning and the structure columns are not added to
+          the table. Otherwise this function appends the columns from residue_info to self.data
+        """
+
         if not self.append_structure_residue_info:
             return
 
@@ -1736,7 +1840,7 @@ class VariabilitySuper(VariabilityFilter, object):
         genes_with_var_and_struct = [g for g in self.genes_with_structure if g in genes_with_var]
         if not genes_with_var_and_struct:
             run.warning("Before filtering entries, there was an overlap between genes with "
-                        "variability and genes with structuresr, however that is no longer the case. As a result, "
+                        "variability and genes with structures, however that is no longer the case. As a result, "
                         "no structure information columns will be added. Above you can see the number of genes "
                         "remaining with structures after each filtering step.")
             self.append_structure_residue_info = False
@@ -1881,6 +1985,12 @@ class VariabilitySuper(VariabilityFilter, object):
         for column_group, columns in self.columns_to_report.items():
             for column, data_type in columns:
                 if column in data.columns:
+                    if column in structure:
+                        self.run.warning(f"Wow. Very sorry to have caught things this late, but there was no other way. "
+                                         f"There are some columns in your output report that appear twice. This probably "
+                                         f"occurred because an additional data column in your contigs database has the same "
+                                         f"name as one of the standard column outputs of anvi-gen-variability-table. This "
+                                         f"column was named '{column}'. The results may be garbled due to this. Sorry :(")
                     structure.append(column)
                     data_types.append(data_type)
         return structure, data_types
@@ -1894,7 +2004,7 @@ class VariabilitySuper(VariabilityFilter, object):
                    message to user
             """
             if msg:
-                run.info_single(msg, 'red', 1, 1)
+                run.info_single(msg, mc='red', nl_before=1, nl_after=1)
             if exit:
                 sys.exit()
 
@@ -1999,6 +2109,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'split_name': split}
                     new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
@@ -2113,6 +2224,7 @@ class QuinceModeWrapperForFancyEngines(object):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'departure_from_reference': 0,
                                                             'coverage': None,
                                                             'reference': reference_item}
@@ -2208,6 +2320,10 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrap
     def convert_reference_info(self):
         self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
         self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
+
+        # This filters out positions that were variable as codons, but are non-varying as amino acids
+        smallest_float = np.finfo(np.float).eps
+        self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
 
 
 class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
@@ -2325,14 +2441,14 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
             self.data = pd.DataFrame(collapsed_coverage_counts, columns=coverage_columns).reset_index(drop=True)
             self.data[data_append.columns] = data_append
             self.data['sample_id'] = 'merged'
-            self.data['consensus'] = self.data[self.items].idxmax(axis=1)
+            self.data['consensus'] = self.data[self.items].astype(int).idxmax(axis=1)
 
         # no data no play.
         if not len(self.data):
-            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons "
-                              "to this. One, anvi'o variability engines reported nothing (in which case you should have gotten "
-                              "an error much earler). Two, you are a programmer and failed to call the 'process()' on your "
-                              "instance from this class. Do you see how the second option is much more likely? :/")
+            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. If you are a user, this means "
+                              "the sequence(s) you are interested in has/have no sequence variability, so there is really nothig "
+                              "to do here... If you are a programmer and failed to call 'process()' on your "
+                              "instance from this class, you may also see this message.")
 
         # learn about the sequences, either contigs or genes
         if self.contigs_mode:
@@ -2344,7 +2460,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                 _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
                 sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
 
-        # here we populate a dictionary with all the right items but witout any real data.
+        # here we populate a dictionary with all the right items but without any real data.
         sample_names = set(self.data['sample_id'])
         for sample_name in sample_names:
             self.sequence_variants_in_samples_dict[sample_name] = {}

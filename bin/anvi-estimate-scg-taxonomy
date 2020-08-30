@@ -23,7 +23,7 @@ __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxono
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to "
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database, "
                    "or contigs described in collections as bins). For this, it uses single-copy core "
-                   "gene sequences and the GTDB database. ")
+                   "gene sequences and the GTDB database")
 
 
 run = terminal.Run()

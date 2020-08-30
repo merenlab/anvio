@@ -173,6 +173,28 @@ anvi-script-calculate-pn-ps-ratio -a test-output/variability_AA.txt \
                                   -m 10 \
                                   -i 3
 
+INFO "anvi-gen-gene-consensus-sequences for gene mode"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/consensus_sequence_gene.fa \
+                                  --gene-caller-ids 0
+cat test-output/consensus_sequence_gene.fa
+
+INFO "anvi-gen-gene-consensus-sequences for gene mode compressed samples"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/consensus_sequence_gene_compressed.fa \
+                                  --gene-caller-ids 0 \
+                                  --compress
+cat test-output/consensus_sequence_gene_compressed.fa
+
+INFO "anvi-gen-gene-consensus-sequences for contigs mode"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/consensus_sequence_contig.fa \
+                                  --contigs-mode
+cat test-output/consensus_sequence_contig.fa
+
 INFO "Do you want the interactive interface? Run the following:"
 
 echo "anvi-interactive -p `pwd`/test-output/SAMPLES-MERGED/PROFILE.db -c `pwd`/test-output/single_contig.db"

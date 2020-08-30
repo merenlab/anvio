@@ -335,12 +335,45 @@ class Run:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
+    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan',
+             mc='yellow', progress=None, align_long_values=True):
+        """
+        This function prints information nicely to the terminal in the form:
+        key ........: value
+
+        PARAMETERS
+        ==========
+        key : str
+            what to print before the dots
+        value : str
+            what to print after the dots
+        quiet : boolean
+            the standard anvi'o quiet parameter which, if True, suppresses some output
+        display_only : boolean
+            if False, the key value pair is also stored in the info dictionary
+        overwrite_verbose : boolean
+            if True, downstream quiet parameters (though not the global --quiet) are ignored to produce more verbose output
+        nl_before : int
+            number of lines to print before the key-value line
+        nl_after : int
+            number of lines to print after the key-value line
+        lc : color str
+            the color of the label (key)
+        mc : color str
+            the color of the value
+        progress : Progress instance
+            provides the Progress bar to use
+        align_long_values : boolean
+            if True, values that are longer than the terminal width will be broken up into different lines that
+            align nicely
+        """
         if not display_only:
             self.info_dict[key] = value
 
-        if isinstance(value, bool):
-            pass
+        if value is None:
+            value = "None"
+        elif isinstance(value, bool) or isinstance(value, float) or isinstance(value, list):
+            value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
         elif isinstance(value, int):
@@ -351,6 +384,20 @@ class Run:
         info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
+        if align_long_values:
+            terminal_width = get_terminal_size()[0]
+            wrap_width = terminal_width - self.width - 3
+            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
+            if len(wrapped_value_lines) == 0:
+                aligned_value_str = value
+            else:
+                aligned_value_str = wrapped_value_lines[0]
+                for line in wrapped_value_lines[1:]:
+                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                             '.' * (self.width - len(label)),
+                                             c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.clear()

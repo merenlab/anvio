@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-"""Lots of under-the-rug, operational garbage in here. Run. Run away.."""
+"""Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
 import os
 import sys
@@ -403,7 +403,7 @@ D = {
              'action': 'store_true',
              'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
                      "insertions or deletions relative to the reference. Anvi'o normally stores this information in the "
-                     "profile database since the time taken and extra storage do not amount to much, but if insist on not "
+                     "profile database since the time taken and extra storage do not amount to much, but if you insist on not "
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
@@ -651,18 +651,13 @@ D = {
                      "If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-scg-taxonomy`) "
                      "you will have to use this parameter to tell those programs where your data are."}
                 ),
-    'scgs-taxonomy-remote-database-url': (
-            ['--scgs-taxonomy-remote-database-url'],
+    'gtdb-release': (
+            ['--gtdb-release'],
             {'default': None,
              'type': str,
-             'metavar': 'URL',
-             'help': "Anvi'o will always try to download the latest release, but if there is a problem with "
-                     "the latest release, feel free to run setup using a different URL. Just to note, anvi'o "
-                     "will expect to find the following files in the URL provided here: 'VERSION', "
-                     "'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', "
-                     "and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work "
-                     "if teh server in which these databases are maintained is still online: "
-                     "https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
+             'metavar': 'RELEASE_NUM',
+             'help': "If you are particularly intersted an earlier release anvi'o knows about, you can set it here "
+                     "Otherwise anvi'o will always use the latest release it knows about."}
                 ),
     'reset': (
             ['--reset'],
@@ -706,6 +701,33 @@ D = {
                      "system will be using a single data directory, but then you may need to run the setup "
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your database."}
+                ),
+    'interacdome-data-dir': (
+            ['--interacdome-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the interacdome data to be stored. "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your data."}
+                ),
+    'interacdome-dataset': (
+            ['--interacdome-dataset'],
+            {'default': 'representable',
+             'type': str,
+             'choices': ['representable', 'confident'],
+             'help': "Choose 'representable' to include Pfams that correspond to domain-ligand interactions that had "
+                     "nonredundant instances across three or more distinct PDB structures. InteracDome"
+                     "authors recommend using this collection to learn more about domain binding properties. Choose "
+                     "'confident' to include Pfams that correspond to domain-ligand interactions "
+                     "that had nonredundant instances across three or more distinct PDB entries and "
+                     "achieved a cross-validated precision of at least 0.5. We recommend using this "
+                     "collection to annotate potential ligand-binding positions in protein "
+                     "sequences. The default is '%(default)s'."}
                 ),
     'kegg-data-dir': (
             ['--kegg-data-dir'],
@@ -1447,12 +1469,51 @@ D = {
              'help': "Use this flag if you would like split names for each variable position to be included in the "
                      "output file as a column."}
                 ),
+    'include-additional-data': (
+            ['--include-additional-data'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like to append data stored in the `amino_acid_additional_data` table as "
+                     "additional columns to your output. NOTE: This is not yet implemented for the `nucleotide_additional_data` "
+                     "table."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
              'metavar': 'ENGINE',
              'type': str,
              'help': "Variability engine. The default is '%(default)s'."}
+                ),
+    'min-binding-frequency': (
+            ['-m', '--min-binding-frequency'],
+            {'metavar': 'FLOAT',
+             'default': 0.2,
+             'type': float,
+             'help': "InteracDome has associated binding 'frequencies', which can be considered scores between 0 to 1 that "
+                     "quantify how likely a position is to be involved in binding. Use this parameter to filter out low frequencies. "
+                     "The default is %(default)f. Warning, your contigs database size will grow massively if this is set to 0.0, but "
+                     "you're the boss."}
+                ),
+    'min-hit-fraction': (
+            ['-f', '--min-hit-fraction'],
+            {'metavar': 'FLOAT',
+             'default': 0.5,
+             'type': float,
+             'help': "Any hits where the hit length--relative to the HMM profile--divided by the total HMM profile length, is less than this value, "
+                     "it will be removed from the results and will not contribute to binding frequencies. The default is %(default)s"}
+                ),
+    'information-content-cutoff': (
+            ['-t', '--information-content-cutoff'],
+            {'metavar': 'FLOAT',
+             'default': 4.0,
+             'type': float,
+             'help': "This parameter can be used to control for low-quality domain hits. Each domain is composed of positions (match states) "
+                     "with varying degrees of conservancy, which can be quantified with information content (IC). High IC means highly conserved. "
+                     "For example, IC = 4 corresponds to 95%% of the members of the Pfam sharing the same amino acid at that position. "
+                     "By default, anvi'o demands that for an alignment of a user's gene with a Pfam HMM, the gene sequence must match with the "
+                     "consensus amino acid of each match state that has IC > %(default)f. For context, it is common for a Pfam to not even have a "
+                     "position with an IC > 4, so these represent truly very conserved positions. You can modify this with this parameter. For example, "
+                     "if you think this is dumb, you can set this to 10000, and then no domain hits will be removed for this reason."}
                 ),
     'driver': (
             ['--driver'],
@@ -1580,7 +1641,7 @@ D = {
              'type': str,
              'help': "If you don't provide anything here, this program will come up with a temporary "
                      "directory path by itself to store intermediate files, and clean it later. If you "
-                     "want to have full control over this, you can use this flag to define one.."}
+                     "want to have full control over this, you can use this flag to define one."}
                 ),
     'output-file-prefix': (
             ['-O', '--output-file-prefix'],
@@ -1834,8 +1895,8 @@ D = {
             {'metavar': 'NAME',
              'help': "It is important to set a sample name (using only ASCII letters and digits "
                      "and without spaces) that is unique (considering all others). If you do not "
-                     "provide one, anvi'o will try to make up one for you based on other information, "
-                     "although, you should never let the software to decide these things)."}
+                     "provide one, anvi'o will try to make up one for you based on other information "
+                     "(although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
             ['-n', '--project-name'],
@@ -1914,14 +1975,17 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "One of the things anvi-profile does is to store information about variable "
-                     "nucleotide positions. Usually it does not report every variable position, since "
+                     "nucleotide positions (SNVs). Usually it does not report every variable position, since "
                      "not every variable position is genuine variation. Say, if you have 1,000 coverage, "
                      "and all nucleotides at that position are Ts and only one of them is a C, the "
                      "confidence of that C being a real variation is quite low. anvi'o has a simple "
                      "algorithm in place to reduce the impact of noise. However, using this flag "
                      "you can disable it and ask profiler to report every single variation (which "
                      "may result in very large output files and millions of reports, but you are the "
-                     "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter"}
+                     "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter. "
+                     "Also note that this flag controls indel reporting: normally '--min-coverage-for-variability' "
+                     "and '--min-indel-fraction' control whether or not indels should be reported, but with this "
+                     "flag all indels are reported."}
                 ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
@@ -1991,7 +2055,21 @@ D = {
              'type': int,
              'help': "Minimum coverage of a nucleotide position to be subjected to SNV profiling. By default, anvi'o will "
                      "not attempt to make sense of variation in a given nucleotide position if it is covered less than "
-                     "%(default)dX. You can change that minimum using this parameter."}
+                     "%(default)dX. You can change that minimum using this parameter. This parameter also controls the minimum "
+                     "coverage for reporting indels. If an indel is observed at a position, yet the coverage of the position "
+                     "in the contig where the indel starts is less than this parameter, the indel will be discarded. For more "
+                     "indel filtering options, see '--min-indel-fraction'."}
+                ),
+    'min-indel-fraction': (
+            ['-I', '--min-indel-fraction'],
+            {'metavar': 'FLOAT',
+             'default': 0.05,
+             'type': float,
+             'help': "Anvi'o profiles indels, and with this parameter you can control what anvi'o considers worth reporting. "
+                     "Basically, anvi'o doesn't want to report an indel if it does not occur in enough reads. If the fraction "
+                     "of times the indel is observed (the indel 'count') divided by the nucleotide coverage at the position in "
+                     "the contig that the indel starts at is less than this parameter, the indel is discarded. The default "
+                     "is %(default)f."}
                 ),
     'contigs-and-positions': (
             ['--contigs-and-positions'],

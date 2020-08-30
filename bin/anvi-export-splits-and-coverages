@@ -33,7 +33,7 @@ __provides__ = ['contigs-fasta', 'coverages-txt']
 __description__ = ("Export split or contig sequences and coverages across samples stored in an anvi'o "
                    "profile database. This program is especially useful if you would like to 'bin' your "
                    "splits or contigs outside of anvi'o and import the binning results into anvi'o "
-                   "using `anvi-import-collection` program.")
+                   "using `anvi-import-collection` program")
 
 
 run = terminal.Run()
