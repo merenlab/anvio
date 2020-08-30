@@ -256,13 +256,13 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-item-orders-txt": {
+    "misc-data-items-order-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "misc-data-item-orders": {
+    "misc-data-items-order": {
         "name": "ITEM ORDERS DATA",
         "type": "CONCEPT",
         "provided_by_anvio": True,
@@ -303,6 +303,18 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": True
+    },
+    "binding-frequencies": {
+        "name": "AMINO ACID BINDING FREQUENCIES",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "interacdome-data": {
+        "name": "INTERACDOME DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "functions": {
         "name": "GENE FUNCTIONS",
@@ -412,6 +424,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "detection-txt": {
+        "name": "DETECTIONS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "genome-distance-txt": {
         "name": "DISTANCE ESTIMATES",
         "type": "TXT",
@@ -489,5 +507,41 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "augustus-gene-calls": {
+        "name": "AUGUSTUS GENE CALLS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True 
+    },
+    "genes-stats": {
+        "name": "GENE STATS",
+        "type": "STATS",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "vcf": {
+        "name": "VCF",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "blast-table": {
+        "name": "BLAST TABLE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "splits-txt": {
+        "name": "SPLITS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "genbank-file": {
+        "name": "GENBANK FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     }
 }

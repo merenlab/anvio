@@ -20,8 +20,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requres__ = ["contigs-db", "hmm-source"]
+__provides__ = ["functions-txt"]
 __description__ = ("A simple script to generate a TAB-delimited file gene caller IDs and their "
-                   "HMM hits for a given HMM source.")
+                   "HMM hits for a given HMM source")
 
 
 run = terminal.Run()

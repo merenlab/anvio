@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['pan-db', 'profile-db', 'state-json']
 __provides__ = ['state']
-__description__ = "Import an anvi'o state into a profile database."
+__description__ = "Import an anvi'o state into a profile database"
 
 
 run = terminal.Run()
