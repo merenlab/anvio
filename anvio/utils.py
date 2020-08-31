@@ -628,7 +628,12 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
         header_text = '\t'.join(headers)
-    f.write('%s\n' % header_text)
+
+    if anvio.AS_MARKDOWN:
+        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
+    else:
+        f.write('%s\n' % header_text)
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -660,9 +665,13 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
-        f.write('%s\n' % '\t'.join(line))
+        if anvio.AS_MARKDOWN:
+            f.write(f"|{'|'.join(map(str, line))}|\n")
+        else:
+            f.write('%s\n' % '\t'.join(line))
 
     f.close()
+
     return output_path
 
 
