@@ -22,6 +22,7 @@ DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
+AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 
@@ -60,7 +61,7 @@ def get_args(parser):
        to see can still be sorted out.
     """
 
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress']
+    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
 
     args, unknown = parser.parse_known_args()
 
