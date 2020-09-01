@@ -3795,3 +3795,9 @@ class KeggModuleEnrichment(KeggContext):
                               "`anvi-estimate-metabolism`).")
         if not self.groups_txt:
             raise ConfigError("To compute module enrichment, you must provide a groups-txt file mapping each sample to a group.")
+
+        if not self.quiet:
+            self.run.info("modules-txt input file", self.modules_txt)
+            self.run.info("groups-txt input file", self.groups_txt)
+            self.run.info("sample column in modules-txt", self.sample_header_in_modules_txt)
+            self.run.info("module completion threshold", self.module_completion_threshold)
