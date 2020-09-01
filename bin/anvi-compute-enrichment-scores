@@ -36,6 +36,8 @@ def main(args):
         s.functional_enrichment_stats()
     elif args.modules_txt:
         pass
+    else:
+        raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
 
 if __name__ == '__main__':
     import argparse
