@@ -19,7 +19,7 @@ __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __resources__ = []
 ##__tags__ = ["pangenomics", "functions"]                                       # TODO: update when finished
-##__requires__ = ['misc-data-layers-category', 'pan-db', 'genomes-storage-db',] # TODO: update when finished
+##__requires__ = ['kegg-metabolism', 'misc-data-layers-category', 'pan-db', 'genomes-storage-db',] # TODO: update when finished
 ##__provides__ = ['functional-enrichment-txt',]                                 # TODO: update when finished
 __description__ = ("A program that creates the input for `anvi-script-enrichment-stats` and runs that "
                    "script to compute enrichment scores and group associations for annotated entities "
