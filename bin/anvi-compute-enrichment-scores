@@ -44,12 +44,14 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
                                         "Estimating enriched functions across pangenome groups. This option accomplishes the same thing "
-                                        "as running `anvi-get-enriched-functions-per-pan-group` with default/non-optional parameters. ")
+                                        "as running `anvi-get-enriched-functions-per-pan-group`. ")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
     groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     groupA.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupA.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
+    groupA.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
 
     groupB = parser.add_argument_group('INPUT OPTION #2: ESTIMATED METABOLISM',
                                         "Estimating enriched modules across groups of samples. You must have 'modules mode' output from "
@@ -58,9 +60,15 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('modules-txt'), **anvio.K('modules-txt'))
     groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
 
-    groupO = parser.add_argument_group('OUTPUT', "What comes out the other end.")
+    groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
+    groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR PANGENOMES', "Reporting options that only make sense for input option #1, aka functional "
+                                                                         "enrichment in pangenomes.")
+    groupOP.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
+
+    groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
