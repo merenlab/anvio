@@ -3771,6 +3771,12 @@ class KeggModuleEnrichment(KeggContext):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.modules_txt = A('modules_txt')
         self.groups_txt = A('groups_txt')
+        self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
+        self.module_completion_threshold = A('module_completion_threshold') or 0.75
+
+        # if necessary, assign 0 completion threshold, which evaluates to False above
+        if A('module_completion_threshold') == 0:
+            self.module_completion_threshold = 0.0
 
         # sanity checkses my precious
         if not self.modules_txt:
