@@ -36,6 +36,23 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=__description__)
 
+    groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
+                                        "Estimating enriched functions across pangenome groups. This option accomplishes the same thing "
+                                        "as running `anvi-get-enriched-functions-per-pan-group` with default/non-optional parameters. ")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
+    groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
+    groupA.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    groupB = parser.add_argument_group('INPUT OPTION #2: ESTIMATED METABOLISM',
+                                        "Estimating enriched modules across groups of samples. You must have 'modules mode' output from "
+                                        "`anvi-estimate-metabolism` to serve as input for this option, as well as a separate file to "
+                                        "specify which group each sample belongs to.")
+    groupB.add_argument(*anvio.A('modules-txt'), **anvio.K('modules-txt'))
+    groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
+
+
     args = anvio.get_args(parser)
 
     try:

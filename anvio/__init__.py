@@ -517,7 +517,7 @@ D = {
              'action': 'store_true',
              'help': "Use this flag if you want anvi'o to ignore genomes with no value set for the catergory variable "
                      "(which you specified using --category-variable). By default all variables with no value will be "
-                     "considered as a single group when preforming the statistical analysis."}
+                     "considered as a single group when performing the statistical analysis."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -2490,6 +2490,23 @@ D = {
             'action': 'store_true',
             'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                     "of every KOfam hit that is put in the contigs database."}
+                ),
+    'modules-txt': (
+            ['-M', '--modules-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
+                    "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
+                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                ),
+    'groups-txt': (
+            ['-G', '--groups-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
+                    "The first column should have the header 'sample' and contain sample names matching "
+                    "to those in the modules-txt file. The second column should have the header 'group' "
+                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
                 ),
 }
 
