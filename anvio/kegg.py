@@ -3750,3 +3750,31 @@ class KeggModulesTable:
 
     def get_total_entries(self):
         return self.total_entries
+
+
+class KeggModuleEnrichment(KeggContext):
+    """This class is a driver for anvi-script-enrichment-stats for modules input.
+
+    It takes in the modules mode output from anvi-estimate-metabolism, formats it for the enrichment script,
+    and runs the script.
+
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-compute-enrichment-scores
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.modules_txt = A('modules_txt')
+        self.groups_txt = A('groups_txt')
+
+        # sanity checkses my precious
+        if not self.modules_txt:
+            raise ConfigError("To compute module enrichment, you must provide a modules-txt file (aka modules mode output from "
+                              "`anvi-estimate-metabolism`).")
+        if not self.groups_txt:
+            raise ConfigError("To compute module enrichment, you must provide a groups-txt file mapping each sample to a group.")
