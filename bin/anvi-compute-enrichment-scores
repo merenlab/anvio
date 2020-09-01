@@ -52,6 +52,9 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('modules-txt'), **anvio.K('modules-txt'))
     groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
 
+    groupO = parser.add_argument_group('OUTPUT', "What comes out the other end.")
+    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
 
     args = anvio.get_args(parser)
 
