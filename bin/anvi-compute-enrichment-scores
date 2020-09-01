@@ -59,6 +59,15 @@ if __name__ == '__main__':
                                         "specify which group each sample belongs to.")
     groupB.add_argument(*anvio.A('modules-txt'), **anvio.K('modules-txt'))
     groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
+    groupB.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
+    groupB.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
+                                {'help': "This threshold defines the percent completeness score at which we consider a KEGG module to be 'present'"
+                                         "in a given sample. That is, if a module's completeness in a sample is less than this value, then we say "
+                                         "the module is not present in that sample, and this will affect the module's enrichment score in that "
+                                         "sample's group. By extension, if a module's completeness is less than this value in all samples, it will have "
+                                         "a very very low enrichment score (ie, it will not be considered enriched at all, because it doesn't occur in "
+                                         "any groups). This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
+                                         "if you wish. The default threshold is %(default)g."}))
 
     groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
