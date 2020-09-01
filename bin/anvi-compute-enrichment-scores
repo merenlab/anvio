@@ -7,6 +7,7 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
+import anvio.summarizer as summarizer
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -29,7 +30,12 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-    pass
+
+    if args.pan_db:
+        s = summarizer.PanSummarizer(args, lazy_init=True)
+        s.functional_enrichment_stats()
+    elif args.modules_txt:
+        pass
 
 if __name__ == '__main__':
     import argparse
