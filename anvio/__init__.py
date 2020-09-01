@@ -2508,6 +2508,16 @@ D = {
                     "to those in the modules-txt file. The second column should have the header 'group' "
                     "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
                 ),
+    'sample-header': (
+            ['--sample-header'],
+            {'default': 'db_name',
+            'help': "The header of the column containing your sample names in the modules-txt input file. By "
+                    "default this is 'db_name' because we are assuming you got your modules mode output by "
+                    "running `anvi-estimate-metabolism` in multi mode (on multiple genomes or metagenomes), but "
+                    "just in case you got it a different way, this is how you can tell anvi'o which column to "
+                    "look at. The values in this column should correspond to those in the 'sample' column in "
+                    "the groups-txt input file."}
+                ),
 }
 
 # two functions that works with the dictionary above.
