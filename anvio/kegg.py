@@ -3774,9 +3774,20 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
 
+        # init the base class
+        KeggContext.__init__(self, self.args)
+
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
             self.module_completion_threshold = 0.0
+            if not self.quiet:
+                self.run.warning("Your completion threshold is set to 0, which will make the enrichment results MEANINGLESS. Why? Because "
+                                 "with a threshold this low, every module will be considered present in every single sample and therefore will "
+                                 "be equally present in every single group. So you should stop what you are doing RIGHT NOW.")
+            if not self.just_do_it:
+                raise ConfigError("We are stopping you right there because your completion threshold is 0 and that will make the enrichment results "
+                                  "meaningless (see the warnings above, if you haven't suppressed them with --quiet). But if you really really really "
+                                  "want to do it, you can run again with --just-do-it and then we won't stop you. You have the right to be without meaning.")
 
         # sanity checkses my precious
         if not self.modules_txt:
