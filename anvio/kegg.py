@@ -3843,7 +3843,16 @@ class KeggModuleEnrichment(KeggContext):
 
         # make sure we have all the columns we need in modules mode output, since this output can be customized
         required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name', 'unique_id']
-        # TODO columns sanity check for mod-txt
+        missing_headers = []
+        for h in required_modules_txt_headers:
+            if h not in modules_df.columns:
+                missing_headers.append(h)
+        if missing_headers:
+            missing_string = ", ".join(missing_headers)
+            raise ConfigError("We cannot go on! *dramatic sweep*   We trust that you have provided us with "
+                              "modules mode output, but unfortunately the modules-txt input does not contain "
+                              f"the following required headers: {missing_string}   Please re-generate your "
+                              "modules-txt to include these before trying again.")
 
         modules_df = modules_df.drop(columns=['unique_id'])
 
@@ -3858,7 +3867,15 @@ class KeggModuleEnrichment(KeggContext):
 
         sample_groups_df = pd.read_csv(self.groups_txt, sep='\t')
         required_groups_txt_headers = ['sample', 'group']
-        # TODO SANITY CHECK FOR 2 column sample group
+        missing_headers = []
+        for h in required_groups_txt_headers:
+            if h not in sample_groups_df.columns:
+                missing_headers.append(h)
+        if missing_headers:
+            missing_string = ", ".join(missing_headers)
+            raise ConfigError("Your groups-txt file is missing some columns. We don't care what else you do, but at least "
+                              "this file should have a 'sample' column and a 'group' column, and it does not because we couldn't "
+                              f"find the following: {missing_string}")
 
         sample_groups_df.set_index('sample', inplace=True)
 
