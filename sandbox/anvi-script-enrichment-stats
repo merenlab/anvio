@@ -15,7 +15,7 @@
 #### Header: does not matter (examples: COG_FUNCTION, KEGG_MODULE) as long as it is the first column
 #### Content: A string which is the annotation or name of the entity (function, module, etc) in this row
 ## Column 2
-#### Header: accession
+#### Header: 'accession'
 #### Content: A string which is the unique key (or ID) of the entity in this row
 ## Column 3
 #### Header: does not matter (examples: gene_clusters_ids, sample_ids) as long as it is the third column
@@ -24,7 +24,7 @@
 ####          (in a pangenome) the row's function belongs to, or a comma-separated list of strings describing Which
 ####          (metagenome) samples a KEGG module was found in.
 ## Column 4
-#### Header: associated_groups
+#### Header: 'associated_groups'
 #### Content: a comma-separated list of strings describing in which groups the row entity was found to be present
 ####          more than expected. See Alon's note [here](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)
 ####          for a description on how these associated groups are calculated. Anvi'o utils.py has get_enriched_groups()
