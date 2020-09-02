@@ -29,9 +29,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __resources__ = []
 __tags__ = ["profile_db", "clustering", "collections"]
-__requires__ = ['profile-db', 'contigs-db']
+__requires__ = ['profile-db', 'contigs-db', 'collection']
 __provides__ = ['collection', 'bin']
-__description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms."
+__description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 
 
 run = terminal.Run()

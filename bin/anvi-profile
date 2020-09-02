@@ -19,13 +19,13 @@ __email__ = "a.murat.eren@gmail.com"
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
-__provides__ = ['single-profile-db', 'misc-data-item-orders', 'variability-profile']
-__description__ = "Creates a single anvi'o profile database. The default input to this program is a BAM file.\
+__provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
+__description__ = "Creates a single anvi'o profile database. \
                    When it is run on a BAM file, depending on the user parameters, the program quantifies\
-                   coverage per nucleotide position (and averages them out per contig), calculates\
-                   single-nucleotide, single-codon, and single-amino acid variants, as well as structurel variants\
-                   such as insertion and deletions and stores these data into appropriate tables. Anvi'o single\
-                   profiles can be merged by the program `anvi-merge`."
+                   coverage per nucleotide position (and averages them  per contig), calculates\
+                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
+                   such as insertion and deletions and stores these data into appropriate tables"
+__resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
 @time_program
@@ -83,6 +83,7 @@ if __name__ == '__main__':
     groupQ.add_argument(*anvio.A('max-contig-length'), **anvio.K('max-contig-length'))
     groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
+    groupQ.add_argument(*anvio.A('min-indel-fraction'), **anvio.K('min-indel-fraction'))
     groupC.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
     groupC.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
     groupZ.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))

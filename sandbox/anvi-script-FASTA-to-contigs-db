@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# __provides__ = ["contigs-db"]
+# __requires__ = ["contigs-fasta"]
+
 # A BATCH file that takes a FASTA file, and cretes a contigs database from it.
 
 set -e

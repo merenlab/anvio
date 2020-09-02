@@ -19,7 +19,7 @@ __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
 __requires__ = ['external-genomes', 'internal-genomes', 'fasta']
 __provides__ = ['fasta']
-__description__ = ("Identify redundant (highly similar) genomes.")
+__description__ = ("Identify redundant (highly similar) genomes")
 
 
 if __name__ == '__main__':

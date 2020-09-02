@@ -27,7 +27,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
-__description__ = "Search for anvi\'o programs by keyword, inputs/outputs, etc."
+__description__ = "Search for anvi\'o programs by keyword, inputs/outputs, etc"
 
 
 run = terminal.Run()

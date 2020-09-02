@@ -30,7 +30,7 @@ __description__ = ("A program to compute genes databases for a ginen set of bins
                    "detection statistics, and they are usually computed and generated "
                    "automatically when they are required (such as running anvi-interactive "
                    "with `--gene-mode` flag). This program allows you to pre-compute them "
-                   "if you don't want them to be done all at once.")
+                   "if you don't want them to be done all at once")
 
 
 run = terminal.Run()

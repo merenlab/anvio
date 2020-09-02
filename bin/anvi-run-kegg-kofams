@@ -17,7 +17,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __requires__ = ["contigs-db", "kegg-db",]
-__provides__ = ["kegg-functions",]
+__provides__ = ["kegg-functions", "functions"]
 __description__ = "Run KOfam HMMs on an anvi'o contigs database"
 
 @time_program
