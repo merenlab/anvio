@@ -3920,3 +3920,31 @@ class KeggModuleEnrichment(KeggContext):
             self.progress.reset()
             self.run.info("Temporary input file for enrichment script", enrichment_input_path)
         self.get_enrichment_input(enrichment_input_path)
+
+        cmd = f"anvi-script-enrichment-stats --input {enrichment_input_path} --output {self.output_file_path}"
+        log_file_path = filesnpaths.get_temp_file_path()
+
+        self.progress.update('Running enrichment analysis')
+        utils.run_command(cmd, log_file_path)
+        self.progress.end()
+        if not filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
+            raise ConfigError("It looks like something went wrong during the enrichment analysis. "
+                              f"We don't know what happened, but this log file could contain some clues: {log_file_path}")
+
+        if filesnpaths.is_file_empty(self.output_file_path):
+            raise ConfigError("It looks like something went wrong during the functional enrichment analysis. "
+                              "An output file was created, but it is empty "
+                              "We don't know why this happened, but this log file could contain some clues: {log_file_path}")
+
+
+        self.run.info('Enrichment results', self.output_file_path)
+
+        if not anvio.DEBUG:
+            # get rid of the temporary files now that we are done
+            os.remove(enrichment_input_path)
+            os.remove(log_file_path)
+        else:
+            self.run.info('Enrichment log file:', log_file_path)
+            self.run.warning("Because you ran this script with the --debug flag, the temporary files are kept. Please "
+                             "consider cleaning them up when you are done taking a look at them. Here they are: "
+                             "{enrichment_input_path}, {log_file_path}")
