@@ -1542,6 +1542,12 @@ D = {
              'action': 'store_true',
              'help': "For debugging purposes. You should never really need it."}
                 ),
+    'skip-news': (
+            ['--skip-news'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't try to read news content from upstream."}
+                ),
     'experimental-org-input-dir': (
             ['-i', '--input-directory'],
             {'metavar': 'DIR_PATH',

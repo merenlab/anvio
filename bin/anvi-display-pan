@@ -60,6 +60,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
     groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupE.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
 
     groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
     groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
