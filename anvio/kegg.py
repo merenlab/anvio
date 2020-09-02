@@ -3796,6 +3796,11 @@ class KeggModuleEnrichment(KeggContext):
         if not self.groups_txt:
             raise ConfigError("To compute module enrichment, you must provide a groups-txt file mapping each sample to a group.")
 
+        filesnpaths.is_file_exists(self.modules_txt)
+        filesnpaths.is_file_plain_text(self.modules_txt)
+        filesnpaths.is_file_exists(self.groups_txt)
+        filesnpaths.is_file_plain_text(self.groups_txt)
+
         if not self.quiet:
             self.run.info("modules-txt input file", self.modules_txt)
             self.run.info("groups-txt input file", self.groups_txt)
