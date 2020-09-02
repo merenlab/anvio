@@ -3805,7 +3805,7 @@ class KeggModuleEnrichment(KeggContext):
         filesnpaths.is_file_exists(self.groups_txt)
         filesnpaths.is_file_plain_text(self.groups_txt)
 
-        if filesnpaths.is_file_exists(self.output_file_path) and not self.just_do_it:
+        if filesnpaths.is_file_exists(self.output_file_path, dont_raise=True) and not self.just_do_it:
             raise ConfigError(f"Whoops... we almost overwrote the existing output file {self.output_file_path}. But we stopped just in time. "
                                "If you really want us to replace the contents of that file with new enrichment results, then run again with "
                                "the --just-do-it flag.")
