@@ -3912,7 +3912,11 @@ class KeggModuleEnrichment(KeggContext):
     def run_enrichment_stats(self):
         """This function is the driver for running the enrichment script on the modules data."""
 
+        self.progress.new('Enrichment analysis')
+
+        self.progress.update('Converting modules mode output into input for enrichment script')
         enrichment_input_path = filesnpaths.get_temp_file_path()
         if anvio.DEBUG:
+            self.progress.reset()
             self.run.info("Temporary input file for enrichment script", enrichment_input_path)
         self.get_enrichment_input(enrichment_input_path)
