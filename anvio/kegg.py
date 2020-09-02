@@ -3776,6 +3776,7 @@ class KeggModuleEnrichment(KeggContext):
         self.groups_txt = A('groups_txt')
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
+        self.output_file_path = A('output_file')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -3803,6 +3804,12 @@ class KeggModuleEnrichment(KeggContext):
         filesnpaths.is_file_plain_text(self.modules_txt)
         filesnpaths.is_file_exists(self.groups_txt)
         filesnpaths.is_file_plain_text(self.groups_txt)
+
+        if filesnpaths.is_file_exists(self.output_file_path) and not self.just_do_it:
+            raise ConfigError(f"Whoops... we almost overwrote the existing output file {self.output_file_path}. But we stopped just in time. "
+                               "If you really want us to replace the contents of that file with new enrichment results, then run again with "
+                               "the --just-do-it flag.")
+        filesnpaths.is_output_file_writable(self.output_file_path)
 
         if not self.quiet:
             self.run.info("modules-txt input file", self.modules_txt)
