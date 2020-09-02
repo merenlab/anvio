@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 import pandas as pd
+import numpy as np
 import scipy.sparse as sps
 from scipy import stats
 
