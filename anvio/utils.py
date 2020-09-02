@@ -3638,11 +3638,14 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     run.info('Downloaded successfully', output_file_path)
 
 
-def get_remote_file_content(url, gzipped=False):
+def get_remote_file_content(url, gzipped=False, timeout=None):
     import requests
     from io import BytesIO
 
-    remote_file = requests.get(url)
+    if timeout:
+        remote_file = requests.get(url, timeout=timeout)
+    else:
+        remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
         raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
