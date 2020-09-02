@@ -80,6 +80,7 @@ if __name__ == '__main__':
                                                                        nice to have).")
     groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+    groupE.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
 
     groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
