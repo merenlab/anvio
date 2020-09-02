@@ -2638,6 +2638,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for mode, mode_meta in self.available_modes.items():
             self.run.info(mode, mode_meta['description'])
 
+
     def update_available_headers_for_multi(self):
         """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
 
@@ -3748,6 +3749,7 @@ class KeggModulesTable:
     def store(self, db):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
 
     def get_total_entries(self):
         return self.total_entries
