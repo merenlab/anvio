@@ -3809,3 +3809,103 @@ class KeggModuleEnrichment(KeggContext):
             self.run.info("groups-txt input file", self.groups_txt)
             self.run.info("sample column in modules-txt", self.sample_header_in_modules_txt)
             self.run.info("module completion threshold", self.module_completion_threshold)
+
+
+    def get_enrichment_input(self, output_file_path):
+        """This function converts modules mode output into input for anvi-script-enrichment-stats
+
+        The input format for anvi-script-enrichment-stats is described in a comment at the top of that script, and here is
+        how we get the values for each column:
+        The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as the 'module_name'
+        and 'kegg_module', respectively.
+        The 'N_*' columns are the total number of samples in each group.
+        For each module, this function determines which samples the module is 'present' in according to the specified completion threshold.
+        This determines the list of samples for the 'sample_ids' column as well as the 'p_*' proportions for each group of samples.
+        Finally, the fourth column, 'associated_groups', is computed from the 'p_*' proportions and 'N_*' totals.
+
+        PARAMETERS
+        ==========
+        output_file_path : str
+            a file path where we will store the (temporary) input file for the enrichment script
+        """
+
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        # read the files into dataframes
+        modules_df = pd.read_csv(self.modules_txt, sep='\t')
+
+        # make sure we have all the columns we need in modules mode output, since this output can be customized
+        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name', 'unique_id']
+        # TODO columns sanity check for mod-txt
+
+        modules_df = modules_df.drop(columns=['unique_id'])
+
+        # samples column sanity check - this column will become the index
+        if self.sample_header_in_modules_txt not in modules_df.columns:
+            col_list = ", ".join(modules_df.columns)
+            raise ConfigError(f"You have specified that your sample names are in the column with header {self.sample_header_in_modules_txt} "
+                               "in the modules-txt file, but that column does not exist. :( Please figure out which column is right and submit "
+                               "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
+                               "are: {col_list}")
+        modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
+
+        sample_groups_df = pd.read_csv(self.groups_txt, sep='\t')
+        required_groups_txt_headers = ['sample', 'group']
+        # TODO SANITY CHECK FOR 2 column sample group
+
+        sample_groups_df.set_index('sample', inplace=True)
+
+        # convert modules mode output to enrichment input
+        N_values = sample_groups_df['group'].value_counts()
+        group_list = N_values.keys()
+        module_list = modules_df['kegg_module'].unique()
+
+        output_dict = {}
+        header_list = ['KEGG_MODULE', 'accession', 'sample_ids', 'associated_groups']
+        for c in group_list:
+            header_list.append(f"p_{c}")
+            header_list.append(f"N_{c}")
+
+        for mod_num in module_list:
+            query_string = f"kegg_module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            samples_with_mod_df = modules_df.query(query_string)
+            if samples_with_mod_df.shape[0] == 0:
+                continue
+            mod_name = samples_with_mod_df['module_name'][0]
+            output_dict[mod_name] = {}
+            output_dict[mod_name]['KEGG_MODULE'] = mod_name
+            output_dict[mod_name]['accession'] = mod_num
+            samples_with_mod_list = list(samples_with_mod_df.index)
+            output_dict[mod_name]['sample_ids'] = ','.join(samples_with_mod_list)
+            sample_group_subset = sample_groups_df.loc[samples_with_mod_list]
+            p_values = sample_group_subset['group'].value_counts()
+
+            # we need the categories p and N values to be in the same order for finding associated groups
+            p_vector = np.array([])
+            N_vector = np.array([])
+            for c in group_list:
+                if c not in p_values.index:
+                    p_values[c] = 0
+                p_vector = np.append(p_vector, p_values[c]/N_values[c])
+                N_vector = np.append(N_vector, N_values[c])
+
+            # compute associated groups for functional enrichment
+            enriched_groups_vector = utils.get_enriched_groups(p_vector, N_vector)
+
+            associated_groups = [c for i,c in enumerate(group_list) if enriched_groups_vector[i]]
+            output_dict[mod_name]['associated_groups'] = ','.join(associated_groups)
+
+            for c in group_list:
+                output_dict[mod_name]["p_%s" % c] = p_values[c]/N_values[c]
+                output_dict[mod_name]["N_%s" % c] = N_values[c]
+
+        utils.store_dict_as_TAB_delimited_file(output_dict, output_file_path, key_header='accession', headers=header_list)
+
+
+    def run_enrichment_stats(self):
+        """This function is the driver for running the enrichment script on the modules data."""
+
+        enrichment_input_path = filesnpaths.get_temp_file_path()
+        if anvio.DEBUG:
+            self.run.info("Temporary input file for enrichment script", enrichment_input_path)
+        self.get_enrichment_input(enrichment_input_path)
