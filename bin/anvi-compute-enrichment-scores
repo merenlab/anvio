@@ -55,7 +55,6 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     groupA.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
     groupA.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
-    groupA.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
 
     groupB = parser.add_argument_group('INPUT OPTION #2: ESTIMATED METABOLISM',
                                         "Estimating enriched modules across groups of samples. You must have 'modules mode' output from "
@@ -76,6 +75,7 @@ if __name__ == '__main__':
 
     groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupO.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
 
     groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR PANGENOMES', "Reporting options that only make sense for input option #1, aka functional "
                                                                          "enrichment in pangenomes.")
