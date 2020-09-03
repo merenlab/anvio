@@ -334,6 +334,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "enrichment-txt": {
+        "name": "ENRICHMENT SCORES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "kegg-functions": {
         "name": "KOFAM FUNCTIONS",
         "type": "CONCEPT",
@@ -512,7 +518,7 @@ ANVIO_ARTIFACTS ={
         "name": "AUGUSTUS GENE CALLS",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user": True 
+        "provided_by_user": True
     },
     "genes-stats": {
         "name": "GENE STATS",
@@ -540,6 +546,12 @@ ANVIO_ARTIFACTS ={
     },
     "genbank-file": {
         "name": "GENBANK FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "groups-txt": {
+        "name": "GROUPS",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
