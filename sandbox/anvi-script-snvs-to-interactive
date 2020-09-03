@@ -25,7 +25,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __provides__ = ["interactive"]
-__requires__ = ["variability-profile"]
+__requires__ = ["variability-profile-txt"]
 __description__ = "Take the output of anvi-gen-variability-profile, prepare an output for interactive interface"
 
 
