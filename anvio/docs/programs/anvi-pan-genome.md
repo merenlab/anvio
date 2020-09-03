@@ -6,7 +6,7 @@ This is the program that does the brunt of the work when running a pangenomic wo
 
 Before running this program, you'll want to make sure your dependencies are all set, since this program requires some aditional dependencies than base anvi'o. If the following command runs without errors, then you're all good. 
 
-{{ codstart }}
+{{ codestart }}
 anvi-self-test --suite pangenomics
 {{ codestop }}
 
@@ -42,7 +42,7 @@ anvi-pan-genomes -g %(genomes-storage-db)s \
                  --use-ncbi-blast \ 
                  -n MY_PROJECT_NAME \
                  --description description.txt \
-                 -o PATH/TO/%(pan-db) 
+                 -o PATH/TO/%(pan-db)s 
 {{ codestop }}
 
 Some other parameters available to you include 
