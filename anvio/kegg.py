@@ -3777,6 +3777,7 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
+        self.exclude_ungrouped = True if A('exclude-ungrouped') else False
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -3863,7 +3864,6 @@ class KeggModuleEnrichment(KeggContext):
                                "in the modules-txt file, but that column does not exist. :( Please figure out which column is right and submit "
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                "are: {col_list}")
-        modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
 
         sample_groups_df = pd.read_csv(self.groups_txt, sep='\t')
         required_groups_txt_headers = ['sample', 'group']
@@ -3877,6 +3877,52 @@ class KeggModuleEnrichment(KeggContext):
                               "this file should have a 'sample' column and a 'group' column, and it does not because we couldn't "
                               f"find the following: {missing_string}")
 
+        # make sure the samples all have a group
+        sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
+        sample_names_in_groups_txt = set(sample_groups_df['sample'].unique())
+        samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
+        samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
+
+        if samples_missing_in_groups_txt:
+            missing_samples_str = ", ".join(samples_missing_in_groups_txt)
+            if self.exclude_ungrouped:
+                self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
+                                "column). You have elected to --exclude-ungrouped, so we are not going to take these samples into consideration at all. "
+                                "Here are the samples that we will be ignoring: "
+                                f"{missing_samples_str}")
+                # drop the samples that are not in groups-txt
+                modules_df.drop(modules_df.loc[modules_df[self.sample_header_in_modules_txt] not in samples_missing_in_groups_txt].index, inplace=True)
+            else:
+                self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
+                                "column). For the purposes of this analysis, we will now consider all of these samples to belong to one group called "
+                                "'UNGROUPED'. If you wish to ignore these samples instead, please run again with the --exclude-ungrouped parameter. "
+                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                f"{missing_samples_str}")
+                # add those samples to the UNGROUPED group
+                ungrouped_samples = list(samples_missing_in_groups_txt)
+                ungrouped_groups = ['UNGROUPED' for s in ungrouped_samples]
+                ungrouped_df = pd.DataFrame(list(zip(ungrouped_samples, ungrouped_groups)), columns =['sample', 'group'])
+                sample_groups_df = pd.concat([sample_groups_df, ungrouped_df])
+
+        if samples_missing_in_modules_txt:
+            missing_samples_str = ", ".join(samples_missing_in_modules_txt)
+            if not self.just_do_it:
+                raise ConfigError(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
+                                 "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
+                                 "not be included in the enrichment analysis because, well, you don't have any module information for them. "
+                                 "If all of the missing samples belong to groups you don't care about at all, then feel free to ignore this "
+                                 "message and re-run using --just-do-it. But if you do care about those groups, you'd better fix this because "
+                                 "the enrichment results for those groups will be wrong. Here are the samples in question: "
+                                  f"{missing_samples_str}")
+            else:
+                self.run.warning(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
+                                 "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
+                                 "not be included in the enrichment analysis because, well, you don't have any module information for them. "
+                                 "Since you have used the --just-do-it parameter, we assume you don't care about this and are going to keep "
+                                 "going anyway. We hope you know what you are doing :) Here are the samples in question: "
+                                  f"{missing_samples_str}")
+
+        modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
         sample_groups_df.set_index('sample', inplace=True)
 
         # convert modules mode output to enrichment input
