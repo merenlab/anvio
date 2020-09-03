@@ -22,6 +22,9 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['structure-db', 'variability-profile-txt', 'contigs-db', 'profile-db', 'splits-txt']
 __provides__ = ['interactive', 'summary']
+__resources__ = [("The overview page from the release", "http://merenlab.org/software/anvi-3dev/"),
+                 ("The section of the Infant Gut Tutorial focused on anvi-3dev", "http://merenlab.org/tutorials/infant-gut/#chapter-vii-from-single-amino-acid-variants-to-protein-structures"),
+                 ("Integrating sequence variants and predicted protein structures", "http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/")]
 __description__ = "Interactively visualize sequence variants on protein structures"
 
 
