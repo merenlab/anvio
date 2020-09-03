@@ -20,9 +20,9 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __resources__ = []
-##__tags__ = ["pangenomics", "functions"]                                       # TODO: update when finished
-##__requires__ = ['kegg-metabolism', 'misc-data-layers-category', 'pan-db', 'genomes-storage-db',] # TODO: update when finished
-##__provides__ = ['functional-enrichment-txt',]                                 # TODO: update when finished
+__tags__ = ["pangenomics", "functions", "metabolism"]
+__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers-category', 'pan-db', 'genomes-storage-db',]
+__provides__ = ['enrichment-txt',]
 __description__ = ("A program that creates the input for `anvi-script-enrichment-stats` and runs that "
                    "script to compute enrichment scores and group associations for annotated entities "
                    "across groups of genomes or samples.")
