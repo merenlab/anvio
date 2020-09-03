@@ -515,9 +515,10 @@ D = {
             ['--exclude-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to ignore genomes with no value set for the catergory variable "
-                     "(which you specified using --category-variable). By default all variables with no value will be "
-                     "considered as a single group when performing the statistical analysis."}
+             'help': "Use this flag if you want anvi'o to ignore genomes/samples with no group (for pangenomes, this means "
+                     "the genome has no value set for the category variable which you specified using --category-variable, "
+                     "and for modules, this means the sample has no group specified in the groups-txt file). By default all "
+                     "variables with no value will be considered as a single group when performing the statistical analysis."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
