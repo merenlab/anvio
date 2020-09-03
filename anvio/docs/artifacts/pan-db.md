@@ -4,6 +4,8 @@ This is the output of the program %(anvi-pan-genome)s, which can be run after yo
 
 You can use a pan database to run a variety of pangenomic analyses, including %(anvi-compute-genome-similarity)s, %(anvi-analyze-synteny)s, and %(anvi-get-enriched-functions-per-pan-group)s. You can also view and interact with the data in a pan-db using %(anvi-display-pan)s. 
 
+To add additional information to the pangenome display, you'll probably want to use %(anvi-import-misc-data)s 
+
 ## Advanced information for programmers
 
 While it is possible to read and write a given anvi'o pan database through SQLite functions directly, one can also use anvi'o libraries to initiate a pan database to read from. 
