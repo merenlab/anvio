@@ -376,7 +376,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
 
-        cmd = 'anvi-script-run-functional-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
+        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
                                                                                       output_file_path)
 
         log_file = filesnpaths.get_temp_file_path()
@@ -523,7 +523,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             functional_occurrence_summary_dict[f] = {}
             functional_occurrence_summary_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-            functional_occurrence_summary_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            functional_occurrence_summary_dict[f]["accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
@@ -539,7 +539,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids', 'associated_groups']
+            columns = [functional_annotation_source, 'accession', 'gene_clusters_ids', 'associated_groups']
             columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
             functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
@@ -1709,7 +1709,3 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
-
-
-
-
