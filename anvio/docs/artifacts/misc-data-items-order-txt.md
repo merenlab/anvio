@@ -33,5 +33,5 @@ contig_2
 contig_3
 ```
 
-{:.notice}
+{:.warning}
 After importing an order into a database, you may need to specifically select that order in the interactive interface through the "Item orders" dropbox and re-draw your display to change the default order.
