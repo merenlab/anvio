@@ -19,7 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ["pan-db", "profile-db", "contigs-db", "genes-db", "genomes-storage-db"]
+__requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db"]
 __description__ = "Update the description in an anvi'o database"
 
 

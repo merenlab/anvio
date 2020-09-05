@@ -543,5 +543,18 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
+    },
+    "splits-taxonomy-txt": {
+        "name": "SPLITS TAXONOMY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-matrix-txt": {
+        "name": "HMM HITS MATRIX",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
+    
 }
