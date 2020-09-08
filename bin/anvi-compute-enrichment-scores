@@ -45,6 +45,8 @@ def main(args):
     elif args.modules_txt:
         e = kegg.KeggModuleEnrichment(args)
         e.run_enrichment_stats()
+    elif args.contigs_db:
+        s = summarizer.ProfileSummarizer(args)
     else:
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
 
