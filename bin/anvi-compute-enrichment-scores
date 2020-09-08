@@ -9,6 +9,7 @@ import anvio
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.kegg as kegg
+import anvio.utils as utils
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -50,13 +51,17 @@ def main(args):
     if (args.contigs_db and not args.pan_or_profile_db):
         raise ConfigError("For input option #3, you must provide both a contigs db and a profile db, but you haven't given anvi'o the profile db.")
 
-    if args.pan_or_profile_db:
+    db_type = utils.get_db_type(args.pan_or_profile_db)
+
+    if db_type == 'pan':
+        args.pan_db = args.pan_or_profile_db
         s = summarizer.PanSummarizer(args, lazy_init=True)
         s.functional_enrichment_stats()
     elif args.modules_txt:
         e = kegg.KeggModuleEnrichment(args)
         e.run_enrichment_stats()
-    elif args.contigs_db:
+    elif db_type == 'profile':
+        args.profile_db = args.pan_or_profile_db
         s = summarizer.ProfileSummarizer(args)
     else:
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
