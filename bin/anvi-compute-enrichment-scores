@@ -65,8 +65,10 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
                                         "Estimating enriched functions across pangenome groups. This option accomplishes the same thing "
-                                        "as running `anvi-get-enriched-functions-per-pan-group`. ")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+                                        "as running `anvi-get-enriched-functions-per-pan-group`. You must provide a pan db and its "
+                                        "genomes storage db, as well as the category variable to use for establishing groups and the "
+                                        "annotation source which provides your functions of interest.")
+    groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
     groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
@@ -90,11 +92,11 @@ if __name__ == '__main__':
                                          "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
                                          "if you wish. The default threshold is %(default)g."}))
 
-    groupC = parser.add_argument_group('INPUT OPTION #2: COLLECTION OF BINS',
+    groupC = parser.add_argument_group('INPUT OPTION #3: COLLECTION OF BINS',
                                         "Estimating enriched functions across bins in a collection. Three things are required for this "
-                                        "option: a contigs db, its profile db, and a collection name.")
+                                        "option: a contigs db, its profile db (use --pan-or-profile-db as described in option #1), and "
+                                        "a collection name.")
     groupC.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 
