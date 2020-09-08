@@ -32,6 +32,13 @@ progress = terminal.Progress()
 
 def main(args):
 
+    # sanity check for multiple input options
+    if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt))
+    or ((args.pan_db or args.genomes_storage) and (args.contigs_db or args.profile_db))
+    or ((args.modules_txt or args.groups_txt) and (args.contigs_db or args.profile_db)):
+        raise ConfigError("Confused anvi'o is confused. You appear to have selected multiple input options. "
+                          "For obvious reasons, this will not work, so please go pick one option. ")
+
     if args.pan_db:
         s = summarizer.PanSummarizer(args, lazy_init=True)
         s.functional_enrichment_stats()
