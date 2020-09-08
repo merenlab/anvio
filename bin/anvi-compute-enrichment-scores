@@ -33,8 +33,8 @@ progress = terminal.Progress()
 def main(args):
 
     # sanity check for multiple input options
-    if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt))
-    or ((args.pan_db or args.genomes_storage) and (args.contigs_db or args.profile_db))
+    if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt)) \
+    or ((args.pan_db or args.genomes_storage) and (args.contigs_db or args.profile_db)) \
     or ((args.modules_txt or args.groups_txt) and (args.contigs_db or args.profile_db)):
         raise ConfigError("Confused anvi'o is confused. You appear to have selected multiple input options. "
                           "For obvious reasons, this will not work, so please go pick one option. ")
@@ -42,9 +42,9 @@ def main(args):
     # sanity checks for including all required inputs (for inputs that are not sanity checked downstream)
     if (args.pan_db and not args.genomes_storage) or (args.genomes_storage and not args.pan_db):
         raise ConfigError("For input option #1, you must provide both a pan database and a genomes storage database.")
-    if (args.modules_txt and not args.groups_txt) or (args.groups_txt and not args.modules_txt)):
+    if (args.modules_txt and not args.groups_txt) or (args.groups_txt and not args.modules_txt):
         raise ConfigError("For input option #2, you must provide both a modules-txt file and a groups-txt file.")
-    if (args.contigs_db and not args.profile_db) or (args.profile_db adn not args.contigs_db):
+    if (args.contigs_db and not args.profile_db) or (args.profile_db and not args.contigs_db):
         raise ConfigError("For input option #3, you must provide both a contigs db and a profile db.")
 
     if args.pan_db:
