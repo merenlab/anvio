@@ -73,6 +73,14 @@ if __name__ == '__main__':
                                          "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
                                          "if you wish. The default threshold is %(default)g."}))
 
+    groupC = parser.add_argument_group('INPUT OPTION #2: COLLECTION OF BINS',
+                                        "Estimating enriched functions across bins in a collection. Three things are required for this "
+                                        "option: a contigs db, its profile db, and a collection name.")
+    groupC.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+
     groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     groupO.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
