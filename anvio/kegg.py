@@ -2699,7 +2699,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
-        g.load_genomes_descriptions(skip_functions=True)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
 
         # metagenome mode must be off
         if self.metagenome_mode:
