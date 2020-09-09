@@ -628,7 +628,12 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
         header_text = '\t'.join(headers)
-    f.write('%s\n' % header_text)
+
+    if anvio.AS_MARKDOWN:
+        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
+    else:
+        f.write('%s\n' % header_text)
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -660,9 +665,13 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
-        f.write('%s\n' % '\t'.join(line))
+        if anvio.AS_MARKDOWN:
+            f.write(f"|{'|'.join(map(str, line))}|\n")
+        else:
+            f.write('%s\n' % '\t'.join(line))
 
     f.close()
+
     return output_path
 
 
@@ -3638,11 +3647,14 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     run.info('Downloaded successfully', output_file_path)
 
 
-def get_remote_file_content(url, gzipped=False):
+def get_remote_file_content(url, gzipped=False, timeout=None):
     import requests
     from io import BytesIO
 
-    remote_file = requests.get(url)
+    if timeout:
+        remote_file = requests.get(url, timeout=timeout)
+    else:
+        remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
         raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
@@ -3653,6 +3665,45 @@ def get_remote_file_content(url, gzipped=False):
         return fg.read().decode('utf-8')
 
     return remote_file.content.decode('utf-8')
+
+
+def get_anvio_news():
+    """Reads news from anvi'o repository.
+
+    The format of the news file is expected to be like this:
+
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+
+    Returns
+    =======
+    news : list
+        A list of dictionaries per news item
+    """
+
+    try:
+        news = get_remote_file_content(constants.anvio_news_url, timeout=1)
+    except Exception as e:
+        raise ConfigError(f"Something went wrong reading the anvi'o news :/ This is what the "
+                          f"downstream library had to say: {e}")
+
+    news_items = []
+    for news_item in news.split('***'):
+        if len(news_item) < 5:
+            # too short to parse, just skip it
+            continue
+
+        news_items.append({'date': news_item.split("(")[1].split(")")[0].strip(),
+                           'title': news_item.split("#")[1].split("(")[0].strip(),
+                           'content': news_item.split("#\n")[1].strip()})
+
+    return news_items
 
 
 def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
