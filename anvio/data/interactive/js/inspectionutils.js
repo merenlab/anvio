@@ -371,6 +371,82 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
     });
 }
 
+/*
+ *  Draws insertion and deletion markers on the current nucleotide display.
+ *  Params:
+ *  - seq_len: length of sequence displayed in the current window
+ *  - largeInsertion: mark indels greater than this size in red
+ */
+function drawIndels(start, end, largeIndel, data) {
+  $("#indelsSvg").empty();
+
+  var indelContainer = d3.select("#indelsSvg");
+  indelPaths = indelContainer.append('svg:g')
+                             .attr('id', 'indelPaths');
+
+  threshMarkIndel = largeIndel;
+  seq_len = end - start;
+
+  for(var i = 0; i < data['sample'].length; i++) {
+    var pos = data['pos'][i] - start >= 0 ? data['pos'][i] - start : -1;
+    drawIndel(pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
+  }
+  // TODO etc
+  // insertions loop
+  // deletions loop
+
+  //drawIndel(10, 'insertion', 'ACTTGA', seq_len, 'LK');
+  //drawIndel(20, 'insertion', 'ACTGGACTAGCTAAACGA', seq_len);
+  //drawIndel(25, 'deletion', 'ACTGGA', seq_len);
+}
+
+function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
+  if(pos < 0 || pos > seq_len) return;
+
+  // TODO: use <p> for data-content (manually make margins padding 0) and then add crossed out text?
+
+  // pos is relative to the current nucleotide window
+  var nucl_width = $("#indelsSvg").attr("width") / seq_len;
+  var strokeWidth;
+  var pathObj;
+
+  if(type == 'insertion') {
+    var markerHeight = .7 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    var markerWidth  = .4 * markerHeight;
+    var x            = pos * nucl_width - .5*markerWidth;
+    var y            = .2 * markerHeight;
+    strokeWidth = .25*nucl_width;
+    pathObj = 'M ' + x + ',' + y + ' h ' + markerWidth + ' m ' + -.5*markerWidth + ',0 v ' + markerHeight + ' m ' + -.5*markerWidth + ',0 h ' + markerWidth + ' Z';
+  } else if(type == 'deletion') {
+    var markerLength = .4 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    var x            = pos * nucl_width;
+    var y            = .5 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    strokeWidth = .4*nucl_width;
+    pathObj = 'M ' + x + ',' + y + ' h ' + markerLength/2 + ' h ' + -1*markerLength + ' Z';
+  } else {
+    console.log('warning: ' + type + ' is not a valid type of indel');
+    return;
+  }
+
+  var content = (type=='insertion' ? 'Insertion [' + indel_len + ']: ' + dna + (aa?"\nAA: "+aa:"") : 'Deletion [' + indel_len + ']');
+
+  indelPaths.append('svg:path')
+        .attr("class", "indelMarker")
+        .attr('d', pathObj)
+        .attr('stroke', threshMarkIndel && indel_len > threshMarkIndel ? 'red' : 'black')
+        .attr('stroke-opacity', 0.8)
+        .attr('stroke-width', strokeWidth)
+        .attr("style", "cursor:pointer;")
+        .attr("data-content", content)
+        .attr("data-toggle", "popover")
+        .attr("data-trigger", "hover")
+        .attr("data-template", '<div class="popover-indel" role="tooltip"> \
+                                   <div class="arrow"></div> \
+                                   <div class="popover-content"></div> \
+                               </div>");');
+
+  $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
+}
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 

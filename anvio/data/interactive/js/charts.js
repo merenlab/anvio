@@ -42,6 +42,7 @@ var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
+var indelContainer;
 var show_nucleotides = true;
 var gene_offset_y = 0;
 var snv_boxes = {};
@@ -54,7 +55,7 @@ var cog_annotated = false, kegg_annotated = false;
 // note: not called on console open
 $(window).resize(function() {
   VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + $("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0);
+  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + ($("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0));
 });
 
 window.onscroll = function() {
@@ -226,6 +227,7 @@ function loadAll() {
                 });
 
                 state['highlight-genes'] = {};
+                state['large-indel'] = 20;
 
                 // create function color menu and table; set default color states
                 if(cog_annotated) {
@@ -352,6 +354,17 @@ function loadAll() {
                     redrawArrows();
                     $(this).blur();
                 });
+
+                $('#largeIndelInput').on('keydown', function(e) {
+                  if(e.keyCode == 13) { // 13 = enter key
+                    if($(this).val() < 1 || $(this).val() > 9999) {
+                      alert("Invalid value, value needs to be in range 1-9999");
+                    } else {
+                      state['large-indel'] = $(this).val();
+                      $(this).blur();
+                    }
+                  }
+                });
             }
         });
 
@@ -362,8 +375,11 @@ function drawHighlightBoxes() {
 
   var width = VIEWER_WIDTH * .80;
 
-  highlightBoxes.attr("height", window.innerHeight - contextSvg.attr("height") + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35));
-  $("#highlightBoxesSvg").attr("height", 0).empty();
+  var boxH = window.innerHeight - contextSvg.attr("height")
+                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
+
+  highlightBoxes.attr("height", boxH);
+  $("#highlightBoxesSvg").empty();
   var nBoxes = $('#brush_end').val() - $('#brush_start').val();
   for(var i = 0; i < nBoxes; i++) {
     highlightBoxes.append("rect")
@@ -371,7 +387,7 @@ function drawHighlightBoxes() {
                   .attr("class", "highlightbox")
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
-                  .attr("height", window.innerHeight - (nucl_shown ? parseFloat($("#DNA_sequence").attr("y")) : contextSvg.attr("height")-50))
+                  .attr("height", boxH)
                   .attr("fill", "blue")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
@@ -607,6 +623,7 @@ function toggle_nucleotide_display() {
     contextSvg.select("#AA_sequence").remove();
     contextSvg.select("#solids").remove();
     contextSvg.attr("height", 150);
+    indelContainer.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
@@ -635,6 +652,7 @@ function display_nucleotides() {
 
   if(end - start > 300 || end - start < 30) {
     contextSvg.attr("height", 150);
+    indelContainer.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
@@ -788,6 +806,7 @@ function display_nucleotides() {
                 (overlapping_genes? 5+dna_seq_height : 0);
 
   contextSvg.attr("height", 150 + extra_y);
+  indelContainer.attr("height", 150 + extra_y);
 
   // reposition gene arrow chart
   $("#gene-chart").attr("transform", "translate(50, " + (20+extra_y) + ")");
@@ -796,6 +815,21 @@ function display_nucleotides() {
   gene_offset_y = 10+extra_y;
 
   drawAAHighlightBoxes();
+
+  // if indels are active
+
+  // first check data to make sure it's format is valid before moving on
+  // if it's not, create a warning and don't create it
+
+  var testData = {
+    "sample" : ['Day_18', 'Day_18', 'Day_18'],
+    "pos" : [10, 20, 25],
+    "gene" : [-1, -1, -1],
+    "type" : ['insertion', 'insertion', 'deletion'],
+    "length" : [6, 20, 10],
+    "sequence" : ['ACTGAT', 'ACTTAGACTTACTGACCTAG', null]
+  };
+  drawIndels(start, end, state['large-indel'], testData);
 }
 
 function setSNVListener() {
@@ -821,6 +855,31 @@ function setSNVListener() {
   }).mouseout(function(e) {
     $("#highlight-boxes").delay(1000).show(0);
   });
+}
+
+function display_indels(indels) {
+  // TODO: indels an array of jsons, each with pos, length and seq
+  indels.forEach((indel, i) => {
+    draw_indel(indel.pos, indel.length, indel.seq);
+    // or instead of calling the function, just store this json in the state
+  });
+
+}
+
+/*
+ *  Called inside display_nucleotides() to display indel graphic within a given window
+ *  Manually uses x position of $("#DNA_sequence") etc
+ */
+function draw_indel(pos, length, seq=null) {
+  // TODO:
+  // if it's an insertion, hoverable 'I' between two nucleotides opens a popover which shows the sequence
+  // if it's a deletion, hoverable 'X' opens a popover which shows the sequence
+
+  /*
+   *  'I' will be at attr x = $("#DNA_sequence").attr("x")+(pos*textWidth) + (textWidth/2)
+   *  Not the actual letter but an SVG, so that it can be a bit taller with edges come above top and bottom
+   *  Data-content: e.g. 'insertion @pos=342: ACTTCGGA' yellow background black text
+   */
 }
 
 function show_selected_sequence() {
@@ -1230,6 +1289,11 @@ function processState(state_name, state) {
     this.state = state;
     redrawArrows();
 
+    if(true /*TODO: if we have indels table*/) {
+      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
+      $('#largeIndelInput').val(20);
+    }
+
     current_state_name = state_name;
 
     toastr.success("State '" + current_state_name + "' successfully loaded.");
@@ -1253,6 +1317,8 @@ function serializeSettings() {
         state['highlight-genes'][gene_id] = $('#picker_' + gene_id).attr('color');
       });
     }
+
+    state['large-indel'] = $("#largeIndelInput").val();
 
     return state;
 }
@@ -1372,6 +1438,12 @@ function createCharts(state){
                                                   .attr("width", width + margin.left + margin.right)
                                                   .attr("height", 0);
     $('#highlight-boxes').css("width", (width + 150) + "px");
+
+    indelContainer = d3.select("#indels").append("svg")
+                                         .attr("id", "indelsSvg")
+                                         .attr("width", width)
+                                         .attr("height", 150)
+                                         .attr("transform", "translate(50, 10)");
 
     var defs = contextSvg.append('svg:defs')
                          .attr('id', 'contextSvgDefs');
