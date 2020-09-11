@@ -57,6 +57,7 @@ $(document).ready(function() {
     if ($(e.target).data('toggle') !== 'popover'
         && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
+        $('.popover-indel').popover('hide');
     }
   });
 });
@@ -398,11 +399,11 @@ function drawIndels(start, end, largeIndel, data) {
 }
 
 function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
+  // pos is relative to the current nucleotide window
   if(pos < 0 || pos > seq_len) return;
 
   // TODO: use <p> for data-content (manually make margins padding 0) and then add crossed out text?
 
-  // pos is relative to the current nucleotide window
   var nucl_width = $("#indelsSvg").attr("width") / seq_len;
   var strokeWidth;
   var pathObj;
