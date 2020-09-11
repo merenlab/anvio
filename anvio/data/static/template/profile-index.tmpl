@@ -457,18 +457,31 @@
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th>Sample</th>
-                                            {% for bin in bin_percent_abundance_items %}
+                                            {% for bin in bin_percent_abundance_items|slice:slice_header_items_tmpl %}
+                                            {% if bin|length > 8 %}
+                                            <th class="text-center">{{ bin|slice:"0:5" }} <a href="#" data-toggle="tooltip" title="{{ bin }}">...</a></th>
+                                            {% else %}
                                             <th class="text-center">{{ bin }}</th>
+                                            {% endif %} 
                                             {% endfor %}
+
+                                            {% if bin_percent_abundance_items|length > max_shown_header_items %}
+                                            <th class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></th>
+                                            {% endif %} 
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for sample in meta|lookup:"profile"|lookup:"samples" %}
                                         <tr>
                                             <td style="vertical-align: middle;">{{ sample }}</td>
-                                            {% for bin in bin_percent_abundance_items %}
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ bin_percent_recruitment|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}%</td>
+
+                                            {% for bin in bin_percent_abundance_items|slice:slice_header_items_tmpl %}
+                                                <td class="text-center" data-value="{{ collection_profile|lookup:bin|lookup:sample|lookup:bin }}">{{ bin_percent_recruitment|lookup:sample|lookup:bin|humanize_n }}</td>
                                             {% endfor %}
+
+                                            {% if bin_percent_abundance_items|length > max_shown_header_items %}
+                                                <td class="text-center"><span data-toggle="tooltip" title="{{ num_not_shown_samples }} more">...</span></td>
+                                            {% endif %} 
                                         </tr>
                                         {% endfor %}
                                     </tbody>
