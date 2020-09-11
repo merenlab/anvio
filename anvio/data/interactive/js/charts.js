@@ -857,30 +857,6 @@ function setSNVListener() {
   });
 }
 
-function display_indels(indels) {
-  // TODO: indels an array of jsons, each with pos, length and seq
-  indels.forEach((indel, i) => {
-    draw_indel(indel.pos, indel.length, indel.seq);
-    // or instead of calling the function, just store this json in the state
-  });
-
-}
-
-/*
- *  Called inside display_nucleotides() to display indel graphic within a given window
- *  Manually uses x position of $("#DNA_sequence") etc
- */
-function draw_indel(pos, length, seq=null) {
-  // TODO:
-  // if it's an insertion, hoverable 'I' between two nucleotides opens a popover which shows the sequence
-  // if it's a deletion, hoverable 'X' opens a popover which shows the sequence
-
-  /*
-   *  'I' will be at attr x = $("#DNA_sequence").attr("x")+(pos*textWidth) + (textWidth/2)
-   *  Not the actual letter but an SVG, so that it can be a bit taller with edges come above top and bottom
-   *  Data-content: e.g. 'insertion @pos=342: ACTTCGGA' yellow background black text
-   */
-}
 
 function show_selected_sequence() {
     let range = charts[0].xScale.domain();

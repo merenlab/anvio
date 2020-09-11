@@ -391,9 +391,6 @@ function drawIndels(start, end, largeIndel, data) {
     var pos = data['pos'][i] - start >= 0 ? data['pos'][i] - start : -1;
     drawIndel(pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
   }
-  // TODO etc
-  // insertions loop
-  // deletions loop
 
   //drawIndel(10, 'insertion', 'ACTTGA', seq_len, 'LK');
   //drawIndel(20, 'insertion', 'ACTGGACTAGCTAAACGA', seq_len);
