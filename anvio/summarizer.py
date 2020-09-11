@@ -808,30 +808,43 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 }
 
         # I am not sure whether this is the best place to do this,
+        T = lambda x: 'True' if x else 'False'
+        renderer = mistune.Renderer(escape=False)
+        markdown = mistune.Markdown(renderer=renderer)
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Minimum contig length', pretty(self.p_meta['min_contig_length'])),
                                                      ('Number of contigs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
+                                                     ('Contig length cutoff min', pretty(self.p_meta['min_contig_length'])),
+                                                     ('Contig length cutoff max', pretty(self.p_meta['max_contig_length'])),
+                                                     ('Samples in profile', ', '.join(self.p_meta['samples'])),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
-                                                     ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
+                                                     ('SNVs profiled', T(self.p_meta['SNVs_profiled'])),
+                                                     ('SCVs profiled', T(self.p_meta['SCVs_profiled'])),
+                                                     ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
+                                                     ('Report variability full', T(self.p_meta['report_variability_full'])),
+                                                     ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
+                                                     ('Min IN/DEL fraction', self.p_meta['min_indel_fraction']),
                                                     ],
                                          'contigs': [
-                                                        ('Created on', self.p_meta['creation_date']),
+                                                        ('Project name', self.a_meta['project_name']),
+                                                        ('Created on', self.a_meta['creation_date']),
                                                         ('Version', self.a_meta['version']),
-                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('Number of contigs', pretty(int(self.a_meta['num_contigs']))),
                                                         ('Number of splits', pretty(int(self.a_meta['num_splits']))),
-                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
+                                                        ('Genes are called', T(self.a_meta['genes_are_called'])),
+                                                        ('External gene calls', T(self.a_meta['external_gene_calls'])),
+                                                        ('External amino acid sequences', T(self.a_meta['external_gene_amino_acid_seqs'])),
                                                         ('K-mer size', self.a_meta['kmer_size']),
-                                                        ('Genes are called', self.a_meta['genes_are_called']),
-                                                        ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
+                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Splits consider gene calls', T(self.a_meta['splits_consider_gene_calls'])),
+                                                        ('SCG taxonomy was run', T(self.a_meta['scg_taxonomy_was_run'])),
                                                         ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
                                                         ('Summary reformatted contig names', self.reformat_contig_names),
                                                     ],
-                                        'description': mistune.markdown(self.p_meta['description']),
+                                        'description': markdown(self.p_meta['description']),
                                         }
 
         self.summary['max_shown_header_items'] = 10
