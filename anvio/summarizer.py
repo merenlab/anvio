@@ -887,9 +887,13 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
-            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
+            properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
+
             if self.completeness_data_available:
                 properties += ['percent_completion', 'percent_redundancy']
+
+            if self.scg_taxonomy:
+                properties += constants.levels_of_taxonomy
 
             for bin_name in self.summary['collection']:
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
