@@ -1691,7 +1691,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
+    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None, just_the_path=False):
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
 
         if os.path.exists(file_path) and not overwrite:
@@ -1702,7 +1702,7 @@ class Bin:
 
         self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
 
-        return open(file_path, 'w')
+        return file_path if just_the_path else open(file_path, 'w')
 
 
     def store_data_in_file(self, output_file_name_posfix, content):
