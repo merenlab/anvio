@@ -88,7 +88,6 @@ class ArgsTemplateForSummarizerClass:
         self.pan_db = None
         self.contigs_db = None
         self.collection_name = None
-        self.taxonomic_level = 't_genus'
         self.list_collections = None
         self.list_bins = None
         self.debug = None
@@ -137,7 +136,6 @@ class SummarizerSuperClass(object):
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
-        self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.report_DNA_sequences = A('report_DNA_sequences')
@@ -754,8 +752,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # databases initiated, let's make sure we have gene covereges data avaialable.
         if self.gene_level_coverage_stats_dict:
             self.gene_level_coverage_stats_available = True
-
-        self.init_splits_taxonomy(self.taxonomic_level)
 
         self.collection_dict = {}
         self.bins_info_dict = {}
