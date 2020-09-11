@@ -44,6 +44,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
+import anvio.scgtaxonomyops as scgtaxonomyops
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
@@ -777,6 +778,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         # load gene functions from contigs db superclass
         self.init_functions()
+
+        # get an instance of SCG taxonomy:
+        if self.a_meta['scg_taxonomy_was_run']:
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.contigs_db_path))
+        else:
+            self.scg_taxonomy = None
 
         # set up the initial summary dictionary
         self.summary['meta'] = {'quick': self.quick,
