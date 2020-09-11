@@ -1280,7 +1280,7 @@ class Bin:
 
         self.compute_basic_stats()
 
-        self.set_taxon_calls()
+        self.recover_scg_taxonomy()
 
         self.store_genes_basic_info()
 
@@ -1645,40 +1645,30 @@ class Bin:
         return output
 
 
-    def set_taxon_calls(self):
-        self.progress.update('Filling in taxonomy info ...')
+    def recover_scg_taxonomy(self):
+        self.bin_info_dict['scg_taxonomy'] = None
+        self.bin_info_dict['scg_taxonomy_simple'] = None
 
-        self.bin_info_dict['taxon_calls'] = []
-        self.bin_info_dict['taxon'] = 'Unknown'
-
-        if not self.summary.a_meta['gene_level_taxonomy_source']:
+        if self.summary.quick or not self.summary.a_meta['scg_taxonomy_was_run']:
             return
 
-        taxon_calls_counter = Counter()
-        for split_id in self.split_names:
-            if split_id in self.summary.splits_taxonomy_dict:
-                taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]] += 1
-            else:
-                taxon_calls_counter['None'] += 1
+        self.progress.update('Filling in taxonomy info ...')
 
-        taxon_calls = sorted([list(tc) for tc in list(taxon_calls_counter.items())], key=lambda x: int(x[1]), reverse=True)
+        scg_taxonomy_dict = self.summary.scg_taxonomy.estimate_for_list_of_splits(self.split_names, bin_name=self.bin_id)
+        self.bin_info_dict['scg_taxonomy_dict'] = scg_taxonomy_dict
 
-        self.bin_info_dict['taxon_calls'] = taxon_calls
+        self.bin_info_dict['scg_taxonomy_simple'] = 'N/A'
+        for level in constants.levels_of_taxonomy[::-1]:
+            if scg_taxonomy_dict['consensus_taxonomy'][level]:
+                self.bin_info_dict['scg_taxonomy_simple'] = scg_taxonomy_dict['consensus_taxonomy'][level]
+                break
 
-        # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        l = [tc for tc in taxon_calls if tc[0]]
-        num_calls = sum(taxon_calls_counter.values())
+        for level in constants.levels_of_taxonomy:
+            self.bin_info_dict[level] = scg_taxonomy_dict['consensus_taxonomy'][level]
 
-        # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        if l and l[0][1] > num_calls / 4.0:
-            # if l[0] is associated with more than 25 percent of splits:
-            self.bin_info_dict['taxon'] = l[0][0]
-        else:
-            self.bin_info_dict['taxon'] = 'Unknown'
-
-        # convert to percents..
-        for tc in taxon_calls:
-            tc[1] = tc[1] * 100.0 / num_calls
+        scg_taxonomy_output_headers = ['gene_callers_id', 'gene_name', 'percent_identity', 'supporting_consensus'] + constants.levels_of_taxonomy
+        scg_taxonomy_output = self.get_output_file_handle('scg_taxonomy_details.txt', just_the_path=True)
+        utils.store_dict_as_TAB_delimited_file(scg_taxonomy_dict['scgs'], scg_taxonomy_output, headers=scg_taxonomy_output_headers)
 
 
     def compute_basic_stats(self):
