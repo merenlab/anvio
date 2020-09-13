@@ -2,7 +2,6 @@
 """Interface to MetaBAT2."""
 import os
 import glob
-import shutil
 
 import anvio
 import anvio.utils as utils
