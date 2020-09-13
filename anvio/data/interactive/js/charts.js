@@ -49,6 +49,7 @@ var snv_boxes = {};
 
 // for testing
 var mcags;
+var testData;
 
 var cog_annotated = false, kegg_annotated = false;
 
@@ -228,6 +229,7 @@ function loadAll() {
 
                 state['highlight-genes'] = {};
                 state['large-indel'] = 20;
+                $("#largeIndelInput").val(state['large-indel']);
 
                 // create function color menu and table; set default color states
                 if(cog_annotated) {
@@ -821,7 +823,7 @@ function display_nucleotides() {
   // first check data to make sure it's format is valid before moving on
   // if it's not, create a warning and don't create it
 
-  var testData = {
+  testData = {
     "sample" : ['Day_18', 'Day_18', 'Day_18'],
     "pos" : [10, 20, 25],
     "gene" : [-1, -1, -1],
