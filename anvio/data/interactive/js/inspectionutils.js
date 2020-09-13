@@ -393,6 +393,8 @@ function drawIndels(start, end, largeIndel, data) {
     drawIndel(pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
   }
 
+  $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
+
   //drawIndel(10, 'insertion', 'ACTTGA', seq_len, 'LK');
   //drawIndel(20, 'insertion', 'ACTGGACTAGCTAAACGA', seq_len);
   //drawIndel(25, 'deletion', 'ACTGGA', seq_len);
@@ -413,14 +415,14 @@ function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
     var markerWidth  = .4 * markerHeight;
     var x            = pos * nucl_width - .5*markerWidth;
     var y            = .2 * markerHeight;
-    strokeWidth = .25*nucl_width;
+    strokeWidth      = .25*nucl_width;
     pathObj = 'M ' + x + ',' + y + ' h ' + markerWidth + ' m ' + -.5*markerWidth + ',0 v ' + markerHeight + ' m ' + -.5*markerWidth + ',0 h ' + markerWidth + ' Z';
   } else if(type == 'deletion') {
     var markerLength = .4 * d3.select("#DNA_sequence")[0][0].getBBox().height;
     var x            = pos * nucl_width;
     var y            = .5 * d3.select("#DNA_sequence")[0][0].getBBox().height;
-    strokeWidth = .4*nucl_width;
-    pathObj = 'M ' + x + ',' + y + ' h ' + markerLength/2 + ' h ' + -1*markerLength + ' Z';
+    strokeWidth      = .4*nucl_width;
+    pathObj = 'M ' + x + ',' + y + ' h ' + -1.3*markerLength + ' Z';
   } else {
     console.log('warning: ' + type + ' is not a valid type of indel');
     return;
@@ -442,8 +444,6 @@ function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
                                    <div class="arrow"></div> \
                                    <div class="popover-content"></div> \
                                </div>");');
-
-  $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
 }
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
