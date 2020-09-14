@@ -446,6 +446,17 @@ function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
                                </div>");');
 }
 
+function getGeneEndpts(_start, _stop) {
+  genes = geneParser.filterData(_start, _stop);
+  var ret = [];
+
+  genes.forEach(function(gene){
+    ret.push(gene.start_in_split - _start, gene.stop_in_split - _start - 1);
+  });
+
+  return ret;
+}
+
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
 function get_comp_nt_color(nts){

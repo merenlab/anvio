@@ -380,9 +380,12 @@ function drawHighlightBoxes() {
   var boxH = window.innerHeight - contextSvg.attr("height")
                                 + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
 
+  var start = $('#brush_start').val(), end = $('#brush_end').val();
+  var endpts = getGeneEndpts(start, end);
+
   highlightBoxes.attr("height", boxH);
   $("#highlightBoxesSvg").empty();
-  var nBoxes = $('#brush_end').val() - $('#brush_start').val();
+  var nBoxes = end - start;
   for(var i = 0; i < nBoxes; i++) {
     highlightBoxes.append("rect")
                   .attr("id", "highlight_" + i)
@@ -390,7 +393,7 @@ function drawHighlightBoxes() {
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
                   .attr("height", boxH)
-                  .attr("fill", "blue")
+                  .attr("fill", endpts.includes(i) ? "red" : "blue")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
