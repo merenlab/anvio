@@ -402,14 +402,23 @@ function drawHighlightBoxes() {
 }
 
 function drawAAHighlightBoxes() {
+  var endpts = getGeneEndpts($('#brush_start').val(), $('#brush_end').val());
+
   $('#context-container').on('mouseover', function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25);
+    var marked = endpts.includes(box_num) || endpts.includes(box_num+2);
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : 'blue');
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
+    
+    if(endpts.includes(box_num)) {
+      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', 'blue');
+    } else if(endpts.includes(box_num+2)) {
+      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', 'blue');
+    }
   });
 }
 
