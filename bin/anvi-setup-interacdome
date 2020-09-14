@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ['interacdome-data']
-__description__ = "Setup InteracDome data."
+__description__ = "Setup InteracDome data"
 
 
 if __name__ == '__main__':
