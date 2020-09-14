@@ -12,7 +12,7 @@ anvi-gen-gene-level-stats-databases -c %(contigs-db)s \
                                     -C %(collection)s 
 {{ codestop }}
 
-Then it will create a directory called `GENES` that contains three %(profile-db)s called `GENE_COLLECTION-bin_0001.db`, `GENE_COLLECTION-bin_0002.db`, and `GENE_COLLECTION-bin_0003.db`. Then you could run %(anvi-interactive)s in genes mode on one of these profile databases. 
+Then it will create a directory called `GENES` that contains three %(profile-db)s called `GENE_COLLECTION-bin_0001.db`, `GENE_COLLECTION-bin_0002.db`, and `GENE_COLLECTION-bin_0003.db`. In terms of output, this program is similar to %(anvi-split)s: each of these databases can now be treated as self-contained anvi'o projects but they also contain the gene-level information. Thus, you then could run %(anvi-interactive)s in genes mode on one of these profile databases. 
 
 You also have the option to provide a list of %(bin)s (either as a file or as a string) to anlyze instead of a single %(collection)s. 
 
