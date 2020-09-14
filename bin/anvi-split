@@ -25,7 +25,7 @@ __resources__ = [("Anvi-split in action in the pangenomics tutorial", "http://me
 __description__ = ("Split an anvi'o pan or profile database into smaller, self-contained pieces. "
                    "Provide either a genomes-storage and pan database or a profile and contigs database "
                    "pair, and you'll get back directories of individual projects for each bin "
-                   " that can be treated as smaller anvi'o projects. ")
+                   " that can be treated as smaller anvi'o projects")
 
 
 if __name__ == '__main__':
