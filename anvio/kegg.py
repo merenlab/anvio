@@ -1304,6 +1304,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
                              "Anyhow, now is your chance to quietly go figure out what you are really doing.")
 
+        if self.matrix_include_metadata and not self.matrix_format:
+            raise ConfigError("The option --include-metadata is only relevant for --matrix-format, which in turn is only "
+                              "relevant for analyses involving multiple genomes or samples. Plz try again.")
+
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -2622,6 +2626,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.matrix_format and args.kegg_output_modes:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
                               "like this, anvi'o is confused. :) ")
+        if self.matrix_include_metadata and not self.matrix_format:
+            raise ConfigError("The option --include-metadata is only available when you also use the flag --matrix-format "
+                              "to get matrix output. :) Plz try again.")
 
         # set name header
         if self.metagenomes_file:
