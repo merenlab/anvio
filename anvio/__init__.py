@@ -2497,6 +2497,14 @@ D = {
             'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                     "of every KOfam hit that is put in the contigs database."}
                 ),
+    'include-metadata': (
+            ['--include-metadata'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
+                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
+                    "the sample columns."}
+                ),
 }
 
 # two functions that works with the dictionary above.
