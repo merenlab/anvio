@@ -2914,19 +2914,30 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # module stats that each will be put in separate matrix file
         # stat is key, corresponding header in df is value
         module_matrix_stats = {"completeness" : "module_completeness", "presence" : "module_is_complete"}
+        # per-module metadata to include, if that option is selected. Must be subset of 'modules' mode output headers
+        module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
 
         for stat, header in module_matrix_stats.items():
             matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
 
-            cols = ["module"] + df.index.levels[0].tolist()
+            if self.matrix_include_metadata:
+                cols = ["module"] + module_metadata_headers + df.index.levels[0].tolist()
+            else:
+                cols = ["module"] + df.index.levels[0].tolist()
             rows = df.index.levels[1].tolist()
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
 
+
             with open(output_file_path, 'w') as output:
                 output.write('\t'.join(cols) + '\n')
                 for i in range(0, len(matrix)):
-                    output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+                    if self.matrix_include_metadata:
+                        row_index = (df.index.levels[0][0], rows[i])
+                        metadata_string = "\t".join([df.loc[row_index, metaheader] for metaheader in module_metadata_headers])
+                        output.write('\t'.join([rows[i]] + [metadata_string] + ['%.2f' % c for c in matrix[i]]) + '\n')
+                    else:
+                        output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
 
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
