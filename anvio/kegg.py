@@ -2925,13 +2925,15 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
 
+            metadata_df = df[module_metadata_headers].reset_index().drop_duplicates(subset='kegg_module')
+            metadata_df.set_index(['kegg_module'], inplace=True)
 
             with open(output_file_path, 'w') as output:
                 output.write('\t'.join(cols) + '\n')
-                for i in range(0, len(matrix)):
+                for i in range(0, len(rows)):
                     if self.matrix_include_metadata:
-                        row_index = (df.index.levels[0][0], rows[i])
-                        metadata_string = "\t".join([df.loc[row_index, metaheader] for metaheader in module_metadata_headers])
+                        row_index = rows[i]
+                        metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in module_metadata_headers])
                         output.write('\t'.join([rows[i]] + [metadata_string] + ['%.2f' % c for c in matrix[i]]) + '\n')
                     else:
                         output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
