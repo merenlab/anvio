@@ -2946,7 +2946,28 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         df.set_index(['db_name'], inplace=True)
         ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
-        ko_counts.to_csv(output_file_path, sep='\t')
+
+        # if user wants to include metadata, things are not so simple
+        if self.matrix_include_metadata:
+            ko_metadata_headers = ["ko_definition", "modules_with_ko"]
+            cols = ["ko"] + ko_metadata_headers + ko_counts.columns.tolist()
+            rows = ko_counts.index.tolist()
+
+            df.reset_index(inplace=True)
+            df.set_index('ko', inplace=True)
+            metadata_df = df[ko_metadata_headers].reset_index().drop_duplicates(subset='ko')
+            metadata_df.set_index(['ko'], inplace=True)
+
+            with open(output_file_path, 'w') as output:
+                output.write("\t".join(cols) + '\n')
+                for i in range(0, len(rows)):
+                    row_index = rows[i]
+                    metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in ko_metadata_headers])
+                    ko_counts_string = "\t".join([str(ko_counts.loc[rows[i], db_name]) for db_name in ko_counts.columns.tolist()])
+                    output.write('\t'.join([rows[i]] + [metadata_string] + [ko_counts_string]) + '\n')
+
+        else:
+            ko_counts.to_csv(output_file_path, sep='\t')
         self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
 
