@@ -2529,7 +2529,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list)
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.only_complete)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
             else:
@@ -2853,7 +2853,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
             if single_estimator.available_modes[output_mode]["data_dict"] == 'modules':
-                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list)
+                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.only_complete)
             elif self.available_modes[output_mode]["data_dict"] == 'kofams':
                 single_dict = single_estimator.generate_output_dict_for_kofams(ko_superdict_multi[metagenome_name], headers_to_include=header_list)
             else:
