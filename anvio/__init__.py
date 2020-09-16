@@ -2505,6 +2505,13 @@ D = {
                     "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
                     "the sample columns."}
                 ),
+    'only-complete': (
+            ['--only-complete'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
+                    "in any output files."}
+                ),
 }
 
 # two functions that works with the dictionary above.
