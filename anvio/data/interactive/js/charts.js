@@ -381,11 +381,11 @@ function drawHighlightBoxes() {
                                 + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
 
   var start = $('#brush_start').val(), end = $('#brush_end').val();
-  var endpts = getGeneEndpts(start, end);
 
   highlightBoxes.attr("height", boxH);
   $("#highlightBoxesSvg").empty();
-  var nBoxes = end - start;
+  var nBoxes = nucl_shown ? end - start : 100;
+  var endpts = nucl_shown ? getGeneEndpts(start, end) : [];
   for(var i = 0; i < nBoxes; i++) {
     highlightBoxes.append("rect")
                   .attr("id", "highlight_" + i)
@@ -413,7 +413,7 @@ function drawAAHighlightBoxes() {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
-    
+
     if(endpts.includes(box_num)) {
       $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', 'blue');
     } else if(endpts.includes(box_num+2)) {
@@ -828,6 +828,7 @@ function display_nucleotides() {
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
 
+  drawHighlightBoxes();
   drawAAHighlightBoxes();
 
   // if indels are active
@@ -1546,10 +1547,12 @@ function createCharts(state){
         $('#brush_start').val(b[0]);
         $('#brush_end').val(b[1]);
 
-        drawHighlightBoxes();
-
         // rescale nucleotide display
-        if(show_nucleotides) display_nucleotides();
+        if(show_nucleotides) {
+          display_nucleotides();
+        } else {
+          drawHighlightBoxes();
+        }
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
