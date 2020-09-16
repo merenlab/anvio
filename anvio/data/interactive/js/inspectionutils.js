@@ -389,18 +389,14 @@ function drawIndels(start, end, largeIndel, data) {
   seq_len = end - start;
 
   for(var i = 0; i < data['sample'].length; i++) {
-    var pos = data['pos'][i] - start >= 0 ? data['pos'][i] - start : -1;
-    drawIndel(pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
+    var pos = (data['pos'][i] - start >= 0) ? (data['pos'][i] - start) : -1;
+    drawIndel(data['pos'][i], pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
   }
 
   $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
-
-  //drawIndel(10, 'insertion', 'ACTTGA', seq_len, 'LK');
-  //drawIndel(20, 'insertion', 'ACTGGACTAGCTAAACGA', seq_len);
-  //drawIndel(25, 'deletion', 'ACTGGA', seq_len);
 }
 
-function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
+function drawIndel(truepos, pos, type, dna, indel_len, seq_len, aa) {
   // pos is relative to the current nucleotide window
   if(pos < 0 || pos > seq_len) return;
 
@@ -429,6 +425,7 @@ function drawIndel(pos, type, dna, indel_len, seq_len, aa) {
   }
 
   var content = (type=='insertion' ? 'Insertion [' + indel_len + ']: ' + dna + (aa?"\nAA: "+aa:"") : 'Deletion [' + indel_len + ']');
+  content = content + '\nPosition: ' + truepos;
 
   indelPaths.append('svg:path')
         .attr("class", "indelMarker")
