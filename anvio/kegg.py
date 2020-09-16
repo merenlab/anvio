@@ -1149,6 +1149,7 @@ class KeggEstimatorArgs():
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
+        self.only_complete = True if A('only_complete') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
@@ -1265,6 +1266,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             run.info("Matrix format", self.matrix_format)
             run.info("Matrix will include metadata", self.matrix_include_metadata)
             run.info("Module completeness threshold", self.module_completion_threshold)
+            run.info("Only complete modules included in output", self.only_complete)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
