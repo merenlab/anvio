@@ -71,7 +71,7 @@ function stickyBoxes() {
                                 + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
 
   var el_top = parseFloat(boxes.getBoundingClientRect().top);
-      el_top -= parseFloat(boxes.style.top);
+      el_top -= parseFloat(window.getComputedStyle(boxes).top);
       el_top += 50;
       el_top *= -1;
 
@@ -1528,8 +1528,8 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
-    drawHighlightBoxes();
     display_nucleotides();
+    drawHighlightBoxes();
     setSNVListener();
 
     function onBrush(){
@@ -1548,11 +1548,10 @@ function createCharts(state){
         $('#brush_end').val(b[1]);
 
         // rescale nucleotide display
-        if(show_nucleotides) {
-          display_nucleotides();
-        } else {
-          drawHighlightBoxes();
-        }
+        if(show_nucleotides) display_nucleotides();
+
+        // highlight bars as % of page width without nucleotide display
+        if($("#DNA_sequence").length == 0) drawHighlightBoxes();
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
