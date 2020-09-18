@@ -16,6 +16,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = []
+__provides__ = ["contigs-fasta", "functions-txt", "external-gene-calls"]
+__resources__ = [("A tutorial on using this program to access NCBI genomes for 'omics analyses in Anvi'o", "http://merenlab.org/2019/03/14/ncbi-genome-download-magic/")]
 __description__ = ("This script takes the 'metadata' output of the program `ncbi-genome-download` (see "
                    "https://github.com/kblin/ncbi-genome-download for details), and processes each "
                    "GenBank file found in the metadata file to generate a FASTA file, as well as genes "

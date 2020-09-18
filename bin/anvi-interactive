@@ -97,6 +97,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
     groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupF.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
     groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
                                     'The distance metric for the hierarchical clustering. Only relevant if you are running\
                                      the interactive interface in "collection" mode. The default is "%(default)s".'}))

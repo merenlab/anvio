@@ -28,7 +28,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt',]
-__description__ = ("Get amino acid or codon frequencies of genes in a contigs database.")
+__description__ = ("Get amino acid or codon frequencies of genes in a contigs database")
 
 
 class ReportCodonFrequencies:

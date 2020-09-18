@@ -1,6 +1,6 @@
-%(anvi-run-kegg-kofams)s annotates a %(contigs-db)s with HMM hits from KOfam, a database of KEGG Orthologs (KOs). You must set up these HMMs on your computer using %(anvi-setup-kegg-kofams)s before you can use this program.
+Essentially, this program uses the KEGG database to annotate functions and metabolic pathways in a %(contigs-db)s. More specifically, %(anvi-run-kegg-kofams)s annotates a %(contigs-db)s with HMM hits from KOfam, a database of KEGG Orthologs (KOs). You must set up these HMMs on your computer using %(anvi-setup-kegg-kofams)s before you can use this program.
 
-Briefly, what this program does is extract all the gene calls from the %(contigs-db)s and checks each one for hits to the KOfam HMM profiles in your %(kegg-db)s. This can be time-consuming given that the number of HMM profiles is quite large, and especially time-consuming if the number of genes in the %(contigs-db)s is also large. Multi-threading is a good idea if you have the computational capability to do so.
+Briefly, what this program does is extract all the gene calls from the %(contigs-db)s and checks each one for hits to the KOfam HMM profiles in your %(kegg-db)s. This can be time-consuming given that the number of HMM profiles is quite large, even more so if the number of genes in the %(contigs-db)s is also large. Multi-threading is a good idea if you have the computational capability to do so.
 
 Many HMM hits will be found, most of them weak. The weak hits will by default be eliminated according to the score thresholds provided by KEGG; that is, only hits with scores above the threshold for a given KO profile will be annotated in the %(contigs-db)s. It is perfectly normal to notice that the number of raw hits found is many, many times larger than the number of annotated KO hits in your database.
 
@@ -15,6 +15,7 @@ anvi-run-kegg-kofams -c CONTIGS.db
 {{ codestop }}
 
 ### Use a specific non-default KEGG data directory
+If you have previously setup your KEGG data directory using `--kegg-data-dir` (see %(anvi-setup-kegg-kofams)s), or have moved the KEGG data directory that you wish to use to a non-default location (maybe you like keeping the older versions around when you update, we don't know how you roll), then you may need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
 
 {{ codestart }}
 anvi-run-kegg-kofams -c CONTIGS.db --kegg-data-dir /path/to/directory/KEGG
