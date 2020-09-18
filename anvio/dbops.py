@@ -17,11 +17,9 @@ import textwrap
 import multiprocessing
 import itertools
 import scipy.signal
-import pandas as pd
-import gc
 
 from io import StringIO
-from collections import Counter, OrderedDict
+from collections import Counter
 
 import anvio
 import anvio.db as db
@@ -36,7 +34,6 @@ import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 import anvio.homogeneityindex as homogeneityindex
-import anvio.drivers.vsearch as vsearch
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
