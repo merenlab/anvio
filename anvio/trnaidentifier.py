@@ -8,9 +8,9 @@ import pandas as pd
 from tabulate import tabulate
 
 from anvio.errors import TRNAIdentifierError
-from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
-from anvio.constants_package.trnaseq import LONGEST_KNOWN_TRNA_LENGTH
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
+from anvio.constants import LONGEST_KNOWN_TRNA_LENGTH
+from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 
 
