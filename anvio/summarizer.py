@@ -44,6 +44,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
+import anvio.scgtaxonomyops as scgtaxonomyops
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
@@ -88,7 +89,6 @@ class ArgsTemplateForSummarizerClass:
         self.pan_db = None
         self.contigs_db = None
         self.collection_name = None
-        self.taxonomic_level = 't_genus'
         self.list_collections = None
         self.list_bins = None
         self.debug = None
@@ -137,7 +137,6 @@ class SummarizerSuperClass(object):
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
-        self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.report_DNA_sequences = A('report_DNA_sequences')
@@ -755,8 +754,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if self.gene_level_coverage_stats_dict:
             self.gene_level_coverage_stats_available = True
 
-        self.init_splits_taxonomy(self.taxonomic_level)
-
         self.collection_dict = {}
         self.bins_info_dict = {}
         self.initialized = False
@@ -782,6 +779,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # load gene functions from contigs db superclass
         self.init_functions()
 
+        # get an instance of SCG taxonomy:
+        if self.a_meta['scg_taxonomy_was_run']:
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.contigs_db_path))
+        else:
+            self.scg_taxonomy = None
+
         # set up the initial summary dictionary
         self.summary['meta'] = {'quick': self.quick,
                                 'summary_type': self.summary_type,
@@ -805,30 +808,43 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 }
 
         # I am not sure whether this is the best place to do this,
+        T = lambda x: 'True' if x else 'False'
+        renderer = mistune.Renderer(escape=False)
+        markdown = mistune.Markdown(renderer=renderer)
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Minimum contig length', pretty(self.p_meta['min_contig_length'])),
                                                      ('Number of contigs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
+                                                     ('Contig length cutoff min', pretty(self.p_meta['min_contig_length'])),
+                                                     ('Contig length cutoff max', pretty(self.p_meta['max_contig_length'])),
+                                                     ('Samples in profile', ', '.join(self.p_meta['samples'])),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
-                                                     ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
+                                                     ('SNVs profiled', T(self.p_meta['SNVs_profiled'])),
+                                                     ('SCVs profiled', T(self.p_meta['SCVs_profiled'])),
+                                                     ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
+                                                     ('Report variability full', T(self.p_meta['report_variability_full'])),
+                                                     ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
+                                                     ('Min IN/DEL fraction', self.p_meta['min_indel_fraction']),
                                                     ],
                                          'contigs': [
-                                                        ('Created on', self.p_meta['creation_date']),
+                                                        ('Project name', self.a_meta['project_name']),
+                                                        ('Created on', self.a_meta['creation_date']),
                                                         ('Version', self.a_meta['version']),
-                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('Number of contigs', pretty(int(self.a_meta['num_contigs']))),
                                                         ('Number of splits', pretty(int(self.a_meta['num_splits']))),
-                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
+                                                        ('Genes are called', T(self.a_meta['genes_are_called'])),
+                                                        ('External gene calls', T(self.a_meta['external_gene_calls'])),
+                                                        ('External amino acid sequences', T(self.a_meta['external_gene_amino_acid_seqs'])),
                                                         ('K-mer size', self.a_meta['kmer_size']),
-                                                        ('Genes are called', self.a_meta['genes_are_called']),
-                                                        ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
+                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Splits consider gene calls', T(self.a_meta['splits_consider_gene_calls'])),
+                                                        ('SCG taxonomy was run', T(self.a_meta['scg_taxonomy_was_run'])),
                                                         ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
                                                         ('Summary reformatted contig names', self.reformat_contig_names),
                                                     ],
-                                        'description': mistune.markdown(self.p_meta['description']),
+                                        'description': markdown(self.p_meta['description']),
                                         }
 
         self.summary['max_shown_header_items'] = 10
@@ -887,9 +903,13 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
-            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
+            properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
+
             if self.completeness_data_available:
                 properties += ['percent_completion', 'percent_redundancy']
+
+            if self.scg_taxonomy:
+                properties += constants.levels_of_taxonomy
 
             for bin_name in self.summary['collection']:
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
@@ -1280,7 +1300,7 @@ class Bin:
 
         self.compute_basic_stats()
 
-        self.set_taxon_calls()
+        self.recover_scg_taxonomy()
 
         self.store_genes_basic_info()
 
@@ -1645,40 +1665,30 @@ class Bin:
         return output
 
 
-    def set_taxon_calls(self):
-        self.progress.update('Filling in taxonomy info ...')
+    def recover_scg_taxonomy(self):
+        self.bin_info_dict['scg_taxonomy'] = None
+        self.bin_info_dict['scg_taxonomy_simple'] = None
 
-        self.bin_info_dict['taxon_calls'] = []
-        self.bin_info_dict['taxon'] = 'Unknown'
-
-        if not self.summary.a_meta['gene_level_taxonomy_source']:
+        if self.summary.quick or not self.summary.a_meta['scg_taxonomy_was_run']:
             return
 
-        taxon_calls_counter = Counter()
-        for split_id in self.split_names:
-            if split_id in self.summary.splits_taxonomy_dict:
-                taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]] += 1
-            else:
-                taxon_calls_counter['None'] += 1
+        self.progress.update('Filling in taxonomy info ...')
 
-        taxon_calls = sorted([list(tc) for tc in list(taxon_calls_counter.items())], key=lambda x: int(x[1]), reverse=True)
+        scg_taxonomy_dict = self.summary.scg_taxonomy.estimate_for_list_of_splits(self.split_names, bin_name=self.bin_id)
+        self.bin_info_dict['scg_taxonomy_dict'] = scg_taxonomy_dict
 
-        self.bin_info_dict['taxon_calls'] = taxon_calls
+        self.bin_info_dict['scg_taxonomy_simple'] = 'N/A'
+        for level in constants.levels_of_taxonomy[::-1]:
+            if scg_taxonomy_dict['consensus_taxonomy'][level]:
+                self.bin_info_dict['scg_taxonomy_simple'] = scg_taxonomy_dict['consensus_taxonomy'][level]
+                break
 
-        # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        l = [tc for tc in taxon_calls if tc[0]]
-        num_calls = sum(taxon_calls_counter.values())
+        for level in constants.levels_of_taxonomy:
+            self.bin_info_dict[level] = scg_taxonomy_dict['consensus_taxonomy'][level]
 
-        # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        if l and l[0][1] > num_calls / 4.0:
-            # if l[0] is associated with more than 25 percent of splits:
-            self.bin_info_dict['taxon'] = l[0][0]
-        else:
-            self.bin_info_dict['taxon'] = 'Unknown'
-
-        # convert to percents..
-        for tc in taxon_calls:
-            tc[1] = tc[1] * 100.0 / num_calls
+        scg_taxonomy_output_headers = ['gene_callers_id', 'gene_name', 'percent_identity', 'supporting_consensus'] + constants.levels_of_taxonomy
+        scg_taxonomy_output = self.get_output_file_handle('scg_taxonomy_details.txt', just_the_path=True)
+        utils.store_dict_as_TAB_delimited_file(scg_taxonomy_dict['scgs'], scg_taxonomy_output, headers=scg_taxonomy_output_headers)
 
 
     def compute_basic_stats(self):
@@ -1691,7 +1701,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
+    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None, just_the_path=False):
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
 
         if os.path.exists(file_path) and not overwrite:
@@ -1702,7 +1712,7 @@ class Bin:
 
         self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
 
-        return open(file_path, 'w')
+        return file_path if just_the_path else open(file_path, 'w')
 
 
     def store_data_in_file(self, output_file_name_posfix, content):

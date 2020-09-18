@@ -8,4 +8,4 @@ Read our [user testimonials](http://merenlab.org/2017/07/12/testimonials/).
 
 ### Join the conversation
 
-[<img src="https://slackin-ezbpfhwsmh.now.sh/badge.svg">](https://slackin-ezbpfhwsmh.now.sh/)
+Click [this link](https://join.slack.com/t/anvio/shared_invite/zt-gy3g2wsi-nQ3U8_tnO3NafTx43UXrBw) to join our Slack team.

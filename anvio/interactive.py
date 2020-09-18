@@ -66,6 +66,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.states_table = None
         self.p_meta = {}
         self.title = 'Unknown Project'
+        self.anvio_news = None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.mode = A('mode')
@@ -105,7 +106,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
-
+        self.skip_news = A('skip_news')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments "
@@ -280,6 +281,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
+        self.get_anvio_news()
 
 
     def set_displayed_item_names(self):
@@ -1430,6 +1432,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def end(self):
         # FIXME: remove temp files and stuff
         pass
+
+
+    def get_anvio_news(self):
+        if self.skip_news:
+            return
+        else:
+            try:
+                self.anvio_news = utils.get_anvio_news()
+            except:
+                pass
 
 
 class StructureInteractive(VariabilitySuper, ContigsSuperclass):

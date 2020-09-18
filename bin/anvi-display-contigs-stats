@@ -33,11 +33,19 @@ def write_stats_to_file(tables, output_file):
     output_table = [['contigs_db'] + tables['header']] + tables['basic_stats'] + tables['hmm'] + tables['scg']
 
     f = open(output_file, 'w')
-    for line in output_table:
-        f.write("%s\n" % "\t".join(map(str, line)))
+
+    if anvio.AS_MARKDOWN:
+        f.write(f"|{'|'.join(map(str, output_table[0]))}|\n")
+        f.write(f"|{':--|' + '|'.join([':--:'] * (len(output_table[0][1:])))}|\n")
+        for line in output_table[1:]:
+            f.write(f"|{'|'.join(map(str, line))}|\n")
+    else:
+        for line in output_table:
+            f.write("%s\n" % "\t".join(map(str, line)))
+
     f.close()
 
-    run.info("Output file", output_file)
+    run.info(f"{'Output file (as markdown)' if anvio.AS_MARKDOWN else 'Output file'}", output_file)
 
 
 if __name__ == '__main__':

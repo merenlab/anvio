@@ -2,7 +2,6 @@
 """Interface to BinSanity."""
 import os
 import glob
-import shutil
 
 import anvio
 import anvio.utils as utils
@@ -82,10 +81,11 @@ class BinSanity:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, work_dir, threads=1):
+    def cluster(self, input_files, args, work_dir, threads=1, log_file_path=None):
         J = lambda p: os.path.join(work_dir, p)
 
-        log_path = J('logs.txt')
+        if not log_file_path:
+            log_file_path = J('logs.txt')
 
         translation = {
             'preference': 'p',
@@ -104,14 +104,14 @@ class BinSanity:
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
-        utils.run_command(cmd_line, log_path)
+        utils.run_command(cmd_line, log_file_path)
         self.progress.end()
 
 
         output_file_paths = glob.glob(J('*.fna'))
         if not len(output_file_paths):
             raise ConfigError("Some critical output files are missing. Please take a look at the "
-                              "log file: %s" % (log_path))
+                              "log file: %s" % (log_file_path))
 
         clusters = {}
         bin_count = 0

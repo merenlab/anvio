@@ -1,4 +1,4 @@
-An HMM source is a collection of one or more HMMs. 
+An HMM source is a collection of one or more HMMs. See the page for %(anvi-run-hmms)s for more information on HMMs. 
 
 HMMs for any set of genes can be put together and run on any anvi'o %(contigs-db)s which would yield an %(hmm-hits)s.
 
@@ -14,7 +14,7 @@ An anvi'o installation will include [multiple HMM sources](https://github.com/me
 %(anvi-run-hmms)s -c %(contigs-db)s
 {{ codestop }}
 
-Default HMM sources in anvi'o include,
+The default HMM sources in anvi'o include:
 
 * **Bacteria_71**: 71 single-copy core genes for domain bacteria that represent a modified version of the HMM profiles published by [Mike Lee](https://doi.org/10.1093/bioinformatics/btz188). The anvi'o collection excludes Ribosomal_S20p, PseudoU_synth_1, Exonuc_VII_S, 5-FTHF_cyc-lig, YidD and Peptidase_A8 occurred in Lee collection (as they were exceptionally redundant or rare among MAGs from various habitats), and includes Ribosomal_S3_C, Ribosomal_L5, Ribosomal_L2 to make it more compatible with [Hug et al](https://www.nature.com/articles/nmicrobiol201648)'s set of ribosomal proteins.
 * **Archaea_76**: 76 single-copy core genes for domain archaea by [Mike Lee](https://doi.org/10.1093/bioinformatics/btz188).

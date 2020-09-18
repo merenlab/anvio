@@ -1,4 +1,4 @@
-contigs	type	Özcan's_column
+contigs	type	test_column
 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001	ODD	
 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00002	EVEN	
 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00003	ODD	

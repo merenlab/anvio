@@ -21,7 +21,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['structure-db']
 __provides__ = ['protein-structure']
-__description__ = "Export .pdb structure files from a structure database."
+__description__ = "Export .pdb structure files from a structure database"
 
 
 def main(args):

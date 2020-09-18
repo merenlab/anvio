@@ -17,9 +17,9 @@ cp $files/mock_data_for_pangenomics/group-information.txt     $output_dir/pan_te
 cd $output_dir/pan_test
 
 INFO "Generating contigs databases for external genomes"
-anvi-script-FASTA-to-contigs-db 01.fa
-anvi-script-FASTA-to-contigs-db 02.fa
-anvi-script-FASTA-to-contigs-db 03.fa
+anvi-gen-contigs-database -f 01.fa -o 01.db
+anvi-gen-contigs-database -f 02.fa -o 02.db
+anvi-gen-contigs-database -f 03.fa -o 03.db
 
 INFO "Importing functions into the contigs database"
 anvi-import-functions -c 01.db -i 01-functions.txt

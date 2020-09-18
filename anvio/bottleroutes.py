@@ -35,6 +35,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.taxonomyops.scg as scgtaxonomyops
@@ -302,39 +303,12 @@ class BottleApplication(Bottle):
 
 
     def get_news(self):
-        ret = []
-        try:
-            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
-            news_items = news_markdown.text.split("***")
-
-            """ FORMAT
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            """
-            for news_item in news_items:
-                if len(news_item) < 5:
-                    # too short to parse, just skip it
-                    continue
-
-                ret.append({
-                        'date': news_item.split("(")[1].split(")")[0].strip(),
-                        'title': news_item.split("#")[1].split("(")[0].strip(),
-                        'content': news_item.split("#\n")[1].strip()
-                    })
-        except:
-            ret.append({
-                    'date': '',
-                    'title': 'Something has failed',
-                    'content': 'Anvi\'o failed to retrieve any news for you, maybe you do not have internet connection or something :('
-                })
-
-        return json.dumps(ret)
+        if self.interactive.anvio_news:
+            return json.dumps(self.interactive.anvio_news)
+        else:
+            return json.dumps([{'date': '',
+                                'title': 'No news for you :(',
+                                'content': "Anvi'o couldn't bring any news for you. You can bring yourself to the news by clicking [here](%s)." % constants.anvio_news_url}])
 
 
     def random_hash(self, size=8):
