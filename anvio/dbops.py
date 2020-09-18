@@ -4086,6 +4086,92 @@ class ContigsDatabase:
         self.db.disconnect()
 
 
+class TRNASeqDatabase:
+    def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
+        if not os.path.exists(db_path):
+            self.db_type = 'trnaseq'
+            self.db_version = anvio.__trnaseq__version__
+
+        self.db = None
+        self.db_path = db_path
+        self.meta_int_keys = [] # metadata to be stored as an int
+        self.meta_float_keys = [] # metadata to be stored as a float
+        self.table_info = [
+            (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
+            (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
+            (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
+            (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
+            (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
+            (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
+            (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types),
+            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)]
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+
+        if os.path.exists(self.db_path):
+            self.db_type = utils.get_db_type(self.db_path)
+            self.db_version = utils.get_required_version_for_db(self.db_path)
+
+            self.db = db.DB(self.db_path, self.db_version)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in self.meta_int_keys:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in self.meta_float_keys:
+                try:
+                    self.meta[key] = float(self.meta[key])
+                except:
+                    pass
+
+            self.run.info("%s database" % self.db_type, "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def touch(self):
+        is_db_ok_to_create(self.db_path, self.db_type)
+
+        self.db = db.DB(self.db_path, self.db_version, new_database=True)
+
+        for table_name, column_names, column_types in self.table_info:
+            self.db.create_table(table_name, column_names, column_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
+
+        # know thyself
+        self.db.set_meta_value('db_type', self.db_type)
+
+        self.disconnect()
+
+        self.run.info("%s database" % self.db_type, "A new database, %s, has been created." % self.db_path, quiet=self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 ####################################################################################################
 #
 #     TABLES
