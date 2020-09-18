@@ -288,6 +288,7 @@ class MultipleRuns:
                      ('min_contig_length', 'The minimum contig length (-M) values'),
                      ('max_contig_length', 'The maximum contig length (--max-contig-length) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
+                     ('min_indel_fraction', 'The minimum indel fraction that is worth reporting (--min-indel-fraction)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
@@ -471,6 +472,7 @@ class MultipleRuns:
         self.num_contigs = C('num_contigs')
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
+        self.min_indel_fraction = C('min_indel_fraction')
         self.report_variability_full = C('report_variability_full')
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
@@ -519,6 +521,7 @@ class MultipleRuns:
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
+                       'min_indel_fraction': self.min_indel_fraction,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.contigs_db_hash,
                        'description': self.description if self.description else '_No description is provided_'}

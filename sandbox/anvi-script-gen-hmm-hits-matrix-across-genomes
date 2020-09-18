@@ -19,8 +19,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["external-genomes", "internal-genomes", "hmm-source", "hmm-hits"]
+__provides__ = ["hmm-hits-matrix-txt"]
 __description__ = ("A simple script to generate a TAB-delimited file that reports the frequency "
-                   "of HMM hits for a given HMM source across contigs databases.")
+                   "of HMM hits for a given HMM source across contigs databases")
 
 
 run = terminal.Run()
