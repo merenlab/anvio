@@ -26,7 +26,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import TRNASeqDatabase
 from anvio.agglomeration import Agglomerator
 from anvio.sequence import Aligner, Dereplicator
-from anvio.constants_package.trnaseq import THREEPRIME_VARIANTS, TRNA_FEATURE_NAMES
+from anvio.constants import THREEPRIME_VARIANTS, TRNA_FEATURE_NAMES
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
