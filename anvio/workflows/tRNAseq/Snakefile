@@ -1,8 +1,15 @@
 # -*- coding: utf-8
 
+import argparse
+import os
+import pandas as pd
+
 import anvio
-import anvio.terminal as terminal
-import anvio.db
+import anvio.utils as u
+import anvio.workflows as w
+
+from anvio.workflows.trnaseq import TRNASeqWorkflow
+from anvio.errors import ConfigError
 
 
 __author__ = "Samuel Miller"
@@ -14,38 +21,18 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
-import argparse
-import os
-import pandas as pd
-import pysam
-import shutil
-import tempfile
-
-import anvio
-import anvio.db
-import anvio.terminal as terminal
-import anvio.utils as u
-import anvio.workflows as w
-
-from anvio.workflows.trnaseq import TRNASeqWorkflow
-from anvio.errors import ConfigError
-
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 M = TRNASeqWorkflow(argparse.Namespace(config=config))
 M.init()
 dirs_dict = M.dirs_dict
 
 
 rule trnaseq_workflow_target_rule:
-    ''' The target rule for the workflow '''
+    """The target rule for the workflow"""
     input: M.target_files
 
 
 rule make_iu_input:
-    ''' Create an Illumina-utils samples file from samples_txt (run once) '''
+    """Create an Illumina-utils samples file from samples_txt (run once)."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
@@ -63,10 +50,7 @@ rule make_iu_input:
 
 
 rule iu_gen_configs:
-    '''
-    Create an Illumina-utils config file for each sample+split pair
-    from the Illumina-utils samples file (run once)
-    '''
+    """Create an Illumina-utils config file for each sample+split pair from the Illumina-utils samples file (run once)."""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
     # The input file is marked "ancient" to prevent Snakemake from rerunning this step
@@ -83,7 +67,7 @@ rule iu_gen_configs:
 
 
 rule iu_merge_pairs:
-    ''' Merge paired-end reads using Illumina-utils '''
+    """Merge paired-end reads using Illumina-utils."""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
     input: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.ini")
@@ -110,7 +94,7 @@ rule iu_merge_pairs:
 
 
 rule gen_qc_report:
-    ''' Report all quality control statistics (run once) '''
+    """Report all quality control statistics (run once)."""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
     input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS"), sample_split_prefix=M.sample_split_prefixes)
@@ -152,7 +136,7 @@ def gunzip_fasta(fasta, log):
 
 
 rule anvi_reformat_fasta:
-    ''' Reformat the FASTA file with Anvi\'o-compliant deflines '''
+    """Reformat the FASTA file with Anvi\'o-compliant deflines."""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
     input: M.get_input_for_anvi_reformat_fasta
@@ -184,24 +168,35 @@ rule anvi_trnaseq:
     threads: M.T('anvi_trnaseq')
     resources: nodes = M.T('anvi_trnaseq')
     params:
+        overwrite_output_destinations = M.get_rule_param('anvi_trnaseq', '--overwrite-output-destinations'),
+        description = M.get_rule_param('anvi_trnaseq', '--description'),
         skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
-        write_buffer_size = M.get_rule_param('write_buffer_size', '--write-buffer-size'),
-        max_possible_alignments = M.get_rule_param('max_possible_alignments', '--max-possible-alignments')
+        write_checkpoints = M.get_rule_param('anvi_trnaseq', '--write-checkpoints'),
+        load_checkpoint = M.get_rule_param('anvi_trnaseq', '--load-checkpoint'),
+        write_buffer_size = M.get_rule_param('anvi_trnaseq', '--write-buffer-size'),
+        alignment_target_chunk_size = M.get_rule_param('anvi_trnaseq', '--alignment-target-chunk-size'),
+        fragment_mapping_query_chunk_length = M.get_rule_param('anvi_trnaseq', '--fragment-mapping-query-chunk-length'),
+        feature_param_file = M.get_rule_param('anvi_trnaseq', '--feature-param-file'),
+        min_trna_fragment_size = M.get_rule_param('anvi_trnaseq', '--min-trna-fragment-size'),
+        agglomeration_max_mismatch_freq = M.get_rule_param('anvi_trnaseq', '--agglomeration-max-mismatch-freq'),
+        min_modification_count = M.get_rule_param('anvi_trnaseq', '--min-modification-count'),
+        min_modification_fraction = M.get_rule_param('anvi_trnaseq', '--min-modification-fraction'),
+        max_deletion_size = M.get_rule_param('anvi_trnaseq', '--max-deletion-size'),
+        alignment_progress_interval = M.get_rule_param('anvi_trnaseq', '--alignment-progress-interval'),
+        agglomeration_progress_interval = M.get_rule_param('anvi_trnaseq', '--agglomeration-progress-interval')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
         output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
-        os.rmdir(output_dir)
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.skip_fasta_check} {params.write_buffer_size} {params.max_possible_alignments} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
+        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.overwrite_output_destinations} {params.description} {params.skip_fasta_check} {params.write_checkpoints} {params.load_checkpoint} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.feature_param_file} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.min_modification_count} {params.min_modification_fraction} {params.max_deletion_size} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
 
 if 'workflows/trnaseq' in workflow.included[0]:
     # Check if all program dependencies are met.
-    # For this line to be effective,
-    # there should be an initial dry run step --
+    # For this line to be effective, there should be an initial dry run step --
     # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.
     M.check_workflow_program_dependencies(workflow, dont_raise=True)
