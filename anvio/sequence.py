@@ -1,8 +1,9 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-"""Classes for basic sequence properties and manipulations."""
+"""Classes for sequence properties and manipulations"""
 
+import gc
 import functools
 import itertools
 import numpy as np
@@ -27,14 +28,6 @@ __version__ = anvio.__version__
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
-
-
-# Multiprocessing currently uses a version of pickle with a maximum byte string size of 4 GB.
-# See https://bugs.python.org/issue17560#msg289548
-# Large alignment and dereplication results may exceed this limit, so chunk the tasks.
-MP_CHUNK_SIZE = 1000
-# The chunk size for k-mer dict formation from target sequences in alignment.
-TARGET_CHUNK_SIZE = 5000
 
 
 class Codon:
@@ -308,8 +301,7 @@ class Kmerizer:
                                                         kmer_size=kmer_size,
                                                         include_full_length=include_full_length,
                                                         as_array=self.as_array),
-                                      zip(self.names, self.seqs),
-                                      chunksize=int(len(self.names) / self.num_threads) + 1)
+                                      zip(self.names, self.seqs))
         pool.close()
         pool.join()
 
@@ -317,8 +309,8 @@ class Kmerizer:
         for hashed_kmer, kmer_items in groupby(sorted([kmer_item
                                                        for seq_kmer_items in all_seq_kmer_items
                                                        for kmer_item in seq_kmer_items],
-                                                      key=itemgetter(0)),
-                                               key=itemgetter(0)):
+                                                      key=itemgetter(0)), # sort by k-mer hash string
+                                               key=itemgetter(0)): # group by k-mer hash string
             if sort_kmer_items:
                 kmer_dict[hashed_kmer] = tuple((name, seq_start_indices)
                                                for hashed_kmer, name, seq_start_indices, seq_length
@@ -582,6 +574,27 @@ class AlignedQuery:
         self.alignments = []
 
 
+    def __eq__(self, other):
+        if self.seq_string != other.seq_string:
+            return False
+
+        if self.name != other.name:
+            return False
+
+        if len(self.alignments) != len(other.alignments):
+            return False
+
+        for self_alignment, other_alignment in zip(
+            sorted(self.alignments, key=lambda alignment: (alignment.aligned_target.name,
+                                                           alignment.aligned_target.seq_string)),
+            sorted(other.alignments, key=lambda alignment: (alignment.aligned_target.name,
+                                                            alignment.aligned_target.seq_string))):
+            if self_alignment != other_alignment:
+                return False
+
+        return True
+
+
 class AlignedTarget:
     __slots__ = ('seq_string', 'name', 'alignments')
 
@@ -591,14 +604,25 @@ class AlignedTarget:
         self.alignments = []
 
 
-class MappableAlignedTarget:
-    __slots__ = ('seq_string', 'name', 'alignments', 'hit_another_target')
+    def __eq__(self, other):
+        if self.seq_string != other.seq_string:
+            return False
 
-    def __init__(self, seq_string, name=None):
-        self.seq_string = seq_string
-        self.name = name
-        self.alignments = []
-        self.hit_another_target = False
+        if self.name != other.name:
+            return False
+
+        if len(self.alignments) != len(other.alignments):
+            return False
+
+        for self_alignment, other_alignment in zip(
+            sorted(self.alignments, key=lambda alignment: (alignment.aligned_query.name,
+                                                           alignment.aligned_query.seq_string)),
+            sorted(other.alignments, key=lambda alignment: (alignment.aligned_query.name,
+                                                            alignment.aligned_query.seq_string))):
+            if self_alignment != other_alignment:
+                return False
+
+        return True
 
 
 class Alignment:
@@ -609,7 +633,7 @@ class Alignment:
                  'aligned_query',
                  'aligned_target')
 
-    def __init__(self, query_start, target_start, cigartuples, aligned_query=None, aligned_target=None):
+    def __init__(self, query_start, target_start, cigartuples, aligned_query, aligned_target):
         self.query_start = query_start
         self.target_start = target_start
         self.cigartuples = cigartuples
@@ -619,6 +643,28 @@ class Alignment:
         self.aligned_target = aligned_target
 
 
+    def __eq__(self, other):
+        if (self.query_start == other.query_start
+            and self.target_start == other.target_start
+            and self.cigartuples == other.cigartuples
+            and self.alignment_length == other.alignment_length
+            and self.aligned_query.seq_string == other.aligned_query.seq_string
+            and self.aligned_query.name == other.aligned_query.name
+            and self.aligned_target.seq_string == other.aligned_target.seq_string
+            and self.aligned_target.name == other.aligned_target.name):
+            return True
+
+        return False
+
+
+class MappableAlignedTarget(AlignedTarget):
+    __slots__ = ('hit_another_target', )
+
+    def __init__(self, seq_string, name=None):
+        super().__init__(seq_string, name=name)
+        self.hit_another_target = False
+
+
 class Aligner:
     def __init__(self, query_names, query_seq_strings, target_names, target_seq_strings, num_threads=1, progress=None):
         """Align query sequences to target sequences
@@ -626,13 +672,13 @@ class Aligner:
         Parameters
         ==========
         query_names : list
-            name strings corresponding to sequences in `query_seq_strings`
+            Name strings corresponding to sequences in `query_seq_strings`
 
         query_seq_strings : list
             Query sequence strings
 
         target_names : list
-            name strings corresponding to sequences in `target_seq_strings`
+            Name strings corresponding to sequences in `target_seq_strings`
 
         target_seq_strings : list
             Target sequence strings
@@ -661,13 +707,20 @@ class Aligner:
         self.progress = progress
 
 
-    def align(self, max_mismatch_freq=0):
+    def align(self, max_mismatch_freq=0, target_chunk_size=20000, query_progress_interval=100000):
         """Perform end-to-end alignment of queries to targets.
 
         Parameters
         ==========
         max_mismatch_freq : float
             Max mismatch frequency of alignment, on interval [0, 1)
+
+        target_chunk_size : int, 20000
+            The chunk size for k-mer dict formation from target sequences:
+            all queries are aligned to the first chunk of targets, then the second chunk, etc.
+
+        query_progress_interval : int, 100000
+            The number of queries aligned to a chunk of targets between progress statements
 
         Returns
         =======
@@ -707,29 +760,39 @@ class Aligner:
         target_seq_arrays = [np.frombuffer(s.encode('ascii'), np.uint8) for s in self.target_seq_strings]
 
         if short_query_seq_arrays:
+            reported_query_type = ''
             if self.progress:
                 if max_mismatch_freq == 0:
                     self.progress.update("Aligning...")
                 else:
                     self.progress.update("Aligning shorter queries...")
+                    reported_query_type = 'shorter than length %d ' % (short_query_threshold + 1)
             aligned_short_query_dict, aligned_short_target_dict = self.align_without_indels(short_query_names,
                                                                                             short_query_seq_arrays,
                                                                                             self.target_names,
                                                                                             target_seq_arrays,
                                                                                             short_seed_size,
-                                                                                            max_mismatch_freq=0)
+                                                                                            max_mismatch_freq=0,
+                                                                                            target_chunk_size=target_chunk_size,
+                                                                                            query_progress_interval=query_progress_interval,
+                                                                                            reported_query_type=reported_query_type)
         else:
             aligned_short_query_dict, aligned_short_target_dict = {}, {}
 
         if long_query_seq_arrays:
+            reported_query_type = ''
             if self.progress:
                 self.progress.update("Aligning longer queries...")
+                reported_query_type = 'at least length %d ' % (short_query_threshold + 1)
             aligned_long_query_dict, aligned_long_target_dict = self.align_without_indels(long_query_names,
                                                                                           long_query_seq_arrays,
                                                                                           self.target_names,
                                                                                           target_seq_arrays,
                                                                                           long_seed_size,
-                                                                                          max_mismatch_freq=max_mismatch_freq)
+                                                                                          max_mismatch_freq=max_mismatch_freq,
+                                                                                          target_chunk_size=target_chunk_size,
+                                                                                          query_progress_interval=query_progress_interval,
+                                                                                          reported_query_type=reported_query_type)
         else:
             aligned_long_query_dict, aligned_long_target_dict = {}, {}
 
@@ -747,22 +810,40 @@ class Aligner:
                              target_names,
                              target_seq_arrays,
                              seed_size,
-                             max_mismatch_freq=0):
+                             max_mismatch_freq=0,
+                             target_chunk_size=20000,
+                             query_progress_interval=100000,
+                             reported_query_type=''):
         """Match input queries to input targets without indels.
 
         Parameters
         ==========
         query_names : list
+            name strings corresponding to sequences from `Aligner.query_seq_strings`
 
         query_seq_arrays : list
+            Numpy arrays of numerically encoded nucleotides corresponding to sequences from `Aligner.query_seq_strings`
 
         target_names : list
+            Name strings corresponding to sequences in `target_seq_strings`
 
         target_seq_arrays : list
+            Numpy arrays of numerically encoded nucleotides corresponding to sequences from `Aligner.target_seq_strings`
 
         seed_size : int
+            Length of k-mers extracted from target sequences
 
         max_mismatch_freq : float, 0
+            Max allowed ratio of mismatches in alignment to length of alignment
+
+        target_chunk_size : int, 20000
+            Number of targets searched against at a time
+
+        query_progress_interval : int, 100000
+            Number of queries searched before progress in mapping against a chunk of targets is reported
+
+        reported_query_type : str, ''
+            One of '', 'shorter than length <l> ', and 'at least length <l> ' is used in the progress update
 
         Returns
         =======
@@ -773,40 +854,48 @@ class Aligner:
             Keys are target names and values are AlignedTarget objects.
         """
 
-        pool = mp.Pool(self.num_threads)
-
         aligned_query_dict = {}
         aligned_target_dict = {}
 
         total_query_count = len(query_names)
+        total_target_count = len(target_names)
 
-        target_chunk_start = 0
-        target_chunk = 1
-        target_chunk_stop = TARGET_CHUNK_SIZE * target_chunk
-        while target_chunk_start < len(target_names):
+        target_chunks = [(target_chunk_size * i, target_chunk_size * (i + 1))
+                         for i in range(total_target_count // target_chunk_size)]
+        if target_chunks:
+            if target_chunks[-1][1] < total_target_count:
+                target_chunks.append((target_chunks[-1][1], total_target_count))
+        else:
+            target_chunks.append((0, total_target_count))
+        target_chunk_iterator = iter(target_chunks)
+        for target_chunk_start, target_chunk_stop in target_chunk_iterator:
             if self.progress:
-                if target_chunk_stop <= len(target_names):
-                    self.progress.update("Mapping to targets %d-%d"
-                                         % (target_chunk_start + 1, target_chunk_stop))
-                else:
-                    self.progress.update("Mapping to targets %d-%d"
-                                         % (target_chunk_start + 1, len(target_names)))
+                self.progress.update("Mapping queries %sto targets %d-%d/%d"
+                                     % (reported_query_type, target_chunk_start + 1, target_chunk_stop, total_target_count))
 
             kmer_dict = Kmerizer(target_names[target_chunk_start: target_chunk_stop],
                                  target_seq_arrays[target_chunk_start: target_chunk_stop],
                                  num_threads=self.num_threads).get_kmer_dict(seed_size)
             target_seq_dict = dict(zip(target_names, target_seq_arrays))
 
+            manager = mp.Manager()
+            input_queue = manager.Queue()
+            output_queue = manager.Queue()
+            processes = []
+
+            for _ in range(self.num_threads):
+                p = mp.Process(target=align_without_indels_worker,
+                               args=(input_queue, output_queue, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq))
+                p.start()
+                processes.append(p)
+
+            for query_name_array in zip(query_names, query_seq_arrays):
+                input_queue.put(query_name_array)
+
             num_processed_queries = 0
-            for (query_name,
-                 query_seq_array,
-                 alignment_info) in pool.imap_unordered(functools.partial(align_without_indels_worker,
-                                                                          kmer_dict=kmer_dict,
-                                                                          seed_size=seed_size,
-                                                                          target_seq_dict=target_seq_dict,
-                                                                          max_mismatch_freq=max_mismatch_freq),
-                                                        zip(query_names, query_seq_arrays),
-                                                        chunksize=MP_CHUNK_SIZE):
+            for i in range(total_query_count):
+                query_name, query_seq_array, alignment_info = output_queue.get()
+
                 if alignment_info:
                     try:
                         aligned_query = aligned_query_dict[query_name]
@@ -826,24 +915,21 @@ class Aligner:
 
                 num_processed_queries += 1
                 if self.progress:
-                    if num_processed_queries % 10000 == 0:
-                        self.progress.update("%d/%d queries processed for the given targets"
-                                             % (num_processed_queries, total_query_count))
+                    if num_processed_queries % query_progress_interval == 0:
+                        self.progress.update("%d/%d %squeries processed for targets %d-%d"
+                                             % (num_processed_queries, total_query_count, reported_query_type, target_chunk_start + 1, target_chunk_stop))
 
-            target_chunk += 1
-            target_chunk_start = target_chunk_stop
-            target_chunk_stop = TARGET_CHUNK_SIZE * target_chunk
+            for p in processes:
+                p.terminate()
+                p.join()
+
+            del kmer_dict
+            del target_seq_dict
+            gc.collect()
 
             if self.progress:
-                self.progress.update("%d/%d queries processed for the given targets"
-                                    % (total_query_count, total_query_count))
-
-        pool.close()
-        pool.join()
-
-        if self.progress:
-            self.progress.update("%d/%d queries processed for the given targets"
-                                 % (total_query_count, total_query_count))
+                self.progress.update("%d/%d queries processed for targets %d-%d"
+                                     % (num_processed_queries, total_query_count, target_chunk_start + 1, target_chunk_stop))
 
         return aligned_query_dict, aligned_target_dict
 
@@ -854,7 +940,7 @@ class Aligner:
         Parameters
         ==========
         max_matches_per_query : numeric, float('inf')
-        Max number of targets to which query matches before satisfied with result
+            Max number of targets to which query matches before satisfied with result
 
         Returns
         =======
@@ -883,77 +969,83 @@ class Aligner:
         return matched_target_names
 
 
-def align_without_indels_worker(name_seq_pair, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
-    query_name, query_seq_array = name_seq_pair
-    mismatch_limit = int(max_mismatch_freq * query_seq_array.size)
+def align_without_indels_worker(input_queue, output_queue, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
+    while True:
+        query_name, query_seq_array = input_queue.get()
 
-    encountered_alignment_sites = []
-    alignment_info = []
-    for seed_query_start, seed_query_stop in zip(range(0, query_seq_array.size - seed_size + 1),
-                                                 range(seed_size, query_seq_array.size + 1)):
-        seed_hash = sha1(query_seq_array[seed_query_start:  ].tobytes()).hexdigest()
+        mismatch_limit = int(max_mismatch_freq * query_seq_array.size)
 
-        if seed_hash not in kmer_dict:
-            continue
+        encountered_alignment_sites = []
+        alignment_info = []
+        for seed_query_start, seed_query_stop in zip(range(0, query_seq_array.size - seed_size + 1),
+                                                     range(seed_size, query_seq_array.size + 1)):
+            seed_hash = sha1(query_seq_array[seed_query_start:  ].tobytes()).hexdigest()
 
-        for target_name, seed_target_starts in kmer_dict[seed_hash]:
-            for seed_target_start in seed_target_starts:
-                if seed_target_start < seed_query_start:
-                    continue
+            if seed_hash not in kmer_dict:
+                continue
 
-                target_seq_array = target_seq_dict[target_name]
-                seed_target_stop = seed_target_start + seed_size
+            for target_name, seed_target_starts in kmer_dict[seed_hash]:
+                for seed_target_start in seed_target_starts:
+                    if seed_target_start < seed_query_start:
+                        # An end-to-end alignment cannot be performed,
+                        # as the start of the query would not lie in the target.
+                        continue
 
-                if target_seq_array.size - seed_target_stop < query_seq_array.size - seed_query_stop:
-                    continue
+                    target_seq_array = target_seq_dict[target_name]
+                    seed_target_stop = seed_target_start + seed_size
 
-                alignment_target_start = seed_target_start - seed_query_start
+                    if target_seq_array.size - seed_target_stop < query_seq_array.size - seed_query_stop:
+                        # An end-to-end alignment cannot be performed,
+                        # as the end of the query would not lie in the target.
+                        continue
 
-                if (target_name, alignment_target_start) in encountered_alignment_sites:
-                    continue
+                    alignment_target_start = seed_target_start - seed_query_start
 
-                cigartuples = []
-                mismatch_count = 0
-                # Process the part of the alignment preceding the seed.
-                for is_match, group in groupby(query_seq_array[0: seed_query_start]
-                                               == target_seq_array[alignment_target_start: seed_target_start]):
-                    if is_match:
-                        cigartuples.append((7, sum(1 for _ in group)))
-                    else:
-                        num_mismatches = sum(1 for _ in group)
-                        cigartuples.append((8, num_mismatches))
-                        mismatch_count += num_mismatches
-                if mismatch_count > mismatch_limit:
-                    continue
+                    if (target_name, alignment_target_start) in encountered_alignment_sites:
+                        continue
 
-                # Process the matching seed in the alignment.
-                if cigartuples:
-                    if cigartuples[-1][0] == 7:
-                        cigartuples[-1] = (7, cigartuples[-1][1] + seed_size)
+                    cigartuples = []
+                    mismatch_count = 0
+                    # Process the part of the alignment preceding the seed.
+                    for is_match, group in groupby(query_seq_array[0: seed_query_start]
+                                                   == target_seq_array[alignment_target_start: seed_target_start]):
+                        if is_match:
+                            cigartuples.append((7, sum(1 for _ in group)))
+                        else:
+                            num_mismatches = sum(1 for _ in group)
+                            cigartuples.append((8, num_mismatches))
+                            mismatch_count += num_mismatches
+                    if mismatch_count > mismatch_limit:
+                        continue
+
+                    # Process the matching seed in the alignment.
+                    if cigartuples:
+                        if cigartuples[-1][0] == 7:
+                            cigartuples[-1] = (7, cigartuples[-1][1] + seed_size)
+                        else:
+                            cigartuples.append((7, seed_size))
                     else:
                         cigartuples.append((7, seed_size))
-                else:
-                    cigartuples.append((7, seed_size))
 
-                # Process the part of the alignment following the seed.
-                for is_match, group in groupby(query_seq_array[seed_query_stop: ]
-                                               == target_seq_array[seed_target_stop: seed_target_stop + query_seq_array.size - seed_query_stop]):
-                    if is_match:
-                        cigartuples.append((7, sum(1 for _ in group)))
-                    else:
-                        num_mismatches = sum(1 for _ in group)
-                        cigartuples.append((8, num_mismatches))
-                        mismatch_count += num_mismatches
-                if mismatch_count > mismatch_limit:
-                    continue
+                    # Process the part of the alignment following the seed.
+                    for is_match, group in groupby(query_seq_array[seed_query_stop: ]
+                                                   == target_seq_array[seed_target_stop: seed_target_stop + query_seq_array.size - seed_query_stop]):
+                        if is_match:
+                            cigartuples.append((7, sum(1 for _ in group)))
+                        else:
+                            num_mismatches = sum(1 for _ in group)
+                            cigartuples.append((8, num_mismatches))
+                            mismatch_count += num_mismatches
+                    if mismatch_count > mismatch_limit:
+                        continue
 
-                alignment_info.append((target_name,
-                                       target_seq_array,
-                                       alignment_target_start,
-                                       cigartuples))
-                encountered_alignment_sites.append((target_name, alignment_target_start))
+                    alignment_info.append((target_name,
+                                           target_seq_array,
+                                           alignment_target_start,
+                                           cigartuples))
+                    encountered_alignment_sites.append((target_name, alignment_target_start))
 
-    return query_name, query_seq_array, alignment_info
+        output_queue.put((query_name, query_seq_array, alignment_info))
 
 
 def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=float('inf')):
@@ -978,6 +1070,7 @@ def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=f
     matched_target_names : list
         List of target names with prefix subsequence match to query; max length equal to `int(max_matches_per_query)`
     """
+
     query_hash = sha1(query_seq[: kmer_size].encode('utf-8')).hexdigest()
 
     matched_target_names = []

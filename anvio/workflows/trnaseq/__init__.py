@@ -56,8 +56,22 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                                                               '--gzip-output',
                                                               '--simplify-names']
         rule_acceptable_params_dict['anvi_trnaseq'] = ['run',
+                                                       '--overwrite-output-destinations',
+                                                       '--description',
                                                        '--skip-fasta-check',
-                                                       '--write-buffer-size']
+                                                       '--write-checkpoints',
+                                                       '--load-checkpoint',
+                                                       '--write-buffer-size',
+                                                       '--alignment-target-chunk-size',
+                                                       '--fragment-mapping-query-chunk-length',
+                                                       '--feature-param-file',
+                                                       '--min-trna-fragment-size',
+                                                       '--agglomeration-max-mismatch-freq',
+                                                       '--min-modification-count',
+                                                       '--min-modification-fraction',
+                                                       '--max-deletion-size',
+                                                       '--alignment-progress-interval',
+                                                       '--agglomeration-progress-interval']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for certain accessible parameters
@@ -74,13 +88,15 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                                     '--gzip-output': False,
                                     '--simplify-names': True},
             'anvi_trnaseq': {'run': True,
+                             '--overwrite-output-destinations': False,
                              '--skip-fasta-check': True}})
 
         self.dirs_dict.update({'QC_DIR': '01_QC', 'IDENT_DIR': '02_IDENT'})
 
 
     def init(self):
-        """ This function is called from within the snakefile to initialize parameters. """
+        """This function is called from within the snakefile to initialize parameters."""
+
         super().init()
 
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
@@ -89,11 +105,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
         self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
 
-        # Load table of sample info from samples_txt (sample names, split types, paths to r1, r2)
+        # Load table of sample info from samples_txt (sample names, split types, paths to r1, r2).
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         filesnpaths.is_file_exists(self.samples_txt_file)
         try:
-            # An error will subsequently be raised in `check_samples_txt` if there is no header
+            # An error will subsequently be raised in `check_samples_txt` if there is no header.
             self.sample_info = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
@@ -110,7 +126,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             self.r2_paths = None
             self.fasta_paths = self.sample_info['fasta'].tolist()
 
-        # Determine which samples have which splits
+        # Determine which samples have which splits.
         self.sample_splits_dict = dict([(sample_name, []) for sample_name in self.sample_names])
         for sample_name, split_type in zip(self.sample_names, self.sample_info['split']):
             self.sample_splits_dict[sample_name].append(split_type)
@@ -215,8 +231,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
 
     def get_input_for_anvi_reformat_fasta(self, wildcards):
-        """
-        Input can come from two possible sources:
+        """Input can come from two possible sources:
         a user-supplied FASTA file
         or the FASTA file of merged reads generated from user-supplied FASTQ files.
         """
@@ -227,11 +242,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
-        """
-        Input can come from two possible sources:
+        """Input can come from two possible sources:
         a FASTA file with Anvi'o-compliant deflines supplied by the user
         or the reformatted FASTA file produced by the rule, anvi_reformat_fasta.
         """
+
         if self.run_anvi_reformat_fasta:
             return os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "-reformatted.fasta")
         return self.fasta_paths[self.sample_split_prefixes.index(wildcards.sample_split_prefix)]
