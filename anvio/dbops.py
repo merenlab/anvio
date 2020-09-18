@@ -68,7 +68,7 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
-                           'trnaseq': tRNASeqDatabase,
+                           'trnaseq': TRNASeqDatabase,
                            'pan': PanDatabase,
                            'genes': GenesDatabase}
 
