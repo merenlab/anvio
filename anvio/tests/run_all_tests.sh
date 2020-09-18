@@ -491,7 +491,7 @@ anvi-export-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 INFO "Remove a single data key from items additional data"
 anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                       --target-data-table items \
-                      --keys "Özcan's_column"
+                      --keys "test_column"
 
 INFO "Remove all data in items additional data"
 anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \

@@ -20,7 +20,6 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
@@ -429,6 +428,8 @@ class GenomeDescriptions(object):
 
 
     def init_external_genomes(self):
+        from anvio.summarizer import ContigSummarizer
+
         self.progress.new('Initializing external genomes', progress_total_items=len(self.external_genome_names))
         for genome_name in self.external_genome_names:
             c = self.genomes[genome_name]
@@ -436,7 +437,7 @@ class GenomeDescriptions(object):
 
             self.progress.update('working on %s' % (genome_name), increment=True)
 
-            contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
+            contigs_db_summary = ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -458,6 +459,8 @@ class GenomeDescriptions(object):
 
 
     def init_internal_genomes(self):
+        from anvio.summarizer import ContigSummarizer
+
         self.progress.new('Initializing internal genomes')
 
         # to not initialize things over and over again:
@@ -479,7 +482,7 @@ class GenomeDescriptions(object):
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
                 # to be able to use the same function for bins in collections:
-                contigs_summary = summarizer.ContigSummarizer(c['contigs_db_path'])
+                contigs_summary = ContigSummarizer(c['contigs_db_path'])
                 summary_from_contigs_db_summary = contigs_summary.get_contigs_db_info_dict(split_names=split_names_of_interest,
                                                                                            gene_caller_to_use=self.gene_caller)
 

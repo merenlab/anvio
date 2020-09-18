@@ -11,8 +11,9 @@ any later version.
 
 Please read the COPYING file.
 """
-
-__description__ = "A simple script to generate info from search tables"
+# __requires__ = ["contigs-db"]
+__provides__ = ["genes-stats"]
+__description__ = "A simple script to generate info from search tables, given a contigs-db"
 
 import sys
 import argparse

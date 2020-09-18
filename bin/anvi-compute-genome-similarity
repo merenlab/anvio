@@ -24,7 +24,7 @@ __tags__ = ['ani', 'dereplication', 'redundancy']
 __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
 __provides__ = ['genome-similarity']
 __description__ = ("Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database "
-                   "is given anvi'o will write computed output to misc data tables of Pan Database.")
+                   "is given anvi'o will write computed output to misc data tables of Pan Database")
 
 
 run = terminal.Run()

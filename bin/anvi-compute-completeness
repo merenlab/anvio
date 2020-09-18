@@ -21,6 +21,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["contigs-db", "splits-txt"]
 __description__ = "A script to generate completeness info for a given list of _splits_"
 
 

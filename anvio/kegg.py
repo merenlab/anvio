@@ -50,7 +50,6 @@ pp = terminal.pretty_print
 # output_suffix should be unique to a mode so that multiple output modes can be used at once
 # data_dict indicates which data dictionary is used for generating the output (modules or kofams)
 # headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
-# only_complete flag indicates whether to only include modules over completeness threshold in the output file
 # description is what is printed when --list-available-modes parameter is used
 OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'output_suffix': "kofam_hits_in_modules.txt",
@@ -58,7 +57,6 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'headers': ["unique_id", "kegg_module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
                                 "kofam_hit", "gene_caller_id", "contig"],
-                    'only_complete': False,
                     'description': "Information on each KOfam hit that belongs to a KEGG module"
                     },
                 'modules': {
@@ -67,21 +65,18 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
-                    'only_complete': False,
                     'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
                     'output_suffix': "modules_custom.txt",
                     'data_dict': "modules",
                     'headers': None,
-                    'only_complete': False,
                     'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
                     },
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
                     'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko", "ko_definition"],
-                    'only_complete': False,
                     'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
                 }
@@ -1153,6 +1148,8 @@ class KeggEstimatorArgs():
         self.output_modes = A('kegg_output_modes') or A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
+        self.matrix_include_metadata = True if A('include_metadata') else False
+        self.only_complete = True if A('only_complete') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
@@ -1170,6 +1167,7 @@ class KeggEstimatorArgs():
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.databases = None
             self.matrix_format = False # we won't be storing data from the single estimator anyway
+            self.matrix_include_metadata = False
 
         # parse requested output modes if necessary
         if isinstance(self.output_modes, str):
@@ -1266,7 +1264,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
             run.info("Matrix format", self.matrix_format)
+            run.info("Matrix will include metadata", self.matrix_include_metadata)
             run.info("Module completeness threshold", self.module_completion_threshold)
+            run.info("Only complete modules included in output", self.only_complete)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
@@ -1300,6 +1300,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "with. You do know that your matrices would each have only one column, right? Since that doesn't "
                              "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
                              "Anyhow, now is your chance to quietly go figure out what you are really doing.")
+
+        if self.matrix_include_metadata and not self.matrix_format:
+            raise ConfigError("The option --include-metadata is only relevant for --matrix-format, which in turn is only "
+                              "relevant for analyses involving multiple genomes or samples. Plz try again.")
 
 
         # init the base class
@@ -2525,7 +2529,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.only_complete)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
             else:
@@ -2619,6 +2623,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.matrix_format and args.kegg_output_modes:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
                               "like this, anvi'o is confused. :) ")
+        if self.matrix_include_metadata and not self.matrix_format:
+            raise ConfigError("The option --include-metadata is only available when you also use the flag --matrix-format "
+                              "to get matrix output. :) Plz try again.")
 
         # set name header
         if self.metagenomes_file:
@@ -2699,7 +2706,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
-        g.load_genomes_descriptions(skip_functions=True)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
 
         # metagenome mode must be off
         if self.metagenome_mode:
@@ -2846,7 +2853,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
             if single_estimator.available_modes[output_mode]["data_dict"] == 'modules':
-                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
+                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.only_complete)
             elif self.available_modes[output_mode]["data_dict"] == 'kofams':
                 single_dict = single_estimator.generate_output_dict_for_kofams(ko_superdict_multi[metagenome_name], headers_to_include=header_list)
             else:
@@ -2904,19 +2911,32 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # module stats that each will be put in separate matrix file
         # stat is key, corresponding header in df is value
         module_matrix_stats = {"completeness" : "module_completeness", "presence" : "module_is_complete"}
+        # per-module metadata to include, if that option is selected. Must be subset of 'modules' mode output headers
+        module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
 
         for stat, header in module_matrix_stats.items():
             matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
 
-            cols = ["module"] + df.index.levels[0].tolist()
+            if self.matrix_include_metadata:
+                cols = ["module"] + module_metadata_headers + df.index.levels[0].tolist()
+            else:
+                cols = ["module"] + df.index.levels[0].tolist()
             rows = df.index.levels[1].tolist()
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
 
+            metadata_df = df[module_metadata_headers].reset_index().drop_duplicates(subset='kegg_module')
+            metadata_df.set_index(['kegg_module'], inplace=True)
+
             with open(output_file_path, 'w') as output:
                 output.write('\t'.join(cols) + '\n')
-                for i in range(0, len(matrix)):
-                    output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+                for i in range(0, len(rows)):
+                    if self.matrix_include_metadata:
+                        row_index = rows[i]
+                        metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in module_metadata_headers])
+                        output.write('\t'.join([rows[i]] + [metadata_string] + ['%.2f' % c for c in matrix[i]]) + '\n')
+                    else:
+                        output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
 
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
@@ -2925,7 +2945,28 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         df.set_index(['db_name'], inplace=True)
         ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
-        ko_counts.to_csv(output_file_path, sep='\t')
+
+        # if user wants to include metadata, things are not so simple
+        if self.matrix_include_metadata:
+            ko_metadata_headers = ["ko_definition", "modules_with_ko"]
+            cols = ["ko"] + ko_metadata_headers + ko_counts.columns.tolist()
+            rows = ko_counts.index.tolist()
+
+            df.reset_index(inplace=True)
+            df.set_index('ko', inplace=True)
+            metadata_df = df[ko_metadata_headers].reset_index().drop_duplicates(subset='ko')
+            metadata_df.set_index(['ko'], inplace=True)
+
+            with open(output_file_path, 'w') as output:
+                output.write("\t".join(cols) + '\n')
+                for i in range(0, len(rows)):
+                    row_index = rows[i]
+                    metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in ko_metadata_headers])
+                    ko_counts_string = "\t".join([str(ko_counts.loc[rows[i], db_name]) for db_name in ko_counts.columns.tolist()])
+                    output.write('\t'.join([rows[i]] + [metadata_string] + [ko_counts_string]) + '\n')
+
+        else:
+            ko_counts.to_csv(output_file_path, sep='\t')
         self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
 

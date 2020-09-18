@@ -628,7 +628,12 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
         header_text = '\t'.join(headers)
-    f.write('%s\n' % header_text)
+
+    if anvio.AS_MARKDOWN:
+        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
+    else:
+        f.write('%s\n' % header_text)
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -660,9 +665,13 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
-        f.write('%s\n' % '\t'.join(line))
+        if anvio.AS_MARKDOWN:
+            f.write(f"|{'|'.join(map(str, line))}|\n")
+        else:
+            f.write('%s\n' % '\t'.join(line))
 
     f.close()
+
     return output_path
 
 
@@ -2446,6 +2455,8 @@ def check_contig_names(contig_names, dont_raise=False):
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
 
+    from anvio.summarizer import ArgsTemplateForSummarizerClass, ProfileSummarizer, Bin
+
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
                           "files. Although anvi'o can technically go ahead and create a temporary "
@@ -2490,7 +2501,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
         # when we are here, all we have are interanl genomes as genome subsets.
         for genome_subset in genome_subsets.values():
-            args = anvio.summarizer.ArgsTemplateForSummarizerClass()
+            args = ArgsTemplateForSummarizerClass()
             args.contigs_db = genome_subset['contigs_db_path']
             args.profile_db = genome_subset['profile_db_path']
             args.collection_name = genome_subset['collection_id']
@@ -2499,7 +2510,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
             # note that we're initializing the summary class only for once for a given
             # genome subset
-            summary = anvio.summarizer.ProfileSummarizer(args, r=Run(verbose=False))
+            summary = ProfileSummarizer(args, r=Run(verbose=False))
             summary.init()
 
             for genome_name, bin_name in genome_subset['genome_name_bin_name_tpl']:
@@ -2511,7 +2522,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
                 file_paths.add(path)
                 name_to_path[genome_name] = path
 
-                bin_summary = anvio.summarizer.Bin(summary, bin_name)
+                bin_summary = Bin(summary, bin_name)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
@@ -3690,11 +3701,14 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     run.info('Downloaded successfully', output_file_path)
 
 
-def get_remote_file_content(url, gzipped=False):
+def get_remote_file_content(url, gzipped=False, timeout=None):
     import requests
     from io import BytesIO
 
-    remote_file = requests.get(url)
+    if timeout:
+        remote_file = requests.get(url, timeout=timeout)
+    else:
+        remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
         raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
@@ -3705,6 +3719,45 @@ def get_remote_file_content(url, gzipped=False):
         return fg.read().decode('utf-8')
 
     return remote_file.content.decode('utf-8')
+
+
+def get_anvio_news():
+    """Reads news from anvi'o repository.
+
+    The format of the news file is expected to be like this:
+
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+
+    Returns
+    =======
+    news : list
+        A list of dictionaries per news item
+    """
+
+    try:
+        news = get_remote_file_content(constants.anvio_news_url, timeout=1)
+    except Exception as e:
+        raise ConfigError(f"Something went wrong reading the anvi'o news :/ This is what the "
+                          f"downstream library had to say: {e}")
+
+    news_items = []
+    for news_item in news.split('***'):
+        if len(news_item) < 5:
+            # too short to parse, just skip it
+            continue
+
+        news_items.append({'date': news_item.split("(")[1].split(")")[0].strip(),
+                           'title': news_item.split("#")[1].split("(")[0].strip(),
+                           'content': news_item.split("#\n")[1].strip()})
+
+    return news_items
 
 
 def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
@@ -3862,7 +3915,7 @@ def check_h5py_module():
     except:
         raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
                           "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environmnet "
+                          "and really unimportant. If you run `pip install h5py` in your Python virtual environment "
                           "for anvi'o, and try running the migration program again things should be alright.")
 
 

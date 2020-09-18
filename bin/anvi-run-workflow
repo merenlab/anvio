@@ -19,7 +19,7 @@ __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-wo
 __tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics"]
 __email__ = "alon.shaiber@gmail.com"
 __description__ = ("Execute, manage, parallelize, and troubleshoot entire \'omics workflows which "
-                   "chain together anvi\'o and 3rd party programs.")
+                   "chain together anvi\'o and 3rd party programs")
 
 
 run = terminal.Run()

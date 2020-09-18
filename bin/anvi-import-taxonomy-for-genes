@@ -21,7 +21,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'gene-taxonomy-txt',]
 __provides__ = ['gene-taxonomy',]
-__description__ = "Import gene-level taxonomy into an anvi'o contigs database."
+__description__ = "Import gene-level taxonomy into an anvi'o contigs database"
 
 
 run = terminal.Run()
