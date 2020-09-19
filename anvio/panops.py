@@ -509,7 +509,7 @@ class Pangenome(object):
 
            The synteny in this context is defined by the gene caller ids. Gene caller ids
            follow a numerical order in anvi'o contigs databases for genes that are coming
-           from the same contig. Of course, the synteny does not mean much for genmes that
+           from the same contig. Of course, the synteny does not mean much for genes that
            fragmented into multiple contigs.
         """
 
@@ -531,7 +531,7 @@ class Pangenome(object):
             dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(gene_clusters_order_based_on_genome_synteny), order_data_type_newick=False, run=self.run)
 
         gene_cluster_gene_cluster_edges = []
-        # network description of gene_cluster-gene_cluster relationshops given the gene synteny.
+        # network description of gene_cluster-gene_cluster relationships given the gene synteny.
         gene_ordered_list_of_gene_clusters = list(zip(df.gene_caller_id, df.gene_cluster_id))
         for index in range(1, len(gene_ordered_list_of_gene_clusters)):
             (GENE_A, gene_cluster_A), (GENE_B, gene_cluster_B) = gene_ordered_list_of_gene_clusters[index-1], gene_ordered_list_of_gene_clusters[index]

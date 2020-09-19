@@ -1263,6 +1263,51 @@ def get_all_ids_from_fasta(input_file):
     return ids
 
 
+def check_fasta_id_formatting(fasta_path):
+    fasta = u.SequenceSource(fasta_path)
+
+    while next(fasta):
+        characters_anvio_doesnt_like = [
+            c for c in set(fasta.id) if c not in constants.allowed_chars]
+
+        if len(characters_anvio_doesnt_like):
+            raise ConfigError(
+                "At least one of the deflines in your FASTA file "
+                "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                "You can either use the script, `anvi-script-reformat-fasta`, "
+                "to take care of this issue, or read this section in the tutorial "
+                "to understand the reason behind this requirement "
+                "(Anvi'o is very upset for making you do this): %s"
+                % "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file")
+
+        try:
+            int(fasta.id)
+            is_int = True
+        except:
+            is_int = False
+        if is_int:
+            raise ConfigError(
+                "At least one of the deflines in your FASTA file "
+                "(well, this one to be precise: '%s') looks like a number. "
+                "For reasons we can't really justify, "
+                "Anvi'o does not like those numeric names, "
+                "and hereby asks you to make sure every tRNA-seq name "
+                "contains at least one alphanumeric character :/ "
+                "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                "your endless patience with such eccentric requests. "
+                "You the real MVP." % fasta.id)
+
+    fasta.close()
+
+
+def check_fasta_id_uniqueness(fasta_path):
+    all_ids_in_FASTA = get_all_ids_from_fasta(fasta_path)
+    total_num_seqs = len(all_ids_in_FASTA)
+    if total_num_seqs != len(set(all_ids_in_FASTA)):
+        raise ConfigError(
+            "Every sequence in the input FASTA file must have a unique ID. You know...")
+
+
 def get_ordinal_from_integer(num):
     """append 'st', 'nd', or 'th' to integer to make categorical. num must be integer"""
     return'%d%s' % (num, {11:'th', 12:'th', 13:'th'}.get(num%100, {1:'st', 2:'nd', 3:'rd'}.get(num%10,'th')))
@@ -3450,6 +3495,13 @@ def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
         raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+    return True
+
+
+def is_tRNAseq_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'tRNAseq':
+        raise ConfigError("'%s' is not an anvi'o tRNAseq database." % db_path)
     return True
 
 

@@ -149,3 +149,10 @@ class ModellerScriptError(AnvioError):
         self.e = remove_spaces(e)
         self.error_type = 'Modeller Script Error'
         AnvioError.__init__(self)
+
+
+class TRNAIdentifierError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'tRNA Identifier Error'
+        AnvioError.__init__(self)

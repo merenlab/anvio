@@ -65,7 +65,7 @@ class BAMFileObject(pysam.AlignmentFile):
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
         """Returns an read iterator that trims overhanging reads
 
-        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
+        Like pysam.AlignmentFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop.
         """
 
