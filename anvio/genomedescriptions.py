@@ -1,11 +1,11 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    A module to dealing with genome storages.
+    A module for dealing with genome storages.
 
     Pangenomic workflow heavily uses this module.
 
-    Ad hoc access to make sene of internal or external genome descriptions is also welcome.
+    Ad hoc access to make sense of internal or external genome descriptions is also welcome.
 """
 
 import os

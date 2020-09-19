@@ -53,6 +53,54 @@ default_scgs_for_taxonomy = ['Ribosomal_S2',
                              'Ribosomal_L27A']
 default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
+default_trna_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/TRNA_TAXONOMY')
+default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'ACG', 'ACT', 'AGA', 'AGC',
+                                   'AGG', 'AGT', 'ATA', 'ATC', 'ATG', 'ATT', 'CAA', 'CAC', 'CAG', 'CAT',
+                                   'CCA', 'CCC', 'CCG', 'CCT', 'CGA', 'CGC', 'CGG', 'CGT', 'CTC', 'CTG',
+                                   'CTT', 'GAA', 'GAC', 'GAG', 'GAT', 'GCA', 'GCC', 'GCG', 'GCT', 'GGA',
+                                   'GGC', 'GGG', 'GGT', 'GTA', 'GTC', 'GTG', 'GTT', 'TAA', 'TAC', 'TAG',
+                                   'TAT', 'TCC', 'TCG', 'TCT', 'TGA', 'TGC', 'TGG', 'TGT', 'TTC', 'TTG',
+                                   'TTT']
+default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
+
+THREEPRIME_VARIANTS = ['CCA', 'CC', 'C',
+                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
+                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
+                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
+                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
+                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
+
+TRNA_FEATURE_NAMES = ['trna_his_position_0',
+                      'acceptor_stem',
+                      'fiveprime_acceptor_stem_sequence',
+                      'position_8',
+                      'position_9',
+                      'd_arm',
+                      'd_stem',
+                      'fiveprime_d_stem_sequence',
+                      'd_loop',
+                      'threeprime_d_stem_sequence',
+                      'position_26',
+                      'anticodon_arm',
+                      'anticodon_stem',
+                      'fiveprime_anticodon_stem_sequence',
+                      'anticodon_loop',
+                      'threeprime_anticodon_stem_sequence',
+                      'v_loop',
+                      't_arm',
+                      't_stem',
+                      'fiveprime_t_stem_sequence',
+                      't_loop',
+                      'threeprime_t_stem_sequence',
+                      'threeprime_acceptor_stem_sequence',
+                      'discriminator',
+                      'acceptor']
+
+# the longest known tRNA (selenocysteine) is 101 bp
+# ref: Santesmasses, Mariotti & Guigo, 2017, "Computational identification of the selenocysteine tRNA (tRNASec) in genomes," PLoS Comp. Biol., 13(2): e1005383
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
+LONGEST_KNOWN_TRNA_LENGTH = 101
+
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
 blank_default = "tnf"
@@ -147,6 +195,22 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 
 unambiguous_nucleotides = set(list('ATCG'))
 nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
+
+WC_base_pairs = {
+    'A': ('T', ),
+    'T': ('A', ),
+    'C': ('G', ),
+    'G': ('C', ),
+    'N': ('', )
+}
+# In tRNA, wobble base pairing, including G/U, is common
+WC_plus_wobble_base_pairs = {
+    'A': ('T', ),
+    'T': ('A', 'G'),
+    'C': ('G', ),
+    'G': ('C', 'T'),
+    'N': ('N', )
+}
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},

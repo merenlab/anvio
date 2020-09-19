@@ -67,6 +67,7 @@ class SequencesForHMMHits:
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             contigs_db.disconnect()
+            progress.reset()
             raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources "
                               "that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
 
