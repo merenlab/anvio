@@ -7,7 +7,7 @@ anvi-export-gene-calls -c %(contigs-db)s \
                        --list-gene-callers
 {{ codestop }}
 
-By default, this list will probably include [Prodigal](https://github.com/hyattpd/Prodigal), which identifies genes when creating a %(contigs-db)s. For in this example, we'll use export Prodigal-identified genes. 
+By default, this list will probably include [Prodigal](https://github.com/hyattpd/Prodigal), which identifies genes when creating a %(contigs-db)s. For in this example, we'll use export Prodigal-identified genes. Note that you can also get genes from more than one source by providing several gene-callers in a comma-delimited list.  
 
 Then, you can export all of your gene callers in an orderly fashion by running 
 
