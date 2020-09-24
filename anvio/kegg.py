@@ -2279,8 +2279,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if not headers_to_include:
-            headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
-            "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+            headers_to_include = set(OUTPUT_MODES['modules']['headers'])
         else:
             headers_to_include = set(headers_to_include)
 
