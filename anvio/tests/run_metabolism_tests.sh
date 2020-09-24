@@ -5,6 +5,9 @@ source 00.sh
 SETUP_WITH_OUTPUT_DIR $1
 #####################################
 
+INFO "Migrating test databases (just in case they aren't up to date)"
+anvi-migrate --migrate-dbs-safely $files/data/genomes/bacteria/*.db $files/data/genomes/archaea/*.db $files/data/metagenomes/human_gut/IGD_SUBSET/*.db
+
 INFO "Setting up the metabolism test directory"
 mkdir $output_dir/metabolism_test
 cp $files/data/genomes/bacteria/*.db                    $output_dir/metabolism_test
