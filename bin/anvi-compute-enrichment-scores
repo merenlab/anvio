@@ -51,7 +51,7 @@ def main(args):
     if (args.contigs_db and not args.pan_or_profile_db):
         raise ConfigError("For input option #3, you must provide both a contigs db and a profile db, but you haven't given anvi'o the profile db.")
 
-    db_type = utils.get_db_type(args.pan_or_profile_db)
+    db_type = utils.get_db_type(args.pan_or_profile_db) if args.pan_or_profile_db else None
 
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db
