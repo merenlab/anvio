@@ -3620,7 +3620,6 @@ class KeggModulesDatabase(KeggContext):
 
         where_clause_string = "data_name = 'ORTHOLOGY' AND data_value = '%s'" % (ko_num)
         dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True, error_if_no_data=False)
-        print(dict_from_mod_table)
         if not dict_from_mod_table:
             self.run.warning("get_ko_definition() speaking: No ORTHOLOGY entry found for KO %s - returning None."
                             % (ko_num))
