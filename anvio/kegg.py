@@ -3658,7 +3658,10 @@ class KeggModulesDatabase(KeggContext):
         outputs = set([])
 
         for rxn_string in reactions_list:
-            split_rxn = rxn_string.split('->')
+            if '<->' in rxn_string:
+                split_rxn = rxn_string.split('<->')
+            else:
+                split_rxn = rxn_string.split('->')
             if len(split_rxn) != 2:
                 raise ConfigError(f"get_kegg_module_compound_lists('{mnum}') ran into an issue splitting the reaction {rxn_string}"
                                   "into 2 parts. Here is what the split looks like: {split_rxn}")
