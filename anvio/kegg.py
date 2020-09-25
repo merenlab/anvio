@@ -82,7 +82,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                 }
 # dict containing matrix headers of information that we can output in custom mode
 # key corresponds to the header's key in output dictionary (returned from generate_output_dict_for_modules() function)
-# cdict_key is the header's key in module-level completion dictionary (if any)
+# cdict_key is the header's key in modules or kofams data dictionary (if any)
 # mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
 # description is printed when --list-available-output-headers parameter is used
 OUTPUT_HEADERS = {'unique_id' : {
@@ -130,6 +130,24 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'mode_type': 'modules',
                         'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
                                        "in terms of the KOS that belong to the module"
+                        },
+                  'module_substrates' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Comma-separated list of compounds that serve as initial input to the metabolic pathway "
+                                       "(that is, substrate(s) to the initial reaction(s) in the pathway)"
+                        },
+                  'module_products' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Comma-separated list of compounds that serve as final output from the metabolic pathway "
+                                       "(that is, product(s) of the final reaction(s) in the pathway)"
+                        },
+                  'module_intermediates' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Comma-separated list of compounds that are intermediates the metabolic pathway "
+                                       "(compounds that are both outputs and inputs of reaction(s) in the pathway)"
                         },
                   'gene_caller_ids_in_module': {
                         'cdict_key': None,
