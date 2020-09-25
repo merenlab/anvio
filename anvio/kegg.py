@@ -3678,6 +3678,7 @@ class KeggModulesDatabase(KeggContext):
         """This function returns a dictionary mapping compound identifiers to their human-readable name for the given module
 
         If the module has no compounds, this function will either raise an error or return an empty dictionary depending on raise_error_if_no_data.
+        If a compound doesn't have a human-readable name, then the compound identifier is used as the 'name'
 
         PARAMETERS
         ==========
@@ -3693,6 +3694,9 @@ class KeggModulesDatabase(KeggContext):
         for key,row in dict_from_mod_table.items():
             compound = row['data_value']
             compound_name = row['data_definition']
+            # if compound has no human-readable name in the database, we use the compound ID after all
+            if not compound_name:
+                compound_name = compound
             compound_dict[compound] = compound_name
 
         return compound_dict
