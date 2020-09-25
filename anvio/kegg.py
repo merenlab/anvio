@@ -2309,7 +2309,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
                                      "kofam_hits_in_module", "gene_caller_ids_in_module"])
-        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition"])
+        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
+                                    "module_substrates", "module_products", "module_intermediates"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
@@ -2337,6 +2338,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 module_cat = mnum_class_dict["category"]
                 module_subcat = mnum_class_dict["subcategory"]
                 module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
+                module_substrate_list = None # TODO FIXME
+                module_product_list = None
+                module_intermediate_list = None
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):
@@ -2391,6 +2395,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     d[unique_id]["module_subcategory"] = module_subcat
                                 if "module_definition" in headers_to_include:
                                     d[unique_id]["module_definition"] = module_def
+                                if "module_substrates" in headers_to_include:
+                                    d[unique_id]["module_substrates"] = module_substrate_list
+                                if "module_products" in headers_to_include:
+                                    d[unique_id]["module_products"] = module_product_list
+                                if "module_intermediates" in headers_to_include:
+                                    d[unique_id]["module_intermediates"] = module_intermediate_list
 
                                 # comma-separated lists of KOs and gene calls in module
                                 if "kofam_hits_in_module" in headers_to_include:
@@ -2431,6 +2441,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[unique_id]["module_subcategory"] = module_subcat
                     if "module_definition" in headers_to_include:
                         d[unique_id]["module_definition"] = module_def
+                    if "module_substrates" in headers_to_include:
+                        d[unique_id]["module_substrates"] = module_substrate_list
+                    if "module_products" in headers_to_include:
+                        d[unique_id]["module_products"] = module_product_list
+                    if "module_intermediates" in headers_to_include:
+                        d[unique_id]["module_intermediates"] = module_intermediate_list
 
                     # comma-separated lists of KOs and gene calls in module
                     if "kofam_hits_in_module" in headers_to_include:
