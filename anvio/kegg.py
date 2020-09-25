@@ -2394,11 +2394,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "module_definition" in headers_to_include:
                                     d[unique_id]["module_definition"] = module_def
                                 if "module_substrates" in headers_to_include:
-                                    d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                                    if module_substrate_list:
+                                        d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                                    else:
+                                        d[unique_id]["module_substrates"] = "None"
                                 if "module_products" in headers_to_include:
-                                    d[unique_id]["module_products"] = ",".join(module_product_list)
+                                    if module_product_list:
+                                        d[unique_id]["module_products"] = ",".join(module_product_list)
+                                    else:
+                                        d[unique_id]["module_products"] = "None"
                                 if "module_intermediates" in headers_to_include:
-                                    d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                                    if module_intermediate_list:
+                                        d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                                    else:
+                                        d[unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
                                 if "kofam_hits_in_module" in headers_to_include:
@@ -2440,11 +2449,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if "module_definition" in headers_to_include:
                         d[unique_id]["module_definition"] = module_def
                     if "module_substrates" in headers_to_include:
-                        d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                        if module_substrate_list:
+                            d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                        else:
+                            d[unique_id]["module_substrates"] = "None"
                     if "module_products" in headers_to_include:
-                        d[unique_id]["module_products"] = ",".join(module_product_list)
+                        if module_product_list:
+                            d[unique_id]["module_products"] = ",".join(module_product_list)
+                        else:
+                            d[unique_id]["module_products"] = "None"
                     if "module_intermediates" in headers_to_include:
-                        d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                        if module_intermediate_list:
+                            d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                        else:
+                            d[unique_id]["module_intermediates"] = "None"
 
                     # comma-separated lists of KOs and gene calls in module
                     if "kofam_hits_in_module" in headers_to_include:
