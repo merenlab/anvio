@@ -3630,6 +3630,97 @@ class KeggModulesDatabase(KeggContext):
             return dict_from_mod_table[0]['data_definition']
 
 
+    def get_kegg_module_compound_lists(self, mnum):
+        """This function returns a list of substrates, a list of intermediates, and a list of products for the given module.
+
+        We define 'substrate' to be any compound that is an input to but not an output from reactions in the module pathway.
+        Likewise, a 'product' is any compound that is an output from but not an input to reactions in the module pathway.
+        'Intermediate' is a compound that is both an input to and and output from reactions in the pathway.
+
+        Note that this function refers to compounds by their KEGG identifier (format is 'C#####' where # is a digit).
+        A separate function is used to convert these lists to human-readable compound names.
+
+        RETURNS
+        =======
+        substrates : list
+            Compounds that are only inputs to the module's metabolic pathway
+        intermediates : list
+            Compounds that are both outputs and inputs in the module's metabolic reactions
+        products : list
+            Compunds that are only outputs from the module's metabolic pathway
+        """
+
+        reactions_list = self.get_data_definition_entries_for_module_by_data_name(mnum, "REACTION")
+        if not reactions_list:
+            if anvio.DEBUG:
+                self.run.warning(f"No REACTION entries found for module {mnum}, so no compounds will be returned by "
+                                 "get_kegg_module_compound_lists()")
+
+        inputs = set([])
+        outputs = set([])
+
+        for rxn_string in reactions_list:
+            split_rxn = rxn_string.split('->')
+            if len(split_rxn) != 2:
+                raise ConfigError(f"get_kegg_module_compound_lists('{mnum}') ran into an issue splitting the reaction {rxn_string}"
+                                  "into 2 parts. Here is what the split looks like: {split_rxn}")
+            rxn_inputs = [x.strip() for x in split_rxn[0].split('+')]
+            rxn_outputs = [x.strip() for x in split_rxn[1].split('+')]
+            inputs = inputs.union(set(rxn_inputs))
+            outputs = outputs.union(set(rxn_outputs))
+
+        substrates = inputs.difference(outputs)
+        products = outputs.difference(inputs)
+        intermediates = inputs.intersection(outputs)
+
+        return list(substrates), list(intermediates), list(products)
+
+
+    def get_compound_dict_for_module(self, mnum, raise_error_if_no_data=False):
+        """This function returns a dictionary mapping compound identifiers to their human-readable name for the given module
+
+        If the module has no compounds, this function will either raise an error or return an empty dictionary depending on raise_error_if_no_data.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            module number to get compounds for
+        raise_error_if_no_data : bool
+            whether to quit all things if we don't get what we want
+        """
+
+        where_clause_string = "data_name = 'COMPOUND' AND module = '%s'" % (mnum)
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True, error_if_no_data=raise_error_if_no_data)
+        compound_dict = {}
+        for key,row in dict_from_mod_table.items():
+            compound = row['data_value']
+            compound_name = row['data_definition']
+            compound_dict[compound] = compound_name
+
+        return compound_dict
+
+
+    def get_human_readable_compound_lists_for_module(self, mnum):
+        """This function returns a human-readable list of substrates, a list of intermediates, and a list of products for the given module.
+
+        We define 'substrate' to be any compound that is an input to but not an output from reactions in the module pathway.
+        Likewise, a 'product' is any compound that is an output from but not an input to reactions in the module pathway.
+        'Intermediate' is a compound that is both an input to and and output from reactions in the pathway.
+
+        RETURNS
+        =======
+
+        """
+        compound_to_name_dict = self.get_compound_dict_for_module(mnum)
+        substrate_compounds, intermediate_compounds, product_compounds = self.get_kegg_module_compound_lists(mnum)
+
+        substrate_name_list = [compound_to_name_dict[c] for c in substrate_compounds]
+        intermediate_name_list = [compound_to_name_dict[c] for c in intermediate_compounds]
+        product_name_list = [compound_to_name_dict[c] for c in product_compounds]
+
+        return substrate_name_list, intermediate_name_list, product_name_list
+
+
     def unroll_module_definition(self, mnum):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
         returns the list of all paths.
