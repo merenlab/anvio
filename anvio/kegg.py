@@ -3491,6 +3491,42 @@ class KeggModulesDatabase(KeggContext):
         return data_values_to_ret
 
 
+    def get_data_definition_entries_for_module_by_data_name(self, module_num, data_name):
+        """This function returns data_definition elements from the modules table for the specified module and data_name pair.
+
+        All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
+        The function relies on the db.get_some_rows_from_table_as_dict() function to first fetch all rows corresponding \
+        to a particular model, and then parses the resulting dictionary to find all the elements with the given data_name field.
+
+        PARAMETERS
+        ==========
+        module_num : str
+            the module to fetch data for
+        data_name : str
+            which data_name field we want
+
+        RETURNS
+        =======
+        data_defs_to_ret : list of str
+            the data_definitions corresponding to the module/data_name pair
+        """
+
+        where_clause_string = "module = '%s'" % (module_num)
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+
+        data_defs_to_ret = []
+        for key in dict_from_mod_table.keys():
+            if dict_from_mod_table[key]['data_name'] == data_name:
+                data_defs_to_ret.append(dict_from_mod_table[key]['data_definition'])
+
+        if not data_defs_to_ret and anvio.DEBUG:
+            self.run.warning("Just so you know, we tried to fetch data definitions from the KEGG Modules database for the data_name field %s "
+                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
+                             "cause errors down the line, and if so we're very sorry for that.")
+
+        return data_defs_to_ret
+
+
     def get_all_modules_as_list(self):
         """This function returns a list of all modules in the DB."""
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
