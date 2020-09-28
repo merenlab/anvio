@@ -179,8 +179,6 @@ rule anvi_trnaseq:
         feature_param_file = M.get_rule_param('anvi_trnaseq', '--feature-param-file'),
         min_trna_fragment_size = M.get_rule_param('anvi_trnaseq', '--min-trna-fragment-size'),
         agglomeration_max_mismatch_freq = M.get_rule_param('anvi_trnaseq', '--agglomeration-max-mismatch-freq'),
-        min_modification_count = M.get_rule_param('anvi_trnaseq', '--min-modification-count'),
-        min_modification_fraction = M.get_rule_param('anvi_trnaseq', '--min-modification-fraction'),
         max_deletion_size = M.get_rule_param('anvi_trnaseq', '--max-deletion-size'),
         alignment_progress_interval = M.get_rule_param('anvi_trnaseq', '--alignment-progress-interval'),
         agglomeration_progress_interval = M.get_rule_param('anvi_trnaseq', '--agglomeration-progress-interval')
@@ -190,7 +188,7 @@ rule anvi_trnaseq:
         else:
             decompressed_fasta = input[0]
         output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.overwrite_output_destinations} {params.description} {params.skip_fasta_check} {params.write_checkpoints} {params.load_checkpoint} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.feature_param_file} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.min_modification_count} {params.min_modification_fraction} {params.max_deletion_size} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
+        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.overwrite_output_destinations} {params.description} {params.skip_fasta_check} {params.write_checkpoints} {params.load_checkpoint} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.feature_param_file} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.max_deletion_size} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 

@@ -2721,51 +2721,6 @@ D = {
                      "In contrast, sequence D differs from B at positions 30 and 40, exceeding than the 2/71 fraction required to agglomerate, "
                      "so D forms its own cluster and cannot be consolidated into a single modified sequence with the others."}
                 ),
-    'min-modification-count': (
-            ['--min-modification-count'],
-            {'default': 50,
-             'metavar': 'INT',
-             'type': int,
-             'help': "When more than two nucleotides are found at a position in a tRNA, "
-                     "a modification-induced mutation (substitution) is considered rather than a single nucleotide variant. "
-                     "This parameter (by default %(default)d) sets a key criterion for the prediction of a modification, "
-                     "the minimum coverage at a candidate modification position. "
-                     "A substitution is predicted when this parameter is met "
-                     "along with the minimum modification fraction, set by --min-modification-fraction. "
-                     "There are two caveats for the advanced user: "
-                     "1. Coverages here only take into consideration sequences lacking modification-induced deletions, "
-                     "as deletions occur at and to the 5' side of substitutions, "
-                     "and are identified by searching around predicted substitutions. "
-                     "2. Coverages here only take into consideration reads associated with the candidate modified sequence, "
-                     "as reads can be tRNA fragments originating from multiple different tRNAs."}
-                ),
-    'min-modification-fraction': (
-            ['--min-modification-fraction'],
-            {'default': 0.1,
-             'metavar': 'FLOAT',
-             'type': float,
-             'help': "When more than two nucleotides are found at a position in a tRNA, "
-                     "a modification-induced mutation (substitution) is considered rather than a single nucleotide variant. "
-                     "This parameter (by default %(default)d) sets a key criterion for the prediction of a modification, "
-                     "the minimum fraction of coverage at a position with more than two nucleotides "
-                     "that is attributed to nucleotides beside the most abundant nucleotide. "
-                     "A substitution is predicted when the minimum modification count, "
-                     "set by --min-modification-count, is met along with this parameter. "
-                     "For example, if A, C, and T are found at position 20 of a tRNA, "
-                     "and A is represented by 46 reads, C is represented by 3 reads, and T is represented by 1 read, "
-                     "then with the default parameter value of 0.1, the site would not meet the threshold for prediction of a modification, "
-                     "as the fraction of minority nucleotides is only 0.08. "
-                     "There are three caveats for the advanced user: "
-                     "1. Coverages here only take into consideration sequences lacking modification-induced deletions, "
-                     "as deletions occur at and to the 5' side of substitutions, "
-                     "and are identified by searching around predicted substitutions. "
-                     "2. Coverages here only take into consideration reads associated uniquely with the candidate modified sequence, "
-                     "as reads can be tRNA fragments originating from multiple different tRNAs. "
-                     "3. Modifications very often cause the biased substitution of a nucleotide different than the unmodified nucleotide -- "
-                     "the majority nucleotide cannot be assumed to the unmodified nucleotide. "
-                     "Therefore, the parameter technically sets the minimum variability at the position, "
-                     "not the fraction of nucleotides that are mutated."}
-                ),
     'max-deletion-size': (
             ['--max-deletion-size'],
             {'default': 3,
