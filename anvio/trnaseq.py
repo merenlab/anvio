@@ -10,9 +10,8 @@ import numpy as np
 import pickle as pkl
 import multiprocessing as mp
 
-from bisect import bisect
-from collections import OrderedDict, deque
 from itertools import combinations, product
+from collections import OrderedDict, deque, defaultdict
 
 import anvio
 import anvio.utils as utils
@@ -39,6 +38,8 @@ __email__ = "samuelmiller10@gmail.com"
 
 
 unambiguous_nucs = ('A', 'C', 'G', 'T')
+# The next value is used for counting nucleotides in alignments: there is one bin (value 0) for end gaps in the alignment.
+num_nuc_bins = len(unambiguous_nucs) + 1
 nuc_int_dict = {nuc: i for i, nuc in enumerate(unambiguous_nucs, start=1)}
 int_nuc_dict = {i: nuc for i, nuc in enumerate(unambiguous_nucs, start=1)}
 
@@ -171,7 +172,7 @@ class NormalizedSeq:
                  'input_seqs_mapped_with_extra_fiveprime_count',
                  'coverages',
                  'unique_coverages',
-                 'modified_seq')
+                 'modified_seqs')
 
     def __init__(self, trimmed_seqs, start_positions=None, end_positions=None, skip_init=False):
         """A longer tRNA sequence consolidated from shorter tRNA fragments"""
@@ -194,8 +195,10 @@ class NormalizedSeq:
             self.start_positions = None
             self.end_positions = None
 
-        # It is useful to know which ModifiedSeq, if any, encompasses this NormalizedSeq.
-        self.modified_seq = None
+        # It is useful to know which modified sequences, if any, encompass this normalized sequence.
+        # A normalized sequence without modification-induced deletions can only be assigned to one modified sequence,
+        # but a normalized sequence with deletions can be assigned to more than one modified sequence.
+        self.modified_seqs = []
 
         if skip_init:
             self.input_count = None
@@ -255,339 +258,420 @@ class NormalizedSeq:
 
 
 class ModifiedSeq:
-    __slots__ = ('normalized_seqs_with_substitutions',
-                 'all_normalized_seqs',
-                 'representative_name',
+    __slots__ = ('normalized_seqs_without_deletions',
                  'substitution_indices',
+                 'representative_name',
                  'normalized_seqs_with_deletions',
-                 'deletion_indices',
-                 'coverages',
-                 'unique_coverages',
-                 'deletion_coverages',
-                 'deletion_unique_coverages',
-                 'substitution_coverages_array',
-                 'substitution_unique_coverages_array',
-                 'input_count',
-                 'input_with_extra_fiveprime_count',
-                 'input_acceptor_variant_count_dict',
-                 'input_seqs_mapped_without_extra_fiveprime_count',
-                 'input_seqs_mapped_with_extra_fiveprime_count',
+                 'deletion_configurations',
+                 'specific_coverages',
+                 'nonspecific_coverages',
+                 'specific_substitution_coverages',
+                 'nonspecific_substitution_coverages',
+                 'specific_deletion_coverages',
+                 'nonspecific_deletion_coverages',
+                 'specific_read_count',
+                 'nonspecific_read_count',
+                 'count_of_specific_reads_with_extra_fiveprime',
+                 'count_of_nonspecific_reads_with_extra_fiveprime',
+                 'specific_mapped_read_count',
+                 'nonspecific_mapped_read_count',
                  'consensus_seq_string')
 
-    def __init__(self, normalized_seqs_with_substitutions, substitution_indices, init_substitutions=True):
+    def __init__(self, normalized_seqs_without_deletions, substitution_indices, init=False):
         """A tRNA sequence with sites of predicted modification-induced substitutions and deletions
 
         Parameters
         ==========
-        normalized_seqs : list
+        normalized_seqs_without_deletions : list
             NormalizedSeq objects representing sequences with distinct modification-induced substitutions
-            Sequences with modification-induced deletions must be added later.
             The first sequence in the list should be longest or tied for longest.
+            Sequences with modification-induced deletions must be added later.
 
         substitution_indices : list
-            Indices of modification-induced substitutions
-            These indices are in the reference frame of the modified sequence/first sequence from the `normalized_seqs` argument.
+            Indices of modification-induced substitutions in the modified sequence
+            Indices in the modified sequence are equivalent to indices in the longest normalized sequence with substitutions.
 
-        init_substitutions : bool, True
-            Triggers the analysis of added normalized sequences, which should contain substitutions but not deletions
-            Normalized sequences with deletions should be added
-            after sequences with substitutions have been added and the `init_substitutions` method run.
-            Deletions occur at and around substitution sites and are thus identified after substitutions.
+        init : bool, False
+            Triggers the analysis of added normalized sequences, finding nucleotide coverage and other information
+            This should be set to True when normalized sequences with deletions are not going to be added.
         """
 
-        self.normalized_seqs_with_substitutions = normalized_seqs_with_substitutions
-        self.all_normalized_seqs = []
-        for normalized_seq in self.normalized_seqs_with_substitutions:
-            self.all_normalized_seqs.append(normalized_seq)
-            normalized_seq.modified_seq = self
-        self.representative_name = self.all_normalized_seqs[0].representative_name
+        self.normalized_seqs_without_deletions = normalized_seqs_without_deletions
         self.substitution_indices = substitution_indices
+        # A normalized sequence without modification-induced deletions can only be assigned to one modified sequence,
+        # but a normalized sequence with deletions can be assigned to more than one modified sequence.
+        for normalized_seq in normalized_seqs_without_deletions:
+            normalized_seq.modified_seqs.append(self)
+        self.representative_name = normalized_seqs_without_deletions[0].representative_name
 
-
-        if init_substitutions:
-            self.init_substitutions()
+        if init:
+            self.init()
         else:
-            self.normalized_seqs_with_deletions = None
-            self.deletion_indices = None
-            self.coverages = None
-            self.unique_coverages = None
-            self.deletion_coverages = None
-            self.deletion_unique_coverages = None
-            self.substitution_coverages_array = None
-            self.substitution_unique_coverages_array = None
-            self.input_count = None
-            self.input_with_extra_fiveprime_count = None
-            self.input_acceptor_variant_count_dict = None
-            self.input_seqs_mapped_without_extra_fiveprime_count = None
-            self.input_seqs_mapped_with_extra_fiveprime_count = None
+            self.normalized_seqs_with_deletions = []
+            self.deletion_configurations = []
+            self.specific_coverages = None
+            self.nonspecific_coverages = None
+            self.specific_substitution_coverages = None
+            self.nonspecific_substitution_coverages = None
+            self.specific_deletion_coverages = None
+            self.nonspecific_deletion_coverages = None
+            self.specific_read_count = None
+            self.nonspecific_read_count = None
+            self.count_of_specific_reads_with_extra_fiveprime = None
+            self.count_of_nonspecific_reads_with_extra_fiveprime = None
+            self.specific_mapped_read_count = None
+            self.nonspecific_mapped_read_count = None
             self.consensus_seq_string = None
 
 
-    def init_substitutions(self):
-        """This method analyzes normalized sequences with substitutions (and without deletions)
-
-        This method should be called after adding normalized sequences with substitutions
-        and before adding normalized sequences with deletions (using `add_normalized_seq_with_deletion`).
-        The full complement of substitutions is used in identifying deletions,
-        as deletions occur at and around substitution sites.
-        """
-
-        # Allow normalized sequences with deletions to be added
-        # by changing attributes initialized with None to empty lists.
-        self.normalized_seqs_with_deletions = []
-        self.deletion_indices = []
-        # Deletion coverages are stored in a list rather than numpy array
-        # to facilitate the insertion of new deletion positions as sequences with deletions are added.
-        self.deletion_coverages = []
-        self.deletion_unique_coverages = []
-
-        modified_seq_length = len(self.all_normalized_seqs[0].seq_string)
-        coverages = np.zeros(modified_seq_length, dtype=int)
-        unique_coverages = np.zeros(modified_seq_length, dtype=int)
-
-        substitution_coverages_array = np.zeros((len(self.substitution_indices), len(nuc_int_dict)), dtype=int)
-        substitution_unique_coverages_array = np.zeros((len(self.substitution_indices), len(nuc_int_dict)), dtype=int)
-
-        # Set coverage and input sequence count attributes.
-        processed_trimmed_seq_names = []
-        input_count = 0
-        input_with_extra_fiveprime_count = 0
-        input_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        input_seqs_mapped_without_extra_fiveprime_count = 0
-        input_seqs_mapped_with_extra_fiveprime_count = 0
-        for normalized_seq in self.all_normalized_seqs:
-            normalized_seq_length = len(normalized_seq.seq_string)
-            normalized_seq_start_in_modified_seq = modified_seq_length - normalized_seq_length
-            for (trimmed_seq,
-                 trimmed_seq_start_in_normalized_seq,
-                 trimmed_seq_stop_in_normalized_seq) in zip(normalized_seq.trimmed_seqs,
-                                                            normalized_seq.start_positions,
-                                                            normalized_seq.end_positions):
-                if trimmed_seq.representative_name in processed_trimmed_seq_names:
-                    continue
-                processed_trimmed_seq_names.append(trimmed_seq.representative_name)
-
-                trimmed_seq_input_count = trimmed_seq.input_count
-
-                input_count += trimmed_seq_input_count
-
-                if trimmed_seq.identification_method == 1: # 1 => mapped
-                    # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
-                    if trimmed_seq.unique_with_extra_fiveprime_count == 0:
-                        input_seqs_mapped_without_extra_fiveprime_count += trimmed_seq_input_count
-                    else:
-                        input_with_extra_fiveprime_count += trimmed_seq.input_with_extra_fiveprime_count
-                        input_seqs_mapped_with_extra_fiveprime_count += trimmed_seq_input_count
-                else:
-                    input_with_extra_fiveprime_count += trimmed_seq.input_with_extra_fiveprime_count
-
-                for acceptor_variant_seq, acceptor_variant_input_count in trimmed_seq.input_acceptor_variant_count_dict.items():
-                    input_acceptor_variant_count_dict[acceptor_variant_seq] += acceptor_variant_input_count
-
-                # Check if the trimmed sequence only occurs in the present normalized sequence or in others as well.
-                if trimmed_seq.normalized_seq_count == 1:
-                    is_trimmed_seq_unique_to_normalized_seq = True
-                else:
-                    is_trimmed_seq_unique_to_normalized_seq = False
-
-                # Augment the coverage of nucleotides by the number of input sequences (reads) in the trimmed sequence.
-                trimmed_seq_start_in_modified_seq = normalized_seq_start_in_modified_seq + trimmed_seq_start_in_normalized_seq
-                trimmed_seq_stop_in_modified_seq = trimmed_seq_start_in_modified_seq + len(trimmed_seq.seq_string)
-                coverages[trimmed_seq_start_in_modified_seq: trimmed_seq_stop_in_modified_seq] += trimmed_seq_input_count
-                if is_trimmed_seq_unique_to_normalized_seq:
-                    unique_coverages[trimmed_seq_start_in_modified_seq: trimmed_seq_stop_in_modified_seq] += trimmed_seq_input_count
-
-                # Augment the coverage of the specific nucleotides from the trimmed sequence located at substitution sites.
-                for n, substitution_index in enumerate(self.substitution_indices):
-                    # Check that the position of the substitution is covered by the present trimmed sequence.
-                    if not (trimmed_seq_start_in_modified_seq <= substitution_index < trimmed_seq_stop_in_modified_seq):
-                        continue
-                    nuc_int = nuc_int_dict[normalized_seq.seq_string[substitution_index - normalized_seq_start_in_modified_seq]]
-                    substitution_number_in_modified_seq = self.substitution_indices.index(substitution_index)
-                    substitution_coverages_array[n, nuc_int - 1] += trimmed_seq_input_count
-                    if is_trimmed_seq_unique_to_normalized_seq:
-                        substitution_unique_coverages_array[n, nuc_int - 1] += trimmed_seq_input_count
-        self.coverages = coverages
-        self.unique_coverages = unique_coverages
-        self.substitution_coverages_array = substitution_coverages_array
-        self.substitution_unique_coverages_array = substitution_unique_coverages_array
-        self.input_count = input_count
-        self.input_with_extra_fiveprime_count = input_with_extra_fiveprime_count
-        self.input_acceptor_variant_count_dict = input_acceptor_variant_count_dict
-        self.input_seqs_mapped_without_extra_fiveprime_count = input_seqs_mapped_without_extra_fiveprime_count
-        self.input_seqs_mapped_with_extra_fiveprime_count = input_seqs_mapped_with_extra_fiveprime_count
-
-
-    def add_normalized_seq_with_deletion(self,
-                                         normalized_seq_with_deletion,
-                                         normalized_seq_start_in_modified_seq,
-                                         deletion_indices_in_modified_seq,
-                                         deletion_indices_in_normalized_seq,
-                                         substitution_indices_in_modified_seq,
-                                         substitution_indices_in_normalized_seq):
-        """Add a normalized sequence with deletions to the modified sequence.
-
-        This method should only be called after `init_substitutions` has been run.
-
-        This method ensures that trimmed sequences comprising the normalized sequence
-        do not contribute coverage data to the modified sequence
-        when trimmed sequences are already represented in normalized sequences already added to the modified sequence.
-
-        For a trimmed sequence to cover a deletion, it cannot end in the deletion.
-        In other words, it must have nucleotides remaining on either side of the deletion site.
-
-        Deletion coverage is equivalent to nucleotide coverage,
-        the count of input sequences (reads) containing the deletion.
-        As with nucleotides, both total and unique coverage is calculated for deletions,
-        since input sequences may map to multiple normalized and modified sequences.
+    def get_seqs_with_dels(self, possible_deletion_starts=(-2, -1, 0), possible_deletion_stops=(0, 1), max_deletion_sites=2):
+        """Generate in silico modified sequences with deletions at and/or around substitution sites.
 
         Parameters
         ==========
-        normalized_seq_with_deletion : NormalizedSeq object
-            One or more nucleotides in the modified sequence are deleted in this sequence.
+        possible_deletion_starts : tuple, (-2, -1, 0)
+            Where deletions can start relative to substitution sites.
+            By default, deletions can start at the substitution site or at the two preceding 5' nucleotides.
 
-        normalized_seq_start_in_modified_seq : int
-            The index at which the normalized sequence starts in the modified sequence
-            The normalized sequence cannot start with a deletion,
-            as it doesn't make sense for the 5' end of a sequence to be identified as a deletion
-            when it could instead be a truncated tRNA fragment.
+        possible_deletion_stops : tuple, (0, 1)
+            Where deletions can stop relative to substitution sites.
+            By default, deletions can stop at the substitution site or at the preceding 5' nucleotide.
+            In conjunction with the default deletion starts, deletions can be 1-3 nucleotides long.
 
-        deletion_indices_in_modified_seq : list
-            The list of positions in the modified sequence that are deleted in the normalized sequence
-            These are the positions at which nucleotides are deleted in the normalized sequence.
-            This list must be the same length as `deletion_indices_in_normalized_seq`, as the deletions must correspond.
+        max_deletion_sites : int, 2
+            The maximum number of substitution sites at which deletions can be introduced.
+            For example, if this parameter is set to 2, and there are 3 substitution positions in the sequence,
+            then sequences will be produced containing deletions only at the first position;
+            other sequences will be produced containing deletions at the first and second positions;
+            other sequences will be produced containing deletions only at the second position, etc.
 
-        deletion_indices_in_normalized_seq : list
-            The list of indices marking deletions in the normalized sequence
-            These are the positions of the remaining nucleotides on the 5' side of deletions.
-            If there are multiple adjacent deletions,
-            there should be consecutive identical entries in this list for the same index 5' of the deletions.
-            This list must be the same length as `deletion_indices_in_modified_seq`, as the deletions must correspond.
-
-        substitution_indices_in_modified_seq : list
-            The list of indices with nucleotide substitutions in the modified sequence
-            This list must be the same length as `substitution_indices_in_normalized_seq`, as the deletions must correspond.
-
-        substitution_indices_in_normalized_seq : list
-            The list of indices with nucleotide substitutions in the normalized sequence
-            This list must be the same length as `substitution_indices_in_modified_seq`, as the deletions must correspond.
+        Returns
+        =======
+        del_set : set
+            A set of tuples with 2 elements.
+            The first element is a sequence string containing deletions.
+            The second element is a tuple of the indices of these deletions in the input sequence.
         """
 
-        assert len(deletion_indices_in_modified_seq) == len(deletion_indices_in_normalized_seq)
-        assert len(substitution_indices_in_modified_seq) == len(substitution_indices_in_normalized_seq)
+        # Make template sequences with different nucleotides at substitution sites.
+        # Only consider the observed substitution configurations.
+        seq_strings_without_deletions = set()
+        longest_normalized_seq_string = self.normalized_seqs_without_deletions[0].seq_string
+        modified_seq_length = len(longest_normalized_seq_string)
+        substitution_indices = self.substitution_indices
+        for normalized_seq in self.normalized_seqs_without_deletions:
+            normalized_seq_string = normalized_seq.seq_string
+            normalized_seq_start_in_modified_seq = modified_seq_length - len(normalized_seq_string)
+            altered_seq_string = longest_normalized_seq_string
+            for substitution_index in substitution_indices:
+                if substitution_index < normalized_seq_start_in_modified_seq:
+                    # This normalized sequence is shorter, lacking the substitution position.
+                    continue
+                nuc = normalized_seq.seq_string[substitution_index - normalized_seq_start_in_modified_seq]
+                altered_seq_string = (altered_seq_string[: substitution_index]
+                                      + nuc
+                                      + altered_seq_string[substitution_index + 1: ])
+            seq_strings_without_deletions.add(altered_seq_string)
 
-        # Get a nonredundant set of trimmed sequences already contained in the modified sequence.
-        processed_trimmed_seq_names = set()
-        for normalized_seq in self.all_normalized_seqs:
-            for trimmed_seq in normalized_seq.trimmed_seqs:
-                processed_trimmed_seq_names.add(trimmed_seq.representative_name)
+        # Determine the different deletion sizes/positions relative to a substitution.
+        deletion_ranges = []
+        for deletion_start in possible_deletion_starts:
+            for deletion_stop in possible_deletion_stops:
+                if deletion_start < deletion_stop:
+                    deletion_ranges.append(range(deletion_start, deletion_stop))
 
-        self.normalized_seqs_with_deletions.append(normalized_seq_with_deletion)
-        self.all_normalized_seqs.append(normalized_seq_with_deletion)
-        normalized_seq.modified_seq = self
+        # Introduce deletions into each template sequence, potentially producing a number of new sequences.
+        del_dict = {}
+        for seq_string in seq_strings_without_deletions:
+            del_dict_for_seq = self.introduce_dels(seq_string, substitution_indices, deletion_ranges, max_deletion_sites)
+            for seq_string_with_del, del_indices in del_dict_for_seq.items():
+                try:
+                    prior_del_index_sum = sum(del_dict[seq_string_with_del])
+                except KeyError:
+                    del_dict[seq_string_with_del] = del_indices
+                    continue
+                if sum(del_indices) < prior_del_index_sum:
+                    del_dict[seq_string_with_del] = del_indices
+        del_set = set([(seq_string_with_del, del_indices) for seq_string_with_del, del_indices in del_dict.items()])
 
-        input_count = 0
-        input_with_extra_fiveprime_count = 0
-        input_seqs_mapped_without_extra_fiveprime_count = 0
-        input_seqs_mapped_with_extra_fiveprime_count = 0
-        for (trimmed_seq,
-             trimmed_seq_start_in_normalized_seq,
-             trimmed_seq_stop_in_normalized_seq) in zip(normalized_seq_with_deletion.trimmed_seqs,
-                                                        normalized_seq_with_deletion.start_positions,
-                                                        normalized_seq_with_deletion.end_positions):
-            if trimmed_seq.representative_name in processed_trimmed_seq_names:
+        return del_set
+
+
+    @staticmethod
+    def introduce_dels(seq_string, substitution_indices, deletion_ranges, max_deletion_sites):
+        """Generate in silico sequences with deletions at and/or around substitution sites in the input sequence.
+
+        Parameters
+        ==========
+        seq_string : str
+            The sequence in which deletions will be introduced
+
+        substitution_indices : list-like
+            Where substitutions are located in the input sequence
+
+        deletion_ranges : list-like
+            A list of ranges representing the locations of deletions in relation to substitution sites
+            For example, [range(-1, 0), range(-1, 1), range(0, 1)]
+            allows three types of deletions to be introduced at a substitution position:
+            a one-nucleotide deletion of the adjacent 5' nucleotide
+            a two-nucleotide deletion of the adjacent 5' nucleotide and the nucleotide at the substitution position,
+            and a one-nucleotide deletion of the nucleotide at the substitution position.
+
+        max_deletion_sites : int
+            The maximum number of substitution sites at which deletions can be introduced.
+            For example, if this parameter is set to 2, and there are 3 substitution positions in the sequence,
+            then sequences with deletions will be produced containing deletions only at the first position,
+            other sequences with deletions will be produced containing deletions at the first and second positions,
+            other sequences with deletions will be produced containing deletions only at the second position, etc.
+
+        Returns
+        =======
+        del_dict : dict
+            Each dict key is a sequence string containing deletions.
+            Each dict value is a tuple of the indices of these deletions in the input sequence.
+        """
+
+        # Find all the ways deletions can be introduced into the sequence given the parameterization.
+        deletion_index_configurations = set()
+        for num_deletion_sites in range(1, max_deletion_sites + 1):
+            for deletion_locus_configuration in combinations(substitution_indices, num_deletion_sites):
+                for deletion_range_configuration in product(*[deletion_ranges for _ in range(num_deletion_sites)]):
+                    deletion_indices = set()
+                    for i, deletion_range in enumerate(deletion_range_configuration):
+                        substitution_index = deletion_locus_configuration[i]
+                        for deletion_index_relative_to_substitution in deletion_range:
+                            deletion_index = substitution_index + deletion_index_relative_to_substitution
+                            if deletion_index >= 0:
+                                deletion_indices.add(deletion_index)
+                    if deletion_indices:
+                        deletion_indices = sorted(deletion_indices)
+
+                        # Remove any nominal deletions at the 5' end,
+                        # as these could rightly be interpreted as unseen nucleotides preceding a fragment.
+                        fiveprime_del_index = -1
+                        unsupported_del_indices = []
+                        for d in deletion_indices:
+                            if d == fiveprime_del_index + 1:
+                                unsupported_del_indices.append(d)
+                                fiveprime_del_index += 1
+                            else:
+                                break
+                        for d in unsupported_del_indices[::-1]:
+                            deletion_indices.pop(d)
+
+                        deletion_index_configurations.add(tuple(deletion_indices))
+
+        # It is possible to generate the same sequence with deletions given different deletion sites.
+        # For example, ACCG can become ACG by deleting either C.
+        # We resolve this complication by choosing the most 5' deletion indices.
+        del_dict = {}
+        for deletion_indices in deletion_index_configurations:
+            seq_string_with_deletions = seq_string
+            for deletion_index in deletion_indices[::-1]:
+                seq_string_with_deletions = seq_string_with_deletions[: deletion_index] + seq_string_with_deletions[deletion_index + 1: ]
+            try:
+                prior_deletion_index_sum = sum(del_dict[seq_string_with_deletions])
+            except KeyError:
+                del_dict[seq_string_with_deletions] = deletion_indices
                 continue
+            if sum(deletion_indices) < prior_deletion_index_sum:
+                del_dict[seq_string_with_deletions] = deletion_indices
 
-            trimmed_seq_input_count = trimmed_seq.input_count
+        return del_dict
 
-            input_count += trimmed_seq_input_count
 
-            if trimmed_seq.identification_method == 1: # 1 => mapped
-                # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
-                if trimmed_seq.unique_with_extra_fiveprime_count == 0:
-                    input_seqs_mapped_without_extra_fiveprime_count += trimmed_seq_input_count
+    def init(self):
+        """Analyze sequences comprising the modified sequence to find coverages and other attributes."""
+
+        normalized_seqs_without_deletions = self.normalized_seqs_without_deletions
+        normalized_seqs_with_deletions = self.normalized_seqs_with_deletions
+        all_normalized_seqs = normalized_seqs_without_deletions + normalized_seqs_with_deletions
+        del_configs = self.deletion_configurations
+        modified_seq_len = len(normalized_seqs_without_deletions[0].seq_string)
+        normalized_seq_specific_coverages = np.zeros((len(all_normalized_seqs), modified_seq_len), dtype=int)
+        normalized_seq_nonspecific_coverages = np.zeros((len(all_normalized_seqs), modified_seq_len), dtype=int)
+        num_substitutions = len(self.substitution_indices)
+        self.specific_substitution_coverages = specific_substitution_coverages = np.zeros((num_substitutions, len(unambiguous_nucs)), dtype=int)
+        self.nonspecific_substitution_coverages = nonspecific_substitution_coverages = np.zeros((num_substitutions, len(unambiguous_nucs)), dtype=int)
+        del_indices = sorted(set([i for del_config in del_configs for i in del_config]))
+        self.specific_deletion_coverages = specific_deletion_coverages = np.zeros(len(del_indices), dtype=int)
+        self.nonspecific_deletion_coverages = nonspecific_deletion_coverages = np.zeros(len(del_indices), dtype=int)
+        specific_read_count = 0
+        nonspecific_read_count = 0
+        count_of_specific_reads_with_extra_fiveprime = 0
+        count_of_nonspecific_reads_with_extra_fiveprime = 0
+        specific_mapped_read_count = 0
+        nonspecific_mapped_read_count = 0
+
+        # Make an array of aligned nucleotide positions in all normalized sequences.
+        normalized_seq_array = np.zeros((len(all_normalized_seqs), modified_seq_len), dtype=int)
+        for n, normalized_seq in enumerate(normalized_seqs_without_deletions):
+            normalized_seq_array[n, modified_seq_len - len(normalized_seq.seq_string): ] += [nuc_int_dict[nuc] for nuc in normalized_seq.seq_string]
+
+        nuc_positions_covered_by_normalized_seqs_with_deletions = []
+        n = len(normalized_seqs_without_deletions)
+        for normalized_seq, del_config in zip(normalized_seqs_with_deletions, del_configs):
+            aligned_seq = [nuc_int_dict[nuc] for nuc in normalized_seq.seq_string]
+            # Insert a 0 (no nucleotide) at each deletion position in the alignment.
+            for del_index in del_config:
+                aligned_seq.insert(del_index, 0)
+            norm_seq_start_in_mod_seq = modified_seq_len - len(aligned_seq)
+            normalized_seq_array[n, norm_seq_start_in_mod_seq: ] += aligned_seq
+
+            covered_nuc_positions = []
+            for i, nuc_int in enumerate(aligned_seq):
+                if nuc_int != 0:
+                    covered_nuc_positions.append(norm_seq_start_in_mod_seq + i)
+            nuc_positions_covered_by_normalized_seqs_with_deletions.append(covered_nuc_positions)
+            n += 1
+
+        processed_trimmed_seq_names = []
+
+        # First handle sequences without deletions.
+        for n, normalized_seq in enumerate(normalized_seqs_without_deletions):
+            normalized_seq_start_in_modified_seq = modified_seq_len - len(normalized_seq.seq_string)
+
+            for trimmed_seq, trimmed_seq_start_in_normalized_seq, trimmed_seq_stop_in_normalized_seq in zip(normalized_seq.trimmed_seqs,
+                                                                                                            normalized_seq.start_positions,
+                                                                                                            normalized_seq.end_positions):
+                if trimmed_seq.representative_name in processed_trimmed_seq_names:
+                    continue
+
+                # Determine whether the reads constituting the trimmed sequence are specific to the modified sequence.
+                if trimmed_seq.normalized_seq_count == 1:
+                    is_trimmed_seq_specific_to_modified_seq = True
                 else:
-                    input_with_extra_fiveprime_count += trimmed_seq.input_with_extra_fiveprime_count
-                    input_seqs_mapped_with_extra_fiveprime_count += trimmed_seq_input_count
-            else:
-                input_with_extra_fiveprime_count += trimmed_seq.input_with_extra_fiveprime_count
+                    # The trimmed sequence is specific to the modified sequence
+                    # if it is unique to a set of normalized sequences specific to the modified sequence.
+                    # Coverage information for such trimmed sequences will be recorded
+                    # in the row of the array for the first normalized sequence in which it was found.
+                    num_specific_normalized_seqs_containing_trimmed_seq = 1
+                    trimmed_seq_name = trimmed_seq.representative_name
+                    for p, other_normalized_seq in enumerate(all_normalized_seqs):
+                        if n == p:
+                            continue
+                        for other_trimmed_seq in other_normalized_seq.trimmed_seqs:
+                            if trimmed_seq_name == other_trimmed_seq.representative_name:
+                                num_specific_normalized_seqs_containing_trimmed_seq += 1
+                                break
 
-            for acceptor_variant_seq, acceptor_variant_input_count in trimmed_seq.input_acceptor_variant_count_dict:
-                self.input_acceptor_variant_count_dict[acceptor_variant_seq] += acceptor_variant_input_count
+                    if num_specific_normalized_seqs_containing_trimmed_seq == trimmed_seq.normalized_seq_count:
+                        is_trimmed_seq_specific_to_modified_seq = True
+                    elif num_specific_normalized_seqs_containing_trimmed_seq < trimmed_seq.normalized_seq_count:
+                        is_trimmed_seq_specific_to_modified_seq = False
+                    else:
+                        raise ConfigError("The number of normalized sequences containing the trimmed sequence was somehow miscalculated.")
 
-            # Check if the trimmed sequence only occurs in the present normalized sequence or in others as well.
-            if trimmed_seq.normalized_seq_count == 1:
-                is_trimmed_seq_unique_to_normalized_seq = True
-            else:
-                is_trimmed_seq_unique_to_normalized_seq = False
+                trimmed_seq_start_in_modified_seq = normalized_seq_start_in_modified_seq + trimmed_seq_start_in_normalized_seq
+                trimmed_seq_stop_in_modified_seq = trimmed_seq_start_in_modified_seq + len(trimmed_seq.seq_string)
+                if is_trimmed_seq_specific_to_modified_seq:
+                    specific_read_count += trimmed_seq.input_count
+                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.input_with_extra_fiveprime_count
+                    # Trimmed sequences are comprised of either profiled or mapped unique sequences.
+                    if trimmed_seq.identification_method == 1: # 1 => mapped
+                        specific_mapped_read_count += trimmed_seq.input_count
+                    normalized_seq_specific_coverages[n, trimmed_seq_start_in_modified_seq: trimmed_seq_stop_in_modified_seq] += trimmed_seq.input_count
+                else:
+                    nonspecific_read_count += trimmed_seq.input_count
+                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.input_with_extra_fiveprime_count
+                    if trimmed_seq.identification_method == 1:
+                        nonspecific_mapped_read_count += trimmed_seq.input_count
+                    normalized_seq_nonspecific_coverages[n, trimmed_seq_start_in_modified_seq: trimmed_seq_stop_in_modified_seq] += trimmed_seq.input_count
 
-            # Find the deletions covered by the present trimmed sequence.
-            deletion_indices_in_normalized_seq_covered_by_trimmed_seq = []
-            deletion_indices_in_modified_seq_covered_by_trimmed_seq = []
-            for trimmed_seq_index, normalized_seq_index in enumerate(range(trimmed_seq_start_in_normalized_seq + 1, trimmed_seq_stop_in_normalized_seq)):
-                try:
-                    deletion_number_in_normalized_seq = deletion_indices_in_normalized_seq.index(normalized_seq_index)
-                except ValueError:
-                    continue
-                if normalized_seq_index + 1 == trimmed_seq_stop_in_normalized_seq:
-                    # The trimmed sequence only covers the 5' but not the 3' nucleotide flanking the deletion site,
-                    # so the sequence cannot be said to cover the deletion.
-                    continue
-                deletion_indices_in_normalized_seq_covered_by_trimmed_seq.append(normalized_seq_index)
-                deletion_indices_in_modified_seq_covered_by_trimmed_seq.append(deletion_indices_in_modified_seq[deletion_number_in_normalized_seq])
+                processed_trimmed_seq_names.append(trimmed_seq.representative_name)
 
-            # Augment the coverage of the deletions in the trimmed sequence.
-            for deletion_index_in_modified_seq in deletion_indices_in_modified_seq_covered_by_trimmed_seq:
-                # Add a record of this deletion in the modified sequence if it is encountered for the first time.
-                try:
-                    deletion_number_in_modified_seq = self.deletion_indices.index(deletion_index_in_modified_seq)
-                except ValueError:
-                    deletion_number_in_modified_seq = bisect(self.deletion_indices, deletion_index_in_modified_seq)
-                    self.deletion_indices.insert(deletion_number_in_modified_seq, deletion_index_in_modified_seq)
-                    self.deletion_coverages.insert(deletion_number_in_modified_seq, 0)
-                    self.deletion_unique_coverages.insert(deletion_number_in_modified_seq, 0)
+        # Handle normalized sequences with deletions.
+        n = len(normalized_seqs_without_deletions)
+        for normalized_seq, del_config, nuc_positions_covered_by_normalized_seq in zip(normalized_seqs_with_deletions, del_configs, nuc_positions_covered_by_normalized_seqs_with_deletions):
+            normalized_seq_start_in_modified_seq = modified_seq_len - len(normalized_seq.seq_string) - len(del_config)
+            # Normalized sequences with deletions can be found in multiple modified sequences,
+            # unlike normalized sequences without deletions.
+            num_modified_seqs_containing_normalized_seq = len(normalized_seq.modified_seqs)
 
-                self.deletion_coverages[deletion_number_in_modified_seq] += trimmed_seq_input_count
-                if is_trimmed_seq_unique_to_normalized_seq:
-                    self.deletion_unique_coverages[deletion_number_in_modified_seq] += trimmed_seq_input_count
-
-            # Augment the coverage of undeleted nucleotides by the number of input sequences (reads) in the trimmed sequence.
-            undeleted_indices = np.setdiff1d(np.array(range(len(trimmed_seq.seq_string)
-                                                            + len(deletion_indices_in_modified_seq_covered_by_trimmed_seq)))
-                                             + trimmed_seq_start_in_normalized_seq + normalized_seq_start_in_modified_seq,
-                                             np.array(deletion_indices_in_modified_seq_covered_by_trimmed_seq))
-            self.coverages[undeleted_indices] += trimmed_seq_input_count
-            if is_trimmed_seq_unique_to_normalized_seq:
-                self.unique_coverages[undeleted_indices] += trimmed_seq_input_count
-
-            # Augment the coverage of the specific nucleotides from the trimmed sequence located at substitution sites.
-            for substitution_number_in_normalized_seq, substitution_index_in_normalized_seq in enumerate(substitution_indices_in_modified_seq):
-                substitution_index_in_modified_seq = substitution_indices_in_modified_seq[substitution_number_in_normalized_seq]
-
-                # Check that the position of the substitution in the normalized sequence is covered by the present trimmed sequence.
-                if not (trimmed_seq_start_in_normalized_seq <= substitution_index_in_normalized_seq < trimmed_seq_stop_in_normalized_seq):
+            for trimmed_seq, trimmed_seq_start_in_normalized_seq, trimmed_seq_stop_in_normalized_seq in zip(normalized_seq.trimmed_seqs,
+                                                                                                            normalized_seq.start_positions,
+                                                                                                            normalized_seq.end_positions):
+                if trimmed_seq.representative_name in processed_trimmed_seq_names:
                     continue
 
-                nuc_int = nuc_int_dict[normalized_seq.seq_string[substitution_index_in_normalized_seq]]
-                substitution_number_in_modified_seq = self.substitution_indices.index(substitution_index_in_modified_seq)
-                self.substitution_coverages_array[substitution_number_in_modified_seq, nuc_int] += trimmed_seq_input_count
-                if is_trimmed_seq_unique_to_normalized_seq:
-                    self.substitution_unique_coverages_array[substitution_number_in_modified_seq, nuc_int] += trimmed_seq_input_count
-        self.input_count += input_count
-        self.input_with_extra_fiveprime_count = input_with_extra_fiveprime_count
-        self.input_seqs_mapped_without_extra_fiveprime_count = input_seqs_mapped_without_extra_fiveprime_count
-        self.input_seqs_mapped_with_extra_fiveprime_count = input_seqs_mapped_with_extra_fiveprime_count
+                # Determine whether the reads constituting the trimmed sequence are specific to the modified sequence.
+                if num_modified_seqs_containing_normalized_seq > 1:
+                    is_trimmed_seq_specific_to_modified_seq = False
+                else:
+                    # The trimmed sequence is specific to the modified sequence
+                    # if it is unique to a set of normalized sequences specific to the modified sequence.
+                    num_specific_normalized_seqs_containing_trimmed_seq = 1
+                    trimmed_seq_name = trimmed_seq.representative_name
+                    is_trimmed_seq_specific_to_modified_seq = True # initial value
+                    for p, other_normalized_seq in enumerate(normalized_seqs_with_deletions, start=len(normalized_seqs_without_deletions)):
+                        if n == p:
+                            continue
+                        for other_trimmed_seq in other_normalized_seq.trimmed_seqs:
+                            if trimmed_seq_name == other_trimmed_seq.representative_name:
+                                if len(other_normalized_seq.modified_seqs) > 1:
+                                    is_trimmed_seq_specific_to_modified_seq = False
+                                else:
+                                    num_specific_normalized_seqs_containing_trimmed_seq += 1
+                                break
+                        if not is_trimmed_seq_specific_to_modified_seq:
+                            # The trimmed sequence was found in a normalized sequence that is in multiple modified sequences.
+                            break
+                    else:
+                        if num_specific_normalized_seqs_containing_trimmed_seq == trimmed_seq.normalized_seq_count:
+                            is_trimmed_seq_specific_to_modified_seq = True
+                        elif num_specific_normalized_seqs_containing_trimmed_seq < trimmed_seq.normalized_seq_count:
+                            # The trimmed sequence was found in normalized sequences that are not in the modified sequence.
+                            is_trimmed_seq_specific_to_modified_seq = False
+                        else:
+                            raise ConfigError("The number of normalized sequences containing the trimmed sequence was somehow miscalculated.")
 
+                nuc_positions_covered_by_trimmed_seq = nuc_positions_covered_by_normalized_seq[trimmed_seq_start_in_normalized_seq: trimmed_seq_start_in_normalized_seq + len(trimmed_seq.seq_string)]
 
-    def set_consensus_seq_string(self):
-        """Set a consensus sequence from the nucleotides with the highest coverage at each position.
+                trimmed_seq_input_count = trimmed_seq.input_count
+                if is_trimmed_seq_specific_to_modified_seq:
+                    specific_read_count += trimmed_seq_input_count
+                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.input_with_extra_fiveprime_count
+                    # Trimmed sequences are comprised of either profiled or mapped unique sequences.
+                    if trimmed_seq.identification_method == 1: # 1 => mapped
+                        specific_mapped_read_count += trimmed_seq_input_count
+                    normalized_seq_specific_coverages[n, nuc_positions_covered_by_trimmed_seq] += trimmed_seq_input_count
+                    for del_index in del_config:
+                        specific_deletion_coverages[del_indices.index(del_index)] += trimmed_seq_input_count
+                else:
+                    nonspecific_read_count += trimmed_seq_input_count
+                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.input_with_extra_fiveprime_count
+                    if trimmed_seq.identification_method == 1:
+                        nonspecific_mapped_read_count += trimmed_seq_input_count
+                    normalized_seq_nonspecific_coverages[n, nuc_positions_covered_by_trimmed_seq] += trimmed_seq_input_count
+                    for del_index in del_config:
+                        nonspecific_deletion_coverages[del_indices.index(del_index)] += trimmed_seq_input_count
 
-        There is no point calling this method until all normalized sequences with substitutions and deletions have been added.
-        """
+            processed_trimmed_seq_names.append(trimmed_seq.representative_name)
+            n += 1
 
-        consensus_seq_string = self.all_normalized_seqs[0].seq_string
-        for substitution_index, nuc_coverages in zip(self.substitution_indices, self.substitution_coverages_array):
-            max_index = nuc_coverages.argmax()
+        self.specific_coverages = normalized_seq_specific_coverages.sum(0)
+        self.nonspecific_coverages = normalized_seq_nonspecific_coverages.sum(0)
+        self.specific_read_count = specific_read_count
+        self.nonspecific_read_count = nonspecific_read_count
+        self.count_of_specific_reads_with_extra_fiveprime = count_of_specific_reads_with_extra_fiveprime
+        self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
+        self.specific_mapped_read_count = specific_mapped_read_count
+        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+
+        # For each substitution position, record the coverage of A, C, G, and T.
+        for s, substitution_index in enumerate(self.substitution_indices):
+            aligned_nucs = normalized_seq_array[:, substitution_index]
+            nuc_counts = np.bincount(aligned_nucs, minlength=num_nuc_bins)[1: ]
+            for nuc_int, nuc_count in enumerate(nuc_counts, start=1):
+                if nuc_count > 0:
+                    normalized_seq_rows_with_nuc = (aligned_nucs == nuc_int).nonzero()[0]
+                    specific_substitution_coverages[s, nuc_int - 1] = normalized_seq_specific_coverages[normalized_seq_rows_with_nuc, substitution_index].sum()
+                    nonspecific_substitution_coverages[s, nuc_int - 1] = normalized_seq_nonspecific_coverages[normalized_seq_rows_with_nuc, substitution_index].sum()
+
+        # Set a consensus sequence from the nucleotides with the highest specific coverage at each position.
+        consensus_seq_string = normalized_seqs_without_deletions[0].seq_string
+        for substitution_index, coverages in zip(self.substitution_indices, specific_substitution_coverages):
+            max_index = coverages.argmax()
             nuc_int = max_index + 1
             consensus_seq_string = (consensus_seq_string[: substitution_index]
                                     + int_nuc_dict[nuc_int]
@@ -1239,6 +1323,10 @@ class TRNASeqDataset:
                             if prev_trimmed_seq.identification_method == 0:
                                 normalized_seq.trimmed_seqs.append(trimmed_seq)
                                 trimmed_seq.normalized_seq_count += 1
+                                if reference_fiveprime_length - reference_alignment_start > 0:
+                                    normalized_start_position = 0
+                                else:
+                                    normalized_start_position = reference_alignment_start - reference_fiveprime_length
                                 normalized_seq.start_positions.append(normalized_start_position)
                                 normalized_seq.end_positions.append(normalized_end_position)
                                 break
@@ -1299,7 +1387,6 @@ class TRNASeqDataset:
         self.progress.update("Separating modification-induced substitutions from \"inter-strain\" variants")
 
         normalized_seq_dict = {seq.representative_name: seq for seq in self.normalized_trna_seqs}
-        num_nuc_bins = len(unambiguous_nucs) + 1 # There is one bin (value 0) for end gaps in the alignment.
         names_of_normalized_seqs_assigned_to_modified_seqs = []
         for reference_name, aligned_reference in agglomerated_aligned_reference_dict.items():
             # A modification requires at least 3 different nucleotides to be detected,
@@ -1426,100 +1513,55 @@ class TRNASeqDataset:
                     # and so did not cause the cluster to be split into new clusters.
                     # Therefore, do not cycle through the remaining positions again to find those with fewer than 3 nucleotides.
                     if candidates_to_remove:
-                        next_clusters.appendleft((sequence_array,
-                                                  normalized_seqs,
-                                                  np.delete(three_four_nuc_alignment_positions, candidates_to_remove)))
+                        next_clusters.appendleft((normalized_seqs, np.delete(three_four_nuc_alignment_positions, candidates_to_remove)))
                     else:
-                        next_clusters.appendleft((sequence_array,
-                                                  normalized_seqs,
-                                                  three_four_nuc_alignment_positions))
-            if next_clusters:
-                clusters.clear()
-                while next_clusters:
-                    sequence_array, normalized_seqs, modification_positions = next_clusters.pop()
+                        next_clusters.appendleft((normalized_seqs, three_four_nuc_alignment_positions))
 
-                    unique_coverage_array = np.zeros(sequence_array.shape, dtype=int)
-                    array_width = sequence_array.shape[1]
-                    added_and_rejected_trimmed_seq_names = []
-                    for n, normalized_seq in enumerate(normalized_seqs):
-                        normalized_seq_start_in_array = array_width - len(normalized_seq.seq_string)
-                        for trimmed_seq, trimmed_seq_start_in_normalized_seq, trimmed_seq_stop_in_normalized_seq in zip(normalized_seq.trimmed_seqs, normalized_seq.start_positions, normalized_seq.end_positions):
-                            if trimmed_seq.representative_name in added_and_rejected_trimmed_seq_names:
-                                continue
-
-                            if trimmed_seq.normalized_seq_count == 1:
-                                unique_coverage_array[n, normalized_seq_start_in_array + trimmed_seq_start_in_normalized_seq: normalized_seq_start_in_array + trimmed_seq_stop_in_normalized_seq] += trimmed_seq.input_count
-                                added_and_rejected_trimmed_seq_names.append(trimmed_seq.representative_name)
-                                continue
-
-                            num_normalized_seqs_in_cluster_containing_trimmed_seq = 1
-                            for p, other_normalized_seq in enumerate(normalized_seqs):
-                                if n == p:
-                                    continue
-                                for other_trimmed_seq in other_normalized_seq.trimmed_seqs:
-                                    if trimmed_seq.representative_name == other_trimmed_seq.representative_name:
-                                        num_normalized_seqs_in_cluster_containing_trimmed_seq += 1
-                            if num_normalized_seqs_in_cluster_containing_trimmed_seq == trimmed_seq.normalized_seq_count:
-                                unique_coverage_array[n, normalized_seq_start_in_array + trimmed_seq_start_in_normalized_seq: normalized_seq_start_in_array + trimmed_seq_stop_in_normalized_seq] += trimmed_seq.input_count
-                                added_and_rejected_trimmed_seq_names.append(trimmed_seq.representative_name)
-                            elif num_normalized_seqs_in_cluster_containing_trimmed_seq < trimmed_seq.normalized_seq_count:
-                                added_and_rejected_trimmed_seq_names.append(trimmed_seq.representative_name)
-                            else:
-                                raise ConfigError("The number of normalized sequences containing the trimmed sequence was somehow miscalculated.")
-
-                    clusters.appendleft((sequence_array,
-                                         unique_coverage_array,
-                                         normalized_seqs,
-                                         modification_positions))
-            else:
+            if not next_clusters:
                 continue
+            clusters = next_clusters
 
-            # Check that nucleotide positions with at least 3 different nucleotides meet the criteria for modifications.
             while clusters:
-                sequence_array, unique_coverage_array, normalized_seqs, modification_positions = clusters.pop()
-                candidates_to_remove = []
+                norm_seqs, mod_positions = clusters.pop()
+                norm_seqs = sorted(norm_seqs, key=lambda seq: (-len(seq.seq_string), seq.representative_name)) # Turn the `norm_seqs` array into a list.
+                represent_norm_seq_start_in_array = aligned_reference_length - len(norm_seqs[0].seq_string)
+                mod_positions -= represent_norm_seq_start_in_array
+                mod_seq = ModifiedSeq(norm_seqs, mod_positions.tolist())
+                for norm_seq in norm_seqs:
+                    names_of_normalized_seqs_assigned_to_modified_seqs.append(norm_seq.representative_name)
+                self.modified_trna_seqs.append(mod_seq)
 
-                for i, alignment_position in enumerate(modification_positions):
-                    if unique_coverage_array[:, alignment_position].sum() < self.min_modification_count:
-                        # There is a minimum coverage threshold at the position required to predict a modification.
-                        candidates_to_remove.append(i)
-                        continue
+        self.progress.update("Finding sequences with modification-induced deletions")
 
-                    aligned_nucs = sequence_array[:, alignment_position]
-                    nuc_counts = np.bincount(aligned_nucs, minlength=num_nuc_bins)[1: ]
-                    max_coverage = 0
-                    total_coverage = 0
-                    for nuc_int, nuc_count in enumerate(nuc_counts, start=1):
-                        if nuc_count > 0:
-                            nuc_coverage = unique_coverage_array[(aligned_nucs == nuc_int).nonzero()[0], alignment_position].sum()
-                            if nuc_coverage > max_coverage:
-                                max_coverage = nuc_coverage
-                            total_coverage += nuc_coverage
-                    if 1 - max_coverage / total_coverage < self.min_modification_fraction:
-                        # There is a minimum fraction of minority nucleotide coverage required to predict a modification.
-                        candidates_to_remove.append(i)
-                        continue
+        # Search for normalized sequences with modification-induced deletions,
+        # which are added to uninitialized modified sequences.
+        # Exclude normalized sequences that have already been added to modified sequences from the search.
+        norm_seq_targets = [norm_seq for norm_seq in self.normalized_trna_seqs
+                            if norm_seq.representative_name not in names_of_normalized_seqs_assigned_to_modified_seqs]
+        # Speed up dict lookup by searching modified sequences against normalized sequences of the same length.
+        norm_seq_target_dict = defaultdict(dict)
+        for norm_seq in norm_seq_targets:
+            norm_seq_len = len(norm_seq.seq_string)
+            norm_seq_target_dict[norm_seq_len][norm_seq.seq_string] = norm_seq
 
-                if not candidates_to_remove:
-                    normalized_seqs = sorted([seq for seq in normalized_seqs], key=lambda seq: (-len(seq.seq_string), seq.representative_name))
-                    start = aligned_reference_length - len(normalized_seqs[0].seq_string)
-                    modification_positions -= start
-                    modified_seq = ModifiedSeq(normalized_seqs, modification_positions.tolist())
-                    for normalized_seq in normalized_seqs:
-                        names_of_normalized_seqs_assigned_to_modified_seqs.append(normalized_seq.representative_name)
-                    self.modified_trna_seqs.append(modified_seq)
-                elif len(candidates_to_remove) < modification_positions.size:
-                    normalized_seqs = sorted([seq for seq in normalized_seqs], key=lambda seq: (-len(seq.seq_string), seq.representative_name))
-                    start = aligned_reference_length - len(normalized_seqs[0].seq_string)
-                    modification_positions = np.delete(modification_positions, candidates_to_remove)
-                    modification_positions -= start
-                    modified_seq = ModifiedSeq(normalized_seqs, modification_positions.tolist())
-                    for normalized_seq in normalized_seqs:
-                        names_of_normalized_seqs_assigned_to_modified_seqs.append(normalized_seq.representative_name)
-                    self.modified_trna_seqs.append(modified_seq)
+        query_dict = defaultdict(list)
+        for mod_seq in self.modified_trna_seqs:
+            for seq_string_with_del, del_config in mod_seq.get_seqs_with_dels():
+                query_dict[seq_string_with_del].append((del_config, mod_seq))
 
-        for i, modified_seq in enumerate(self.modified_trna_seqs[::-1]):
-            modified_seq.set_consensus_seq_string()
+        for seq_string_with_del, mod_seq_items in query_dict.items():
+            d = norm_seq_target_dict[len(seq_string_with_del)]
+            try:
+                norm_seq = d[seq_string_with_del]
+            except KeyError:
+                continue
+            for del_config, mod_seq in mod_seq_items:
+                norm_seq.modified_seqs.append(mod_seq)
+                mod_seq.normalized_seqs_with_deletions.append(norm_seq)
+                mod_seq.deletion_configurations.append(del_config)
+
+        for mod_seq in self.modified_trna_seqs:
+            mod_seq.init()
 
         self.progress.end()
 
@@ -1551,10 +1593,10 @@ class TRNASeqDataset:
 
         for modified_seq in self.modified_trna_seqs:
             multiplicity_sum = 0
-            for normalized_seq in modified_seq.all_normalized_seqs:
+            for normalized_seq in modified_seq.normalized_seqs_without_deletions + modified_seq.normalized_seqs_with_deletions:
                 for trimmed_seq in normalized_seq.trimmed_seqs:
                     multiplicity_sum += multiplicity_dict[trimmed_seq.representative_name]
-            self.average_multiplicities_of_modified_seqs.append(round(multiplicity_sum / modified_seq.input_count, 1))
+            self.average_multiplicities_of_modified_seqs.append(round(multiplicity_sum / (modified_seq.specific_read_count + modified_seq.nonspecific_read_count), 1))
 
         self.progress.end()
 
@@ -1638,16 +1680,24 @@ class TRNASeqDataset:
                                                       self.average_multiplicities_of_modified_seqs):
             modified_table_entries.append(
                 (modified_seq.representative_name,
-                 ','.join([str(substitution_index) for substitution_index in modified_seq.substitution_indices]) + ',',
-                 ','.join(sorted(str(deletion_index) for deletion_index in modified_seq.deletion_indices)) + ',',
-                 modified_seq.consensus_seq_string,
-                 ','.join([normalized_seq.representative_name for normalized_seq in modified_seq.all_normalized_seqs]),
-                 len(modified_seq.all_normalized_seqs),
-                 modified_seq.input_count,
-                 average_multiplicity,
-                 modified_seq.input_seqs_mapped_without_extra_fiveprime_count,
-                 modified_seq.input_seqs_mapped_with_extra_fiveprime_count)
-                + tuple(modified_seq.input_acceptor_variant_count_dict.values()))
+                 ','.join([str(substitution_index) for substitution_index in modified_seq.substitution_indices]) + ',')
+                + tuple([','.join(map(str, modified_seq.specific_substitution_coverages[:, i - 1])) + ',' for i in int_nuc_dict])
+                + tuple([','.join(map(str, modified_seq.nonspecific_substitution_coverages[:, i - 1])) + ',' for i in int_nuc_dict])
+                + (';'.join(','.join(map(str, del_config)) for del_config in modified_seq.deletion_configurations) + ',', )
+                + (','.join(str(del_cov) for del_cov in modified_seq.specific_deletion_coverages) + ',',
+                   ','.join(str(del_cov) for del_cov in modified_seq.nonspecific_deletion_coverages) + ',')
+                + (modified_seq.consensus_seq_string,
+                   len(modified_seq.normalized_seqs_without_deletions),
+                   ','.join([normalized_seq.representative_name for normalized_seq in modified_seq.normalized_seqs_without_deletions]),
+                   len(modified_seq.normalized_seqs_with_deletions),
+                   ','.join([normalized_seq.representative_name for normalized_seq in modified_seq.normalized_seqs_with_deletions]),
+                   modified_seq.specific_read_count,
+                   modified_seq.nonspecific_read_count,
+                   average_multiplicity,
+                   modified_seq.count_of_specific_reads_with_extra_fiveprime,
+                   modified_seq.count_of_nonspecific_reads_with_extra_fiveprime,
+                   modified_seq.specific_mapped_read_count,
+                   modified_seq.nonspecific_mapped_read_count))
 
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         # Overwrite the existing table if starting from a checkpoint.

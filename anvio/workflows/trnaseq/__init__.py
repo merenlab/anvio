@@ -67,8 +67,6 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                                                        '--feature-param-file',
                                                        '--min-trna-fragment-size',
                                                        '--agglomeration-max-mismatch-freq',
-                                                       '--min-modification-count',
-                                                       '--min-modification-fraction',
                                                        '--max-deletion-size',
                                                        '--alignment-progress-interval',
                                                        '--agglomeration-progress-interval']
