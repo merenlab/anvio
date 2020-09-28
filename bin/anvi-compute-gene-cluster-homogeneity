@@ -23,6 +23,7 @@ __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
 __requires__ = ["pan-db", "genomes-storage-db"]
 __provides__ = []
+__resources__ = [("The role of gene cluster homogeneity described in the Anvi'o pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#inferring-the-homogeneity-of-gene-clusters")]
 __description__ = "Compute homogeneity for gene clusters"
 
 
