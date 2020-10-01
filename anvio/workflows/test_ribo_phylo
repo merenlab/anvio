@@ -1,0 +1,15 @@
+{
+    "samples_txt": "samples.txt",
+    "anvi_get_sequences_for_hmm_hits_ribosomal_proteins": {
+        "run": true,
+        "threads": 5
+    },
+    "Ribosomal_protein_list": "",
+    "output_dirs": {
+        "FILTERED_RIBO_PROTEINS_DIR": "01_FILTERED_RIBO_PROTEINS",
+        "LOGS_DIR": "00_LOGS"
+    },
+    "max_threads": "",
+    "config_version": "1",
+    "workflow_name": "ribo_phylo"
+}

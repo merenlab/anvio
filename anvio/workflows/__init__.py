@@ -638,18 +638,20 @@ def get_fields_for_fasta_information():
 
 
 def get_workflow_module_dict():
-
     from anvio.workflows.contigs import ContigsDBWorkflow
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
     from anvio.workflows.trnaseq import TRNASeqWorkflow
+    from anvio.workflows.ribo_phylo import RibosomalPhylogeneticsWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
-                      'trnaseq': TRNASeqWorkflow}
+                      'trnaseq': TRNASeqWorkflow,
+                      'ribo_phylo': RibosomalPhylogeneticsWorkflow
+                      }
 
     return workflows_dict
 
