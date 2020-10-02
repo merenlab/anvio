@@ -44,7 +44,7 @@ anvi-get-enriched-functions-per-pan-group -p %(pan-db)s\
                                           --annotation-source COG_FUNCTION
 {{ codestop }}
 
-Use the parameter `--list-annotation-sources` to list the available annotation sources in your %(pan-db). 
+Use the parameter `--list-annotation-sources` to list the available annotation sources in your %(pan-db)s. 
 
 #### Additional Output 
 
