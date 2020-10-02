@@ -16,6 +16,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-db": {
+        "name": "CONTIGS",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
@@ -390,6 +396,18 @@ ANVIO_ARTIFACTS ={
     },
     "scgs-taxonomy": {
         "name": "SCG TAXONOMY",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trna-taxonomy-db": {
+        "name": "TRNA TAXONOMY DB",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trna-taxonomy": {
+        "name": "TRNA TAXONOMY",
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
