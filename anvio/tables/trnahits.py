@@ -66,14 +66,14 @@ class TablesForTransferRNAs:
         self.just_do_it = A('just_do_it')
 
         self.amino_acids = set([aa for aa in constants.AA_to_codons.keys() if aa != 'STP'])
-        self.codons = set([cdn for cdn in constants.codon_to_AA.keys() if constants.codon_to_AA[cdn] in self.amino_acids])
+        self.anticodons = set([acdn for acdn in constants.anticodon_to_AA.keys() if constants.anticodon_to_AA[acdn] in self.amino_acids])
 
         # the following variable is to meet the requirements of TablesForHMMHits to work with a new HMM
         # source.
         self.source = {'ref': 'Chan and Lowe, https://doi.org/10.1007/978-1-4939-9173-0_1',
                        'kind': 'Transfer_RNAs',
                        'domain': None,
-                       'genes': ['%s_%s' % (constants.codon_to_AA[cdn], cdn) for cdn in self.codons],
+                       'genes': ['%s_%s' % (constants.anticodon_to_AA[acdn], acdn) for acdn in self.anticodons],
                        'target': 'RNA:CONTIG',
                        'noise_cutoff_terms': None,
                        'model': None}
@@ -134,7 +134,7 @@ class TablesForTransferRNAs:
         #      'start': 135361,
         #      'stop': 135433,
         #      'amino_acid': 'Thr',
-        #      'codon': 'CGT',
+        #      'anticodon': 'CGT',
         #      'score': 67.6}}
         #
         # and here is one exmple from the rRNA HMMs results dict:
@@ -151,15 +151,15 @@ class TablesForTransferRNAs:
         # score / e_value will cause issues later :(
 
         missing_amino_acids = Counter()
-        missing_codons = Counter()
+        missing_anticodons = Counter()
         entries_to_remove = set([])
         for entry_id in search_results_dict:
             entry = search_results_dict[entry_id]
 
-            aa, codon = entry['amino_acid'], utils.rev_comp(entry['anticodon'])
+            aa, anticodon = entry['amino_acid'], entry['anticodon']
 
-            if codon not in self.codons:
-                missing_codons[codon] += 1
+            if anticodon not in self.anticodons:
+                missing_anticodons[anticodon] += 1
                 entries_to_remove.add(entry_id)
                 continue
 
@@ -168,7 +168,7 @@ class TablesForTransferRNAs:
                 entries_to_remove.add(entry_id)
                 continue
 
-            aa_codon = '%s_%s' % (aa, codon)
+            aa_codon = '%s_%s' % (aa, anticodon)
 
             entry['gene_name'] = aa_codon
             entry['e_value'] = entry['score']
@@ -190,20 +190,20 @@ class TablesForTransferRNAs:
 
         self.run.info("Num tRNA genes recovered", len(search_results_dict))
 
-        if len(missing_codons):
+        if len(missing_anticodons):
+            info_line = ', '.join(['%s (%d)' % (anticodon, missing_anticodons[anticodon]) for anticodon in missing_anticodons])
             self.run.warning("While anvi'o was trying to parse the output from tRNAScan-SE, it "
                              "became clear that some of the codons the tool identified was not "
                              "known to anvi'o, so we conservatively discareded those entries. "
                              "Here is the list of codons that were discareded and their frequency "
-                             "among your contigs: '%s'." % (', '.join(['%s (%d)' % (codon, missing_codons[codon]) for codon in missing_codons])),
-                             header="WEIRD CODONS ALERT")
+                             "among your contigs: '%s'." % (info_line), header="WEIRD CODONS ALERT")
 
         if len(missing_amino_acids):
+            info_line = ', '.join(['%s (%d)' % (amino_acid, missing_amino_acids[amino_acid]) for amino_acid in missing_amino_acids])
             self.run.warning("While anvi'o was trying to parse the output from tRNAScan-SE, it "
                              "run into some amino acid names that were not known to anvi'o. "
                              "All those entries are now gone :/ But here is the list of amino "
-                             "acids and their frequencies: '%s'." % (', '.join(['%s (%d)' % (amino_acid, missing_amino_acids[amino_acid]) for amino_acid in missing_amino_acids])),
-                             header="WEIRD AMINO ACIDS ALERT")
+                             "acids and their frequencies: '%s'." % (info_line), header="WEIRD AMINO ACIDS ALERT")
 
         search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
 
@@ -234,9 +234,8 @@ class TablesForTransferRNAs:
         for entry_id in search_results_dict:
             entry = search_results_dict[entry_id]
 
-            function_text = 'tRNA gene for amino acid %s (codon: %s; anticodon:%s; score:%.1f; intron_start:%d; intron_end:%d)' \
-                                            % (entry['amino_acid'], utils.rev_comp(entry['anticodon']), entry['anticodon'], \
-                                               entry['score'], entry['intron_start'], entry['intron_end'])
+            function_text = 'tRNA gene for amino acid %s (anticodon:%s; score:%.1f; intron_start:%d; intron_end:%d)' \
+                                            % (entry['amino_acid'], entry['anticodon'], entry['score'], entry['intron_start'], entry['intron_end'])
 
             functions_dict[entry_id] = {'gene_callers_id': entry['gene_callers_id'],
                                         'source': self.source_name,

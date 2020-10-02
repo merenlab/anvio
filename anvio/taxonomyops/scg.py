@@ -6,42 +6,31 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 """
 
 import os
-import sys
 import glob
-import gzip
 import copy
 import shutil
-import hashlib
-import argparse
-import numpy as np
 import pandas as pd
-import multiprocessing
 import scipy.sparse as sps
 
-from collections import OrderedDict, Counter
-
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import MetagenomeDescriptions
-from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
+from anvio.taxonomyops import AccessionIdToTaxonomy
+from anvio.taxonomyops import TaxonomyEstimatorSingle
+from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
-HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -76,13 +65,14 @@ locally_known_SCG_names = ['Ribosomal_S2',
                            'Ribosomal_L27A']
 
 
-class SCGTaxonomyContext(object):
+class SCGTaxonomyContext(AccessionIdToTaxonomy):
     """The purpose of this base class is ot define file paths and constants for all single-copy
        core gene taxonomy operations.
     """
     def __init__(self, scgs_taxonomy_data_dir=None, database_release=None, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
+        self.focus = "scgs"
 
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
@@ -118,57 +108,16 @@ class SCGTaxonomyContext(object):
         # they better point to actual files.
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
-        self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+        self.accession_to_taxonomy_dict = {}
 
-        self.accession_to_taxonomy_dict = None
-        if os.path.exists(self.accession_to_taxonomy_file_path):
-            self.progress.new("Reading the accession to taxonomy file")
-            self.progress.update('...')
+        # set version for ctx, so we know what version of the databases are on disk
+        if os.path.exists(self.database_version_file_path):
+            self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
+        else:
+            self.scg_taxonomy_database_version = None
 
-            self.accession_to_taxonomy_dict = {}
-            with gzip.open(self.accession_to_taxonomy_file_path, 'rb') as taxonomy_file:
-                for line in taxonomy_file.readlines():
-                    line = line.decode('utf-8')
-
-                    if line.startswith('#'):
-                        continue
-
-                    accession, taxonomy_text = line.strip('\n').split('\t')
-                    # taxonomy_text kinda looks like these:
-                    #
-                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
-                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
-                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
-                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
-                    #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
-
-                    d = {}
-                    for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
-                        if letter in self.letter_to_level:
-                            # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
-                            # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
-                            # become Enterococcus
-                            if '_' in taxon:
-                                if letter != 's':
-                                    d[self.letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
-                                else:
-                                    # special treatment for species level taxonomy string.
-                                    # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
-                                    # species itself may have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
-                                    # neeed to make sure the subclades are removed from all words in the species level
-                                    # taxonomy string.
-                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
-                            else:
-                                d[self.letter_to_level[letter]] = taxon
-                        else:
-                            self.run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
-
-                    self.accession_to_taxonomy_dict[accession] = d
-
-            # let's add one more accession for all those missing accessions
-            self.accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in self.levels_of_taxonomy])
-
-            self.progress.end()
+        # populate `self.accession_to_taxonomy_dict`
+        AccessionIdToTaxonomy.__init__(self)
 
 
 # here we create an instance for the module. the idea is to overwrite it if
@@ -221,6 +170,11 @@ class SanityCheck(object):
                 raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical "
                                   "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
                                   "the program `anvi-setup-scg-taxonomy` with the `--reset` flag to set things right again.")
+
+            filesnpaths.is_output_file_writable(self.all_hits_output_file_path, ok_if_exists=False) if self.all_hits_output_file_path else None
+
+            filesnpaths.is_output_file_writable(self.per_scg_output_file) if self.per_scg_output_file else None
+
 
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
@@ -307,7 +261,7 @@ class SanityCheck(object):
                 if self.profile_db_path and self.metagenome_mode and not self.compute_scg_coverages:
                     raise ConfigError("You have a profile database and you have asked anvi'o to estimate taxonomy in metagenome mode, "
                                       "but you are not asking anvi'o to compute SCG coverages which doesn't make much sense :/ Removing "
-                                      "the profile database from this command or addint the flag `--compute-scg-coverages` would have "
+                                      "the profile database from this command or adding the flag `--compute-scg-coverages` would have "
                                       "made much more sense.")
 
                 if self.profile_db_path and not self.metagenome_mode and not self.collection_name:
@@ -325,7 +279,7 @@ class SanityCheck(object):
 
                     if not self.compute_scg_coverages:
                         raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o "
-                                          "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
+                                          "is NOT computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
                                           "it by adding the flag `--compute-scg-coverages` to your command line).")
 
             ###########################################################
@@ -375,6 +329,8 @@ class SCGTaxonomyArgs(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.per_scg_output_file = A('per_scg_output_file')
+        self.all_hits_output_file_path = A('all_hits_output_file')
         self.output_file_prefix = A('output_file_prefix')
         self.just_do_it = A('just_do_it')
         self.simplify_taxonomy_information = A('simplify_taxonomy_information')
@@ -575,7 +531,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
                 args.compute_scg_coverages = True
 
-            d = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict_multi[metagenome_name])
+            d = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_print_friendly_items_taxonomy_super_dict(scg_taxonomy_super_dict_multi[metagenome_name])
 
             # NOTE: what is happening down below might look stupid, because it really is. items of `d` here
             # contain a dictionary with the key 'coverages' where the coverage value of a given gene or bin
@@ -932,7 +888,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                     args.scg_name_for_metagenome_mode = None
 
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
-            scg_taxonomy_super_dict[metagenome_name] = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet).get_scg_taxonomy_super_dict()
+            scg_taxonomy_super_dict[metagenome_name] = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet).get_items_taxonomy_super_dict()
 
             self.progress.increment()
 
@@ -957,7 +913,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             e = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet)
             for scg_name in self.ctx.default_scgs_for_taxonomy:
-                scg_frequencies[metagenome_name][scg_name] = e.frequency_of_scgs_with_taxonomy[scg_name]
+                scg_frequencies[metagenome_name][scg_name] = e.frequency_of_items_with_taxonomy[scg_name]
 
             self.progress.increment()
 
@@ -974,7 +930,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         return scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies
 
 
-class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
+class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck, TaxonomyEstimatorSingle):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -993,827 +949,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
 
         SanityCheck.__init__(self)
 
-        self.run.info('Contigs DB', self.contigs_db_path)
-        self.run.info('Profile DB', self.profile_db_path)
-        self.run.info('Metagenome mode', self.metagenome_mode)
-        if self.metagenome_mode:
-            self.run.info('SCG for metagenome', self.scg_name_for_metagenome_mode)
-
-        # these dictionaries that will be initiated later
-        self.contigs_db_project_name = "Unknown"
-        self.scg_name_to_gene_caller_id_dict = {}
-        self.frequency_of_scgs_with_taxonomy = {}
-        self.gene_callers_id_to_scg_taxonomy_dict = {}
-        self.split_name_to_gene_caller_ids_dict = {}
-        self.gene_callers_id_to_split_name_dict = {}
-        self.sample_names_in_profile_db = None
-
-        self.initialized = False
-
-        if not skip_init:
-            self.init()
-
-
-    def init(self):
-        self.init_scg_data()
-
-        if self.report_scg_frequencies_path:
-            with open(self.report_scg_frequencies_path, 'w') as output:
-                for scg_name, frequency in self.frequency_of_scgs_with_taxonomy.items():
-                    output.write("%s\t%d\n" % (scg_name, frequency))
-
-            self.run.info('SCG frequencies within the contigs db', self.report_scg_frequencies_path, nl_before=1)
-            sys.exit()
-
-        if self.profile_db_path:
-            self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
-
-        self.initialized = True
-
-
-    def init_scg_data(self):
-        """Initialize SCG taxonomy for the entire contigs database"""
-
-        if not self.contigs_db_path:
-            return None
-
-        self.progress.new('Initializing')
-        self.progress.update('SCG taxonomy dictionary')
-
-        for scg_name in self.ctx.SCGs:
-            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
-
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
-        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
-        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
-        contigs_db.disconnect()
-
-        # this is important. before we begin, we need to filter out gene caller ids and splits from main dictionaries if
-        # they shouldn't be there. read the warning below to see the utility of this step.
-        if self.profile_db_path and self.compute_scg_coverages:
-            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
-            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
-            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
-
-            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
-
-            if len(splits_missing_in_profile_db):
-                self.progress.reset()
-                self.run.warning("Please note that anvi'o found %s splits in your contigs database. But only %s of them "
-                                 "appeared ot be in the profile database. As a result, anvi'o will now remove the %s splits "
-                                 "that occur only in the contigs db from all downstream analyses here (if you didn't use the flag "
-                                 "`--compute-scg-coverages` this wouldn't have been necessary, but with the current settings "
-                                 "this is really the best for everyone). Where is this difference coming from though? Well. This "
-                                 "is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
-                                 "step can exclude many contigs from downstream analyses (often for good reasons, too). For "
-                                 "instance, in your case the minimum contig length goes as low as %s nts in your contigs database. "
-                                 "Yet, the minimum contig length set in the profile databaes is %s nts. Hence the difference. Anvi'o "
-                                 "hopes that this explaines some things." % (pp(len(split_names_in_contigs_db)),
-                                                                             pp(len(split_names_in_profile_db)),
-                                                                             pp(len(splits_missing_in_profile_db)),
-                                                                             pp(min_contig_length_in_contigs_db),
-                                                                             pp(min_contig_length_in_profile_db)))
-
-                self.progress.update("Removing %s splits missing form the profile db" % pp(len(splits_missing_in_profile_db)))
-                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
-
-                # so now we know the final list of split names and gene caller ids as they are stored in the updated
-                # `genes_in_splits` variable. time to clean up the `scg_taxonomy_table` dictionary as well.
-                final_set_of_gene_caller_ids = set([tpl[1] for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db])
-                entry_ids_to_remove = [entry for entry in scg_taxonomy_table if scg_taxonomy_table[entry]['gene_callers_id'] not in final_set_of_gene_caller_ids]
-                [scg_taxonomy_table.pop(e) for e in entry_ids_to_remove]
-
-        # NOTE: This will modify the taxonomy strings read from the contigs database. see the
-        # function header for `trim_taxonomy_dict_entry` for more information.
-        if self.simplify_taxonomy_information:
-            self.progress.update('SCG taxonomy dicts ... trimming main')
-            for key in scg_taxonomy_table:
-                scg_taxonomy_table[key] = self.trim_taxonomy_dict_entry(scg_taxonomy_table[key])
-
-        self.progress.update('SCG taxonomy dicts ... building g->tax')
-        for entry in scg_taxonomy_table.values():
-            gene_callers_id = entry['gene_callers_id']
-            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
-
-        self.progress.update('SCG taxonomy dicts ... building tax->g')
-        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
-            scg_gene_name = entry['gene_name']
-            gene_callers_id = entry['gene_callers_id']
-            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
-
-        self.progress.update('SCG taxonomy dicts ... building s->g + g->s')
-        for split_name, gene_callers_id in genes_in_splits:
-            if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
-                continue
-
-            if split_name not in self.split_name_to_gene_caller_ids_dict:
-                self.split_name_to_gene_caller_ids_dict[split_name] = set()
-
-            self.split_name_to_gene_caller_ids_dict[split_name].add(gene_callers_id)
-            self.gene_callers_id_to_split_name_dict[gene_callers_id] = split_name
-
-        self.progress.end()
-
-        self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
-
-        if self.metagenome_mode or anvio.DEBUG:
-            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfully initialized "
-                                 "from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
-                                            (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
-                                             ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) \
-                                                                for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
-
-
-    def trim_taxonomy_dict_entry(self, taxonomy_dict_entry):
-        """ Remove excess information from taxonomy information.
-
-        The purpose of this is to give an option to the user to simplify GTDB names, that
-        will have a text information for every level of taxonomy depending on what branches
-        genomes fit, but it is not always helpful to the user. Such as this one:
-
-             t_domain Bacteria
-             t_phylum Firmicutes
-             t_class Clostridia
-             t_order Monoglobales
-             t_family UBA1381
-             t_genus CAG-41
-             t_species CAG-41 sp900066215
-
-         in this case the user may want to get this instead:
-
-             t_domain Bacteria
-             t_phylum Firmicutes
-             t_class Clostridia
-             t_order Monoglobales
-             t_family None
-             t_genus None
-             t_species None
-
-         So this function will take a taxonomy dict entry , and will return a simplified
-         version of it if trimming is applicable.
-
-        Paremeters
-        ==========
-        taxonomy_dict_entry: dict
-            a dictionary that contains keys for all taxon names. such as this one:
-                {[...],
-                 't_domain': 'Bacteria',
-                 't_phylum': 'Firmicutes',
-                 't_class': 'Clostridia',
-                 't_order': 'Oscillospirales',
-                 't_family': 'Acutalibacteraceae',
-                 't_genus': 'Ruminococcus',
-                 't_species': 'Ruminococcus sp002491825'
-                }
-         """
-
-        # for optimization, these letters should all have three characters. if that
-        # behavior needs to change, the code down below must be updates. the purpose
-        # of this is not to have a comprehensive list of EVERY single GTDB-specific
-        # clade designations, but to make sure teh vast majority of names are covered.
-        GTDB_specific_clade_prefixes = ['CAG', 'GCA', 'UBA', 'FUL', 'PAL', '2-0', 'Fen', 'RF3', 'TAN']
-
-        taxonomic_levels_to_nullify = []
-
-        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
-            if not taxonomy_dict_entry[taxonomic_level]:
-                continue
-
-            if taxonomic_level == 't_species':
-                species_name = taxonomy_dict_entry[taxonomic_level].split(' ')[1]
-                try:
-                    int(species_name[2])
-                    taxonomic_levels_to_nullify.append(taxonomic_level)
-                except:
-                    None
-            else:
-                if taxonomy_dict_entry[taxonomic_level][0:3] in GTDB_specific_clade_prefixes:
-                    taxonomic_levels_to_nullify.append(taxonomic_level)
-
-        # this is the best way to make sure we are not going to nullify order, but leave behind a family name.
-        if taxonomic_levels_to_nullify:
-            level_below_which_to_nullify = min([self.ctx.levels_of_taxonomy.index(l) for l in taxonomic_levels_to_nullify])
-            for taxonomic_level in self.ctx.levels_of_taxonomy[level_below_which_to_nullify:]:
-                taxonomy_dict_entry[taxonomic_level] = None
-
-        return taxonomy_dict_entry
-
-
-    def get_blank_hit_template_dict(self):
-        hit = {}
-
-        for level in self.ctx.levels_of_taxonomy[::-1]:
-            hit[level] = None
-
-        return hit
-
-
-    def get_consensus_taxonomy(self, scg_taxonomy_dict):
-        """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
-
-        if not len(scg_taxonomy_dict):
-            return dict([(l, None) for l in self.ctx.levels_of_taxonomy])
-
-        pd.set_option('mode.chained_assignment', None)
-
-        scg_hits = list([v for v in scg_taxonomy_dict.values() if v['t_domain']])
-
-        if not len(scg_hits):
-            return self.get_blank_hit_template_dict()
-
-        df = pd.DataFrame.from_records(scg_hits)
-
-        # we have already stored a unique hash for taxonomy strings. here we will figure out most frequent
-        # hash values in the df
-        tax_hash_counts = df['tax_hash'].value_counts()
-        tax_hash_df = tax_hash_counts.rename_axis('tax_hash').reset_index(name='frequency')
-        max_frequency = tax_hash_df.frequency.max()
-        tax_hash_df_most_frequent = tax_hash_df[tax_hash_df.frequency == max_frequency]
-
-        if len(tax_hash_df_most_frequent.index) == 1:
-            # if there is only a single winner, we're golden
-            winner_tax_hash = tax_hash_df_most_frequent.tax_hash[0]
-
-            # get the consensus hit based on the winner hash
-            consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
-
-            # turn it into a Python dict before returning
-            return consensus_hit.to_dict('records')[0]
-        else:
-            # if there are competing hashes, we need to be more careful to decide
-            # which taxonomic level should we use to cut things off.
-            consensus_hit = self.get_blank_hit_template_dict()
-            for level in self.ctx.levels_of_taxonomy[::-1]:
-                if len(df[level].unique()) == 1:
-                    consensus_hit[level] = df[level].unique()[0]
-
-            return consensus_hit
-
-
-    def print_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
-        self.progress.reset()
-        self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
-
-        if len(hits):
-            header = ['SCG', 'gene', 'pct id', 'taxonomy']
-            table = []
-
-            for hit in hits:
-                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])
-
-                # if the hit we are working on sent here as 'consensus', we will color it up a bit so it shows up
-                # more clearly in the debug output.
-                if hit['gene_name'] == 'CONSENSUS':
-                    taxon_text = terminal.c(taxon_text, color='red')
-
-                    for field_name in ['gene_name', 'percent_identity', 'gene_callers_id']:
-                        hit[field_name] = terminal.c(hit[field_name], color='red')
-
-                table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
-
-            anvio.TABULATE(table, header)
-        else:
-            self.run.info_single("No hits :/")
-
-
-    def get_scg_taxonomy_dict(self, gene_caller_ids, bin_name=None):
-        scg_taxonomy_dict = {}
-
-        improper_gene_caller_ids = [g for g in gene_caller_ids if g not in self.gene_callers_id_to_scg_taxonomy_dict]
-        if improper_gene_caller_ids:
-            raise ConfigError("Something weird is going on. Somehow anvi'o has a bunch of gene caller ids for which it is "
-                              "supposed to estimate taxonomy. However, %d of them do not occur in a key dictionary. The code "
-                              "here does not know what to suggest :( Apologies." % len(improper_gene_caller_ids))
-
-        for gene_callers_id in gene_caller_ids:
-            scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
-            scg_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id])
-
-        return scg_taxonomy_dict
-
-
-    def estimate_for_list_of_splits(self, split_names=None, bin_name=None):
-        """Estimate SCG taxonomy for a bunch of splits that belong to a single population.
-
-           The purpose of this function is to to do critical things: identify SCGs we use for taxonomy in `split_names`,
-           and generate a consensus taxonomy with the assumption that these are coming from splits that represents a
-           single population.
-
-           It will return a dictionary with multiple items, including a dictionary that contains the final consensus\
-           taxonomy, another one that includes every SCG and their raw associations with taxon names (from which the\
-           consensus taxonomy was computed), as well as information about how many SCGs were analyzed and supported the\
-           consesnus.
-        """
-
-        if self.metagenome_mode:
-            raise ConfigError("Someone is attempting to estimate taxonomy for a set of splits using a class inherited in "
-                              "`metagenome mode`. If you are a programmer please note that it is best to use the member "
-                              "function `estimate` directly.")
-
-        consensus_taxonomy = None
-
-        gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names)
-        scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids_of_interest)
-
-        try:
-            consensus_taxonomy = self.get_consensus_taxonomy(scg_taxonomy_dict)
-            consensus_taxonomy['gene_name'] = 'CONSENSUS'
-            consensus_taxonomy['percent_identity'] = '--'
-            consensus_taxonomy['gene_callers_id'] = '--'
-
-        except Exception as e:
-            self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()))
-
-            raise ConfigError("While trying to sort out the consensus taxonomy for %s anvi'o failed :( The list of SCG taxon hits that "
-                              "caused the failure is printed in your terminal. But the actual error message that came from the depths "
-                              "of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
-
-        if anvio.DEBUG:
-            self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
-
-        # set some useful information. `total_scgs` is the number of SCGs with taxonomy found in the collection of splits. the
-        # `supporting_scgs` communicate how many of them supports the consensus taxonomy fully
-        total_scgs = len(scg_taxonomy_dict)
-        supporting_scgs = 0
-
-        consensus_taxonomy_levels_occupied = [level for level in self.ctx.levels_of_taxonomy if consensus_taxonomy[level]]
-        consensus_taxonomy_str = ' / '.join([consensus_taxonomy[level] for level in consensus_taxonomy_levels_occupied])
-
-        for scg_taxonomy_hit in scg_taxonomy_dict.values():
-            scg_taxonomy_hit_str = ' / '.join([str(scg_taxonomy_hit[level]) for level in consensus_taxonomy_levels_occupied])
-
-            if scg_taxonomy_hit_str == consensus_taxonomy_str:
-                scg_taxonomy_hit['supporting_consensus'] = True
-                supporting_scgs += 1
-            else:
-                scg_taxonomy_hit['supporting_consensus'] = False
-
-        return {'consensus_taxonomy': consensus_taxonomy,
-                'scgs': scg_taxonomy_dict,
-                'total_scgs': total_scgs,
-                'supporting_scgs': supporting_scgs,
-                'metagenome_mode': False}
-
-
-    def estimate_for_bins_in_collection(self):
-        bins_taxonomy_dict = {}
-
-        bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
-                             "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
-                                                           pp(len(bin_name_to_split_names_dict)),
-                                                           self.collection_name), nl_before=1)
-
-        for bin_name in bin_name_to_split_names_dict:
-            split_names = bin_name_to_split_names_dict[bin_name]
-            bins_taxonomy_dict[bin_name] = self.estimate_for_list_of_splits(split_names, bin_name)
-
-        return bins_taxonomy_dict
-
-
-    def estimate_for_contigs_db_for_genome(self):
-        contigs_db_taxonomy_dict = {}
-
-        scg_frequencies = self.frequency_of_scgs_with_taxonomy.values()
-        if len([sf for sf in scg_frequencies if sf > 1]) * 100 / len(scg_frequencies) > 20:
-            if self.just_do_it:
-                self.run.warning("Because you asked anvi'o to just do it, it will do it, but you seem to have too much contamination "
-                                 "in this contigs database for it to represent a genome. So probably taxonomy estimations are all "
-                                 "garbage, but hey, at least it runs?")
-            else:
-                raise ConfigError("Because you haven't used the `--metagenome-mode` flag, anvi'o was trying to treat your contigs "
-                                  "database as a genome. But there seems to be too much redundancy of single-copy core genes in this "
-                                  "contigs database to assign taxonomy with any confidence :/ A more proper way to do this is to use the "
-                                  "`--metagenome-mode` flag. Or you can also tell anvi'o to `--just-do-it`. It is your computer after "
-                                  "all :( But you should still be aware that in that case you would likely get a completely irrelevant "
-                                  "answer from this program.")
-
-        splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
-        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
-                                                                                                  bin_name=self.contigs_db_project_name)
-        return contigs_db_taxonomy_dict
-
-
-    def estimate_for_contigs_db_for_metagenome(self):
-        """Treat a given contigs database as a metagenome.
-
-           This function deserves some attention. It relies on a single SCG to estimate the composition of a metagenome.
-           For instance, its sister function, `estimate_for_contigs_db_for_genome`, works with a list of splits that are
-           assumed to belong to the same genome. In which case a consensus taxonomy learned from all SCGs is most
-           appropriate. In this case, however, we don't know which split will go together, hence, we can't pull together
-           SCGs to learn a consensus taxonomy for independent populations in the metagenome. The best we can do is to stick
-           with a single SCG with the hope that (1) it will cut through as many populations as possible and (2) will have
-           reasonable power to resolve taxonomy all by itself. These independent assumptions will both work in some cases
-           and both fail in others.
-        """
-
-        # we first need to decide which SCG we should use to survey taxonomy
-        most_frequent_scg = next(iter(self.frequency_of_scgs_with_taxonomy))
-        if self.scg_name_for_metagenome_mode:
-            frequency_of_user_chosen_scg = self.frequency_of_scgs_with_taxonomy[self.scg_name_for_metagenome_mode]
-            frequency_of_most_frequent_scg = self.frequency_of_scgs_with_taxonomy[most_frequent_scg]
-
-            if frequency_of_user_chosen_scg < frequency_of_most_frequent_scg:
-                additional_note = " And just so you know, there is another SCG that was observed more times (i.e., %s; %d times)\
-                                   in this metagenome compared to yours (i.e., %d times). You're the boss, of course." %\
-                                            (most_frequent_scg, frequency_of_most_frequent_scg, frequency_of_user_chosen_scg)
-            else:
-                additional_note = ""
-
-            self.run.warning("As per your request anvi'o set '%s' to be THE single-copy core gene to survey your metagenome for its "
-                             "taxonomic composition.%s" % (self.scg_name_for_metagenome_mode, additional_note))
-        else:
-            self.scg_name_for_metagenome_mode = most_frequent_scg
-
-            self.run.warning("Anvi'o automatically set '%s' to be THE single-copy core gene to survey your metagenome for its "
-                             "taxonomic composition. If you are not happy with that, you could change it with the parameter "
-                             "`--scg-name-for-metagenome-mode`." % (self.scg_name_for_metagenome_mode))
-
-        gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[self.scg_name_for_metagenome_mode]
-        scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
-                                                       bin_name=self.contigs_db_project_name)
-
-        return {self.contigs_db_project_name: {'scgs': scg_taxonomy_dict,
-                                               'metagenome_mode': True}}
-
-
-    def get_scg_taxonomy_super_dict(self):
-        """Function that returns the `scg_taxonomy_super_dict`.
-
-           `scg_taxonomy_super_dict` contains a wealth of information regarding samples, SCGs,
-           SCG taxonomic affiliations, consensus taxonomy, and coverages of SCGs across samples.
-        """
-        scg_taxonomy_super_dict = {}
-
-        if not self.initialized:
-            self.init()
-
-        if self.profile_db_path and not self.metagenome_mode:
-            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_bins_in_collection()
-        elif not self.profile_db_path and not self.metagenome_mode:
-            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_genome()
-        elif self.metagenome_mode:
-            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_metagenome()
-        else:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-
-        if self.compute_scg_coverages and self.metagenome_mode:
-            scg_taxonomy_super_dict['coverages'] = self.get_scg_coverages_across_samples_dict_in_metagenome_mode(scg_taxonomy_super_dict)
-        elif self.compute_scg_coverages and not self.metagenome_mode:
-            scg_taxonomy_super_dict['coverages'] = self.get_scg_coverages_across_samples_dict_in_genome_mode(scg_taxonomy_super_dict)
-        else:
-            scg_taxonomy_super_dict['coverages'] = None
-
-        return scg_taxonomy_super_dict
-
-
-    def estimate(self):
-        scg_taxonomy_super_dict = self.get_scg_taxonomy_super_dict()
-
-        if self.update_profile_db_with_taxonomy:
-            self.add_taxonomy_as_additional_layer_data(scg_taxonomy_super_dict)
-
-        self.print_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
-
-        if self.output_file_path:
-            self.store_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
-
-
-    def print_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        self.progress.reset()
-
-        if self.collection_name:
-            self.run.warning(None, header='Estimated taxonomy for collection "%s"' % self.collection_name, lc="green")
-        elif self.metagenome_mode:
-            self.run.warning(None, header='Taxa in metagenome "%s"' % self.contigs_db_project_name, lc="green")
-        else:
-            self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
-
-        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
-
-        ordered_bin_names = sorted(list(d.keys()))
-
-        if self.metagenome_mode:
-            header = ['percent_identity', 'taxonomy']
-        else:
-            header = ['', 'total_scgs', 'supporting_scgs', 'taxonomy']
-
-        # if we are in `--compute-scg-coverages` mode, and more than 5 sample names, we are in trouble since they will\
-        # unlikely fit into the display while printing them. so here we will cut it to make sure things look OK.
-        samples_not_shown = 0
-        sample_names_to_display = None
-        if self.compute_scg_coverages:
-            sample_names_to_display = sorted(self.sample_names_in_profile_db)[0:5]
-            samples_not_shown = sorted(self.sample_names_in_profile_db)[5:]
-
-            header += sample_names_to_display
-
-            if samples_not_shown:
-                header += ['... %d more' % len(samples_not_shown)]
-
-            # since we know coverages and sample names, we have a chance here to order the output
-            # based on coverage. so let's do that.
-            if self.metagenome_mode:
-                sorted_bin_coverage_tuples = sorted([(bin_name, sum([d[bin_name]['coverages'][sample_name] for sample_name in self.sample_names_in_profile_db])) for bin_name in d], key=lambda x: x[1], reverse=True)
-            else:
-                sorted_bin_coverage_tuples = sorted([(bin_name, sum([(d[bin_name]['coverages'][sample_name] if d[bin_name]['supporting_scgs'] else 0) for sample_name in self.sample_names_in_profile_db])) for bin_name in d], key=lambda x: x[1], reverse=True)
-            ordered_bin_names = [tpl[0] for tpl in sorted_bin_coverage_tuples]
-
-
-        table = []
-        for bin_name in ordered_bin_names:
-            bin_data = d[bin_name]
-
-            # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
-            # otherwise show the entire taxonomy text.
-            if self.compute_scg_coverages:
-                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.ctx.levels_of_taxonomy[::-1] if bin_data[l]]
-                taxon_text = taxon_text_l[0] if taxon_text_l else '(NA) NA'
-            else:
-                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.ctx.levels_of_taxonomy])
-
-            # setting up the table columns here.
-            if self.metagenome_mode:
-                row = [bin_name, str(bin_data['percent_identity']), taxon_text]
-            else:
-                row = [bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text]
-
-            # if there are coverages, add samples to the display too
-            if self.compute_scg_coverages:
-                row += [d[bin_name]['coverages'][sample_name] for sample_name in sample_names_to_display]
-
-            if samples_not_shown:
-                row += ['... %d more' % len(samples_not_shown)]
-
-            table.append(row)
-
-        # if we are not in metagenome mode let's sort the output table based on total and
-        # supporting SCGs
-        if not self.metagenome_mode:
-            table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
-
-        anvio.TABULATE(table, header)
-
-
-    def store_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
-
-        if self.metagenome_mode:
-            headers = ['scg_name', 'percent_identity']
-        else:
-            headers = ['bin_name', 'total_scgs', 'supporting_scgs']
-
-        headers += self.ctx.levels_of_taxonomy
-
-        if self.compute_scg_coverages:
-            headers_for_samples = sorted(self.sample_names_in_profile_db)
-        else:
-            headers_for_samples = []
-
-        with open(self.output_file_path, 'w') as output:
-            output.write('\t'.join(headers + headers_for_samples) + '\n')
-            for item in d:
-                line = [item] + [d[item][h] for h in headers[1:]]
-
-                if self.compute_scg_coverages:
-                    for sample_name in headers_for_samples:
-                        line.append(d[item]['coverages'][sample_name])
-
-                output.write('\t'.join([str(f) for f in line]) + '\n')
-
-        self.run.info("Output file", self.output_file_path, nl_before=1)
-
-
-    def get_print_friendly_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        d = {}
-
-        if self.metagenome_mode:
-            for scg_hit in scg_taxonomy_super_dict['taxonomy'][self.contigs_db_project_name]['scgs'].values():
-                scg_hit_name = '%s_%d' % (scg_hit['gene_name'], scg_hit['gene_callers_id'])
-                d[scg_hit_name] = scg_hit
-
-                if self.compute_scg_coverages:
-                    d[scg_hit_name]['coverages'] = scg_taxonomy_super_dict['coverages'][scg_hit['gene_callers_id']]
-        else:
-            for bin_name in scg_taxonomy_super_dict['taxonomy']:
-                d[bin_name] = scg_taxonomy_super_dict['taxonomy'][bin_name]['consensus_taxonomy']
-                d[bin_name]['total_scgs'] = scg_taxonomy_super_dict['taxonomy'][bin_name]['total_scgs']
-                d[bin_name]['supporting_scgs'] = scg_taxonomy_super_dict['taxonomy'][bin_name]['supporting_scgs']
-
-                if self.compute_scg_coverages:
-                    d[bin_name]['coverages'] = scg_taxonomy_super_dict['coverages'][bin_name]
-
-        return d
-
-
-    def add_taxonomy_as_additional_layer_data(self, scg_taxonomy_super_dict):
-        """A function that adds taxonomy to additional data tables of a given profile
-           database. This will only work in metagenome mode."""
-
-        if not self.metagenome_mode or not self.compute_scg_coverages:
-            return
-
-        self.progress.new("Adding summary taxonomy for samples")
-        self.progress.update('...')
-
-        scgs_dict = list(scg_taxonomy_super_dict['taxonomy'].values())[0]['scgs']
-
-        # at this stage each scgs_dict entry will look like this, and most critically will
-        # have the same SCG:
-        #
-        # "7660": {
-        #       "gene_callers_id": 7660,
-        #       "gene_name": "Ribosomal_S6",
-        #       "accession": "CONSENSUS",
-        #       "percent_identity": "98.9",
-        #       "t_domain": "Bacteria",
-        #       "t_phylum": "Firmicutes",
-        #       "t_class": "Bacilli",
-        #       "t_order": "Staphylococcales",
-        #       "t_family": "Staphylococcaceae",
-        #       "t_genus": "Staphylococcus",
-        #       "t_species": null,
-        #       "tax_hash": "b310c392"
-        #     },
-        #
-        # this will enable us to learn the which SCG has been used to calculate coverage
-        # information by only looking at a single entry:
-        scg_name = list(scgs_dict.values())[0]['gene_name']
-
-        # the might for loop to go through all taxonomic levels one by one
-        for level in self.ctx.levels_of_taxonomy[::-1]:
-            # setting the data group early on:
-            data_group = '%s_%s' % (scg_name, level[2:])
-            self.progress.update('Working on %s-level data' % level)
-            data_dict = {}
-            data_keys_list = set([])
-            for sample_name in self.sample_names_in_profile_db:
-                data_dict[sample_name] = Counter()
-                for gene_callers_id in scgs_dict:
-                    # starting with a tiny hack to fill in missing values. here we first find
-                    # the most highly resolved level of taxonomy that is not null for this
-                    # particular scg taxonomy
-                    i = 0
-                    for i in range(self.ctx.levels_of_taxonomy.index(level), 0, -1):
-                        if scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]:
-                            break
-
-                    # just some abbreviations
-                    l = self.ctx.levels_of_taxonomy[i][2:]
-                    m = scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]
-
-                    # if the best level we found in the previous step is matching to the level
-                    # set by the main for loop, we're good to go with that name:
-                    if level == self.ctx.levels_of_taxonomy[i]:
-                        taxon_name = m
-                    # otherwise we will try to replace that None name with something that is more
-                    # sensible:
-                    else:
-                        taxon_name = "Unknown_%s_%s_%d" % (l, m, gene_callers_id)
-
-                    # a key that will turn these data into stacked bar charts in the interface once
-                    # they are added to the database:
-                    key = '%s!%s' % (data_group, taxon_name)
-
-                    # step where we add up all the values for each identical taxon names as we build
-                    # the data dictionary:
-                    data_dict[sample_name][key] += scg_taxonomy_super_dict['coverages'][gene_callers_id][sample_name]
-                    data_keys_list.add(key)
-
-            # next few lines demonstrate the power of anvi'o quite nicely:
-            self.progress.update("Updating additional data tables...")
-            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_group=data_group, just_do_it=True)
-            T = TableForLayerAdditionalData(args, r=run_quiet, p=progress_quiet)
-            T.add(data_dict, list(data_keys_list))
-
-            self.progress.reset()
-
-            self.run.info_single("%s level taxonomy is added to the profile database." % (level.capitalize()))
-
-        self.progress.end()
-
-
-    def get_gene_caller_ids_for_splits(self, split_names_list):
-        """Returns gene caller ids found in a list of splits"""
-
-        gene_caller_ids_for_splits = set([])
-        for split_name in split_names_list:
-            if split_name in self.split_name_to_gene_caller_ids_dict:
-                gene_caller_ids_for_splits.update(self.split_name_to_gene_caller_ids_dict[split_name])
-
-        return gene_caller_ids_for_splits
-
-
-    def get_split_names_for_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        """Returns a list of split names associated with SCGs found in a scg_taxonomy_super_dict."""
-
-        if 'scgs' not in list(scg_taxonomy_super_dict['taxonomy'].values())[0]:
-            raise ConfigError("Someone called this function with something that doesn't look like the kind "
-                              "of input data it was expecting (sorry for the vagueness of the message, but "
-                              "anvi'o hopes that will be able to find out why it is happening).")
-
-        split_names = set([])
-
-        for entry_name in scg_taxonomy_super_dict['taxonomy']:
-            for gene_callers_id in scg_taxonomy_super_dict['taxonomy'][entry_name]['scgs']:
-                split_names.add(self.gene_callers_id_to_split_name_dict[gene_callers_id])
-
-        return split_names
-
-
-    def get_scg_coverages_across_samples_dict_in_genome_mode(self, scg_taxonomy_super_dict):
-        self.progress.reset()
-        self.run.info_single("Anvi'o will now attempt to recover SCG coverages in GENOME MODE from the profile "
-                             "database, which contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
-
-        scg_coverages_across_samples_dict = self.get_scg_coverages_across_samples_dict(scg_taxonomy_super_dict)
-
-        bin_avg_coverages_across_samples_dict = {}
-        for bin_name in scg_taxonomy_super_dict['taxonomy']:
-            bin_avg_coverages_across_samples_dict[bin_name] = dict([(sample_name, None) for sample_name in self.sample_names_in_profile_db])
-            for sample_name in self.sample_names_in_profile_db:
-                average_coverage_across_samples = [scg_coverages_across_samples_dict[gene_callers_id][sample_name] for gene_callers_id in scg_taxonomy_super_dict['taxonomy'][bin_name]['scgs']]
-                if average_coverage_across_samples:
-                    bin_avg_coverages_across_samples_dict[bin_name][sample_name] = np.mean(average_coverage_across_samples)
-
-        self.run.warning("Anvi'o has just finished recovering SCG coverages from the profile database to estimate "
-                         "the average coverage of your bins across your samples. Please note that anvi'o SCG taxonomy "
-                         "framework is using only %d SCGs to estimate taxonomy. Which means, even a highly complete bin "
-                         "may be missing all of them. In which case, the coverage of that bin will be `None` across all "
-                         "your samples. The best way to prevent any misleading insights is take these results with a "
-                         "huge grain of salt, and use the `anvi-summarize` output for critical applications." % len(self.ctx.SCGs),
-                         header="FRIENDLY REMINDER", lc="blue")
-
-        return bin_avg_coverages_across_samples_dict
-
-
-    def get_scg_coverages_across_samples_dict_in_metagenome_mode(self, scg_taxonomy_super_dict):
-        """Get SCG coverages in metagenome mode."""
-
-        if not self.metagenome_mode:
-            raise ConfigError("You're calling the wrong function. Your class is not in metagenome mode.")
-
-        self.progress.reset()
-        self.run.info_single("Anvi'o will now attempt to recover SCG coverages from the profile database, which "
-                             "contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
-
-        return self.get_scg_coverages_across_samples_dict(scg_taxonomy_super_dict)
-
-
-    def get_scg_coverages_across_samples_dict(self, scg_taxonomy_super_dict):
-        """Get SCG coverages"""
-        scg_coverages_across_samples_dict = {}
-
-        self.progress.new('Recovering coverages')
-        self.progress.update('Learning all split names affiliated with SCGs ..')
-        split_names_of_interest = self.get_split_names_for_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
-        self.progress.end()
-
-        # initialize split coverages for splits that have anything to do with our SCGs
-        args = copy.deepcopy(self.args)
-        args.split_names_of_interest = split_names_of_interest
-        args.collection_name = None
-        profile_db = ProfileSuperclass(args, p=self.progress, r=run_quiet)
-        profile_db.init_split_coverage_values_per_nt_dict()
-
-        # recover all gene caller ids that occur in our taxonomy estimation dictionary
-        # and ge their coverage stats from the profile super
-        gene_caller_ids_of_interest = set([])
-        for bin_name in scg_taxonomy_super_dict['taxonomy']:
-            for gene_callers_id in scg_taxonomy_super_dict['taxonomy'][bin_name]['scgs']:
-                gene_caller_ids_of_interest.add(gene_callers_id)
-
-        # at this point we have everything. splits of interest are loaded in memory in `profile_db`, and we know
-        # which gene caller ids we are interested in recovering coverages for. the way to access to gene coverages
-        # is a bit convoluted in the dbops for historical reasons, but it is quite straightforward. the most
-        # weird part is that we need a copy of a contigs super. so we will start with that:
-        self.progress.new("Recovering SCG coverages")
-        self.progress.update("Initiating the contigs super class")
-        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
-
-        for split_name in split_names_of_interest:
-            self.progress.update("Working with %s" % split_name)
-            # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
-            # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
-            # time on those gene caller ids that do not occur in the split name we are interested in.
-            all_scg_stats_in_split = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
-
-            for scg_stats in all_scg_stats_in_split.values():
-                for entry in scg_stats.values():
-                    gene_callers_id = int(entry['gene_callers_id'])
-                    sample_name = entry['sample_name']
-                    coverage = entry['non_outlier_mean_coverage']
-
-                    if gene_callers_id not in scg_coverages_across_samples_dict:
-                        scg_coverages_across_samples_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in self.sample_names_in_profile_db])
-
-                    scg_coverages_across_samples_dict[gene_callers_id][sample_name] = coverage
-
-        self.progress.end()
-
-        return scg_coverages_across_samples_dict
+        TaxonomyEstimatorSingle.__init__(self, skip_init=skip_init)
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
@@ -2075,7 +1211,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
+class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, PopulateContigsDatabaseWithTaxonomy):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -2092,318 +1228,10 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
 
         self.ctx = ctx
 
-        self.max_target_seqs = 20
+        self.max_target_seqs = int(A('max_num_target_sequences')) or 20
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
         self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
 
         SanityCheck.__init__(self)
 
-        self.taxonomy_dict = OrderedDict()
-
-        self.mutex = multiprocessing.Lock()
-
-
-    def get_SCG_sequences_dict_from_contigs_db(self):
-        """Returns a dictionary of all HMM hits per SCG of interest"""
-
-        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
-        splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
-
-        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.ctx.hmm_source_for_scg_taxonomy, run=run_quiet, progress=progress_quiet)
-        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.ctx.default_scgs_for_taxonomy))
-
-        if not len(hmm_sequences_dict):
-            return None
-
-        self.progress.reset()
-        self.run.info('Num relevant SCGs in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
-
-        scg_sequences_dict = {}
-        for entry_id in hmm_sequences_dict:
-            entry = hmm_sequences_dict[entry_id]
-
-            scg_name = entry['gene_name']
-            if scg_name in scg_sequences_dict:
-                scg_sequences_dict[scg_name][entry_id] = entry
-            else:
-                scg_sequences_dict[scg_name] = {entry_id: entry}
-
-        return scg_sequences_dict
-
-
-    def populate_contigs_database(self):
-        """Populates SCG taxonomy tables in a contigs database"""
-
-        # get an instnce for the tables for taxonomy early on.
-        self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
-
-        # get the dictionary that shows all hits for each SCG of interest
-        self.progress.new('Contigs bleep bloop')
-        self.progress.update('Recovering the SCGs dictionary')
-        scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
-        self.progress.end()
-
-        if not scg_sequences_dict:
-            self.run.warning("This contigs database contains no single-copy core genes that are used by the "
-                             "anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
-
-            # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
-            # contigs database, so we shall note that in the self table to make sure the error from
-            # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
-
-            # return empty handed like a goose in the job market in 2020
-            return None
-
-        log_file_path = filesnpaths.get_temp_file_path()
-
-        self.run.info('Taxonomy', self.ctx.accession_to_taxonomy_file_path)
-        self.run.info('Database reference', self.ctx.search_databases_dir_path)
-        self.run.info('Number of SCGs', len(scg_sequences_dict))
-
-        self.run.warning('', header='Parameters for DIAMOND blastp', lc='green')
-        self.run.info('Max number of target sequences', self.max_target_seqs)
-        self.run.info('Max e-value to report alignments', self.evalue)
-        self.run.info('Min percent identity to report alignments', self.min_pct_id)
-        self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
-        self.run.info('Num CPUs per aligment task', self.num_threads)
-        self.run.info('Log file path', log_file_path)
-
-        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name, warning=False)
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=False, database_version=None)
-
-        total_num_processes = len(scg_sequences_dict)
-
-        self.progress.new('Computing SCGs aligments', progress_total_items=total_num_processes)
-        self.progress.update('Initializing %d process...' % int(self.num_parallel_processes))
-
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
-        error_queue = manager.Queue()
-
-        blastp_search_output = []
-
-        for SCG in scg_sequences_dict:
-            sequence = ""
-            for entry in scg_sequences_dict[SCG].values():
-                if 'sequence' not in entry or 'gene_name' not in entry:
-                    raise ConfigError("The `get_filtered_dict` function got a parameter that "
-                                      "does not look like the way we expected it. This function "
-                                      "expects a dictionary that contains keys `gene_name` and `sequence`.")
-
-                sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
-                entry['hits'] = []
-
-            input_queue.put([SCG, sequence])
-
-        workers = []
-        for i in range(0, int(self.num_parallel_processes)):
-            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue, error_queue, log_file_path))
-
-            workers.append(worker)
-            worker.start()
-
-        num_finished_processes = 0
-        while num_finished_processes < total_num_processes:
-            # check error
-            error_text = error_queue.get()
-            if error_text:
-                self.progress.reset()
-
-                for worker in workers:
-                    worker.terminate()
-
-                if 'incompatible' in error_text:
-                    raise ConfigError("Your current databases are incompatible with the diamond version you have on your computer. "
-                                      "Please run the command `anvi-setup-scg-taxonomy --redo-databases` and come back.")
-                else:
-                    raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
-                                      "to know what happened, but the MOST LIKELY reason is that you have a diamond version "
-                                      "installed on your system that is incompatible with anvi'o :/ The best course of action for that "
-                                      "is to make sure running `diamond --version` on your terminal returns `0.9.14`. If not, "
-                                      "try to upgrade/downgrade your diamond to match this version. If you are in a conda environmnet "
-                                      "you can try running `conda install diamond=0.9.14`. Please feel free to contact us if the problem "
-                                      "persists. We apologize for the inconvenience.")
-
-            try:
-                blastp_search_output += output_queue.get()
-
-                if self.write_buffer_size > 0 and len(blastp_search_output) % self.write_buffer_size == 0:
-                    self.tables_for_taxonomy.add(blastp_search_output)
-                    blastp_search_output = []
-
-                num_finished_processes += 1
-
-                self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update("%s of %s SCGs are finished in %s processes with %s threads." \
-                                        % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
-
-            except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
-                break
-
-        for worker in workers:
-            worker.terminate()
-
-        # finally the remaining hits are written to the database, and we are done
-        self.tables_for_taxonomy.add(blastp_search_output)
-
-        # time to update the self table:
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
-
-        self.progress.end()
-
-
-    def show_hits_gene_callers_id(self, gene_callers_id, scg_name, hits):
-        self.progress.reset()
-        self.run.warning(None, header='Hits for gene caller id %s' % gene_callers_id, lc="green")
-
-        if len(hits):
-            header = ['%id', 'bitscore', 'accession', 'taxonomy']
-            table = []
-
-            self.run.info_single("For '%s'" % scg_name, nl_before=1, nl_after=1)
-
-            for hit in hits:
-                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
-
-            anvio.TABULATE(table, header)
-        else:
-            self.run.info_single("No hits :/")
-
-
-    def update_dict_with_taxonomy(self, d, mode=None):
-        """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
-
-        if not mode:
-            if not 'accession' in d:
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member "
-                                  "with key `accession`.")
-
-            if d['accession'] in self.ctx.accession_to_taxonomy_dict:
-                d.update(self.ctx.accession_to_taxonomy_dict[d['accession']])
-            else:
-                d.update(self.ctx.accession_to_taxonomy_dict['unknown_accession'])
-
-        elif mode == 'list_of_dicts':
-            if len([entry for entry in d if 'accession' not in entry]):
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: you have a bad formatted data here :/")
-
-            for entry in d:
-                print(self.taxonomy_dict[entry['accession']])
-
-        else:
-            raise ConfigError("An unknown mode (%s) is set to `add_taxonomy_to_dict` :/" % (mode))
-
-        return d
-
-
-    def blast_search_scgs_worker(self, input_queue, output_queue, error_queue, log_file_path):
-        """BLAST each SCG identified in the contigs database against the corresopinding
-           target local database of GTDB seqeunces
-        """
-
-        while True:
-            scg_name, fasta_formatted_scg_sequence = input_queue.get(True)
-            target_database_path = self.ctx.SCGs[scg_name]['db']
-
-            diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
-            diamond.max_target_seqs = self.max_target_seqs
-            diamond.evalue = self.evalue
-            diamond.min_pct_id = self.min_pct_id
-            diamond.num_threads = self.num_threads
-            diamond.run.log_file_path = log_file_path
-
-            blastp_search_output = diamond.blastp_stdin_multi(fasta_formatted_scg_sequence)
-
-            hits_per_gene = {}
-            genes_estimation_output=[]
-
-            for blastp_hit in blastp_search_output.split('\n'):
-                if len(blastp_hit) and not blastp_hit.startswith('Query'):
-                    fields = blastp_hit.split('\t')
-
-                    try:
-                        gene_callers_id = int(fields[0])
-                        error_queue.put(None)
-                    except:
-                        error_queue.put(blastp_search_output)
-
-                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
-                    hit = self.update_dict_with_taxonomy(hit)
-
-                    if gene_callers_id not in hits_per_gene:
-                        hits_per_gene[gene_callers_id] = {}
-
-                    if scg_name not in hits_per_gene[gene_callers_id]:
-                        hits_per_gene[gene_callers_id][scg_name] = []
-
-                    hits_per_gene[gene_callers_id][scg_name].append(hit)
-                else:
-                    error_queue.put(None)
-
-            for gene_callers_id, scg_raw_hits in hits_per_gene.items():
-                if len(scg_raw_hits.keys()) > 1:
-                    self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use "
-                                     "one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in scg_raw_hits.keys()])
-
-                scg_name = list(scg_raw_hits.keys())[0]
-                scg_raw_hits = scg_raw_hits[scg_name]
-
-                scg_consensus_hit = self.get_consensus_hit(scg_raw_hits)
-                scg_consensus_hit['accession'] = 'CONSENSUS'
-
-                if anvio.DEBUG:
-                    # avoid race conditions when priting this information when `--debug` is true:
-                    with self.mutex:
-                        self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits + [scg_consensus_hit])
-
-                genes_estimation_output.append([gene_callers_id, scg_name, [scg_consensus_hit]])
-
-            output_queue.put(genes_estimation_output)
-
-
-    def get_consensus_hit(self, scg_raw_hits):
-        pd.set_option('mode.chained_assignment', None)
-
-        df = pd.DataFrame.from_records(scg_raw_hits)
-
-        # remove hits that are null at the phylum level if there are still hits
-        # in the df that are not null:
-        not_null_hits = df[df.t_phylum.notnull()]
-        if len(not_null_hits):
-            df = not_null_hits
-
-        # find the max percent identity score in the df
-        max_percent_identity = max(df['percent_identity'])
-
-        # subset the data frame to those with percent identity that match to `max_percent_identity`
-        df_max_identity = df.loc[df.percent_identity == max_percent_identity]
-
-        # if some of the competing names have null species deignations, remove them from consideration
-        if len(df_max_identity.t_species.unique()) > 1:
-            df_max_identity = df_max_identity[df_max_identity.t_species.notnull()]
-
-        # find the taxonomic level where the number of unique taxon names is one
-        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
-            if len(df_max_identity[taxonomic_level].unique()) == 1:
-                break
-
-        # take one of the hits from `df_max_identity`, and assign None to all taxonomic levels
-        # beyond `taxonomic_level`, which, after the loop above shows the proper level of
-        # assignment for this set
-        final_hit = df_max_identity.head(1)
-        for taxonomic_level_to_nullify in self.ctx.levels_of_taxonomy[self.ctx.levels_of_taxonomy.index(taxonomic_level) + 1:]:
-            final_hit.at[0, taxonomic_level_to_nullify] = None
-
-        # FIXME: final hit is still not what we can trust. next, we should find out whether the percent identity
-        # for the level of taxonomy at `taxonomic_level` is higher than the minimum percent identity for all sequences
-        # considered that are affiliated with final_hit[taxonomic_level]
-
-        # turn it into a Python dict before returning
-        final_hit_dict = final_hit.to_dict('records')[0]
-
-        return final_hit_dict
+        PopulateContigsDatabaseWithTaxonomy.__init__(self, self.args)

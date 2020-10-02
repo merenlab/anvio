@@ -307,7 +307,8 @@ class Run:
         self.verbose = verbose
         self.width = width
 
-        self.single_line_prefixes = {1: '* ',
+        self.single_line_prefixes = {0: '',
+                                     1: '* ',
                                      2: '    - ',
                                      3: '        > '}
 
