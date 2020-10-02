@@ -108,10 +108,12 @@ class CONCOCT:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, work_dir, threads=1):
+    def cluster(self, input_files, args, work_dir, threads=1, log_file_path=None):
         J = lambda p: os.path.join(work_dir, p)
 
-        log_path = J('logs.txt')
+        if not log_file_path:
+            log_file_path = J('logs.txt')
+
         cmd_line = [self.program_name,
             '--coverage_file', input_files.contig_coverages,
             '--composition_file', input_files.contigs_fasta,
@@ -121,7 +123,7 @@ class CONCOCT:
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
-        utils.run_command(cmd_line, log_path)
+        utils.run_command(cmd_line, log_file_path)
         self.progress.end()
 
         clusters = {}
@@ -131,7 +133,7 @@ class CONCOCT:
         output_file_path = J(output_file_name)
         if not os.path.exists(output_file_path):
             raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
-                              "log file: %s" % (output_file_name, log_path))
+                              "log file: %s" % (output_file_name, log_file_path))
 
         with open(output_file_path, 'r') as f:
             lines = f.readlines()[1:]
