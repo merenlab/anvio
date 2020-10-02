@@ -232,12 +232,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-layers-category": {
-        "name": "LAYERS DATA CATEGORY",
-        "type": "CONCEPT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "genome-similarity": {
         "name": "GENOME SIMILARITY",
         "type": "CONCEPT",
@@ -427,18 +421,6 @@ ANVIO_ARTIFACTS ={
     "detection-txt": {
         "name": "DETECTIONS",
         "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "genome-distance-txt": {
-        "name": "DISTANCE ESTIMATES",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": True
-    },
-    "genome-distance": {
-        "name": "DISTANCE ESTIMATES",
-        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
