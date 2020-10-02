@@ -27,6 +27,7 @@ var layers;
 var coverage;
 var variability;
 var maxVariability = 0;
+var indels;
 var geneParser;
 var contextSvg;
 var state;
@@ -37,6 +38,7 @@ var page_header;
 var highlight_gene;
 var gene_mode;
 var show_snvs;
+var show_indels;
 var sequence;
 var charts;
 var brush;
@@ -45,7 +47,7 @@ var highlightBoxes;
 var indelContainer;
 var show_nucleotides = true;
 var gene_offset_y = 0;
-var snv_boxes = {};
+var select_boxes = {};
 
 // for testing
 var mcags;
@@ -114,6 +116,7 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
     show_snvs = getParameterByName('show_snvs') == 'true';
+    show_indels = true;//getParameterByName('show_indels') == 'true';
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -154,6 +157,21 @@ function loadAll() {
                         }
                     }
                 }
+
+                //INDELS MOCK DATA
+                var locations = [10, 20, 25];
+                indels = [];
+                for (var i=0; i<layers.length; i++) {
+                    indels[i] = {coverage:[],seq:[],type:[],length:[],pos:[]};
+                    for(var l=0; l<sequence.length; l++) { //number of SNVs
+                      indels[i]['coverage'].push(locations.includes(l) ? 0.2 : 0);
+                      indels[i]['seq'].push('');
+                      indels[i]['length'].push(3);
+                      indels[i]['type'].push('DEL');
+                      indels[i]['pos'].push(10);
+                    }
+                }
+                //INDELS
 
                 competing_nucleotides = contig_data.competing_nucleotides;
                 previous_contig_name = contig_data.previous_contig_name;
@@ -642,6 +660,8 @@ function toggle_nucleotide_display() {
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
     gene_offset_y = 0;
+    drawHighlightBoxes();
+    setSelectionBoxListener();
     $('#context-container').off('mouseover mouseout');
     $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
   }
@@ -830,6 +850,7 @@ function display_nucleotides() {
 
   drawHighlightBoxes();
   drawAAHighlightBoxes();
+  setSelectionBoxListener();
 
   // if indels are active
 
@@ -844,14 +865,15 @@ function display_nucleotides() {
     "length" : [6, 20, 10],
     "sequence" : ['ACTGAT', 'ACTTAGACTTACTGACCTAG', null]
   };
+
   drawIndels(start, end, state['large-indel'], testData);
 }
 
-function setSNVListener() {
-  if(!show_snvs) return;
+function setSelectionBoxListener() {
+  if(!show_snvs && !show_indels) return;
 
-  $('[class="SNV_text"]').each(function(i) {
-    snv_boxes[i] = {"left"  : $(this).offset().left,
+  $('.SNV_text, .indels_text').each(function(i) {
+    select_boxes[i] = {"left"  : $(this).offset().left,
                     "right" : $(this).offset().left + this.getBoundingClientRect().width,
                     "top"   : $(this).offset().top,
                     "bottom": $(this).offset().top + this.getBoundingClientRect().height};
@@ -860,8 +882,8 @@ function setSNVListener() {
   $(".highlightbox").off("mouseover mouseout");
   $(".highlightbox").on("mouseover", function(e) {
     var x = e.pageX, y = e.pageY;
-    Object.keys(snv_boxes).forEach(function(i) {
-      var box = snv_boxes[i];
+    Object.keys(select_boxes).forEach(function(i) {
+      var box = select_boxes[i];
       if(box.left <= x && x <= box.right && box.top <= y && y <= box.bottom) {
         $("#highlight-boxes").hide();
         return;
@@ -1404,6 +1426,11 @@ function createCharts(state){
                         variability_c: variability[layer_index][2],
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
+                        indel_coverage: indels[layer_index]['coverage'], // an array of coverage values for each one of length # indels
+                        indel_seq: indels[layer_index]['seq'],
+                        indel_length: indels[layer_index]['length'],
+                        indel_type: indels[layer_index]['type'],
+                        indel_pos: indels[layer_index]['pos'],
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1530,7 +1557,7 @@ function createCharts(state){
 
     display_nucleotides();
     drawHighlightBoxes();
-    setSNVListener();
+    setSelectionBoxListener();
 
     function onBrush(){
         /* this will return a date range to pass into the chart object */
@@ -1553,12 +1580,12 @@ function createCharts(state){
         // highlight bars as % of page width without nucleotide display
         if($("#DNA_sequence").length == 0) drawHighlightBoxes();
 
+        setSelectionBoxListener();
+
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
         }
         drawArrows(b[0], b[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
-
-        if(show_snvs) setSNVListener();
     }
 
     drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
@@ -1573,6 +1600,11 @@ function Chart(options){
     this.variability_c = options.variability_c;
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
+    this.indel_coverage = options.indel_coverage;
+    this.indel_seq = options.indel_seq;
+    this.indel_length = options.indel_length;
+    this.indel_type = options.indel_type;
+    this.indel_pos = options.indel_pos;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -1618,6 +1650,10 @@ function Chart(options){
                             .range([this.height, 0])
                             .domain([0, this.maxVariability]);
 
+    yScaleLineReverse = d3.scale.linear()
+                            .range([0, this.height])
+                            .domain([0, this.maxVariability]);
+
     this.yScaleGC = d3.scale.linear()
                             .range([this.yScale(this.minCoverage),
                                    (this.maxCoverage < this.maxCoverageForyScale) ? this.yScale(this.maxCoverage) : 0])
@@ -1626,6 +1662,7 @@ function Chart(options){
     var xS = this.xScale;
     var yS = this.yScale;
     var ySL = this.yScaleLine;
+    var ySLR = yScaleLineReverse;
     var yGC = this.yScaleGC;
 
     this.area = d3.svg.area()
@@ -1636,6 +1673,11 @@ function Chart(options){
     this.line = d3.svg.line()
                             .x(function(d, i) { return xS(i); })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
+                            .interpolate('step-before');
+
+    this.reverseLine = d3.svg.line()
+                            .x(function(d, i) { return xS(i); })
+                            .y(function(d, i) { if(i == 0) return ySLR(0); if(i == num_data_points - 1) return ySLR(0); return ySLR(d); })
                             .interpolate('step-before');
 
 
@@ -1753,6 +1795,41 @@ function Chart(options){
                                 });
     }
 
+    if(show_indels) {
+      // TODO
+      // in initial definitions, flip line and text to be upsidedown -- DONE
+      // add a line to lineContainer based on coverage
+
+      /*this.lineContainer.append("path")
+          .data([this.indel_coverage])
+          .attr("class", "line")
+          .attr("name", "indel_1")
+          .style("fill", '#990000')
+          .attr("d", this.line);*/
+
+      // add text to text container based on type, and data-content based on other variables
+      this.textContainer.selectAll("text")
+                              .data([1000,2000,2500])
+                              .enter()
+                              .append("text")
+                              .attr("class", "SNV_text")
+                              .attr("x", function (d) { return xS(d); })
+                              .attr("y", function (d) { return 0.6; })
+                              .attr("writing-mode", "tb")
+                              .attr("font-size", "12px")
+                              .attr("glyph-orientation-vertical", "0")
+                              .attr("style", "cursor:pointer;")
+                              .attr("fill", "black")
+                              .attr('data-content', function(d) {
+                                  return 'Type: INS, length: 4, sequence: \'ACTG\', coverage: 600';
+                              })
+                              .attr('data-toggle', 'popover')
+                              .text(function (d) {
+                                  //return d.value['competing_nts'];
+                                  return '+';
+                              });
+    }
+
 
 
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
@@ -1793,6 +1870,7 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.line);
+    this.lineContainer.select("[name=first_pos]").data([this.indel_coverage]).attr("d", this.reverseLine);
     this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
