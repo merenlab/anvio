@@ -41,11 +41,11 @@ class TablesForViews(Table):
         Entries in 'views' table appear in various places in the interface. However, we also generate
         view tables to store the type of data we do not wish to display on interfaces, but be able
         access from various other modules. A good example to this is the item_order recipes. When we
-        profile a sample, we treat every stplit as their own entity with respect to their mean coverage.
+        profile a sample, we treat every split as its own entity with respect to its mean coverage.
         Although it is great for visualization purposes, it is not useful for item_order purposes since in
         most cases we wish splits to stay together in item_order output. Hence, we create a mean_coverage_splits
-        table, where each split holds their own coverage, and we create a mean_coverage_contigs table where each
-        split has the coverage of their parent. Clearly the second table is not useful to display. When a table
+        table, where each split holds its own coverage, and we create a mean_coverage_contigs table where each
+        split has the coverage of its parent. Clearly the second table is not useful to display. When a table
         is not added as an entry to the 'views' table, then it only exists in the database for other purposes
         than displaying it.
 
