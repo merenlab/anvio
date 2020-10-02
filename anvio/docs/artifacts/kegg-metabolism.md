@@ -76,3 +76,12 @@ Here is an example of a module completeness matrix:
 | M00004 | 0.88 | 0.00 | 0.88 | 0.88 | 0.88 | 0.00 |
 | M00005 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
+
+While the above is the default matrix format, some users may want to include more annotation information in the matrices so that it is easier to know what is going on when looking at the matrix data manually. You can add this metadata to the matrices by using the `--include-metadata` flag when running %(anvi-estimate-metabolism)s, and the output will look something like the following:
+
+| module | module_name | module_class | module_category | module_subcategory | bin_1 | bin_2 | bin_3 | bin_4 | bin_5 | bin_6 |
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+| M00001 |Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| M00002 | Glycolysis, core module involving three-carbon compounds | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| M00003 | Gluconeogenesis, oxaloacetate => fructose-6P | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 0.88 | 0.00 | 1.00 | 0.75 | 1.00 | 0.88 |
+|(...) | (...) | (...) | (...) | (...) | (...) | (...) |

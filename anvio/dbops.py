@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes to create, access, and/or populate contigs and profile databases.
+    Classes to create, access, and/or populate contigs, tRNASeq, and profile databases.
 """
 
 import os
@@ -48,7 +48,6 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -69,6 +68,7 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
+                           'trnaseq': TRNASeqDatabase,
                            'pan': PanDatabase,
                            'genes': GenesDatabase}
 
@@ -3561,7 +3561,8 @@ class ContigsDatabase:
             try:
                 for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
                             'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
-                            'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
+                            'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs',
+                            'skip_predict_frame']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -3625,6 +3626,7 @@ class ContigsDatabase:
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
         self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
+        self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
 
@@ -3998,6 +4000,8 @@ class ContigsDatabase:
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('scg_taxonomy_database_version', None)
+        self.db.set_meta_value('trna_taxonomy_was_run', False)
+        self.db.set_meta_value('trna_taxonomy_database_version', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
@@ -4073,6 +4077,92 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position - 2] = 1
 
         return nt_position_info_list
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
+class TRNASeqDatabase:
+    def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
+        if not os.path.exists(db_path):
+            self.db_type = 'trnaseq'
+            self.db_version = anvio.__trnaseq__version__
+
+        self.db = None
+        self.db_path = db_path
+        self.meta_int_keys = [] # metadata to be stored as an int
+        self.meta_float_keys = [] # metadata to be stored as a float
+        self.table_info = [
+            (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
+            (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
+            (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
+            (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
+            (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
+            (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
+            (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types),
+            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)]
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+
+        if os.path.exists(self.db_path):
+            self.db_type = utils.get_db_type(self.db_path)
+            self.db_version = utils.get_required_version_for_db(self.db_path)
+
+            self.db = db.DB(self.db_path, self.db_version)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in self.meta_int_keys:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in self.meta_float_keys:
+                try:
+                    self.meta[key] = float(self.meta[key])
+                except:
+                    pass
+
+            self.run.info("%s database" % self.db_type, "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def touch(self):
+        is_db_ok_to_create(self.db_path, self.db_type)
+
+        self.db = db.DB(self.db_path, self.db_version, new_database=True)
+
+        for table_name, column_names, column_types in self.table_info:
+            self.db.create_table(table_name, column_names, column_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
+
+        # know thyself
+        self.db.set_meta_value('db_type', self.db_type)
+
+        self.disconnect()
+
+        self.run.info("%s database" % self.db_type, "A new database, %s, has been created." % self.db_path, quiet=self.quiet)
 
 
     def disconnect(self):

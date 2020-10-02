@@ -114,6 +114,7 @@ class SequenceSource():
         if self.unique:
             self.init_unique_hash()
 
+
     def init_unique_hash(self):
         while self.next_regular():
             hash = hashlib.sha1(self.seq.upper().encode('utf-8')).hexdigest()
@@ -133,11 +134,13 @@ class SequenceSource():
         self.total_unique = len(self.unique_hash_dict)
         self.reset()
 
+
     def __next__(self):
         if self.unique:
             return self.next_unique()
         else:
             return self.next_regular()
+
 
     def next_unique(self):
         if self.unique:
@@ -154,6 +157,7 @@ class SequenceSource():
                 return False
         else:
             return False
+
 
     def next_regular(self):
         self.seq = None
@@ -191,12 +195,14 @@ class SequenceSource():
     def close(self):
         self.file_pointer.close()
 
+
     def reset(self):
         self.pos = 0
         self.id = None
         self.seq = None
         self.ids = []
         self.file_pointer.seek(0)
+
 
     def visualize_sequence_length_distribution(self, title, dest=None, max_seq_len=None, xtickstep=None, ytickstep=None):
         import matplotlib.pyplot as plt
