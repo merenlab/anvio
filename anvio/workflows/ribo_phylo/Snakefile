@@ -1,0 +1,215 @@
+# -*- coding: utf-8
+
+import argparse
+import os
+import pandas as pd
+
+import anvio
+import anvio.utils as u
+import anvio.workflows as w
+
+from anvio.errors import ConfigError
+from anvio.workflows.ribo_phylo import RibosomalPhylogeneticsWorkflow
+
+__author__ = "Matthew S. Schechter"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Matthew S. Schechter"
+__email__ = "mschechter@uchicago.edu"
+
+
+M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
+M.init()
+dirs_dict = M.dirs_dict
+
+
+rule ribo_phylo_workflow_target_rule:
+    # """The target rule for the workflow"""
+    input: M.target_files
+    # input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_Ribosomal_{ribosomal_protein_name}_hmm_hits_all.fasta"), sample_name=M.sample_name_list, ribosomal_protein_name=M.Ribosomal_protein_list)
+
+# rule process_sample_txt_input:
+#     """Modify samples_txt file to create dir structure (run once)."""
+
+#     version: 1.0
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
+#     # The input file is marked "ancient" to prevent Snakemake from rerunning this step
+#     # when the samples_txt file has been changed.
+#     input: ancient(M.get_param_value_from_config(['samples_txt']))
+#     output: os.path.join(dirs_dict['QC_DIR'], "iu_samples_input.txt")
+#     threads: M.T('make_iu_input')
+#     resources: nodes = M.T('make_iu_input')
+#     run:
+#         samples_txt_df = pd.read_csv(input[0], sep='\t', index_col=False)
+#         iu_samples_input_df = samples_txt_df[['r1', 'r2']] # r1 and r2 filepaths
+#         iu_samples_input_df['sample'] = samples_txt_df['sample'] + '_' + samples_txt_df['split'] # e.g., sample1_demethylase, sample1_untreated
+#         iu_samples_input_df[['sample', 'r1', 'r2']].to_csv(output[0], sep='\t', index=False) # reorder columns
+
+rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
+    """Create an Illumina-utils samples file from samples_txt (run once)."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
+    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
+    # when the samples_txt file has been changed.
+    # input: ancient(M.sample_path_list)
+    input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
+    # input: unpack(lambda wildcards: M.snakemake_input)
+    output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_all.fasta")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+	shell:
+		"anvi-get-sequences-for-hmm-hits -c {input} \
+                                         --hmm-source Bacteria_71 \
+                                         --get-aa-sequences \
+                                         --gene-name {wildcards.ribosomal_protein_name} \
+                                         -o {output} 2> {log}"
+
+
+
+
+
+# RIBOSOMAL_PROTEIN = ["Ribosomal_L16"]
+# # RIBOSOMAL_PROTEIN = ["Ribosomal_L16", "Ribosomal_L17","Ribosomal_S2", "Ribosomal_S3_C", "Ribosomal_S7", "Ribosomal_L17", "Ribosomal_L22", "Ribosomal_S9", "Ribosomal_L20", "Ribosomal_L2"]
+
+# rule all:
+#     input:
+#         expand("{RP}_protein/04_trees/{RP}.contree", RP=RIBOSOMAL_PROTEIN)
+
+# # For simplicity, the rules here are designed to be read in order or task
+
+# 1. Initial alignment, trim, and removal of sequences with 50% gaps or more
+# rule align:
+# 	input:
+# 		"{ribosomal_protein}_protein/02_{ribosomal_protein}_all_renamed_NR_rep_seq.fasta"
+# 	output:
+# 		"{ribosomal_protein}_protein/01_aligned/{ribosomal_protein}_all_aligned.fasta"
+# 	threads: 35
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_muscle.log"
+# 	shell:
+# 		"muscle -in {input} \
+# 				-out {output} 2> {log}"
+
+# rule trim_alignment:
+# 	input:
+# 		"{ribosomal_protein}_protein/01_aligned/{ribosomal_protein}_all_aligned.fasta"
+# 	output:
+# 		"{ribosomal_protein}_protein/02_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
+# 	threads: 10
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_trimal.log"
+# 	shell:
+# 		"trimal -in {input} \
+# 				-out {output} \
+# 				-gt 0.50 2> {log}"
+
+# rule remove_gaps:
+# 	input:
+# 		"{ribosomal_protein}_protein/02_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
+# 	params:
+# 		seq_counts_tsv="{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_gaps_counts"
+# 	output:
+# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
+# 	threads: 10
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_remove_gaps.log"
+# 	shell:
+# 		"anvi-script-reformat-fasta {input} \
+# 									-o {output} \
+# 									--max-percentage-gaps 50 \
+# 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
+
+# # 2. Remove sequences that have an outlier set of gaps in a sequences
+# # - this step further refine the MSA by removing more sequences that have too many gaps.
+# # to make this smarter, we will rely on the standard outlier threshold of 1.5*IQR and remove any
+# # sequences with more gaps than that. To accomplish this the following steps will be taken:
+# # * Get the distribution of gaps counts per sequences
+# # * calculate the outlier threshold 1.5*IQR
+# # * remove sequences greater than that threshold
+
+# rule get_gap_count_distribution:
+# 	input:
+# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
+# 	output:
+# 		seq_counts_tsv="{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_gaps_counts"
+# 	threads: 5
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}get_gap_count_distribution.log"
+# 	shell:
+# 		"anvi-script-reformat-fasta {input} \
+#  									--export-gap-counts-table {output.seq_counts_tsv} >> {log} 2>&1"
+
+# # rule find_IQR:
+# # 	input:
+# # 		"{ribosomal_protein}_protein/04_remove_poorly_aligned_sequences/{ribosomal_protein}_gaps_counts.tsv"
+# # 	run:
+# # 		pd.read_csv({import})]
+
+# # rule filter_out_outlier_sequences
+
+
+# # 3. Re-prepare MSA for tree calculation
+# # Repeat step 1. now that we have the final set of sequences that don't have too many gaps
+
+# rule align_2:
+# 	input:
+# 		"{ribosomal_protein}_protein/03_gaps_removed/Ribosomal_L16_all_aligned_trimmed_gaps_removed_max_6.fasta"
+# 	output:
+# 		"{ribosomal_protein}_protein/04_re_aligned/{ribosomal_protein}_all_aligned.fasta"
+# 	threads: 30
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_muscle_2.log"
+# 	shell:
+# 		"muscle -in {input} \
+# 				-out {output} 2> {log}"
+
+# rule trim_alignment_2:
+# 	input:
+# 		"{ribosomal_protein}_protein/04_re_aligned/{ribosomal_protein}_all_aligned.fasta"
+# 	output:
+# 		"{ribosomal_protein}_protein/05_re_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
+# 	threads: 10
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_trimal_2.log"
+# 	shell:
+# 		"trimal -in {input} \
+# 				-out {output} \
+# 				-gt 0.50 2> {log}"
+
+# rule remove_gaps_2:
+# 	input:
+# 		"{ribosomal_protein}_protein/05_re_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
+# 	params:
+# 		seq_counts_tsv="{ribosomal_protein}_protein/06_gaps_re_removed/{ribosomal_protein}_gaps_counts"
+# 	output:
+# 		"{ribosomal_protein}_protein/06_gaps_re_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
+# 	threads: 10
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_remove_gaps_2.log"
+# 	shell:
+# 		"anvi-script-reformat-fasta {input} \
+# 									-o {output} \
+# 									--max-percentage-gaps 50 \
+# 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
+
+
+# # 4. Calculate the tree, FINALLY
+
+# rule calculate_tree:
+# 	input:
+# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed_maxgap_4.fasta"
+# 	params:
+# 		outfile="{ribosomal_protein}_protein/04_trees/{ribosomal_protein}"
+# 	output:
+# 		"{ribosomal_protein}_protein/04_trees/{ribosomal_protein}.contree"
+# 	threads: 39
+# 	log:
+# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_iqtree.log"
+# 	shell:
+# 		"iqtree -s {input} \
+# 				-nt AUTO \
+# 				-m MFP \
+# 				-bb 1000 \
+# 				-pre {params.outfile} >> {log} 2>&1"
