@@ -2410,6 +2410,8 @@ def check_contig_names(contig_names, dont_raise=False):
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
 
+    from anvio.summarizer import ArgsTemplateForSummarizerClass, ProfileSummarizer, Bin
+
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
                           "files. Although anvi'o can technically go ahead and create a temporary "
@@ -2454,7 +2456,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
         # when we are here, all we have are interanl genomes as genome subsets.
         for genome_subset in genome_subsets.values():
-            args = anvio.summarizer.ArgsTemplateForSummarizerClass()
+            args = ArgsTemplateForSummarizerClass()
             args.contigs_db = genome_subset['contigs_db_path']
             args.profile_db = genome_subset['profile_db_path']
             args.collection_name = genome_subset['collection_id']
@@ -2463,7 +2465,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
             # note that we're initializing the summary class only for once for a given
             # genome subset
-            summary = anvio.summarizer.ProfileSummarizer(args, r=Run(verbose=False))
+            summary = ProfileSummarizer(args, r=Run(verbose=False))
             summary.init()
 
             for genome_name, bin_name in genome_subset['genome_name_bin_name_tpl']:
@@ -2475,7 +2477,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
                 file_paths.add(path)
                 name_to_path[genome_name] = path
 
-                bin_summary = anvio.summarizer.Bin(summary, bin_name)
+                bin_summary = Bin(summary, bin_name)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
