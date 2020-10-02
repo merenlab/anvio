@@ -460,9 +460,9 @@ class WorkflowSuperClass:
         '''
         if args:
             if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting %s from "
-                                  "within another class, yet you are providing an `args` parameter. "
-                                  "This is not alright." % type(self))
+                raise ConfigError("Something is wrong. You are inheriting %s from \
+                                   within another class, yet you are providing an `args` parameter.\
+                                   This is not alright." % type(self))
             self.args = args
             self.name = workflow_name
             WorkflowSuperClass.__init__(self)
@@ -643,11 +643,13 @@ def get_workflow_module_dict():
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+    from anvio.workflows.trnaseq import TRNASeqWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
-                      'phylogenomics': PhylogenomicsWorkflow}
+                      'phylogenomics': PhylogenomicsWorkflow,
+                      'trnaseq': TRNASeqWorkflow}
 
     return workflows_dict
 

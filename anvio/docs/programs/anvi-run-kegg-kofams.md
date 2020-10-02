@@ -15,6 +15,7 @@ anvi-run-kegg-kofams -c CONTIGS.db
 {{ codestop }}
 
 ### Use a specific non-default KEGG data directory
+If you have previously setup your KEGG data directory using `--kegg-data-dir` (see %(anvi-setup-kegg-kofams)s), or have moved the KEGG data directory that you wish to use to a non-default location (maybe you like keeping the older versions around when you update, we don't know how you roll), then you may need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
 
 {{ codestart }}
 anvi-run-kegg-kofams -c CONTIGS.db --kegg-data-dir /path/to/directory/KEGG
