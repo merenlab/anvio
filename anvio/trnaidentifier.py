@@ -8,9 +8,9 @@ import pandas as pd
 from tabulate import tabulate
 
 from anvio.errors import TRNAIdentifierError
-from anvio.filesnpaths import is_file_exists, is_output_file_writable
 from anvio.constants import LONGEST_KNOWN_TRNA_LENGTH
 from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
+from anvio.filesnpaths import is_file_exists, is_output_file_writable
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 
 
@@ -24,10 +24,10 @@ __status__ = "Development"
 
 
 class TRNAFeature:
-    # Full tRNA feature parameter names in .ini file
+    # Full tRNA feature parameter names found in .ini file
     INI_FEATURE_PARAMS = ['Conserved nucleotides', 'Number allowed unconserved', 'Number allowed unpaired', 'Allowed lengths']
     # Feature parameter attributes
-    ACCESSIBLE_FEATURE_PARAMS = ['conserved_nucs', 'num_allowed_unconserved', 'num_allowed_unpaired', 'allowed_input_lengths']
+    ACCESSIBLE_FEATURE_PARAMS = ['conserved_nts', 'num_allowed_unconserved', 'num_allowed_unpaired', 'allowed_input_lengths']
     # These class attributes are set by `set_feature_param_class_attributes`
     # or are set the first time `set_feature_params` or `print_default_feature_params` is called.
     # Since the attributes reference other classes, they can't be assigned yet.
@@ -37,7 +37,7 @@ class TRNAFeature:
 
     def __init__(self,
                  string_components,
-                 conserved_nucs=None,
+                 conserved_nts=None,
                  num_allowed_unconserved=-1,
                  cautious=False):
         """The most ancestral superclass of tRNA features
@@ -63,18 +63,18 @@ class TRNAFeature:
                                           "Your `string_components` were %s" % (string_components, ))
         self.string_components = string_components
 
-        self.nuc_count = sum(map(len, string_components))
+        self.nt_count = sum(map(len, string_components))
 
-        if conserved_nucs is None:
-            self.conserved_nucs = ({}, )
+        if conserved_nts is None:
+            self.conserved_nts = ({}, )
         # By default, base conservation is not enforced.
         if num_allowed_unconserved == -1:
-            self.num_allowed_unconserved = sum(len(d) for d in self.conserved_nucs)
+            self.num_allowed_unconserved = sum(len(d) for d in self.conserved_nts)
         else:
             self.num_allowed_unconserved = num_allowed_unconserved
 
 
-    def check_conserved_nucs(self):
+    def check_conserved_nts(self):
         """Determine which of the canonical nucleotides in the feature are conserved.
 
         Returns
@@ -91,7 +91,7 @@ class TRNAFeature:
             There is an inner list for each subsequence (substring component)
             and an inner tuple for each conserved nucleotide of the subsequence.
             Each inner tuple has four elements:
-                1. position (index) of conserved nucleotide in subsequence
+                1. position of conserved nucleotide in subsequence
                 2. whether nucleotide is conserved (bool)
                 3. observed nucleotide in subsequence (char)
                 4. expected canonical nucleotide in subsequence (char)
@@ -100,22 +100,22 @@ class TRNAFeature:
         num_conserved = 0
         num_unconserved = 0 # can include N "padding" in extrapolated 5' feature
         conserved_status = []
-        for substring, nuc_dict in zip(self.string_components, self.conserved_nucs):
+        for substring, nt_dict in zip(self.string_components, self.conserved_nts):
             substring_statuses = []
             conserved_status.append(substring_statuses)
-            for pos, expected_nucs in nuc_dict.items():
+            for pos, expected_nts in nt_dict.items():
                 try:
-                    observed_nuc = substring[pos]
+                    observed_nt = substring[pos]
                 except IndexError:
                     # This occurs for an Acceptor feature string that differs from the canonical "CCA", such as "CC", "C", or "CCATT".
                     break
 
-                if observed_nuc in expected_nucs:
+                if observed_nt in expected_nts:
                     num_conserved += 1
-                    substring_statuses.append((pos, True, observed_nuc, expected_nucs))
+                    substring_statuses.append((pos, True, observed_nt, expected_nts))
                 else:
                     num_unconserved += 1
-                    substring_statuses.append((pos, False, observed_nuc, expected_nucs))
+                    substring_statuses.append((pos, False, observed_nt, expected_nts))
 
         if num_unconserved > self.num_allowed_unconserved:
             meets_conserved_thresh = False
@@ -129,31 +129,33 @@ class TRNAFeature:
     def list_all_tRNA_features():
         """List all tRNA feature classes in order from 5' to 3'"""
 
-        return [TRNAHisPositionZero,
-                AcceptorStem,
-                AcceptorStemFiveprimeStrand,
-                PositionEight,
-                PositionNine,
-                DArm,
-                DStem,
-                DStemFiveprimeStrand,
-                DLoop,
-                DStemThreeprimeStrand,
-                PositionTwentySix,
-                AnticodonArm,
-                AnticodonStem,
-                AnticodonStemFiveprimeStrand,
-                AnticodonLoop,
-                AnticodonStemThreeprimeStrand,
-                VLoop,
-                TArm,
-                TStem,
-                TStemFiveprimeStrand,
-                TLoop,
-                TStemThreeprimeStrand,
-                AcceptorStemThreeprimeStrand,
-                Discriminator,
-                Acceptor]
+        return [
+            TRNAHisPositionZero,
+            AcceptorStem,
+            AcceptorStemFiveprimeStrand,
+            PositionEight,
+            PositionNine,
+            DArm,
+            DStem,
+            DStemFiveprimeStrand,
+            DLoop,
+            DStemThreeprimeStrand,
+            PositionTwentySix,
+            AnticodonArm,
+            AnticodonStem,
+            AnticodonStemFiveprimeStrand,
+            AnticodonLoop,
+            AnticodonStemThreeprimeStrand,
+            VLoop,
+            TArm,
+            TStem,
+            TStemFiveprimeStrand,
+            TLoop,
+            TStemThreeprimeStrand,
+            AcceptorStemThreeprimeStrand,
+            Discriminator,
+            Acceptor
+        ]
 
 
     @staticmethod
@@ -265,7 +267,7 @@ class TRNAFeature:
                 continue
 
             for param_name in ACCESSIBLE_FEATURE_PARAMS:
-                if param_name == 'conserved_nucs':
+                if param_name == 'conserved_nts':
                     if ('/' not in feature_or_subfeature_name
                         and 'allowed_section_lengths' in feature_class.__dict__):
                         # Conserved nucleotides can only be set for individual "subfeature" sections of the D arm.
@@ -286,21 +288,21 @@ class TRNAFeature:
                     row.append("-")
                     continue
 
-                if param_name == 'conserved_nucs':
-                    conserved_nuc_list = []
+                if param_name == 'conserved_nts':
+                    conserved_nt_list = []
                     if not param_value[subfeature_section_dict[feature_or_subfeature_name]]:
                         row.append("\"\"")
                         continue
-                    for pos, nuc in param_value[subfeature_section_dict[feature_or_subfeature_name]].items():
-                        if type(nuc) == str:
-                            conserved_nuc_list.append(str(pos) + "," + nuc)
-                        elif type(nuc) == tuple:
+                    for pos, nt in param_value[subfeature_section_dict[feature_or_subfeature_name]].items():
+                        if type(nt) == str:
+                            conserved_nt_list.append(str(pos) + "," + nt)
+                        elif type(nt) == tuple:
                             # The only alternatives to a single conserved nucleotide are a purine or pyrimidine.
-                            if nuc == ('A', 'G'):
-                                conserved_nuc_list.append(str(pos) + ",R")
-                            elif nuc == ('C', 'T'):
-                                conserved_nuc_list.append(str(pos) + ",Y")
-                    row.append(";".join(conserved_nuc_list))
+                            if nt == ('A', 'G'):
+                                conserved_nt_list.append(str(pos) + ",R")
+                            elif nt == ('C', 'T'):
+                                conserved_nt_list.append(str(pos) + ",Y")
+                    row.append(";".join(conserved_nt_list))
                 elif param_name == 'num_allowed_unconserved' or param_name == 'num_allowed_unpaired':
                     if param_value == -1:
                         row.append("\"\"")
@@ -364,23 +366,23 @@ class TRNAFeature:
                                       "Here are the recognized parameter names: %s"
                                       % (param_name, ", ".join(TRNAFeature.ACCESSIBLE_FEATURE_PARAMS)))
 
-        if param_name == 'conserved_nucs':
-            TRNAFeature.set_conserved_nucs(feature_or_subfeature_name, param_value)
+        if param_name == 'conserved_nts':
+            TRNAFeature.set_conserved_nts(feature_or_subfeature_name, param_value)
         elif param_name == 'num_allowed_unconserved':
             if not param_value:
                 param_value = -1
             TRNAFeature.set_num_allowed_unconserved(feature_or_subfeature_name, param_value)
         elif param_name == 'num_allowed_unpaired':
             if not param_value:
-                param_value = 1000
+                param_value = 10000 # a default larger than any possible stem length
             TRNAFeature.set_num_allowed_unpaired(feature_or_subfeature_name, param_value)
         elif param_name == 'allowed_input_lengths':
             TRNAFeature.set_allowed_input_lengths(feature_or_subfeature_name, param_value)
 
 
     @staticmethod
-    def set_conserved_nucs(feature_or_subfeature_name, param_value=''):
-        """Modify (update a dict in) the `conserved_nucs` attribute of a tRNA feature class
+    def set_conserved_nts(feature_or_subfeature_name, param_value=''):
+        """Modify (update a dict in) the `conserved_nts` attribute of a tRNA feature class
 
         Parameters
         ==========
@@ -395,16 +397,16 @@ class TRNAFeature:
 
         feature_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
 
-        conserved_nucs_dict = {}
+        conserved_nts_dict = {}
         if param_value:
             try:
-                for conserved_nuc in param_value.split(';'):
-                    conserved_pos, nuc = conserved_nuc.split(',')
-                    if nuc == 'R':
-                        nuc = ('A', 'G')
-                    elif nuc == 'Y':
-                        nuc = ('C', 'T')
-                    conserved_nucs_dict[int(conserved_pos)] = nuc
+                for conserved_nt in param_value.split(';'):
+                    conserved_pos, nt = conserved_nt.split(',')
+                    if nt == 'R':
+                        nt = ('A', 'G')
+                    elif nt == 'Y':
+                        nt = ('C', 'T')
+                    conserved_nts_dict[int(conserved_pos)] = nt
             except:
                 raise TRNAIdentifierError("The proper format of a conserved nucleotide parameter value is "
                                           "\"<Zero-based position of conserved nucleotide in feature(/subfeature) relative to 5' end of feature>,"
@@ -414,7 +416,7 @@ class TRNAFeature:
                                           "Note that entries for different conserved nucleotides are separated by a semicolon. "
                                           "The value provided was %s" % param_value)
 
-            if ('conserved_nucs' not in feature_class.__dict__
+            if ('conserved_nts' not in feature_class.__dict__
                 or ('/' not in feature_or_subfeature_name
                     and 'allowed_section_lengths' in feature_class.__dict__)):
                 #   Conserved nucleotides can only be set for individual "subfeature" sections of the D arm.
@@ -422,9 +424,9 @@ class TRNAFeature:
                                           "The conserved nucleotide input provided was %s"
                                           % (feature_or_subfeature_name, param_value))
 
-        prev_conserved_nucs_dict = feature_class.conserved_nucs[TRNAFeature.subfeature_section_dict[feature_or_subfeature_name]]
-        prev_conserved_nucs_dict.clear()
-        prev_conserved_nucs_dict.update(conserved_nucs_dict)
+        prev_conserved_nts_dict = feature_class.conserved_nts[TRNAFeature.subfeature_section_dict[feature_or_subfeature_name]]
+        prev_conserved_nts_dict.clear()
+        prev_conserved_nts_dict.update(conserved_nts_dict)
 
 
     @staticmethod
@@ -530,35 +532,35 @@ class Nucleotide(TRNAFeature):
 
     def __init__(self,
                  string, # must be a string of length 1
-                 conserved_nucs=None,
+                 conserved_nts=None,
                  num_allowed_unconserved=-1,
-                 start_index=None,
-                 stop_index=None,
+                 start_pos=None,
+                 stop_pos=None,
                  cautious=False):
         """Superclass for tRNA primary features of a single nucleotide, e.g., discriminator, position 8"""
 
         self.string = string
-        self.start_index = start_index
-        self.stop_index = stop_index
+        self.start_pos = start_pos
+        self.stop_pos = stop_pos
 
         super().__init__((string, ),
-                         conserved_nucs=conserved_nucs,
+                         conserved_nts=conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
                          cautious=cautious)
 
         (self.meets_conserved_thresh,
          self.num_conserved,
          self.num_unconserved,
-         self.conserved_status) = self.check_conserved_nucs()
+         self.conserved_status) = self.check_conserved_nts()
 
 
 class Sequence(TRNAFeature):
     def __init__(self,
                  substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
-                 conserved_nucs=None,
+                 conserved_nts=None,
                  num_allowed_unconserved=-1,
-                 start_index=None,
-                 stop_index=None,
+                 start_pos=None,
+                 stop_pos=None,
                  cautious=False):
         """Superclass for tRNA primary sequences, e.g., acceptor, 5' strand of T stem"""
 
@@ -569,35 +571,35 @@ class Sequence(TRNAFeature):
         elif all([type(s) == Nucleotide or type(s) == Sequence for s in substrings]):
             string_components = tuple(s.string for s in substrings)
         self.string = ''.join(substrings)
-        self.start_index = start_index
-        self.stop_index = stop_index
+        self.start_pos = start_pos
+        self.stop_pos = stop_pos
 
         super().__init__(string_components,
-                         conserved_nucs=conserved_nucs,
+                         conserved_nts=conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
                          cautious=cautious)
 
         (self.meets_conserved_thresh,
          self.num_conserved,
          self.num_unconserved, # can include N "padding" in extrapolated 5' feature
-         self.conserved_status) = self.check_conserved_nucs()
+         self.conserved_status) = self.check_conserved_nts()
 
 
 class Loop(Sequence):
     def __init__(self,
                  substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
-                 conserved_nucs=None,
+                 conserved_nts=None,
                  num_allowed_unconserved=-1,
-                 start_index=None,
-                 stop_index=None,
+                 start_pos=None,
+                 stop_pos=None,
                  cautious=False):
         """Superclass for loops: D loop, anticodon loop, T loop"""
 
         super().__init__(substrings,
-                         conserved_nucs=conserved_nucs,
+                         conserved_nts=conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -617,7 +619,7 @@ class Stem(TRNAFeature):
         self.threeprime_seq = threeprime_seq
 
         self.canonical_positions = (*self.fiveprime_seq.canonical_positions, *self.threeprime_seq.canonical_positions)
-        self.conserved_nucs = (*self.fiveprime_seq.conserved_nucs, *self.threeprime_seq.conserved_nucs)
+        self.conserved_nts = (*self.fiveprime_seq.conserved_nts, *self.threeprime_seq.conserved_nts)
 
         if cautious:
             if tuple(map(len, self.fiveprime_seq.string_components)) != tuple(map(len, self.threeprime_seq.string_components[::-1])):
@@ -630,11 +632,11 @@ class Stem(TRNAFeature):
                                           "but there are only %d base pairs in the stem." % (num_allowed_unpaired, length))
         self.num_allowed_unpaired = num_allowed_unpaired
 
-        self.start_indices = (self.fiveprime_seq.start_index, self.threeprime_seq.start_index)
-        self.stop_indices = (self.fiveprime_seq.stop_index, self.threeprime_seq.stop_index)
+        self.start_positions = (self.fiveprime_seq.start_pos, self.threeprime_seq.start_pos)
+        self.stop_positions = (self.fiveprime_seq.stop_pos, self.threeprime_seq.stop_pos)
 
         super().__init__((*self.fiveprime_seq.string_components, *self.threeprime_seq.string_components),
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
                          cautious=cautious)
 
@@ -663,13 +665,13 @@ class Stem(TRNAFeature):
         num_paired = 0
         num_unpaired = 0 # can include N "padding" in extrapolated 5' feature
         paired_status = []
-        for fiveprime_nuc, threeprime_nuc in zip(self.fiveprime_seq.string, self.threeprime_seq.string[::-1]):
-            if fiveprime_nuc in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nuc]:
+        for fiveprime_nt, threeprime_nt in zip(self.fiveprime_seq.string, self.threeprime_seq.string[::-1]):
+            if fiveprime_nt in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nt]:
                 num_paired += 1
-                paired_status.append((True, fiveprime_nuc, threeprime_nuc))
+                paired_status.append((True, fiveprime_nt, threeprime_nt))
             else:
                 num_unpaired += 1
-                paired_status.append((False, fiveprime_nuc, threeprime_nuc))
+                paired_status.append((False, fiveprime_nt, threeprime_nt))
 
         if num_unpaired > self.num_allowed_unpaired:
             meets_pair_thresh = False
@@ -714,17 +716,17 @@ class Arm(TRNAFeature):
                                              stem.canonical_positions,
                                              loop.canonical_positions))
 
-        self.conserved_nucs=(*stem.fiveprime_seq.conserved_nucs,
-                             *loop.conserved_nucs,
-                             *stem.threeprime_seq.conserved_nucs)
+        self.conserved_nts=(*stem.fiveprime_seq.conserved_nts,
+                            *loop.conserved_nts,
+                            *stem.threeprime_seq.conserved_nts)
 
-        self.start_index = self.stem.start_indices[0]
-        self.stop_index = self.stem.stop_indices[1]
+        self.start_pos = self.stem.start_positions[0]
+        self.stop_pos = self.stem.stop_positions[1]
 
         super().__init__((*stem.fiveprime_seq.string_components,
                           *loop.string_components,
                           *stem.threeprime_seq.string_components),
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
                          cautious=cautious)
 
@@ -739,17 +741,17 @@ class Arm(TRNAFeature):
 class TRNAHisPositionZero(Nucleotide):
     name = 'tRNA-His position 0'
     canonical_positions = ((-1, ), )
-    conserved_nucs = ({0: 'G'}, )
+    conserved_nts = ({0: 'G'}, )
     num_allowed_unconserved = 0
 
-    def __init__(self, string, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
         """The G typically found at the 5' end of mature tRNA-His"""
 
         super().__init__(string,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -773,52 +775,52 @@ class AcceptorStemFiveprimeStrand(Sequence):
     canonical_positions = ((1, 2, 3, 4, 5, 6, 7), )
     allowed_input_lengths = ((7, ), )
     summed_input_lengths = (7, )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     stem_class = AcceptorStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 5' strand of the acceptor stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
 class PositionEight(Nucleotide):
     name = 'position 8'
     canonical_positions = ((8, ), )
-    conserved_nucs = ({0: 'T'}, )
+    conserved_nts = ({0: 'T'}, )
     num_allowed_unconserved = 1
 
-    def __init__(self, string, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
         """The nucleotide at canonical position 8 of tRNA, expected but not required to be T"""
 
         super().__init__(string,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
 class PositionNine(Nucleotide):
     name = 'position 9'
     canonical_positions = ((9, ), )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
 
-    def __init__(self, string, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
         """The nucleotide at canonical position 9 of tRNA"""
 
         super().__init__(string,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -857,12 +859,12 @@ class DStemFiveprimeStrand(Sequence):
     allowed_section_lengths = ((3, ), (0, 1))
     allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nucs = ({}, {})
+    conserved_nts = ({}, {})
     num_allowed_unconserved = -1
     arm_class = DArm
     stem_class = DStem
 
-    def __init__(self, positions_10_to_12_string, position_13_string='', start_index=None, stop_index=None, cautious=False):
+    def __init__(self, positions_10_to_12_string, position_13_string='', start_pos=None, stop_pos=None, cautious=False):
         """The 5' strand of the D stem of tRNA"""
 
         if cautious:
@@ -874,10 +876,10 @@ class DStemFiveprimeStrand(Sequence):
                                           % position_13_string)
 
         super().__init__((positions_10_to_12_string, position_13_string),
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=False)
 
 
@@ -887,7 +889,7 @@ class DLoop(Loop):
     allowed_section_lengths = ((2, ), (1, 2, 3), (2, ), (1, 2, 3), (1, ))
     allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nucs = ({0: 'A', 1: ('A', 'G')}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
+    conserved_nts = ({0: 'A', 1: ('A', 'G')}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
     num_allowed_unconserved = 2
     arm_class = DArm
     stem_class = DStem
@@ -898,8 +900,8 @@ class DLoop(Loop):
                  positions_18_to_19_string,
                  beta_positions_string,
                  position_21_string,
-                 start_index=None,
-                 stop_index=None,
+                 start_pos=None,
+                 stop_pos=None,
                  cautious=False):
         """The D loop of tRNA, allowing for variable alpha (canonical positions 16, 17, 17a, 17b) and beta (canonical positions 20, 20a, 20b) sections"""
 
@@ -915,22 +917,22 @@ class DLoop(Loop):
             if len(position_21_string) != 1:
                 raise TRNAIdentifierError("Your `position_21_string` was not the required 1 base long: %s" % position_21_string)
 
-        alpha_start_index = 1
-        alpha_stop_index = alpha_start_index + len(alpha_positions_string)
-        self.alpha_seq = Sequence(alpha_positions_string, start_index=alpha_start_index, stop_index=alpha_stop_index)
-        beta_start_index = alpha_stop_index + 2
-        beta_stop_index = beta_start_index + len(beta_positions_string)
-        self.beta_seq = Sequence(beta_positions_string, start_index=beta_start_index, stop_index=beta_stop_index)
+        alpha_start_pos = 1
+        alpha_stop_pos = alpha_start_pos + len(alpha_positions_string)
+        self.alpha_seq = Sequence(alpha_positions_string, start_pos=alpha_start_pos, stop_pos=alpha_stop_pos)
+        beta_start_pos = alpha_stop_pos + 2
+        beta_stop_pos = beta_start_pos + len(beta_positions_string)
+        self.beta_seq = Sequence(beta_positions_string, start_pos=beta_start_pos, stop_pos=beta_stop_pos)
 
         super().__init__((positions_14_to_15_string,
                           alpha_positions_string,
                           positions_18_to_19_string,
                           beta_positions_string,
                           position_21_string),
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -940,12 +942,12 @@ class DStemThreeprimeStrand(Sequence):
     allowed_section_lengths = ((0, 1), (1, 2, 3))
     allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nucs = ({}, {})
+    conserved_nts = ({}, {})
     num_allowed_unconserved = -1
     arm_class = DArm
     stem_class = DStem
 
-    def __init__(self, position_22_string, positions_23_to_25_string='', start_index=None, stop_index=None, cautious=False):
+    def __init__(self, position_22_string, positions_23_to_25_string='', start_pos=None, stop_pos=None, cautious=False):
         """The 3' strand of the D stem of tRNA"""
 
         if cautious:
@@ -955,27 +957,27 @@ class DStemThreeprimeStrand(Sequence):
                 raise TRNAIdentifierError("Your `positions_23_to_25_string` was not the required 1 to 3 bases long: %s" % positions_23_to_25_string)
 
         super().__init__((position_22_string, positions_23_to_25_string),
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=False)
 
 
 class PositionTwentySix(Nucleotide):
     name = 'position 26'
     canonical_positions = ((26, ), )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
 
-    def __init__(self, string, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
         """The nucleotide at canonical position 26 of tRNA"""
 
         super().__init__(string,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1013,19 +1015,19 @@ class AnticodonStemFiveprimeStrand(Sequence):
     canonical_positions = ((27, 28, 29, 30, 31), )
     allowed_input_lengths = ((5, ), )
     summed_input_lengths = (5, )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     stem_class = AnticodonStem
     arm_class = AnticodonArm
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 5' strand of the anticodon stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1037,10 +1039,10 @@ class Anticodon(Sequence):
     arm_class = AnticodonArm
     stem_class = AnticodonStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The anticodon sequence of tRNA"""
 
-        super().__init__(substrings, start_index=start_index, stop_index=stop_index, cautious=cautious)
+        super().__init__(substrings, start_pos=start_pos, stop_pos=stop_pos, cautious=cautious)
         try:
             self.aa_string = ANTICODON_TO_AA[self.string]
         except KeyError:
@@ -1052,19 +1054,19 @@ class AnticodonLoop(Loop):
     canonical_positions = ((32, 33, 34, 35, 36, 37, 38), )
     allowed_input_lengths = ((7, ), )
     summed_input_lengths = (7, )
-    conserved_nucs = ({1: 'T', 5: ('A', 'G')}, )
+    conserved_nts = ({1: 'T', 5: ('A', 'G')}, )
     num_allowed_unconserved = 1
     arm_class = AnticodonArm
     stem_class = AnticodonStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The anticodon loop of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
         self.anticodon = Anticodon(self.string[2: 5])
 
@@ -1074,19 +1076,19 @@ class AnticodonStemThreeprimeStrand(Sequence):
     canonical_positions = ((39, 40, 41, 42, 43), )
     allowed_input_lengths = ((5, ), )
     summed_input_lengths = (5, )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     arm_class = AnticodonArm
     stem_class = AnticodonStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 3' strand of the anticodon stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1095,17 +1097,17 @@ class VLoop(Loop):
     canonical_positions = ((44, 45, 46, 47, 48), )
     allowed_input_lengths = tuple(itertools.product(range(4, 24)))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The V loop of tRNA: no stem/loop structure and base pairing is considered"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
         if 4 <= len(self.string) <= 5:
             self.type = 'I'
@@ -1149,19 +1151,19 @@ class TStemFiveprimeStrand(Sequence):
     canonical_positions = ((49, 50, 51, 52, 53), )
     allowed_input_lengths = ((5, ), )
     summed_input_lengths = (5, )
-    conserved_nucs = ({4: 'G'}, )
+    conserved_nts = ({4: 'G'}, )
     num_allowed_unconserved = 1
     arm_class = TArm
     stem_class = TStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 5' T strand of the T stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1170,18 +1172,18 @@ class TLoop(Loop):
     canonical_positions = ((54, 55, 56, 57, 58, 59, 60), )
     allowed_input_lengths = ((7, ), )
     summed_input_lengths = (7, )
-    conserved_nucs = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
+    conserved_nts = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
     num_allowed_unconserved = 2
     arm_class = TArm
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The T loop of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1190,19 +1192,19 @@ class TStemThreeprimeStrand(Sequence):
     canonical_positions = ((61, 62, 63, 64, 65), )
     allowed_input_lengths = ((5, ), )
     summed_input_lengths = (5, )
-    conserved_nucs = ({0: 'C'}, )
+    conserved_nts = ({0: 'C'}, )
     num_allowed_unconserved = 1
     arm_class = TArm
     stem_class = TStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 3' strand of the T stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1211,35 +1213,35 @@ class AcceptorStemThreeprimeStrand(Sequence):
     canonical_positions=((66, 67, 68, 69, 70, 71, 72), )
     allowed_input_lengths = ((7, ), )
     summed_input_lengths = (7, )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     stem_class = AcceptorStem
 
-    def __init__(self, substrings, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
         """The 3' strand of the acceptor stem of tRNA"""
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
 class Discriminator(Nucleotide):
     name = 'discriminator'
     canonical_positions = ((73, ), )
-    conserved_nucs = ({}, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
 
-    def __init__(self, string, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
         """The discriminator nucleotide 5' of the acceptor sequence"""
 
         super().__init__(string,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
@@ -1248,11 +1250,11 @@ class Acceptor(Sequence):
     canonical_positions = ((74, 75, 76), )
     allowed_input_lengths = ((3, ), (2, ), (1, )) # Input lengths of 2 and 1 are 3'-CC and 3'-C.
     summed_input_lengths = (3, 2, 1)
-    conserved_nucs = ({0: 'C', 1: 'C', 2: 'A'}, ) # set in stone
+    conserved_nts = ({0: 'C', 1: 'C', 2: 'A'}, ) # set in stone
     num_allowed_unconserved = 0 # set in stone
     max_extra_threeprime = 2 # set in stone -- allowing this to vary would require a lot of work in `trnaseq.py`
 
-    def __init__(self, substrings, num_extra_threeprime=0, start_index=None, stop_index=None, cautious=False):
+    def __init__(self, substrings, num_extra_threeprime=0, start_pos=None, stop_pos=None, cautious=False):
         """The acceptor sequence (CCA in mature tRNA) and various other 3' endings
 
         With default values of `self.allowed_input_lengths` and `self.num_extra_threeprime`,
@@ -1265,33 +1267,44 @@ class Acceptor(Sequence):
         # these extra 3' bases are not treated explicitly by this class.
 
         super().__init__(substrings,
-                         conserved_nucs=self.conserved_nucs,
+                         conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_index=start_index,
-                         stop_index=stop_index,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
                          cautious=cautious)
 
 
 class Profile:
     FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES = TRNAFeature.list_all_tRNA_features()
     THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES = FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES[::-1]
-    STEM_FORMATION_TRIGGERS = [TStemFiveprimeStrand, AnticodonStemFiveprimeStrand, DStemFiveprimeStrand, AcceptorStemFiveprimeStrand]
+    STEM_FORMATION_TRIGGERS = [
+        TStemFiveprimeStrand,
+        AnticodonStemFiveprimeStrand,
+        DStemFiveprimeStrand,
+        AcceptorStemFiveprimeStrand
+    ]
     ARM_FORMATION_TRIGGERS = [TStem, AnticodonStem, DStem]
-    T_ARM_INDEX = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TArm)
-    THREEPRIME_STEM_SEQ_INDICES = {TStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TStemThreeprimeStrand),
-                                   AnticodonStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonStemThreeprimeStrand),
-                                   DStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DStemThreeprimeStrand),
-                                   AcceptorStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AcceptorStemThreeprimeStrand)}
-    D_LOOP_INDEX = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DLoop)
-    ARM_LOOP_INDEX_DICT = {TArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TLoop),
-                           AnticodonArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop),
-                           DArm: D_LOOP_INDEX}
-    ANTICODON_LOOP_INDEX = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop)
-    EXTRAPOLATION_INELIGIBLE_FEATURES = [AcceptorStemThreeprimeStrand,
-                                         TStemThreeprimeStrand,
-                                         VLoop,
-                                         AnticodonStemThreeprimeStrand,
-                                         DStemThreeprimeStrand]
+    T_ARM_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TArm)
+    THREEPRIME_STEM_SEQ_POSITIONS = {
+        TStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TStemThreeprimeStrand),
+        AnticodonStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonStemThreeprimeStrand),
+        DStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DStemThreeprimeStrand),
+        AcceptorStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AcceptorStemThreeprimeStrand)
+    }
+    D_LOOP_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DLoop)
+    ARM_LOOP_POS_DICT = {
+        TArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TLoop),
+        AnticodonArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop),
+        DArm: D_LOOP_POS
+    }
+    ANTICODON_LOOP_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop)
+    EXTRAPOLATION_INELIGIBLE_FEATURES = [
+        AcceptorStemThreeprimeStrand,
+        TStemThreeprimeStrand,
+        VLoop,
+        AnticodonStemThreeprimeStrand,
+        DStemThreeprimeStrand
+    ]
 
     def __init__(self, input_seq, name=''):
         """A profile of the tRNA features identified from the 3' end of the input sequence"""
@@ -1322,29 +1335,29 @@ class Profile:
 
             # Explicitly record the start and stop positions within the input seq
             # of the variable-length alpha and beta regions of the D loop.
-            if self.D_LOOP_INDEX < len(self.features):
-                D_loop = self.features[-self.D_LOOP_INDEX - 1]
+            if self.D_LOOP_POS < len(self.features):
+                D_loop = self.features[-self.D_LOOP_POS - 1]
                 alpha_seq = D_loop.alpha_seq
                 beta_seq = D_loop.beta_seq
-                self.alpha_start = D_loop.start_index + alpha_seq.start_index
-                self.alpha_stop = D_loop.start_index + alpha_seq.stop_index
-                self.beta_start = D_loop.start_index + beta_seq.start_index
-                self.beta_stop = D_loop.start_index + beta_seq.stop_index
+                self.alpha_start = D_loop.start_pos + alpha_seq.start_pos
+                self.alpha_stop = D_loop.start_pos + alpha_seq.stop_pos
+                self.beta_start = D_loop.start_pos + beta_seq.start_pos
+                self.beta_stop = D_loop.start_pos + beta_seq.stop_pos
             else:
                 self.alpha_start = None
                 self.alpha_stop = None
                 self.beta_start = None
                 self.beta_stop = None
 
-            if self.ANTICODON_LOOP_INDEX < len(self.features):
-                anticodon = self.features[-self.ANTICODON_LOOP_INDEX - 1].anticodon
+            if self.ANTICODON_LOOP_POS < len(self.features):
+                anticodon = self.features[-self.ANTICODON_LOOP_POS - 1].anticodon
                 self.anticodon_seq = anticodon.string
                 self.anticodon_aa = anticodon.aa_string
             else:
                 self.anticodon_seq = ''
                 self.anticodon_aa = ''
 
-            if len(self.features) > self.T_ARM_INDEX:
+            if len(self.features) > self.T_ARM_POS:
                 self.is_predicted_trna = True
             else:
                 self.is_predicted_trna = False
@@ -1380,14 +1393,14 @@ class Profile:
                     num_paired=0,
                     num_unpaired=0,
                     num_extra_threeprime=0,
-                    feature_index=0,
+                    feature_pos=0,
                     has_complete_feature_set=False):
         """A recursive function to sequentially identify tRNA features from the 3' end of a sequence"""
 
         if features is None:
             features = []
 
-        if feature_index == len(self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES):
+        if feature_pos == len(self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES):
             # To reach this point,
             # all tRNA features including the tRNA-His 5'-G must have been found,
             # and the input sequence must extend 5' of that.
@@ -1417,17 +1430,17 @@ class Profile:
                     0) # input sequence is not longer than full-length tRNA
 
 
-        feature_class = self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES[feature_index]
+        feature_class = self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES[feature_pos]
         if feature_class in self.STEM_FORMATION_TRIGGERS: # 3' stem seq triggers stem formation
             # Prepare to form a stem as well as the 3' sequence.
             make_stem = True
             stem_class = feature_class.stem_class
-            threeprime_stem_seq = features[-self.THREEPRIME_STEM_SEQ_INDICES[stem_class] - 1]
+            threeprime_stem_seq = features[-self.THREEPRIME_STEM_SEQ_POSITIONS[stem_class] - 1]
             if stem_class in self.ARM_FORMATION_TRIGGERS:
                 # Prepare to form an arm (stem + loop) as well as the stem.
                 make_arm = True
                 arm_class = stem_class.arm_class
-                loop = features[-self.ARM_LOOP_INDEX_DICT[arm_class] - 1]
+                loop = features[-self.ARM_LOOP_POS_DICT[arm_class] - 1]
             else:
                 make_arm = False
         else:
@@ -1436,7 +1449,7 @@ class Profile:
             if feature_class == TRNAHisPositionZero:
                 # Check for tRNA-His based on the anticodon sequence.
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
-                anticodon_string = features[-self.ANTICODON_LOOP_INDEX - 1].anticodon.string
+                anticodon_string = features[-self.ANTICODON_LOOP_POS - 1].anticodon.string
                 try:
                     aa_string = ANTICODON_TO_AA[anticodon_string]
                 except KeyError:
@@ -1497,10 +1510,10 @@ class Profile:
                             threeprime_to_fiveprime_string += unprofiled_seq[num_processed_bases]
                         num_processed_bases += 1
                     string_components.insert(0, threeprime_to_fiveprime_string[::-1]) # 5' to 3'
-                # WITH THE N PADDING, THE START INDEX (5') OF THE FEATURE IN THE INPUT SEQUENCE IS NEGATIVE.
+                # WITH THE N PADDING, THE START POSITION (5') OF THE FEATURE IN THE INPUT SEQUENCE IS NEGATIVE.
                 feature = feature_class(*string_components,
-                                        start_index=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                        stop_index=len(self.input_seq) - len(profiled_seq))
+                                        start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
+                                        stop_pos=len(self.input_seq) - len(profiled_seq))
 
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
@@ -1512,31 +1525,37 @@ class Profile:
                                 arm = arm_class(stem, loop)
                                 # The arm is valid if it doesn't have too many unconserved bases.
                                 if arm.meets_conserved_thresh:
-                                    incremental_profile_candidates.append((unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                                                                           [arm, stem, feature],
-                                                                           feature.num_conserved,
-                                                                           feature.num_unconserved,
-                                                                           stem.num_paired,
-                                                                           stem.num_unpaired,
-                                                                           summed_input_length - len(unprofiled_seq))) # number of nucleotides in extrapolated 5' feature
+                                    incremental_profile_candidates.append(
+                                        (unprofiled_seq[::-1], # flip orientation to 5' to 3'
+                                         [arm, stem, feature],
+                                         feature.num_conserved,
+                                         feature.num_unconserved,
+                                         stem.num_paired,
+                                         stem.num_unpaired,
+                                         summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
+                                    )
                                     continue
                             else:
-                                incremental_profile_candidates.append((unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                                                                       [stem, feature],
-                                                                       feature.num_conserved,
-                                                                       feature.num_unconserved,
-                                                                       stem.num_paired,
-                                                                       stem.num_unpaired,
-                                                                       summed_input_length - len(unprofiled_seq))) # number of nucleotides in extrapolated 5' feature
+                                incremental_profile_candidates.append(
+                                    (unprofiled_seq[::-1], # flip orientation to 5' to 3'
+                                     [stem, feature],
+                                     feature.num_conserved,
+                                     feature.num_unconserved,
+                                     stem.num_paired,
+                                     stem.num_unpaired,
+                                     summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
+                                )
                                 continue
                     else:
-                        incremental_profile_candidates.append((unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                                                               [feature],
-                                                               feature.num_conserved,
-                                                               feature.num_unconserved,
-                                                               0, # since we're not considering a stem, 0
-                                                               0, # since we're not considering a stem, 0
-                                                               summed_input_length - len(unprofiled_seq))) # number of nucleotides in extrapolated 5' feature
+                        incremental_profile_candidates.append(
+                            (unprofiled_seq[::-1], # flip orientation to 5' to 3'
+                             [feature],
+                             feature.num_conserved,
+                             feature.num_unconserved,
+                             0, # since we're not considering a stem, 0
+                             0, # since we're not considering a stem, 0
+                             summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
+                        )
                         continue
 
             # The procedure for assigning full-length features
@@ -1551,12 +1570,12 @@ class Profile:
                 if feature_class.name == 'acceptor':
                     feature = feature_class(*string_components,
                                             num_extra_threeprime=num_extra_threeprime,
-                                            start_index=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_index=len(self.input_seq) - len(profiled_seq))
+                                            start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.input_seq) - len(profiled_seq))
                 else:
                     feature = feature_class(*string_components,
-                                            start_index=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_index=len(self.input_seq) - len(profiled_seq))
+                                            start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.input_seq) - len(profiled_seq))
 
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
@@ -1568,31 +1587,37 @@ class Profile:
                                 arm = arm_class(stem, loop)
                                 # The are is valid if it doesn't have too many unconserved bases.
                                 if arm.meets_conserved_thresh:
-                                    incremental_profile_candidates.append((unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                                                                           [arm, stem, feature],
-                                                                           feature.num_conserved,
-                                                                           feature.num_unconserved,
-                                                                           stem.num_paired,
-                                                                           stem.num_unpaired,
-                                                                           0)) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                                    incremental_profile_candidates.append(
+                                        (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
+                                         [arm, stem, feature],
+                                         feature.num_conserved,
+                                         feature.num_unconserved,
+                                         stem.num_paired,
+                                         stem.num_unpaired,
+                                         0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                                    )
                                     continue
                             else:
-                                incremental_profile_candidates.append((unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                                                                       [stem, feature],
-                                                                       feature.num_conserved,
-                                                                       feature.num_unconserved,
-                                                                       stem.num_paired,
-                                                                       stem.num_unpaired,
-                                                                       0)) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                                incremental_profile_candidates.append(
+                                    (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
+                                     [stem, feature],
+                                     feature.num_conserved,
+                                     feature.num_unconserved,
+                                     stem.num_paired,
+                                     stem.num_unpaired,
+                                     0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                                )
                                 continue
                     else:
-                        incremental_profile_candidates.append((unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                                                               [feature],
-                                                               feature.num_conserved,
-                                                               feature.num_unconserved,
-                                                               0, # since we're not considering a stem, 0
-                                                               0, # since we're not considering a stem, 0
-                                                               0)) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                        incremental_profile_candidates.append(
+                            (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
+                             [feature],
+                             feature.num_conserved,
+                             feature.num_unconserved,
+                             0, # since we're not considering a stem, 0
+                             0, # since we're not considering a stem, 0
+                             0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                        )
 
                         # Avoid testing 3'-CC and 3'-C if 3'-CCA, was just found.
                         if feature.name == 'acceptor':
@@ -1660,7 +1685,7 @@ class Profile:
                                                          num_paired=ipc[4] + num_paired,
                                                          num_unpaired=ipc[5] + num_unpaired,
                                                          num_extra_threeprime=num_extra_threeprime,
-                                                         feature_index=feature_index + len(ipc[1]),
+                                                         feature_pos=feature_pos + len(ipc[1]),
                                                          has_complete_feature_set=True)
                 else:
                     profile_candidate = self.get_profile(unprofiled_seq=unprofiled_seq[len(ipc[0]): ], # recurse
@@ -1671,7 +1696,7 @@ class Profile:
                                                          num_paired=ipc[4] + num_paired,
                                                          num_unpaired=ipc[5] + num_unpaired,
                                                          num_extra_threeprime=num_extra_threeprime,
-                                                         feature_index=feature_index + len(ipc[1]),
+                                                         feature_pos=feature_pos + len(ipc[1]),
                                                          has_complete_feature_set=False)
                 if (profile_candidate[8] # has complete feature set
                     and profile_candidate[3] == 0 # number unconserved
@@ -1680,24 +1705,28 @@ class Profile:
                 else:
                     profile_candidates.append(profile_candidate)
             else: # 5' feature was extrapolated from unprofiled input sequence
-                profile_candidates.append((ipc[0] + profiled_seq,
-                                           ipc[1] + features,
-                                           ipc[2] + num_conserved,
-                                           ipc[3] + num_unconserved,
-                                           ipc[4] + num_paired,
-                                           ipc[5] + num_unpaired,
-                                           num_extra_threeprime,
-                                           ipc[6], # number of nucleotides in extrapolated 5' feature
-                                           False, # does not have a complete feature set
-                                           0)) # input sequence is not longer than full-length tRNA
+                profile_candidates.append(
+                    (ipc[0] + profiled_seq,
+                     ipc[1] + features,
+                     ipc[2] + num_conserved,
+                     ipc[3] + num_unconserved,
+                     ipc[4] + num_paired,
+                     ipc[5] + num_unpaired,
+                     num_extra_threeprime,
+                     ipc[6], # number of nucleotides in extrapolated 5' feature
+                     False, # does not have a complete feature set
+                     0) # input sequence is not longer than full-length tRNA
+                )
 
         # Consider an extra 3' nucleotide in the acceptor sequence.
         if feature_class.name == 'acceptor':
             if num_extra_threeprime < Acceptor.max_extra_threeprime:
-                profile_candidates.append(self.get_profile(unprofiled_seq=unprofiled_seq[1: ],
-                                                           profiled_seq=unprofiled_seq[0] + profiled_seq, # 5' to 3' orientation
-                                                           features=[], # extra 3' nucleotides are not counted as a feature
-                                                           num_extra_threeprime=num_extra_threeprime + 1))
+                profile_candidates.append(
+                    self.get_profile(unprofiled_seq=unprofiled_seq[1: ],
+                                     profiled_seq=unprofiled_seq[0] + profiled_seq, # 5' to 3' orientation
+                                     features=[], # extra 3' nucleotides are not counted as a feature
+                                     num_extra_threeprime=num_extra_threeprime + 1)
+                )
 
         # Do not add 5' features to profiled 3' features if the additional features
         # have no grounding in conserved nucleotides or paired nucleotides in stems.
@@ -1726,7 +1755,7 @@ class Profile:
         unconserved_info : list
             List of tuples, one for each unconserved nucleotide in the profile
             A tuple has three elements:
-                1. position (index) in the input sequence
+                1. position in the input sequence
                 2. observed nucleotide in the input
                 3. expected canonical nucleotides at the site,
                    a string with nucleotides separated by commas if more than one
@@ -1736,17 +1765,17 @@ class Profile:
         for feature in self.features:
             # Only Nucleotide and Sequence subclasses have the attribute.
             if hasattr(feature, 'conserved_status'):
-                component_start_index = feature.start_index
+                component_start_pos = feature.start_pos
                 # Conserved nucleotides are indexed within the string "component" (substring).
                 for string_component_statuses, string_component in zip(
                     feature.conserved_status, feature.string_components):
-                    for nuc_index, is_conserved, observed_nuc, expected_nucs in string_component_statuses:
+                    for nt_pos, is_conserved, observed_nt, expected_nts in string_component_statuses:
                         # Avoid N padding in an extrapolated 5' feature.
-                        if not is_conserved and observed_nuc != 'N':
-                            unconserved_info.append((component_start_index + nuc_index,
-                                                     observed_nuc,
-                                                     ','.join(expected_nucs)))
-                    component_start_index += len(string_component)
+                        if not is_conserved and observed_nt != 'N':
+                            unconserved_info.append((component_start_pos + nt_pos,
+                                                     observed_nt,
+                                                     ','.join(expected_nts)))
+                    component_start_pos += len(string_component)
 
         return unconserved_info
 
@@ -1759,8 +1788,8 @@ class Profile:
         unpaired_info : list
             List of tuples, one for each unpaired pair of nucleotides
             A tuple has four elements:
-                1. position (index) of 5' nucleotide in the input sequence
-                2. position (index) of 3' nucleotide in the input sequence
+                1. position of 5' nucleotide in the input sequence
+                2. position of 3' nucleotide in the input sequence
                 3. observed 5' nucleotide
                 4. observed 3' nucleotide
         """
@@ -1769,13 +1798,13 @@ class Profile:
         for feature in self.features:
             # Only the Stem class has the attribute.
             if hasattr(feature, 'paired_status'):
-                for nuc_index, (is_paired, fiveprime_nuc, threeprime_nuc) in enumerate(feature.paired_status):
+                for nt_pos, (is_paired, fiveprime_nt, threeprime_nt) in enumerate(feature.paired_status):
                     # Avoid N padding in an extrapolated 5' feature.
-                    if not is_paired and fiveprime_nuc != 'N':
-                        unpaired_info.append((feature.fiveprime_seq.start_index + nuc_index,
-                                              feature.threeprime_seq.stop_index - nuc_index - 1,
-                                              fiveprime_nuc,
-                                              threeprime_nuc))
+                    if not is_paired and fiveprime_nt != 'N':
+                        unpaired_info.append((feature.fiveprime_seq.start_pos + nt_pos,
+                                              feature.threeprime_seq.stop_pos - nt_pos - 1,
+                                              fiveprime_nt,
+                                              threeprime_nt))
 
         return unpaired_info
 
