@@ -37,11 +37,11 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
-unambiguous_nts = ('A', 'C', 'G', 'T')
+unambig_nts = ('A', 'C', 'G', 'T')
 # The next value is used for counting nucleotides in alignments: there is one bin (value 0) for end gaps in the alignment.
-num_nt_bins = len(unambiguous_nts) + 1
-nt_int_dict = {nt: i for i, nt in enumerate(unambiguous_nts, start=1)}
-int_nt_dict = {i: nt for i, nt in enumerate(unambiguous_nts, start=1)}
+num_nt_bins = len(unambig_nts) + 1
+nt_int_dict = {nt: i for i, nt in enumerate(unambig_nts, start=1)}
+int_nt_dict = {i: nt for i, nt in enumerate(unambig_nts, start=1)}
 
 
 class UniqueSeq:
@@ -163,7 +163,7 @@ class NormalizedSeq:
                  'seq_string',
                  'has_complete_feature_set',
                  'start_positions',
-                 'end_positions',
+                 'stop_positions',
                  'read_count',
                  'read_with_extra_fiveprime_count',
                  'read_acceptor_variant_count_dict',
@@ -175,7 +175,7 @@ class NormalizedSeq:
                  'nonspecific_covs',
                  'mod_seqs')
 
-    def __init__(self, trimmed_seqs, start_positions=None, end_positions=None, skip_init=False):
+    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False):
         """A longer tRNA sequence consolidated from shorter tRNA fragments"""
 
         self.trimmed_seqs = trimmed_seqs # list of TrimmedSeq objects
@@ -184,18 +184,18 @@ class NormalizedSeq:
         self.represent_name = trimmed_seqs[0].represent_name
         self.seq_string = trimmed_seqs[0].seq_string
         self.has_complete_feature_set = trimmed_seqs[0].has_complete_feature_set
-        if start_positions and end_positions:
+        if start_positions and stop_positions:
             self.start_positions = start_positions
-            self.end_positions = end_positions
-        elif (not start_positions) and (not end_positions):
+            self.stop_positions = stop_positions
+        elif (not start_positions) and (not stop_positions):
             # Trimmed seqs were dereplicated from the 3' end of the normalized sequence.
             norm_seq_length = len(self.seq_string)
             self.start_positions = [norm_seq_length - len(trimmed_seq.seq_string)
                                     for trimmed_seq in self.trimmed_seqs]
-            self.end_positions = [norm_seq_length] * len(trimmed_seqs)
+            self.stop_positions = [norm_seq_length] * len(trimmed_seqs)
         else:
             self.start_positions = None
-            self.end_positions = None
+            self.stop_positions = None
 
         # It is useful to know which modified sequences, if any, encompass this normalized sequence.
         # A normalized sequence without modification-induced deletions can only be assigned to one modified sequence,
@@ -236,9 +236,9 @@ class NormalizedSeq:
         reads_mapped_with_extra_fiveprime_count = 0
         specific_covs = np.zeros(len(self.seq_string), dtype=int)
         nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
-        for trimmed_seq, start_pos, end_pos in zip(self.trimmed_seqs,
-                                                   self.start_positions,
-                                                   self.end_positions):
+        for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs,
+                                                    self.start_positions,
+                                                    self.stop_positions):
             if trimmed_seq.id_method == 1: # 1 => mapped
                 # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
                 if trimmed_seq.uniq_with_extra_fiveprime_count == 0:
@@ -252,9 +252,9 @@ class NormalizedSeq:
                 read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
 
             if trimmed_seq.norm_seq_count == 1:
-                specific_covs[start_pos: end_pos] += trimmed_seq.read_count
+                specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
             else:
-                nonspecific_covs[start_pos: end_pos] += trimmed_seq.read_count
+                nonspecific_covs[start_pos: stop_pos] += trimmed_seq.read_count
         self.trimmed_seqs_mapped_without_extra_fiveprime_count = trimmed_seqs_mapped_without_extra_fiveprime_count
         self.reads_mapped_without_extra_fiveprime_count = reads_mapped_without_extra_fiveprime_count
         self.trimmed_seqs_mapped_with_extra_fiveprime_count = trimmed_seqs_mapped_with_extra_fiveprime_count
@@ -498,8 +498,8 @@ class ModifiedSeq:
         norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         norm_seq_nonspecific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         num_subs = len(self.sub_positions)
-        self.specific_sub_covs = specific_sub_covs = np.zeros((num_subs, len(unambiguous_nts)), dtype=int)
-        self.nonspecific_sub_covs = nonspecific_sub_covs = np.zeros((num_subs, len(unambiguous_nts)), dtype=int)
+        self.specific_sub_covs = specific_sub_covs = np.zeros((num_subs, len(unambig_nts)), dtype=int)
+        self.nonspecific_sub_covs = nonspecific_sub_covs = np.zeros((num_subs, len(unambig_nts)), dtype=int)
         del_positions = sorted(set([i for del_config in del_configs for i in del_config]))
         self.specific_del_covs = specific_del_covs = np.zeros(len(del_positions), dtype=int)
         self.nonspecific_del_covs = nonspecific_del_covs = np.zeros(len(del_positions), dtype=int)
@@ -541,7 +541,7 @@ class ModifiedSeq:
 
             for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs,
                                                                                                 norm_seq.start_positions,
-                                                                                                norm_seq.end_positions):
+                                                                                                norm_seq.stop_positions):
                 if trimmed_seq.represent_name in processed_trimmed_seq_names:
                     continue
 
@@ -600,7 +600,7 @@ class ModifiedSeq:
 
             for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs,
                                                                                                 norm_seq.start_positions,
-                                                                                                norm_seq.end_positions):
+                                                                                                norm_seq.stop_positions):
                 if trimmed_seq.represent_name in processed_trimmed_seq_names:
                     continue
 
@@ -1301,12 +1301,12 @@ class TRNASeqDataset:
 
                 for alignment in aligned_query.alignments:
                     ref_alignment_start = alignment.target_start
-                    ref_alignment_end = alignment.target_start + alignment.alignment_length
+                    ref_alignment_stop = alignment.target_start + alignment.alignment_length
 
                     norm_seq_index, ref_fiveprime_length, _ = alignment.aligned_target.name # extra 5' index doesn't matter now
 
-                    norm_end_pos = ref_alignment_end - ref_fiveprime_length
-                    if norm_end_pos < 0:
+                    norm_stop_pos = ref_alignment_stop - ref_fiveprime_length
+                    if norm_stop_pos < 0:
                         # Ignore queries that align entirely to extra 5' bases.
                         continue
 
@@ -1338,7 +1338,7 @@ class TRNASeqDataset:
                         norm_seq.trimmed_seqs.append(trimmed_seq)
                         trimmed_seq.norm_seq_count += 1
                         norm_seq.start_positions.append(norm_start_pos)
-                        norm_seq.end_positions.append(norm_end_pos)
+                        norm_seq.stop_positions.append(norm_stop_pos)
                     else:
                         for prev_trimmed_seq in norm_seq.trimmed_seqs[::-1]:
                             # Ensure that the trimmed sequence maps to the normalized sequence only once.
@@ -1351,7 +1351,7 @@ class TRNASeqDataset:
                                 else:
                                     norm_start_pos = ref_alignment_start - ref_fiveprime_length
                                 norm_seq.start_positions.append(norm_start_pos)
-                                norm_seq.end_positions.append(norm_end_pos)
+                                norm_seq.stop_positions.append(norm_stop_pos)
                                 break
                             if trimmed_seq.represent_name == prev_trimmed_seq.represent_name:
                                 break
@@ -1678,8 +1678,6 @@ class TRNASeqDataset:
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
                  norm_seq.read_count,
-                 norm_seq.specific_covs,
-                 norm_seq.nonspecific_covs,
                  mean_multiplicity,
                  norm_seq.trimmed_seqs_mapped_without_extra_fiveprime_count,
                  norm_seq.reads_mapped_without_extra_fiveprime_count,
@@ -1802,13 +1800,13 @@ class TRNASeqDataset:
             norm_file.write("\t".join(self.NORM_FRAG_HEADER) + "\n")
             for norm_seq in sorted(self.norm_trna_seqs, key=lambda norm_seq: -norm_seq.read_count):
                 represent_name = norm_seq.represent_name
-                for trimmed_seq, start_pos, end_pos in sorted(
-                    zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.end_positions),
+                for trimmed_seq, start_pos, stop_pos in sorted(
+                    zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions),
                     key=lambda t: (t[1], -t[2])):
                     norm_file.write(represent_name + "\t"
                                     + trimmed_seq.represent_name + "\t"
                                     + str(start_pos) + "\t"
-                                    + str(end_pos) + "\n")
+                                    + str(stop_pos) + "\n")
 
         self.progress.end()
 
