@@ -164,15 +164,17 @@ class NormalizedSeq:
                  'has_complete_feature_set',
                  'start_positions',
                  'stop_positions',
-                 'read_count',
-                 'read_with_extra_fiveprime_count',
+                 'specific_read_count',
+                 'nonspecific_read_count',
+                 'count_of_specific_reads_with_extra_fiveprime',
+                 'count_of_nonspecific_reads_with_extra_fiveprime',
+                 'specific_mapped_read_count',
+                 'nonspecific_mapped_read_count',
                  'read_acceptor_variant_count_dict',
-                 'trimmed_seqs_mapped_without_extra_fiveprime_count',
-                 'reads_mapped_without_extra_fiveprime_count',
-                 'trimmed_seqs_mapped_with_extra_fiveprime_count',
-                 'reads_mapped_with_extra_fiveprime_count',
                  'specific_covs',
                  'nonspecific_covs',
+                 'mean_specific_cov',
+                 'mean_nonspecific_cov',
                  'mod_seqs')
 
     def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False):
@@ -203,13 +205,14 @@ class NormalizedSeq:
         self.mod_seqs = []
 
         if skip_init:
-            self.read_count = None
-            self.read_with_extra_fiveprime_count = None
-            self.read_acceptor_variant_count_dict = None
-            self.trimmed_seqs_mapped_without_extra_fiveprime_count = None
-            self.reads_mapped_without_extra_fiveprime_count = None
-            self.trimmed_seqs_mapped_with_extra_fiveprime_count = None
-            self.reads_mapped_with_extra_fiveprime_count = None
+            self.specific_read_count = None
+            self.nonspecific_read_count = None
+            self.count_of_specific_reads_with_extra_fiveprime = None
+            self.count_of_nonspecific_reads_with_extra_fiveprime = None
+            self.specific_mapped_read_count = None
+            self.nonspecific_mapped_read_count = None
+            self.mean_specific_cov = None
+            self.mean_nonspecific_cov = None
             self.specific_covs = None
             self.nonspecific_covs = None
         else:
@@ -219,8 +222,6 @@ class NormalizedSeq:
     def init(self):
         """Set the attributes representative of a finalized list of `TrimmedSeq` objects"""
 
-        self.read_count = sum([trimmed_seq.read_count for trimmed_seq in self.trimmed_seqs])
-
         read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
                                                         for threeprime_variant in THREEPRIME_VARIANTS])
         for trimmed_seq in self.trimmed_seqs:
@@ -229,38 +230,42 @@ class NormalizedSeq:
                     read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
         self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
 
-        read_with_extra_fiveprime_count = 0
-        trimmed_seqs_mapped_without_extra_fiveprime_count = 0
-        reads_mapped_without_extra_fiveprime_count = 0
-        trimmed_seqs_mapped_with_extra_fiveprime_count = 0
-        reads_mapped_with_extra_fiveprime_count = 0
+        specific_read_count = 0
+        nonspecific_read_count = 0
+        count_of_specific_reads_with_extra_fiveprime = 0
+        count_of_nonspecific_reads_with_extra_fiveprime = 0
+        specific_mapped_read_count = 0
+        nonspecific_mapped_read_count = 0
         specific_covs = np.zeros(len(self.seq_string), dtype=int)
         nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
         for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs,
                                                     self.start_positions,
                                                     self.stop_positions):
-            if trimmed_seq.id_method == 1: # 1 => mapped
-                # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
-                if trimmed_seq.uniq_with_extra_fiveprime_count == 0:
-                    trimmed_seqs_mapped_without_extra_fiveprime_count += 1
-                    reads_mapped_without_extra_fiveprime_count += trimmed_seq.read_count
-                else:
-                    read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-                    trimmed_seqs_mapped_with_extra_fiveprime_count += 1
-                    reads_mapped_with_extra_fiveprime_count += trimmed_seq.read_count
-            else:
-                read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-
             if trimmed_seq.norm_seq_count == 1:
+                specific_read_count += trimmed_seq.read_count
+                if trimmed_seq.uniq_with_extra_fiveprime_count > 0:
+                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
+                if trimmed_seq.id_method == 1: # 1 => mapped
+                    # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
+                    specific_mapped_read_count += trimmed_seq.read_count
                 specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
             else:
+                nonspecific_read_count += trimmed_seq.read_count
+                if trimmed_seq.uniq_with_extra_fiveprime_count > 0:
+                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
+                if trimmed_seq.id_method == 1:
+                    nonspecific_mapped_read_count += trimmed_seq.read_count
                 nonspecific_covs[start_pos: stop_pos] += trimmed_seq.read_count
-        self.trimmed_seqs_mapped_without_extra_fiveprime_count = trimmed_seqs_mapped_without_extra_fiveprime_count
-        self.reads_mapped_without_extra_fiveprime_count = reads_mapped_without_extra_fiveprime_count
-        self.trimmed_seqs_mapped_with_extra_fiveprime_count = trimmed_seqs_mapped_with_extra_fiveprime_count
-        self.reads_mapped_with_extra_fiveprime_count = reads_mapped_with_extra_fiveprime_count
+        self.specific_read_count = specific_read_count
+        self.nonspecific_read_count = nonspecific_read_count
+        self.count_of_specific_reads_with_extra_fiveprime = count_of_specific_reads_with_extra_fiveprime
+        self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
+        self.specific_mapped_read_count = specific_mapped_read_count
+        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
         self.specific_covs = specific_covs
         self.nonspecific_covs = nonspecific_covs
+        self.mean_specific_cov = specific_covs.mean()
+        self.mean_nonspecific_cov = nonspecific_covs.mean()
 
 
 class ModifiedSeq:
@@ -269,18 +274,20 @@ class ModifiedSeq:
                  'represent_name',
                  'norm_seqs_with_dels',
                  'del_configs',
-                 'specific_covs',
-                 'nonspecific_covs',
-                 'specific_sub_covs',
-                 'nonspecific_sub_covs',
-                 'specific_del_covs',
-                 'nonspecific_del_covs',
                  'specific_read_count',
                  'nonspecific_read_count',
                  'count_of_specific_reads_with_extra_fiveprime',
                  'count_of_nonspecific_reads_with_extra_fiveprime',
                  'specific_mapped_read_count',
                  'nonspecific_mapped_read_count',
+                 'specific_covs',
+                 'nonspecific_covs',
+                 'mean_specific_cov',
+                 'mean_nonspecific_cov',
+                 'specific_sub_covs',
+                 'nonspecific_sub_covs',
+                 'specific_del_covs',
+                 'nonspecific_del_covs',
                  'consensus_seq_string')
 
     def __init__(self, norm_seqs_without_dels, sub_positions, init=False):
@@ -315,18 +322,20 @@ class ModifiedSeq:
         else:
             self.norm_seqs_with_dels = []
             self.del_configs = []
-            self.specific_covs = None
-            self.nonspecific_covs = None
-            self.specific_sub_covs = None
-            self.nonspecific_sub_covs = None
-            self.specific_del_covs = None
-            self.nonspecific_del_covs = None
             self.specific_read_count = None
             self.nonspecific_read_count = None
             self.count_of_specific_reads_with_extra_fiveprime = None
             self.count_of_nonspecific_reads_with_extra_fiveprime = None
             self.specific_mapped_read_count = None
             self.nonspecific_mapped_read_count = None
+            self.specific_covs = None
+            self.nonspecific_covs = None
+            self.mean_specific_cov = None
+            self.mean_nonspecific_cov = None
+            self.specific_sub_covs = None
+            self.nonspecific_sub_covs = None
+            self.specific_del_covs = None
+            self.nonspecific_del_covs = None
             self.consensus_seq_string = None
 
 
@@ -494,6 +503,12 @@ class ModifiedSeq:
         norm_seqs_with_dels = self.norm_seqs_with_dels
         all_norm_seqs = norm_seqs_without_dels + norm_seqs_with_dels
         del_configs = self.del_configs
+        specific_read_count = 0
+        nonspecific_read_count = 0
+        count_of_specific_reads_with_extra_fiveprime = 0
+        count_of_nonspecific_reads_with_extra_fiveprime = 0
+        specific_mapped_read_count = 0
+        nonspecific_mapped_read_count = 0
         mod_seq_len = len(norm_seqs_without_dels[0].seq_string)
         norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         norm_seq_nonspecific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
@@ -503,12 +518,6 @@ class ModifiedSeq:
         del_positions = sorted(set([i for del_config in del_configs for i in del_config]))
         self.specific_del_covs = specific_del_covs = np.zeros(len(del_positions), dtype=int)
         self.nonspecific_del_covs = nonspecific_del_covs = np.zeros(len(del_positions), dtype=int)
-        specific_read_count = 0
-        nonspecific_read_count = 0
-        count_of_specific_reads_with_extra_fiveprime = 0
-        count_of_nonspecific_reads_with_extra_fiveprime = 0
-        specific_mapped_read_count = 0
-        nonspecific_mapped_read_count = 0
 
         # Make an array of aligned nucleotide positions in all normalized sequences.
         norm_seq_array = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
@@ -661,14 +670,16 @@ class ModifiedSeq:
             processed_trimmed_seq_names.append(trimmed_seq.represent_name)
             n += 1
 
-        self.specific_covs = norm_seq_specific_covs.sum(0)
-        self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
         self.specific_read_count = specific_read_count
         self.nonspecific_read_count = nonspecific_read_count
         self.count_of_specific_reads_with_extra_fiveprime = count_of_specific_reads_with_extra_fiveprime
         self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
         self.specific_mapped_read_count = specific_mapped_read_count
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_covs = norm_seq_specific_covs.sum(0)
+        self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
+        self.mean_specific_cov = self.specific_covs.mean()
+        self.mean_nonspecific_cov = self.nonspecific_covs.mean()
 
         # For each substitution position, record the coverage of A, C, G, and T.
         for s, sub_pos in enumerate(self.sub_positions):
@@ -1386,8 +1397,8 @@ class TRNASeqDataset:
                                     progress=self.progress)
         # Provide a priority function for seeding clusters
         # that favors fully profiled tRNA over "longer" tRNA without a full set of profiled features.
-        # Such incompletely profiled longer tRNA includes tRNA-tRNA chimeras,
-        # and some of these have a long 5' section that is a long 3' fragment of tRNA,
+        # Such incompletely profiled longer tRNA includes tRNA-tRNA chimeras --
+        # some of these have a long 5' section that is a long 3' fragment of tRNA,
         # which can cause other shorter normalized sequences to agglomerate by aligning to the 5' section of the chimera.
         full_length_trna_dict = {seq.represent_name: seq.has_complete_feature_set
                                  for seq in self.norm_trna_seqs}
@@ -1647,13 +1658,16 @@ class TRNASeqDataset:
             norm_table_entries.append(
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
-                 norm_seq.read_count,
-                 ','.join(map(str, norm_seq.specific_covs)),
-                 ','.join(map(str, norm_seq.nonspecific_covs)),
-                 norm_seq.trimmed_seqs_mapped_without_extra_fiveprime_count,
-                 norm_seq.reads_mapped_without_extra_fiveprime_count,
-                 norm_seq.trimmed_seqs_mapped_with_extra_fiveprime_count,
-                 norm_seq.reads_mapped_with_extra_fiveprime_count)
+                 norm_seq.mean_specific_cov,
+                 norm_seq.mean_nonspecific_cov,
+                 ','.join(map(str, norm_seq.specific_covs)) + ',',
+                 ','.join(map(str, norm_seq.nonspecific_covs)) + ',',
+                 norm_seq.specific_read_count,
+                 norm_seq.nonspecific_read_count,
+                 norm_seq.count_of_specific_reads_with_extra_fiveprime,
+                 norm_seq.count_of_nonspecific_reads_with_extra_fiveprime,
+                 norm_seq.specific_mapped_read_count,
+                 norm_seq.nonspecific_mapped_read_count)
                 + tuple(norm_seq.read_acceptor_variant_count_dict.values())
             )
 
@@ -1685,6 +1699,10 @@ class TRNASeqDataset:
         for mod_seq in self.mod_trna_seqs:
             mod_table_entries.append(
                 (mod_seq.represent_name,
+                 mod_seq.mean_specific_cov,
+                 mod_seq.mean_nonspecific_cov,
+                 ','.join(map(str, mod_seq.specific_covs)) + ',',
+                 ','.join(map(str, mod_seq.nonspecific_covs)) + ',',
                  ','.join([str(sub_pos) for sub_pos in mod_seq.sub_positions]) + ',')
                 + tuple([','.join(map(str, mod_seq.specific_sub_covs[:, i - 1])) + ',' for i in int_nt_dict])
                 + tuple([','.join(map(str, mod_seq.nonspecific_sub_covs[:, i - 1])) + ',' for i in int_nt_dict])
@@ -1767,7 +1785,7 @@ class TRNASeqDataset:
 
         with open(self.norm_frag_path, 'w') as norm_file:
             norm_file.write("\t".join(self.NORM_FRAG_HEADER) + "\n")
-            for norm_seq in sorted(self.norm_trna_seqs, key=lambda norm_seq: -norm_seq.read_count):
+            for norm_seq in sorted(self.norm_trna_seqs, key=lambda norm_seq: -norm_seq.mean_specific_cov):
                 represent_name = norm_seq.represent_name
                 for trimmed_seq, start_pos, stop_pos in sorted(
                     zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions),
