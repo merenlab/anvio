@@ -770,11 +770,6 @@ class TRNASeqDataset:
         self.mod_trna_seqs = []
 
         self.counts_of_norm_seqs_containing_trimmed_seqs = [] # same length as self.trimmed_trna_seqs
-        # "Multiplicity" of a trimmed tRNA sequence
-        # = number of normalized sequences that the sequence is in * number of input sequences represented by the trimmed sequence
-        self.multiplicities_of_trimmed_seqs_among_norm_seqs = [] # same length as self.trimmed_trna_seqs
-        self.mean_multiplicities_of_norm_seqs = [] # same length as self.norm_trna_seqs
-        self.mean_multiplicities_of_mod_seqs = []
 
 
     def sanity_check(self):
@@ -1604,30 +1599,6 @@ class TRNASeqDataset:
         self.counts_of_norm_seqs_containing_trimmed_seqs = [norm_count for norm_count
                                                             in norm_count_dict.values()]
 
-        # Find the "multiplicity" of trimmed sequences among normalized sequences.
-        multiplicity_dict = OrderedDict()
-        for trimmed_seq, norm_count_item in zip(self.trimmed_trna_seqs, norm_count_dict.items()):
-            trimmed_represent_name, norm_count = norm_count_item
-            multiplicity_dict[trimmed_represent_name] = trimmed_seq.read_count * norm_count
-        self.multiplicities_of_trimmed_seqs_among_norm_seqs = [multiplicity for multiplicity
-                                                               in multiplicity_dict.values()]
-
-        # Find the "mean multiplicity" of normalized and modified sequences.
-        for norm_seq in self.norm_trna_seqs:
-            multiplicity_sum = 0
-            for trimmed_seq in norm_seq.trimmed_seqs:
-                multiplicity_sum += multiplicity_dict[trimmed_seq.represent_name]
-            self.mean_multiplicities_of_norm_seqs.append(round(multiplicity_sum / norm_seq.read_count, 1))
-
-        for mod_seq in self.mod_trna_seqs:
-            multiplicity_sum = 0
-            for norm_seq in mod_seq.norm_seqs_without_dels + mod_seq.norm_seqs_with_dels:
-                for trimmed_seq in norm_seq.trimmed_seqs:
-                    multiplicity_sum += multiplicity_dict[trimmed_seq.represent_name]
-            self.mean_multiplicities_of_mod_seqs.append(
-                round(multiplicity_sum / (mod_seq.specific_read_count + mod_seq.nonspecific_read_count), 1)
-            )
-
         self.progress.end()
 
 
@@ -1672,15 +1643,13 @@ class TRNASeqDataset:
         self.progress.update("...")
 
         norm_table_entries = []
-        for norm_seq, mean_multiplicity in zip(self.norm_trna_seqs,
-                                               self.mean_multiplicities_of_norm_seqs):
+        for norm_seq in self.norm_trna_seqs:
             norm_table_entries.append(
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
                  norm_seq.read_count,
                  ','.join(map(str, norm_seq.specific_covs)),
                  ','.join(map(str, norm_seq.nonspecific_covs)),
-                 mean_multiplicity,
                  norm_seq.trimmed_seqs_mapped_without_extra_fiveprime_count,
                  norm_seq.reads_mapped_without_extra_fiveprime_count,
                  norm_seq.trimmed_seqs_mapped_with_extra_fiveprime_count,
@@ -1713,8 +1682,7 @@ class TRNASeqDataset:
         self.progress.update("...")
 
         mod_table_entries = []
-        for mod_seq, mean_multiplicity in zip(self.mod_trna_seqs,
-                                              self.mean_multiplicities_of_mod_seqs):
+        for mod_seq in self.mod_trna_seqs:
             mod_table_entries.append(
                 (mod_seq.represent_name,
                  ','.join([str(sub_pos) for sub_pos in mod_seq.sub_positions]) + ',')
@@ -1730,7 +1698,6 @@ class TRNASeqDataset:
                    ','.join([norm_seq.represent_name for norm_seq in mod_seq.norm_seqs_with_dels]),
                    mod_seq.specific_read_count,
                    mod_seq.nonspecific_read_count,
-                   mean_multiplicity,
                    mod_seq.count_of_specific_reads_with_extra_fiveprime,
                    mod_seq.count_of_nonspecific_reads_with_extra_fiveprime,
                    mod_seq.specific_mapped_read_count,
