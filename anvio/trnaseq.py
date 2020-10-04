@@ -171,8 +171,8 @@ class NormalizedSeq:
                  'reads_mapped_without_extra_fiveprime_count',
                  'trimmed_seqs_mapped_with_extra_fiveprime_count',
                  'reads_mapped_with_extra_fiveprime_count',
-                 'covs',
-                 'uniq_covs',
+                 'specific_covs',
+                 'nonspecific_covs',
                  'mod_seqs')
 
     def __init__(self, trimmed_seqs, start_positions=None, end_positions=None, skip_init=False):
@@ -210,8 +210,8 @@ class NormalizedSeq:
             self.reads_mapped_without_extra_fiveprime_count = None
             self.trimmed_seqs_mapped_with_extra_fiveprime_count = None
             self.reads_mapped_with_extra_fiveprime_count = None
-            self.covs = None
-            self.uniq_covs = None
+            self.specific_covs = None
+            self.nonspecific_covs = None
         else:
             self.init()
 
@@ -234,8 +234,8 @@ class NormalizedSeq:
         reads_mapped_without_extra_fiveprime_count = 0
         trimmed_seqs_mapped_with_extra_fiveprime_count = 0
         reads_mapped_with_extra_fiveprime_count = 0
-        covs = np.zeros(len(self.seq_string), dtype=int)
-        uniq_covs = np.zeros(len(self.seq_string), dtype=int)
+        specific_covs = np.zeros(len(self.seq_string), dtype=int)
+        nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
         for trimmed_seq, start_pos, end_pos in zip(self.trimmed_seqs,
                                                    self.start_positions,
                                                    self.end_positions):
@@ -251,15 +251,16 @@ class NormalizedSeq:
             else:
                 read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
 
-            covs[start_pos: end_pos] += trimmed_seq.read_count
             if trimmed_seq.norm_seq_count == 1:
-                uniq_covs[start_pos: end_pos] += trimmed_seq.read_count
+                specific_covs[start_pos: end_pos] += trimmed_seq.read_count
+            else:
+                nonspecific_covs[start_pos: end_pos] += trimmed_seq.read_count
         self.trimmed_seqs_mapped_without_extra_fiveprime_count = trimmed_seqs_mapped_without_extra_fiveprime_count
         self.reads_mapped_without_extra_fiveprime_count = reads_mapped_without_extra_fiveprime_count
         self.trimmed_seqs_mapped_with_extra_fiveprime_count = trimmed_seqs_mapped_with_extra_fiveprime_count
         self.reads_mapped_with_extra_fiveprime_count = reads_mapped_with_extra_fiveprime_count
-        self.covs = covs
-        self.uniq_covs = uniq_covs
+        self.specific_covs = specific_covs
+        self.nonspecific_covs = nonspecific_covs
 
 
 class ModifiedSeq:
@@ -1677,6 +1678,8 @@ class TRNASeqDataset:
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
                  norm_seq.read_count,
+                 norm_seq.specific_covs,
+                 norm_seq.nonspecific_covs,
                  mean_multiplicity,
                  norm_seq.trimmed_seqs_mapped_without_extra_fiveprime_count,
                  norm_seq.reads_mapped_without_extra_fiveprime_count,
