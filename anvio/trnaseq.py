@@ -1678,6 +1678,8 @@ class TRNASeqDataset:
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
                  norm_seq.read_count,
+                 ','.join(map(str, norm_seq.specific_covs)),
+                 ','.join(map(str, norm_seq.nonspecific_covs)),
                  mean_multiplicity,
                  norm_seq.trimmed_seqs_mapped_without_extra_fiveprime_count,
                  norm_seq.reads_mapped_without_extra_fiveprime_count,
