@@ -705,9 +705,9 @@ class ModifiedSeq:
 
 class TRNASeqDataset:
     # Column headers for supplementary tables written to text files
-    UNIQ_NONTRNA_HEADER = ["represent_name", "read_count", "sequence"]
-    TRIMMED_ENDS_HEADER = ["represent_name", "unique_name", "fiveprime_sequence", "threeprime_sequence", "read_count"]
-    NORM_FRAG_HEADER = ["represent_name", "trimmed_name", "start", "end"]
+    UNIQ_NONTRNA_HEADER = ["representative_name", "read_count", "sequence"]
+    TRIMMED_ENDS_HEADER = ["representative_name", "unique_name", "fiveprime_sequence", "threeprime_sequence", "read_count"]
+    NORM_FRAG_HEADER = ["representative_name", "trimmed_name", "start", "end"]
 
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -1386,6 +1386,11 @@ class TRNASeqDataset:
                             uniq_mapped_seq.extra_fiveprime_length = 0
                             norm_start_pos = ref_alignment_start - ref_fiveprime_length
 
+                        # There can be multiple trimmed sequence objects representing the same sequence
+                        # that remains after the 5' extension has been trimmed.
+                        # The 5' extension may represent all but a small number of nucleotides in the sequence,
+                        # so it is best not to dereplicate mapped trimmed sequences identical in the non-5' section,
+                        # though this could be done for trimmed sequences in the same normalized sequence.
                         trimmed_seq = TrimmedSeq(uniq_mapped_seq.seq_string[uniq_mapped_seq.extra_fiveprime_length: ],
                                                  [uniq_mapped_seq])
                         self.trimmed_trna_seqs.append(trimmed_seq)
@@ -1422,8 +1427,10 @@ class TRNASeqDataset:
 
         interior_mapped_count = 0
         fiveprime_mapped_count = 0
+        uniq_mapped_count = 0
         for nontrna_index in sorted(nontrna_indices, reverse=True):
             uniq_mapped_seq = self.uniq_nontrna_seqs.pop(nontrna_index)
+            uniq_mapped_count += 1
 
             if uniq_mapped_seq.extra_fiveprime_length > 0:
                 fiveprime_mapped_count += uniq_mapped_seq.read_count
@@ -1432,6 +1439,7 @@ class TRNASeqDataset:
 
         self.run.info("Mapped reads without extra 5' tRNA bases", interior_mapped_count)
         self.run.info("Mapped reads with extra 5' tRNA bases", fiveprime_mapped_count)
+        self.run.info("Unique mapped tRNA sequences", uniq_mapped_count)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed mapping reads to profiled tRNA (min)",
@@ -1439,6 +1447,7 @@ class TRNASeqDataset:
                                           is_time_value=True))
             f.write(self.get_summary_line("Mapped reads without extra 5' tRNA bases", interior_mapped_count))
             f.write(self.get_summary_line("Mapped reads with extra 5' tRNA bases", fiveprime_mapped_count))
+            f.write(self.get_summary_line("Unique mapped tRNA sequences", uniq_mapped_count))
 
 
     def find_substitutions(self):
@@ -1732,16 +1741,14 @@ class TRNASeqDataset:
                                  % ('trimmed', ','.join('?' * len(tables.trnaseq_trimmed_table_structure))),
                                  trimmed_table_entries)
 
-        trimmed_seq_count = len(self.trimmed_trna_seqs)
-        trnaseq_db.db.set_meta_value('num_trimmed_trna_seqs', trimmed_seq_count)
+        # Since trimmed profiled sequences are unique sequences,
+        # while there can be multiple mapped trimmed sequence objects only differing by 5' extension,
+        # the total count of trimmed sequence objects combines apples and oranges
+        # and so should not be recorded or reported.
+
         trnaseq_db.disconnect()
 
         self.progress.end()
-
-        self.run.info("Unique trimmed profiled/mapped tRNA sequences", trimmed_seq_count)
-
-        with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Unique trimmed profiled/mapped tRNA sequences", trimmed_seq_count))
 
 
     def write_normalized_table(self):
@@ -1848,8 +1855,8 @@ class TRNASeqDataset:
 
 
     def write_uniq_nontrna_supplement(self):
-        self.progress.new("Writing a file of sequences not identified as tRNA.")
-        self.run.info("Output non-tRNA file", self.uniq_nontrna_path)
+        self.progress.new("Writing a file of unique sequences not identified as tRNA.")
+        self.run.info("Output unique non-tRNA file", self.uniq_nontrna_path)
 
         with open(self.uniq_nontrna_path, 'w') as nontrna_file:
             nontrna_file.write("\t".join(self.UNIQ_NONTRNA_HEADER) + "\n")
@@ -1862,13 +1869,24 @@ class TRNASeqDataset:
 
 
     def write_trimmed_supplement(self):
-        self.progress.new("Writing a file showing how trimmed tRNA sequences were formed from unique sequences")
+        """This supplementary file is useful for inspecting the spectrum of 5'/3' extensions.
+
+        Mapped trimmed sequences are not considered,
+        as each unique mapped sequence generates its own trimmed sequence object.
+        The 5' extension of a mapped sequence may represent all but a small number of nucleotides in the sequence,
+        so sequences identical in the non-5' section are not dereplicated into one trimmed sequence object.
+        """
+
+        self.progress.new("Writing a file showing the 5'/3' ends of each trimmed profiled tRNA sequence")
         self.progress.update("...")
 
         with open(self.trimmed_ends_path, 'w') as trimmed_file:
             trimmed_file.write("\t".join(self.TRIMMED_ENDS_HEADER) + "\n")
             for trimmed_seq in sorted(self.trimmed_trna_seqs,
                                       key=lambda trimmed_seq: -trimmed_seq.read_count):
+                if trimmed_seq.id_method == 1:
+                    continue
+
                 represent_name = trimmed_seq.represent_name
                 for uniq_seq in sorted(trimmed_seq.uniq_seqs,
                                        key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length,
