@@ -286,19 +286,15 @@ trnaseq_sequences_table_name            = 'sequences'
 trnaseq_sequences_table_structure       = ['name', 'replicate_count', 'sequence']
 trnaseq_sequences_table_types           = ['str' , 'numeric'        , 'str']
 
-trnaseq_info_table_name                 = 'basic_info'
-trnaseq_info_table_structure            = ['name', 'has_complete_feature_set', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_fiveprime' , 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
-trnaseq_info_table_types                = ['str' , 'bool'                    , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+trnaseq_feature_table_name              = 'feature'
+trnaseq_feature_table_structure         = ['name', 'has_complete_feature_set', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_fiveprime' , 'num_extra_threeprime'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES], [f + '_stop' for f in TRNA_FEATURE_NAMES]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+trnaseq_feature_table_types             = ['str' , 'bool'                    , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'             ] + ['str'] * len(TRNA_FEATURE_NAMES) * 2                                                                              + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
 
-trnaseq_features_table_name             = 'features'
-trnaseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES], [f + '_stop' for f in TRNA_FEATURE_NAMES])))
-trnaseq_features_table_types            = ['str']  + ['str'] * len(TRNA_FEATURE_NAMES) * 2
-
-trnaseq_unconserved_table_name          = 'unconserved_nucleotides'
+trnaseq_unconserved_table_name          = 'feature_unconserved_nucleotides'
 trnaseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
 trnaseq_unconserved_table_types         = ['str' , 'numeric', 'str'                , 'str']
 
-trnaseq_unpaired_table_name             = 'unpaired_nucleotides'
+trnaseq_unpaired_table_name             = 'feature_unpaired_nucleotides'
 trnaseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
 trnaseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
 
@@ -307,12 +303,12 @@ trnaseq_trimmed_table_structure         = ['name', 'unique_seq_count', 'input_se
 trnaseq_trimmed_table_types             = ['str' , 'numeric'         , 'numeric'        , 'str'     , 'numeric'                      , 'numeric'                   , 'numeric'                  ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
 trnaseq_normalized_table_name           = 'normalized'
-trnaseq_normalized_table_structure      = ['name', 'trimmed_seq_count', 'input_seq_count', 'average_input_seq_multiplicity', 'mapped_trimmed_seq_without_extra_fiveprime_count', 'mapped_input_seq_without_extra_fiveprime_count', 'mapped_trimmed_seq_with_extra_fiveprime_count', 'mapped_input_seq_with_extra_fiveprime_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
-trnaseq_normalized_table_types          = ['str' , 'numeric'          , 'numeric'        , 'numeric'                       , 'numeric'                                         , 'numeric'                                       , 'numeric'                                      , 'numeric'                                    ] + ['numeric' for _ in THREEPRIME_VARIANTS]
+trnaseq_normalized_table_structure      = ['name', 'trimmed_seq_count', 'mean_specific_coverage', 'mean_nonspecific_coverage', 'specific_coverages', 'nonspecific_coverages', 'modified_seq_representation', 'specific_read_count', 'nonspecific_read_count', 'count_of_specific_reads_with_extra_fiveprime', 'count_of_nonspecific_reads_with_extra_fiveprime', 'specific_mapped_read_count', 'nonspecific_mapped_read_count'] + [threeprime_variant + '_input_seq_count' for threeprime_variant in THREEPRIME_VARIANTS]
+trnaseq_normalized_table_types          = ['str' , 'numeric'          , 'numeric'               , 'numeric'                  , 'str'               , 'str'                  , 'numeric'                    , 'numeric'            , 'numeric'               , 'numeric'                                     , 'numeric'                                        , 'numeric'                   , 'numeric'                      ] + ['numeric' for _ in THREEPRIME_VARIANTS]
 
 trnaseq_modified_table_name             = 'modified'
-trnaseq_modified_table_structure        = ['name', 'substitution_positions', 'substitution_A_specific_coverage', 'substitution_C_specific_coverage', 'substitution_G_specific_coverage', 'substitution_T_specific_coverage', 'substitution_A_nonspecific_coverage', 'substitution_C_nonspecific_coverage', 'substitution_G_nonspecific_coverage', 'substitution_T_nonspecific_coverage', 'deletion_positions', 'deletion_specific_coverage', 'deletion_nonspecific_coverage', 'consensus_sequence', 'count_of_normalized_seqs_without_dels', 'names_of_normalized_seqs_without_dels', 'count_of_normalized_seqs_with_dels', 'names_of_normalized_seqs_with_dels', 'specific_read_count', 'nonspecific_read_count', 'average_input_seq_multiplicity', 'count_of_specific_reads_without_extra_fiveprime', 'count_of_specific_reads_with_extra_fiveprime', 'specific_mapped_read_count', 'nonspecific_mapped_read_count']
-trnaseq_modified_table_types            = ['str' , 'str'                   , 'str'                             , 'str'                             , 'str'                             , 'str'                             , 'str'                                , 'str'                                , 'str'                                , 'str'                                , 'str'               , 'str'                       , 'str'                          , 'str'               , 'numeric'                              , 'str'                                  , 'numeric'                           , 'str'                               , 'numeric'            , 'numeric'               , 'numeric'                       , 'numeric'                                        , 'numeric'                                     , 'numeric'                   , 'numeric'                      ]
+trnaseq_modified_table_structure        = ['name', 'mean_specific_coverage', 'mean_nonspecific_coverage', 'specific_coverages', 'nonspecific_coverages', 'substitution_positions', 'substitution_A_specific_coverage', 'substitution_C_specific_coverage', 'substitution_G_specific_coverage', 'substitution_T_specific_coverage', 'substitution_A_nonspecific_coverage', 'substitution_C_nonspecific_coverage', 'substitution_G_nonspecific_coverage', 'substitution_T_nonspecific_coverage', 'deletion_positions', 'deletion_specific_coverage', 'deletion_nonspecific_coverage', 'consensus_sequence', 'count_of_normalized_seqs_without_dels', 'names_of_normalized_seqs_without_dels', 'count_of_normalized_seqs_with_dels', 'names_of_normalized_seqs_with_dels', 'specific_read_count', 'nonspecific_read_count', 'count_of_specific_reads_without_extra_fiveprime', 'count_of_specific_reads_with_extra_fiveprime', 'specific_mapped_read_count', 'nonspecific_mapped_read_count']
+trnaseq_modified_table_types            = ['str' , 'numeric'               , 'numeric'                  , 'str'               , 'str'                  , 'str'                   , 'str'                             , 'str'                             , 'str'                             , 'str'                             , 'str'                                , 'str'                                , 'str'                                , 'str'                                , 'str'               , 'str'                       , 'str'                          , 'str'               , 'numeric'                              , 'str'                                  , 'numeric'                           , 'str'                               , 'numeric'            , 'numeric'               , 'numeric'                                        , 'numeric'                                     , 'numeric'                   , 'numeric'                      ]
 
 ####################################################################################################
 #
@@ -404,8 +400,7 @@ requires_unique_entry_id = {
     module_table_name: False,
     pathway_table_name: False,
     trnaseq_sequences_table_name: False,
-    trnaseq_info_table_name: False,
-    trnaseq_features_table_name: False,
+    trnaseq_feature_table_name: False,
     trnaseq_unconserved_table_name: False,
     trnaseq_unpaired_table_name: False,
     trnaseq_trimmed_table_name: False,
