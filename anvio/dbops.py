@@ -4099,6 +4099,8 @@ class ContigsDatabase:
 
 
 class TRNASeqDatabase:
+    """Used to create and/or access a tRNA-seq database"""
+
     def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
         if not os.path.exists(db_path):
             self.db_type = 'trnaseq'
@@ -4110,13 +4112,13 @@ class TRNASeqDatabase:
         self.meta_float_keys = [] # metadata to be stored as a float
         self.table_info = [
             (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
-            (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
-            (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
+            (t.trnaseq_feature_table_name, t.trnaseq_feature_table_structure, t.trnaseq_feature_table_types),
             (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
             (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
             (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
             (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types),
-            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)]
+            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)
+        ]
 
         self.run = run
         self.progress = progress
