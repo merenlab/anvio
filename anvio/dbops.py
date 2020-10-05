@@ -3057,6 +3057,21 @@ class ProfileSuperclass(object):
 
         return d
 
+    def get_indels_information_for_split(self, split_name):
+        if not split_name in self.split_names:
+            raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
+                               "represented in this profile database. Are you sure you are looking for it "
+                               "in the right database?" % split_name)
+
+        self.progress.new('Recovering indels information for split', discard_previous_if_exists=True)
+        self.progress.update('...')
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_indels_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.indels_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+        profile_db.disconnect()
+
+        return split_indels_information
+
 
     def init_items_additional_data(self):
         items_additional_data = TableForItemAdditionalData(self.args)
