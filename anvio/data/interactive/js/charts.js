@@ -140,6 +140,9 @@ function loadAll() {
                 coverage = contig_data.coverage;
                 sequence = contig_data.sequence;
                 variability = [];
+                //indels = [];
+
+                console.log(contig_data);
 
                 for (var i=0; i<coverage.length; i++) {
                     variability[i] = [];
