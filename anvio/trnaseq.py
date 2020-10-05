@@ -10,6 +10,7 @@ import numpy as np
 import pickle as pkl
 import multiprocessing as mp
 
+from time import time
 from itertools import combinations, product
 from collections import OrderedDict, deque, defaultdict
 
@@ -757,6 +758,7 @@ class TRNASeqDataset:
         self.trnaseq_db_path = os.path.join(self.out_dir, self.project_name + "-TRNASEQ.db")
 
         # Supplementary text file paths
+        self.analysis_summary_path = os.path.join(self.out_dir, self.project_name + "-ANALYSIS_SUMMARY.txt")
         self.uniq_nontrna_path = os.path.join(self.out_dir, self.project_name + "-UNIQUED_NONTRNA.txt")
         self.uniq_trna_path = os.path.join(self.out_dir, self.project_name + "-UNIQUED_TRNA.txt")
         self.trimmed_ends_path = os.path.join(self.out_dir, self.project_name + "-TRIMMED_ENDS.txt")
@@ -868,6 +870,15 @@ class TRNASeqDataset:
         TRNASeqDatabase(self.trnaseq_db_path, quiet=False).create(meta_values)
 
 
+    def get_summary_line(self, label, value, is_time_value=False, padding=68):
+        """Return a string formatted to be written to the summary statistics file."""
+
+        # Report elapsed time in seconds in minutes.
+        if is_time_value:
+            value = "%.2f" % round(value / 60, 2)
+        return '%s%s\t%s\n' % (label, ' ' + '.' * (padding - len(label)), value)
+
+
     def unique_reads(self):
         """Dereplicate input reads."""
 
@@ -909,6 +920,7 @@ class TRNASeqDataset:
             List of UniqueSeq objects
         """
 
+        start_time = time()
         self.progress.new("Profiling tRNA features in reads")
         self.progress.update("...")
 
@@ -1122,6 +1134,24 @@ class TRNASeqDataset:
         self.run.info("Profiled reads ending in 3'-C", trna_with_threeprime_c_read_count)
         self.run.info("Profiled reads ending in 3'-CCAN/CCANN", trna_with_threeprime_ccan_ccann_read_count)
 
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed profiling tRNA (min)",
+                                          time() - start_time,
+                                          is_time_value=True))
+            f.write(self.get_summary_line("Reads processed", processed_read_count))
+            f.write(self.get_summary_line("Unique sequences processed", processed_seq_count))
+            f.write(self.get_summary_line("Reads profiled as tRNA", trna_read_count))
+            f.write(self.get_summary_line("Unique profiled tRNA sequences", uniq_trna_count))
+            f.write(self.get_summary_line("Profiled reads with anticodon", trna_containing_anticodon_read_count))
+            f.write(self.get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_read_count))
+            f.write(self.get_summary_line("Profiled reads with 1-3 extra 5' bases", trna_with_one_to_three_extra_fiveprime_bases_read_count))
+            f.write(self.get_summary_line("Profiled reads with >3 extra 5' bases", trna_with_more_than_three_extra_fiveprime_bases_read_count))
+            f.write(self.get_summary_line("Profiled reads with extrapolated 5' feature", trna_with_extrapolated_fiveprime_feature_read_count))
+            f.write(self.get_summary_line("Profiled reads ending in 3'-CCA", trna_with_threeprime_cca_read_count))
+            f.write(self.get_summary_line("Profiled reads ending in 3'-CC", trna_with_threeprime_cc_read_count))
+            f.write(self.get_summary_line("Profiled reads ending in 3'-C", trna_with_threeprime_c_read_count))
+            f.write(self.get_summary_line("Profiled reads ending in 3'-CCAN/CCANN", trna_with_threeprime_ccan_ccann_read_count))
+
 
     def trim_ends(self, uniq_trna_seqs):
         """Trim any nucleotides 5' of the acceptor stem and 3' of the discriminator.
@@ -1134,6 +1164,7 @@ class TRNASeqDataset:
             List of UniqueSeq objects
         """
 
+        start_time = time()
         self.progress.new("Trimming the 3' and 5' ends of sequences")
         self.progress.update("...")
 
@@ -1157,6 +1188,14 @@ class TRNASeqDataset:
 
         self.progress.end()
 
+        self.run.info("Unique trimmed profiled tRNA sequences", len(self.trimmed_trna_seqs))
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed trimming profiled sequences (min)",
+                                          time() - start_time,
+                                          is_time_value=True))
+            f.write(self.get_summary_line("Unique trimmed profiled tRNA sequences", len(self.trimmed_trna_seqs)))
+
 
     def dereplicate_threeprime(self):
         """Dereplicate trimmed tRNA sequences from the 3' end of longer trimmed sequences.
@@ -1167,7 +1206,8 @@ class TRNASeqDataset:
         trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         """
 
-        self.progress.new("Dereplicating trimmed tRNA sequences from the 3' end")
+        start_time = time()
+        self.progress.new("Dereplicating trimmed sequences from the 3' end")
         self.progress.update("...")
 
         represent_names = [trimmed_seq.represent_name for trimmed_seq in self.trimmed_trna_seqs]
@@ -1183,6 +1223,14 @@ class TRNASeqDataset:
         self.norm_trna_seqs = [NormalizedSeq(cluster.member_extras, skip_init=True) for cluster in clusters]
 
         self.progress.end()
+
+        self.run.info("Unique 3'-dereplicated trimmed tRNA sequences", len(self.norm_trna_seqs))
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed sequences",
+                                          time() - start_time,
+                                          is_time_value=True))
+            f.write(self.get_summary_line("Unique 3'-dereplicated trimmed tRNA sequences", len(self.norm_trna_seqs)))
 
 
     def map_fragments(self):
@@ -1200,9 +1248,10 @@ class TRNASeqDataset:
         mapped tRNA 2 (interior)  :                 TAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGG
         """
 
-        self.progress.new("Mapping unprofiled tRNA fragments to profiled tRNA")
+        start_time = time()
+        self.progress.new("Mapping unprofiled reads to profiled tRNA")
 
-        self.progress.update("Retrieving queries from unprofiled sequences")
+        self.progress.update("Retrieving queries from unprofiled reads")
         query_length_intervals = []
         max_query_length = max(map(len, [seq.seq_string for seq in self.uniq_nontrna_seqs]))
         # By default, avoid sequences shorter than 25 nucleotides, the minimum length of a profiled 3' fragment of tRNA.
@@ -1277,7 +1326,7 @@ class TRNASeqDataset:
         interval_index = 0
         nontrna_indices = []
         for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            self.progress.new("Mapping %d unprofiled sequences of length %d-%d to profiled tRNA"
+            self.progress.new("Mapping %d unprofiled reads of length %d-%d to profiled tRNA"
                               % (len(query_names),
                                  query_length_intervals[interval_index][0],
                                  query_length_intervals[interval_index][1] - 1))
@@ -1384,9 +1433,26 @@ class TRNASeqDataset:
         self.run.info("Mapped reads without extra 5' tRNA bases", interior_mapped_count)
         self.run.info("Mapped reads with extra 5' tRNA bases", fiveprime_mapped_count)
 
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed mapping reads to profiled tRNA (min)",
+                                          time() - start_time,
+                                          is_time_value=True))
+            f.write(self.get_summary_line("Mapped reads without extra 5' tRNA bases", interior_mapped_count))
+            f.write(self.get_summary_line("Mapped reads with extra 5' tRNA bases", fiveprime_mapped_count))
 
-    def find_modifications(self):
-        self.progress.new("Finding modifications")
+
+    def find_substitutions(self):
+        """Find potential modification-induced substitutions.
+
+        Returns
+        =======
+        names_of_norm_seqs_assigned_to_mod_seqs : list
+            The representative name strings of normalized sequences
+            that were assigned to modified sequences on the basis of potential substitutions
+        """
+
+        start_time = time()
+        self.progress.new("Finding modification-induced substitutions")
 
         # Cluster normalized tRNA sequences.
         # Clusters agglomerate sequences that differ from at least one other sequence in the cluster
@@ -1562,7 +1628,31 @@ class TRNASeqDataset:
                     names_of_norm_seqs_assigned_to_mod_seqs.append(norm_seq.represent_name)
                 self.mod_trna_seqs.append(mod_seq)
 
-        self.progress.update("Finding sequences with modification-induced deletions")
+        self.progress.end()
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)",
+                                          time() - start_time,
+                                          is_time_value=True))
+
+        return names_of_norm_seqs_assigned_to_mod_seqs
+
+
+    def find_deletions(self, names_of_norm_seqs_assigned_to_mod_seqs):
+        """Find potential modification-induced deletions.
+
+        Parameters
+        ==========
+        names_of_norm_seqs_assigned_to_mod_seqs : list
+            The representative name strings of normalized sequences
+            that were assigned to modified sequences on the basis of potential substitutions,
+            which are excluded from the normalized sequence deletion search space,
+            as they cannot have deletions due to how substitutions were found by clustering
+        """
+
+        start_time = time()
+        self.progress.new("Finding sequences with modification-induced deletions")
+        self.progress.update("...")
 
         # Search for normalized sequences with modification-induced deletions,
         # which are added to uninitialized modified sequences.
@@ -1591,10 +1681,12 @@ class TRNASeqDataset:
                 mod_seq.norm_seqs_with_dels.append(norm_seq)
                 mod_seq.del_configs.append(del_config)
 
-        for mod_seq in self.mod_trna_seqs:
-            mod_seq.init()
-
         self.progress.end()
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Time elapsed finding modification-induced deletions (min)",
+                                          time() - start_time,
+                                          is_time_value=True))
 
 
     def calc_normalization_stats(self):
@@ -1646,11 +1738,14 @@ class TRNASeqDataset:
 
         self.progress.end()
 
-        self.run.info("Trimmed tRNA, removing 5'/3' ends", trimmed_seq_count)
+        self.run.info("Unique trimmed profiled/mapped tRNA sequences", trimmed_seq_count)
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Unique trimmed profiled/mapped tRNA sequences", trimmed_seq_count))
 
 
     def write_normalized_table(self):
-        self.progress.new("Writing tRNA-seq database table of normalized tRNA sequences")
+        self.progress.new("Writing tRNA-seq database table of fragment-dereplicated tRNA sequences")
         self.progress.update("...")
 
         norm_table_entries = []
@@ -1662,6 +1757,7 @@ class TRNASeqDataset:
                  norm_seq.mean_nonspecific_cov,
                  ','.join(map(str, norm_seq.specific_covs)) + ',',
                  ','.join(map(str, norm_seq.nonspecific_covs)) + ',',
+                 len(norm_seq.mod_seqs),
                  norm_seq.specific_read_count,
                  norm_seq.nonspecific_read_count,
                  norm_seq.count_of_specific_reads_with_extra_fiveprime,
@@ -1683,12 +1779,18 @@ class TRNASeqDataset:
                                  norm_table_entries)
 
         norm_seq_count = len(self.norm_trna_seqs)
+        norm_seq_without_mod_count = sum(1 for norm_seq in self.norm_trna_seqs if not norm_seq.mod_seqs)
         trnaseq_db.db.set_meta_value('num_normalized_trna_seqs', norm_seq_count)
+        trnaseq_db.db.set_meta_value('num_normalized_trna_seqs_without_modifications', norm_seq_without_mod_count)
         trnaseq_db.disconnect()
 
         self.progress.end()
 
-        self.run.info("Normalized tRNA, consolidating tRNA fragments", norm_seq_count)
+        self.run.info("Unique fragment-dereplicated tRNA sequences", norm_seq_count)
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Unique fragment-dereplicated tRNA sequences", norm_seq_count))
+            f.write(self.get_summary_line("Unique fragment-dereplicated tRNA sequences without modifications", norm_seq_without_mod_count))
 
 
     def write_modified_table(self):
@@ -1734,12 +1836,15 @@ class TRNASeqDataset:
                                  mod_table_entries)
 
         mod_seq_count = len(self.mod_trna_seqs)
-        trnaseq_db.db.set_meta_value('num_mod_trna_seqs', mod_seq_count)
+        trnaseq_db.db.set_meta_value('max_possible_num_modified_trna_seqs', mod_seq_count)
         trnaseq_db.disconnect()
 
         self.progress.end()
 
-        self.run.info("Modified tRNA", mod_seq_count)
+        self.run.info("Max possible unique modified tRNA sequences", mod_seq_count)
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Max possible unique modified tRNA sequences", mod_seq_count))
 
 
     def write_uniq_nontrna_supplement(self):
@@ -1805,6 +1910,7 @@ class TRNASeqDataset:
 
         Checkpoint loading and saving occurs in this method.
         """
+        total_time_start = time()
         self.sanity_check()
 
         # The first checkpoints are after tRNA profiling.
@@ -1852,6 +1958,9 @@ class TRNASeqDataset:
             self.progress.new("Loading intermediate files at the checkpoint, \"profile\"")
             self.progress.update("...")
 
+            with open(self.analysis_summary_path, 'a') as f:
+                f.write("Analysis restarted from the checkpoint, \"profile\"\n")
+
             with open(self.profile_uniq_trna_seqs_path, 'rb') as f:
                 self.uniq_trna_seqs = pkl.load(f)
             with open(self.profile_uniq_nontrna_seqs_path, 'rb') as f:
@@ -1862,6 +1971,9 @@ class TRNASeqDataset:
         if self.load_checkpoint == 'threeprime_normalization':
             self.progress.new("Loading intermediate files at the checkpoint, \"threeprime_normalization\"")
             self.progress.update("...")
+
+            with open(self.analysis_summary_path, 'a') as f:
+                f.write("Analysis restarted from the checkpoint, \"threeprime_normalization\"\n")
 
             with open(self.threeprime_norm_uniq_trna_seqs_path, 'rb') as f:
                 self.uniq_trna_seqs = pkl.load(f)
@@ -1933,6 +2045,9 @@ class TRNASeqDataset:
             self.progress.new("Loading intermediate files at the checkpoint, \"fragment_mapping\"")
             self.progress.update("...")
 
+            with open(self.analysis_summary_path, 'a') as f:
+                f.write("Analysis restarted from the checkpoint, \"fragment_mapping\"\n")
+
             with open(self.frag_map_uniq_trna_seqs_path, 'rb') as f:
                 self.uniq_trna_seqs = pkl.load(f)
             with open(self.frag_map_uniq_nontrna_seqs_path, 'rb') as f:
@@ -1995,7 +2110,10 @@ class TRNASeqDataset:
                               self.frag_map_norm_trna_seqs_path)
 
         # Find modified nucleotides, grouping sequences into modified sequences.
-        self.find_modifications()
+        names_of_norm_seqs_assigned_to_mod_seqs = self.find_substitutions()
+        self.find_deletions(names_of_norm_seqs_assigned_to_mod_seqs)
+        for mod_seq in self.mod_trna_seqs:
+            mod_seq.init()
 
         # Calculate some statistics.
         self.calc_normalization_stats()
@@ -2009,6 +2127,12 @@ class TRNASeqDataset:
         self.write_uniq_nontrna_supplement()
         self.write_trimmed_supplement()
         self.write_normalized_supplement()
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Total time elapsed (min)",
+                                          time() - total_time_start,
+                                          is_time_value=True))
+            f.write("\n")
 
 
 def profile_worker(input_queue, output_queue):
