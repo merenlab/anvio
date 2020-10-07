@@ -28,13 +28,13 @@ run = terminal.Run()
 
 
 class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
-    # known_split_types = ['demethylase', 'untreated']
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ribo_phylo')
 
         # ribo_phylo Snakemake rules
         self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins', 
+                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins'
                            # 'align_ribosomal_sequences',
                            # 'trim_alignment',
                            # 'filter_sequences_max_percen_gaps_50'
@@ -46,8 +46,9 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # Parameters for each rule that are accessible in the config file
         rule_acceptable_params_dict = {}
-        
+
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_ribosomal_proteins'] = ['run']
+        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_ribosomal_proteins'] = ['run']
         rule_acceptable_params_dict['anvi_reformat_fasta'] = ['run',
                                                               '--gzip-output',
                                                               '--simplify-names']
@@ -68,12 +69,18 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                                                        '--agglomeration-progress-interval']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
-        # Default values for certain accessible parameters
+        # Set default values for certain accessible parameters
         self.default_config.update({
             'samples_txt': 'samples.txt',
-            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'run': True, 'threads': 5}})
+            'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
+            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'run': True, 'threads': 5},
+            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'run': True, 'threads': 5}})
 
+        # Added directories in the workflow
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_EXTRACTED_RIBO_PROTEINS"})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_EXTRACTED_RIBO_PROTEINS_TAXONOMY"})
+        self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_RIBOSOMAL_PROTEIN_FASTAS"})
 
 
     def init(self):
@@ -99,7 +106,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                               "This is the error from trying to load it: '%s'" % (self.samples_txt_file, e))
         self.sample_name_list = self.sample_txt['name'].to_list()
         self.sample_path_list = self.sample_txt['path'].to_list()
-
+        # 03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY/ACE_MG_NA_0150_1482_118C/ACE_MG_NA_0150_1482_118C_Ribosomal_L16.fasta    
 
         self.contig_dir = os.path.dirname(self.sample_path_list[0])
         # self.snakemake_input = os.path.join(contig_dir, "{sample_name}-contigs.db")
@@ -143,12 +150,33 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for ribosomal_protein_name in self.Ribosomal_protein_list:
-            for sample_name in self.sample_name_list:
-                tail_path = "%s_%s_hmm_hits_all.fasta" % (sample_name, ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, tail_path)
-                target_files.append(target_file)
+        # Target files for anvi_get_sequences_for_hmm_hits_ribosomal_proteins
+        # for ribosomal_protein_name in self.Ribosomal_protein_list:
+        #     for sample_name in self.sample_name_list:
+        #         tail_path = "%s_%s_hmm_hits_all.fasta" % (sample_name, ribosomal_protein_name)
+        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, tail_path)
+        #         target_files.append(target_file)
 
+        # # Target files for anvi_estimate_scg_taxonomy_for_ribosomal_proteins
+        # for ribosomal_protein_name in self.Ribosomal_protein_list:
+        #     for sample_name in self.sample_name_list:
+        #         tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (sample_name, ribosomal_protein_name)
+        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], sample_name, tail_path)
+        #         target_files.append(target_file)
+
+        # # Target files for filter_for_scg_sequences_and_metadata:
+        # for ribosomal_protein_name in self.Ribosomal_protein_list:
+        #     for sample_name in self.sample_name_list:
+        #         tail_path = "%s_%s_misc_data.tsv" % (sample_name, ribosomal_protein_name)
+        #         target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], sample_name, tail_path)
+        #         target_files.append(target_file)
+
+        # Target files for filter_for_scg_sequences_and_metadata:
+        for ribosomal_protein_name in self.Ribosomal_protein_list:
+
+            tail_path = "%s.fasta" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], tail_path)
+            target_files.append(target_file)
         return target_files
 
 

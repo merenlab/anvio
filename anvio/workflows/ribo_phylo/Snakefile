@@ -26,37 +26,14 @@ dirs_dict = M.dirs_dict
 
 
 rule ribo_phylo_workflow_target_rule:
-    # """The target rule for the workflow"""
     input: M.target_files
-    # input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_Ribosomal_{ribosomal_protein_name}_hmm_hits_all.fasta"), sample_name=M.sample_name_list, ribosomal_protein_name=M.Ribosomal_protein_list)
-
-# rule process_sample_txt_input:
-#     """Modify samples_txt file to create dir structure (run once)."""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
-#     # The input file is marked "ancient" to prevent Snakemake from rerunning this step
-#     # when the samples_txt file has been changed.
-#     input: ancient(M.get_param_value_from_config(['samples_txt']))
-#     output: os.path.join(dirs_dict['QC_DIR'], "iu_samples_input.txt")
-#     threads: M.T('make_iu_input')
-#     resources: nodes = M.T('make_iu_input')
-#     run:
-#         samples_txt_df = pd.read_csv(input[0], sep='\t', index_col=False)
-#         iu_samples_input_df = samples_txt_df[['r1', 'r2']] # r1 and r2 filepaths
-#         iu_samples_input_df['sample'] = samples_txt_df['sample'] + '_' + samples_txt_df['split'] # e.g., sample1_demethylase, sample1_untreated
-#         iu_samples_input_df[['sample', 'r1', 'r2']].to_csv(output[0], sep='\t', index=False) # reorder columns
 
 rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
-    """Create an Illumina-utils samples file from samples_txt (run once)."""
+    """Extract all ribosomal proteins (Ribosomal_protein_list.txt) from metagenomes and genomes in samples.txt."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
-    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
-    # when the samples_txt file has been changed.
-    # input: ancient(M.sample_path_list)
     input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
-    # input: unpack(lambda wildcards: M.snakemake_input)
     output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_all.fasta")
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
 	shell:
@@ -66,9 +43,50 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
                                          --gene-name {wildcards.ribosomal_protein_name} \
                                          -o {output} 2> {log}"
 
+rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
+    """Retrieve taxonomy from extract ribosomal proteins"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
+    input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
+    output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+	shell:
+		"anvi-estimate-scg-taxonomy -c {input} \
+                                 	--metagenome-mode \
+                                 	--scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
+                                 	-o {output} 2> {log}"
 
 
 
+
+rule filter_for_scg_sequences_and_metadata:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "filter_for_scg_sequences_and_metadata_{sample_name}_{ribosomal_protein_name}.log")
+    input:
+        SCG_taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+        fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_all.fasta")
+    output:
+        fasta_filtered = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fasta"),
+        misc_data = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv")
+
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    script:
+        "scripts/filter_for_scg_sequences_and_metadata.py"
+
+
+rule cat_ribo_proteins_to_one_fasta:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+    input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fasta"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}.fasta"),
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "cat {input} >> {output}"
 
 # RIBOSOMAL_PROTEIN = ["Ribosomal_L16"]
 # # RIBOSOMAL_PROTEIN = ["Ribosomal_L16", "Ribosomal_L17","Ribosomal_S2", "Ribosomal_S3_C", "Ribosomal_S7", "Ribosomal_L17", "Ribosomal_L22", "Ribosomal_S9", "Ribosomal_L20", "Ribosomal_L2"]
