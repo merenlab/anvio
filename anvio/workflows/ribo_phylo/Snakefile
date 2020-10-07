@@ -88,6 +88,23 @@ rule cat_ribo_proteins_to_one_fasta:
     shell:
         "cat {input} >> {output}"
 
+
+rule anvi_reformat_fasta_ribosomal_protein_file:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}.fasta")
+    output: 
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_renamed.fasta"),
+        report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "anvi-script-reformat-fasta {input} \
+                              --simplify-names \
+                              --report-file {output.report_file} \
+                              -o {output.fasta} >> {log} 2>&1"
+
 # RIBOSOMAL_PROTEIN = ["Ribosomal_L16"]
 # # RIBOSOMAL_PROTEIN = ["Ribosomal_L16", "Ribosomal_L17","Ribosomal_S2", "Ribosomal_S3_C", "Ribosomal_S7", "Ribosomal_L17", "Ribosomal_L22", "Ribosomal_S9", "Ribosomal_L20", "Ribosomal_L2"]
 
