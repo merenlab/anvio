@@ -82,9 +82,11 @@ class TrimmedSeq:
                  'uniq_with_extra_fiveprime_count',
                  'read_with_extra_fiveprime_count',
                  'represent_name',
+                 'long_fiveprime_extension_dict',
                  'read_acceptor_variant_count_dict',
                  'id_method',
                  'norm_seq_count')
+    min_length_of_long_fiveprime_extension = 4
 
     def __init__(self, seq_string, uniq_seqs, skip_init=False):
         """A tRNA sequence with bases trimmed 5' of the acceptor stem and 3' of the discriminator"""
@@ -99,6 +101,7 @@ class TrimmedSeq:
             self.uniq_with_extra_fiveprime_count = None
             self.read_with_extra_fiveprime_count = None
             self.represent_name = None
+            self.long_fiveprime_extension_dict = None
             self.read_acceptor_variant_count_dict = None
             self.id_method = None
         else:
@@ -139,12 +142,17 @@ class TrimmedSeq:
 
         self.represent_name = represent_name
 
+        long_fiveprime_extension_dict = {}
         read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
                                                         for threeprime_variant in THREEPRIME_VARIANTS])
         for uniq_seq in self.uniq_seqs:
+            if uniq_seq.extra_fiveprime_length > self.min_length_of_long_fiveprime_extension:
+                long_fiveprime_extension_dict[uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length]] = uniq_seq.read_count
+
             if uniq_seq.acceptor_length: # unique_seq need not have an acceptor
                 acceptor_seq_string = uniq_seq.seq_string[-uniq_seq.acceptor_length: ]
                 read_acceptor_variant_count_dict[acceptor_seq_string] += uniq_seq.read_count
+        self.long_fiveprime_extension_dict = long_fiveprime_extension_dict
         self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
 
         id_methods = set(uniq_seq.id_method for uniq_seq in self.uniq_seqs)
@@ -171,7 +179,10 @@ class NormalizedSeq:
                  'count_of_nonspecific_reads_with_extra_fiveprime',
                  'specific_mapped_read_count',
                  'nonspecific_mapped_read_count',
-                 'read_acceptor_variant_count_dict',
+                 'specific_long_fiveprime_extension_dict',
+                 'nonspecific_long_fiveprime_extension_dict',
+                 'specific_read_acceptor_variant_count_dict',
+                 'nonspecific_read_acceptor_variant_count_dict',
                  'specific_covs',
                  'nonspecific_covs',
                  'mean_specific_cov',
@@ -212,10 +223,14 @@ class NormalizedSeq:
             self.count_of_nonspecific_reads_with_extra_fiveprime = None
             self.specific_mapped_read_count = None
             self.nonspecific_mapped_read_count = None
-            self.mean_specific_cov = None
-            self.mean_nonspecific_cov = None
+            self.specific_long_fiveprime_extension_dict = None
+            self.nonspecific_long_fiveprime_extension_dict = None
+            self.specific_read_acceptor_variant_count_dict = None
+            self.nonspecific_read_acceptor_variant_count_dict = None
             self.specific_covs = None
             self.nonspecific_covs = None
+            self.mean_specific_cov = None
+            self.mean_nonspecific_cov = None
         else:
             self.init()
 
@@ -223,20 +238,18 @@ class NormalizedSeq:
     def init(self):
         """Set the attributes representative of a finalized list of `TrimmedSeq` objects"""
 
-        read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
-                                                        for threeprime_variant in THREEPRIME_VARIANTS])
-        for trimmed_seq in self.trimmed_seqs:
-            for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                if read_count > 0:
-                    read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
-        self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
-
         specific_read_count = 0
         nonspecific_read_count = 0
         count_of_specific_reads_with_extra_fiveprime = 0
         count_of_nonspecific_reads_with_extra_fiveprime = 0
         specific_mapped_read_count = 0
         nonspecific_mapped_read_count = 0
+        specific_long_fiveprime_extension_dict = defaultdict(int)
+        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
+                                                                 for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
+                                                                    for threeprime_variant in THREEPRIME_VARIANTS])
         specific_covs = np.zeros(len(self.seq_string), dtype=int)
         nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
         for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs,
@@ -249,6 +262,14 @@ class NormalizedSeq:
                 if trimmed_seq.id_method == 1: # 1 => mapped
                     # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
                     specific_mapped_read_count += trimmed_seq.read_count
+
+                for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                    specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if read_count > 0:
+                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                 specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
             else:
                 nonspecific_read_count += trimmed_seq.read_count
@@ -256,6 +277,17 @@ class NormalizedSeq:
                     count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
                 if trimmed_seq.id_method == 1:
                     nonspecific_mapped_read_count += trimmed_seq.read_count
+
+                    # Only mapped sequences can have 5' sequence extensions,
+                    # as profiled sequences with 5' extensions would span the length of the normalized sequence
+                    # and would thus be specific to it.
+                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                        nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if read_count > 0:
+                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                 nonspecific_covs[start_pos: stop_pos] += trimmed_seq.read_count
         self.specific_read_count = specific_read_count
         self.nonspecific_read_count = nonspecific_read_count
@@ -263,6 +295,10 @@ class NormalizedSeq:
         self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
         self.specific_mapped_read_count = specific_mapped_read_count
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
+        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
+        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
+        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
         self.specific_covs = specific_covs
         self.nonspecific_covs = nonspecific_covs
         self.mean_specific_cov = specific_covs.mean()
@@ -281,6 +317,10 @@ class ModifiedSeq:
                  'count_of_nonspecific_reads_with_extra_fiveprime',
                  'specific_mapped_read_count',
                  'nonspecific_mapped_read_count',
+                 'specific_long_fiveprime_extension_dict',
+                 'nonspecific_long_fiveprime_extension_dict',
+                 'specific_read_acceptor_variant_count_dict',
+                 'nonspecific_read_acceptor_variant_count_dict',
                  'specific_covs',
                  'nonspecific_covs',
                  'mean_specific_cov',
@@ -329,6 +369,10 @@ class ModifiedSeq:
             self.count_of_nonspecific_reads_with_extra_fiveprime = None
             self.specific_mapped_read_count = None
             self.nonspecific_mapped_read_count = None
+            self.specific_long_fiveprime_extension_dict = None
+            self.nonspecific_long_fiveprime_extension_dict = None
+            self.specific_read_acceptor_variant_count_dict = None
+            self.nonspecific_read_acceptor_variant_count_dict = None
             self.specific_covs = None
             self.nonspecific_covs = None
             self.mean_specific_cov = None
@@ -510,6 +554,12 @@ class ModifiedSeq:
         count_of_nonspecific_reads_with_extra_fiveprime = 0
         specific_mapped_read_count = 0
         nonspecific_mapped_read_count = 0
+        specific_long_fiveprime_extension_dict = defaultdict(int)
+        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
+                                                                 for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0)
+                                                                    for threeprime_variant in THREEPRIME_VARIANTS])
         mod_seq_len = len(norm_seqs_without_dels[0].seq_string)
         norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         norm_seq_nonspecific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
@@ -588,12 +638,31 @@ class ModifiedSeq:
                     # Trimmed sequences are comprised of either profiled or mapped unique sequences.
                     if trimmed_seq.id_method == 1: # 1 => mapped
                         specific_mapped_read_count += trimmed_seq.read_count
+
+                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                        specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                     norm_seq_specific_covs[n, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
                 else:
                     nonspecific_read_count += trimmed_seq.read_count
                     count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
                     if trimmed_seq.id_method == 1:
                         nonspecific_mapped_read_count += trimmed_seq.read_count
+
+                        # Only mapped sequences can have 5' sequence extensions,
+                        # as profiled sequences with 5' extensions would span the length of the normalized sequence
+                        # and would thus be specific to it.
+                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                            nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                     norm_seq_nonspecific_covs[n, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
 
                 processed_trimmed_seq_names.append(trimmed_seq.represent_name)
@@ -656,6 +725,14 @@ class ModifiedSeq:
                     # Trimmed sequences are comprised of either profiled or mapped unique sequences.
                     if trimmed_seq.id_method == 1: # 1 => mapped
                         specific_mapped_read_count += trimmed_seq_read_count
+
+                    # Long 5' extensions are not counted for sequences with deletions.
+                    # Recording the 5' extensions would occur here if the complex task were undertaken.
+
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                     norm_seq_specific_covs[n, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
                     for del_pos in del_config:
                         specific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
@@ -664,6 +741,14 @@ class ModifiedSeq:
                     count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
                     if trimmed_seq.id_method == 1:
                         nonspecific_mapped_read_count += trimmed_seq_read_count
+
+                        # Long 5' extensions are not counted for sequences with deletions.
+                        # Recording the 5' extensions would occur here if the complex task were undertaken.
+
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
                     norm_seq_nonspecific_covs[n, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
                     for del_pos in del_config:
                         nonspecific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
@@ -677,6 +762,10 @@ class ModifiedSeq:
         self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
         self.specific_mapped_read_count = specific_mapped_read_count
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
+        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
+        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
+        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
         self.specific_covs = norm_seq_specific_covs.sum(0)
         self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
         self.mean_specific_cov = self.specific_covs.mean()
@@ -707,8 +796,6 @@ class TRNASeqDataset:
     # Column headers for supplementary tables written to text files
     UNIQ_NONTRNA_HEADER = ["representative_name", "read_count", "sequence"]
     TRIMMED_ENDS_HEADER = ["representative_name", "unique_name", "fiveprime_sequence", "threeprime_sequence", "read_count"]
-    NORM_FRAG_HEADER = ["representative_name", "trimmed_name", "start", "end"]
-
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         """Class for processing a tRNA-seq dataset"""
@@ -738,10 +825,10 @@ class TRNASeqDataset:
 
         # Argument group 1D: ADVANCED
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
+        self.min_length_of_long_fiveprime_extension = A('min_length_long_fiveprime')
+        TrimmedSeq.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         self.min_trna_frag_size = A('min_trna_fragment_size')
         self.agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
-        self.min_modification_count = A('min_modification_count')
-        self.min_modification_fraction = A('min_modification_fraction')
         self.max_del_size = A('max_deletion_size')
 
         # Argument group 1E: MINUTIAE
@@ -757,12 +844,11 @@ class TRNASeqDataset:
 
         self.trnaseq_db_path = os.path.join(self.out_dir, self.project_name + "-TRNASEQ.db")
 
-        # Supplementary text file paths
         self.analysis_summary_path = os.path.join(self.out_dir, self.project_name + "-ANALYSIS_SUMMARY.txt")
+
+        # Supplementary text file paths
         self.uniq_nontrna_path = os.path.join(self.out_dir, self.project_name + "-UNIQUED_NONTRNA.txt")
-        self.uniq_trna_path = os.path.join(self.out_dir, self.project_name + "-UNIQUED_TRNA.txt")
         self.trimmed_ends_path = os.path.join(self.out_dir, self.project_name + "-TRIMMED_ENDS.txt")
-        self.norm_frag_path = os.path.join(self.out_dir, self.project_name + "-NORMALIZED_FRAGMENTS.txt")
 
         # Intermediate pickle file paths
         self.profile_uniq_trna_seqs_path = os.path.join(self.out_dir, "UNIQUE_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
@@ -930,8 +1016,8 @@ class TRNASeqDataset:
         uniq_trna_count = 0
         trna_containing_anticodon_read_count = 0
         full_length_trna_read_count = 0
-        trna_with_one_to_three_extra_fiveprime_bases_read_count = 0
-        trna_with_more_than_three_extra_fiveprime_bases_read_count = 0
+        trna_with_short_fiveprime_extension_read_count = 0
+        trna_with_long_fiveprime_extension_read_count = 0
         trna_with_extrapolated_fiveprime_feature_read_count = 0
         trna_with_threeprime_cca_read_count = 0
         trna_with_threeprime_cc_read_count = 0
@@ -964,7 +1050,6 @@ class TRNASeqDataset:
                 write_point = next(write_point_iterator)
 
                 # List of entries for each tRNA-seq database table
-                trnaseq_sequences_table_entries = []
                 trnaseq_feature_table_entries = []
                 trnaseq_unconserved_table_entries = []
                 trnaseq_unpaired_table_entries = []
@@ -1015,12 +1100,10 @@ class TRNASeqDataset:
                     elif trna_profile.acceptor_variant_string == 'C':
                         trna_with_threeprime_c_read_count += num_replicates
 
-                    if trna_profile.num_extra_fiveprime > 3:
-                        trna_with_more_than_three_extra_fiveprime_bases_read_count += num_replicates
+                    if trna_profile.num_extra_fiveprime >= self.min_length_of_long_fiveprime_extension:
+                        trna_with_long_fiveprime_extension_read_count += num_replicates
                     elif trna_profile.num_extra_fiveprime > 0:
-                        trna_with_one_to_three_extra_fiveprime_bases_read_count += num_replicates
-
-                    trnaseq_sequences_table_entries.append((output_name, num_replicates, output_seq))
+                        trna_with_short_fiveprime_extension_read_count += num_replicates
 
                     # The alpha and beta regions of the D loop vary in length.
                     # Record their start and stop positions in the sequence if they were profiled.
@@ -1074,11 +1157,7 @@ class TRNASeqDataset:
                     for unpaired_tuple in unpaired_info:
                         trnaseq_unpaired_table_entries.append((output_name, ) + unpaired_tuple)
 
-                if len(trnaseq_sequences_table_entries) > 0:
-                    trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                             % ('sequences',
-                                                ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
-                                             trnaseq_sequences_table_entries)
+                if len(trnaseq_feature_table_entries) > 0:
                     trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                              % ('feature',
                                                 ','.join('?' * len(tables.trnaseq_feature_table_structure))),
@@ -1105,12 +1184,16 @@ class TRNASeqDataset:
 
         trnaseq_db.db.set_meta_value('reads_processed', processed_read_count)
         trnaseq_db.db.set_meta_value('unique_reads_processed', processed_seq_count)
-        trnaseq_db.db.set_meta_value('trna_reads', trna_read_count)
-        trnaseq_db.db.set_meta_value('unique_trna_seqs', uniq_trna_count)
+        # TODO : Find a way to record user-accessible feature parameters here.
+        #        This requires writing a function in trnaidentifier to report user-accessible parameters
+        #        for the default case that no feature parameter file is provided.
+        trnaseq_db.db.set_meta_value('profiled_trna_reads', trna_read_count)
+        trnaseq_db.db.set_meta_value('unique_profiled_trna_seqs', uniq_trna_count)
         trnaseq_db.db.set_meta_value('trna_reads_containing_anticodon', trna_containing_anticodon_read_count)
         trnaseq_db.db.set_meta_value('full_length_trna_reads', full_length_trna_read_count)
-        trnaseq_db.db.set_meta_value('trna_with_one_to_three_extra_fiveprime_bases', trna_with_one_to_three_extra_fiveprime_bases_read_count)
-        trnaseq_db.db.set_meta_value('trna_with_more_than_three_extra_fiveprime_bases', trna_with_more_than_three_extra_fiveprime_bases_read_count)
+        trnaseq_db.db.set_meta_value('min_length_of_long_fiveprime_extension', self.min_length_of_long_fiveprime_extension)
+        trnaseq_db.db.set_meta_value('trna_with_short_fiveprime_extension', trna_with_short_fiveprime_extension_read_count)
+        trnaseq_db.db.set_meta_value('trna_with_long_fiveprime_extension', trna_with_long_fiveprime_extension_read_count)
         trnaseq_db.db.set_meta_value('trna_reads_with_extrapolated_fiveprime_feature', trna_with_extrapolated_fiveprime_feature_read_count)
         trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_cca', trna_with_threeprime_cca_read_count)
         trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_cc', trna_with_threeprime_cc_read_count)
@@ -1126,8 +1209,8 @@ class TRNASeqDataset:
         self.run.info("Unique profiled tRNA sequences", uniq_trna_count)
         self.run.info("Profiled reads with anticodon", trna_containing_anticodon_read_count)
         self.run.info("Profiled reads spanning acceptor stem", full_length_trna_read_count)
-        self.run.info("Profiled reads with 1-3 extra 5' bases", trna_with_one_to_three_extra_fiveprime_bases_read_count)
-        self.run.info("Profiled reads with >3 extra 5' bases", trna_with_more_than_three_extra_fiveprime_bases_read_count)
+        self.run.info("Profiled reads with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), trna_with_short_fiveprime_extension_read_count)
+        self.run.info("Profiled reads with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), trna_with_long_fiveprime_extension_read_count)
         self.run.info("Profiled reads with extrapolated 5' feature", trna_with_extrapolated_fiveprime_feature_read_count)
         self.run.info("Profiled reads ending in 3'-CCA", trna_with_threeprime_cca_read_count)
         self.run.info("Profiled reads ending in 3'-CC", trna_with_threeprime_cc_read_count)
@@ -1144,8 +1227,9 @@ class TRNASeqDataset:
             f.write(self.get_summary_line("Unique profiled tRNA sequences", uniq_trna_count))
             f.write(self.get_summary_line("Profiled reads with anticodon", trna_containing_anticodon_read_count))
             f.write(self.get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_read_count))
-            f.write(self.get_summary_line("Profiled reads with 1-3 extra 5' bases", trna_with_one_to_three_extra_fiveprime_bases_read_count))
-            f.write(self.get_summary_line("Profiled reads with >3 extra 5' bases", trna_with_more_than_three_extra_fiveprime_bases_read_count))
+            f.write(self.get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
+            f.write(self.get_summary_line("Profiled reads with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), trna_with_short_fiveprime_extension_read_count))
+            f.write(self.get_summary_line("Profiled reads with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), trna_with_long_fiveprime_extension_read_count))
             f.write(self.get_summary_line("Profiled reads with extrapolated 5' feature", trna_with_extrapolated_fiveprime_feature_read_count))
             f.write(self.get_summary_line("Profiled reads ending in 3'-CCA", trna_with_threeprime_cca_read_count))
             f.write(self.get_summary_line("Profiled reads ending in 3'-CC", trna_with_threeprime_cc_read_count))
@@ -1361,8 +1445,11 @@ class TRNASeqDataset:
                     norm_seq_index, ref_fiveprime_length, _ = alignment.aligned_target.name # extra 5' index doesn't matter now
 
                     norm_stop_pos = ref_alignment_stop - ref_fiveprime_length
-                    if norm_stop_pos < 0:
+                    if norm_stop_pos <= 0:
                         # Ignore queries that align entirely to extra 5' bases.
+                        # Sequences mapping exclusively to the 5' extension
+                        # that are long enough to fulfill the minimum length requirement
+                        # are often mapping to an artifactual chimeric sequence.
                         continue
 
                     norm_seq = self.norm_trna_seqs[norm_seq_index]
@@ -1430,6 +1517,7 @@ class TRNASeqDataset:
         uniq_mapped_count = 0
         for nontrna_index in sorted(nontrna_indices, reverse=True):
             uniq_mapped_seq = self.uniq_nontrna_seqs.pop(nontrna_index)
+            self.uniq_trna_seqs.append(uniq_mapped_seq)
             uniq_mapped_count += 1
 
             if uniq_mapped_seq.extra_fiveprime_length > 0:
@@ -1654,9 +1742,9 @@ class TRNASeqDataset:
         ==========
         names_of_norm_seqs_assigned_to_mod_seqs : list
             The representative name strings of normalized sequences
-            that were assigned to modified sequences on the basis of potential substitutions,
-            which are excluded from the normalized sequence deletion search space,
-            as they cannot have deletions due to how substitutions were found by clustering
+            that were assigned to modified sequences on the basis of potential substitutions --
+            these sequences are excluded from the normalized sequence deletion search space,
+            as they cannot have deletions due to how substitutions are found via clustering
         """
 
         start_time = time()
@@ -1714,6 +1802,35 @@ class TRNASeqDataset:
         self.progress.end()
 
 
+    def write_sequences_table(self):
+        self.progress.new("Writing tRNA-seq database table of unique tRNA sequences")
+        self.progress.update("...")
+
+        sequences_table_entries = []
+        for uniq_seq in self.uniq_trna_seqs:
+            sequences_table_entries.append(
+                (uniq_seq.represent_name,
+                 uniq_seq.read_count,
+                 uniq_seq.id_method,
+                 uniq_seq.seq_string)
+            )
+
+        trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        # Overwrite the existing table if starting from a checkpoint.
+        if self.load_checkpoint:
+            trnaseq_db.db.drop_table('sequences')
+            trnaseq_db.db.create_table('sequences',
+                                       tables.trnaseq_sequences_table_structure,
+                                       tables.trnaseq_sequences_table_types)
+        trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
+                                 % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
+                                 sequences_table_entries)
+
+        trnaseq_db.disconnect()
+
+        self.progress.end()
+
+
     def write_trimmed_table(self):
         self.progress.new("Writing tRNA-seq database table of trimmed tRNA sequences")
         self.progress.update("...")
@@ -1725,6 +1842,7 @@ class TRNASeqDataset:
                 (trimmed_seq.represent_name,
                  len(trimmed_seq.uniq_seqs),
                  trimmed_seq.read_count,
+                 trimmed_seq.id_method,
                  trimmed_seq.seq_string,
                  norm_seq_count,
                  trimmed_seq.uniq_with_extra_fiveprime_count,
@@ -1736,7 +1854,9 @@ class TRNASeqDataset:
         # Overwrite the existing table if starting from a checkpoint.
         if self.load_checkpoint:
             trnaseq_db.db.drop_table('trimmed')
-            trnaseq_db.db.create_table('trimmed', tables.trnaseq_trimmed_table_structure, tables.trnaseq_trimmed_table_types)
+            trnaseq_db.db.create_table('trimmed',
+                                       tables.trnaseq_trimmed_table_structure,
+                                       tables.trnaseq_trimmed_table_types)
         trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                  % ('trimmed', ','.join('?' * len(tables.trnaseq_trimmed_table_structure))),
                                  trimmed_table_entries)
@@ -1746,9 +1866,15 @@ class TRNASeqDataset:
         # the total count of trimmed sequence objects combines apples and oranges
         # and so should not be recorded or reported.
 
+        # Minimum mapped tRNA fragment size
+        trnaseq_db.db.set_meta_value('min_mapped_trna_fragment_size', self.min_trna_frag_size)
+
         trnaseq_db.disconnect()
 
         self.progress.end()
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
 
 
     def write_normalized_table(self):
@@ -1757,6 +1883,20 @@ class TRNASeqDataset:
 
         norm_table_entries = []
         for norm_seq in self.norm_trna_seqs:
+            specific_long_fiveprime_extensions = ''
+            specific_long_fiveprime_extension_read_counts = ''
+            for fiveprime_extension_string, read_count in sorted(norm_seq.specific_long_fiveprime_extension_dict.items(),
+                                                                 key=lambda item: -len(item[0])):
+                specific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                specific_long_fiveprime_extension_read_counts += str(read_count) + ','
+
+            nonspecific_long_fiveprime_extensions = ''
+            nonspecific_long_fiveprime_extension_read_counts = ''
+            for fiveprime_extension_string, read_count in sorted(norm_seq.nonspecific_long_fiveprime_extension_dict.items(),
+                                                                 key=lambda item: -len(item[0])):
+                nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
+
             norm_table_entries.append(
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
@@ -1770,8 +1910,13 @@ class TRNASeqDataset:
                  norm_seq.count_of_specific_reads_with_extra_fiveprime,
                  norm_seq.count_of_nonspecific_reads_with_extra_fiveprime,
                  norm_seq.specific_mapped_read_count,
-                 norm_seq.nonspecific_mapped_read_count)
-                + tuple(norm_seq.read_acceptor_variant_count_dict.values())
+                 norm_seq.nonspecific_mapped_read_count,
+                 specific_long_fiveprime_extensions,
+                 specific_long_fiveprime_extension_read_counts,
+                 nonspecific_long_fiveprime_extensions,
+                 nonspecific_long_fiveprime_extension_read_counts)
+                + tuple(norm_seq.specific_read_acceptor_variant_count_dict.values())
+                + tuple(norm_seq.nonspecific_read_acceptor_variant_count_dict.values())
             )
 
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -1806,6 +1951,20 @@ class TRNASeqDataset:
 
         mod_table_entries = []
         for mod_seq in self.mod_trna_seqs:
+            specific_long_fiveprime_extensions = ''
+            specific_long_fiveprime_extension_read_counts = ''
+            for fiveprime_extension_string, read_count in sorted(mod_seq.specific_long_fiveprime_extension_dict.items(),
+                                                                 key=lambda item: -len(item[0])):
+                specific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                specific_long_fiveprime_extension_read_counts += str(read_count) + ','
+
+            nonspecific_long_fiveprime_extensions = ''
+            nonspecific_long_fiveprime_extension_read_counts = ''
+            for fiveprime_extension_string, read_count in sorted(mod_seq.nonspecific_long_fiveprime_extension_dict.items(),
+                                                                 key=lambda item: -len(item[0])):
+                nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
+
             mod_table_entries.append(
                 (mod_seq.represent_name,
                  mod_seq.mean_specific_cov,
@@ -1828,7 +1987,13 @@ class TRNASeqDataset:
                    mod_seq.count_of_specific_reads_with_extra_fiveprime,
                    mod_seq.count_of_nonspecific_reads_with_extra_fiveprime,
                    mod_seq.specific_mapped_read_count,
-                   mod_seq.nonspecific_mapped_read_count)
+                   mod_seq.nonspecific_mapped_read_count,
+                   specific_long_fiveprime_extensions,
+                   specific_long_fiveprime_extension_read_counts,
+                   nonspecific_long_fiveprime_extensions,
+                   nonspecific_long_fiveprime_extension_read_counts)
+                + tuple(mod_seq.specific_read_acceptor_variant_count_dict.values())
+                + tuple(mod_seq.nonspecific_read_acceptor_variant_count_dict.values())
             )
 
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -1842,6 +2007,9 @@ class TRNASeqDataset:
                                  % ('modified', ','.join('?' * len(tables.trnaseq_modified_table_structure))),
                                  mod_table_entries)
 
+        trnaseq_db.db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
+        trnaseq_db.db.set_meta_value('max_deletion_size', self.max_del_size)
+
         mod_seq_count = len(self.mod_trna_seqs)
         trnaseq_db.db.set_meta_value('max_possible_num_modified_trna_seqs', mod_seq_count)
         trnaseq_db.disconnect()
@@ -1851,6 +2019,8 @@ class TRNASeqDataset:
         self.run.info("Max possible unique modified tRNA sequences", mod_seq_count)
 
         with open(self.analysis_summary_path, 'a') as f:
+            f.write(self.get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
+            f.write(self.get_summary_line("Max deletion size", self.max_del_size))
             f.write(self.get_summary_line("Max possible unique modified tRNA sequences", mod_seq_count))
 
 
@@ -1869,12 +2039,12 @@ class TRNASeqDataset:
 
 
     def write_trimmed_supplement(self):
-        """This supplementary file is useful for inspecting the spectrum of 5'/3' extensions.
+        """Write a supplementary file showing the spectrum of 5'/3' extensions of core trimmed tRNA sequences.
 
-        Mapped trimmed sequences are not considered,
-        as each unique mapped sequence generates its own trimmed sequence object.
+        Mapped, as opposed to profiled, trimmed sequences are not considered,
+        as each unique mapped sequence with potentially varying 5' ends generates its own trimmed sequence object.
         The 5' extension of a mapped sequence may represent all but a small number of nucleotides in the sequence,
-        so sequences identical in the non-5' section are not dereplicated into one trimmed sequence object.
+        so sequences identical in the non-5' section are not dereplicated into a single trimmed sequence object.
         """
 
         self.progress.new("Writing a file showing the 5'/3' ends of each trimmed profiled tRNA sequence")
@@ -1900,27 +2070,6 @@ class TRNASeqDataset:
         self.progress.end()
 
         self.run.info("Output trimmed tRNA file", self.trimmed_ends_path)
-
-
-    def write_normalized_supplement(self):
-        self.progress.new("Writing a file showing how normalized tRNA sequences were formed from trimmed sequences")
-        self.progress.update("...")
-
-        with open(self.norm_frag_path, 'w') as norm_file:
-            norm_file.write("\t".join(self.NORM_FRAG_HEADER) + "\n")
-            for norm_seq in sorted(self.norm_trna_seqs, key=lambda norm_seq: -norm_seq.mean_specific_cov):
-                represent_name = norm_seq.represent_name
-                for trimmed_seq, start_pos, stop_pos in sorted(
-                    zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions),
-                    key=lambda t: (t[1], -t[2])):
-                    norm_file.write(represent_name + "\t"
-                                    + trimmed_seq.represent_name + "\t"
-                                    + str(start_pos) + "\t"
-                                    + str(stop_pos) + "\n")
-
-        self.progress.end()
-
-        self.run.info("Output normalized tRNA file", self.norm_frag_path)
 
 
     def process(self):
@@ -2137,6 +2286,7 @@ class TRNASeqDataset:
         self.calc_normalization_stats()
 
         # Write more tables to the database.
+        self.write_sequences_table()
         self.write_trimmed_table()
         self.write_normalized_table()
         self.write_modified_table()
@@ -2144,7 +2294,6 @@ class TRNASeqDataset:
         # Write supplementary text files.
         self.write_uniq_nontrna_supplement()
         self.write_trimmed_supplement()
-        self.write_normalized_supplement()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Total time elapsed (min)",
