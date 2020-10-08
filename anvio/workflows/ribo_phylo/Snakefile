@@ -93,7 +93,7 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
     """This rule will..."""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file{ribosomal_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}.fasta")
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_renamed.fasta"),
@@ -104,6 +104,33 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
                               --simplify-names \
                               --report-file {output.report_file} \
                               -o {output.fasta} >> {log} 2>&1"
+
+rule cat_misc_data_to_one_file:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+    input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data.tsv"),
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "cat {input} >> {output}"
+
+
+rule join_renamed_fasta_with_misc_data:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{ribosomal_protein_name}.log")
+    input:
+        misc_data_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data.tsv"),
+        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
+    output: misc_data_final = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data_final.tsv")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    script:
+        "scripts/join_renamed_fasta_with_misc_data.py"
+
+
 
 # RIBOSOMAL_PROTEIN = ["Ribosomal_L16"]
 # # RIBOSOMAL_PROTEIN = ["Ribosomal_L16", "Ribosomal_L17","Ribosomal_S2", "Ribosomal_S3_C", "Ribosomal_S7", "Ribosomal_L17", "Ribosomal_L22", "Ribosomal_S9", "Ribosomal_L20", "Ribosomal_L2"]
