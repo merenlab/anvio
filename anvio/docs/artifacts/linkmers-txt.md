@@ -1,6 +1,6 @@
-This is a tab-delimited table where each column represents a 
+This is a tab-delimited table where each row represents a a short read that mapped to a specific position in a reference contig. This is the output of %(anvi-report-linkmers)s, where those reference positions are given by the user.
 
-For instance, if the input for %(anvi-report-linkmers)s was similar to,
+For instance, if %(anvi-report-linkmers)s was run on three samples (`SAMPLE-01.bam`, `SAMPLE-02.bam`, and `SAMPLE-03.bam`) with this contigs-and-positions file,
 
 <table>
   <tbody>
@@ -11,7 +11,7 @@ For instance, if the input for %(anvi-report-linkmers)s was similar to,
   </tbody>
 </table>
 
-The resulting TAB-delimited %(linkmers-txt)s file reported by %(anvi-report-linkmers)s run on three BAM files (SAMPLE-01.bam, SAMPLE-02.bam, SAMPLE-03.bam) would be similar to the following,
+Then the output would be the following: 
 
 |entry_id|sample_id|request_id|contig_name|pos_in_contig|pos_in_read|base|read_unique_id|read_X|reverse|sequence|
 |:--|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--|
@@ -98,7 +98,7 @@ The resulting TAB-delimited %(linkmers-txt)s file reported by %(anvi-report-link
 |000000161|SAMPLE-03|001|contig_1720|7111|100|G|18f3cf83405581ea6|read-2|False|TTACATAATCGTAAGCACAGTTGTATAGTTTCGTTTCAGTAATTAAGTAAAATGAGGTTAAAGAGGTGACAGAAATGAAAAAGAGATTAGGGTTAGGTTTGGGAATGTTTTTAATAACAATTTTATCTAATTTGTCAGGAGTTATGGCTTATAGTGGTAATAGTAATTTACCGGGAAGT|
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
-Where,
+Where
 
 * `sample_id` matches to the input BAM file name,
 
