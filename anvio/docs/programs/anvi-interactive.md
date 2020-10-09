@@ -44,7 +44,7 @@ You can also start the interface in "gene mode," in which each item of the centr
 You can do that with the flag `--manual-mode` and then by providing any of the following types of files: 
 
 - a %(fasta)s file
-- a tab-delimited view data file
+- a tab-delimited view data file (%(view-data)s)
 - a NEWICK formatted tree
 - a flat file containing the order of the items you want to display
 
