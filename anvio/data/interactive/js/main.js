@@ -1746,6 +1746,7 @@ function showGeneClusterDetails(bin_id, updateOnly) {
         return;
 
     let bin_info = bins.ExportBin(bin_id);
+    console.log(bin_info);
 
     $.ajax({
         type: 'POST',
@@ -1802,7 +1803,7 @@ function showGeneClusterDetails(bin_id, updateOnly) {
 
         content += `</tbody></table>`
 
-        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for gene clusters in ' + bin_id, content + '</table>');
+        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content + '</table>');
         }
     });
 
