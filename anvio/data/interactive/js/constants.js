@@ -65,6 +65,9 @@ var named_functional_sources = {
 
 
 function decorateAccession(source, accession_id){
+    if (!accession_id)
+        return accession_id;
+
     if (source in named_functional_sources){
         if ('accession_decorator' in named_functional_sources[source]){
             return named_functional_sources[source]['accession_decorator'](accession_id);
