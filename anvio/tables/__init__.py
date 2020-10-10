@@ -357,4 +357,6 @@ requires_unique_entry_id = {
     pdb_data_table_name: False,
     module_table_name: False,
     pathway_table_name: False,
+    # FIXME just trying to get some shit done. don't know why this is a problem
+    trna_taxonomy: False
 }
