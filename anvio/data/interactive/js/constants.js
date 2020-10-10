@@ -41,6 +41,20 @@ var named_functional_sources = {
                                 }),
     },
 
+    'KOfam': {
+        'accession_decorator': (function (d) {
+                                    var kos = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/dbget-bin/www_bget?ko:' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return kos.join(', ');
+                                }),
+    },
+
+    'Pfam': {
+        'accession_decorator': (function (d) {
+                                    var pfams = d.split(', ').map((function (c){return '<a href="https://pfam.xfam.org/family/' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return pfams.join(', ');
+                                }),
+    },
+
     'COG_CATEGORY': {
         'annotation_decorator': (function (d) {
                                     var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
