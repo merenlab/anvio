@@ -27,7 +27,7 @@ var COG_categories = {
 }
 
 var named_functional_sources = {
-    'EGGNOG (BACT)': {
+    'EGGNOG_BACT': {
         'accession_decorator': (function (d) {
                                     return '<a href="http://www.uniprot.org/uniprot/?query=' + d + '&sort=score" target="_blank">' + d + '</a>';
                                 }),
