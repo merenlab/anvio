@@ -929,6 +929,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
+            self.init_gene_clusters_functions_summary_dict()
 
         PanSuperclass.init_items_additional_data(self)
 
