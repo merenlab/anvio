@@ -19,7 +19,6 @@ import base64
 import random
 import getpass
 import argparse
-import requests
 import datetime
 import importlib
 
