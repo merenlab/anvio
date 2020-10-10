@@ -748,6 +748,27 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
 };
 
 
+Bins.prototype.ExportBin = function(bin_id_to_export, use_bin_id=false) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
+        let bin_id = tr.getAttribute('bin-id');
+
+        if (bin_id == bin_id_to_export) {
+            let bin_name = tr.querySelector('.bin-name').value;
+            let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
+            let items = [];
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    items.push(node.label);
+                }
+            }
+
+            return {'items': items, 'color': bin_color, 'bin_name': bin_name};
+        }
+    }
+};
+
+
 Bins.prototype.HighlightItems = function(item_list) {
     if (!Array.isArray(item_list)) {
         item_list = [item_list];
