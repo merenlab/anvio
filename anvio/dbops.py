@@ -1532,8 +1532,6 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
-    def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
-        """ A function to assign functions to gene clusters for an annotation_source
     def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
         """Returns the most frequently occurring functional annotation across genes in a gene cluster
         for a given functional annotation source.
@@ -1569,24 +1567,19 @@ class PanSuperclass(object):
                     annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
                     functions_counter[annotation_blob] += 1
 
-            use an annotation source and choose a function for the gene cluster
-            using a voting approach, i.e. the most commonly annotated function
-            for the genes in the gene cluster will be chosen.
+        if not len(functions_counter):
+            return (None, None)
 
-            If multiple functinos have the same number of votes then one will
-            be chosen arbitrarily.
+        most_common_accession, most_common_function = functions_counter.most_common()[0][0].split('|||')
 
-            OUTPUT:
+        return (most_common_accession, most_common_function)
 
-            gene_clusters_functions_summary_dict
-                dictionary with gene_cluster ids as keys
-                the values are dictionaries, where:
-                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
 
-                If you want to see all the functions and number of votes per function, simply do:
-                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
-                    print('For gene cluster %s: the number of votes for function %s is %s'\
-                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+    def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
+        """Returns a dictionary where each gene cluster is associated with a single function.
+
+           See `get_gene_cluster_function_summary` for details since this function is merely
+           calling it for each gene cluster.
         """
 
         if functional_annotation_source not in self.gene_clusters_function_sources:
