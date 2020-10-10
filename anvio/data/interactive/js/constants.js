@@ -64,6 +64,25 @@ var named_functional_sources = {
 }
 
 
+function getPrettyFunctionsString(fstring, source) {
+    if (!fstring)
+        return ["-"];
+    else
+        farray = fstring.split('!!!');
+
+        if ((source == null) || source == '' || source == 'None')
+            return farray.join(' / ');
+        else {
+            var dec = new Array();
+
+            for (f in farray)
+                dec.push(decorateAccession(source, farray[f]))
+
+            return dec.join(' / ')
+        }
+}
+
+
 function decorateAccession(source, accession_id){
     if (!accession_id)
         return accession_id;
