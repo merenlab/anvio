@@ -86,8 +86,8 @@ Bins.prototype.NewBin = function(id, binState) {
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
                        ` : ''}
                        ${mode == 'pan' ? `
-                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}"></td>
-                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>                           
+                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for quick gene cluster summaries" onClick="showGeneClusterDetails(${id});"></td>
+                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>
                        ` : `
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
@@ -745,6 +745,27 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
     }
 
     return {'data': data, 'colors': colors};
+};
+
+
+Bins.prototype.ExportBin = function(bin_id_to_export, use_bin_id=false) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
+        let bin_id = tr.getAttribute('bin-id');
+
+        if (bin_id == bin_id_to_export) {
+            let bin_name = tr.querySelector('.bin-name').value;
+            let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
+            let items = [];
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    items.push(node.label);
+                }
+            }
+
+            return {'items': items, 'color': bin_color, 'bin_name': bin_name};
+        }
+    }
 };
 
 

@@ -101,13 +101,19 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '<th>Annotation</th></thead>';
     functions_table_html += '<tbody>';
 
-    for (function_source in gene.functions){
+    const gene_functions = {};
+    Object.keys(gene.functions).sort().forEach(function(key) {
+      gene_functions[key] = gene.functions[key];
+    });
+
+    console.log(gene_functions);
+    for (function_source in gene_functions){
         functions_table_html += '<tr>';
 
         functions_table_html += '<td><b>' + function_source + '</b></td>';
         if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
-            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
+            functions_table_html += '<td>' + getPrettyFunctionsString(gene.functions[function_source][0], function_source) + '</td>';
+            functions_table_html += '<td><em>' + getPrettyFunctionsString(gene.functions[function_source][1]) + '</em></td>';
         } else {
             functions_table_html += '<td>&nbsp;</td>';
             functions_table_html += '<td>&nbsp;</td>';
