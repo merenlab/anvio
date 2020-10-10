@@ -1534,6 +1534,40 @@ class PanSuperclass(object):
 
     def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
         """ A function to assign functions to gene clusters for an annotation_source
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
+        """Returns the most frequently occurring functional annotation across genes in a gene cluster
+        for a given functional annotation source.
+
+        A single function and accession number is determined purely based on frequencies of occurrence.
+        If multiple functions have the same number of votes then one will be chosen arbitrarily.
+
+        Parameters
+        ==========
+        gene_cluster_id : str
+            A gene cluster id that is defined in the `gene_clusters_functions_dict`
+
+        functional_annotation_source : str
+            A known functional annotation source
+
+        Returns
+        =======
+        (most_common_accession, most_common_function) : tuple
+            The representative function and its accession id for `gene_cluster_id` and `functional_annotation_source`
+        """
+
+        if not self.functions_initialized:
+            raise ConfigError("Although it is an expensive step, this function currently requires functions to be "
+                              "initialized first :/ If you are a programmer and need this functionality to be much "
+                              "more effective for ad hoc use, please let us know (the right solution in that case is "
+                              "to work directly with the genome storage database to recover functions for a single gene "
+                              "cluster).")
+
+        functions_counter = Counter({})
+        for genome_name in self.gene_clusters_functions_dict[gene_cluster_id]:
+            for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
+                if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id]:
+                    annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
+                    functions_counter[annotation_blob] += 1
 
             use an annotation source and choose a function for the gene cluster
             using a voting approach, i.e. the most commonly annotated function
