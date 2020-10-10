@@ -1599,6 +1599,7 @@ function drawTree() {
     return defer.promise();
 }
 
+
 function showContigNames(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -1733,6 +1734,80 @@ function showCompleteness(bin_id, updateOnly) {
 
     showDraggableDialog(title, msg, updateOnly);
 }
+
+
+function showGeneClusterDetails(bin_id, updateOnly) {
+    if (typeof updateOnly === 'undefined')
+        updateOnly = false;
+
+    var title = 'Gene clusters in "' + $('#bin_name_' + bin_id).val() + '"';
+
+    if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
+        return;
+
+    let bin_info = bins.ExportBin(bin_id);
+
+    $.ajax({
+        type: 'POST',
+        url: '/data/get_functions_for_gene_clusters',
+        data: {
+            'gene_clusters': JSON.stringify(bin_info['items'], null, 4),
+        },
+        success: (response) => {
+            if (response.hasOwnProperty('status') && response.status != 0) {
+                toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
+                return;
+            }
+
+            let content = `<table class="table table-striped">
+                           <thead class="thead-light">
+                           <tr>
+                             <th>Gene cluster</th>
+                             <th>Source</th>
+                             <th>Accession</th>
+                             <th>Function</th>
+                           </tr>
+                           </thead>
+
+                           <tbody>`;
+
+            // building the table for each gene cluster
+            Object.keys(response['functions']).map(function(gene_cluster_name) {
+
+                let d = response['functions'][gene_cluster_name];
+
+                Object.keys(response['sources']).map(function(index) {
+                    let function_source = response['sources'][index];
+
+                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source)
+                    function_string = getPrettyFunctionsString(d[function_source]['function'])
+
+
+                    if (index == 0) {
+                        content += `<tr style="border-top: 3px solid #d0d0d0;">
+                                    <td rowspan="${  Object.keys(response['sources']).length }"><b>${ gene_cluster_name }</b></td>
+                                    <td>${ function_source }</a></td>
+                                    <td>${ accession_string }</td>
+                                    <td>${ function_string }</td>
+                                    </tr>`;
+                    } else {
+                        content += `<tr>
+                                    <td>${ function_source }</a></td>
+                                    <td>${ accession_string }</td>
+                                    <td>${ function_string }</td>
+                                    </tr>`;
+                    }
+                });
+            });
+
+        content += `</tbody></table>`
+
+        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for gene clusters in ' + bin_id, content + '</table>');
+        }
+    });
+
+}
+
 
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
