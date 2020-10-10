@@ -86,8 +86,8 @@ Bins.prototype.NewBin = function(id, binState) {
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
                        ` : ''}
                        ${mode == 'pan' ? `
-                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}"></td>
-                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>                           
+                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for quick gene cluster summaries" onClick="showGeneClusterDetails(${id});"></td>
+                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>
                        ` : `
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
