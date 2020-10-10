@@ -1102,8 +1102,11 @@ class PanSuperclass(object):
         self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
+        # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
+        # this one below is initialized by self.init_gene_cluster_functions_summary(): 
+        self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
@@ -1606,6 +1609,35 @@ class PanSuperclass(object):
         self.progress.end()
 
         return gene_clusters_functions_summary_dict
+
+
+    def init_gene_clusters_functions_summary_dict(self):
+        """ A function to initialize the `gene_clusters_functions_summary_dict` by calling
+            the atomic function `get_gene_clusters_functions_summary_dict` for all the
+            functional annotaiton sources.
+        """
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            self.run.warning("Someone asked anvi'o to initialize a gene cluster functions summary dict, but it seems there "
+                             "are no gene cluster functions even after initializing functions for the pangenome. So we move "
+                             "on without any summary dict for functions and/or drama about it to let the downstream analyses "
+                             "decide how to punish the unlucky.")
+            return
+
+        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        for gene_cluster_id in self.gene_clusters_functions_dict:
+            self.progress.update(f'{gene_cluster_id} ...', increment=True)
+
+            self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
+
+            for functional_annotation_source in self.gene_clusters_function_sources:
+                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
+                self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
+
+        self.progress.end()
 
 
     def init_gene_clusters_functions(self):
