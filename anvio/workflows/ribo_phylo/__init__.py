@@ -81,6 +81,9 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_EXTRACTED_RIBO_PROTEINS_TAXONOMY"})
         self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_RIBOSOMAL_PROTEIN_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_1": "05_RIBOSOMAL_PROTEIN_MSA_1"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_2": "06_RIBOSOMAL_PROTEIN_MSA_2"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_TREES": "07_RIBOSOMAL_PROTEIN_TREES"})
 
 
     def init(self):
@@ -146,7 +149,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
     #                                   in zip(self.sample_names, self.sample_info['split'])]
 
         self.target_files = self.get_target_files()
-        print(self.target_files)
 
     def get_target_files(self):
         target_files = []
@@ -172,13 +174,19 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         #         target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], sample_name, tail_path)
         #         target_files.append(target_file)
 
-        # Target files for filter_for_scg_sequences_and_metadata:
+        # # Target files for filter_for_scg_sequences_and_metadata:
+        # for ribosomal_protein_name in self.Ribosomal_protein_list:
+
+        #     tail_path = "%s_misc_data_final.tsv" % (ribosomal_protein_name)
+        #     target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], tail_path)
+        #     target_files.append(target_file)
+
+        # Target files for mmseqs:
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
-            tail_path = "%s_misc_data_final.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], tail_path)
+            tail_path = "%s.contree" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
             target_files.append(target_file)
-            
         # # Target files for filter_for_scg_sequences_and_metadata:
         # for ribosomal_protein_name in self.Ribosomal_protein_list:
 

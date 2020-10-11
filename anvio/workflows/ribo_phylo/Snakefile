@@ -82,8 +82,8 @@ rule cat_ribo_proteins_to_one_fasta:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
-    input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fasta"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}.fasta"),
+    input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}.fasta"), sample_names = M.sample_name_list, ribosomal_protein_names = M.Ribosomal_protein_list)
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all.fasta"),
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
     shell:
         "cat {input} >> {output}"
@@ -94,9 +94,9 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}.fasta")
-    output: 
-        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_renamed.fasta"),
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all.fasta")
+    output:
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_renamed.fasta"),
         report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
     shell:
@@ -111,7 +111,7 @@ rule cat_misc_data_to_one_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data.tsv"),
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_misc_data.tsv"),
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
     shell:
         "cat {input} >> {output}"
@@ -123,7 +123,7 @@ rule join_renamed_fasta_with_misc_data:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{ribosomal_protein_name}.log")
     input:
-        misc_data_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data.tsv"),
+        misc_data_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_misc_data.tsv"),
         reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
     output: misc_data_final = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data_final.tsv")
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
@@ -131,147 +131,140 @@ rule join_renamed_fasta_with_misc_data:
         "scripts/join_renamed_fasta_with_misc_data.py"
 
 
+rule remove_redundant_sequences_mmseqs:
+    """This rule will..."""
 
-# RIBOSOMAL_PROTEIN = ["Ribosomal_L16"]
-# # RIBOSOMAL_PROTEIN = ["Ribosomal_L16", "Ribosomal_L17","Ribosomal_S2", "Ribosomal_S3_C", "Ribosomal_S7", "Ribosomal_L17", "Ribosomal_L22", "Ribosomal_S9", "Ribosomal_L20", "Ribosomal_L2"]
-
-# rule all:
-#     input:
-#         expand("{RP}_protein/04_trees/{RP}.contree", RP=RIBOSOMAL_PROTEIN)
-
-# # For simplicity, the rules here are designed to be read in order or task
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "remove_redundant_sequences_mmseqs_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_renamed.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR_rep_seq.fasta")
+    params:
+        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR"),
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_tmp")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "mmseqs easy-cluster {input} \
+                             {params.output_prefix} \
+                             {params.mmseqs_tmp} \
+                             --min-seq-id 1 >> {log} 2>&1"
 
 # 1. Initial alignment, trim, and removal of sequences with 50% gaps or more
-# rule align:
-# 	input:
-# 		"{ribosomal_protein}_protein/02_{ribosomal_protein}_all_renamed_NR_rep_seq.fasta"
-# 	output:
-# 		"{ribosomal_protein}_protein/01_aligned/{ribosomal_protein}_all_aligned.fasta"
-# 	threads: 35
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_muscle.log"
-# 	shell:
-# 		"muscle -in {input} \
-# 				-out {output} 2> {log}"
+rule align_muscle:
+    """This rule will..."""
 
-# rule trim_alignment:
-# 	input:
-# 		"{ribosomal_protein}_protein/01_aligned/{ribosomal_protein}_all_aligned.fasta"
-# 	output:
-# 		"{ribosomal_protein}_protein/02_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
-# 	threads: 10
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_trimal.log"
-# 	shell:
-# 		"trimal -in {input} \
-# 				-out {output} \
-# 				-gt 0.50 2> {log}"
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_{ribosomal_protein_name}.log")
+	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR_rep_seq.fasta")
+	output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_aligned.fasta")
+	threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+	shell:
+		"muscle -in {input} \
+				-out {output} 2> {log}"
 
-# rule remove_gaps:
-# 	input:
-# 		"{ribosomal_protein}_protein/02_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
-# 	params:
-# 		seq_counts_tsv="{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_gaps_counts"
-# 	output:
-# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
-# 	threads: 10
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_remove_gaps.log"
-# 	shell:
-# 		"anvi-script-reformat-fasta {input} \
-# 									-o {output} \
-# 									--max-percentage-gaps 50 \
-# 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
+rule trim_alignment:
+    """This rule will..."""
 
-# # 2. Remove sequences that have an outlier set of gaps in a sequences
-# # - this step further refine the MSA by removing more sequences that have too many gaps.
-# # to make this smarter, we will rely on the standard outlier threshold of 1.5*IQR and remove any
-# # sequences with more gaps than that. To accomplish this the following steps will be taken:
-# # * Get the distribution of gaps counts per sequences
-# # * calculate the outlier threshold 1.5*IQR
-# # * remove sequences greater than that threshold
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
+	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_aligned.fasta")
+	output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed.fasta")
+	shell:
+		"trimal -in {input} \
+				-out {output} \
+				-gt 0.50 2> {log}"
 
-# rule get_gap_count_distribution:
-# 	input:
-# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
-# 	output:
-# 		seq_counts_tsv="{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_gaps_counts"
-# 	threads: 5
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}get_gap_count_distribution.log"
-# 	shell:
-# 		"anvi-script-reformat-fasta {input} \
-#  									--export-gap-counts-table {output.seq_counts_tsv} >> {log} 2>&1"
+rule remove_gaps:
+    """This rule will..."""
 
-# # rule find_IQR:
-# # 	input:
-# # 		"{ribosomal_protein}_protein/04_remove_poorly_aligned_sequences/{ribosomal_protein}_gaps_counts.tsv"
-# # 	run:
-# # 		pd.read_csv({import})]
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+    params: seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_01")
+	shell:
+		"anvi-script-reformat-fasta {input} \
+									-o {output} \
+									--max-percentage-gaps 50 \
+									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
-# # rule filter_out_outlier_sequences
+# 2. Remove sequences that have an outlier set of gaps in a sequences
+# - this step further refine the MSA by removing more sequences that have too many gaps.
+# to make this smarter, we will rely on the standard outlier threshold of 1.5*IQR and remove any
+# sequences with more gaps than that. To accomplish this the following steps will be taken:
+# * Get the distribution of gaps counts per sequences
+# * calculate the outlier threshold 1.5*IQR
+# * remove sequences greater than that threshold
 
+rule get_gap_count_distribution:
+    """This rule will..."""
 
-# # 3. Re-prepare MSA for tree calculation
-# # Repeat step 1. now that we have the final set of sequences that don't have too many gaps
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_gap_count_distribution_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+    params: seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02_tmp")
+    shell:
+        "anvi-script-reformat-fasta {input} \
+                                    -o {output} \
+                                    --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
-# rule align_2:
-# 	input:
-# 		"{ribosomal_protein}_protein/03_gaps_removed/Ribosomal_L16_all_aligned_trimmed_gaps_removed_max_6.fasta"
-# 	output:
-# 		"{ribosomal_protein}_protein/04_re_aligned/{ribosomal_protein}_all_aligned.fasta"
-# 	threads: 30
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_muscle_2.log"
-# 	shell:
-# 		"muscle -in {input} \
-# 				-out {output} 2> {log}"
+rule filter_out_outlier_sequences:
+    """This rule will do some crazy shit... it will grab the IQR from the gaps distribution!!!"""
 
-# rule trim_alignment_2:
-# 	input:
-# 		"{ribosomal_protein}_protein/04_re_aligned/{ribosomal_protein}_all_aligned.fasta"
-# 	output:
-# 		"{ribosomal_protein}_protein/05_re_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
-# 	threads: 10
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_trimal_2.log"
-# 	shell:
-# 		"trimal -in {input} \
-# 				-out {output} \
-# 				-gt 0.50 2> {log}"
-
-# rule remove_gaps_2:
-# 	input:
-# 		"{ribosomal_protein}_protein/05_re_trimmed/{ribosomal_protein}_all_aligned_trimmed.fasta"
-# 	params:
-# 		seq_counts_tsv="{ribosomal_protein}_protein/06_gaps_re_removed/{ribosomal_protein}_gaps_counts"
-# 	output:
-# 		"{ribosomal_protein}_protein/06_gaps_re_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed.fasta"
-# 	threads: 10
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_remove_gaps_2.log"
-# 	shell:
-# 		"anvi-script-reformat-fasta {input} \
-# 									-o {output} \
-# 									--max-percentage-gaps 50 \
-# 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "filter_out_outlier_sequences_{ribosomal_protein_name}.log")
+    input:
+        tsv = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02.tsv"),
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
+    script:
+        "scripts/filter_gap_count_outlier_sequence.py"
 
 
-# # 4. Calculate the tree, FINALLY
+# 3. Re-prepare MSA for tree calculation
+# Repeat step 1. now that we have the final set of sequences that don't have too many gaps
 
-# rule calculate_tree:
-# 	input:
-# 		"{ribosomal_protein}_protein/03_gaps_removed/{ribosomal_protein}_all_aligned_trimmed_gaps_removed_maxgap_4.fasta"
-# 	params:
-# 		outfile="{ribosomal_protein}_protein/04_trees/{ribosomal_protein}"
-# 	output:
-# 		"{ribosomal_protein}_protein/04_trees/{ribosomal_protein}.contree"
-# 	threads: 39
-# 	log:
-# 		"{ribosomal_protein}_protein/00_logs/{ribosomal_protein}_iqtree.log"
-# 	shell:
-# 		"iqtree -s {input} \
-# 				-nt AUTO \
-# 				-m MFP \
-# 				-bb 1000 \
-# 				-pre {params.outfile} >> {log} 2>&1"
+rule align_muscle_2:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_2_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_aligned.fasta")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "muscle -in {input} \
+                -out {output} 2> {log}"
+
+rule trim_alignment_2:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_2_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_aligned.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_trimmed.fasta")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell:
+        "trimal -in {input} \
+                -out {output} \
+                -gt 0.50 2> {log}"
+
+
+# 4. Calculate the tree, FINALLY
+
+rule calculate_tree:
+    """This rule will..."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "calculate_tree_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_trimmed.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}.contree")
+    params:
+        outfile=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}")
+    threads: 8
+    shell:
+        "iqtree -s {input} \
+                -nt AUTO \
+                -m MFP \
+                -bb 1000 \
+                -pre {params.outfile} 2> {log}"
