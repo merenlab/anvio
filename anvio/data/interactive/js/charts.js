@@ -647,7 +647,6 @@ function toggle_nucleotide_display() {
     contextSvg.select("#AA_sequence").remove();
     contextSvg.select("#solids").remove();
     contextSvg.attr("height", 150);
-    indelContainer.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
@@ -678,7 +677,6 @@ function display_nucleotides() {
 
   if(end - start > 300 || end - start < 30) {
     contextSvg.attr("height", 150);
-    indelContainer.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
@@ -832,7 +830,6 @@ function display_nucleotides() {
                 (overlapping_genes? 5+dna_seq_height : 0);
 
   contextSvg.attr("height", 150 + extra_y);
-  indelContainer.attr("height", 150 + extra_y);
 
   // reposition gene arrow chart
   $("#gene-chart").attr("transform", "translate(50, " + (20+extra_y) + ")");
@@ -843,22 +840,6 @@ function display_nucleotides() {
   drawHighlightBoxes();
   drawAAHighlightBoxes();
   setSelectionBoxListener();
-
-  // if indels are active
-
-  // first check data to make sure it's format is valid before moving on
-  // if it's not, create a warning and don't create it
-
-  testData = {
-    "sample" : ['Day_18', 'Day_18', 'Day_18'],
-    "pos" : [10, 20, 25],
-    "gene" : [-1, -1, -1],
-    "type" : ['insertion', 'insertion', 'deletion'],
-    "length" : [6, 20, 10],
-    "sequence" : ['ACTGAT', 'ACTTAGACTTACTGACCTAG', null]
-  };
-
-  drawIndels(start, end, state['large-indel'], testData);
 }
 
 function setSelectionBoxListener() {
@@ -1444,12 +1425,6 @@ function createCharts(state){
                                                   .attr("width", width + margin.left + margin.right)
                                                   .attr("height", 0);
     $('#highlight-boxes').css("width", (width + 150) + "px");
-
-    indelContainer = d3.select("#indels").append("svg")
-                                         .attr("id", "indelsSvg")
-                                         .attr("width", width)
-                                         .attr("height", 150)
-                                         .attr("transform", "translate(50, 10)");
 
     var defs = contextSvg.append('svg:defs')
                          .attr('id', 'contextSvgDefs');
