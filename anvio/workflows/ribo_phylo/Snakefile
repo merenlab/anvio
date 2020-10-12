@@ -24,6 +24,7 @@ M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
 M.init()
 dirs_dict = M.dirs_dict
 
+# print(M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source'))
 
 rule ribo_phylo_workflow_target_rule:
     input: M.target_files
@@ -35,10 +36,12 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
     output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_all.fasta")
+    params:
+        hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source')
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
 	shell:
 		"anvi-get-sequences-for-hmm-hits -c {input} \
-                                         --hmm-source Bacteria_71 \
+                                         {params.hmm_source} \
                                          --get-aa-sequences \
                                          --gene-name {wildcards.ribosomal_protein_name} \
                                          -o {output} 2> {log}"
@@ -50,14 +53,12 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
     output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('anvi_estimate_scg_taxonomy_for_ribosomal_proteins')
 	shell:
 		"anvi-estimate-scg-taxonomy -c {input} \
                                  	--metagenome-mode \
                                  	--scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
                                  	-o {output} 2> {log}"
-
-
 
 
 rule filter_for_scg_sequences_and_metadata:
@@ -71,8 +72,7 @@ rule filter_for_scg_sequences_and_metadata:
     output:
         fasta_filtered = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fasta"),
         misc_data = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv")
-
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('filter_for_scg_sequences_and_metadata')
     script:
         "scripts/filter_for_scg_sequences_and_metadata.py"
 
@@ -84,7 +84,7 @@ rule cat_ribo_proteins_to_one_fasta:
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}.fasta"), sample_names = M.sample_name_list, ribosomal_protein_names = M.Ribosomal_protein_list)
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all.fasta"),
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell:
         "cat {input} >> {output}"
 
@@ -98,7 +98,12 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
     output:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_renamed.fasta"),
         report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    params:
+        prefix = M.get_rule_param("anvi_script_reformat_fasta", "--prefix"),
+        keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
+        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
+        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names")
+    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
     shell:
         "anvi-script-reformat-fasta {input} \
                               --simplify-names \
@@ -112,7 +117,7 @@ rule cat_misc_data_to_one_file:
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_misc_data.tsv"),
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('cat_misc_data_to_one_file')
     shell:
         "cat {input} >> {output}"
 
@@ -126,7 +131,7 @@ rule join_renamed_fasta_with_misc_data:
         misc_data_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_misc_data.tsv"),
         reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_reformat_report_all.txt")
     output: misc_data_final = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_misc_data_final.tsv")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('join_renamed_fasta_with_misc_data')
     script:
         "scripts/join_renamed_fasta_with_misc_data.py"
 
@@ -141,7 +146,7 @@ rule remove_redundant_sequences_mmseqs:
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_tmp")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('remove_redundant_sequences_mmseqs')
     shell:
         "mmseqs easy-cluster {input} \
                              {params.output_prefix} \
@@ -156,7 +161,7 @@ rule align_muscle:
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_{ribosomal_protein_name}.log")
 	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR_rep_seq.fasta")
 	output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_aligned.fasta")
-	threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+	threads: M.T('align_muscle')
 	shell:
 		"muscle -in {input} \
 				-out {output} 2> {log}"
@@ -168,6 +173,7 @@ rule trim_alignment:
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
 	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_aligned.fasta")
 	output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed.fasta")
+    # threads: M.T('trim_alignment')
 	shell:
 		"trimal -in {input} \
 				-out {output} \
@@ -181,6 +187,7 @@ rule remove_gaps:
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed.fasta")
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
     params: seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_01")
+    threads: M.T('remove_gaps')
 	shell:
 		"anvi-script-reformat-fasta {input} \
 									-o {output} \
@@ -201,11 +208,13 @@ rule get_gap_count_distribution:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gap_count_distribution_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
-    params: seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02")
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02_tmp")
+    output: seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02.tsv")
+    params: tmp_asdf=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02_tmp"),
+            seq_counts_tsv=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02")
+    threads: M.T('get_gap_count_distribution')
     shell:
         "anvi-script-reformat-fasta {input} \
-                                    -o {output} \
+                                    -o {params.tmp_asdf} \
                                     --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
 rule filter_out_outlier_sequences:
@@ -216,7 +225,9 @@ rule filter_out_outlier_sequences:
     input:
         tsv = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02.tsv"),
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+    # params: threshold
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
+    threads: M.T('filter_out_outlier_sequences')
     script:
         "scripts/filter_gap_count_outlier_sequence.py"
 
@@ -231,7 +242,7 @@ rule align_muscle_2:
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_2_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_aligned.fasta")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('align_muscle_2')
     shell:
         "muscle -in {input} \
                 -out {output} 2> {log}"
@@ -243,7 +254,7 @@ rule trim_alignment_2:
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_2_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_aligned.fasta")
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_2'], "{ribosomal_protein_name}_trimmed.fasta")
-    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    threads: M.T('trim_alignment_2')
     shell:
         "trimal -in {input} \
                 -out {output} \
@@ -261,10 +272,10 @@ rule calculate_tree:
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}.contree")
     params:
         outfile=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}")
-    threads: 8
+    threads: M.T('calculate_tree')
     shell:
         "iqtree -s {input} \
-                -nt AUTO \
+                -nt {threads} \
                 -m MFP \
                 -bb 1000 \
                 -pre {params.outfile} 2> {log}"

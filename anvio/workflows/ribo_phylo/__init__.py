@@ -33,11 +33,22 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.init_workflow_super_class(args, workflow_name='ribo_phylo')
 
         # ribo_phylo Snakemake rules
-        self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins', 
-                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins'
-                           # 'align_ribosomal_sequences',
-                           # 'trim_alignment',
-                           # 'filter_sequences_max_percen_gaps_50'
+        self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins',
+                           'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
+                           'filter_for_scg_sequences_and_metadata',
+                           'cat_ribo_proteins_to_one_fasta',
+                           'anvi_reformat_fasta_ribosomal_protein_file',
+                           'cat_misc_data_to_one_file',
+                           'join_renamed_fasta_with_misc_data',
+                           'remove_redundant_sequences_mmseqs',
+                           'align_muscle',
+                           'trim_alignment',
+                           'remove_gaps',
+                           'get_gap_count_distribution',
+                           'filter_out_outlier_sequences',
+                           'align_muscle_2',
+                           'trim_alignment_2',
+                           'calculate_tree'
                            ])
 
         self.general_params.extend(['samples_txt']) # general section of config file
@@ -47,34 +58,45 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # Parameters for each rule that are accessible in the config file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_ribosomal_proteins'] = ['run']
-        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_ribosomal_proteins'] = ['run']
-        rule_acceptable_params_dict['anvi_reformat_fasta'] = ['run',
-                                                              '--gzip-output',
-                                                              '--simplify-names']
-        rule_acceptable_params_dict['anvi_trnaseq'] = ['run',
-                                                       '--overwrite-output-destinations',
-                                                       '--description',
-                                                       '--skip-fasta-check',
-                                                       '--write-checkpoints',
-                                                       '--load-checkpoint',
-                                                       '--write-buffer-size',
-                                                       '--alignment-target-chunk-size',
-                                                       '--fragment-mapping-query-chunk-length',
-                                                       '--feature-param-file',
-                                                       '--min-trna-fragment-size',
-                                                       '--agglomeration-max-mismatch-freq',
-                                                       '--max-deletion-size',
-                                                       '--alignment-progress-interval',
-                                                       '--agglomeration-progress-interval']
+        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_ribosomal_proteins'] = ['--hmm-source']
+        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_ribosomal_proteins'] = ['--metagenome-mode']
+        rule_acceptable_params_dict['anvi_reformat_fasta_ribosomal_protein_file'] = ['--gzip-output',
+                                                                                     '--simplify-names',
+                                                                                     '--keep-ids',
+                                                                                     '--exclude-ids',
+                                                                                     '--min-len',
+                                                                                     "--prefix",
+                                                                                     "--simplify-names"]
+        rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['trim_alignment'] = ['-gt']
+        rule_acceptable_params_dict['trim_alignment_2'] = ['-gt']
+        rule_acceptable_params_dict['remove_gaps'] = ['--max-percentage-gaps']
+        rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
+        rule_acceptable_params_dict['calculate_tree'] = ['run',
+                                                         '-bb']
+
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Set default values for certain accessible parameters
         self.default_config.update({
             'samples_txt': 'samples.txt',
+            'anvi_reformat_fasta_ribosomal_protein_file': {'--simplify-names': True, 'threads': 5},
             'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
-            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'run': True, 'threads': 5},
-            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'run': True, 'threads': 5}})
+            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
+            'filter_for_scg_sequences_and_metadata': {'threads': 5},
+            'cat_ribo_proteins_to_one_fasta': {'threads': 5},
+            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5},
+            'join_renamed_fasta_with_misc_data': {'threads': 5},
+            'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
+            'align_muscle': {'threads': 5},
+            'trim_alignment': {'threads': 5, '-gt': 0.50},
+            'remove_gaps': {'threads': 5, '--max-percentage-gaps': 50},
+            'get_gap_count_distribution': {'threads': 5},
+            'filter_out_outlier_sequences': {'threads': 5},
+            'align_muscle_2': {'threads': 5},
+            'trim_alignment_2': {'threads': 5, '-gt': 0.50},
+            'calculate_tree': {'run': True, 'threads': 5, '-bb': 1000}
+            })
 
         # Added directories in the workflow
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_EXTRACTED_RIBO_PROTEINS"})
