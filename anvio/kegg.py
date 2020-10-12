@@ -3777,7 +3777,7 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
-        self.exclude_ungrouped = True if A('exclude-ungrouped') else False
+        self.exclude_ungrouped = True if A('exclude_ungrouped') else False
 
         # init the base class
         KeggContext.__init__(self, self.args)
