@@ -65,6 +65,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                                                        '--alignment-target-chunk-size',
                                                        '--fragment-mapping-query-chunk-length',
                                                        '--feature-param-file',
+                                                       '--min-length-long-fiveprime',
                                                        '--min-trna-fragment-size',
                                                        '--agglomeration-max-mismatch-freq',
                                                        '--max-deletion-size',
@@ -141,7 +142,12 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
         for sample_split_prefix in self.sample_split_prefixes:
             output_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix)
-            target_files.append(os.path.join(output_dir, sample_split_prefix + "-TRNASEQ.db"))
+            # Set as targets the anvi-trnaseq supplementary text files
+            # rather than the tRNA-seq database and analysis summary text file.
+            # In the event of workflow failure,
+            # this allows the user to inspect what has been written thus far to the database.
+            target_files.append(os.path.join(output_dir, sample_split_prefix + "-UNIQUED_NONTRNA.txt"))
+            target_files.append(os.path.join(output_dir, sample_split_prefix + "-TRIMMED_ENDS.txt"))
 
         if self.run_iu_merge_pairs:
             target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc_report.txt"))

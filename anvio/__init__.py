@@ -2582,6 +2582,21 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'include-metadata': (
+            ['--include-metadata'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
+                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
+                    "the sample columns."}
+                ),
+    'only-complete': (
+            ['--only-complete'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
+                    "in any output files."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,
@@ -2682,6 +2697,19 @@ D = {
                      "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
                      "(Logically, the allowed length range of both paired positions in the stem must be changed here.)"}
                 ),
+    'min-length-long-fiveprime': (
+            ['--min-length-long-fiveprime'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "tRNA reads often extend beyond the 5' end of a mature tRNA sequences. "
+                     "This can be biological in origin when the read is from pre-tRNA, or artifactual in origin "
+                     "when the reverse transcriptase runs off the end of the template, adding a small number or random bases, "
+                     "or if the read is a chimera of tRNA at the 3' end and another RNA transcript at the 5' end. "
+                     "Longer 5' extensions are more likely to be biological than artifactual due to the exclusion of runoff bases. "
+                     "This parameter sets the minimum length of 5' sequence extensions "
+                     "that are recorded in the tRNA-seq database output for further analysis."}
+                ),
     'min-trna-fragment-size': (
             ['--min-trna-fragment-size'],
             {'default': 25,
@@ -2763,22 +2791,7 @@ D = {
              'action': 'store_true',
              'help': "Prints a nicely formatted table of the default tRNA feature parameterizations "
                      "that are written to a tab-delimited .ini file by the option, `--default-feature-param-file`."}
-    ),
-    'include-metadata': (
-            ['--include-metadata'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
-                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
-                    "the sample columns."}
-                ),
-    'only-complete': (
-            ['--only-complete'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
-                    "in any output files."}
-                ),
+    )
 }
 
 # two functions that works with the dictionary above.
