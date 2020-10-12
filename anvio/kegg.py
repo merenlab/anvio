@@ -3860,10 +3860,10 @@ class KeggModuleEnrichment(KeggContext):
         # samples column sanity check - this column will become the index
         if self.sample_header_in_modules_txt not in modules_df.columns:
             col_list = ", ".join(modules_df.columns)
-            raise ConfigError(f"You have specified that your sample names are in the column with header {self.sample_header_in_modules_txt} "
+            raise ConfigError(f"You have specified that your sample names are in the column with header '{self.sample_header_in_modules_txt}' "
                                "in the modules-txt file, but that column does not exist. :( Please figure out which column is right and submit "
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
-                               "are: {col_list}")
+                               f"are: {col_list}")
 
         sample_groups_df = pd.read_csv(self.groups_txt, sep='\t')
         required_groups_txt_headers = ['sample', 'group']
