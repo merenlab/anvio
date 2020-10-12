@@ -558,8 +558,15 @@ class COGsSetup:
 
         # poor man's uncompress
         temp_fasta_path = filesnpaths.get_temp_file_path()
-        with open(temp_fasta_path, 'wb') as f_out, gzip.open(input_file_path, 'rb') as f_in:
-            f_out.write(f_in.read())
+        try:
+            with open(temp_fasta_path, 'wb') as f_out, gzip.open(input_file_path, 'rb') as f_in:
+                f_out.write(f_in.read())
+        except Exception as e:
+            progress.end()
+            raise ConfigError(f"Something went wrong while decompressing the downloaded file :/ It is likely that "
+                              f"the download failed and only part of the file was downloaded. If you would like to "
+                              f"try again, please run the setup command with the flag `--reset`. Here is what the "
+                              f"downstream library said: '{e}'.")
 
         progress.end()
 
