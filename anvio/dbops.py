@@ -3023,6 +3023,15 @@ class ProfileSuperclass(object):
 
         return d
 
+    def get_blank_indels_dict(self):
+        """Returns an empty indels dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'indels': {}}
+
+        return d
+
 
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
@@ -3070,7 +3079,14 @@ class ProfileSuperclass(object):
         split_indels_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.indels_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
         profile_db.disconnect()
 
-        return split_indels_information
+        d = self.get_blank_indels_dict()
+
+        for e in split_indels_information:
+            d[e['sample_id']]['indels'][e['pos']] = e
+
+        self.progress.end()
+
+        return d
 
 
     def init_items_additional_data(self):
