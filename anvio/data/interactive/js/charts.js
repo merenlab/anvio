@@ -140,9 +140,7 @@ function loadAll() {
                 coverage = contig_data.coverage;
                 sequence = contig_data.sequence;
                 variability = [];
-                //indels = [];
-
-                console.log(contig_data);
+                indels = [];
 
                 for (var i=0; i<coverage.length; i++) {
                     variability[i] = [];
@@ -161,22 +159,8 @@ function loadAll() {
                     }
                 }
 
-                //INDELS MOCK DATA
-                var locations = [10, 20, 25];
-                indels = [];
-                for (var i=0; i<layers.length; i++) {
-                    indels[i] = {coverage:[],seq:[],type:[],length:[],pos:[]};
-                    for(var l=0; l<sequence.length; l++) { //number of SNVs
-                      indels[i]['coverage'].push(locations.includes(l) ? 0.2 : 0);
-                      indels[i]['seq'].push('');
-                      indels[i]['length'].push(3);
-                      indels[i]['type'].push('DEL');
-                      indels[i]['pos'].push(10);
-                    }
-                }
-                //INDELS
-
                 competing_nucleotides = contig_data.competing_nucleotides;
+                indels = contig_data.indels;
                 previous_contig_name = contig_data.previous_contig_name;
                 next_contig_name = contig_data.next_contig_name;
                 index = contig_data.index;
@@ -249,7 +233,7 @@ function loadAll() {
                 });
 
                 state['highlight-genes'] = {};
-                state['large-indel'] = 20;
+                state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
 
                 // create function color menu and table; set default color states
@@ -388,6 +372,11 @@ function loadAll() {
                     }
                   }
                 });
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+              console.log(xhr.status);
+              console.log(xhr.responseText);
+              console.log(thrownError);
             }
         });
 
@@ -1429,11 +1418,7 @@ function createCharts(state){
                         variability_c: variability[layer_index][2],
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
-                        indel_coverage: indels[layer_index]['coverage'], // an array of coverage values for each one of length # indels
-                        indel_seq: indels[layer_index]['seq'],
-                        indel_length: indels[layer_index]['length'],
-                        indel_type: indels[layer_index]['type'],
-                        indel_pos: indels[layer_index]['pos'],
+                        indels: indels[layer_index],
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1603,11 +1588,7 @@ function Chart(options){
     this.variability_c = options.variability_c;
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
-    this.indel_coverage = options.indel_coverage;
-    this.indel_seq = options.indel_seq;
-    this.indel_length = options.indel_length;
-    this.indel_type = options.indel_type;
-    this.indel_pos = options.indel_pos;
+    this.indels = options.indels;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -1704,6 +1685,10 @@ function Chart(options){
     this.textContainer = this.svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.textContainerIndels = this.svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.gcContainer   = this.svg.append("g")
                         .attr('class',this.name.toLowerCase())
@@ -1803,33 +1788,52 @@ function Chart(options){
       // in initial definitions, flip line and text to be upsidedown -- DONE
       // add a line to lineContainer based on coverage
 
-      /*this.lineContainer.append("path")
+      this.indel_coverage = [];
+      this.indel_coverage.length = this.coverage.length;
+      this.indel_coverage.fill(0);
+      d3.entries(this.indels).forEach(obj => {
+        this.indel_coverage[obj.key] = obj.value['count']/obj.value['coverage'] < 1 ? obj.value['count']/obj.value['coverage'] : 1;
+      });
+
+      this.lineContainer.append("path")
           .data([this.indel_coverage])
-          .attr("class", "line")
+          .attr("class", "reverseLine")
           .attr("name", "indel_1")
-          .style("fill", '#990000')
-          .attr("d", this.line);*/
+          .style("fill", '#800080')
+          .attr("d", this.reverseLine);
 
       // add text to text container based on type, and data-content based on other variables
-      this.textContainer.selectAll("text")
-                              .data([1000,2000,2500])
+      this.textContainerIndels.selectAll("text")
+                              .data(d3.entries(this.indels))
                               .enter()
                               .append("text")
-                              .attr("class", "SNV_text")
-                              .attr("x", function (d) { return xS(d); })
-                              .attr("y", function (d) { return 0.6; })
-                              .attr("writing-mode", "tb")
-                              .attr("font-size", "12px")
-                              .attr("glyph-orientation-vertical", "0")
+                              .attr("class", "indels_text")
+                              .attr("x", function (d) { return xS(d.key); })
+                              .attr("y", function (d) { return ySL(0); })
+                              .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
-                              .attr("fill", "black")
+                              .attr("fill", function(d) { return ((d.value['length'] > state['large-indel']) ? 'red' : 'black'); })
                               .attr('data-content', function(d) {
-                                  return 'Type: INS, length: 4, sequence: \'ACTG\', coverage: 600';
+                                  return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                                          <h3>Content</h3> \
+                                          <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                              <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
+                                              <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
+                                              <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
+                                              <tr><td>Sequence</td><td>' + d.value['sequence'] +'</td></tr> \
+                                              <tr><td>Type</td><td>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
+                                              <tr><td>Length</td><td>' + d.value['length'] +'</td></tr> \
+                                              <tr><td>Count</td><td>' + d.value['count'] +'</td></tr> \
+                                              <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
+                                              <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': d.value['codon_order_in_gene']) +'</td></tr> \
+                                              <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
+                                              <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                              <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
+                                          </table>';
                               })
                               .attr('data-toggle', 'popover')
                               .text(function (d) {
-                                  //return d.value['competing_nts'];
-                                  return '+';
+                                  return d.value['type'] == 'INS' ? '+' : '-';
                               });
     }
 
@@ -1873,7 +1877,8 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.line);
-    this.lineContainer.select("[name=first_pos]").data([this.indel_coverage]).attr("d", this.reverseLine);
-    this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
+    this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.reverseLine);
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.key); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

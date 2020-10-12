@@ -562,6 +562,7 @@ class BottleApplication(Bottle):
         progress.update('Collecting info for "%s"' % split_name)
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
+
         for layer in layers:
             progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
