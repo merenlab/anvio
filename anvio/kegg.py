@@ -2112,13 +2112,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
         """This function handles metabolism estimation for an entire metagenome.
 
-        Similar to isolate genomes, we treat the entire metagenome as one big 'bin'. This means that there
-        will be a large amount of redundancy (repeated pathways) due to the presence of multiple populations
-        in the metagenome.
-
-        In fact, because we essentially consider the metagenome to be one big genome, this function is exactly the same
-        as estimate_for_genome(). Why is it a separate function? Well, because we may eventually want to do something
-        differently here.
+        We treat each contig in the metagenome to be its own 'bin' or 'genome' and estimate
+        metabolism separately for each one.
 
         PARAMETERS
         ==========
@@ -2135,16 +2130,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         metagenome_metabolism_superdict = {}
         metagenome_ko_superdict = {}
-        # since we consider all the hits in the metagenome collectively, we can take the UNIQUE splits from all the hits
-        splits_in_metagenome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-        metabolism_dict_for_metagenome, ko_dict_for_metagenome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_metagenome,
-                                                                                                    bin_name=self.contigs_db_project_name)
-        if not self.store_json_without_estimation:
-            metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_metagenome, bin_name=self.contigs_db_project_name)
-            metagenome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_metagenome
-        else:
-            metagenome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_metagenome
-            metagenome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_metagenome
+
+        contigs_in_metagenome = list(set([tpl[3] for tpl in kofam_gene_split_contig]))
+
+        for contig in contigs_in_metagenome:
+            # get unique split names associated with this contig
+            splits_in_contig = list(set([tpl[2] for tpl in kofam_gene_split_contig if tpl[3] == contig]))
+            if anvio.DEBUG:
+                self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
+            ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
+            metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(ko_in_contig, split_list=splits_in_contig, bin_name=contig)
+
+            if not self.store_json_without_estimation:
+                metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
+                metagenome_ko_superdict[contig] = ko_dict_for_contig
+            else:
+                metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
+                metagenome_ko_superdict[contig] = ko_dict_for_contig
 
         return metagenome_metabolism_superdict, metagenome_ko_superdict
 
