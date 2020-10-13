@@ -56,6 +56,7 @@ if __name__ == '__main__':
 
     group1D = parser.add_argument_group('ADVANCED')
     group1D.add_argument(*anvio.A('feature-param-file'), **anvio.K('feature-param-file'))
+    group1D.add_argument(*anvio.A('min-length-long-fiveprime'), **anvio.K('min-length-long-fiveprime'))
     group1D.add_argument(*anvio.A('min-trna-fragment-size'), **anvio.K('min-trna-fragment-size'))
     group1D.add_argument(*anvio.A('agglomeration-max-mismatch-freq'), **anvio.K('agglomeration-max-mismatch-freq'))
     group1D.add_argument(*anvio.A('max-deletion-size'), **anvio.K('max-deletion-size'))
@@ -71,9 +72,9 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
     try:
         if args.default_feature_param_file:
-            trnaidentifier.TRNAFeature.write_default_param_file(args.default_feature_param_file)
+            trnaidentifier.TRNAFeature.write_param_file(args.default_feature_param_file)
         elif args.print_default_feature_params:
-            trnaidentifier.TRNAFeature.print_default_params()
+            print(trnaidentifier.TRNAFeature.tabulate_params())
         else:
             trnaseq_dataset = trnaseq.TRNASeqDataset(args)
             trnaseq_dataset.process()
