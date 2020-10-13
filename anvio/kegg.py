@@ -4088,7 +4088,7 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        sample_groups_df = pd.read_csv(self.groups_txt, sep='\t')
+        sample_groups_df = pd.read_csv(self.groups_txt, sep='\t', index_col=False)
         required_groups_txt_headers = ['sample', 'group']
         missing_headers = []
         for h in required_groups_txt_headers:
@@ -4105,6 +4105,11 @@ class KeggModuleEnrichment(KeggContext):
         sample_names_in_groups_txt = set(sample_groups_df['sample'].unique())
         samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
         samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
+        if anvio.DEBUG:
+            self.run.info("Samples in modules-txt", ", ".join(list(sample_names_in_modules_txt)))
+            self.run.info("Samples in groups-txt", ", ".join(list(sample_names_in_groups_txt)))
+            self.run.info("Missing samples from groups-txt", ", ".join(list(samples_missing_in_groups_txt)))
+            self.run.info("Missing samples from modules-txt", ", ".join(list(samples_missing_in_modules_txt)))
 
         if samples_missing_in_groups_txt:
             missing_samples_str = ", ".join(samples_missing_in_groups_txt)
