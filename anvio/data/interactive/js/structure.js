@@ -1017,6 +1017,13 @@ function create_ui() {
                     $('#surface_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
                 }
             }
+            column_info.forEach((item) => {
+                console.log(item)
+                if ((item['as_view'] | item['as_filter']) & item['data_type'] != 'text') {
+                    $('#backbone_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
+                    $('#surface_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
+                }
+            })
 
             column_info.forEach((item) => {
                 if (item['as_view']) {
