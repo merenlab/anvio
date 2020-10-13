@@ -1,0 +1,12 @@
+# List workflows
+anvi-run-workflow --list-workflows
+
+# make default config file
+anvi-run-workflow -w trnaseq --get-default-config test_trnaseq_config.json
+anvi-run-workflow -w contigs --get-default-config test_contigs_config.json
+
+anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config_test.json
+
+# Test workflow
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --dry-run
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json
