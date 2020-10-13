@@ -241,7 +241,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     });
 
     stage.loadFile(stringBlob, { ext: "pdb" }).then((component) => {
-        if( component.type !== "structure" ) return;
+        if ( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
             if ($('#surface_color_type').val() == 'Static') {
@@ -1579,17 +1579,21 @@ function gen_pymol_script() {
              `show spheres, ${group_var_object}\n` +
              `create ${group_object}, ${group_var_object} or ${main_object}\n`;
 
-        for (let residue in residue_info) {
-            if ($('#show_surface').is(':checked')) {
-                // FIXME assumes dynamic
-                var surface_color = hexToRgb("#".concat(calcSurfaceColor(residue, group).substring(2,8)));
-                s += `set_color ${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
-                s += `set surface_color, ${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
+        // group's surface
+        if ($('#show_surface').is(':checked')) {
+            if ($('#surface_color_type').val() == 'Dynamic') {
+                for (let residue in residue_info) {
+                    var surface_color = hexToRgb("#".concat(calcSurfaceColor(residue, group).substring(2,8)));
+                    s += `set_color ${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
+                    s += `set surface_color, ${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
+                }
+            } else {
+                var static_surface_color = hexToRgb($('#color_static_surface').attr('color'));
+                s += `set_color ${group}_surf_static, [${static_surface_color.r},${static_surface_color.g},${static_surface_color.b}]\n`;
+                s += `set surface_color, ${group}_surf_static, ${group_object}\n`;
             }
+            s += `show surface, ${group_object}\n`;
         }
-
-        s += `show surface, ${group_object}\n`;
-
     }
     s += `cmd.disable('all')\n` +
          `cmd.enable('${group_object_list[0]}')\n` +
