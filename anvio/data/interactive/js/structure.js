@@ -1555,6 +1555,7 @@ function gen_pymol_script() {
         var group_selection = `group_${group}_sele`
         group_object_list.push(group_object)
 
+        var counter = 0;
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
                 var res = rep.variability.codon_number;
@@ -1562,7 +1563,14 @@ function gen_pymol_script() {
                 var scale = rep.repr.scale;
 
                 res_attrs += `${res}:{'color':[${color.r},${color.g},${color.b}],'scale':${scale}},`;
-                res_list.push(res);
+
+                if (counter % 20 == 0) {
+                    res_list.push(res.toString().concat("\\\n"));
+                } else {
+                    res_list.push(res);
+                }
+
+                counter += 1;
             }
         });
 
