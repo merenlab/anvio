@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes to create, access, and/or populate contigs and profile databases.
+    Classes to create, access, and/or populate contigs, tRNASeq, and profile databases.
 """
 
 import os
@@ -48,7 +48,6 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -69,6 +68,7 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
+                           'trnaseq': TRNASeqDatabase,
                            'pan': PanDatabase,
                            'genes': GenesDatabase}
 
@@ -1102,8 +1102,11 @@ class PanSuperclass(object):
         self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
+        # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
+        # this one below is initialized by self.init_gene_cluster_functions_summary(): 
+        self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
@@ -1532,27 +1535,54 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
+        """Returns the most frequently occurring functional annotation across genes in a gene cluster
+        for a given functional annotation source.
+
+        A single function and accession number is determined purely based on frequencies of occurrence.
+        If multiple functions have the same number of votes then one will be chosen arbitrarily.
+
+        Parameters
+        ==========
+        gene_cluster_id : str
+            A gene cluster id that is defined in the `gene_clusters_functions_dict`
+
+        functional_annotation_source : str
+            A known functional annotation source
+
+        Returns
+        =======
+        (most_common_accession, most_common_function) : tuple
+            The representative function and its accession id for `gene_cluster_id` and `functional_annotation_source`
+        """
+
+        if not self.functions_initialized:
+            raise ConfigError("Although it is an expensive step, this function currently requires functions to be "
+                              "initialized first :/ If you are a programmer and need this functionality to be much "
+                              "more effective for ad hoc use, please let us know (the right solution in that case is "
+                              "to work directly with the genome storage database to recover functions for a single gene "
+                              "cluster).")
+
+        functions_counter = Counter({})
+        for genome_name in self.gene_clusters_functions_dict[gene_cluster_id]:
+            for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
+                if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id]:
+                    annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
+                    functions_counter[annotation_blob] += 1
+
+        if not len(functions_counter):
+            return (None, None)
+
+        most_common_accession, most_common_function = functions_counter.most_common()[0][0].split('|||')
+
+        return (most_common_accession, most_common_function)
+
+
     def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
-        """ A function to assign functions to gene clusters for an annotation_source
+        """Returns a dictionary where each gene cluster is associated with a single function.
 
-            use an annotation source and choose a function for the gene cluster
-            using a voting approach, i.e. the most commonly annotated function
-            for the genes in the gene cluster will be chosen.
-
-            If multiple functinos have the same number of votes then one will
-            be chosen arbitrarily.
-
-            OUTPUT:
-
-            gene_clusters_functions_summary_dict
-                dictionary with gene_cluster ids as keys
-                the values are dictionaries, where:
-                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
-
-                If you want to see all the functions and number of votes per function, simply do:
-                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
-                    print('For gene cluster %s: the number of votes for function %s is %s'\
-                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+           See `get_gene_cluster_function_summary` for details since this function is merely
+           calling it for each gene cluster.
         """
 
         if functional_annotation_source not in self.gene_clusters_function_sources:
@@ -1569,32 +1599,45 @@ class PanSuperclass(object):
 
         gene_clusters_functions_summary_dict = {}
 
-        self.progress.new('Summarizing functions for gene clusters')
+        self.progress.new(f'Summarizing "{functional_annotation_source}" for gene clusters')
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
-            gene_clusters_functions_summary_dict[gene_cluster] = {}
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = None
-            max_votes = 0
-            for genome in self.gene_clusters_functions_dict[gene_cluster]:
-                for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
-                    if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
-                        annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
-                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for a, f in zip(accessions, annotations):
-                            if f not in gene_clusters_functions_summary_dict[gene_cluster]:
-                                gene_clusters_functions_summary_dict[gene_cluster][f] = 0
-
-                            gene_clusters_functions_summary_dict[gene_cluster][f] += 1
-                            if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
-                                # The function has the votes!
-                                max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = a
+            accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source)
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = function
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = accession
 
         self.progress.end()
 
         return gene_clusters_functions_summary_dict
+
+
+    def init_gene_clusters_functions_summary_dict(self):
+        """ A function to initialize the `gene_clusters_functions_summary_dict` by calling
+            the atomic function `get_gene_clusters_functions_summary_dict` for all the
+            functional annotaiton sources.
+        """
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            self.run.warning("Someone asked anvi'o to initialize a gene cluster functions summary dict, but it seems there "
+                             "are no gene cluster functions even after initializing functions for the pangenome. So we move "
+                             "on without any summary dict for functions and/or drama about it to let the downstream analyses "
+                             "decide how to punish the unlucky.")
+            return
+
+        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        for gene_cluster_id in self.gene_clusters_functions_dict:
+            self.progress.update(f'{gene_cluster_id} ...', increment=True)
+
+            self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
+
+            for functional_annotation_source in self.gene_clusters_function_sources:
+                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
+                self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
+
+        self.progress.end()
 
 
     def init_gene_clusters_functions(self):
@@ -3561,7 +3604,8 @@ class ContigsDatabase:
             try:
                 for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
                             'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
-                            'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
+                            'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs',
+                            'skip_predict_frame']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -3625,6 +3669,7 @@ class ContigsDatabase:
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
         self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
+        self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
 
@@ -3998,6 +4043,8 @@ class ContigsDatabase:
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('scg_taxonomy_database_version', None)
+        self.db.set_meta_value('trna_taxonomy_was_run', False)
+        self.db.set_meta_value('trna_taxonomy_database_version', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
@@ -4073,6 +4120,94 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position - 2] = 1
 
         return nt_position_info_list
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
+class TRNASeqDatabase:
+    """Used to create and/or access a tRNA-seq database"""
+
+    def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
+        if not os.path.exists(db_path):
+            self.db_type = 'trnaseq'
+            self.db_version = anvio.__trnaseq__version__
+
+        self.db = None
+        self.db_path = db_path
+        self.meta_int_keys = [] # metadata to be stored as an int
+        self.meta_float_keys = [] # metadata to be stored as a float
+        self.table_info = [
+            (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
+            (t.trnaseq_feature_table_name, t.trnaseq_feature_table_structure, t.trnaseq_feature_table_types),
+            (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
+            (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
+            (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
+            (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types),
+            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)
+        ]
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+
+        if os.path.exists(self.db_path):
+            self.db_type = utils.get_db_type(self.db_path)
+            self.db_version = utils.get_required_version_for_db(self.db_path)
+
+            self.db = db.DB(self.db_path, self.db_version)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in self.meta_int_keys:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in self.meta_float_keys:
+                try:
+                    self.meta[key] = float(self.meta[key])
+                except:
+                    pass
+
+            self.run.info("%s database" % self.db_type, "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def touch(self):
+        is_db_ok_to_create(self.db_path, self.db_type)
+
+        self.db = db.DB(self.db_path, self.db_version, new_database=True)
+
+        for table_name, column_names, column_types in self.table_info:
+            self.db.create_table(table_name, column_names, column_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
+
+        # know thyself
+        self.db.set_meta_value('db_type', self.db_type)
+
+        self.disconnect()
+
+        self.run.info("%s database" % self.db_type, "A new database, %s, has been created." % self.db_path, quiet=self.quiet)
 
 
     def disconnect(self):

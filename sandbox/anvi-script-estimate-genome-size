@@ -19,7 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "A program to estimate the size of the actual population genome to which a MAG belongs."
+__requires__ = ["contigs-db"]
+__description__ = "A program to estimate the size of the actual population genome to which a MAG belongs"
 
 run = terminal.Run()
 progress = terminal.Progress()

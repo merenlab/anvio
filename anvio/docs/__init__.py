@@ -16,6 +16,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-db": {
+        "name": "CONTIGS",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
@@ -232,12 +238,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-layers-category": {
-        "name": "LAYERS DATA CATEGORY",
-        "type": "CONCEPT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "genome-similarity": {
         "name": "GENOME SIMILARITY",
         "type": "CONCEPT",
@@ -406,6 +406,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-taxonomy-db": {
+        "name": "TRNA TAXONOMY DB",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trna-taxonomy": {
+        "name": "TRNA TAXONOMY",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "external-genomes": {
         "name": "EXTERNAL GENOMES",
         "type": "TXT",
@@ -433,18 +445,6 @@ ANVIO_ARTIFACTS ={
     "detection-txt": {
         "name": "DETECTIONS",
         "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "genome-distance-txt": {
-        "name": "DISTANCE ESTIMATES",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": True
-    },
-    "genome-distance": {
-        "name": "DISTANCE ESTIMATES",
-        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -555,5 +555,18 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
+    },
+    "splits-taxonomy-txt": {
+        "name": "SPLITS TAXONOMY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-matrix-txt": {
+        "name": "HMM HITS MATRIX",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
+
 }

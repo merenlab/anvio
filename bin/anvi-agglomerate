@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.agglomeration as agglomeration
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Samuel Miller"
+__email__ = "samuelmiller@gmail.com"
+__requires__ = []
+__provides__ = []
+__description__ = "Generate a new anvi'o tRNA-seq database."
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
+    groupA.add_argument(*anvio.A('input-fasta-file'), **anvio.K('input-fasta-file'))
+    groupA.add_argument(*anvio.A('input-bam-file'), **anvio.K('input-bam-file'))
+    groupA.add_argument(*anvio.A('output-fasta-file'), **anvio.K('output-fasta-file'))
+    groupA.add_argument(*anvio.A('output-bam-file'), **anvio.K('output-bam-file'))
+
+    groupB = parser.add_argument_group('OPTIONAL INPUTS', 'Things you may want to tweak.')
+    groupB.add_argument(*anvio.A('replicate-txt'), **anvio.K('replicate-txt'))
+    groupB.add_argument(*anvio.A('max-possible-alignments'), **anvio.K('max-possible-alignments'))
+    groupB.add_argument(*anvio.A('sort-index-bam-output'), **anvio.K('sort-index-bam-output'))
+    groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        agglomerator = agglomeration.Agglomerator(
+            input_fasta_path=args.input_fasta_file,
+            input_bam_path=args.input_bam_file,
+            output_bam_path=args.output_bam_file,
+            output_fasta_path=args.output_fasta_file,
+            replicates_path=args.replicate_txt,
+            max_possible_alignments=args.max_possible_alignments,
+            sort_index_bam_output=args.sort_index_bam_output,
+            verbose=args.verbose)
+        agglomerator.agglomerate()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

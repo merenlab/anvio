@@ -22,7 +22,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db", "genes-db"]
+__requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db", "structure-db"]
 __description__ = "Access self tables, display values, or set new ones totally on your own risk"
 
 

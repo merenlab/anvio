@@ -184,7 +184,8 @@ class COGs:
             COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
 
             annotations = []
-            categories = set([])
+            categories = []
+            category_descriptions = []
             for COG_id in COG_ids:
                 # is missing?
                 if COG_id in cogs_data.missing_cogs:
@@ -194,7 +195,8 @@ class COGs:
 
                 # resolve categories
                 for category in cogs_data.cogs[COG_id]['categories']:
-                    categories.add(category)
+                    categories.append(category)
+                    category_descriptions.append(cogs_data.categories[category])
 
                 # append annotation
                 annotations.append(cogs_data.cogs[COG_id]['annotation'])
@@ -204,7 +206,7 @@ class COGs:
             # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
             # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
             add_entry(gene_callers_id, 'COG_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
-            add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(categories), 0.0)
+            add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
 
         # store hits in contigs db.
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -556,8 +558,15 @@ class COGsSetup:
 
         # poor man's uncompress
         temp_fasta_path = filesnpaths.get_temp_file_path()
-        with open(temp_fasta_path, 'wb') as f_out, gzip.open(input_file_path, 'rb') as f_in:
-            f_out.write(f_in.read())
+        try:
+            with open(temp_fasta_path, 'wb') as f_out, gzip.open(input_file_path, 'rb') as f_in:
+                f_out.write(f_in.read())
+        except Exception as e:
+            progress.end()
+            raise ConfigError(f"Something went wrong while decompressing the downloaded file :/ It is likely that "
+                              f"the download failed and only part of the file was downloaded. If you would like to "
+                              f"try again, please run the setup command with the flag `--reset`. Here is what the "
+                              f"downstream library said: '{e}'.")
 
         progress.end()
 

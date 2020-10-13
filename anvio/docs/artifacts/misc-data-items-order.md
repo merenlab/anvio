@@ -1,13 +1,11 @@
-This artifact describes the **order of the branches for a visualization**.
+This artifact describes the **order of items in visualization tasks**.
 
-This is the tree in the central section of the default anvi'o interactive interface, or the order that your contigs (or genes or bins, depending on the mode) display in when in the circles. In order words, it is to %(misc-data-items)s as %(misc-data-layer-orders)s is to %(misc-data-layers)s: a description not of the items themselves, but of what order they go in on the interface. 
+In anvi'o, main display items (such as 'gene clusters' in a pan database, 'contigs' in a profile database, etc) can be ordered either by a NEWICK formatted tree (such as a phylogenetic tree or a hierarchical clustering dendrogram), or by an array (such as a flat list of item names).
 
-Most often, this is a phylogenetic tree, but it can also just describe what order to display the branches or items in. 
+When a NEWICK tree is used to order items, it will appear as the tree in the central section of the default anvi'o interactive interface. When a flat list of items are provided to order items, the central display where a tree appears will be blank and the displayed items will still be ordered according to the list. In order words, items order is to %(misc-data-items)s as %(misc-data-layer-orders)s is to %(misc-data-layers)s: a description not of the items themselves, but of what order they go in on the interface. 
 
-As of now, this is an provided by programs that generate a tree of this kind, including %(anvi-pan-genome)s, %(anvi-merge)s, and %(anvi-profile)s. When you run these programs, they will put this information into your resulting %(pan-db)s or %(profile-db)s. 
+Anvi'o programs such as %(anvi-pan-genome)s, %(anvi-merge)s, and %(anvi-profile)s automatically generate NEWICK-formatted items order if possible (i.e., if you have less than 20,000 items). When you run these programs, they will put this information into your resulting %(pan-db)s or %(profile-db)s. 
 
-However, you can also export this information to give to a fellow Anvi'o user or import this information if you have your own phylogenetic tree or desired order for your contigs. This is especially useful if you want to perform manual binning. 
+You can also export this information to give to a fellow anvi'o user or import this information if you have your own phylogenetic tree or desired order for your contigs.
 
-To import your own order for your items, use %(anvi-import-items-order)s. To export this information, use %(anvi-export-items-order)s. 
-
-
+You can use %(anvi-import-items-order)s to import specific orders for your items, or %(anvi-export-items-order)s to export this information.
