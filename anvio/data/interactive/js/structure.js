@@ -253,7 +253,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 } else {
                     $('#dynamic_surface_color_error').hide();
                 }
-                var color_value = getSurfaceColorScheme();
+                var color_value = getSurfaceColorScheme(group);
             } else {
                 var color_value = $('#surface_color_type').val()
             }
@@ -547,15 +547,29 @@ function getBackboneColorScheme(group=null) {
     return schemeId_backbone;
 }
 
-function getSurfaceColorScheme() {
+function getSurfaceColorScheme(group=null) {
+    // group is only needed if the selected color variable has a group-specific value, i.e. entropy
+    // is a group specific parameter but predicted ligand binding frequency is not
 
     var schemeId_surface = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
         let name = $('#surface_color_variable').val();
-        let val = residue_info[atom.resno][name]
+        let val;
+
+        if (residue_info[atom.resno].hasOwnProperty(name)) {
+            // The selected dynamic variable is in residue_info
+            val = residue_info[atom.resno][name];
+        } else if (variability[group].hasOwnProperty(atom.resno)) {
+            // The selected dynamic variable is in the variability data
+            val = variability[group][atom.resno][name];
+        } else {
+            // It's in neither. Not good
+            val = null;
+        }
 
         if (val == null) {
-            // Value is null, return the min value color
+            // This can be true either because the value was absent, or the name requested was
+            // invalid. In this case we return the min value color
             return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
         }
 
