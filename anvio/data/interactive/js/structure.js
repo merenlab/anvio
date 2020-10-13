@@ -292,7 +292,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 } else {
                     $('#dynamic_backbone_color_error').hide();
                 }
-                var color_value = getBackboneColorScheme();
+                var color_value = getBackboneColorScheme(group);
             } else {
                 var color_value = $('#backbone_color_type').val()
             }
@@ -508,15 +508,29 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     return defer.promise();
 }
 
-function getBackboneColorScheme() {
+function getBackboneColorScheme(group=null) {
+    // group is only needed if the selected color variable has a group-specific value, i.e. entropy
+    // is a group specific parameter but predicted ligand binding frequency is not
 
     var schemeId_backbone = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
         let name = $('#backbone_color_variable').val();
-        let val = residue_info[atom.resno][name]
+        let val;
+
+        if (residue_info[atom.resno].hasOwnProperty(name)) {
+            // The selected dynamic variable is in residue_info
+            val = residue_info[atom.resno][name];
+        } else if (variability[group].hasOwnProperty(atom.resno)) {
+            // The selected dynamic variable is in the variability data
+            val = variability[group][atom.resno][name];
+        } else {
+            // It's in neither. Not good
+            val = null;
+        }
 
         if (val == null) {
-            // Value is null, return the min value color
+            // This can be true either because the value was absent, or the name requested was
+            // invalid. In this case we return the min value color
             return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
         }
 
@@ -1018,7 +1032,6 @@ function create_ui() {
                 }
             }
             column_info.forEach((item) => {
-                console.log(item)
                 if ((item['as_view'] | item['as_filter']) & item['data_type'] != 'text') {
                     $('#backbone_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
                     $('#surface_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
@@ -1062,7 +1075,7 @@ function create_ui() {
                     if (filter_backup.hasOwnProperty(gene_callers_id) && filter_backup[gene_callers_id].hasOwnProperty(engine) && filter_backup[gene_callers_id][engine].hasOwnProperty(item['name'])) {
                         checked_choices = filter_backup[gene_callers_id][engine][item['name']][item['name'] + 's_of_interest'];
                     }
-                    
+
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
@@ -1104,11 +1117,24 @@ function create_ui() {
 
 function onTargetResidueInfoChange(element) {
     let name = $(element).val();
-    let type_info = residue_info_types[name];
 
     $(`#backbone_numerical_panel`).show();
-    $(`#backbone_color_min`).val(type_info['amin']);
-    $(`#backbone_color_max`).val(type_info['amax']);
+
+    if (residue_info[1].hasOwnProperty(name)) {
+      // The selected dynamic variable is in residue_info's elements
+      $(`#backbone_color_min`).val(residue_info_types[name]['amin']);
+      $(`#backbone_color_max`).val(residue_info_types[name]['amax']);
+    } else {
+      for (i in column_info) {
+        let item = column_info[i];
+        console.log(item)
+        if (item['name'] == name) {
+          $(`#backbone_color_min`).val(item['min']);
+          $(`#backbone_color_max`).val(item['max']);
+          break;
+        }
+      }
+    }
 
     $('.colorpicker-legend').colpick({
         layout: 'hex',
