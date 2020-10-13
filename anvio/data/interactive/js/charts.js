@@ -1686,21 +1686,21 @@ function Chart(options){
             .attr("class", "line")
             .attr("name", "first_pos")
             .style("fill", '#990000')
-            .attr("d", this.line);
+            .attr("d", this.reverseLine);
 
         this.lineContainer.append("path")
             .data([this.variability_c])
             .attr("class", "line")
             .attr("name", "second_pos")
             .style("fill", '#990000')
-            .attr("d", this.line);
+            .attr("d", this.reverseLine);
 
         this.lineContainer.append("path")
             .data([this.variability_d])
             .attr("class", "line")
             .attr("name", "third_pos")
             .style("fill", '#004400')
-            .attr("d", this.line);
+            .attr("d", this.reverseLine);
 
         this.lineContainer.append("path")
             .data([this.variability_a])
@@ -1708,7 +1708,7 @@ function Chart(options){
             .attr("name", "outside_gene")
             .style("stroke", '#666666')
             .style("stroke-width", "0.2")
-            .attr("d", this.line);
+            .attr("d", this.reverseLine);
 
         this.textContainer.selectAll("text")
                                 .data(d3.entries(this.competing_nucleotides))
@@ -1770,7 +1770,7 @@ function Chart(options){
           .attr("class", "reverseLine")
           .attr("name", "indel_1")
           .style("fill", '#800080')
-          .attr("d", this.reverseLine);
+          .attr("d", this.line);
 
       // add text to text container based on type, and data-content based on other variables
       this.textContainerIndels.selectAll("text")
@@ -1782,10 +1782,10 @@ function Chart(options){
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
-                              .attr("fill", function(d) { return ((d.value['length'] > state['large-indel']) ? 'red' : 'black'); })
+                              .attr("fill", function(d) { return ((d.value['length'] > state['large-indel']) ? 'red' : '#CCCC00'); })
                               .attr('data-content', function(d) {
                                   return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                                          <h3>Content</h3> \
+                                          <h3>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
                                           <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
                                               <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
                                               <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
@@ -1843,11 +1843,11 @@ Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
     this.gcContainer.selectAll("path").data([this.gc_content]).attr("d", this.gc_line);
-    this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.line);
-    this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
-    this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);
-    this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.line);
-    this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.reverseLine);
+    this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.reverseLine);
+    this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.reverseLine);
+    this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
+    this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
+    this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.key); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
