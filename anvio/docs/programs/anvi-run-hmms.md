@@ -18,9 +18,9 @@ To run this program with all default settings (against all default anvio %(hmm-s
 anvi-run-hmms -c CONTIGS_DB 
 {{ codestop }}
 
-### Running against a custom set of %(hmm-source)s
+### Running against a custom set of hmm-source
 
-In order to run against your own hmm-source or a custom subset of anvi'o's hmm-sources, you have two choices. 
+In order to run against your own %(hmm-source)s or a custom subset of anvi'o's hmm-sources, you have two choices. 
 
 #### Choice 1: I have my own hmm-sources on my computer
 

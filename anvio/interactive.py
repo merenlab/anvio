@@ -66,6 +66,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.states_table = None
         self.p_meta = {}
         self.title = 'Unknown Project'
+        self.anvio_news = None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.mode = A('mode')
@@ -105,7 +106,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
-
+        self.skip_news = A('skip_news')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments "
@@ -280,6 +281,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
+        self.get_anvio_news()
 
 
     def set_displayed_item_names(self):
@@ -927,6 +929,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
+            self.init_gene_clusters_functions_summary_dict()
 
         PanSuperclass.init_items_additional_data(self)
 
@@ -965,7 +968,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ProfileSuperclass.init_items_additional_data(self)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
-        # all the split sequences since only now we know the mun_contig_length that was used to profile
+        # all the split sequences since only now we know the min_contig_length that was used to profile
         # this stuff
         self.init_split_sequences(min_contig_length=self.p_meta['min_contig_length'])
 
@@ -1432,6 +1435,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         pass
 
 
+    def get_anvio_news(self):
+        if self.skip_news:
+            return
+        else:
+            try:
+                self.anvio_news = utils.get_anvio_news()
+            except:
+                pass
+
+
 class StructureInteractive(VariabilitySuper, ContigsSuperclass):
     def __init__(self, args, run=run, progress=progress):
         self.run = run
@@ -1533,13 +1546,14 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         templates = structure_db.db.get_table_as_dataframe(
             'templates',
-            columns_of_interest=['pdb_id', 'chain_id', 'ppi'],
+            columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
             where_clause='corresponding_gene_call = %d' % gene_callers_id,
         ).rename(columns={
             'pdb_id': 'PDB',
             'chain_id': 'Chain',
-            'ppi': '%Identity',
-        })[['PDB', 'Chain', '%Identity']]
+            'percent_similarity': '%Identity',
+            'align_fraction': 'Align fraction',
+        })[['PDB', 'Chain', '%Identity', 'Align fraction']]
 
         structure_db.disconnect()
 

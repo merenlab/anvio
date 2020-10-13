@@ -1,3 +1,7 @@
+As an artifact, this describes the variability information about a single sample caluclated when you ran %(anvi-profile)s. To examine variability across samples, you'll want to use this information (which is stored within your %(profile-db)s) to run %(anvi-gen-variability-profile)s. 
+
+## Details about Variability
+
 In the context of anvi'o, variability means divergence of environmental populations from the reference used to perform metagenomic read recruitment.
 
 Here, the term "population" describes an assemblage of co-existing microbial genomes in an environment that are similar enough to map to the context of the same reference genome.

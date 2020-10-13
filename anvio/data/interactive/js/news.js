@@ -4,6 +4,7 @@ $(document).ready(function() {
 
 function checkNews() {
     $('#news-panel-inner').empty();
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -28,7 +29,7 @@ function checkNews() {
             if (unread_count > 0) {
                 $('#toggle-panel-right-3').css('color', '#FF0000');
                 $('#toggle-panel-right-3').addClass('fading-button');
-		
+
 		$('#toggle-panel-right-3').mouseover(function() {
 			if(!$('#news-panel').is(':visible')) {
 				$(this).addClass('toggle-panel-right-pos-3');

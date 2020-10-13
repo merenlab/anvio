@@ -19,7 +19,6 @@ import base64
 import random
 import getpass
 import argparse
-import requests
 import datetime
 import importlib
 
@@ -35,9 +34,10 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -182,6 +182,7 @@ class BottleApplication(Bottle):
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
 
@@ -302,39 +303,12 @@ class BottleApplication(Bottle):
 
 
     def get_news(self):
-        ret = []
-        try:
-            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
-            news_items = news_markdown.text.split("***")
-
-            """ FORMAT
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            """
-            for news_item in news_items:
-                if len(news_item) < 5:
-                    # too short to parse, just skip it
-                    continue
-
-                ret.append({
-                        'date': news_item.split("(")[1].split(")")[0].strip(),
-                        'title': news_item.split("#")[1].split("(")[0].strip(),
-                        'content': news_item.split("#\n")[1].strip()
-                    })
-        except:
-            ret.append({
-                    'date': '',
-                    'title': 'Something has failed',
-                    'content': 'Anvi\'o failed to retrieve any news for you, maybe you do not have internet connection or something :('
-                })
-
-        return json.dumps(ret)
+        if self.interactive.anvio_news:
+            return json.dumps(self.interactive.anvio_news)
+        else:
+            return json.dumps([{'date': '',
+                                'title': 'No news for you :(',
+                                'content': "Anvi'o couldn't bring any news for you. You can bring yourself to the news by clicking [here](%s)." % constants.anvio_news_url}])
 
 
     def random_hash(self, size=8):
@@ -1430,3 +1404,23 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps(output)
+
+
+    def get_functions_for_gene_clusters(self):
+        if not len(self.interactive.gene_clusters_function_sources):
+            message = "Gene cluster functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
+
+        d = {}
+        for gene_cluster_name in gene_cluster_names:
+            if gene_cluster_name not in self.interactive.gene_clusters_functions_summary_dict:
+                message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
+                           f"the functions summary dict :/")
+                return json.dumps({'status': 1, 'message': message})
+                
+            d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
+
+        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})

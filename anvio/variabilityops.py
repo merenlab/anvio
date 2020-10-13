@@ -1381,7 +1381,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # method="first" ensures alphabetic ordering in the case of ties. Convert the rank DataFrame
         # into a numpy array, and find the order of indices that sort each entry's items based on
         # their ranks. type(ranks) = pd.DataFrame, type(item_index_order) = numpy array
-        ranks = self.data.loc[entry_ids, self.items].rank(ascending=False, axis=1, method="first").astype(int)
+        ranks = self.data.loc[entry_ids, self.items].astype(int).rank(ascending=False, axis=1, method="first").astype(int)
         item_index_order = np.argsort(ranks.values, axis=1)
 
         # the first and second most common items, according to the 2nd convention in the docstring,

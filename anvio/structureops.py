@@ -89,7 +89,8 @@ class StructureDatabase(object):
 
         run_params_dict['modeller_database'] = self.db.get_meta_value('modeller_database', try_as_type_int=False)
         run_params_dict['scoring_method'] = self.db.get_meta_value('scoring_method', try_as_type_int=False)
-        run_params_dict['percent_identical_cutoff'] = float(self.db.get_meta_value('percent_identical_cutoff', try_as_type_int=False))
+        run_params_dict['percent_cutoff'] = float(self.db.get_meta_value('percent_cutoff', try_as_type_int=False))
+        run_params_dict['alignment_fraction_cutoff'] = float(self.db.get_meta_value('alignment_fraction_cutoff', try_as_type_int=False))
         run_params_dict['very_fast'] = bool(self.db.get_meta_value('very_fast', try_as_type_int=True))
         run_params_dict['deviation'] = float(self.db.get_meta_value('deviation', try_as_type_int=False))
         run_params_dict['max_number_templates'] = self.db.get_meta_value('max_number_templates', try_as_type_int=True)
@@ -155,7 +156,8 @@ class StructureDatabase(object):
                 'modeller_database': 'pdb_95',
                 'scoring_method': 'DOPE_score',
                 'max_number_templates': 5,
-                'percent_identical_cutoff': 30,
+                'percent_cutoff': 30,
+                'alignment_fraction_cutoff': 80,
                 'num_models': 1,
                 'deviation': 4.0,
                 'very_fast': True
@@ -235,6 +237,8 @@ class StructureDatabase(object):
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
+        return filepath
+
 
     def export_pdbs(self, genes_of_interest, output_dir, ok_if_exists=False):
         """Exports the pdbs of a collection of genes to an output dir (calls self.export_pdb_content)"""
@@ -247,6 +251,12 @@ class StructureDatabase(object):
             self.export_pdb_content(gene, file_path, ok_if_exists=ok_if_exists)
 
         self.run.info('PDB file output', output_dir)
+
+
+    def get_structure(self, corresponding_gene_call):
+        """Return a anvio.structureops.Structure object for a given gene"""
+
+        return Structure(self.export_pdb_content(corresponding_gene_call, filesnpaths.get_temp_file_path()))
 
 
     def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
@@ -365,7 +375,6 @@ class StructureSuperclass(object):
             self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         # init annotation sources
-        self.contactmap = ContactMap()
         self.dssp = DSSPClass(skip_sanity_check=self.skip_DSSP) # If we skip DSSP, skip sanity_check
 
         self.sanity_check()
@@ -395,7 +404,8 @@ class StructureSuperclass(object):
             'modeller_database': A('modeller_database', null),
             'scoring_method': A('scoring_method', null),
             'max_number_templates': A('max_number_templates', null),
-            'percent_identical_cutoff': A('percent_identical_cutoff', null),
+            'percent_cutoff': A('percent_cutoff', null),
+            'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
             'num_models': A('num_models', null),
             'deviation': A('deviation', null),
             'very_fast': A('very_fast', bool),
@@ -417,11 +427,11 @@ class StructureSuperclass(object):
 
 
     def sanity_check(self):
-        # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
-        if self.modeller_params['percent_identical_cutoff'] < 25:
+        # if self.percent_cutoff is < 25, you should be careful about accuracy of models
+        if self.modeller_params['percent_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
                              "to the quality of the proteins... Keep in mind random sequence are expected to share "
-                             "around 10% identity.".format(self.modeller_params['percent_identical_cutoff']))
+                             "around 10% identity.".format(self.modeller_params['percent_cutoff']))
 
         if self.skip_DSSP:
             self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
@@ -859,8 +869,7 @@ class StructureSuperclass(object):
         """Returns the contact map in compressed form with index 'codon_order_in_gene' and column 'contact_numbers'"""
 
         # Run ContactMap class
-        contact_map = self.contactmap.get_boolean_contact_map(pdb_path)
-        compressed_rep = self.contactmap.get_compressed_representation(contact_map, c='number')
+        contact_map_long_form = Structure(pdb_path).get_boolean_contact_map(compressed=True, c='number')
 
         # Customize for this class and return
         column_rename = {
@@ -868,9 +877,9 @@ class StructureSuperclass(object):
             'contacts': 'contact_numbers',
         }
 
-        compressed_rep['codon_number'] -= 1
+        contact_map_long_form['codon_number'] -= 1
 
-        return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
+        return contact_map_long_form.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
     def run_modeller(self, target_fasta_path, directory):
@@ -1060,7 +1069,7 @@ class DSSPClass(object):
         # run DSSP
         try:
             test_residue_annotation = DSSP(test_model, test_input, dssp = self.executable, acc_array = "Wilke")
-        except Exception as e:
+        except Exception:
             raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
                               'that your version is working correctly, please visit '
                               'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
@@ -1152,139 +1161,6 @@ class DSSPClass(object):
 
         # convert dictionary d to dataframe df
         return pd.DataFrame(d, index=self.fields).T.set_index('codon_order_in_gene').drop(drop, axis=1)
-
-
-class ContactMap(object):
-    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
-        self.distances_methods_dict = {
-            'CA': self.calc_CA_dist,
-        }
-
-
-    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
-        p = PDBParser()
-        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        structure = model[chain]
-
-        return structure
-
-
-    def get_contact_map(self, pdb_path, distance_method='CA'):
-        """Returns a contact map (pairwise distances in Angstroms)
-
-        Parameters
-        ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
-        distance_method : str, 'CA'
-            Which distance method? 'CA' is for alpha carbon distances. See
-            self.distances_methods_dict for options
-
-        Returns
-        =======
-        output: NxN 2-dim array
-            Where N is the # of AAs
-
-        Notes
-        =====
-        - See also `get_boolean_contact_map`
-        """
-
-        structure = self.load_pdb_file(pdb_path)
-
-        contact_map = np.zeros((len(structure), len(structure)))
-        for i, residue1 in enumerate(structure):
-            for j, residue2 in enumerate(structure):
-                if i > j:
-                    contact_map[i, j] = contact_map[j, i]
-                else:
-                    contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
-
-        return contact_map
-
-
-    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6):
-        """Returns a boolean contact map (1 for touching, 0 for not)
-
-        Parameters
-        ==========
-        pdb_path : str
-            The PDB file (takes first chain)
-
-        distance_method : str, 'CA'
-            Which distance method? 'CA' is for alpha carbon distances. See
-            self.distances_methods_dict for options
-
-        threshold : int or float, 6
-            Residues are considered touching if their distances are less than or equal to this
-            amount. Units are in Angstroms
-
-        Returns
-        =======
-        output: NxN 2-dim array
-            Where N is the # of AAs
-
-        Notes
-        =====
-        - See also `get_contact_map`
-        """
-
-        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method)
-
-        contact_map[contact_map <= threshold] = 1
-        contact_map[contact_map >  threshold] = 0
-
-        return contact_map
-
-
-    def get_compressed_representation(self, contact_map, c='order'):
-        """Converts contact map into condensed representation
-
-        Parameters
-        ==========
-        c : str, 'order'
-            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
-            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
-            'number' for codon_number
-
-        Returns
-        =======
-        output : pandas DataFrame
-            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
-            which it will be), and 'contacts'
-        """
-
-        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
-
-        contacts_dict = {
-            col_name: [],
-            'contacts': [],
-        }
-
-        for codon_order_in_gene in range(contact_map.shape[0]):
-            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
-
-            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
-            if c == 'order':
-                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
-                index = codon_order_in_gene
-            else:
-                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
-
-            # residues are not contacts with themselves
-            contacts = contacts[contacts != index]
-
-            contacts_dict[col_name].append(index)
-            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
-
-        return pd.DataFrame(contacts_dict)
-
-
-    def calc_CA_dist(self, residue1, residue2):
-        """Returns the C-alpha distance between two residues"""
-
-        return residue1["CA"] - residue2["CA"]
 
 
 class PDBDatabase(object):
@@ -1732,3 +1608,189 @@ class PDBDatabase(object):
         return utils.human_readable_file_size(os.path.getsize(self.db_path))
 
 
+class Structure(object):
+    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
+        """Object to handle the analysis of PDB files"""
+
+        self.distances_methods_dict = {
+            'CA': self.calc_CA_dist, # alpha-carbon distances
+            'COM': self.calc_COM_dist, # side chain centroid (center-of-mass) distances
+        }
+
+        self.path = pdb_path
+        self._load_pdb_file(self.path)
+
+
+    def _load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+        p = PDBParser()
+        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
+        self.structure = model[chain]
+
+
+    def get_contact_map(self, distance_method='CA', compressed=False, c='order'):
+        """Returns a contact map (pairwise distances in Angstroms)
+
+        Parameters
+        ==========
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_boolean_contact_map`
+        """
+
+        contact_map = np.zeros((len(self.structure), len(self.structure)))
+        for i, residue1 in enumerate(self.structure):
+            for j, residue2 in enumerate(self.structure):
+                if i > j:
+                    contact_map[i, j] = contact_map[j, i]
+                else:
+                    contact_map[i, j] = self.get_residue_to_residue_distance(residue1, residue2, distance_method)
+
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
+
+
+    def get_boolean_contact_map(self, distance_method='CA', threshold=6, compressed=False, c='order'):
+        """Returns a boolean contact map (1 for touching, 0 for not)
+
+        Parameters
+        ==========
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        threshold : int or float, 6
+            Residues are considered touching if their distances are less than or equal to this
+            amount. Units are in Angstroms
+
+        compressed : bool, False
+            Converts to long-form format (3 columns instead of square matrix)
+
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number. Valid only if compressed == True.
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_contact_map`
+        """
+
+        contact_map = self.get_contact_map(distance_method=distance_method, compressed=False)
+
+        contact_map[contact_map <= threshold] = 1
+        contact_map[contact_map >  threshold] = 0
+
+        if compressed:
+            return self.get_compressed_representation(contact_map, c=c)
+        else:
+            return contact_map
+
+
+    def get_compressed_representation(self, contact_map, c='order'):
+        """Converts contact map into condensed representation
+
+        Parameters
+        ==========
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number
+
+        Returns
+        =======
+        output : pandas DataFrame
+            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
+            which it will be), and 'contacts'
+        """
+
+        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
+
+        contacts_dict = {
+            col_name: [],
+            'contacts': [],
+        }
+
+        for codon_order_in_gene in range(contact_map.shape[0]):
+            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
+
+            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
+            if c == 'order':
+                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
+                index = codon_order_in_gene
+            else:
+                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
+
+            # residues are not contacts with themselves
+            contacts = contacts[contacts != index]
+
+            contacts_dict[col_name].append(index)
+            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
+
+        return pd.DataFrame(contacts_dict)
+
+
+    def get_residue_to_residue_distance(self, residue1, residue2, method='CA'):
+        return self.distances_methods_dict[method](residue1, residue2)
+
+
+    def get_residue(self, codon_order_in_gene):
+        """Return the residue object for a given codon_order_in_gene aka the 0-indexed residue position"""
+
+        return self.structure.child_list[codon_order_in_gene]
+
+
+    def get_residue_center_of_mass(self, residue):
+        """Return the CoM of the sidechain of a Residue object (alpha-carbon included)"""
+
+        M = 0
+        weighted_coords = np.zeros(3)
+
+        backbone = {'C', 'N', 'O'}
+
+        for name, atom in residue.child_dict.items():
+            if name in backbone:
+                continue
+
+            M += atom.mass
+            weighted_coords += atom.coord * atom.mass
+
+        return weighted_coords/M
+
+
+    def calc_CA_dist(self, residue1, residue2):
+        """Returns the C-alpha distance between two residues"""
+
+        return residue1["CA"] - residue2["CA"]
+
+
+    def calc_COM_dist(self, residue1, residue2):
+        """Returns the distance between the sidechain center of masses between two residues"""
+
+        COM1 = self.get_residue_center_of_mass(residue1)
+        COM2 = self.get_residue_center_of_mass(residue2)
+
+        return np.sqrt(np.sum((COM1 - COM2)**2))

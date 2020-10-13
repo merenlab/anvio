@@ -1,6 +1,6 @@
 This program, as one might think, allows you to export a %(misc-data-items-order)s, outputing a %(misc-data-items-order-txt)s. 
 
-You can export one of the item orders in a %(profile-db)s, %(pan-db)s, or %(genes-db)s as follows: 
+You can export one of the item orders in a %(profile-db)s or %(pan-db)s as follows: 
 
 {{ codestart }}
 anvi-export-items-order -p %(profile-db)s \

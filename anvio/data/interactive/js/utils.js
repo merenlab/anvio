@@ -285,6 +285,45 @@ function showTaxonomyTableDialog(title, content)
     $.bootstrapSortable({ applyLast: true })
 }
 
+
+function showGeneClusterFunctionsSummaryTableDialog(title, content)
+{
+    var randomID = title.hashCode();
+
+    var template = `
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
+        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                     <h4 class="modal-title">` + title + `</h4>
+                </div>
+
+                <p style="margin: 20px; font-style: italic;">Please note that this is just a quick view of the functions associated with your gene clusters. A much more appropriate way to summarize this information and more is to use the program <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">anvi-summarize</a>, and inspect the resulting TAB-delimited output file</p>
+
+                <div class="modal-body">
+                    ` + content + `
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    $('body').append(template);
+    $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+
+    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
+    $.bootstrapSortable({ applyLast: true })
+}
+
+
 function showDraggableDialog(title, content, updateOnly)
 {
     var randomID = title.hashCode();
