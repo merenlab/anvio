@@ -1520,27 +1520,21 @@ function gen_pymol_script() {
         } : null;
     }
 
-    // FIXME Uses static backbone color
-    var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
+    var prefix = $('#gene_callers_id_list').val();
+    var main_object = prefix;
+    var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
+    var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
+    var s = `bg_color white\n` +
+            `main_obj = cmd.get_object_list(selection='(${main_object})')[0]\n` +
+            `cmd.hide('everything', main_obj)\n` +
+            `cmd.show('cartoon', main_obj)\n` +
+            `set transparency, ${surface_transparency}\n` +
+            `set solvent_radius, ${surface_probe_radius}\n`;
 
     // s is the full PyMOL script string
-    var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
-            `color bb_color, all\n` +
-            `bg_color white\n` +
-            `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
-
-    // FIXME Add a surface (uses static surface color)
-    if ($('#show_surface').is(':checked')) {
-        // disregards colorScheme and picks 'plain' surface color
-        var surface_color = hexToRgb($('#color_static_surface').attr('color'));
-        var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
-        var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
-        s += `cmd.show('surface', struct_obj)\n` +
-             `cmd.set_color('surf_color', [${surface_color.r},${surface_color.g},${surface_color.b}])\n` +
-             `cmd.set('surface_color', 'surf_color', struct_obj)\n` +
-             `set transparency, ${surface_transparency}\n` +
-             `set solvent_radius, ${surface_probe_radius}\n`;
-    }
+    //var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
+    //var s += `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
+    //        `color bb_color, structure_${$('#gene_callers_id_list').val()}\n`
 
     // list of the PyMOL objects--one for each group
     var group_object_list = [];
@@ -1551,8 +1545,9 @@ function gen_pymol_script() {
 
         var res_attrs = '';
         var res_list = [];
-        var group_object = `group_${group}_obj`
-        var group_selection = `group_${group}_sele`
+        var group_object = `${prefix}_${group}`
+        var group_var_object = `${prefix}_${group}_var`
+        var group_selection = `${prefix}_${group}_sele`
         group_object_list.push(group_object)
 
         var counter = 0;
@@ -1569,25 +1564,34 @@ function gen_pymol_script() {
                 } else {
                     res_list.push(res);
                 }
-
                 counter += 1;
             }
         });
 
         var res_sele = res_list.join('+');
         s += `res_attrs = {${res_attrs}}\n` +
-             `select ${group_selection}, name CA and resi ${res_sele}\n` +
-             `create ${group_object}, ${group_selection}\n` +
-             `for res in res_attrs: cmd.set_color('${group_object}' + str(res), res_attrs[res]['color'])\n` +
-             `alter ${group_object}, color = cmd.get_color_index('${group_object}' + resi)\n` +
-             `alter ${group_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
-             `hide everything, ${group_object}\n` +
-             `show spheres, ${group_object}\n` +
-             `cmd.disable('${group_object}')\n`;
+             `select ${group_selection}, ${main_object} and name CA and resi ${res_sele}\n` +
+             `create ${group_var_object}, ${group_selection}\n` +
+             `for res in res_attrs: cmd.set_color('${group_var_object}' + str(res), res_attrs[res]['color'])\n` +
+             `alter ${group_var_object}, color = cmd.get_color_index('${group_var_object}' + resi)\n` +
+             `alter ${group_var_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
+             `hide everything, ${group_var_object}\n` +
+             `show spheres, ${group_var_object}\n` +
+             `create ${group_object}, ${group_var_object} or ${main_object}\n`;
+
+        for (let residue in residue_info) {
+            if ($('#show_surface').is(':checked')) {
+                // FIXME assumes dynamic
+                var surface_color = hexToRgb("#".concat(calcSurfaceColor(residue, group).substring(2,8)));
+                s += `set_color ${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
+                s += `set surface_color, ${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
+            }
+        }
+
+        s += `show surface, ${group_object}\n`;
+
     }
-    s += `cmd.hide('everything', struct_obj)\n` +
-         `cmd.show('cartoon', struct_obj)\n` +
-         `cmd.show('surface', struct_obj)\n` +
+    s += `cmd.disable('all')\n` +
          `cmd.enable('${group_object_list[0]}')\n` +
          `orient\n` +
          `rebuild`;
