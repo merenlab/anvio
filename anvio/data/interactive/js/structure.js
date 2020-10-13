@@ -401,13 +401,35 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 if ($('#backbone_color_type').val() == 'Dynamic') {
                     let name = $('#backbone_color_variable').val();
                     if (!tooltip_HTML_body.includes(name)) {
-                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                        let backbone_val;
+                        if (residue_info[residue].hasOwnProperty(name)) {
+                            // The selected dynamic variable is in residue_info
+                            backbone_val = residue_info[residue][name];
+                        } else if (variability[group].hasOwnProperty(residue)) {
+                            // The selected dynamic variable is in the variability data
+                            backbone_val = variability[group][residue][name];
+                        } else {
+                            // It's in neither. Not good
+                            backbone_val = null;
+                        }
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${backbone_val}</td></tr>`
                     }
                 }
                 if ($('#surface_color_type').val() == 'Dynamic') {
                     let name = $('#surface_color_variable').val();
                     if (!tooltip_HTML_body.includes(name)) {
-                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                        let surface_val;
+                        if (residue_info[residue].hasOwnProperty(name)) {
+                            // The selected dynamic variable is in residue_info
+                            surface_val = residue_info[residue][name];
+                        } else if (variability[group].hasOwnProperty(residue)) {
+                            // The selected dynamic variable is in the variability data
+                            surface_val = variability[group][residue][name];
+                        } else {
+                            // It's in neither. Not good
+                            surface_val = null;
+                        }
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${surface_val}</td></tr>`
                     }
                 }
 
