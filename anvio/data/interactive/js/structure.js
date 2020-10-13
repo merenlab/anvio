@@ -530,43 +530,77 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     return defer.promise();
 }
 
+function calcBackboneColor(residue, group=null) {
+    let name = $('#backbone_color_variable').val();
+    let val;
+
+    if (residue_info[residue].hasOwnProperty(name)) {
+        // The selected dynamic variable is in residue_info
+        val = residue_info[residue][name];
+    } else if (variability[group].hasOwnProperty(residue)) {
+        // The selected dynamic variable is in the variability data
+        val = variability[group][residue][name];
+    } else {
+        // It's in neither. Not good
+        val = null;
+    }
+
+    if (val == null) {
+        // This can be true either because the value was absent, or the name requested was
+        // invalid. In this case we return the min value color
+        return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
+    }
+
+    let min_value = parseFloat($('#backbone_color_min').val());
+    let max_value = parseFloat($('#backbone_color_max').val());
+    let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+    val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+    var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
+    return '0x' + hex.substring(1, 7).toUpperCase()
+}
+
 function getBackboneColorScheme(group=null) {
     // group is only needed if the selected color variable has a group-specific value, i.e. entropy
     // is a group specific parameter but predicted ligand binding frequency is not
 
     var schemeId_backbone = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        let name = $('#backbone_color_variable').val();
-        let val;
-
-        if (residue_info[atom.resno].hasOwnProperty(name)) {
-            // The selected dynamic variable is in residue_info
-            val = residue_info[atom.resno][name];
-        } else if (variability[group].hasOwnProperty(atom.resno)) {
-            // The selected dynamic variable is in the variability data
-            val = variability[group][atom.resno][name];
-        } else {
-            // It's in neither. Not good
-            val = null;
-        }
-
-        if (val == null) {
-            // This can be true either because the value was absent, or the name requested was
-            // invalid. In this case we return the min value color
-            return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
-        }
-
-        let min_value = parseFloat($('#backbone_color_min').val());
-        let max_value = parseFloat($('#backbone_color_max').val());
-        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
-        val_normalized = Math.max(0, Math.min(1, val_normalized));
-
-        var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
-        return '0x' + hex.substring(1, 7).toUpperCase()
+        return calcBackboneColor(atom.resno, group);
       }
     })
 
     return schemeId_backbone;
+}
+
+function calcSurfaceColor(residue, group=null) {
+    let name = $('#surface_color_variable').val();
+    let val;
+
+    if (residue_info[residue].hasOwnProperty(name)) {
+        // The selected dynamic variable is in residue_info
+        val = residue_info[residue][name];
+    } else if (variability[group].hasOwnProperty(residue)) {
+        // The selected dynamic variable is in the variability data
+        val = variability[group][residue][name];
+    } else {
+        // It's in neither. Not good
+        val = null;
+    }
+
+    if (val == null) {
+        // This can be true either because the value was absent, or the name requested was
+        // invalid. In this case we return the min value color
+        return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
+    }
+
+    let min_value = parseFloat($('#surface_color_min').val());
+    let max_value = parseFloat($('#surface_color_max').val());
+    let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+    val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+    var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
+    return '0x' + hex.substring(1, 7).toUpperCase()
 }
 
 function getSurfaceColorScheme(group=null) {
@@ -575,33 +609,7 @@ function getSurfaceColorScheme(group=null) {
 
     var schemeId_surface = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        let name = $('#surface_color_variable').val();
-        let val;
-
-        if (residue_info[atom.resno].hasOwnProperty(name)) {
-            // The selected dynamic variable is in residue_info
-            val = residue_info[atom.resno][name];
-        } else if (variability[group].hasOwnProperty(atom.resno)) {
-            // The selected dynamic variable is in the variability data
-            val = variability[group][atom.resno][name];
-        } else {
-            // It's in neither. Not good
-            val = null;
-        }
-
-        if (val == null) {
-            // This can be true either because the value was absent, or the name requested was
-            // invalid. In this case we return the min value color
-            return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
-        }
-
-        let min_value = parseFloat($('#surface_color_min').val());
-        let max_value = parseFloat($('#surface_color_max').val());
-        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
-        val_normalized = Math.max(0, Math.min(1, val_normalized));
-
-        var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
-        return '0x' + hex.substring(1, 7).toUpperCase()
+        return calcSurfaceColor(atom.resno, group);
       }
     })
 
