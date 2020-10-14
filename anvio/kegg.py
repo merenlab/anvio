@@ -4228,7 +4228,7 @@ class KeggModuleEnrichment(KeggContext):
         if filesnpaths.is_file_empty(self.output_file_path):
             raise ConfigError("It looks like something went wrong during the functional enrichment analysis. "
                               "An output file was created, but it is empty "
-                              "We don't know why this happened, but this log file could contain some clues: {log_file_path}")
+                              f"We don't know why this happened, but this log file could contain some clues: {log_file_path}")
 
 
         self.run.info('Enrichment results', self.output_file_path)
@@ -4241,4 +4241,4 @@ class KeggModuleEnrichment(KeggContext):
             self.run.info('Enrichment log file:', log_file_path)
             self.run.warning("Because you ran this script with the --debug flag, the temporary files are kept. Please "
                              "consider cleaning them up when you are done taking a look at them. Here they are: "
-                             "{enrichment_input_path}, {log_file_path}")
+                             f"{enrichment_input_path}, {log_file_path}")
