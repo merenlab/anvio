@@ -4119,7 +4119,10 @@ class KeggModuleEnrichment(KeggContext):
                                 "Here are the samples that we will be ignoring: "
                                 f"{missing_samples_str}")
                 # drop the samples that are not in groups-txt
-                modules_df.drop(modules_df.loc[modules_df[self.sample_header_in_modules_txt] not in samples_missing_in_groups_txt].index, inplace=True)
+                modules_df = modules_df[~modules_df[self.sample_header_in_modules_txt].isin(list(samples_missing_in_groups_txt))]
+                if anvio.DEBUG:
+                    self.run.info("Samples remaining in dataframe after removing ungrouped", set(modules_df[self.sample_header_in_modules_txt].unique()))
+
             else:
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). For the purposes of this analysis, we will now consider all of these samples to belong to one group called "
