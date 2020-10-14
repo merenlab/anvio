@@ -39,6 +39,8 @@ Here, we will go through a brief overview of the MODELLER parameters that you ar
 - The maximum number of templates that the program will consider. The default is 5. 
 - The MODELLER program to use. The default is `mod9.19`. 
 
+For a case study on how some of these parameters matter, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#a-quick-case-study-on-the-importance-of-key-parameters). 
+
 You also have the option to 
 
 - Skip the use of DSSP, which predicts the locations of beta sheets, alpha helices, etc. 
