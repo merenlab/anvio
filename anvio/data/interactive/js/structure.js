@@ -1550,7 +1550,10 @@ function gen_pymol_script() {
         var group_selection = `${prefix}_${group}_sele`
         group_object_list.push(group_object)
 
-        var counter = 0;
+        // Initialize a selection with 0 atoms
+        s += `sele ${group_selection}, name CA and name CB\n`
+
+        var counter = 1;
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
                 var res = rep.variability.codon_number;
@@ -1558,11 +1561,11 @@ function gen_pymol_script() {
                 var scale = rep.repr.scale;
 
                 res_attrs += `${res}:{'color':[${color.r},${color.g},${color.b}],'scale':${scale}},`;
+                res_list.push(res.toString());
 
                 if (counter % 20 == 0) {
-                    res_list.push(res.toString().concat("\\\n"));
-                } else {
-                    res_list.push(res);
+                    s += `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n`
+                    res_list = [];
                 }
                 counter += 1;
             }
@@ -1573,9 +1576,8 @@ function gen_pymol_script() {
             res_list[res_list.length-1] = res_list[res_list.length-1].substring(0, res_list[res_list.length-1].length-2)
         }
 
-        var res_sele = res_list.join('+');
         s += `res_attrs = {${res_attrs}}\n` +
-             `select ${group_selection}, ${main_object} and name CA and resi ${res_sele}\n` +
+             `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n` +
              `create ${group_var_object}, ${group_selection}\n` +
              `for res in res_attrs: cmd.set_color('${group_var_object}' + str(res), res_attrs[res]['color'])\n` +
              `alter ${group_var_object}, color = cmd.get_color_index('${group_var_object}' + resi)\n` +
