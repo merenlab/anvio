@@ -4121,7 +4121,7 @@ class KeggModuleEnrichment(KeggContext):
                 # drop the samples that are not in groups-txt
                 modules_df = modules_df[~modules_df[self.sample_header_in_modules_txt].isin(list(samples_missing_in_groups_txt))]
                 if anvio.DEBUG:
-                    self.run.info("Samples remaining in dataframe after removing ungrouped", set(modules_df[self.sample_header_in_modules_txt].unique()))
+                    self.run.info("Samples remaining in modules-txt dataframe after removing ungrouped", set(modules_df[self.sample_header_in_modules_txt].unique()))
 
             else:
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
@@ -4152,6 +4152,11 @@ class KeggModuleEnrichment(KeggContext):
                                  "Since you have used the --just-do-it parameter, we assume you don't care about this and are going to keep "
                                  "going anyway. We hope you know what you are doing :) Here are the samples in question: "
                                   f"{missing_samples_str}")
+                # drop the samples that are not in modules-txt
+                sample_groups_df = sample_groups_df[~sample_groups_df['sample'].isin(list(samples_missing_in_modules_txt))]
+                if anvio.DEBUG:
+                    self.run.info("Samples remaining in groups-txt dataframe after removing ungrouped", set(sample_groups_df['sample'].unique()))
+
 
         modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
         sample_groups_df.set_index('sample', inplace=True)
