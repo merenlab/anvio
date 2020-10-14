@@ -1592,6 +1592,8 @@ function gen_pymol_script() {
                 s += `set_color ${group}_backbone_static, [${static_backbone_color.r},${static_backbone_color.g},${static_backbone_color.b}]\n`;
                 s += `set cartoon_color, ${group}_backbone_static, ${group_object}\n`;
             }
+        } else {
+            s += `hide cartoon, ${group_object}\n`
         }
 
         // group's surface
