@@ -1584,13 +1584,13 @@ function gen_pymol_script() {
             if ($('#backbone_color_type').val() == 'Dynamic') {
                 for (let residue in residue_info) {
                     var backbone_color = hexToRgb("#".concat(calcBackboneColor(residue, group).substring(2,8)));
-                    s += `set_color ${group}_backbone_${residue}, [${backbone_color.r},${backbone_color.g},${backbone_color.b}]\n`;
-                    s += `set cartoon_color, ${group}_backbone_${residue}, ${group_object} and resi ${residue}\n`;
+                    s += `set_color ${prefix}_${group}_backbone_${residue}, [${backbone_color.r},${backbone_color.g},${backbone_color.b}]\n`;
+                    s += `set cartoon_color, ${prefix}_${group}_backbone_${residue}, ${group_object} and resi ${residue}\n`;
                 }
             } else {
                 var static_backbone_color = hexToRgb($('#color_static_backbone').attr('color'));
-                s += `set_color ${group}_backbone_static, [${static_backbone_color.r},${static_backbone_color.g},${static_backbone_color.b}]\n`;
-                s += `set cartoon_color, ${group}_backbone_static, ${group_object}\n`;
+                s += `set_color ${prefix}_${group}_backbone_static, [${static_backbone_color.r},${static_backbone_color.g},${static_backbone_color.b}]\n`;
+                s += `set cartoon_color, ${prefix}_${group}_backbone_static, ${group_object}\n`;
             }
         } else {
             s += `hide cartoon, ${group_object}\n`
@@ -1601,13 +1601,13 @@ function gen_pymol_script() {
             if ($('#surface_color_type').val() == 'Dynamic') {
                 for (let residue in residue_info) {
                     var surface_color = hexToRgb("#".concat(calcSurfaceColor(residue, group).substring(2,8)));
-                    s += `set_color ${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
-                    s += `set surface_color, ${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
+                    s += `set_color ${prefix}_${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
+                    s += `set surface_color, ${prefix}_${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
                 }
             } else {
                 var static_surface_color = hexToRgb($('#color_static_surface').attr('color'));
-                s += `set_color ${group}_surf_static, [${static_surface_color.r},${static_surface_color.g},${static_surface_color.b}]\n`;
-                s += `set surface_color, ${group}_surf_static, ${group_object}\n`;
+                s += `set_color ${prefix}_${group}_surf_static, [${static_surface_color.r},${static_surface_color.g},${static_surface_color.b}]\n`;
+                s += `set surface_color, ${prefix}_${group}_surf_static, ${group_object}\n`;
             }
             s += `show surface, ${group_object}\n`;
         }
