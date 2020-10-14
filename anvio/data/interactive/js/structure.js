@@ -1171,7 +1171,6 @@ function onTargetResidueInfoChange(element) {
     } else {
       for (i in column_info) {
         let item = column_info[i];
-        console.log(item)
         if (item['name'] == name) {
           $(`#backbone_color_min`).val(item['min']);
           $(`#backbone_color_max`).val(item['max']);
