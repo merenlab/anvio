@@ -1579,6 +1579,21 @@ function gen_pymol_script() {
              `show spheres, ${group_var_object}\n` +
              `create ${group_object}, ${group_var_object} or ${main_object}\n`;
 
+        // group's backbone
+        if ($('#show_backbone').is(':checked')) {
+            if ($('#backbone_color_type').val() == 'Dynamic') {
+                for (let residue in residue_info) {
+                    var backbone_color = hexToRgb("#".concat(calcBackboneColor(residue, group).substring(2,8)));
+                    s += `set_color ${group}_backbone_${residue}, [${backbone_color.r},${backbone_color.g},${backbone_color.b}]\n`;
+                    s += `set cartoon_color, ${group}_backbone_${residue}, ${group_object} and resi ${residue}\n`;
+                }
+            } else {
+                var static_backbone_color = hexToRgb($('#color_static_backbone').attr('color'));
+                s += `set_color ${group}_backbone_static, [${static_backbone_color.r},${static_backbone_color.g},${static_backbone_color.b}]\n`;
+                s += `set cartoon_color, ${group}_backbone_static, ${group_object}\n`;
+            }
+        }
+
         // group's surface
         if ($('#show_surface').is(':checked')) {
             if ($('#surface_color_type').val() == 'Dynamic') {
