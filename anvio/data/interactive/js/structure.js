@@ -1550,7 +1550,10 @@ function gen_pymol_script() {
         group_object_list.push(group_object)
 
         // Initialize a selection with 0 atoms
-        s += `sele ${group_selection}, name CA and name CB\n`
+        s += `sele ${group_selection}, name CA and name CB\n`;
+
+        // Initialize a dictionary to hold each variant's attributes
+        s += `res_attrs = {}\n`;
 
         var counter = 1;
         component.reprList.slice(0).forEach((rep) => {
@@ -1563,14 +1566,17 @@ function gen_pymol_script() {
                 res_list.push(res.toString());
 
                 if (counter % 20 == 0) {
-                    s += `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n`
+                    s += `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n`;
+                    s += `res_attrs.update({${res_attrs}})\n`;
+
                     res_list = [];
+                    res_attrs = '';
                 }
                 counter += 1;
             }
         });
 
-        s += `res_attrs = {${res_attrs}}\n` +
+        s += `res_attrs.update({${res_attrs}})\n` +
              `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n` +
              `create ${group_var_object}, ${group_selection}\n` +
              `for res in res_attrs: cmd.set_color('${group_var_object}' + str(res), res_attrs[res]['color'])\n` +
