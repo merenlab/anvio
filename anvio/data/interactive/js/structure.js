@@ -1570,11 +1570,6 @@ function gen_pymol_script() {
             }
         });
 
-        // If res_list happens to be divisible by 20, it will end in \\n. This undoes that
-        if (res_list[res_list.length-1].endsWith('\\\n') & res_list.length > 0) {
-            res_list[res_list.length-1] = res_list[res_list.length-1].substring(0, res_list[res_list.length-1].length-2)
-        }
-
         s += `res_attrs = {${res_attrs}}\n` +
              `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n` +
              `create ${group_var_object}, ${group_selection}\n` +
