@@ -16,7 +16,7 @@ Please see [relevant discussions](https://github.com/merenlab/anvio/issues?q=lab
 
 ### Community chat
 
-Click [this link](https://join.slack.com/t/anvio/shared_invite/zt-gy3g2wsi-nQ3U8_tnO3NafTx43UXrBw) to join our Slack team.
+Click [this link](https://join.slack.com/t/anvio/shared_invite/zt-hrzx35df-vgYwfik0VxaObQuME_XLwg) to join our Slack team.
 
 ### Others on anvi'o
 
