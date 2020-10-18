@@ -1,5 +1,7 @@
 This program lets you export miscellaneous data of your choosing into a text file, which can be imported into another anvi'o project using %(anvi-import-misc-data)s. You can export the same types of data that you can import with that function. These are also listed below.
 
+To see what misc-data is available in your database, use %(anvi-show-misc-data)s. 
+
 If your misc-data is associated with a specific data group, you can provide that data group to this program with the `-D` flag. 
 
 ## Data types you can export 
