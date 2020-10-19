@@ -38,6 +38,8 @@
         <div class="container">
             <header>
                 <h1 id="header"></h1>
+                <div class="alert-box snvs-disabled">WARNING: >1000 SNVs detected. SNVs were disabled for performance optimization. You may re-enable them in the Functions menu.</div>
+                <div class="alert-box indels-disabled">WARNING: >1000 indels detected. indels were disabled for performance optimization. You may re-enable them in the Functions menu.</div>
             </header>
 
 
@@ -155,6 +157,25 @@
 
                   <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 30px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
                   <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 7.5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+
+                  <table id="toggleSNVIndelTable">
+                    <thead>
+                      <tr>
+                        <td><div style="width: 20px;"><input id="toggle_snv_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td><b id="showSNVsLabel">Toggle SNVs</b></td>
+                      </tr>
+                      <tr>
+                        <td><div style="width: 20px;"><input id="toggle_indel_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td><b id="showIndelsLabel">Toggle Indels</b></td>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+
+                  <div class="alert-box snvs-activated">Showing SNVs...</div>
+                  <div class="alert-box snvs-deactivated">Removing SNVS...</div>
+                  <div class="alert-box indels-activated">Showing indels...</div>
+                  <div class="alert-box indels-deactivated">Removing indels...</div>
 
                 </div>
               </div>
