@@ -45,12 +45,12 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
     params:
         hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source')
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
-	shell:
-		"anvi-get-sequences-for-hmm-hits -c {input} \
-                                         {params.hmm_source} \
-                                         --get-aa-sequences \
-                                         --gene-name {wildcards.ribosomal_protein_name} \
-                                         -o {output} 2> {log}"
+	shell: "anvi-get-sequences-for-hmm-hits -c {input} \
+                                       {params.hmm_source} \
+                                       --get-aa-sequences \
+                                       --gene-name {wildcards.ribosomal_protein_name} \
+                                       -o {output} 2> {log}"
+
 
 rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     """Retrieve SCG taxonomy from extracted ribosomal proteins"""
@@ -268,6 +268,25 @@ rule trim_alignment_2:
                 -gt 0.50 2> {log}"
 
 
+rule count_num_sequences_filtered:
+    """This rule will count the number of Ribosomal sequences filtered at each step of the workflow"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{ribosomal_protein_name}.log")
+    input:
+        step1 = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_renamed.fasta"),
+        step2 = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_NR_rep_seq.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{ribosomal_protein_name}_stats.tsv")
+    threads: M.T('trim_alignment_2')
+    shell:
+        """
+        echo -n "Rule\tNum_sequences\n"
+        step1=$(grep -c '>' {input.step1})
+        echo -n "step1\t$step1\n" > {output}
+
+        step2=$(grep -c '>' {input.step2})
+        echo -n "step2\t$step2\n" >> {output}
+        """
 # 4. Calculate the tree, FINALLY
 
 rule calculate_tree:

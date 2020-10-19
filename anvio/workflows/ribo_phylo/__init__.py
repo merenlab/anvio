@@ -107,6 +107,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_RIBOSOMAL_PROTEIN_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_1": "05_RIBOSOMAL_PROTEIN_MSA_1"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_2": "06_RIBOSOMAL_PROTEIN_MSA_2"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_RIBOSOMAL_PROTEIN_MSA_STATS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_TREES": "07_RIBOSOMAL_PROTEIN_TREES"})
 
 
@@ -187,6 +188,12 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
             target_files.append(target_file)
 
+        for ribosomal_protein_name in self.Ribosomal_protein_list:
+
+            tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], tail_path)
+            target_files.append(target_file)
+            
         return target_files
 
 
