@@ -24,8 +24,7 @@ __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-
 __provides__ = ['variability-profile-txt']
 __description__ = ("Generate a table that comprehensively summarizes the variability of nucleotide, "
                    "codon, or amino acid positions. We call these single nucleotide variants (SNVs), "
-                   "single codon variants (SCVs), and single amino acid variants (SAAVs), respectively. "
-                   "Learn more here: http://merenlab.org/2015/07/20/analyzing-variability/")
+                   "single codon variants (SCVs), and single amino acid variants (SAAVs), respectively")
 
 @time_program
 def main(args):
