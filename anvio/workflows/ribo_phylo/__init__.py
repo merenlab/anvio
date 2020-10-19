@@ -53,6 +53,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['samples_txt']) # general section of config file
         self.general_params.extend(['Ribosomal_protein_list']) # user must input which Ribosomal proteins will be used for workflow
+        self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the SCG MSA
 
 
         # Parameters for each rule that are accessible in the config file
@@ -82,6 +83,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'anvi_reformat_fasta_ribosomal_protein_file': {'--simplify-names': True, 'threads': 5},
             'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
+            'MSA_gap_threshold': '',
             'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
@@ -131,13 +133,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                               "This is the error from trying to load it: '%s'" % (self.samples_txt_file, e))
         self.sample_name_list = self.sample_txt['name'].to_list()
         self.sample_path_list = self.sample_txt['path'].to_list()
-        # 03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY/ACE_MG_NA_0150_1482_118C/ACE_MG_NA_0150_1482_118C_Ribosomal_L16.fasta    
 
         self.contig_dir = os.path.dirname(self.sample_path_list[0])
-        # self.snakemake_input = os.path.join(contig_dir, "{sample_name}-contigs.db")
 
 
-        # self.check_samples_txt()
+        self.MSA_gap_threshold = self.get_param_value_from_config(['MSA_gap_threshold'])
 
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
@@ -175,46 +175,17 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        # Target files for anvi_get_sequences_for_hmm_hits_ribosomal_proteins
-        # for ribosomal_protein_name in self.Ribosomal_protein_list:
-        #     for sample_name in self.sample_name_list:
-        #         tail_path = "%s_%s_hmm_hits_all.fasta" % (sample_name, ribosomal_protein_name)
-        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, tail_path)
-        #         target_files.append(target_file)
-
-        # # Target files for anvi_estimate_scg_taxonomy_for_ribosomal_proteins
-        # for ribosomal_protein_name in self.Ribosomal_protein_list:
-        #     for sample_name in self.sample_name_list:
-        #         tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (sample_name, ribosomal_protein_name)
-        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], sample_name, tail_path)
-        #         target_files.append(target_file)
-
-        # # Target files for filter_for_scg_sequences_and_metadata:
-        # for ribosomal_protein_name in self.Ribosomal_protein_list:
-        #     for sample_name in self.sample_name_list:
-        #         tail_path = "%s_%s_misc_data.tsv" % (sample_name, ribosomal_protein_name)
-        #         target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], sample_name, tail_path)
-        #         target_files.append(target_file)
-
-        # # Target files for filter_for_scg_sequences_and_metadata:
-        # for ribosomal_protein_name in self.Ribosomal_protein_list:
-
-        #     tail_path = "%s_misc_data_final.tsv" % (ribosomal_protein_name)
-        #     target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], tail_path)
-        #     target_files.append(target_file)
-
-        # Target files for mmseqs:
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
             tail_path = "%s.contree" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
             target_files.append(target_file)
-        # # Target files for filter_for_scg_sequences_and_metadata:
-        # for ribosomal_protein_name in self.Ribosomal_protein_list:
 
-        #     tail_path = "%s_reformat_report_all.txt" % (ribosomal_protein_name)
-        #     target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], tail_path)
-        #     target_files.append(target_file)
+        for ribosomal_protein_name in self.Ribosomal_protein_list:
+
+            tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
+            target_files.append(target_file)
 
         return target_files
 

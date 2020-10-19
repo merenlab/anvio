@@ -10,3 +10,5 @@ anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config_test.json
 # Test workflow
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --dry-run
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json
+
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json -A --until cat_misc_data_to_one_file

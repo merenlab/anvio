@@ -22,15 +22,21 @@ __email__ = "mschechter@uchicago.edu"
 
 M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
 M.init()
+
 dirs_dict = M.dirs_dict
 
-# print(M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source'))
+# NOTE: user should run workflow until the rule get_gap_count_distribution. This can be done by running the command:
+# $ anvi-run-workflow -w ribo_phylo -c config.json -A --until cat_misc_data_to_one_file
+# This will allow the user to explore the gap distribution of the SCG MSA and decide an appropriate threshold. Currently,
+# the threshold is fixed at 1.5*IQR. After the user has decided on a threshold they can add it to the config file
+
+print("the gap threshold is: " + M.MSA_gap_threshold)
 
 rule ribo_phylo_workflow_target_rule:
     input: M.target_files
 
 rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
-    """Extract all ribosomal proteins (Ribosomal_protein_list.txt) from metagenomes and genomes in samples.txt."""
+    """Extract all ribosomal proteins listed in Ribosomal_protein_list.txt from metagenomes and genomes in samples.txt."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
@@ -47,7 +53,7 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins:
                                          -o {output} 2> {log}"
 
 rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
-    """Retrieve taxonomy from extract ribosomal proteins"""
+    """Retrieve SCG taxonomy from extracted ribosomal proteins"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
@@ -62,7 +68,7 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
 
 
 rule filter_for_scg_sequences_and_metadata:
-    """This rule will..."""
+    """Remove sequences that do not have SCG taxonomy"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_for_scg_sequences_and_metadata_{sample_name}_{ribosomal_protein_name}.log")
@@ -78,7 +84,7 @@ rule filter_for_scg_sequences_and_metadata:
 
 
 rule cat_ribo_proteins_to_one_fasta:
-    """This rule will..."""
+    """Cat all ribosomal sequences from seperate metagenomes into one fasta"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
@@ -90,7 +96,7 @@ rule cat_ribo_proteins_to_one_fasta:
 
 
 rule anvi_reformat_fasta_ribosomal_protein_file:
-    """This rule will..."""
+    """Clean up fasta headers for tree calculation."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{ribosomal_protein_name}.log")
@@ -111,19 +117,19 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
                               -o {output.fasta} >> {log} 2>&1"
 
 rule cat_misc_data_to_one_file:
-    """This rule will..."""
+    """Cat all sequence misc data from separate samples in one tsv"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: expand(os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv"), sample_name = M.sample_name_list, ribosomal_protein_name = M.Ribosomal_protein_list)
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}_all_misc_data.tsv"),
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}_all_misc_data.tsv"),
     threads: M.T('cat_misc_data_to_one_file')
     shell:
         "cat {input} >> {output}"
 
 
 rule join_renamed_fasta_with_misc_data:
-    """This rule will..."""
+    """Add simplified fasta headers to the misc data file"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{ribosomal_protein_name}.log")
@@ -137,7 +143,7 @@ rule join_renamed_fasta_with_misc_data:
 
 
 rule remove_redundant_sequences_mmseqs:
-    """This rule will..."""
+    """Remove redundant ribosomal sequences with mmseqs"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_redundant_sequences_mmseqs_{ribosomal_protein_name}.log")
@@ -153,9 +159,9 @@ rule remove_redundant_sequences_mmseqs:
                              {params.mmseqs_tmp} \
                              --min-seq-id 1 >> {log} 2>&1"
 
-# 1. Initial alignment, trim, and removal of sequences with 50% gaps or more
+# Initial alignment, trim, and removal of sequences with 50% gaps or more
 rule align_muscle:
-    """This rule will..."""
+    """Initial alignment with muscle"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_{ribosomal_protein_name}.log")
@@ -167,7 +173,7 @@ rule align_muscle:
 				-out {output} 2> {log}"
 
 rule trim_alignment:
-    """This rule will..."""
+    """trim alignment"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
@@ -180,7 +186,7 @@ rule trim_alignment:
 				-gt 0.50 2> {log}"
 
 rule remove_gaps:
-    """This rule will..."""
+    """Removing sequences that have > 50% gaps"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
@@ -194,8 +200,8 @@ rule remove_gaps:
 									--max-percentage-gaps 50 \
 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
-# 2. Remove sequences that have an outlier set of gaps in a sequences
-# - this step further refine the MSA by removing more sequences that have too many gaps.
+# Remove sequences that have an outlier set of gaps in a sequences
+# - this step further refines the MSA by removing more sequences that have too many gaps.
 # to make this smarter, we will rely on the standard outlier threshold of 1.5*IQR and remove any
 # sequences with more gaps than that. To accomplish this the following steps will be taken:
 # * Get the distribution of gaps counts per sequences
@@ -218,14 +224,15 @@ rule get_gap_count_distribution:
                                     --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
 rule filter_out_outlier_sequences:
-    """This rule will do some crazy shit... it will grab the IQR from the gaps distribution!!!"""
+    """Filter out sequences with more gaps than the 1.5*IQR of the gap distribution across all sequences"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_out_outlier_sequences_{ribosomal_protein_name}.log")
     input:
         tsv = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_gaps_counts_02.tsv"),
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
-    # params: threshold
+    params:
+        gap_threshold = M.MSA_gap_threshold
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_1'], "{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
     threads: M.T('filter_out_outlier_sequences')
     script:
