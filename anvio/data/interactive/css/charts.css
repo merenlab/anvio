@@ -116,6 +116,14 @@
   margin-top: 10px;
 }
 
+#toggleSNVIndelTable {
+  margin-top: 20px;
+  float: left;
+  display: block;
+  width: 100%;
+  color: black;
+}
+
 svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
@@ -272,14 +280,14 @@ a{
     border-radius: 4px;
 }
 
-.nucl-activated {
+.nucl-activated, .snvs-activated, .indels-activated {
     color: #3c763d;
     background-color: #dff0d8;
     border-color: #d6e9c6;
     display: none;
 }
 
-.nucl-deactivated {
+.nucl-deactivated, .snvs-deactivated, .indels-deactivated, .snvs-disabled, .indels-disabled {
     color: #a94442;
     background-color: #f2dede;
     border-color: #ebccd1;

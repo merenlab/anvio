@@ -44,7 +44,6 @@ var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
-var indelContainer;
 var show_nucleotides = true;
 var gene_offset_y = 0;
 var select_boxes = {};
@@ -278,6 +277,30 @@ function loadAll() {
                   mcags = Object.keys(default_source_colors);
                 }
 
+                // show SNVs and indels?
+                var numSNVs = 0;
+                for(var i = 0; i < competing_nucleotides.length; i++) {
+                  for(var key in competing_nucleotides[i]) {
+                    if(competing_nucleotides[i].hasOwnProperty(key)) numSNVs++;
+                  }
+                }
+                var numIndels = 0;
+                for(var i = 0; i < indels.length; i++) {
+                  for(var key in indels[i]) {
+                    if(indels[i].hasOwnProperty(key)) numIndels++;
+                  }
+                }
+                if(numSNVs > 1000) {
+                  show_snvs = false;
+                  $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                }
+                if(numIndels > 1000) {
+                  show_indels = false;
+                  $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                }
+                if(show_snvs) $('#toggle_snv_box').attr("checked", "checked");
+                if(show_indels) $('#toggle_indel_box').attr("checked", "checked");
+
                 createCharts(state);
                 $('.loading-screen').hide();
 
@@ -371,6 +394,13 @@ function loadAll() {
                       $(this).blur();
                     }
                   }
+                });
+
+                $('#toggle_snv_box').on('change', function() {
+                  toggleSNVs();
+                });
+                $('#toggle_indel_box').on('change', function() {
+                  toggleIndels();
                 });
             }
         });
@@ -520,6 +550,26 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
   });
+}
+
+function toggleSNVs() {
+  /*if(show_snvs) {
+    $("div.snvs-deactivated").fadeIn(300).delay(1500).fadeOut(400);
+  } else {
+    $("div.snvs-activated").fadeIn(300).delay(1500).fadeOut(400);
+  }*/
+  show_snvs = !show_snvs;
+  createCharts(state);
+}
+
+function toggleIndels() {
+  /*if(show_indels) {
+    $("div.indels-deactivated").fadeIn(300).delay(1500).fadeOut(400);
+  } else {
+    $("div.indels-activated").fadeIn(300).delay(1500).fadeOut(400);
+  }*/
+  show_indels = !show_indels;
+  createCharts(state);
 }
 
 function toggleGeneIDColor(gene_id, color="#FF0000") {
@@ -1415,6 +1465,7 @@ function createCharts(state){
             .attr("width", width + margin.left + margin.right)
             .attr("height", 150);
 
+    $("#highlight-boxes").empty();
     highlightBoxes = d3.select("#highlight-boxes").append("svg")
                                                   .attr("id", "highlightBoxesSvg")
                                                   .attr("width", width + margin.left + margin.right)
@@ -1794,9 +1845,8 @@ function Chart(options){
                                               <tr><td>Type</td><td>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
                                               <tr><td>Length</td><td>' + d.value['length'] +'</td></tr> \
                                               <tr><td>Count</td><td>' + d.value['count'] +'</td></tr> \
-                                              <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
-                                              <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': d.value['codon_order_in_gene']) +'</td></tr> \
                                               <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
+                                              <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': d.value['codon_order_in_gene']) +'</td></tr> \
                                               <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': d.value['base_pos_in_codon']) +'</td></tr> \
                                               <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
                                           </table>';
