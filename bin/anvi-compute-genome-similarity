@@ -25,6 +25,7 @@ __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
 __provides__ = ['genome-similarity']
 __description__ = ("Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database "
                    "is given anvi'o will write computed output to misc data tables of Pan Database")
+__resources__ = [("In action in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too")]
 
 
 run = terminal.Run()
