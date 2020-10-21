@@ -32,8 +32,8 @@ dirs_dict = M.dirs_dict
 
 report: "report/workflow.rst"
 
+# print(M.target_files)
 
-print(M.target_files)
 
 rule ribo_phylo_workflow_target_rule:
     input: M.target_files
@@ -80,10 +80,40 @@ rule filter_for_scg_sequences_and_metadata:
         fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.fasta")
     output:
         fasta_filtered = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fasta"),
-        misc_data = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv")
+        misc_data = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_misc_data.tsv"),
+        gene_callers_ids = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_gene_callers_ids.tsv")
+
     threads: M.T('filter_for_scg_sequences_and_metadata')
     script:
         "scripts/filter_for_scg_sequences_and_metadata.py"
+
+rule anvi_get_sequences_for_gene_calls:
+    """Retrieve SCG taxonomy from extracted ribosomal proteins"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_gene_calls_{sample_name}_{ribosomal_protein_name}.log")
+    input:
+        contigsDBs = os.path.join(M.contig_dir, "{sample_name}-contigs.db"),
+        gene_callers_ids = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_gene_callers_ids.tsv")
+    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}.fna")
+    threads: M.T('anvi_get_sequences_for_gene_calls')
+    shell:
+        "anvi-get-sequences-for-gene-calls -c {input.contigsDBs} \
+                                    --gene-caller-ids {input.gene_callers_ids} \
+                                    -o {output} 2> {log}"
+
+
+rule cat_SCG_NT_to_one_fasta:
+    """DOC string
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+    input: expand(os.path.join(dirs_dict['SCG_NT_FASTAS'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}.fna"), sample_names = M.external_genome_name_list, ribosomal_protein_names = M.Ribosomal_protein_list)
+    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fna"),
+    threads: M.T('cat_ribo_proteins_to_one_fasta')
+    shell:
+        "cat {input} >> {output}"
 
 
 rule cat_ribo_proteins_to_one_fasta:
@@ -353,9 +383,9 @@ rule calculate_tree:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "calculate_tree_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    output: report(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree"), category="report/iqtree_{ribosomal_protein_name}.rst")
+    output: report(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree"), category="report/iqtree_{ribosomal_protein_name}.rst")
     params:
-        outfile=os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}")
+        outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}")
     threads: M.T('calculate_tree')
     shell:
         "iqtree -s {input} \

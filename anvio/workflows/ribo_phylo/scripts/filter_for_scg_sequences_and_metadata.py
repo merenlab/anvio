@@ -14,6 +14,13 @@ SCG_taxonomy_results = pd.read_csv(snakemake.input.SCG_taxonomy, \
 # Make gene-callers-id column
 SCG_taxonomy_results['gene_callers_id'] = SCG_taxonomy_results.scg_name.str.split("_",expand=True).iloc[:, -1].astype(int)
 
+# Export gene-callers-ids to extract SCG NT sequences
+SCG_taxonomy_results['gene_callers_id'].to_csv(snakemake.output.gene_callers_ids, \
+                                       sep="\t", \
+                                       index=None, \
+                                       header=False, \
+                                       na_rep="NA")
+
 # Import import fasta from anvi-get-sequences-for-hmm-hits
 #-------------------------------------------------------------------
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
