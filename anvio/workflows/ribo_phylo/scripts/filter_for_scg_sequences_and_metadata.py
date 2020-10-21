@@ -32,7 +32,6 @@ fasta_df['gene_callers_id'] = fasta_df['header'].str.split("gene_callers_id:|\|s
 fasta_df_filtered = fasta_df[fasta_df['gene_callers_id'].isin(SCG_taxonomy_results['gene_callers_id'])]
 
 # Export filtered fasta
-print(snakemake.output.fasta_filtered)
 fasta = open(snakemake.output.fasta_filtered, 'w')
 
 for index, line in fasta_df_filtered.iterrows():
@@ -63,4 +62,5 @@ scg_sequences_misc_data = scg_sequences_misc_data[["header", "sample_name", "Pro
 scg_sequences_misc_data.to_csv(snakemake.output.misc_data, \
                                        sep="\t", \
                                        index=None, \
+                                       header=False, \
                                        na_rep="NA")

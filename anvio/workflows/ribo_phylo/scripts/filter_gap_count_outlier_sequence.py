@@ -28,7 +28,7 @@ else:
 
 	outlier_threshold = IQR * 1.5
 
-	print("the outlier_threshold is: " + str(outlier_threshold))
+print("the outlier_threshold is: " + str(outlier_threshold))
 
 # Filter out sequences that have gaps > outlier_threshold
 shell("anvi-script-reformat-fasta {snakemake.input.fasta} \

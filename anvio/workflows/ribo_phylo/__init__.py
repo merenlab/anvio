@@ -51,7 +51,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'calculate_tree'
                            ])
 
-        self.general_params.extend(['samples_txt']) # general section of config file
+        self.general_params.extend(['external_genomes']) # general section of config file
         self.general_params.extend(['Ribosomal_protein_list']) # user must input which Ribosomal proteins will be used for workflow
         self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the SCG MSA
 
@@ -80,7 +80,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # Set default values for certain accessible parameters
         self.default_config.update({
-            'samples_txt': 'samples.txt',
+            'external_genomes': 'external_genomes.txt',
             'anvi_reformat_fasta_ribosomal_protein_file': {'--simplify-names': True, 'threads': 5},
             'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
             'MSA_gap_threshold': '',
@@ -101,14 +101,20 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             })
 
         # Added directories in the workflow
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_EXTRACTED_RIBO_PROTEINS"})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_EXTRACTED_RIBO_PROTEINS_TAXONOMY"})
+
+        # 01_SCG_HMM_HITS
+        # 02_NR_FASTA
+        # 03_MSA
+        # 04_TREE
+
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_SCG_HMM_HITS"})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_SCG_TAXONOMY"})
         self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_RIBOSOMAL_PROTEIN_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_1": "05_RIBOSOMAL_PROTEIN_MSA_1"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_2": "06_RIBOSOMAL_PROTEIN_MSA_2"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_RIBOSOMAL_PROTEIN_MSA_STATS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_TREES": "07_RIBOSOMAL_PROTEIN_TREES"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "05_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "08_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "09_MISC_DATA"})
 
 
     def init(self):
@@ -123,19 +129,20 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
     #     self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
 
         # Load table of sample info from samples_txt (sample names, split types, paths to r1, r2).
-        self.samples_txt_path = self.get_param_value_from_config(['samples_txt'])
-        filesnpaths.is_file_exists(self.samples_txt_path)
+        self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        filesnpaths.is_file_exists(self.external_genomes)
         try:
             # An error will subsequently be raised in `check_samples_txt` if there is no header.
-            self.sample_txt = pd.read_csv(self.samples_txt_path, sep='\t', index_col=False)
+            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
+            self.external_genome_name_list = self.external_genomes_df['name'].to_list()
+            self.external_genome_path_list = self.external_genomes_df['contigs_db_path'].to_list()
 
         except IndexError as e:
+            # FIXME: need to make a better ConfigError
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.samples_txt_file, e))
-        self.sample_name_list = self.sample_txt['name'].to_list()
-        self.sample_path_list = self.sample_txt['path'].to_list()
 
-        self.contig_dir = os.path.dirname(self.sample_path_list[0])
+        self.contig_dir = os.path.dirname(self.external_genome_path_list[0])
 
 
         self.MSA_gap_threshold = self.get_param_value_from_config(['MSA_gap_threshold'])
@@ -178,22 +185,21 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
-            tail_path = "%s.contree" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
-            target_files.append(target_file)
-
-        for ribosomal_protein_name in self.Ribosomal_protein_list:
-
-            tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], tail_path)
-            target_files.append(target_file)
-
-        for ribosomal_protein_name in self.Ribosomal_protein_list:
-
+            # Num sequences removed per step
             tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], tail_path)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-            
+
+            # Misc metadata files
+            tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            # The FINAL trees :)
+            tail_path = "%s.iqtree" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_TREES'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
         return target_files
 
 
