@@ -48,6 +48,13 @@ var named_functional_sources = {
                                 }),
     },
 
+    'KEGG_Module': {
+        'accession_decorator': (function (d) {
+                                    var modules = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/kegg-bin/show_module?' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return modules.join(', ');
+                                }),
+    },
+
     'Pfam': {
         'accession_decorator': (function (d) {
                                     var pfams = d.split(', ').map((function (c){return '<a href="https://pfam.xfam.org/family/' + c +'" target=_"blank">' + c + '</a>';}));
