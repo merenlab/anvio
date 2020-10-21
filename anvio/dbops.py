@@ -1603,8 +1603,7 @@ class PanSuperclass(object):
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
             accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source)
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = function
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = accession
+            gene_clusters_functions_summary_dict[gene_cluster] = {'gene_cluster_function': function, 'gene_cluster_function_accession': accession}
 
         self.progress.end()
 
