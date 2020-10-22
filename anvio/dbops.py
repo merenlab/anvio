@@ -38,7 +38,6 @@ import anvio.homogeneityindex as homogeneityindex
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 
-from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
@@ -4598,26 +4597,3 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
                                                                               len(matching_item_order_names),
                                                                               default_item_order))
         return default_item_order
-
-
-def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
-    if quiet:
-        run = terminal.Run(verbose=False)
-        progress = terminal.Progress(verbose=False)
-    else:
-        run = terminal.Run()
-        progress = terminal.Progress()
-
-    filesnpaths.is_file_exists(contigs_db_path)
-    filesnpaths.is_output_file_writable(output_file_path)
-
-    class T(Table):
-        def __init__(self, db_path, version, run=run, progress=progress, quiet=False):
-            Table.__init__(self, db_path, version, run, progress, quiet=quiet)
-
-    h = T(contigs_db_path, anvio.__contigs__version__, quiet=quiet)
-    h.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name,
-                                                   output_file_path=output_file_path,
-                                                   item_names=gene_caller_ids)
-
-    return output_file_path
