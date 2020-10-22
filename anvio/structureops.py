@@ -335,6 +335,7 @@ class StructureSuperclass(object):
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
+        self.contigs_db.disconnect()
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -779,12 +780,10 @@ class StructureSuperclass(object):
 
         # Export sequence
         target_fasta_path = filesnpaths.get_temp_file_path()
-        dbops.export_aa_sequences_from_contigs_db(
-            self.contigs_db_path,
-            target_fasta_path,
-            set([corresponding_gene_call]),
-            quiet=True
-        )
+        self.contigs_super.gen_FASTA_file_of_sequences_for_gene_caller_ids([corresponding_gene_call],
+                                                                           output_file_path=target_fasta_path,
+                                                                           report_aa_sequences=True,
+                                                                           simple_headers=True)
 
         try:
             filesnpaths.is_file_fasta_formatted(target_fasta_path)

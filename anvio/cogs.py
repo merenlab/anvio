@@ -125,8 +125,12 @@ class COGs:
         self.run.info('Directory to store temporary files', self.temp_dir_path)
         self.run.info('Directory will be removed after the run', self.remove_temp_dir_path)
 
+        
         if not aa_sequences_file_path:
-            aa_sequences_file_path = dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, J(self.temp_dir_path, 'aa_sequences.fa'))
+            aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
+            dbops.ContigsSuperclass(self.args).gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=aa_sequences_file_path,
+                                                                                               report_aa_sequences=True,
+                                                                                               simple_headers=True)
 
         # do the search
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
