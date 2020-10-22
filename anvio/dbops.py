@@ -1004,6 +1004,8 @@ class ContigsSuperclass(object):
             else:
                 header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
+            sequence = None
+
             if report_aa_sequences and rna_alphabet:
                 raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
             elif rna_alphabet:
@@ -1013,12 +1015,12 @@ class ContigsSuperclass(object):
             else:
                 sequence = entry['sequence']
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
-
-            if not len(sequence):
+            if not sequence:
                 skipped_gene_calls.append(gene_callers_id)
                 continue
+
+            if wrap:
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
             output.write('>%s\n' % header)
             output.write('%s\n' % sequence)
