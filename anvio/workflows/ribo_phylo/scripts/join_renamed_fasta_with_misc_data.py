@@ -37,7 +37,7 @@ misc_data.columns = ["name", "sample_name", "Project", "t_domain", "t_phylum", "
 
 # Export final table
 # ----------------------------
-print("output file should be: ", snakemake.output.misc_data_final)
+# print("output file should be: ", snakemake.output.misc_data_final)
 misc_data.to_csv(snakemake.output.misc_data_final, \
 					 sep="\t", \
 					 index=None, \
