@@ -3454,7 +3454,7 @@ class KeggModulesDatabase(KeggContext):
         so we do the appropriate division to get the time in days.
         """
 
-        return (time.time() - float(self.db.get_meta_value('creation_date'))) / 86400
+        return round((time.time() - float(self.db.get_meta_value('creation_date'))) / 86400)
 
 
     def get_db_content_hash(self):
