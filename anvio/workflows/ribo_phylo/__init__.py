@@ -218,9 +218,14 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     target_files.append(target_file)
 
             # The FINAL trees :)
-            tail_path = "%s_trimmed.fasta" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['MSA'], "MSA_2", ribosomal_protein_name, tail_path)
+            tail_path = "%s.iqtree" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
+
+
+            # tail_path = "%s_trimmed.fasta" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['MSA'], "MSA_2", ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
 
             # #
             # tail_path = "%s_gene_callers_ids_reps.tsv" % (ribosomal_protein_name)

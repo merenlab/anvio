@@ -21,6 +21,6 @@ anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
 
 # checkout tree
 anvi-interactive -p 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17_profile.db \
-                 -t 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17.contree \
-                 -A 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17_all_misc_data_final.tsv   \
+                 -t 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17.treefile \
+                 -A 08_MISC_DATA/Ribosomal_L17_all_misc_data_final.tsv   \
                  --manual
