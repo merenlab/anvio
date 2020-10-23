@@ -52,7 +52,7 @@ def export_from_contigs(args):
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
-        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, add_flanks=args.flank_size)
+        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, add_flanks=args.flank_length)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
@@ -73,6 +73,19 @@ def main(args):
     if contigs_db_path and genomes_storage_db_path:
         raise ConfigError("You can either ask for sequences in a contigs database, or a genomes storage. But not both "
                           "(obviously).")
+
+    if args.flank_length:
+
+        try:
+            int(args.flank_length)
+        except ValueError:
+            raise ConfigError("flank_length must be an integer.")
+
+        if int(args.flank_length) < 0:
+            raise ConfigError("flank_length must be a positive integer.") 
+
+        if args.flank_length and args.get_aa_sequences:
+            raise ConfigError("You indicated --flank-length and --get-aa-sequences. Currently, anvio only can add flanking regions to nucleotide sequences.")
 
     if contigs_db_path:
         export_from_contigs(args)
@@ -95,8 +108,9 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
     groupA.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupA.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
-    groupA.add_argument('-f', '--flank-size', help='This parameter allows you to add flanking regions to your extracted genes calls (For now nucleotide sequences only)! Please '
-                                                     'provide the flank size in number of nucleotides upstream and downstream from the start and stop codon ')
+    groupA.add_argument('-f', '--flank-length', help="This parameter allows you to add flanking regions to your extracted genes calls (nucleotide sequences only)! Please "
+                                                     "provide the flank-length as a postive integeter to indicate the number of nucleotides upstream and downstream from the start "
+                                                     "and stop codon you would like to extend the gene-call.")
 
     groupB = parser.add_argument_group('OPTION #2: EXPORT FROM A GENOMES STORAGE')
     groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
