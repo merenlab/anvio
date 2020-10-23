@@ -567,6 +567,17 @@ class BottleApplication(Bottle):
 
         for entry_id in gene_entries_in_split:
             gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+
+            # this is a CRAZY case where a gene caller id is found in a split, but
+            # it is not occurring in the genes table. ABSOLUTELY CRAZY, BUT FLORIAN
+            # MANAGED TO DO IT, SO THERE WE GO.
+            if gene_callers_id not in self.interactive.genes_in_contigs_dict:
+                progress.reset()
+                run.info_single(f"Gene caller id {gene_callers_id} is missing from the contigs db. But the "
+                                f"split {split_name} thinks it has it :/ Anvi'o ignores this. Anvi'o is too old "
+                                f"for stuff like this.")
+                continue
+
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
             #
