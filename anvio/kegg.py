@@ -2252,7 +2252,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return kegg_metabolism_superdict, kofam_hits_superdict
 
 
-    def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
+    def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
         The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
@@ -2291,6 +2291,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         only_complete_modules : boolean
             If True, we only put information into the output dictionary for modules whose completeness is above the threshold
+
+        exclude_zero_completeness : boolean
+            If True, we don't put modules with a 0 completeness score in the dictionary
 
         RETURNS
         =======
@@ -2333,6 +2336,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     self.run.info("Generating output for module", mnum)
 
                 if only_complete_modules and not c_dict["complete"]:
+                    continue
+                if exclude_zero_completeness and c_dict["percent_complete"] == 0:
                     continue
 
                 # fetch module info from db
@@ -2582,7 +2587,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.only_complete)
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, \
+                                                                    only_complete_modules=self.only_complete, \
+                                                                    exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
             else:
@@ -2906,7 +2913,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
             if single_estimator.available_modes[output_mode]["data_dict"] == 'modules':
-                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.only_complete)
+                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, \
+                                                                                only_complete_modules=self.only_complete, \
+                                                                                exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[output_mode]["data_dict"] == 'kofams':
                 single_dict = single_estimator.generate_output_dict_for_kofams(ko_superdict_multi[metagenome_name], headers_to_include=header_list)
             else:
