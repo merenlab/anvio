@@ -108,9 +108,6 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
     groupA.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupA.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
-    groupA.add_argument('-f', '--flank-length', help="This parameter allows you to add flanking regions to your extracted genes calls (nucleotide sequences only)! Please "
-                                                     "provide the flank-length as a postive integeter to indicate the number of nucleotides upstream and downstream from the start "
-                                                     "and stop codon you would like to extend the gene-call.")
 
     groupB = parser.add_argument_group('OPTION #2: EXPORT FROM A GENOMES STORAGE')
     groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))

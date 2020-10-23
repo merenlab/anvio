@@ -1156,6 +1156,15 @@ D = {
                      "filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends "
                      "on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
                 ),
+    'flank-length': (
+            ['--flank-length'],
+            {'metavar': 'INT',
+             'type': int,
+             'help': "This parameter allows you to add flanking regions to your extracted genes calls (nucleotide sequences "
+                     "only)! Please provide the flank-length as a postive integeter to indicate the number of nucleotides "
+                     "upstream and downstream from the start and stop codon you would like to extend the gene-call."}
+              ),
+
     'flank-mode': (
             ['--flank-mode'],
             {'action': 'store_true',
