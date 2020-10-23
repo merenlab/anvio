@@ -1005,10 +1005,14 @@ class ContigSummarizer(SummarizerSuperClass):
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
+        if split_names:
+            args.split_names_of_interest = set(split_names)
+
         run = terminal.Run()
         progress = terminal.Progress()
         run.verbose = False
         progress.verbose = False
+
         c = ContigsSuperclass(args, r=run, p=progress)
 
         info_dict = {'path': self.contigs_db_path,
