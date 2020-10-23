@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['bam-file',]
 __provides__ = ['linkmers-txt',]
-__description__ = "Access reads in contigs and positions in a BAM file"
+__description__ = "Reports sequences stored in one or more BAM files that cover one of more specific nucleotide positions in a reference"
 
 
 if __name__ == '__main__':

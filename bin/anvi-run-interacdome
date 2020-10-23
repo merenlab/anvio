@@ -17,7 +17,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['contigs-db', 'interacdome-data']
 __provides__ = ['binding-frequencies',]
-__description__ = "Run InteracDome on a contigs database."
+__description__ = "Run InteracDome on a contigs database"
 __resources__ = [("Estimating per-residue binding frequencies with InteracDome", "http://merenlab.org/2020/07/22/interacdome/")]
 
 @time_program

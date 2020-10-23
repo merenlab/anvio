@@ -27,7 +27,7 @@ var COG_categories = {
 }
 
 var named_functional_sources = {
-    'EGGNOG (BACT)': {
+    'EGGNOG_BACT': {
         'accession_decorator': (function (d) {
                                     return '<a href="http://www.uniprot.org/uniprot/?query=' + d + '&sort=score" target="_blank">' + d + '</a>';
                                 }),
@@ -38,6 +38,27 @@ var named_functional_sources = {
         'accession_decorator': (function (d) {
                                     var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
                                     return cogs.join(', ');
+                                }),
+    },
+
+    'KOfam': {
+        'accession_decorator': (function (d) {
+                                    var kos = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/dbget-bin/www_bget?ko:' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return kos.join(', ');
+                                }),
+    },
+
+    'KEGG_Module': {
+        'accession_decorator': (function (d) {
+                                    var modules = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/kegg-bin/show_module?' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return modules.join(', ');
+                                }),
+    },
+
+    'Pfam': {
+        'accession_decorator': (function (d) {
+                                    var pfams = d.split(', ').map((function (c){return '<a href="https://pfam.xfam.org/family/' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return pfams.join(', ');
                                 }),
     },
 
@@ -64,7 +85,29 @@ var named_functional_sources = {
 }
 
 
+function getPrettyFunctionsString(fstring, source) {
+    if (!fstring)
+        return ["-"];
+    else
+        farray = fstring.split('!!!');
+
+        if ((source == null) || source == '' || source == 'None')
+            return farray.join(' / ');
+        else {
+            var dec = new Array();
+
+            for (f in farray)
+                dec.push(decorateAccession(source, farray[f]))
+
+            return dec.join(' / ')
+        }
+}
+
+
 function decorateAccession(source, accession_id){
+    if (!accession_id)
+        return accession_id;
+
     if (source in named_functional_sources){
         if ('accession_decorator' in named_functional_sources[source]){
             return named_functional_sources[source]['accession_decorator'](accession_id);
