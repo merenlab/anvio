@@ -1023,10 +1023,15 @@ class ContigSummarizer(SummarizerSuperClass):
             info_dict[key] = c.a_meta[key]
 
         gene_calls_from_other_gene_callers = Counter()
+        impossible_gene_calls_missing_from_contigs_db = set([])
 
         # Two different strategies here depending on whether we work with a given set if split ids or
         # everything in the contigs database.
         def process_gene_call(g):
+            if g not in c.genes_in_contigs_dict:
+                impossible_gene_calls_missing_from_contigs_db.add(g)
+                return
+
             gene_caller = c.genes_in_contigs_dict[g]['source']
             if gene_caller == gene_caller_to_use:
                 info_dict['gene_caller_ids'].add(g)
@@ -1058,6 +1063,18 @@ class ContigSummarizer(SummarizerSuperClass):
                                                                 % (sum(gene_calls_from_other_gene_callers.values()), \
                                                                    gene_caller_to_use, \
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
+
+        if len(impossible_gene_calls_missing_from_contigs_db):
+            self.progress.reset()
+            self.run.warning(f"SOMETHING IMPOSSIBLE HAS HAPPENED: splits in your contigs database contains gene calls that "
+                             f"are not found in the gene calls table. This really should not happen under any circumstance "
+                             f"yet there were {len(impossible_gene_calls_missing_from_contigs_db)} of them in your database."
+                             f"Anvi'o ignored those gene calls and is going to continue processing your data, but what you "
+                             f"should be doing is to remove this contigs database, and start everything from scratch. There is "
+                             f"something quite wrong with it. If you are curious, here are the gene calls in question: "
+                             f"{', '.join([str(g) for g in impossible_gene_calls_missing_from_contigs_db])}", overwrite_verbose=True)
+
+
 
         info_dict['gene_calls_from_other_gene_callers'] = gene_calls_from_other_gene_callers
         info_dict['gc_content'] = seqlib.Composition(seq).GC_content
