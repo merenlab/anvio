@@ -939,6 +939,10 @@ class ContigsSuperclass(object):
         else:
             aa_sequences_dict = None
 
+        # variable to track the number of genes that were too short to meet the user's desired
+        # flank length.
+        genes_truncated = {'start': set([]), 'end': set([])}
+
         self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
@@ -951,10 +955,12 @@ class ContigsSuperclass(object):
             if flank_length:
                 start = start - int(flank_length)
                 if start < 0:
+                    genes_truncated['start'].add(gene_callers_id)
                     start = 0
 
                 stop = stop + int(flank_length)
                 if stop > contig_length:
+                    genes_truncated['end'].add(gene_callers_id)
                     stop = contig_length
 
             direction = gene_call['direction']
@@ -981,6 +987,17 @@ class ContigsSuperclass(object):
                     sequences_dict[gene_callers_id]['aa_sequence'] = None
 
         self.progress.end()
+
+        if len(genes_truncated['start']) or len(genes_truncated['end']): 
+            missing_starts = f"{len(genes_truncated['start'])} genes were too close to the contig start to have the entire flank length at their beginning (gene caller ids: {', '.join([str(g) for g in genes_truncated['start']])}). "
+            missing_ends = f"{len(genes_truncated['end'])} genes were too close to the contig end to have the entire flank lenght at their end (gene caller ids: {', '.join([str(g) for g in genes_truncated['end']])}). "
+
+            msg = ""
+            msg += missing_starts if len(genes_truncated['start']) else ""
+            msg += missing_ends if len(genes_truncated['end']) else ""
+
+            self.run.warning(f"While anvi'o was trying to add flanking regions of {flank_length} nucleotides to your gene sequences "
+                             f"but things didn't go as smoothly as you may have hoped :/ {msg}")
 
         return (gene_caller_ids_list, sequences_dict)
 
