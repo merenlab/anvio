@@ -946,26 +946,15 @@ class ContigsSuperclass(object):
 
             contig_name = gene_call['contig']
             start, stop = gene_call['start'], gene_call['stop']
+            print(stop-start)
 
+
+            # FIXME: Found where I need to include the flank_size but need to confirm I am making the sequence
+            # longer! Definitely need to take into consideration gene direction!
             if flank_size:
-                start = start - int(flank_size)
-                # Checking if flank size goes past the start of the contig
-                # if it does then make the start the beginning of the contig
-                if start < 0:
-                    continue
-                else:
-                    start = 0
-
+                start = start + int(flank_size)
                 stop = stop + int(flank_size)
-                # Checking if flank size goes past the end of the contig
-                # if it does make the stop the end of the contig
-                if stop > len(self.contig_sequences[contig_name]['sequence']):
-                    stop = len(self.contig_sequences[contig_name]['sequence'])
-
-            print("contig length: ", len(self.contig_sequences[contig_name]['sequence']))
-            print("start: ", start)    
-            print("stop: ", stop)
-            print("sequence length: ", stop-start)
+                print(stop-start)
 
             direction = gene_call['direction']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
