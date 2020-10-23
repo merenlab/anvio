@@ -199,15 +199,20 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-            for external_genome_name in self.external_genome_name_list:
-                # Nucleotide fasta
-                tail_path = "%s_%s_reps_leeway.fna" % (external_genome_name, ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
-                print(target_file)
-                target_files.append(target_file)
+               # Misc metadata files
+            # tail_path = "%s_reformat_report_mmseqs_NR.txt" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+
             # for external_genome_name in self.external_genome_name_list:
             #     # Nucleotide fasta
-            #     tail_path = "%s_%s_mmseqs_NR_rep_seq_gene_callers_ids.tsv" % (external_genome_name, ribosomal_protein_name)
+            #     tail_path = "%s_%s_reps_leeway.fna" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
+            #     print(target_file)
+            #     target_files.append(target_file)
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_gene_callers_ids_reps.tsv" % (external_genome_name, ribosomal_protein_name)
             #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
             #     print(target_file)
             #     target_files.append(target_file)
@@ -220,14 +225,61 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # #
             # tail_path = "%s_gene_callers_ids_reps.tsv" % (ribosomal_protein_name)
             # target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], ribosomal_protein_name, tail_path)
-            # print(target_file)
+            # # print(target_file)
             # target_files.append(target_file)
 
+            # rename_gene_calls
             # for external_genome_name in self.external_genome_name_list:
             #     # Nucleotide fasta
-            #     tail_path = "%s_%s_reps.fna" % (external_genome_name, ribosomal_protein_name)
-            #     target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], external_genome_name, tail_path)
+            #     tail_path = "%s_%s_renamed.fna" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'],ribosomal_protein_name, external_genome_name, tail_path)
             #     target_files.append(target_file)
+
+
+            # # cat_SCG_NT_to_one_fasta
+            # tail_path = "%s_all.fna" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+
+            # # cluster_90_mmseqs
+            # tail_path = "%s_mmseqs_NR_rep_seq.fasta" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+
+            # get_filtered_reformat_file
+            # tail_path = "%s_reformat_report_mmseqs_NR.txt" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+
+            # anvi_get_gene_caller_ids_for_reps
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_gene_callers_ids_reps.tsv" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'],external_genome_name, ribosomal_protein_name, tail_path)
+            #     target_files.append(target_file)
+
+            # # anvi_get_gene_caller_ids_for_reps
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_gene_callers_ids_reps.tsv" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
+            #     print(target_file)
+            #     target_files.append(target_file)
+
+
+            # anvi_get_gene_caller_ids_for_reps
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_reps_leeway.fna" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
+            #     print(target_file)
+            #     target_files.append(target_file)
+
+           # cat_SCG_NT_to_one_fasta_reps
+            tail_path = "%s_all_reps_leeway.fna" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
 
         return target_files
 
