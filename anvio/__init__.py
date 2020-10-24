@@ -1162,7 +1162,9 @@ D = {
              'type': int,
              'help': "This parameter allows you to add flanking regions to your extracted genes calls (nucleotide sequences "
                      "only)! Please provide the flank-length as a postive integeter to indicate the number of nucleotides "
-                     "upstream and downstream from the start and stop codon you would like to extend the gene-call."}
+                     "upstream and downstream from the start and stop codon you would like to extend the gene-call. As"
+                     " an added bonus, anvi'o will also provide an external-gene-calls.tsv so you don't forget where"
+                     " the starts and stops of your genes are :)"}
               ),
 
     'flank-mode': (
