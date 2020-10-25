@@ -29,7 +29,7 @@ __description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this
                    "downstream analysis may need, and can be displayed using a browser without the need for an anvi'o installation. "
                    "For this reason alone, reporting summary outputs as supplementary data with publications is a great idea for "
                    "transparency and reproducibility")
-__resources__ [("anvi-summarize in the User Tutorial for the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize")]
+__resources__ [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
 
 run = terminal.Run()
 progress = terminal.Progress()
