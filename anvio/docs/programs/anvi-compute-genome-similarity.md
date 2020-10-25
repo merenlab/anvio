@@ -7,14 +7,14 @@ The currently available distance metrics include:
 
 ### Input/Output 
 
-The expected input is any combination of %(external-genomes)s, %(internal-genomse)s, and text files that contains paths to %(fasta)s files that describe each of your genomes. This is a tab-delimited file with two columns (`name` and `path` to the fasta files, each of which is assumed to be a single genome),
+The expected input is any combination of %(external-genomes)s, %(internal-genomes)s, and text files that contains paths to %(fasta)s files that describe each of your genomes. This is a tab-delimited file with two columns (`name` and `path` to the fasta files, each of which is assumed to be a single genome),
 
 You also have the option to provide a %(pan-db)s, in which case the output data will be written to the database as %(misc-data-layers)s and %(misc-data-layer-orders)s data. This was done in the [pangenomic tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too). Else, you'll need to provide an output path for the %(genome-similarity)s files. 
 
 Here is an example run with pyANI from an %(external-genomes)s without any parameter changes:
 
     anvi-compute-genome-similarity -e %(external-genomes)s \
-                                   -o path/for/%(genome-simliarty)s \ 
+                                   -o path/for/%(genome-similarity)s \ 
                                    --program pyANI
 
 ### Genome similarity metrics: parameters
