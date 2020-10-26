@@ -17,7 +17,6 @@ import textwrap
 import multiprocessing
 import itertools
 import scipy.signal
-import pandas as pd
 
 from io import StringIO
 from collections import Counter
@@ -948,19 +947,14 @@ class ContigsSuperclass(object):
                 raise ConfigError("flank_length must be an integer.")
 
             if int(flank_length) < 0:
-                raise ConfigError("flank_length must be a positive integer.") 
+                raise ConfigError("flank_length must be a positive integer.")
 
             if flank_length and include_aa_sequences:
                 raise ConfigError("You indicated --flank-length and --get-aa-sequences. anvi'o can only add flanking regions to nucleotide sequences.")
 
-        # Variable to track genes where the flank extention goes past the beginning or 
+        # Variable to track genes where the flank extention goes past the beginning or
         # end of the contig
         gene_flanks_truncated = {'start': set([]), 'end': set([])}
-
-        # empty external-gene-calls table that will be filled
-        external_gene_calls_df = pd.DataFrame({'gene_callers_id': []})
-        external_gene_calls_list = []
-        # external_gene_calls_df = pd.DataFrame({'gene_callers_id': [], 'contig': [], 'start': [], 'stop': [], 'direction': [], 'partial': [], 'call_type': [], 'source': [], 'version': []})
 
         self.progress.new('Working on sequences data structure')
         self.progress.update('...')
@@ -969,9 +963,14 @@ class ContigsSuperclass(object):
 
             contig_name = gene_call['contig']
             start, stop = gene_call['start'], gene_call['stop']
-            contig_length = len(self.contig_sequences[contig_name]['sequence'])
 
             if flank_length:
+                # if the user asked for flanking sequences, then the start / stop positions
+                # to excise the gene sequence with flanks from the contig sequence will
+                # have to be updated. PLEASE NOTE THAT THESE START / STOP ARE NOT FOR
+                # THE GENE CALL ANYMORE.
+                contig_length = len(self.contig_sequences[contig_name]['sequence'])
+
                 start = start - int(flank_length)
                 if start < 0:
                     gene_flanks_truncated['start'].add(gene_callers_id)
@@ -982,9 +981,6 @@ class ContigsSuperclass(object):
                     gene_flanks_truncated['end'].add(gene_callers_id)
                     stop = contig_length
 
-                gene_entry = [gene_callers_id, contig_name, start, stop, gene_call['direction'], gene_call['partial'], gene_call['call_type'], gene_call['source'], gene_call['version']]
-                external_gene_calls_list.append(gene_entry)
-
             direction = gene_call['direction']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
@@ -994,25 +990,39 @@ class ContigsSuperclass(object):
             else:
                 rev_compd = "False"
 
-            sequences_dict[gene_callers_id] = {'sequence': sequence,
-                                               'contig': contig_name,
-                                               'start': start,
-                                               'stop': stop,
-                                               'direction': direction,
-                                               'rev_compd': rev_compd,
-                                               'length': stop - start}
+            ###################################################################################
+            #
+            # UPDATING THE GENE CALL
+            #
+            ###################################################################################
+
+            # time to update the information on the gene call in sequences dict. we first
+            # update start / stop positions of the gene GIVEN the sequence we are reporting
+            # since they are currently showing start/stop positions GIVEN the contig
+            # they were on.
+            original_gene_call_start = gene_call['start']
+            original_gene_call_stop = gene_call['stop']
+            sequence_with_flank_start = start
+            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+
+            # update the sequence
+            gene_call['sequence'] = sequence
+            gene_call['length'] = gene_call['stop'] - gene_call['start']
+            gene_call['rev_compd'] = rev_compd
 
             if include_aa_sequences:
                 if gene_callers_id in aa_sequences_dict:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
+                    gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = None
+                    gene_call['aa_sequence'] = None
 
-        external_gene_calls_df = pd.DataFrame(external_gene_calls_list, columns=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+            # adding the updated gene call to our sequences dict.
+            sequences_dict[gene_callers_id] = gene_call
 
         self.progress.end()
 
-        if len(gene_flanks_truncated['start']) or len(gene_flanks_truncated['end']): 
+        if len(gene_flanks_truncated['start']) or len(gene_flanks_truncated['end']):
             missing_starts = f"{len(gene_flanks_truncated['start'])} genes were too close to the contig start to have the entire flank length at their beginning (gene caller ids: {', '.join([str(g) for g in gene_flanks_truncated['start']])}). "
             missing_ends = f"{len(gene_flanks_truncated['end'])} genes were too close to the contig end to have the entire flank lenght at their end (gene caller ids: {', '.join([str(g) for g in gene_flanks_truncated['end']])}). "
 
@@ -1025,7 +1035,7 @@ class ContigsSuperclass(object):
 
         self.run.info('flank-length', flank_length)
 
-        return (gene_caller_ids_list, sequences_dict, external_gene_calls_df)
+        return (gene_caller_ids_list, sequences_dict)
 
 
     def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, output_file_path_external_gene_calls=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False, flank_length=0):
@@ -1035,6 +1045,8 @@ class ContigsSuperclass(object):
 
         filesnpaths.is_output_file_writable(output_file_path)
 
+        filesnpaths.is_output_file_writable(output_file_path_external_gene_calls) if output_file_path_external_gene_calls else None
+
         if not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
         if wrap == 0:
@@ -1042,8 +1054,8 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        gene_caller_ids_list, sequences_dict, external_gene_calls_df = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences, flank_length=flank_length)
-        
+        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences, flank_length=flank_length)
+
         skipped_gene_calls = []
 
         output = open(output_file_path, 'w')
@@ -1053,10 +1065,17 @@ class ContigsSuperclass(object):
         for gene_callers_id in gene_caller_ids_list:
             entry = sequences_dict[gene_callers_id]
 
-            if simple_headers:
-                header = '%d' % (gene_callers_id)
+            if output_file_path_external_gene_calls:
+                # if the user is asking for an external gene calls file, the FASTA file for sequences
+                # should not start with digits and we also need to set the contig name in sequences
+                # dict properly so the FASTA file and the external gene calls file correspond to each other
+                header = '%s_%d' % (entry['contig'], gene_callers_id)
+                sequences_dict[gene_callers_id]['contig'] = header
             else:
-                header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                if simple_headers:
+                    header = '%d' % (gene_callers_id)
+                else:
+                    header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
             sequence = None
 
@@ -1082,21 +1101,17 @@ class ContigsSuperclass(object):
         output.close()
         self.progress.end()
 
-        if not external_gene_calls_df.empty and not output_file_path_external_gene_calls:
-            raise ConfigError("Please provide an --external-gene-calls-file-path for your flanked sequences.")
 
-        if not external_gene_calls_df.empty:
-            # print(external_gene_calls_df)
-            external_gene_calls_df.to_csv(output_file_path_external_gene_calls, \
-                                          sep="\t", \
-                                          index=None, \
-                                          na_rep="NA")
+        if output_file_path_external_gene_calls:
+            utils.store_dict_as_TAB_delimited_file(sequences_dict,
+                                                   output_file_path_external_gene_calls,
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+            self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
             self.run.warning("Gene caller IDs %s have empty AA sequences and skipped." % (", ".join(map(str, skipped_gene_calls))))
 
-        self.run.info('Output', output_file_path)
-        self.run.info('external-gene-calls', output_file_path_external_gene_calls)
+        self.run.info('Output FASTA', output_file_path)
 
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
@@ -1172,7 +1187,7 @@ class PanSuperclass(object):
         # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
-        # this one below is initialized by self.init_gene_cluster_functions_summary(): 
+        # this one below is initialized by self.init_gene_cluster_functions_summary():
         self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
