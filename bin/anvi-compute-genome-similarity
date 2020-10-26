@@ -77,8 +77,8 @@ if __name__ == '__main__':
                                                                    Only if `--program` is set to `pyANI`")
     group_FASTANI.add_argument('--fastani-kmer-size', type=int, default=16, help="Choose a kmer. The default is %(default)s.")
     group_FASTANI.add_argument('--fragment-length', type=int, default=3000, help="Choose a fragment length. The default is %(default)s.")
-    group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths to that can\
-                                                                                  can be trusted. The default is %(default)s.")
+    group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths that can\
+                                                                                be trusted. The default is %(default)s.")
 
     group_PYANI = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use\
                                              and what settings to set. Only if `--program` is set to `pyANI`")
