@@ -1495,7 +1495,7 @@ class PDBDatabase(object):
 
 
     def load_db(self):
-        return db.DB(self.db_path, '0.1', new_database=False)
+        return db.DB(self.db_path, '0.1', new_database=False, read_only=True)
 
 
     def check_or_create_db(self):
