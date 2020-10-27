@@ -46,6 +46,7 @@ class DB:
     def __init__(self, db_path, client_version, new_database=False, ignore_version=False, read_only=False, skip_rowid_prepend=False,
                  run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
+        self.read_only = read_only
         self.version = None
 
         self.run = run
@@ -66,10 +67,10 @@ class DB:
         if new_database and os.path.exists(self.db_path):
             os.remove(self.db_path)
 
-        if read_only and new_database:
+        if self.read_only and new_database:
             raise ConfigError("One cannot create a new database that is read-only.")
 
-        if not read_only:
+        if not self.read_only:
             self.check_if_db_writable()
 
         try:
@@ -110,6 +111,15 @@ class DB:
                                   "dictionary." % (', '.join(bad_tables)))
 
 
+    def _not_if_read_only(func):
+        def inner(self, *args, **kwargs):
+            if self.read_only:
+                raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
+            else:
+                return func(self, *args, **kwargs)
+        return inner
+
+
     def get_version(self):
         try:
             return self.get_meta_value('version')
@@ -141,15 +151,18 @@ class DB:
             raise ConfigError("Database is not writable.")
 
 
+    @_not_if_read_only
     def create_self(self):
         self._exec('''CREATE TABLE self (key text, value text)''')
 
 
+    @_not_if_read_only
     def drop_table(self, table_name):
         """Delete a table in the database if it exists"""
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
+    @_not_if_read_only
     def create_table(self, table_name, fields, types):
         if len(fields) != len(types):
             raise ConfigError("create_table: The number of fields and types has to match.")
@@ -160,27 +173,32 @@ class DB:
         self.table_names_in_db = self.get_table_names()
 
 
+    @_not_if_read_only
     def set_version(self, version):
         self.set_meta_value('version', version)
         self.commit()
 
 
+    @_not_if_read_only
     def set_meta_value(self, key, value):
         self.remove_meta_key_value_pair(key)
         self._exec('''INSERT INTO self VALUES(?,?)''', (key, value,))
         self.commit()
 
 
+    @_not_if_read_only
     def remove_meta_key_value_pair(self, key):
         self._exec('''DELETE FROM self WHERE key="%s"''' % key)
         self.commit()
 
 
+    @_not_if_read_only
     def update_meta_value(self, key, value):
         self.remove_meta_key_value_pair(key)
         self.set_meta_value(key, value)
 
 
+    @_not_if_read_only
     def copy_paste(self, table_name, source_db_path, append=False):
         """Copy `table_name` data from another database (`source_db_path`) into yourself
 
@@ -267,6 +285,15 @@ class DB:
 
 
     def _exec(self, sql_query, value=None):
+        """Execute an arbitrary sql statement
+
+        Notes
+        =====
+        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
+          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
+          to the DB using this method, even with self.read_only = True
+        """
+
         if value:
             ret_val = self.cursor.execute(sql_query, value)
         else:
@@ -277,6 +304,15 @@ class DB:
 
 
     def _exec_many(self, sql_query, values):
+        """Execute many sql statements
+
+        Notes
+        =====
+        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
+          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
+          to the DB using this method, even with self.read_only = True
+        """
+
         chunk_counter = 0
         for chunk in get_list_in_chunks(values):
             if anvio.DEBUG:
@@ -292,17 +328,20 @@ class DB:
         return True
 
 
+    @_not_if_read_only
     def insert(self, table_name, values=()):
         query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(values)))
         return self._exec(query, values)
 
 
+    @_not_if_read_only
     def insert_many(self, table_name, entries=None):
         if len(entries):
             query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(entries[0])))
             return self._exec_many(query, entries)
 
 
+    @_not_if_read_only
     def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True):
         """Insert rows from a dataframe
 
@@ -404,6 +443,7 @@ class DB:
         return response.fetchall()[0][0]
 
 
+    @_not_if_read_only
     def remove_some_rows_from_table(self, table_name, where_clause):
         self.is_table_exists(table_name)
 
