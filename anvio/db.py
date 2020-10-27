@@ -43,7 +43,8 @@ def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
 
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, skip_rowid_prepend=False, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, read_only=False, skip_rowid_prepend=False,
+                 run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
         self.version = None
 
@@ -65,7 +66,11 @@ class DB:
         if new_database and os.path.exists(self.db_path):
             os.remove(self.db_path)
 
-        self.check_if_db_writable()
+        if read_only and new_database:
+            raise ConfigError("One cannot create a new database that is read-only.")
+
+        if not read_only:
+            self.check_if_db_writable()
 
         try:
             self.conn = sqlite3.connect(self.db_path)
