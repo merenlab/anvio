@@ -505,4 +505,4 @@ rule calculate_tree:
         "iqtree -s {input} \
                 -nt {threads} \
                 -m MFP \
-                -pre {params.outfile} 2> {log}"
+                -pre {params.outfile} >> {log} 2>&1"
