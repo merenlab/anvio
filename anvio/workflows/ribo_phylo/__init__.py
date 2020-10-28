@@ -114,10 +114,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_NR_FASTAS"})
         self.dirs_dict.update({"MSA": "05_MSA"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "08_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "09_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "10_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "11_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        self.dirs_dict.update({"TREES": "07_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "08_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "9_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "10_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
@@ -146,9 +146,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                               "This is the error from trying to load it: '%s'" % (self.samples_txt_file, e))
 
         self.contig_dir = os.path.dirname(self.external_genome_path_list[0])
-
-
-        self.MSA_gap_threshold = self.get_param_value_from_config(['MSA_gap_threshold'])
 
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
@@ -280,10 +277,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     print(target_file)
             #     target_files.append(target_file)
 
-           # cat_SCG_NT_to_one_fasta_reps
-            tail_path = "%s_all_reps_leeway.fna" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+           # # cat_SCG_NT_to_one_fasta_reps
+           #  tail_path = "%s_all_reps_leeway.fna" % (ribosomal_protein_name)
+           #  target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+           #  target_files.append(target_file)
 
 
         return target_files

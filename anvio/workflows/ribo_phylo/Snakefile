@@ -414,7 +414,7 @@ rule filter_out_outlier_sequences:
         tsv = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_02.tsv"),
         fasta = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
     params:
-        gap_threshold = M.MSA_gap_threshold
+        gap_threshold = M.get_param_value_from_config(['MSA_gap_threshold'])
     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
     threads: M.T('filter_out_outlier_sequences')
     script:
@@ -466,27 +466,27 @@ rule count_num_sequences_filtered:
     shell:
         """
         # Headers
-        echo -n "Rule_name\tNum_sequences\n > {output}"
+        echo -n "Description\tRule_name\tNum_sequences\n > {output}"
 
         # Rule: anvi_reformat_fasta_ribosomal_protein_file
         step1=$(grep -c '>' {input.step1})
-        echo -n "anvi_reformat_fasta_ribosomal_protein_file\t$step1\n" > {output}
+        echo -n "Input_numseq_from_all_MG\tanvi_reformat_fasta_ribosomal_protein_file\t$step1\n" > {output}
 
         # Rule: remove_redundant_sequences_mmseqs
         step2=$(grep -c '>' {input.step2})
-        echo -n "remove_redundant_sequences_mmseqs\t$step2\n" >> {output}
+        echo -n "NR_sumseq\tremove_redundant_sequences_mmseqs\t$step2\n" >> {output}
 
         # Rule: remove_gaps
         step3=$(grep -c '>' {input.step3})
-        echo -n "remove_gaps\t$step3\n" >> {output}
+        echo -n "seq_50_gaps_removed\tremove_gaps\t$step3\n" >> {output}
 
         # Rule: filter_out_outlier_sequences
         step4=$(grep -c '>' {input.step4})
-        echo -n "filter_out_outlier_sequences\t$step4\n" >> {output}
+        echo -n "remove_outliers\tfilter_out_outlier_sequences\t$step4\n" >> {output}
 
         # Rule: trim_alignment_2
         step5=$(grep -c '>' {input.step4})
-        echo -n "trim_alignment_2\t$step5\n" >> {output}
+        echo -n "num_seq_for_tree\ttrim_alignment_2\t$step5\n" >> {output}
         """
 
 # 4. Calculate the tree, FINALLY

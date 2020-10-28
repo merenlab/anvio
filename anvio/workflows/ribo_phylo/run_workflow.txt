@@ -2,10 +2,7 @@
 anvi-run-workflow --list-workflows
 
 # make default config file
-anvi-run-workflow -w trnaseq --get-default-config test_trnaseq_config.json
-anvi-run-workflow -w contigs --get-default-config test_contigs_config.json
-
-anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config_test.json
+anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config.json
 
 # Test workflow
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --dry-run
@@ -20,7 +17,7 @@ anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
 
 
 # checkout tree
-anvi-interactive -p 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17_profile.db \
-                 -t 07_RIBOSOMAL_PROTEIN_TREES/Ribosomal_L17.treefile \
-                 -A 08_MISC_DATA/Ribosomal_L17_all_misc_data_final.tsv   \
+anvi-interactive -p 07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t 07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A 08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv   \
                  --manual
