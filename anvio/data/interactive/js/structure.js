@@ -241,7 +241,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     });
 
     stage.loadFile(stringBlob, { ext: "pdb" }).then((component) => {
-        if( component.type !== "structure" ) return;
+        if ( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
             if ($('#surface_color_type').val() == 'Static') {
@@ -253,7 +253,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 } else {
                     $('#dynamic_surface_color_error').hide();
                 }
-                var color_value = getSurfaceColorScheme();
+                var color_value = getSurfaceColorScheme(group);
             } else {
                 var color_value = $('#surface_color_type').val()
             }
@@ -292,7 +292,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 } else {
                     $('#dynamic_backbone_color_error').hide();
                 }
-                var color_value = getBackboneColorScheme();
+                var color_value = getBackboneColorScheme(group);
             } else {
                 var color_value = $('#backbone_color_type').val()
             }
@@ -401,13 +401,35 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 if ($('#backbone_color_type').val() == 'Dynamic') {
                     let name = $('#backbone_color_variable').val();
                     if (!tooltip_HTML_body.includes(name)) {
-                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                        let backbone_val;
+                        if (residue_info[residue].hasOwnProperty(name)) {
+                            // The selected dynamic variable is in residue_info
+                            backbone_val = residue_info[residue][name];
+                        } else if (variability[group].hasOwnProperty(residue)) {
+                            // The selected dynamic variable is in the variability data
+                            backbone_val = variability[group][residue][name];
+                        } else {
+                            // It's in neither. Not good
+                            backbone_val = null;
+                        }
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${backbone_val}</td></tr>`
                     }
                 }
                 if ($('#surface_color_type').val() == 'Dynamic') {
                     let name = $('#surface_color_variable').val();
                     if (!tooltip_HTML_body.includes(name)) {
-                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                        let surface_val;
+                        if (residue_info[residue].hasOwnProperty(name)) {
+                            // The selected dynamic variable is in residue_info
+                            surface_val = residue_info[residue][name];
+                        } else if (variability[group].hasOwnProperty(residue)) {
+                            // The selected dynamic variable is in the variability data
+                            surface_val = variability[group][residue][name];
+                        } else {
+                            // It's in neither. Not good
+                            surface_val = null;
+                        }
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${surface_val}</td></tr>`
                     }
                 }
 
@@ -508,50 +530,86 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     return defer.promise();
 }
 
-function getBackboneColorScheme() {
+function calcBackboneColor(residue, group=null) {
+    let name = $('#backbone_color_variable').val();
+    let val;
+
+    if (residue_info[residue].hasOwnProperty(name)) {
+        // The selected dynamic variable is in residue_info
+        val = residue_info[residue][name];
+    } else if (variability[group].hasOwnProperty(residue)) {
+        // The selected dynamic variable is in the variability data
+        val = variability[group][residue][name];
+    } else {
+        // It's in neither. Not good
+        val = null;
+    }
+
+    if (val == null) {
+        // This can be true either because the value was absent, or the name requested was
+        // invalid. In this case we return the min value color
+        return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
+    }
+
+    let min_value = parseFloat($('#backbone_color_min').val());
+    let max_value = parseFloat($('#backbone_color_max').val());
+    let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+    val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+    var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
+    return '0x' + hex.substring(1, 7).toUpperCase()
+}
+
+function getBackboneColorScheme(group=null) {
+    // group is only needed if the selected color variable has a group-specific value, i.e. entropy
+    // is a group specific parameter but predicted ligand binding frequency is not
 
     var schemeId_backbone = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        let name = $('#backbone_color_variable').val();
-        let val = residue_info[atom.resno][name]
-
-        if (val == null) {
-            // Value is null, return the min value color
-            return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
-        }
-
-        let min_value = parseFloat($('#backbone_color_min').val());
-        let max_value = parseFloat($('#backbone_color_max').val());
-        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
-        val_normalized = Math.max(0, Math.min(1, val_normalized));
-
-        var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
-        return '0x' + hex.substring(1, 7).toUpperCase()
+        return calcBackboneColor(atom.resno, group);
       }
     })
 
     return schemeId_backbone;
 }
 
-function getSurfaceColorScheme() {
+function calcSurfaceColor(residue, group=null) {
+    let name = $('#surface_color_variable').val();
+    let val;
+
+    if (residue_info[residue].hasOwnProperty(name)) {
+        // The selected dynamic variable is in residue_info
+        val = residue_info[residue][name];
+    } else if (variability[group].hasOwnProperty(residue)) {
+        // The selected dynamic variable is in the variability data
+        val = variability[group][residue][name];
+    } else {
+        // It's in neither. Not good
+        val = null;
+    }
+
+    if (val == null) {
+        // This can be true either because the value was absent, or the name requested was
+        // invalid. In this case we return the min value color
+        return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
+    }
+
+    let min_value = parseFloat($('#surface_color_min').val());
+    let max_value = parseFloat($('#surface_color_max').val());
+    let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+    val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+    var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
+    return '0x' + hex.substring(1, 7).toUpperCase()
+}
+
+function getSurfaceColorScheme(group=null) {
+    // group is only needed if the selected color variable has a group-specific value, i.e. entropy
+    // is a group specific parameter but predicted ligand binding frequency is not
 
     var schemeId_surface = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        let name = $('#surface_color_variable').val();
-        let val = residue_info[atom.resno][name]
-
-        if (val == null) {
-            // Value is null, return the min value color
-            return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
-        }
-
-        let min_value = parseFloat($('#surface_color_min').val());
-        let max_value = parseFloat($('#surface_color_max').val());
-        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
-        val_normalized = Math.max(0, Math.min(1, val_normalized));
-
-        var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
-        return '0x' + hex.substring(1, 7).toUpperCase()
+        return calcSurfaceColor(atom.resno, group);
       }
     })
 
@@ -1017,6 +1075,12 @@ function create_ui() {
                     $('#surface_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
                 }
             }
+            column_info.forEach((item) => {
+                if ((item['as_view'] | item['as_filter']) & item['data_type'] != 'text') {
+                    $('#backbone_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
+                    $('#surface_color_variable').append(`<option value="${item['name']}">${item['title']}</item>`);
+                }
+            })
 
             column_info.forEach((item) => {
                 if (item['as_view']) {
@@ -1055,7 +1119,7 @@ function create_ui() {
                     if (filter_backup.hasOwnProperty(gene_callers_id) && filter_backup[gene_callers_id].hasOwnProperty(engine) && filter_backup[gene_callers_id][engine].hasOwnProperty(item['name'])) {
                         checked_choices = filter_backup[gene_callers_id][engine][item['name']][item['name'] + 's_of_interest'];
                     }
-                    
+
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
@@ -1097,11 +1161,23 @@ function create_ui() {
 
 function onTargetResidueInfoChange(element) {
     let name = $(element).val();
-    let type_info = residue_info_types[name];
 
     $(`#backbone_numerical_panel`).show();
-    $(`#backbone_color_min`).val(type_info['amin']);
-    $(`#backbone_color_max`).val(type_info['amax']);
+
+    if (residue_info[1].hasOwnProperty(name)) {
+      // The selected dynamic variable is in residue_info's elements
+      $(`#backbone_color_min`).val(residue_info_types[name]['amin']);
+      $(`#backbone_color_max`).val(residue_info_types[name]['amax']);
+    } else {
+      for (i in column_info) {
+        let item = column_info[i];
+        if (item['name'] == name) {
+          $(`#backbone_color_min`).val(item['min']);
+          $(`#backbone_color_max`).val(item['max']);
+          break;
+        }
+      }
+    }
 
     $('.colorpicker-legend').colpick({
         layout: 'hex',
@@ -1443,27 +1519,21 @@ function gen_pymol_script() {
         } : null;
     }
 
-    // FIXME Uses static backbone color
-    var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
+    var prefix = $('#gene_callers_id_list').val();
+    var main_object = prefix;
+    var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
+    var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
+    var s = `bg_color white\n` +
+            `main_obj = cmd.get_object_list(selection='(${main_object})')[0]\n` +
+            `cmd.hide('everything', main_obj)\n` +
+            `cmd.show('cartoon', main_obj)\n` +
+            `set transparency, ${surface_transparency}\n` +
+            `set solvent_radius, ${surface_probe_radius}\n`;
 
     // s is the full PyMOL script string
-    var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
-            `color bb_color, all\n` +
-            `bg_color white\n` +
-            `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
-
-    // FIXME Add a surface (uses static surface color)
-    if ($('#show_surface').is(':checked')) {
-        // disregards colorScheme and picks 'plain' surface color
-        var surface_color = hexToRgb($('#color_static_surface').attr('color'));
-        var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
-        var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
-        s += `cmd.show('surface', struct_obj)\n` +
-             `cmd.set_color('surf_color', [${surface_color.r},${surface_color.g},${surface_color.b}])\n` +
-             `cmd.set('surface_color', 'surf_color', struct_obj)\n` +
-             `set transparency, ${surface_transparency}\n` +
-             `set solvent_radius, ${surface_probe_radius}\n`;
-    }
+    //var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
+    //var s += `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
+    //        `color bb_color, structure_${$('#gene_callers_id_list').val()}\n`
 
     // list of the PyMOL objects--one for each group
     var group_object_list = [];
@@ -1474,10 +1544,18 @@ function gen_pymol_script() {
 
         var res_attrs = '';
         var res_list = [];
-        var group_object = `group_${group}_obj`
-        var group_selection = `group_${group}_sele`
+        var group_object = `${prefix}_${group}`
+        var group_var_object = `${prefix}_${group}_var`
+        var group_selection = `${prefix}_${group}_sele`
         group_object_list.push(group_object)
 
+        // Initialize a selection with 0 atoms
+        s += `sele ${group_selection}, name CA and name CB\n`;
+
+        // Initialize a dictionary to hold each variant's attributes
+        s += `res_attrs = {}\n`;
+
+        var counter = 1;
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
                 var res = rep.variability.codon_number;
@@ -1485,24 +1563,63 @@ function gen_pymol_script() {
                 var scale = rep.repr.scale;
 
                 res_attrs += `${res}:{'color':[${color.r},${color.g},${color.b}],'scale':${scale}},`;
-                res_list.push(res);
+                res_list.push(res.toString());
+
+                if (counter % 20 == 0) {
+                    s += `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n`;
+                    s += `res_attrs.update({${res_attrs}})\n`;
+
+                    res_list = [];
+                    res_attrs = '';
+                }
+                counter += 1;
             }
         });
 
-        var res_sele = res_list.join('+');
-        s += `res_attrs = {${res_attrs}}\n` +
-             `select ${group_selection}, name CA and resi ${res_sele}\n` +
-             `create ${group_object}, ${group_selection}\n` +
-             `for res in res_attrs: cmd.set_color('${group_object}' + str(res), res_attrs[res]['color'])\n` +
-             `alter ${group_object}, color = cmd.get_color_index('${group_object}' + resi)\n` +
-             `alter ${group_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
-             `hide everything, ${group_object}\n` +
-             `show spheres, ${group_object}\n` +
-             `cmd.disable('${group_object}')\n`;
+        s += `res_attrs.update({${res_attrs}})\n` +
+             `select ${group_selection}, ${group_selection} | (${main_object} and name CA and resi ${res_list.join('+')})\n` +
+             `create ${group_var_object}, ${group_selection}\n` +
+             `for res in res_attrs: cmd.set_color('${group_var_object}' + str(res), res_attrs[res]['color'])\n` +
+             `alter ${group_var_object}, color = cmd.get_color_index('${group_var_object}' + resi)\n` +
+             `alter ${group_var_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
+             `hide everything, ${group_var_object}\n` +
+             `show spheres, ${group_var_object}\n` +
+             `create ${group_object}, ${group_var_object} or ${main_object}\n`;
+
+        // group's backbone
+        if ($('#show_backbone').is(':checked')) {
+            if ($('#backbone_color_type').val() == 'Dynamic') {
+                for (let residue in residue_info) {
+                    var backbone_color = hexToRgb("#".concat(calcBackboneColor(residue, group).substring(2,8)));
+                    s += `set_color ${prefix}_${group}_backbone_${residue}, [${backbone_color.r},${backbone_color.g},${backbone_color.b}]\n`;
+                    s += `set cartoon_color, ${prefix}_${group}_backbone_${residue}, ${group_object} and resi ${residue}\n`;
+                }
+            } else {
+                var static_backbone_color = hexToRgb($('#color_static_backbone').attr('color'));
+                s += `set_color ${prefix}_${group}_backbone_static, [${static_backbone_color.r},${static_backbone_color.g},${static_backbone_color.b}]\n`;
+                s += `set cartoon_color, ${prefix}_${group}_backbone_static, ${group_object}\n`;
+            }
+        } else {
+            s += `hide cartoon, ${group_object}\n`
+        }
+
+        // group's surface
+        if ($('#show_surface').is(':checked')) {
+            if ($('#surface_color_type').val() == 'Dynamic') {
+                for (let residue in residue_info) {
+                    var surface_color = hexToRgb("#".concat(calcSurfaceColor(residue, group).substring(2,8)));
+                    s += `set_color ${prefix}_${group}_surf_${residue}, [${surface_color.r},${surface_color.g},${surface_color.b}]\n`;
+                    s += `set surface_color, ${prefix}_${group}_surf_${residue}, ${group_object} and resi ${residue}\n`;
+                }
+            } else {
+                var static_surface_color = hexToRgb($('#color_static_surface').attr('color'));
+                s += `set_color ${prefix}_${group}_surf_static, [${static_surface_color.r},${static_surface_color.g},${static_surface_color.b}]\n`;
+                s += `set surface_color, ${prefix}_${group}_surf_static, ${group_object}\n`;
+            }
+            s += `show surface, ${group_object}\n`;
+        }
     }
-    s += `cmd.hide('everything', struct_obj)\n` +
-         `cmd.show('cartoon', struct_obj)\n` +
-         `cmd.show('surface', struct_obj)\n` +
+    s += `cmd.disable('all')\n` +
          `cmd.enable('${group_object_list[0]}')\n` +
          `orient\n` +
          `rebuild`;
