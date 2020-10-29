@@ -74,6 +74,7 @@ class MODELLER:
             self.run.verbose = False
         self.lazy_init = lazy_init
 
+        self.check_db_only = check_db_only
         self.target_fasta_path = target_fasta_path
         self.directory = directory if directory else filesnpaths.get_temp_directory_path()
 
@@ -115,6 +116,11 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
+        if self.check_db_only:
+            self.check_database()
+            return
+
+        self.sanity_check()
         self.corresponding_gene_call = self.get_corresponding_gene_call_from_target_fasta_path()
 
         # as reward, whoever called this class will receive self.out when they run self.process()
@@ -132,12 +138,6 @@ class MODELLER:
             "deviation"                 : self.deviation,
             "directory"                 : self.directory,
         }
-
-        if check_db_only:
-            self.check_database()
-            return
-
-        self.sanity_check()
 
         # copy fasta into the working directory
         try:
@@ -808,7 +808,10 @@ class MODELLER:
 
             error = "\n" + "\n".join(error.split('\n'))
             print(terminal.c(error, color='red'))
-            self.out["structure_exists"] = False
+
+            if not self.check_db_only:
+                self.out["structure_exists"] = False
+
             raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear "
                                       "from the above error message. No structure is going to be modelled."\
                                        .format(script_name))
