@@ -964,6 +964,11 @@ class KeggRunHMMs(KeggContext):
         # load existing kegg modules db
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
+                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
 
     def set_hash_in_contigs_db(self):
         """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
