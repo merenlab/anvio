@@ -115,11 +115,6 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
-        if check_db_only:
-            self.check_database()
-            return
-
-        self.sanity_check()
         self.corresponding_gene_call = self.get_corresponding_gene_call_from_target_fasta_path()
 
         # as reward, whoever called this class will receive self.out when they run self.process()
@@ -131,12 +126,18 @@ class MODELLER:
             "best_model_path"           : None,
             "best_score"                : None,
             "scoring_method"            : self.scoring_method,
-            "percent_cutoff"  : self.percent_cutoff,
+            "percent_cutoff"            : self.percent_cutoff,
             "alignment_fraction_cutoff" : self.alignment_fraction_cutoff,
             "very_fast"                 : self.very_fast,
             "deviation"                 : self.deviation,
             "directory"                 : self.directory,
         }
+
+        if check_db_only:
+            self.check_database()
+            return
+
+        self.sanity_check()
 
         # copy fasta into the working directory
         try:
