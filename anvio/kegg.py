@@ -2323,8 +2323,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             The output dictionary whose format is compatible for printing to a tab-delimited file
         """
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
-
         if not headers_to_include:
             headers_to_include = set(OUTPUT_MODES['modules']['headers'])
         else:
@@ -2556,7 +2554,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             The output dictionary whose format is compatible for printing to a tab-delimited file
         """
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
         self.setup_ko_dict()
 
         # use the kofam_hits output mode header set by default
