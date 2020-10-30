@@ -2984,6 +2984,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for metagenome_name in kegg_superdict_multi:
             args = self.get_args_for_single_estimator(metagenome_name)
             single_estimator = KeggMetabolismEstimator(args, run=run_quiet)
+            single_estimator.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
             header_list = single_estimator.available_modes[output_mode]["headers"]
             if anvio.DEBUG:
@@ -3004,6 +3005,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "data dictionary, but we don't know about that one.")
 
             kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
+
+            single_estimator.kegg_modules_db.disconnect()
 
         if as_single_data_frame:
             return self.get_metabolism_superdict_multi_as_data_frame(kegg_metabolism_superdict_multi_output_version)
