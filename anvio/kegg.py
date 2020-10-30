@@ -2056,6 +2056,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         genome_metabolism_superdict = {}
         genome_ko_superdict = {}
+
         # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
         splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
         metabolism_dict_for_genome, ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_genome,
@@ -2066,6 +2067,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             genome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
             genome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+
+        # append to file
+        self.append_kegg_metabolism_superdicts(genome_metabolism_superdict, genome_ko_superdict)
 
         return genome_metabolism_superdict, genome_ko_superdict
 
@@ -2103,10 +2107,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             if not self.store_json_without_estimation:
                 bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin, bin_name=bin_name)
+                single_bin_module_superdict = {bin_name: bins_metabolism_superdict[bin_name]}
                 bins_ko_superdict[bin_name] = ko_dict_for_bin
             else:
                 bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
                 bins_ko_superdict[bin_name] = ko_dict_for_bin
+                single_bin_module_superdict = {bin_name: metabolism_dict_for_bin}
+
+            # append individual bin to file
+            single_bin_ko_superdict = {bin_name: ko_dict_for_bin}
+            self.append_kegg_metabolism_superdicts(single_bin_module_superdict, single_bin_ko_superdict)
 
         return bins_metabolism_superdict, bins_ko_superdict
 
@@ -2142,13 +2152,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
             ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
             metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(ko_in_contig, split_list=splits_in_contig, bin_name=contig)
+            # skip if no KOs and skip KOs not in modules
 
             if not self.store_json_without_estimation:
                 metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
+                single_contig_module_superdict = {contig: metagenome_metabolism_superdict[contig]}
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
             else:
                 metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
+                single_contig_module_superdict = {contig: metabolism_dict_for_contig}
+
+            # append individual contig to file
+            single_contig_ko_superdict = {contig: ko_dict_for_contig}
+            self.append_kegg_metabolism_superdicts(single_contig_module_superdict, single_contig_ko_superdict)
 
         return metagenome_metabolism_superdict, metagenome_ko_superdict
 
@@ -2227,6 +2244,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
+        if skip_storing_data:
+            self.output_file_dict = {}
+        else:
+            self.output_file_dict = self.setup_output_for_appending()
+
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
@@ -2242,12 +2264,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        self.kegg_modules_db.disconnect()
-
-        if not self.store_json_without_estimation and not skip_storing_data:
-            self.store_kegg_metabolism_superdicts(kegg_metabolism_superdict, kofam_hits_superdict)
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
+
+        self.kegg_modules_db.disconnect()
 
         return kegg_metabolism_superdict, kofam_hits_superdict
 
@@ -2545,38 +2565,87 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     self.run.info("Generating output for KO", ko)
 
                 for gc_id in k_dict["gene_caller_ids"]:
-                    d[unique_id] = {}
+                    d[self.ko_unique_id] = {}
 
                     if self.name_header in headers_to_include:
-                        d[unique_id][self.name_header] = bin
+                        d[self.ko_unique_id][self.name_header] = bin
                     if "ko" in headers_to_include:
-                        d[unique_id]["ko"] = ko
+                        d[self.ko_unique_id]["ko"] = ko
                     if "gene_caller_id" in headers_to_include:
-                        d[unique_id]["gene_caller_id"] = gc_id
+                        d[self.ko_unique_id]["gene_caller_id"] = gc_id
                     if "contig" in headers_to_include:
-                        d[unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
+                        d[self.ko_unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
                     if "modules_with_ko" in headers_to_include:
                         if k_dict["modules"]:
                             mod_list = ",".join(k_dict["modules"])
                         else:
                             mod_list = "None"
-                        d[unique_id]["modules_with_ko"] = mod_list
+                        d[self.ko_unique_id]["modules_with_ko"] = mod_list
                     if "ko_definition" in headers_to_include:
-                        d[unique_id]["ko_definition"] = self.ko_dict[ko]['definition']
+                        d[self.ko_unique_id]["ko_definition"] = self.ko_dict[ko]['definition']
 
-                    unique_id += 1
-
-        self.kegg_modules_db.disconnect()
+                    self.ko_unique_id += 1
 
         return d
 
 
+    def setup_output_for_appending(self):
+        """Initializes and returns a dictionary of AppendableFile objects, one for each output mode"""
+
+        output_dict = {}
+        for mode in self.output_modes:
+            output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
+            output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False,
+                                                              overwrite_if_file_exists=True)
+            output_dict[mode] = output_file_for_mode
+
+            self.run.info(f"Output file for {mode} mode", output_path)
+
+        return output_dict
+
+
+    def append_kegg_metabolism_superdicts(self, module_superdict_for_list_of_splits, ko_superdict_for_list_of_splits):
+        """This function appends the metabolism superdicts (for a single genome, bin, or contig in metagenome) to existing files
+        for each output mode.
+
+        It appends to the initialized AppendableFile objects in self.output_file_dict.
+
+        This is an alternative to store_kegg_metabolism_superdicts(), which prints the entire metabolism superdicts for all
+        genomes/bins/contigs in metagenome at once.
+        """
+
+        for mode, file_obj in self.output_file_dict.items():
+            header_list = self.available_modes[mode]["headers"]
+            if not header_list:
+                raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
+                                  "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
+                                  % (mode))
+            if self.available_modes[mode]["data_dict"] == 'modules':
+                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list, \
+                                                                    only_complete_modules=self.only_complete, \
+                                                                    exclude_zero_completeness=self.exclude_zero_modules)
+            elif self.available_modes[mode]["data_dict"] == 'kofams':
+                output_dict = self.generate_output_dict_for_kofams(ko_superdict_for_list_of_splits, headers_to_include=header_list)
+            else:
+                raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
+                                  "data dictionary, but we don't know about that one.")
+
+            file_obj.append(output_dict, key_header="unique_id", headers=header_list)
+            if anvio.DEBUG:
+                self.run.warning(f"Appended metabolism dictionary to {file_obj.path}" ,
+                                header='DEBUG OUTPUT', lc='yellow')
+
+
     def store_kegg_metabolism_superdicts(self, module_superdict, ko_superdict):
-        """This function writes the metabolism superdicts to tab-delimited files depending on which output the user requested.
+        """This function writes the metabolism superdicts (in their entirety) to tab-delimited files depending
+        on which output the user requested.
 
         The user can request a variety of output 'modes', and for each of these modes we look up the details on the output
         format which are stored in self.available_modes, use that information to generate a dictionary of dictionaries,
         and store that dictionary as a tab-delimited file.
+
+        This is an alternative to append_kegg_metabolism_superdicts(), which adds to the output files
+        one genome/bin/contig in metagenome at a time for better memory management.
         """
 
         for mode in self.output_modes:
