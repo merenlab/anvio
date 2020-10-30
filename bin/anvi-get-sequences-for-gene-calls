@@ -49,10 +49,14 @@ def export_from_contigs(args):
     if args.export_gff3:
         if args.get_aa_sequences:
             raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")
+        if args.external_gene_calls:
+            raise ConfigError("External gene calls file is not compatble with GFF format.")
+        if args.flank_length:
+            raise ConfigError("Due to the lazy programming, --flank-length and --export-gff3 flags are incompatible :(")
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
-        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length, output_file_path_external_gene_calls=args.external_gene_calls)
+        c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length, output_file_path_external_gene_calls=args.external_gene_calls)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):

@@ -915,7 +915,10 @@ class ContigsSuperclass(object):
         return output
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
+                                           output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
+
+        # bunch of sanity checks below
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -924,23 +927,23 @@ class ContigsSuperclass(object):
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every "
                              "%d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        filesnpaths.is_output_file_writable(output_file_path_external_gene_calls) if output_file_path_external_gene_calls else None
+
+        if not isinstance(wrap, int):
+            raise ConfigError('"wrap" has to be an integer instance')
+        if wrap == 0:
+            wrap = None
+        if wrap and wrap <= 20:
+            raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
+
         try:
             gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
         except:
             raise ConfigError("List of IDs for gene calls contains non-integer values :/")
 
-        if not len(self.contig_sequences):
-            self.init_contig_sequences()
-
-        sequences_dict = {}
-
-        if include_aa_sequences:
-            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
-        else:
-            aa_sequences_dict = None
-
         if flank_length:
-
             try:
                 int(flank_length)
             except ValueError:
@@ -952,10 +955,27 @@ class ContigsSuperclass(object):
             if flank_length and include_aa_sequences:
                 raise ConfigError("You indicated --flank-length and --get-aa-sequences. anvi'o can only add flanking regions to nucleotide sequences.")
 
-        # Variable to track genes where the flank extention goes past the beginning or
-        # end of the contig
+        if output_file_path_external_gene_calls and not simple_headers:
+            raise ConfigError("If you are asking anvi'o to create an external gene calls file for your gene sequences, you can't also "
+                              "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
+                              "file must match, and anvi'o will have to take care of it without your supervision.")
+
+        # finally getting our sequences initialized.
+        if not len(self.contig_sequences):
+            self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
+
+        if include_aa_sequences:
+            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        else:
+            aa_sequences_dict = None
+
+        # we will put everything we learn into this data structure.
+        sequences_dict = {}
+
+        # this will track whether we successfully recovered desired flanks for genes.
         gene_flanks_truncated = {'start': set([]), 'end': set([])}
 
+        # ACTION
         self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
@@ -984,9 +1004,15 @@ class ContigsSuperclass(object):
             direction = gene_call['direction']
             sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
 
-            if direction == 'r' and reverse_complement_if_necessary:
-                sequence = utils.rev_comp(sequence)
-                rev_compd = "True"
+            # NOTE: this is a bit ugly here. if there is an external gene calls output file path,
+            # we simply do not reverse-complement reverse genes EVEN when `reverse_complement_if_necessary`
+            # variable is True. and we do it quietly.
+            if not output_file_path_external_gene_calls:
+                if direction == 'r' and reverse_complement_if_necessary:
+                    sequence = utils.rev_comp(sequence)
+                    rev_compd = "True"
+                else:
+                    rev_compd = "False"
             else:
                 rev_compd = "False"
 
@@ -1017,6 +1043,18 @@ class ContigsSuperclass(object):
                 else:
                     gene_call['aa_sequence'] = None
 
+            if output_file_path_external_gene_calls:
+                # if the user is asking for an external gene calls file, the FASTA file for sequences
+                # should not start with digits and we also need to set the contig name in sequences
+                # dict properly so the FASTA file and the external gene calls file correspond to each other
+                gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
+                gene_call['contig'] = gene_call['header']
+            else:
+                if simple_headers:
+                    gene_call['header'] = '%d' % (gene_callers_id)
+                else:
+                    gene_call['header'] = '%d ' % (gene_callers_id) + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+
             # adding the updated gene call to our sequences dict.
             sequences_dict[gene_callers_id] = gene_call
 
@@ -1035,73 +1073,42 @@ class ContigsSuperclass(object):
 
         self.run.info('flank-length', flank_length)
 
-        return (gene_caller_ids_list, sequences_dict)
-
-
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, output_file_path_external_gene_calls=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False, flank_length=0):
-        if not output_file_path:
-            raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come "
-                              "here, but please go back and come again.")
-
-        filesnpaths.is_output_file_writable(output_file_path)
-
-        filesnpaths.is_output_file_writable(output_file_path_external_gene_calls) if output_file_path_external_gene_calls else None
-
-        if not isinstance(wrap, int):
-            raise ConfigError('"wrap" has to be an integer instance')
-        if wrap == 0:
-            wrap = None
-        if wrap and wrap <= 20:
-            raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
-
-        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences, flank_length=flank_length)
-
         skipped_gene_calls = []
 
-        output = open(output_file_path, 'w')
+        # Storing the FASTA file for seqeunces
+        if output_file_path:
+            with open(output_file_path, 'w') as output:
+                self.progress.new('Storing sequences')
+                self.progress.update('...')
+                for gene_callers_id in gene_caller_ids_list:
+                    entry = sequences_dict[gene_callers_id]
 
-        self.progress.new('Storing sequences')
-        self.progress.update('...')
-        for gene_callers_id in gene_caller_ids_list:
-            entry = sequences_dict[gene_callers_id]
+                    sequence = None
 
-            if output_file_path_external_gene_calls:
-                # if the user is asking for an external gene calls file, the FASTA file for sequences
-                # should not start with digits and we also need to set the contig name in sequences
-                # dict properly so the FASTA file and the external gene calls file correspond to each other
-                header = '%s_%d' % (entry['contig'], gene_callers_id)
-                sequences_dict[gene_callers_id]['contig'] = header
-            else:
-                if simple_headers:
-                    header = '%d' % (gene_callers_id)
-                else:
-                    header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                    if report_aa_sequences and rna_alphabet:
+                        raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
+                    elif rna_alphabet:
+                        sequence = entry['sequence'].replace('T', 'U')
+                    elif report_aa_sequences:
+                        sequence = entry['aa_sequence']
+                    else:
+                        sequence = entry['sequence']
 
-            sequence = None
+                    if not sequence:
+                        skipped_gene_calls.append(gene_callers_id)
+                        continue
 
-            if report_aa_sequences and rna_alphabet:
-                raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
-            elif rna_alphabet:
-                sequence = entry['sequence'].replace('T', 'U')
-            elif report_aa_sequences:
-                sequence = entry['aa_sequence']
-            else:
-                sequence = entry['sequence']
+                    if wrap:
+                        sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            if not sequence:
-                skipped_gene_calls.append(gene_callers_id)
-                continue
+                    output.write('>%s\n' % entry['header'])
+                    output.write('%s\n' % sequence)
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+                self.progress.end()
 
-            output.write('>%s\n' % header)
-            output.write('%s\n' % sequence)
+            self.run.info('Output FASTA', output_file_path)
 
-        output.close()
-        self.progress.end()
-
-
+        # Storing the external gene calls file for sequences stored as FASTA
         if output_file_path_external_gene_calls:
             utils.store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
@@ -1111,7 +1118,7 @@ class ContigsSuperclass(object):
         if len(skipped_gene_calls):
             self.run.warning("Gene caller IDs %s have empty AA sequences and skipped." % (", ".join(map(str, skipped_gene_calls))))
 
-        self.run.info('Output FASTA', output_file_path)
+        return (gene_caller_ids_list, sequences_dict)
 
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
