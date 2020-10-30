@@ -483,6 +483,10 @@ class AppendableFile:
                                                     key_header=self.key_header, keys_order=self.keys_order, \
                                                     header_item_conversion_dict=self.header_item_conversion_dict)
         else:
+            # if dictionary is empty, just return
+            if not dict_to_append:
+                return
+
             file_headers = utils.get_columns_of_TAB_delim_file(self.path, include_first_column=True)
             inner_dict_keys = list(dict_to_append.values())[0].keys()
 
