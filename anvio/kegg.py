@@ -1173,6 +1173,8 @@ class KeggEstimatorArgs():
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
         self.kegg_data_dir = A('kegg_data_dir')
+        self.modules_unique_id = None
+        self.ko_unique_id = None
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -2345,7 +2347,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
         d = {}
-        unique_id = 0
+        if not self.modules_unique_id:
+             self.modules_unique_id = 0
+        """
+        ### FIXME ###
+        The unique_id problematic to deal with when we are generating multiple output files because this self.modules_unique_id
+        variable is shared between all output files. Since we append to each output file in turn, this means that within an
+        output file the unique_id column will have 'jumps' in value (such that a row's unique_id is not always 1 greater than the
+        previous row's unique_id). This does not really cause problems and is not an urgent fix, per se, but it looks weird.
+        ### FIXME ###
+        """
 
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
@@ -2386,66 +2397,66 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 continue
 
                             for gc_id in c_dict["kofam_hits"][ko]:
-                                d[unique_id] = {}
+                                d[self.modules_unique_id] = {}
 
                                 # kofam hit specific info
                                 if "kofam_hit" in headers_to_include:
-                                    d[unique_id]["kofam_hit"] = ko
+                                    d[self.modules_unique_id]["kofam_hit"] = ko
                                 if "gene_caller_id" in headers_to_include:
-                                    d[unique_id]["gene_caller_id"] = gc_id
+                                    d[self.modules_unique_id]["gene_caller_id"] = gc_id
                                 if "contig" in headers_to_include:
-                                    d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+                                    d[self.modules_unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
 
                                 # repeated information for each hit
                                 # path specific info
                                 if "path_id" in headers_to_include:
-                                    d[unique_id]["path_id"] = p_index
+                                    d[self.modules_unique_id]["path_id"] = p_index
                                 if "path" in headers_to_include:
-                                    d[unique_id]["path"] = ",".join(p)
+                                    d[self.modules_unique_id]["path"] = ",".join(p)
                                 if "path_completeness" in headers_to_include:
-                                    d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                                    d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
 
                                 # top-level keys and keys not in superdict
                                 if self.name_header in headers_to_include:
-                                    d[unique_id][self.name_header] = bin
+                                    d[self.modules_unique_id][self.name_header] = bin
                                 if "kegg_module" in headers_to_include:
-                                    d[unique_id]["kegg_module"] = mnum
+                                    d[self.modules_unique_id]["kegg_module"] = mnum
 
                                 # module specific info
                                 if "module_name" in headers_to_include:
-                                    d[unique_id]["module_name"] = module_name
+                                    d[self.modules_unique_id]["module_name"] = module_name
                                 if "module_class" in headers_to_include:
-                                    d[unique_id]["module_class"] = module_class
+                                    d[self.modules_unique_id]["module_class"] = module_class
                                 if "module_category" in headers_to_include:
-                                    d[unique_id]["module_category"] = module_cat
+                                    d[self.modules_unique_id]["module_category"] = module_cat
                                 if "module_subcategory" in headers_to_include:
-                                    d[unique_id]["module_subcategory"] = module_subcat
+                                    d[self.modules_unique_id]["module_subcategory"] = module_subcat
                                 if "module_definition" in headers_to_include:
-                                    d[unique_id]["module_definition"] = module_def
+                                    d[self.modules_unique_id]["module_definition"] = module_def
                                 if "module_substrates" in headers_to_include:
                                     if module_substrate_list:
-                                        d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                                        d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
                                     else:
-                                        d[unique_id]["module_substrates"] = "None"
+                                        d[self.modules_unique_id]["module_substrates"] = "None"
                                 if "module_products" in headers_to_include:
                                     if module_product_list:
-                                        d[unique_id]["module_products"] = ",".join(module_product_list)
+                                        d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
                                     else:
-                                        d[unique_id]["module_products"] = "None"
+                                        d[self.modules_unique_id]["module_products"] = "None"
                                 if "module_intermediates" in headers_to_include:
                                     if module_intermediate_list:
-                                        d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
                                     else:
-                                        d[unique_id]["module_intermediates"] = "None"
+                                        d[self.modules_unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
                                 if "kofam_hits_in_module" in headers_to_include:
                                     kos_in_mod = c_dict['kofam_hits'].keys()
-                                    d[unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                                    d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     gcids_in_mod = c_dict['genes_to_contigs'].keys()
                                     gcids_in_mod = [str(x) for x in gcids_in_mod]
-                                    d[unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+                                    d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
                                 # everything else at c_dict level
                                 for h in remaining_headers:
@@ -2454,53 +2465,53 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     h_cdict_key = self.available_headers[h]['cdict_key']
                                     if not h_cdict_key:
                                         raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-                                    d[unique_id][h] = c_dict[h_cdict_key]
+                                    d[self.modules_unique_id][h] = c_dict[h_cdict_key]
 
-                                unique_id += 1
+                                self.modules_unique_id += 1
                 else:
-                    d[unique_id] = {}
+                    d[self.modules_unique_id] = {}
 
                     # top-level keys and keys not in superdict
                     if self.name_header in headers_to_include:
-                        d[unique_id][self.name_header] = bin
+                        d[self.modules_unique_id][self.name_header] = bin
                     if "kegg_module" in headers_to_include:
-                        d[unique_id]["kegg_module"] = mnum
+                        d[self.modules_unique_id]["kegg_module"] = mnum
 
                     # module specific info
                     if "module_name" in headers_to_include:
-                        d[unique_id]["module_name"] = module_name
+                        d[self.modules_unique_id]["module_name"] = module_name
                     if "module_class" in headers_to_include:
-                        d[unique_id]["module_class"] = module_class
+                        d[self.modules_unique_id]["module_class"] = module_class
                     if "module_category" in headers_to_include:
-                        d[unique_id]["module_category"] = module_cat
+                        d[self.modules_unique_id]["module_category"] = module_cat
                     if "module_subcategory" in headers_to_include:
-                        d[unique_id]["module_subcategory"] = module_subcat
+                        d[self.modules_unique_id]["module_subcategory"] = module_subcat
                     if "module_definition" in headers_to_include:
-                        d[unique_id]["module_definition"] = module_def
+                        d[self.modules_unique_id]["module_definition"] = module_def
                     if "module_substrates" in headers_to_include:
                         if module_substrate_list:
-                            d[unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                            d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
                         else:
-                            d[unique_id]["module_substrates"] = "None"
+                            d[self.modules_unique_id]["module_substrates"] = "None"
                     if "module_products" in headers_to_include:
                         if module_product_list:
-                            d[unique_id]["module_products"] = ",".join(module_product_list)
+                            d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
                         else:
-                            d[unique_id]["module_products"] = "None"
+                            d[self.modules_unique_id]["module_products"] = "None"
                     if "module_intermediates" in headers_to_include:
                         if module_intermediate_list:
-                            d[unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                            d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
                         else:
-                            d[unique_id]["module_intermediates"] = "None"
+                            d[self.modules_unique_id]["module_intermediates"] = "None"
 
                     # comma-separated lists of KOs and gene calls in module
                     if "kofam_hits_in_module" in headers_to_include:
                         kos_in_mod = c_dict['kofam_hits'].keys()
-                        d[unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                        d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         gcids_in_mod = c_dict['genes_to_contigs'].keys()
                         gcids_in_mod = [str(x) for x in gcids_in_mod]
-                        d[unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
                     # everything else at c_dict level
                     for h in remaining_headers:
@@ -2509,10 +2520,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         h_cdict_key = self.available_headers[h]['cdict_key']
                         if not h_cdict_key:
                             raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-                        d[unique_id][h] = c_dict[h_cdict_key]
-                    unique_id += 1
-
-        self.kegg_modules_db.disconnect()
+                        d[self.modules_unique_id][h] = c_dict[h_cdict_key]
+                    self.modules_unique_id += 1
 
         return d
 
@@ -2557,7 +2566,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             headers_to_include = set(headers_to_include)
 
         d = {}
-        unique_id = 0
+        if not self.ko_unique_id:
+            self.ko_unique_id = 0
+        """
+        ### FIXME ###
+        See note in previous function about the weirdness of the unique_id with multiple output files.
+        ### FIXME ###
+        """
 
         for bin, ko_dict in ko_superdict.items():
             for ko, k_dict in ko_dict.items():
