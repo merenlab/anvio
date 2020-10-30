@@ -417,7 +417,25 @@ class AppendableFile:
         data : self.append_type
             The data to be added to the end of the file.
         **kwargs :
-            Various keyword arguments for appending functions of different data types
+            Various keyword arguments for downstream functions to append different data types. This is how you pass
+            these arguments when calling this function:
+                    appendable_file = AppendableFile(file_path)
+                    appendable_file.append(data_to_append, kwarg1=kwarg1_value, kwarg2=kwarg2_value, ....)
+            And this is how you access the argument from the resulting dictionary:
+                    kwargs['kwarg1']
+
+            Example 1) appending dictionaries relies upon the utils.store_dict_as_TAB_delimited_file() function,
+            which has several possible arguments that we may want to make use of, like the `headers` parameter. We
+            can pass in this argument like so:
+                    appendable_file.append(dictionary_to_append, headers=["header1", "header2"])
+            We can then access the value of the parameter within this function with:
+                    kwargs['headers']
+
+            Example 2) let's say you want to use the function utils.store_dataframe_as_TAB_delimited_file() downstream
+            and you need the `columns` parameter. You would pass that to this function with:
+                    appendable_file.append(df_to_append, columns=["col_1", "col_2", "col_3"])
+            and pass it along to the downstream function with:
+                    utils.store_dataframe_as_TAB_delimited_file(columns=kwargs['columns'])
         """
 
         f = open(self.path, "a+")
