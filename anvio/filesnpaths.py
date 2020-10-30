@@ -368,3 +368,158 @@ def get_name_from_file_path(file_path, postfix_separator="."):
     splits = os.path.basename(os.path.abspath(file_path)).split(postfix_separator)
 
     return splits[0] if len(splits) in [1, 2] else '.'.join(splits[:-1])
+
+
+class AppendableFile:
+    """A file class for repeatedly opening the same file and appending data to it.
+
+    Parameters
+    ==========
+    file_path : string
+        the path to the file
+    append_type : data type, None
+        If you provide a data type here, then only data of that type will be allowed to be appended to the file
+    fail_if_file_exists : boolean
+        if True, throw an error upon initialization if the file already exists. If False,
+        start appending to the end of the file.
+    """
+
+    def __init__(self, file_path, append_type=None, fail_if_file_exists=True):
+        self.path = file_path
+        self.append_type = append_type
+
+        self.ACCEPTABLE_TYPES = [dict, str]
+        if self.append_type and (self.append_type not in self.ACCEPTABLE_TYPES):
+            raise FilesNPathsError(f"Sorry. AppendableFile class does not know how to handle the declared data type '{self.append_type}'.")
+
+        # if file exists, we may want to stop ourselves
+        if fail_if_file_exists and is_file_exists(self.path, dont_raise=True):
+            raise FilesNPathsError(f"AppendableFile class is refusing to open your file at {self.path} "
+                                    "because it already exists. If you are a user, you should probably give "
+                                    "Anvi'o a different file name to work with. If you are a programmer and you "
+                                    "don't want this behavior, init this class with `fail_if_file_exists=False` instead.")
+
+        is_output_file_writable(self.path)
+
+
+    def append(self, data, **kwargs):
+        """Opens a file handle and calls a function for appending according to the data type.
+        Closes the file handle afterwards.
+
+        Parameters
+        ==========
+        data : self.append_type
+            The data to be added to the end of the file.
+        **kwargs :
+            Various keyword arguments for appending functions of different data types
+        """
+
+        f = open(self.path, "a+")
+
+        if self.append_type and (not isinstance(data, self.append_type)):
+            raise FilesNPathsError(f"A programmer promised to send data of type '{self.append_type}' to {self.path} for "
+                                   f"appending, but instead sent data of type '{type(data)}'. Since the data type for this "
+                                   "file was explicitly declared and the actual data does not match this type, Anvi'o will "
+                                   "put a stop to this whole operation.")
+
+        if isinstance(data, dict):
+            self.headers = kwargs['headers'] if 'headers' in kwargs else None
+            self.key_header = kwargs['key_header'] if 'key_header' in kwargs else None
+            self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
+            self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
+
+            self.append_dict_to_file(data, f)
+        elif isinstance(data, str):
+            f.write(data + "\n")
+        else:
+            raise FilesNPathsError(f"AppendableFile class has no strategy for appending data of type {type(data)}.")
+
+        f.close()
+
+
+    def append_dict_to_file(self, dict_to_append, file_handle):
+        """This function adds a TAB-delimited dictionary to the end of the file.
+
+        If the file is empty, it writes the header as well as adding the dictionary contents.
+        Otherwise, it checks that the dictionary contains the same keys as the header and appends the
+        dictionary contents to the end of the file.
+
+        Parameters
+        ==========
+        dict_to_append : dictionary
+            Holds the data you want to add to the end of the file. Keys should be headers of the file.
+        file_handle : a file object
+            Pointer to the file, opened in append mode. The calling function should take care of the
+            open() and pass the handle here
+        """
+
+        import anvio.utils as utils
+        if is_file_empty(self.path):
+            utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
+                                                    key_header=self.key_header, keys_order=self.keys_order, \
+                                                    header_item_conversion_dict=self.header_item_conversion_dict)
+        else:
+            file_headers = utils.get_columns_of_TAB_delim_file(self.path, include_first_column=True)
+            inner_dict_keys = list(dict_to_append.values())[0].keys()
+
+            # figure out if the first column holds the keys of the outer dictionary or one of the inner dictionary keys
+            if file_headers[0] in inner_dict_keys:
+                self.key_header = None
+                self.headers = file_headers
+            else:
+                self.key_header = file_headers[0]
+                self.headers = file_headers[1:]
+
+            # check that the inner dictionary has the file headers we need
+            missing_headers = [h for h in self.headers if h not in inner_dict_keys]
+            if len(missing_headers):
+                if anvio.DEBUG:
+                    if len(missing_headers) > 10:
+                        raise ConfigError(f"Some headers from the file (n={len(missing_headers)}) are not in your dictionary :/ "
+                                          f"Here are the first ten of them: {missing_headers[:10].__str__()}")
+                    else:
+                        raise ConfigError(f"Some headers from the file are not in your dictionary :/ Here they are: {missing_headers.__str__()}")
+                else:
+                    raise ConfigError("Some headers from the file are not in your dictionary :/ Use `--debug` to see where this "
+                                      "error is coming from the codebase with a list of example keys that are missing.")
+
+            # check that any requested outer dictionary keys are present
+            if not self.keys_order:
+                self.keys_order = sorted(dict_to_append.keys())
+            else:
+                missing_keys = [k for k in self.keys_order if k not in dict_to_append]
+                if len(missing_keys):
+                    if anvio.DEBUG:
+                        if len(missing_keys) > 10:
+                            raise ConfigError(f"Some keys (n={len(missing_keys)}) are not in your dictionary :/ Here are "
+                                              f"the first ten of them: {missing_keys[:10].__str__()}")
+                        else:
+                            raise ConfigError(f"Some keys are not in your dictionary :/ Here they are: {missing_keys.__str__()}")
+                    else:
+                        raise ConfigError("Some keys are not in your dictionary :/ Use `--debug` to see where this "
+                                          "error is coming from the codebase with a list of example keys that are "
+                                          "missing.")
+
+            # dict looks okay, append it to file
+            for k in self.keys_order:
+                if self.key_header: # first column is key of outer dict
+                    line = [str(k)]
+                else:               # do not put the key of outer dict in the first column
+                    line = []
+
+                for header in self.headers:
+                    try:
+                        val = dict_to_append[k][header]
+                    except KeyError:
+                        raise ConfigError(f"Header '{header}' is not found in the dict for key '{k}':/")
+                    except TypeError:
+                        raise ConfigError("Your dictionary is not properly formatted to be exported "
+                                           f"as a TAB-delimited file :/ You ask for '{header}', but it is not "
+                                           "even a key in the dictionary")
+
+                    line.append(str(val) if not isinstance(val, type(None)) else '')
+
+                if anvio.AS_MARKDOWN:
+                    file_handle.write(f"|{'|'.join(map(str, line))}|\n")
+                else:
+                    file_handle.write('%s\n' % '\t'.join(line))
