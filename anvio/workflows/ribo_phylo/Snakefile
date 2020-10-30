@@ -492,7 +492,7 @@ rule count_num_sequences_filtered:
 # 4. Calculate the tree, FINALLY
 
 rule calculate_tree:
-    """This rule will..."""
+    """Calculate a phylogenetic tree using iqtree"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "calculate_tree_{ribosomal_protein_name}.log")
@@ -505,4 +505,5 @@ rule calculate_tree:
         "iqtree -s {input} \
                 -nt {threads} \
                 -m MFP \
+                -bb 1000 \
                 -pre {params.outfile} >> {log} 2>&1"
