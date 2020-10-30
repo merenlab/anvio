@@ -382,9 +382,11 @@ class AppendableFile:
     fail_if_file_exists : boolean
         if True, throw an error upon initialization if the file already exists. If False,
         start appending to the end of the file.
+    overwrite_if_file_exists : boolean
+        if True (and fail_if_file_exists is False), the existing file will be removed before adding new data.
     """
 
-    def __init__(self, file_path, append_type=None, fail_if_file_exists=True):
+    def __init__(self, file_path, append_type=None, fail_if_file_exists=True, overwrite_if_file_exists=False):
         self.path = file_path
         self.append_type = append_type
 
@@ -393,11 +395,15 @@ class AppendableFile:
             raise FilesNPathsError(f"Sorry. AppendableFile class does not know how to handle the declared data type '{self.append_type}'.")
 
         # if file exists, we may want to stop ourselves
-        if fail_if_file_exists and is_file_exists(self.path, dont_raise=True):
+        exists = is_file_exists(self.path, dont_raise=True)
+        if fail_if_file_exists and exists:
             raise FilesNPathsError(f"AppendableFile class is refusing to open your file at {self.path} "
                                     "because it already exists. If you are a user, you should probably give "
                                     "Anvi'o a different file name to work with. If you are a programmer and you "
                                     "don't want this behavior, init this class with `fail_if_file_exists=False` instead.")
+        elif overwrite_if_file_exists and exists:
+            os.remove(self.path)
+
 
         is_output_file_writable(self.path)
 
