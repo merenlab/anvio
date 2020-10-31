@@ -3129,15 +3129,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
 
-    def store_metabolism_superdict_multi(self, kegg_superdict_multi, ko_superdict_multi):
-        """A driver function to store metabolism data in the requested output format"""
-
-        if self.matrix_format:
-            self.store_metabolism_superdict_multi_matrix_format(kegg_superdict_multi, ko_superdict_multi)
-        else:
-            self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi, ko_superdict_multi)
-
-
     def estimate_metabolism(self):
         """A driver function to run metabolism estimation on each provided contigs DB."""
 
