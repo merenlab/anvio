@@ -2235,7 +2235,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self, skip_storing_data=False):
+    def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -2247,6 +2247,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         skip_storing_data : boolean
             set to True if we don't want the metabolism data dictionary to be stored as a file (useful when using this function
             for on-the-fly visualization or for calling estimation from a multi estimator class)
+        output_files_dictionary : dictionary of mode, AppendableFile object pairs
+            contains an initialized AppendableFile object to append output to for each output mode
+            (used in multi-mode to direct all output from several estimators to the same files)
 
         RETURNS
         =======
@@ -2264,7 +2267,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if skip_storing_data:
             self.output_file_dict = {}
         else:
-            self.output_file_dict = self.setup_output_for_appending()
+            if output_files_dictionary:
+                self.output_file_dict = output_files_dictionary
+            else:
+                self.output_file_dict = self.setup_output_for_appending()
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
@@ -2643,6 +2649,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "data dictionary, but we don't know about that one.")
 
             file_obj.append(output_dict, key_header="unique_id", headers=header_list)
+
             if anvio.DEBUG:
                 self.run.warning(f"Appended metabolism dictionary to {file_obj.path}" ,
                                 header='DEBUG OUTPUT', lc='yellow')
@@ -2908,10 +2915,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         total_num_metagenomes = len(self.database_names)
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
 
+        if not self.matrix_format:
+            files_dict = self.setup_output_for_appending()
+
         for metagenome_name in self.database_names:
             args = self.get_args_for_single_estimator(metagenome_name)
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
-            metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
+            if not self.matrix_format:
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
+            else:
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
 
             self.progress.increment()
             self.progress.reset()
@@ -3154,7 +3167,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
 
-        self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
+        if self.matrix_format:
+            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
 
 
 class KeggModulesDatabase(KeggContext):
