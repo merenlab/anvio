@@ -1207,6 +1207,21 @@ class KeggEstimatorArgs():
             self.available_modes['modules_custom']['headers'] = self.custom_output_headers
 
 
+    def setup_output_for_appending(self):
+        """Initializes and returns a dictionary of AppendableFile objects, one for each output mode"""
+
+        output_dict = {}
+        for mode in self.output_modes:
+            output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
+            output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False,
+                                                              overwrite_if_file_exists=True)
+            output_dict[mode] = output_file_for_mode
+
+            self.run.info(f"Output file for {mode} mode", output_path)
+
+        return output_dict
+
+
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
 
@@ -2599,21 +2614,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     self.ko_unique_id += 1
 
         return d
-
-
-    def setup_output_for_appending(self):
-        """Initializes and returns a dictionary of AppendableFile objects, one for each output mode"""
-
-        output_dict = {}
-        for mode in self.output_modes:
-            output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
-            output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False,
-                                                              overwrite_if_file_exists=True)
-            output_dict[mode] = output_file_for_mode
-
-            self.run.info(f"Output file for {mode} mode", output_path)
-
-        return output_dict
 
 
     def append_kegg_metabolism_superdicts(self, module_superdict_for_list_of_splits, ko_superdict_for_list_of_splits):
