@@ -333,13 +333,14 @@ rule remove_redundant_sequences_mmseqs:
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta")
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_mmseqs_NR"),
-        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_tmp")
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_tmp"),
+        min_seq_id = M.get_param_value_from_config(['remove_redundant_sequences_mmseqs', '--min-seq-id'])
     threads: M.T('remove_redundant_sequences_mmseqs')
     shell:
         "mmseqs easy-cluster {input} \
                              {params.output_prefix} \
                              {params.mmseqs_tmp} \
-                             --min-seq-id 1 >> {log} 2>&1"
+                             --min-seq-id {params.min_seq_id} >> {log} 2>&1"
 
 # Initial alignment, trim, and removal of sequences with 50% gaps or more
 rule align_muscle:
@@ -359,13 +360,14 @@ rule trim_alignment:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
-	input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-	output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    # threads: M.T('trim_alignment')
-	shell:
-		"trimal -in {input} \
-				-out {output} \
-				-gt 0.50 2> {log}"
+    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
+    params:
+        gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
+    shell:
+        "trimal -in {input} \
+                -out {output} \
+                -gt {params.gt} 2> {log}"
 
 rule remove_sequences_with_50_percent_gaps:
     """Removing sequences that have > 50% gaps"""
@@ -374,12 +376,14 @@ rule remove_sequences_with_50_percent_gaps:
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
-    params: seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01")
+    params: 
+        seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01"),
+        max_percentage_gaps=M.get_param_value_from_config(['remove_sequences_with_50_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_gaps')
 	shell:
 		"anvi-script-reformat-fasta {input} \
 									-o {output} \
-									--max-percentage-gaps 50 \
+									--max-percentage-gaps {params.max_percentage_gaps} \
 									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
 # Remove sequences that have an outlier set of gaps in a sequences
@@ -443,11 +447,12 @@ rule trim_alignment_2:
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_2_{ribosomal_protein_name}.log")
     input: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    threads: M.T('trim_alignment_2')
+    params:
+        gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
     shell:
         "trimal -in {input} \
                 -out {output} \
-                -gt 0.50 2> {log}"
+                -gt {params.gt} 2> {log}"
 
 
 rule count_num_sequences_filtered:
@@ -499,11 +504,12 @@ rule calculate_tree:
     input: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     output: report(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree"), category="report/iqtree_{ribosomal_protein_name}.rst")
     params:
-        outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}")
+        outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}"),
+        bootstraps = M.get_param_value_from_config(['calculate_tree', '-bb'])
     threads: M.T('calculate_tree')
     shell:
         "iqtree -s {input} \
                 -nt {threads} \
                 -m MFP \
-                -bb 1000 \
+                -bb {params.bootstraps} \
                 -pre {params.outfile} >> {log} 2>&1"

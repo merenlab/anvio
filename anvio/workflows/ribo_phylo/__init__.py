@@ -43,7 +43,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'remove_redundant_sequences_mmseqs',
                            'align_muscle',
                            'trim_alignment',
-                           'remove_gaps',
+                           'remove_sequences_with_50_percent_gaps',
                            'get_gap_count_distribution',
                            'filter_out_outlier_sequences',
                            'align_muscle_2',
@@ -72,10 +72,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt']
         rule_acceptable_params_dict['trim_alignment_2'] = ['-gt']
-        rule_acceptable_params_dict['remove_gaps'] = ['--max-percentage-gaps']
+        rule_acceptable_params_dict['remove_sequences_with_50_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['calculate_tree'] = ['run',
-                                                         '-bb']
+                                                         '-bb',
+                                                         '-m']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -88,17 +89,17 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
-            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5},
+            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5, '--hmm-source': 'Bacteria_71'},
             'join_renamed_fasta_with_misc_data': {'threads': 5},
             'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
             'align_muscle': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gt': 0.50},
-            'remove_gaps': {'threads': 5, '--max-percentage-gaps': 50},
+            'remove_sequences_with_50_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'get_gap_count_distribution': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
             'align_muscle_2': {'threads': 5},
             'trim_alignment_2': {'threads': 5, '-gt': 0.50},
-            'calculate_tree': {'run': True, 'threads': 5, '-bb': 1000}
+            'calculate_tree': {'run': True, 'threads': 5, '-bb': 1000,'-m': "MFP"}
             })
 
         # Added directories in the workflow

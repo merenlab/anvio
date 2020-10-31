@@ -21,3 +21,14 @@ anvi-interactive -p 07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
                  -t 07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
                  -A 08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv   \
                  --manual
+
+# Clusterize it
+clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
+
+# LOG
+cat /project2/meren/COLLABORATIONS/LoisMaignien/ACE_SO_metagenomes/analyses/SCGs_20201026/clusterize_LdusAVuzZy.log
+
+anvi-interactive -p Ribosomal_L16_profile.db \
+                 -t Ribosomal_L16.treefile \
+                 -A Ribosomal_L16_all_misc_data_final.tsv   \
+                 --manual
