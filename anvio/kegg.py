@@ -2186,7 +2186,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
             ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
             metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(ko_in_contig, split_list=splits_in_contig, bin_name=contig)
-            # skip if no KOs and skip KOs not in modules
+            
 
             if not self.store_json_without_estimation:
                 metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
