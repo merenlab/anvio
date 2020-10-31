@@ -2114,12 +2114,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         bins_ko_superdict = {}
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
+        num_bins = len(bin_name_to_split_names_dict)
+        self.run.info_single("%s split names associated with %s bins in collection '%s' have been "
                              "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
-                                                           pp(len(bin_name_to_split_names_dict)),
+                                                           pp(num_bins),
                                                            self.collection_name), nl_before=1)
 
+        self.progress.new("Estimating metabolism for each bin", progress_total_items=num_bins)
+
         for bin_name in bin_name_to_split_names_dict:
+            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
+
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
             metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
@@ -2136,6 +2141,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # append individual bin to file
             single_bin_ko_superdict = {bin_name: ko_dict_for_bin}
             self.append_kegg_metabolism_superdicts(single_bin_module_superdict, single_bin_ko_superdict)
+
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
 
         return bins_metabolism_superdict, bins_ko_superdict
 
@@ -2163,8 +2173,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         metagenome_ko_superdict = {}
 
         contigs_in_metagenome = list(set([tpl[3] for tpl in kofam_gene_split_contig]))
+        num_contigs = len(contigs_in_metagenome)
+
+        self.progress.new("Estimating metabolism for each contig in metagenome", progress_total_items=num_contigs)
 
         for contig in contigs_in_metagenome:
+            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_contigs, contig))
+
             # get unique split names associated with this contig
             splits_in_contig = list(set([tpl[2] for tpl in kofam_gene_split_contig if tpl[3] == contig]))
             if anvio.DEBUG:
@@ -2182,9 +2197,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
                 single_contig_module_superdict = {contig: metabolism_dict_for_contig}
 
+
             # append individual contig to file
             single_contig_ko_superdict = {contig: ko_dict_for_contig}
             self.append_kegg_metabolism_superdicts(single_contig_module_superdict, single_contig_ko_superdict)
+
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
 
         return metagenome_metabolism_superdict, metagenome_ko_superdict
 
