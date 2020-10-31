@@ -1175,6 +1175,7 @@ class KeggEstimatorArgs():
         self.kegg_data_dir = A('kegg_data_dir')
         self.modules_unique_id = None
         self.ko_unique_id = None
+        self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -2026,8 +2027,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
-        # notify user of the modules that gave some fishy results
-        if not self.quiet:
+        # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
+        if not self.quiet and self.genome_mode:
             if mods_with_nonessential_steps:
                 self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
                                  "At this time, we are not counting these steps in our percent completion estimates."
@@ -2043,11 +2044,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                  "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
                                  % (", ".join(mods_with_unassociated_ko)))
 
-        self.run.info("Bin name", bin_name)
-        self.run.info("Module completion threshold", self.module_completion_threshold)
-        self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
-        if complete_mods:
-            self.run.info("Complete modules", ", ".join(complete_mods))
+        if anvio.DEBUG or self.genome_mode:
+            self.run.info("Bin name", bin_name)
+            self.run.info("Module completion threshold", self.module_completion_threshold)
+            self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
+            if complete_mods:
+                self.run.info("Complete modules", ", ".join(complete_mods))
 
         return metabolism_dict_for_list_of_splits
 
@@ -2281,6 +2283,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if self.profile_db_path and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
             elif not self.profile_db_path and not self.metagenome_mode:
+                self.genome_mode = True
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
             elif self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
