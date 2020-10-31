@@ -1255,7 +1255,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # update available modes and headers with appropriate genome/bin/metagenome identifier
         for m in self.available_modes:
-            if m != 'modules_custom':
+            if m != 'modules_custom' and self.name_header not in self.available_modes[m]['headers']:
                 self.available_modes[m]['headers'].insert(1, self.name_header)
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
