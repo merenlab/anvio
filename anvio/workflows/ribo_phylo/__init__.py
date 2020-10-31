@@ -49,7 +49,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'align_muscle_2',
                            'trim_alignment_2',
                            'calculate_tree',
-                           'anvi_get_sequences_for_gene_calls'
+                           'anvi_get_sequences_for_gene_calls',
+                           'cluster_90_mmseqs'
                            ])
 
         self.general_params.extend(['external_genomes']) # general section of config file
@@ -67,16 +68,16 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                                                                                      '--keep-ids',
                                                                                      '--exclude-ids',
                                                                                      '--min-len',
-                                                                                     "--prefix",
-                                                                                     "--simplify-names"]
+                                                                                     "--prefix"]
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['cluster_90_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt']
         rule_acceptable_params_dict['trim_alignment_2'] = ['-gt']
         rule_acceptable_params_dict['remove_sequences_with_50_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['calculate_tree'] = ['run',
-                                                         '-bb',
-                                                         '-m']
+                                                         '-m',
+                                                         'additional_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -92,6 +93,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5, '--hmm-source': 'Bacteria_71'},
             'join_renamed_fasta_with_misc_data': {'threads': 5},
             'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
+            'cluster_90_mmseqs': {'threads': 5, '--min-seq-id': 0.9},
             'align_muscle': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gt': 0.50},
             'remove_sequences_with_50_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
@@ -99,7 +101,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'filter_out_outlier_sequences': {'threads': 5},
             'align_muscle_2': {'threads': 5},
             'trim_alignment_2': {'threads': 5, '-gt': 0.50},
-            'calculate_tree': {'run': True, 'threads': 5, '-bb': 1000,'-m': "MFP"}
+            'calculate_tree': {'run': True, 'threads': 5,'-m': "MFP"}
             })
 
         # Added directories in the workflow

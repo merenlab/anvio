@@ -59,10 +59,12 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input: os.path.join(M.contig_dir, "{sample_name}-contigs.db")
     output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
+    params:
+        metagenome_mode = M.get_rule_param('anvi_estimate_scg_taxonomy_for_ribosomal_proteins', '--metagenome-mode')
     threads: M.T('anvi_estimate_scg_taxonomy_for_ribosomal_proteins')
 	shell:
 		"anvi-estimate-scg-taxonomy -c {input} \
-                                 	--metagenome-mode \
+                                 	{params.metagenome_mode} \
                                  	--scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
                                  	-o {output} 2> {log}"
 
@@ -143,13 +145,14 @@ rule cluster_90_mmseqs:
     output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta")
     params:
         output_prefix = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR"),
-        mmseqs_tmp = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_tmp")
+        mmseqs_tmp = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_tmp"),
+        min_seq_id = M.get_param_value_from_config(['remove_redundant_sequences_mmseqs', '--min-seq-id'])
     threads: M.T('remove_redundant_sequences_mmseqs')
     shell:
         "mmseqs easy-cluster {input} \
                              {params.output_prefix} \
                              {params.mmseqs_tmp} \
-                             --min-seq-id 0.9 >> {log} 2>&1"
+                             --min-seq-id {params.min_seq_id} >> {log} 2>&1"
 
 rule cat_ribo_proteins_to_one_fasta:
     """
@@ -256,14 +259,14 @@ rule anvi_reformat_fasta_ribosomal_protein_file:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_renamed.fasta"),
         report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt")
     params:
-        prefix = M.get_rule_param("anvi_script_reformat_fasta", "--prefix"),
-        keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
-        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
-        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names")
+        prefix = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--prefix"),
+        keep_ids = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--keep-ids"),
+        exclude_ids = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--exclude-ids"),
+        simplify_names = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--simplify-names")
     threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
     shell:
         "anvi-script-reformat-fasta {input} \
-                              --simplify-names \
+                              {params.simplify_names} \
                               --report-file {output.report_file} \
                               -o {output.fasta} >> {log} 2>&1"
 
@@ -505,11 +508,12 @@ rule calculate_tree:
     output: report(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree"), category="report/iqtree_{ribosomal_protein_name}.rst")
     params:
         outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}"),
-        bootstraps = M.get_param_value_from_config(['calculate_tree', '-bb'])
+        model = M.get_param_value_from_config(['calculate_tree', '-m']),
+        additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
     threads: M.T('calculate_tree')
     shell:
         "iqtree -s {input} \
-                -nt {threads} \
-                -m MFP \
-                -bb {params.bootstraps} \
-                -pre {params.outfile} >> {log} 2>&1"
+                -nt AUTO \
+                -m {params.model} \
+                -pre {params.outfile} \
+                {params.additional_params} >> {log} 2>&1"
