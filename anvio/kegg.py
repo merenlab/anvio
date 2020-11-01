@@ -1333,6 +1333,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
                                           "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
 
+        outputs_require_ko_dict = [m for m in self.output_modes if self.available_modes[m]['data_dict'] == 'kofams']
+        output_string = ", ".join(outputs_require_ko_dict)
+        if self.estimate_from_json and len(outputs_require_ko_dict):
+            raise ConfigError("You have requested to estimate metabolism from a JSON file and produce the following KOfam hit "
+                              f"output mode(s): {output_string}. Unforunately, this is not possible because "
+                              "our JSON estimation function does not currently produce the required data for KOfam hit output. "
+                              "Please instead request some modules-oriented output mode(s) for your JSON input.")
+
 
         if self.matrix_format:
             raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
