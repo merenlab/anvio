@@ -1244,6 +1244,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.bin_ids_file = A('bin_ids_file')
         self.contigs_db_project_name = "Unknown"
         self.database_name = A('database_name')
+        self.multi_mode = True if A('multi_mode') else False
 
         KeggEstimatorArgs.__init__(self, self.args)
 
@@ -2329,6 +2330,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
         self.kegg_modules_db.disconnect()
+        if not self.multi_mode:
+            for mode, file_object in self.output_file_dict.items():
+                file_object.close()
 
         return kegg_metabolism_superdict, kofam_hits_superdict
 
@@ -2947,6 +2951,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.metagenome_mode = self.metagenome_mode
         args.quiet = True
         args.database_name = db_name
+        args.multi_mode = True
 
         self.update_available_headers_for_multi()
 
