@@ -1176,6 +1176,7 @@ class KeggEstimatorArgs():
         self.modules_unique_id = None
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
+        self.database_name = None # to keep track of database name (for multi mode)
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -2186,7 +2187,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
             ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
             metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(ko_in_contig, split_list=splits_in_contig, bin_name=contig)
-            
+
 
             if not self.store_json_without_estimation:
                 metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
@@ -2462,6 +2463,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 # top-level keys and keys not in superdict
                                 if self.name_header in headers_to_include:
                                     d[self.modules_unique_id][self.name_header] = bin
+                                if "db_name" in headers_to_include:
+                                    d[self.modules_unique_id]["db_name"] = self.database_name
                                 if "kegg_module" in headers_to_include:
                                     d[self.modules_unique_id]["kegg_module"] = mnum
 
@@ -2517,6 +2520,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # top-level keys and keys not in superdict
                     if self.name_header in headers_to_include:
                         d[self.modules_unique_id][self.name_header] = bin
+                    if "db_name" in headers_to_include:
+                        d[self.modules_unique_id]["db_name"] = self.database_name
                     if "kegg_module" in headers_to_include:
                         d[self.modules_unique_id]["kegg_module"] = mnum
 
@@ -2626,6 +2631,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     if self.name_header in headers_to_include:
                         d[self.ko_unique_id][self.name_header] = bin
+                    if "db_name" in headers_to_include:
+                        d[self.modules_unique_id]["db_name"] = self.database_name
                     if "ko" in headers_to_include:
                         d[self.ko_unique_id]["ko"] = ko
                     if "gene_caller_id" in headers_to_include:
@@ -2921,6 +2928,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         args.metagenome_mode = self.metagenome_mode
         args.quiet = True
+        args.database_name = db_name
 
         self.update_available_headers_for_multi()
 
