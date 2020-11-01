@@ -407,6 +407,13 @@ class AppendableFile:
 
         is_output_file_writable(self.path)
 
+        self.file_handle = open(self.path, "a+")
+
+
+    def close(self):
+        """Closes the open file handle"""
+        self.file_handle.close()
+
 
     def append(self, data, **kwargs):
         """Opens a file handle and calls a function for appending according to the data type.
@@ -438,8 +445,6 @@ class AppendableFile:
                     utils.store_dataframe_as_TAB_delimited_file(columns=kwargs['columns'])
         """
 
-        f = open(self.path, "a+")
-
         if self.append_type and (not isinstance(data, self.append_type)):
             raise FilesNPathsError(f"A programmer promised to send data of type '{self.append_type}' to {self.path} for "
                                    f"appending, but instead sent data of type '{type(data)}'. Since the data type for this "
@@ -452,13 +457,13 @@ class AppendableFile:
             self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
             self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
 
-            self.append_dict_to_file(data, f)
+            self.append_dict_to_file(data, self.file_handle)
         elif isinstance(data, str):
-            f.write(data + "\n")
+            self.file_handle.write(data + "\n")
         else:
             raise FilesNPathsError(f"AppendableFile class has no strategy for appending data of type {type(data)}.")
 
-        f.close()
+        self.file_handle.flush()
 
 
     def append_dict_to_file(self, dict_to_append, file_handle):
@@ -481,7 +486,8 @@ class AppendableFile:
         if is_file_empty(self.path):
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
                                                     key_header=self.key_header, keys_order=self.keys_order, \
-                                                    header_item_conversion_dict=self.header_item_conversion_dict)
+                                                    header_item_conversion_dict=self.header_item_conversion_dict, \
+                                                    do_not_close_file_obj=True)
         else:
             # if dictionary is empty, just return
             if not dict_to_append:
