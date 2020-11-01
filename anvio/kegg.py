@@ -2992,8 +2992,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                         for i in kegg_superdict_multi_output_version.keys()
                                         for j in kegg_superdict_multi_output_version[i].keys()}, orient='index')
         df.reset_index(inplace=True)
-        df.rename(columns={"level_0": "db_name"}, inplace=True)
-        df.drop(['level_1'], axis=1, inplace=True)
+        df.drop(['level_0','level_1'], axis=1, inplace=True)
 
         self.progress.end()
 
