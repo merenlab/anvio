@@ -2212,7 +2212,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def estimate_metabolism_from_json_data(self):
-        """This function runs the estimation functions on data obtained from a provided JSON file"""
+        """This function runs the estimation functions on data obtained from a provided JSON file.
+
+        Does NOT currently produce KO hits output.
+        """
 
         self.run.info("JSON input file", self.estimate_from_json)
 
@@ -2249,6 +2252,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_dict['genes_to_contigs'] = {int(g):c for g,c in mod_dict['genes_to_contigs'].items()}
 
             new_kegg_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(meta_dict_for_bin, bin_name=bin_name)
+            single_bin_module_superdict = {bin_name: new_kegg_metabolism_superdict[bin_name]}
+            self.append_kegg_metabolism_superdicts(single_bin_module_superdict, ko_superdict_for_list_of_splits={})
 
 
         if not self.quiet and additional_keys:
