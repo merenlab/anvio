@@ -2288,7 +2288,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
-        if skip_storing_data:
+        if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
         else:
             if output_files_dictionary:
