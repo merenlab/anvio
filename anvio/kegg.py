@@ -1176,7 +1176,6 @@ class KeggEstimatorArgs():
         self.modules_unique_id = None
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
-        self.database_name = None # to keep track of database name (for multi mode)
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -1244,6 +1243,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
         self.contigs_db_project_name = "Unknown"
+        self.database_name = A('database_name')
 
         KeggEstimatorArgs.__init__(self, self.args)
 
@@ -2632,7 +2632,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if self.name_header in headers_to_include:
                         d[self.ko_unique_id][self.name_header] = bin
                     if "db_name" in headers_to_include:
-                        d[self.modules_unique_id]["db_name"] = self.database_name
+                        d[self.ko_unique_id]["db_name"] = self.database_name
                     if "ko" in headers_to_include:
                         d[self.ko_unique_id]["ko"] = ko
                     if "gene_caller_id" in headers_to_include:
@@ -2829,7 +2829,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.available_headers["db_name"] = {
                                         'cdict_key': None,
                                         'mode_type': 'all',
-                                        'description': "Name of contigs DB. Always included in output, so no need to specify on the command line"
+                                        'description': "Name of contigs DB. Always included in multi-mode output (so no need to specify on the command line)"
         }
         if self.name_header == 'genome_name':
             self.available_headers["genome_name"] = {
@@ -2849,6 +2849,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                             'mode_type': 'all',
                                             'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
                                             }
+
+        # here we make sure db_name is always included in the multi-mode output
+        for mode in self.available_modes:
+            if self.available_modes[mode]["headers"] and "db_name" not in self.available_modes[mode]["headers"]:
+                self.available_modes[mode]["headers"].insert(1, "db_name")
 
 
     def list_output_headers(self):
@@ -2934,6 +2939,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
+            self.run.info("Database name: single estimator", args.database_name)
 
         return args
 
