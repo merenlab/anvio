@@ -2987,6 +2987,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         self.progress.end()
 
+        if not self.matrix_format:
+            for mode, file in files_dict.items():
+                file.close()
+
         return metabolism_super_dict, ko_hits_super_dict
 
 
