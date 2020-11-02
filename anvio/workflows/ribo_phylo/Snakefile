@@ -359,7 +359,33 @@ rule align_muscle:
 				-out {output} 2> {log}"
 
 rule trim_alignment:
-    """trim alignment"""
+    """trim alignment
+    
+    FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
+
+    I think that trimming twice may not be optimal. Here is my logic:
+    Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps 
+    i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
+    phylogenetically uninformative. If we trimm before removing all sequences we might be 
+    making sequences seem more aligned because we have just removed gaps.
+
+    I think trimming should be the very last step in the MSA curation.
+    for example:
+    (1) cluster at 100%
+    (2) calculate MSA
+    (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
+    (4) remove positions with a lot of gaps (trimal)   
+
+    Another thing to consider is calculating a tree based on representative sequences from a
+    clustered dataset. I already need to do this when I pick representative for the mapping 
+    steps. Why not just use that set to calculate the tree? Also, the over MSA might be
+    higher quality because there is less noise with similar sequences.
+    for example:
+    (1) cluster at 90%
+    (2) calculate MSA
+    (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
+    (4) remove positions with a lot of gaps (trimal)
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
