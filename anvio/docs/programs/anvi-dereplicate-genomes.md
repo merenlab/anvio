@@ -6,6 +6,7 @@ This is done by analyzing the results of %(anvi-compute-genome-similarity)s to c
 
 You have two options for the input to this program: 
 - the results of %(anvi-compute-genome-similarity)s (a %(genome-similarity)s directory). If you used `fastANI` or `pyANI` when you ran %(anvi-compute-genome-similarity)s, provide this using the parameter `--ani-dir`; if you used sourmash, use the parameter `--mash-dir`. 
+
 - an %(internal-genomes)s, %(external-genomes)s or a series of %(fasta)s files (each of which represents a genome), in which case anvi'o will run %(anvi-compute-genome-similarity)s for you.  When providing these inputs, you can also provide any of the parameters that %(anvi-compute-genome-similarity)s can take, including the `--program` you want to use (out of  [PyANI](https://github.com/widdowquinn/pyani), [fastANI](https://github.com/ParBLiSS/FastANI),  [sourmash](https://sourmash.readthedocs.io/en/latest/)) and their parameters. Details about all of this can be found in the help menu for %(anvi-compute-genome-similarity)s.
 
 #### Output Options 
