@@ -1,0 +1,2 @@
+gene	accession	hmmsource
+12S_rRNA_mit	None	barrnap
