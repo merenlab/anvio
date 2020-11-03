@@ -19,7 +19,15 @@ The default HMM sources in anvi'o include:
 * **Bacteria_71**: 71 single-copy core genes for domain bacteria that represent a modified version of the HMM profiles published by [Mike Lee](https://doi.org/10.1093/bioinformatics/btz188). The anvi'o collection excludes Ribosomal_S20p, PseudoU_synth_1, Exonuc_VII_S, 5-FTHF_cyc-lig, YidD and Peptidase_A8 occurred in Lee collection (as they were exceptionally redundant or rare among MAGs from various habitats), and includes Ribosomal_S3_C, Ribosomal_L5, Ribosomal_L2 to make it more compatible with [Hug et al](https://www.nature.com/articles/nmicrobiol201648)'s set of ribosomal proteins.
 * **Archaea_76**: 76 single-copy core genes for domain archaea by [Mike Lee](https://doi.org/10.1093/bioinformatics/btz188).
 * **Protista_83**: 83 single-copy core genes for protists (domain eukarya) by [Tom O. Delmont](http://merenlab.org/delmont-euk-scgs). 
-* **Ribosomal_RNAs**: HMMs to identify ribosomal RNA genes for bacteria, archaea, and eukarya by [Torsten Seemann](https://github.com/tseemann/barrnap).
+
+Apart from these, anvi'o also includes a number of HMM profiles for individual ribosomal RNA classes derived from [Torsten Seemann's tool](https://github.com/tseemann/barrnap) (we split them into individual classes after [this](https://github.com/merenlab/anvio/issues/1411)):
+
+* **Ribosomal\_RNA\_5S** (eukarya + archaea + bacteria; also includes 5.8S).
+* **Ribosomal\_RNA\_12S** (mitochondria)
+* **Ribosomal\_RNA\_16S** (bacteria + archaea + mitochondria)
+* **Ribosomal\_RNA\_18S** (eukarya)
+* **Ribosomal\_RNA\_23S** (bacteria + archaea)
+* **Ribosomal\_RNA\_28S** (eukarya)
 
 When %(anvi-run-hmms)s is run on an anvi'o %(contigs-db)s without providing any further arguments, it automatically utilizes all the default HMM sources.
 
