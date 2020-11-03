@@ -4047,7 +4047,7 @@ class KeggModuleEnrichment(KeggContext):
 
         The input format for anvi-script-enrichment-stats is described in a comment at the top of that script, and here is
         how we get the values for each column:
-        The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as the 'module_name'
+        The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as 'module_name'
         and 'kegg_module', respectively.
         The 'N_*' columns are the total number of samples in each group.
         For each module, this function determines which samples the module is 'present' in according to the specified completion threshold.
@@ -4066,7 +4066,7 @@ class KeggModuleEnrichment(KeggContext):
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name', 'unique_id']
+        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name']
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -4078,7 +4078,8 @@ class KeggModuleEnrichment(KeggContext):
                               f"the following required headers: {missing_string}   Please re-generate your "
                               "modules-txt to include these before trying again.")
 
-        modules_df = modules_df.drop(columns=['unique_id'])
+        if 'unique_id' in modules_df.columns:
+            modules_df = modules_df.drop(columns=['unique_id'])
 
         # samples column sanity check - this column will become the index
         if self.sample_header_in_modules_txt not in modules_df.columns:
