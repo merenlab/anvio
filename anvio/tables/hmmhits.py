@@ -135,6 +135,7 @@ class TablesForHMMHits(Table):
 
         # here we will go through targets and populate target_files_dict based on what we find among them.
         targets = set([s['target'] for s in list(sources.values())])
+        have_hmm_sources_with_non_RNA_contig_context = False
         for target in targets:
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
 
