@@ -404,10 +404,17 @@ class AppendableFile:
         elif overwrite_if_file_exists and exists:
             os.remove(self.path)
 
-
         is_output_file_writable(self.path)
 
         self.file_handle = open(self.path, "a+")
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, exc_type, exc_val, traceback):
+        self.close()
 
 
     def close(self):
