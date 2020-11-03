@@ -386,7 +386,7 @@ class AppendableFile:
         if True (and fail_if_file_exists is False), the existing file will be removed before adding new data.
     """
 
-    def __init__(self, file_path, append_type=None, fail_if_file_exists=True, overwrite_if_file_exists=False):
+    def __init__(self, file_path, append_type=None, fail_if_file_exists=False, overwrite_if_file_exists=False):
         self.path = file_path
         self.append_type = append_type
 
