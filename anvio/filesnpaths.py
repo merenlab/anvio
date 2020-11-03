@@ -422,6 +422,10 @@ class AppendableFile:
         self.file_handle.close()
 
 
+    def write(self, *args, **kwargs):
+        raise ConfigError("AppendableFile :: Use `append`, not `write`")
+
+
     def append(self, data, **kwargs):
         """Opens a file handle and calls a function for appending according to the data type.
         Closes the file handle afterwards.
