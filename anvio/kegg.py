@@ -1156,7 +1156,6 @@ class KeggEstimatorArgs():
         """
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.just_do_it = A('just_do_it')
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
@@ -1246,6 +1245,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.contigs_db_project_name = "Unknown"
         self.database_name = A('database_name')
         self.multi_mode = True if A('multi_mode') else False
+        self.just_do_it = A('just_do_it')
 
         KeggEstimatorArgs.__init__(self, self.args)
 
