@@ -144,7 +144,7 @@ class TablesForHMMHits(Table):
                                   "HMM profile that wishes to operate on %s context using the %s alphabet. It is not OK. You still could run "
                                   "HMM profiles that does not require gene calls to be present (such as the HMM profile that identifies Ribosomal "
                                   "RNAs in contigs, but for that you would have to explicitly ask for it by using the additional parameter "
-                                  "'--installed-hmm-profile Ribosomal_RNAs')." % (context, alphabet))
+                                  "'--installed-hmm-profile PROFILE_NAME_HERE')." % (context, alphabet))
 
             self.run.info('Target found', '%s:%s' % (alphabet, context))
 
