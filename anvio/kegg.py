@@ -1245,7 +1245,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.contigs_db_project_name = "Unknown"
         self.database_name = A('database_name')
         self.multi_mode = True if A('multi_mode') else False
-        self.just_do_it = A('just_do_it')
 
         KeggEstimatorArgs.__init__(self, self.args)
 
