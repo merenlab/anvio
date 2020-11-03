@@ -13,18 +13,6 @@
   z-index: 1;
 }
 
-#indels {
-  position: fixed;
-  bottom: 0;
-  background: transparent;
-  z-index: 4;
-  pointer-events: none;
-}
-
-#indelPaths {
-  pointer-events: all;
-}
-
 #context-container {
   position: fixed;
   bottom: 0;
@@ -55,6 +43,10 @@
 #highlight-boxes {
   z-index: 3;
   position: relative;
+}
+
+.SNV_text {
+  pointer-events: all;
 }
 
 #display-container h2 {

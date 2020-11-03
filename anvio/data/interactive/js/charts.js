@@ -39,6 +39,7 @@ var highlight_gene;
 var gene_mode;
 var show_snvs;
 var show_indels;
+var show_highlights;
 var sequence;
 var charts;
 var brush;
@@ -65,6 +66,7 @@ window.onscroll = function() {
 }
 
 function stickyBoxes() {
+  if(!show_highlights) return;
   var nucl_shown = $("#DNA_sequence").length > 0;
 
   var boxes = document.getElementById("highlight-boxes");
@@ -116,6 +118,7 @@ function loadAll() {
     gene_mode = getParameterByName('gene_mode') == 'true';
     show_snvs = getParameterByName('show_snvs') == 'true';
     show_indels = true;//getParameterByName('show_indels') == 'true';
+    show_highlights = true;
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -232,7 +235,7 @@ function loadAll() {
                 });
 
                 state['highlight-genes'] = {};
-                state['large-indel'] = 10;
+                state['large-indel'] = 5;
                 $("#largeIndelInput").val(state['large-indel']);
 
                 // create function color menu and table; set default color states
@@ -300,6 +303,7 @@ function loadAll() {
                 }
                 if(show_snvs) $('#toggle_snv_box').attr("checked", "checked");
                 if(show_indels) $('#toggle_indel_box').attr("checked", "checked");
+                $('#toggle_highlight_box').attr("checked", "checked");
 
                 createCharts(state);
                 $('.loading-screen').hide();
@@ -401,6 +405,9 @@ function loadAll() {
                 });
                 $('#toggle_indel_box').on('change', function() {
                   toggleIndels();
+                });
+                $('#toggle_highlight_box').on('change', function() {
+                  toggleHighlightBoxes();
                 });
             }
         });
@@ -570,6 +577,18 @@ function toggleIndels() {
   }*/
   show_indels = !show_indels;
   createCharts(state);
+}
+
+function toggleHighlightBoxes() {
+  if(show_highlights) {
+    $('#highlightBoxesSvg').empty();
+    $('#highlight-boxes').css('pointer-events', 'none');
+  } else {
+    drawHighlightBoxes();
+    setSelectionBoxListener();
+    $('#highlight-boxes').css('pointer-events', 'all');
+  }
+  show_highlights = !show_highlights;
 }
 
 function toggleGeneIDColor(gene_id, color="#FF0000") {
@@ -902,7 +921,7 @@ function setSelectionBoxListener() {
     var x = e.pageX, y = e.pageY;
     Object.keys(select_boxes).forEach(function(i) {
       var box = select_boxes[i];
-      if(box.left <= x && x <= box.right && box.top <= y && y <= box.bottom) {
+      if(box.left-10 <= x && x <= box.right+10 && box.top-10 <= y && y <= box.bottom+10) {
         $("#highlight-boxes").hide();
         return;
       }
@@ -1357,7 +1376,7 @@ function serializeSettings() {
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
-    $('#chart-container, #context-container').empty();
+    $('#chart-container, #context-container, #highlight-boxes').empty();
 
     if (state['current-view'] == "single"){
         // if we are working with a non-merged single profile, we need to do some ugly hacks here,
@@ -1465,7 +1484,6 @@ function createCharts(state){
             .attr("width", width + margin.left + margin.right)
             .attr("height", 150);
 
-    $("#highlight-boxes").empty();
     highlightBoxes = d3.select("#highlight-boxes").append("svg")
                                                   .attr("id", "highlightBoxesSvg")
                                                   .attr("width", width + margin.left + margin.right)
@@ -1564,8 +1582,8 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
-    display_nucleotides();
-    drawHighlightBoxes();
+    if(show_nucleotides) display_nucleotides();
+    if(show_highlights) drawHighlightBoxes();
     setSelectionBoxListener();
 
     function onBrush(){
@@ -1676,7 +1694,7 @@ function Chart(options){
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
 
     this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(i)+4; })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
@@ -1805,16 +1823,70 @@ function Chart(options){
     }
 
     if(show_indels) {
-      // TODO
-      // in initial definitions, flip line and text to be upsidedown -- DONE
-      // add a line to lineContainer based on coverage
-
       this.indel_coverage = [];
       this.indel_coverage.length = this.coverage.length;
       this.indel_coverage.fill(0);
+      /* dictionary to hold data for positions with multiple indels */
+      var mult_indels = {};
       d3.entries(this.indels).forEach(obj => {
-        this.indel_coverage[obj.key] = obj.value['count']/obj.value['coverage'] < 1 ? obj.value['count']/obj.value['coverage'] : 1;
+        if(this.indel_coverage[obj.value['pos']] != 0) {
+          this.indel_coverage[obj.value['pos']] += (obj.value['count']/obj.value['coverage']);
+
+          var new_table = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                  <h3>' + ((obj.value['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
+                  <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                      <tr><td>Position in split</td><td>' + obj.value['pos'] +'</td></tr> \
+                      <tr><td>Position in contig</td><td>' + obj.value['pos_in_contig'] +'</td></tr> \
+                      <tr><td>Reference</td><td>' + obj.value['reference'] +'</td></tr> \
+                      <tr><td>Sequence</td><td>' + obj.value['sequence'] +'</td></tr> \
+                      <tr><td>Type</td><td>' + ((obj.value['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
+                      <tr><td>Length</td><td>' + obj.value['length'] +'</td></tr> \
+                      <tr><td>Count</td><td>' + obj.value['count'] +'</td></tr> \
+                      <tr><td>Corresponding gene call</td><td>' + ((obj.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': obj.value['corresponding_gene_call']) +'</td></tr> \
+                      <tr><td>Codon order in gene</td><td>' + ((obj.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': obj.value['codon_order_in_gene']) +'</td></tr> \
+                      <tr><td>Base position in codon</td><td>' + ((obj.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': obj.value['base_pos_in_codon']) +'</td></tr> \
+                      <tr><td>Coverage</td><td>' + obj.value['coverage'] +'</td></tr> \
+                  </table>';
+
+          if(mult_indels[obj.value['pos']]) {
+            mult_indels[obj.value['pos']][0]++;
+            mult_indels[obj.value['pos']][1] += new_table;
+            mult_indels[obj.value['pos']][2] = mult_indels[obj.value['pos']][2] > obj.value['length'] ? mult_indels[obj.value['pos']][2] : obj.value['length'];
+          } else {
+            dupl_keys.push(obj.key);
+            var initialKey = Object.keys(this.indels).find(key => this.indels[key]['pos'] === obj.value['pos']);
+            var init_indel = this.indels[initialKey];
+            init_table = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                    <h3>' + ((init_indel['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
+                    <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                        <tr><td>Position in split</td><td>' + init_indel['pos'] +'</td></tr> \
+                        <tr><td>Position in contig</td><td>' + init_indel['pos_in_contig'] +'</td></tr> \
+                        <tr><td>Reference</td><td>' + init_indel['reference'] +'</td></tr> \
+                        <tr><td>Sequence</td><td>' + init_indel['sequence'] +'</td></tr> \
+                        <tr><td>Type</td><td>' + ((init_indel['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
+                        <tr><td>Length</td><td>' + init_indel['length'] +'</td></tr> \
+                        <tr><td>Count</td><td>' + init_indel['count'] +'</td></tr> \
+                        <tr><td>Corresponding gene call</td><td>' + ((init_indel['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': init_indel['corresponding_gene_call']) +'</td></tr> \
+                        <tr><td>Codon order in gene</td><td>' + ((init_indel['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': init_indel['codon_order_in_gene']) +'</td></tr> \
+                        <tr><td>Base position in codon</td><td>' + ((init_indel['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': init_indel['base_pos_in_codon']) +'</td></tr> \
+                        <tr><td>Coverage</td><td>' + init_indel['coverage'] +'</td></tr> \
+                    </table>';
+
+            mult_indels[obj.value['pos']] = [];
+            mult_indels[obj.value['pos']][0] = 2;
+            mult_indels[obj.value['pos']][1] = init_table + new_table;
+            mult_indels[obj.value['pos']][2] = init_indel['length'] > obj.value['length'] ? init_indel['length'] : obj.value['length'];
+          }
+
+        } else {
+          this.indel_coverage[obj.value['pos']] = (obj.value['count']/obj.value['coverage'] < 1) ? (obj.value['count']/obj.value['coverage']) : 1;
+        }
       });
+
+      for (pos in mult_indels) {
+        this.indel_coverage[pos] = this.indel_coverage[pos] / mult_indels[pos][0];
+      }
+
 
       this.lineContainer.append("path")
           .data([this.indel_coverage])
@@ -1829,12 +1901,16 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(d.key); })
+                              .attr("x", function (d) { return xS(d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
-                              .attr("fill", function(d) { return ((d.value['length'] > state['large-indel']) ? 'red' : '#CCCC00'); })
+                              .attr("fill", function(d) { return (((d.value['pos'] in mult_indels ? mult_indels[d.value['pos']][2] : d.value['length']) > state['large-indel']) ? 'red' : '#CCCC00'); })
                               .attr('data-content', function(d) {
+                                  if(d.value['pos'] in mult_indels) {
+                                    return mult_indels[d.value['pos']][1];
+                                  }
+
                                   return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
                                           <h3>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
                                           <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
@@ -1853,6 +1929,7 @@ function Chart(options){
                               })
                               .attr('data-toggle', 'popover')
                               .text(function (d) {
+                                  if(d.value['pos'] in mult_indels) return 'x';
                                   return d.value['type'] == 'INS' ? '+' : '-';
                               });
     }
@@ -1899,6 +1976,6 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.key); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.value['pos']); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

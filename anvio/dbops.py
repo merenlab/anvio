@@ -3081,8 +3081,8 @@ class ProfileSuperclass(object):
 
         d = self.get_blank_indels_dict()
 
-        for e in split_indels_information:
-            d[e['sample_id']]['indels'][e['pos']] = e
+        for i, e in enumerate(split_indels_information):
+            d[e['sample_id']]['indels'][i] = e
 
         self.progress.end()
 
