@@ -251,8 +251,8 @@ pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
 pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
 templates_table_name       = 'templates'
-templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
-templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real']
+templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
+templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real',                      'real',               'real']
 
 models_table_name       = 'models'
 models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']

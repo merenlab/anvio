@@ -34,7 +34,14 @@ def main(args):
     else:
         seq_names_to_export = None
 
-    utils.export_sequences_from_contigs_db(args.contigs_db, args.output_file, seq_names_to_export=seq_names_to_export, splits_mode=args.splits_mode, just_do_it=args.just_do_it, run=run)
+    utils.export_sequences_from_contigs_db(args.contigs_db,
+                                           args.output_file,
+                                           seq_names_to_export=seq_names_to_export,
+                                           splits_mode=args.splits_mode,
+                                           just_do_it=args.just_do_it,
+                                           truncate=(not args.no_wrap),
+                                           run=run)
+
     run.info('Export mode', 'splits' if args.splits_mode else 'contigs')
     run.info('Output FASTA', args.output_file)
 
@@ -48,6 +55,7 @@ if __name__ == '__main__':
                         sequences instead.")
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    parser.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
 
     args = anvio.get_args(parser)
 

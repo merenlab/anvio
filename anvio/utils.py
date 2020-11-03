@@ -2645,6 +2645,13 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
 
 def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
+    """FIXME <A one line descriptor here>
+
+    Notes
+    =====
+    - Assumes outfmt has `qseqid` and `sseqid` as 1st and 2nd columns, respectively
+    """
+
     new_search_output_path = tabular_output_path + '.ununiqued'
     new_tabular_output = open(new_search_output_path, 'w')
 
@@ -2666,8 +2673,12 @@ def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
 def get_BLAST_tabular_output_as_dict(tabular_output_path, target_id_parser_func=None, query_id_parser_func=None):
     """Takes a BLAST output, returns a dict where each query appears only once!!
 
-       If there are multiple hits for a given query, the one with lower e-value.
-       remains in the dict.
+    If there are multiple hits for a given query, the one with lower e-value.
+    remains in the dict.
+
+    Notes
+    =====
+    - Works only for the default "-outfmt 6"
     """
 
     results_dict = {}

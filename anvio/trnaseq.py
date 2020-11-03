@@ -1182,11 +1182,10 @@ class TRNASeqDataset:
         self.uniq_trna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
         self.uniq_nontrna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
 
+        for param_tuple in trnaidentifier.TRNAFeature.list_accessible_param_tuples():
+            trnaseq_db.db.set_meta_value(param_tuple[0], param_tuple[1])
         trnaseq_db.db.set_meta_value('reads_processed', processed_read_count)
         trnaseq_db.db.set_meta_value('unique_reads_processed', processed_seq_count)
-        # TODO : Find a way to record user-accessible feature parameters here.
-        #        This requires writing a function in trnaidentifier to report user-accessible parameters
-        #        for the default case that no feature parameter file is provided.
         trnaseq_db.db.set_meta_value('profiled_trna_reads', trna_read_count)
         trnaseq_db.db.set_meta_value('unique_profiled_trna_seqs', uniq_trna_count)
         trnaseq_db.db.set_meta_value('trna_reads_containing_anticodon', trna_containing_anticodon_read_count)
@@ -1221,6 +1220,8 @@ class TRNASeqDataset:
             f.write(self.get_summary_line("Time elapsed profiling tRNA (min)",
                                           time() - start_time,
                                           is_time_value=True))
+            for param_tuple in trnaidentifier.TRNAFeature.list_accessible_param_tuples(pretty=True):
+                f.write(self.get_summary_line(param_tuple[0], param_tuple[1]))
             f.write(self.get_summary_line("Reads processed", processed_read_count))
             f.write(self.get_summary_line("Unique sequences processed", processed_seq_count))
             f.write(self.get_summary_line("Reads profiled as tRNA", trna_read_count))
@@ -1311,10 +1312,10 @@ class TRNASeqDataset:
         self.run.info("Unique 3'-dereplicated trimmed tRNA sequences", len(self.norm_trna_seqs))
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed sequences",
+            f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled sequences",
                                           time() - start_time,
                                           is_time_value=True))
-            f.write(self.get_summary_line("Unique 3'-dereplicated trimmed tRNA sequences", len(self.norm_trna_seqs)))
+            f.write(self.get_summary_line("Unique 3'-dereplicated trimmed profiled tRNA sequences", len(self.norm_trna_seqs)))
 
 
     def map_fragments(self):
@@ -1533,6 +1534,7 @@ class TRNASeqDataset:
             f.write(self.get_summary_line("Time elapsed mapping reads to profiled tRNA (min)",
                                           time() - start_time,
                                           is_time_value=True))
+            f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
             f.write(self.get_summary_line("Mapped reads without extra 5' tRNA bases", interior_mapped_count))
             f.write(self.get_summary_line("Mapped reads with extra 5' tRNA bases", fiveprime_mapped_count))
             f.write(self.get_summary_line("Unique mapped tRNA sequences", uniq_mapped_count))
@@ -1872,9 +1874,6 @@ class TRNASeqDataset:
         trnaseq_db.disconnect()
 
         self.progress.end()
-
-        with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
 
 
     def write_normalized_table(self):

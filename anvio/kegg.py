@@ -964,6 +964,11 @@ class KeggRunHMMs(KeggContext):
         # load existing kegg modules db
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
+                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
 
     def set_hash_in_contigs_db(self):
         """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
@@ -3416,12 +3421,12 @@ class KeggModulesDatabase(KeggContext):
             self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
                              "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                              "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                             "you would like to see which modules threw these errors, please re-run the setup using the --debug flag (you "
-                             "will also probably need the --reset flag). When doing so, you will also see which lines caused issues; this "
-                             "can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things "
+                             "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
+                             "will also probably need the `--reset` flag). When doing so, you will also see which lines caused issues; this "
+                             "can be a lot of output, so you can suppress the line-specific output with the `--quiet` flag if that makes things "
                              "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
-                             "with --reset --debug --quiet to see exactly which modules had issues, or run with --reset --debug to see exactly "
-                             "which lines in which modules had issues. Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
+                             "with `--reset --debug --quiet` to see exactly which modules had issues, or run with `--reset --debug` to see exactly "
+                             "which lines in which modules had issues. Anvi'o developers thank you for your attention and patience 😇")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
             self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
@@ -3454,7 +3459,7 @@ class KeggModulesDatabase(KeggContext):
         so we do the appropriate division to get the time in days.
         """
 
-        return (time.time() - float(self.db.get_meta_value('creation_date'))) / 86400
+        return round((time.time() - float(self.db.get_meta_value('creation_date'))) / 86400)
 
 
     def get_db_content_hash(self):
