@@ -382,11 +382,9 @@ class AppendableFile:
     fail_if_file_exists : boolean
         if True, throw an error upon initialization if the file already exists. If False,
         start appending to the end of the file.
-    overwrite_if_file_exists : boolean
-        if True (and fail_if_file_exists is False), the existing file will be removed before adding new data.
     """
 
-    def __init__(self, file_path, append_type=None, fail_if_file_exists=False, overwrite_if_file_exists=False):
+    def __init__(self, file_path, append_type=None, fail_if_file_exists=False):
         self.path = file_path
         self.append_type = append_type
 
@@ -401,8 +399,6 @@ class AppendableFile:
                                     "because it already exists. If you are a user, you should probably give "
                                     "Anvi'o a different file name to work with. If you are a programmer and you "
                                     "don't want this behavior, init this class with `fail_if_file_exists=False` instead.")
-        elif overwrite_if_file_exists and exists:
-            os.remove(self.path)
 
         is_output_file_writable(self.path)
 
