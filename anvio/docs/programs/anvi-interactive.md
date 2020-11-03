@@ -53,9 +53,9 @@ anvi-interactive -p %(profile-db)s \
 
 To see a practical example, please visit [this page](http://merenlab.org/tutorials/infant-gut/#the-gene-mode-studying-distribution-patterns-at-the-gene-level). For a real-world application of this feature, please take a look at this We previously have used this strategy to study gene coverages across metagenomes.
 
-In this view you can order genes based on their distributions patterns across metagenomes (without paying attention to their synteny) or by ordering them based on their synteny in the genome (without paying attention to their differential distribution). [Figure 2 in this paper](https://peerj.com/articles/4320/) examples the former, and [Figure 5 in this paper](https://stm.sciencemag.org/content/11/507/eaau9356) examples the latter case.
+In this view you can order genes based on their distributions patterns across metagenomes (*without paying attention to their synteny*) or by ordering them based on their synteny in the genome (*without paying attention to their differential distribution*). [Figure 2 in this paper](https://peerj.com/articles/4320/) examples the latter, and [Figure 5 in this paper](https://stm.sciencemag.org/content/11/507/eaau9356) examples the former case, which is also shown below:
 
-![](https://dfzljdn9uc3pi.cloudfront.net/2018/4320/1/fig-2-2x.jpg)
+![](http://merenlab.org/images/gene-distribution-across-metagenomes.png)
 
 ## Running anvi-interactive in manual mode
 

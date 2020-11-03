@@ -38,7 +38,6 @@ import anvio.homogeneityindex as homogeneityindex
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 
-from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
@@ -1004,6 +1003,8 @@ class ContigsSuperclass(object):
             else:
                 header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
+            sequence = None
+
             if report_aa_sequences and rna_alphabet:
                 raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
             elif rna_alphabet:
@@ -1013,12 +1014,12 @@ class ContigsSuperclass(object):
             else:
                 sequence = entry['sequence']
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
-
-            if not len(sequence):
+            if not sequence:
                 skipped_gene_calls.append(gene_callers_id)
                 continue
+
+            if wrap:
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
             output.write('>%s\n' % header)
             output.write('%s\n' % sequence)
@@ -1102,8 +1103,11 @@ class PanSuperclass(object):
         self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
+        # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
+        # this one below is initialized by self.init_gene_cluster_functions_summary(): 
+        self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
@@ -1532,27 +1536,54 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
+        """Returns the most frequently occurring functional annotation across genes in a gene cluster
+        for a given functional annotation source.
+
+        A single function and accession number is determined purely based on frequencies of occurrence.
+        If multiple functions have the same number of votes then one will be chosen arbitrarily.
+
+        Parameters
+        ==========
+        gene_cluster_id : str
+            A gene cluster id that is defined in the `gene_clusters_functions_dict`
+
+        functional_annotation_source : str
+            A known functional annotation source
+
+        Returns
+        =======
+        (most_common_accession, most_common_function) : tuple
+            The representative function and its accession id for `gene_cluster_id` and `functional_annotation_source`
+        """
+
+        if not self.functions_initialized:
+            raise ConfigError("Although it is an expensive step, this function currently requires functions to be "
+                              "initialized first :/ If you are a programmer and need this functionality to be much "
+                              "more effective for ad hoc use, please let us know (the right solution in that case is "
+                              "to work directly with the genome storage database to recover functions for a single gene "
+                              "cluster).")
+
+        functions_counter = Counter({})
+        for genome_name in self.gene_clusters_functions_dict[gene_cluster_id]:
+            for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
+                if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id]:
+                    annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
+                    functions_counter[annotation_blob] += 1
+
+        if not len(functions_counter):
+            return (None, None)
+
+        most_common_accession, most_common_function = functions_counter.most_common()[0][0].split('|||')
+
+        return (most_common_accession, most_common_function)
+
+
     def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
-        """ A function to assign functions to gene clusters for an annotation_source
+        """Returns a dictionary where each gene cluster is associated with a single function.
 
-            use an annotation source and choose a function for the gene cluster
-            using a voting approach, i.e. the most commonly annotated function
-            for the genes in the gene cluster will be chosen.
-
-            If multiple functinos have the same number of votes then one will
-            be chosen arbitrarily.
-
-            OUTPUT:
-
-            gene_clusters_functions_summary_dict
-                dictionary with gene_cluster ids as keys
-                the values are dictionaries, where:
-                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
-
-                If you want to see all the functions and number of votes per function, simply do:
-                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
-                    print('For gene cluster %s: the number of votes for function %s is %s'\
-                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+           See `get_gene_cluster_function_summary` for details since this function is merely
+           calling it for each gene cluster.
         """
 
         if functional_annotation_source not in self.gene_clusters_function_sources:
@@ -1569,32 +1600,44 @@ class PanSuperclass(object):
 
         gene_clusters_functions_summary_dict = {}
 
-        self.progress.new('Summarizing functions for gene clusters')
+        self.progress.new(f'Summarizing "{functional_annotation_source}" for gene clusters')
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
-            gene_clusters_functions_summary_dict[gene_cluster] = {}
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = None
-            max_votes = 0
-            for genome in self.gene_clusters_functions_dict[gene_cluster]:
-                for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
-                    if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
-                        annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
-                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for a, f in zip(accessions, annotations):
-                            if f not in gene_clusters_functions_summary_dict[gene_cluster]:
-                                gene_clusters_functions_summary_dict[gene_cluster][f] = 0
-
-                            gene_clusters_functions_summary_dict[gene_cluster][f] += 1
-                            if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
-                                # The function has the votes!
-                                max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = a
+            accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source)
+            gene_clusters_functions_summary_dict[gene_cluster] = {'gene_cluster_function': function, 'gene_cluster_function_accession': accession}
 
         self.progress.end()
 
         return gene_clusters_functions_summary_dict
+
+
+    def init_gene_clusters_functions_summary_dict(self):
+        """ A function to initialize the `gene_clusters_functions_summary_dict` by calling
+            the atomic function `get_gene_clusters_functions_summary_dict` for all the
+            functional annotaiton sources.
+        """
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            self.run.warning("Someone asked anvi'o to initialize a gene cluster functions summary dict, but it seems there "
+                             "are no gene cluster functions even after initializing functions for the pangenome. So we move "
+                             "on without any summary dict for functions and/or drama about it to let the downstream analyses "
+                             "decide how to punish the unlucky.")
+            return
+
+        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        for gene_cluster_id in self.gene_clusters_functions_dict:
+            self.progress.update(f'{gene_cluster_id} ...', increment=True)
+
+            self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
+
+            for functional_annotation_source in self.gene_clusters_function_sources:
+                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
+                self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
+
+        self.progress.end()
 
 
     def init_gene_clusters_functions(self):
@@ -4554,26 +4597,3 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
                                                                               len(matching_item_order_names),
                                                                               default_item_order))
         return default_item_order
-
-
-def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
-    if quiet:
-        run = terminal.Run(verbose=False)
-        progress = terminal.Progress(verbose=False)
-    else:
-        run = terminal.Run()
-        progress = terminal.Progress()
-
-    filesnpaths.is_file_exists(contigs_db_path)
-    filesnpaths.is_output_file_writable(output_file_path)
-
-    class T(Table):
-        def __init__(self, db_path, version, run=run, progress=progress, quiet=False):
-            Table.__init__(self, db_path, version, run, progress, quiet=quiet)
-
-    h = T(contigs_db_path, anvio.__contigs__version__, quiet=quiet)
-    h.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name,
-                                                   output_file_path=output_file_path,
-                                                   item_names=gene_caller_ids)
-
-    return output_file_path

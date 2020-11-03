@@ -929,6 +929,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
+            self.init_gene_clusters_functions_summary_dict()
 
         PanSuperclass.init_items_additional_data(self)
 
@@ -1545,13 +1546,14 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         templates = structure_db.db.get_table_as_dataframe(
             'templates',
-            columns_of_interest=['pdb_id', 'chain_id', 'ppi'],
+            columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
             where_clause='corresponding_gene_call = %d' % gene_callers_id,
         ).rename(columns={
             'pdb_id': 'PDB',
             'chain_id': 'Chain',
-            'ppi': '%Identity',
-        })[['PDB', 'Chain', '%Identity']]
+            'percent_similarity': '%Identity',
+            'align_fraction': 'Align fraction',
+        })[['PDB', 'Chain', '%Identity', 'Align fraction']]
 
         structure_db.disconnect()
 

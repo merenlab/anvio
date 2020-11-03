@@ -28,9 +28,10 @@ class TRNAFeature:
     INI_FEATURE_PARAMS = ['Conserved nucleotides', 'Number allowed unconserved', 'Number allowed unpaired', 'Allowed lengths']
     # Feature parameter attributes
     ACCESSIBLE_FEATURE_PARAMS = ['conserved_nts', 'num_allowed_unconserved', 'num_allowed_unpaired', 'allowed_input_lengths']
-    # These class attributes are set by `set_feature_param_class_attributes`
-    # or are set the first time `set_feature_params` or `print_default_feature_params` is called.
-    # Since the attributes reference other classes, they can't be assigned yet.
+    # The following TRNAFeature attributes are used for looking up feature subclass attributes,
+    # important in changing subclass attributes from a .ini file.
+    # Since these TRNAFeature attributes directly reference subclasses, they can't be assigned when TRNAFeature is defined.
+    # These attributes are set by `set_param_refs`, which is called the first time certain other methods are called.
     dict_mapping_feature_or_subfeature_name_to_class = None
     feature_and_subfeature_names_with_accessible_lengths = None
     subfeature_section_dict = None
@@ -216,33 +217,65 @@ class TRNAFeature:
 
 
     @staticmethod
-    def write_default_param_file(default_feature_param_path):
-        """Write the default table of feature and "subfeature" parameters (class attributes)
+    def write_param_file(feature_param_path):
+        """Write the table of feature and "subfeature" parameters (class attributes)
 
         Parameters
         ==========
-        default_feature_param_path : str
+        feature_param_path : str
             Output file path
         """
 
-        is_output_file_writable(default_feature_param_path)
-        rows = TRNAFeature.get_default_param_table_as_list()
-        with open(default_feature_param_path, 'w') as f:
+        is_output_file_writable(feature_param_path)
+        rows = TRNAFeature.get_param_table_as_list()
+        with open(feature_param_path, 'w') as f:
             for row in rows:
                 f.write("\t".join(row) + "\n")
 
 
     @staticmethod
-    def print_default_params():
-        """Print a nicely formatted version of the default table of feature and "subfeature" parameters (class attributes)"""
+    def tabulate_params():
+        """Get a nicely formatted version of the table of feature and "subfeature" parameters (class attributes)"""
 
-        rows = TRNAFeature.get_default_param_table_as_list()
-        print(tabulate(rows, headers='firstrow', tablefmt='github'))
+        rows = TRNAFeature.get_param_table_as_list()
+        return tabulate(rows, headers='firstrow', tablefmt='github')
 
 
     @staticmethod
-    def get_default_param_table_as_list():
-        """Get a table of default user-accessible feature and "subfeature" parameters (class attributes)
+    def list_accessible_param_tuples(pretty=False):
+        """Get a list of tuples, each containing the name and value of an accessible parameter"""
+
+        param_tuples = []
+        if pretty:
+            # Currently used in producing anvi-trnaseq analysis summary file.
+            param_types = TRNAFeature.INI_FEATURE_PARAMS
+            for feature_info in TRNAFeature.get_param_table_as_list()[1: ]:
+                feature_name = feature_info[0]
+                for param_type, param_value in zip(param_types, feature_info[1: ]):
+                    if param_value != '-':
+                        if feature_name in ['tRNA-His position 0']:
+                            # Avoid capitalizing certain strings.
+                            param_tuples.append((feature_name + ': ' + param_type, param_value))
+                        else:
+                            param_tuples.append((feature_name.capitalize() + ': ' + param_type, param_value))
+        else:
+            # Currently used in setting tRNA-seq database meta-values.
+            param_types = TRNAFeature.ACCESSIBLE_FEATURE_PARAMS
+            for feature_info in TRNAFeature.get_param_table_as_list()[1: ]:
+                feature_name = feature_info[0].replace(' ', '_')
+                for param_type, param_value in zip(param_types, feature_info[1: ]):
+                    if param_value != '-':
+                        param_tuples.append((
+                            (feature_name + '_' + param_type).replace('-', '_').replace('/', '_').lower(),
+                            param_value)
+                        )
+
+        return param_tuples
+
+
+    @staticmethod
+    def get_param_table_as_list():
+        """Get a table of user-accessible feature and "subfeature" parameters (class attributes)
 
         A dash indicates a parameter that cannot be set for the feature.
         Quotes indicate a parameter that is currently not set.

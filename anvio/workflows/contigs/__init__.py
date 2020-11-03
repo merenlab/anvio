@@ -84,7 +84,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                          '--use-version']
 
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--keep-ids', '--exclude-ids', '--min-len', "--prefix", "--simplify-names"]
+                    ['run', '--keep-ids', '--exclude-ids', '--min-len', "--prefix", "--simplify-names", "--seq-type"]
 
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
