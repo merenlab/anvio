@@ -17,7 +17,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
-__requires__ = ['external-genomes', 'internal-genomes', 'fasta']
+__requires__ = ['external-genomes', 'internal-genomes', 'fasta', 'genome-similarity']
 __provides__ = ['fasta']
 __description__ = ("Identify redundant (highly similar) genomes")
 
