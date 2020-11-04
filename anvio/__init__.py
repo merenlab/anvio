@@ -2813,13 +2813,6 @@ D = {
             'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
                     "in any output files."}
                 ),
-    'append-output': (
-            ['--append-output'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "This flag enables new metabolism estimation output to be appended to existing files with the "
-                    "same output prefix as provided with -O."}
-                ),
 }
 
 # two functions that works with the dictionary above.
