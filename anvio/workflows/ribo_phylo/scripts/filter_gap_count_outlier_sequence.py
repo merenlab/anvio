@@ -26,7 +26,7 @@ else:
 	Q3 = np.percentile(gap_counts_distribution_df.num_gaps, 75)
 	IQR = Q3 - Q1
 
-	outlier_threshold = IQR * 1.5
+	outlier_threshold = Q3 + (IQR * 1.5)
 
 print("The outlier_threshold rule filter_out_outlier_sequences is: " + str(outlier_threshold))
 
