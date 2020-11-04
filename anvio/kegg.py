@@ -1176,6 +1176,7 @@ class KeggEstimatorArgs():
         self.modules_unique_id = None
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
+        self.append_output = A('append_output')
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -1214,7 +1215,7 @@ class KeggEstimatorArgs():
         output_dict = {}
         for mode in self.output_modes:
             output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
-            if filesnpaths.is_file_exists(output_path, dont_raise=True):
+            if filesnpaths.is_file_exists(output_path, dont_raise=True) and not self.append_output:
                 raise ConfigError("It seems like output files with your requested prefix already exist, for "
                                   f"example: {output_path}. If you want Anvi'o to append new data to this file, "
                                   "then feel free to re-run this command using the flag --append-output. Otherwise, "
