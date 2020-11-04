@@ -49,9 +49,7 @@ var show_nucleotides = true;
 var gene_offset_y = 0;
 var select_boxes = {};
 
-// for testing
 var mcags;
-var testData;
 
 var cog_annotated = false, kegg_annotated = false;
 
@@ -235,7 +233,7 @@ function loadAll() {
                 });
 
                 state['highlight-genes'] = {};
-                state['large-indel'] = 5;
+                state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
 
                 // create function color menu and table; set default color states
@@ -1339,7 +1337,7 @@ function processState(state_name, state) {
     this.state = state;
     redrawArrows();
 
-    if(true /*TODO: if we have indels table*/) {
+    if(show_indels) {
       if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
       $('#largeIndelInput').val(20);
     }
