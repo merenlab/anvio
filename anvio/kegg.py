@@ -1216,9 +1216,8 @@ class KeggEstimatorArgs():
             output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
             if filesnpaths.is_file_exists(output_path, dont_raise=True):
                 raise ConfigError("It seems like output files with your requested prefix already exist, for "
-                                  f"example: {output_path}. If you want Anvi'o to append new data to this file, "
-                                  "then feel free to re-run this command using the flag --append-output. Otherwise, "
-                                  "you must either delete the existing files or provide a different output prefix.")
+                                  f"example: {output_path}. Please delete the existing files or provide a "
+                                  "different output prefix.")
             output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False)
             output_dict[mode] = output_file_for_mode
 
