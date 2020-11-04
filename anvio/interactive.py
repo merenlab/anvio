@@ -2526,7 +2526,7 @@ class ContigsInteractive():
                 all_hmm_sources.add(source)
 
         hmm_table = []
-        for source in all_hmm_sources:
+        for source in sorted(all_hmm_sources):
             line = [source]
             for c in self.contigs_stats.values():
                 if source in c['gene_hit_counts_per_hmm_source']:
