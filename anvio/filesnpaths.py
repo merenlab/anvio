@@ -419,7 +419,7 @@ class AppendableFile:
 
 
     def write(self, *args, **kwargs):
-        raise ConfigError("AppendableFile :: Use `append`, not `write`")
+        raise FilesNPathsError("AppendableFile :: Use `append`, not `write`")
 
 
     def append(self, data, **kwargs):
@@ -516,12 +516,12 @@ class AppendableFile:
             if len(missing_headers):
                 if anvio.DEBUG:
                     if len(missing_headers) > 10:
-                        raise ConfigError(f"Some headers from the file (n={len(missing_headers)}) are not in your dictionary :/ "
+                        raise FilesNPathsError(f"Some headers from the file (n={len(missing_headers)}) are not in your dictionary :/ "
                                           f"Here are the first ten of them: {missing_headers[:10].__str__()}")
                     else:
-                        raise ConfigError(f"Some headers from the file are not in your dictionary :/ Here they are: {missing_headers.__str__()}")
+                        raise FilesNPathsError(f"Some headers from the file are not in your dictionary :/ Here they are: {missing_headers.__str__()}")
                 else:
-                    raise ConfigError("Some headers from the file are not in your dictionary :/ Use `--debug` to see where this "
+                    raise FilesNPathsError("Some headers from the file are not in your dictionary :/ Use `--debug` to see where this "
                                       "error is coming from the codebase with a list of example keys that are missing.")
 
             # check that any requested outer dictionary keys are present
@@ -532,12 +532,12 @@ class AppendableFile:
                 if len(missing_keys):
                     if anvio.DEBUG:
                         if len(missing_keys) > 10:
-                            raise ConfigError(f"Some keys (n={len(missing_keys)}) are not in your dictionary :/ Here are "
+                            raise FilesNPathsError(f"Some keys (n={len(missing_keys)}) are not in your dictionary :/ Here are "
                                               f"the first ten of them: {missing_keys[:10].__str__()}")
                         else:
-                            raise ConfigError(f"Some keys are not in your dictionary :/ Here they are: {missing_keys.__str__()}")
+                            raise FilesNPathsError(f"Some keys are not in your dictionary :/ Here they are: {missing_keys.__str__()}")
                     else:
-                        raise ConfigError("Some keys are not in your dictionary :/ Use `--debug` to see where this "
+                        raise FilesNPathsError("Some keys are not in your dictionary :/ Use `--debug` to see where this "
                                           "error is coming from the codebase with a list of example keys that are "
                                           "missing.")
 
@@ -552,9 +552,9 @@ class AppendableFile:
                     try:
                         val = dict_to_append[k][header]
                     except KeyError:
-                        raise ConfigError(f"Header '{header}' is not found in the dict for key '{k}':/")
+                        raise FilesNPathsError(f"Header '{header}' is not found in the dict for key '{k}':/")
                     except TypeError:
-                        raise ConfigError("Your dictionary is not properly formatted to be exported "
+                        raise FilesNPathsError("Your dictionary is not properly formatted to be exported "
                                            f"as a TAB-delimited file :/ You ask for '{header}', but it is not "
                                            "even a key in the dictionary")
 
