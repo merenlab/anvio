@@ -1369,6 +1369,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             contigs_db.disconnect()
         kegg_modules_db.disconnect()
 
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
 
     def list_output_modes(self):
         """This function prints out the available output modes for the metabolism estimation script."""
@@ -2688,6 +2693,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.name_header = 'genome_name'
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
+
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
