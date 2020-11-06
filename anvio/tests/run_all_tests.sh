@@ -81,7 +81,7 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
-              -I Ribosomal_RNAs \
+              -I Ribosomal_RNA_16S \
               --just-do-it
 
 INFO "Listing all available HMM sources in the contigs database"
@@ -231,6 +231,12 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                          -o $output_dir/split_coverages_in_Bin_1.txt \
                          -C CONCOCT \
                          -b Bin_1
+
+INFO "Generating per-nt position coverage values for a single gene with its 20nt flanks across samples"
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                         -o $output_dir/gene_caller_id_5_coverages.txt \
+                         --gene-caller-id 5 \
+                         --flank-length 20
 
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt

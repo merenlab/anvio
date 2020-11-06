@@ -74,6 +74,7 @@ class MODELLER:
             self.run.verbose = False
         self.lazy_init = lazy_init
 
+        self.check_db_only = check_db_only
         self.target_fasta_path = target_fasta_path
         self.directory = directory if directory else filesnpaths.get_temp_directory_path()
 
@@ -115,7 +116,7 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
-        if check_db_only:
+        if self.check_db_only:
             self.check_database()
             return
 
@@ -131,7 +132,7 @@ class MODELLER:
             "best_model_path"           : None,
             "best_score"                : None,
             "scoring_method"            : self.scoring_method,
-            "percent_cutoff"  : self.percent_cutoff,
+            "percent_cutoff"            : self.percent_cutoff,
             "alignment_fraction_cutoff" : self.alignment_fraction_cutoff,
             "very_fast"                 : self.very_fast,
             "deviation"                 : self.deviation,
@@ -807,7 +808,10 @@ class MODELLER:
 
             error = "\n" + "\n".join(error.split('\n'))
             print(terminal.c(error, color='red'))
-            self.out["structure_exists"] = False
+
+            if not self.check_db_only:
+                self.out["structure_exists"] = False
+
             raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear "
                                       "from the above error message. No structure is going to be modelled."\
                                        .format(script_name))

@@ -74,32 +74,34 @@
             var max_hmm_hits = 0;
             var active_index = 0;
             Object.keys(stats.gene_hit_counts_per_hmm_source).forEach(function(source, gene_chart_index) {
-                var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
+                if (stats.hmm_sources_for_SCGs.includes(source)){
+                    var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
 
-                var hits_sum = 0;
+                    var hits_sum = 0;
 
-                Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
-                    hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
-                });
+                    Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
+                        hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
+                    });
 
-                if (hits_sum > max_hmm_hits) {
-                    max_hmm_hits = hits_sum;
-                    active_index = gene_chart_index;
+                    if (hits_sum > max_hmm_hits) {
+                        max_hmm_hits = hits_sum;
+                        active_index = gene_chart_index;
+                    }
+
+                    tabs.append('li')
+                            .append('a')
+                                .attr('href', '#' + plot_container_id)
+                                .attr('data-toggle', 'tab')
+                                .text(source.replace(/_/g, ' '));
+
+
+                    var plot_container = tab_content.append('div')
+                                            .attr('class', 'tab-pane')
+                                            .attr('role', 'tabpanel')
+                                            .attr('id', plot_container_id);
+
+                    draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
                 }
-
-                tabs.append('li')
-                        .append('a')
-                            .attr('href', '#' + plot_container_id)
-                            .attr('data-toggle', 'tab')
-                            .text(source.replace(/_/g, ' '));
-
-
-                var plot_container = tab_content.append('div')
-                                        .attr('class', 'tab-pane')
-                                        .attr('role', 'tabpanel')
-                                        .attr('id', plot_container_id);
-
-                draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
             });
 
             $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
@@ -179,13 +181,13 @@
                 var layer_extent = d3.extent(table_line.slice(1, table_line.length).map(Number));
                 var layer_range = layer_extent[1] - layer_extent[0];
 
-                table_line.forEach(function(table_item, i) { 
+                table_line.forEach(function(table_item, i) {
                     var td_class = (i > 0) ? 'text-center' : '';
                     var td_color =  '#333';
-                    
+
                     if (color_numbers && i > 0 && layer_range > 0) {
                         td_color = getGradientColor('#B3DDCC', '#101648', (table_item - layer_extent[0]) / layer_range );
-                    } 
+                    }
 
                     if (human_readable && i > 0) {
                         table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
@@ -218,7 +220,7 @@
         $('#select-left,#select-right').change(function() {
             $('.parent-container>.row-plots').empty();
             create_plots(parseInt($('#select-left').val()), 'left');
-            create_plots(parseInt($('#select-right').val()), 'right'); 
+            create_plots(parseInt($('#select-right').val()), 'right');
         });
 
         d3.json("/data/get_contigs_stats", function(error, response) {
