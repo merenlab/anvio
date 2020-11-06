@@ -2484,12 +2484,12 @@ class ContigsInteractive():
         self.progress.update('Number of contigs ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
         X = lambda n: [len([count for count in contig_lengths_for_one if count >= n]) for contig_lengths_for_one in contig_lengths_for_all]
-        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
-        basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
-        basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
-        basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
-        basic_stats.append(['Num Contigs > 50 kb'] + X(50000))
         basic_stats.append(['Num Contigs > 100 kb'] + X(100000))
+        basic_stats.append(['Num Contigs > 50 kb'] + X(50000))
+        basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
+        basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
+        basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
+        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
 
         self.progress.update('Contig lengths ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
