@@ -232,6 +232,12 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                          -C CONCOCT \
                          -b Bin_1
 
+INFO "Generating per-nt position coverage values for a single gene with its 20nt flanks across samples"
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                         -o $output_dir/gene_caller_id_5_coverages.txt \
+                         --gene-caller-id 5 \
+                         --flank-length 20
+
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 
