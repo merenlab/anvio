@@ -165,16 +165,21 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group("ESSENTIAL ANVI'O DB", "You need to provide a profile database.")
+    groupA = parser.add_argument_group("ESSENTIAL ANVI'O DBs", "You need to provide a profile database, but whether you will need to provide a "
+                                                               "contigs database will depend on which input option you want to go with.")
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 
     groupA = parser.add_argument_group('INPUT OPTION #1: SPLIT NAME', "You want nothing but the coverage values in a single split. FINE.")
     groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
 
     groupB = parser.add_argument_group('INPUT OPTION #2: COLLECTION + BIN', "You want nucletide-level coverage values for all splits in a bin. FANCY.")
-    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupC = parser.add_argument_group('INPUT OPTION #3: GENE CALL', "You want nucletide-level coverage values for a given gene call. PRO.")
+    groupC.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+    groupC.add_argument(*anvio.A('flank-length'), **anvio.K('flank-length'))
 
     groupD = parser.add_argument_group('BORING STUFF', "The output file and all.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
