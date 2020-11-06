@@ -13,7 +13,7 @@ anvi-script-get-short-reads-matching-something --match-sequence AAAAAAAAAAAA \
                                                fastaq_one.fastq fastq_two.fastq
 {{ codestop }}
 
-This will output all of the matching sequences into a %(fasta)s file in the directory `example_sample_AAAAAAA_results`. 
+This will output all of the matching sequences into three %(fasta)s files in the directory `example_sample_AAAAAAA_results`. These %(fasta)s files differ in their format: (1) raw sequences, (2) the same sequences trimmed to the shortest one, (3) gaps `-` added to eliminate length variation. The last two formats provide downstream possibilities with oligotyping to cluster the short reads from an hypervariable region and estimatate their relative proportion. 
 
 Note that this will only report sequences where the length of the short read after the matching sequence is above a certain threshold. The default is 60. For example, if this dataset has the sequence `TTAAAAAAAAAAAAGGGGGGGGG`, this would not be included in the results, but if the sequence was followed by 60 `G` nucleotides, it would be because the length of the sequence after the match is longer than the threshold. You can change this threshold with the parameter `--min-remainder-length`.
 
