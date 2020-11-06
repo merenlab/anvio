@@ -1851,7 +1851,6 @@ function Chart(options){
             mult_indels[obj.value['pos']][1] += new_table;
             mult_indels[obj.value['pos']][2] = mult_indels[obj.value['pos']][2] > obj.value['length'] ? mult_indels[obj.value['pos']][2] : obj.value['length'];
           } else {
-            dupl_keys.push(obj.key);
             var initialKey = Object.keys(this.indels).find(key => this.indels[key]['pos'] === obj.value['pos']);
             var init_indel = this.indels[initialKey];
             init_table = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
