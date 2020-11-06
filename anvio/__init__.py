@@ -1249,6 +1249,15 @@ D = {
                      "your short reads, as well as the length of the gene you are targeting. "
                      "The default is %(default)d nts."}
                 ),
+    'flank-length': (
+            ['--flank-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Extend sequences for gene calls with additional nucleotides from both ends. If the seqeunce for "
+                     "a target gene is between nucleotide positions START and STOP, using a flank lenght of M will give "
+                     "you a sequence that starts at START - M and ends at STOP + M."}
+              ),
     'split-R1-and-R2': (
             ['-Q', '--split-R1-and-R2'],
             {'default': False,

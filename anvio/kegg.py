@@ -964,6 +964,11 @@ class KeggRunHMMs(KeggContext):
         # load existing kegg modules db
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
+                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
 
     def set_hash_in_contigs_db(self):
         """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
@@ -1363,6 +1368,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
             contigs_db.disconnect()
         kegg_modules_db.disconnect()
+
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
@@ -2683,6 +2693,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.name_header = 'genome_name'
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
+
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
