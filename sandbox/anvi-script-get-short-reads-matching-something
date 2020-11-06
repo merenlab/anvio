@@ -23,14 +23,7 @@ __email__ = "a.murat.eren@gmail.com"
 __provides__ = ["short-reads-fasta"]
 __requires__ = ["fasta"]
 __description__ = ("You give this program one or more FASTQ files and a short sequence, "
-                   "and it returns all short reads from the FASTQ file that matches to it. "
-                   "The purpose of this is to get back short reads that may be extending into "
-                   "hypervariable regions of genomes, resulting a decreased mappability of "
-                   "short reads in the metagenome given a reference. You often see those areas "
-                   "of genomes as significant dips in coverage, and in most cases with a large "
-                   "number of SNVs. When you provide the downstream conserved sequence, this "
-                   "program allows you to take a better look at those regions at the short "
-                   "read level without any mapping")
+                   "and it returns all short reads from the FASTQ file that matches to it")
 
 
 run = terminal.Run()
