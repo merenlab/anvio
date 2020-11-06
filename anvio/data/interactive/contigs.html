@@ -74,32 +74,34 @@
             var max_hmm_hits = 0;
             var active_index = 0;
             Object.keys(stats.gene_hit_counts_per_hmm_source).forEach(function(source, gene_chart_index) {
-                var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
+                if (stats.hmm_sources_for_SCGs.includes(source)){
+                    var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
 
-                var hits_sum = 0;
+                    var hits_sum = 0;
 
-                Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
-                    hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
-                });
+                    Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
+                        hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
+                    });
 
-                if (hits_sum > max_hmm_hits) {
-                    max_hmm_hits = hits_sum;
-                    active_index = gene_chart_index;
+                    if (hits_sum > max_hmm_hits) {
+                        max_hmm_hits = hits_sum;
+                        active_index = gene_chart_index;
+                    }
+
+                    tabs.append('li')
+                            .append('a')
+                                .attr('href', '#' + plot_container_id)
+                                .attr('data-toggle', 'tab')
+                                .text(source.replace(/_/g, ' '));
+
+
+                    var plot_container = tab_content.append('div')
+                                            .attr('class', 'tab-pane')
+                                            .attr('role', 'tabpanel')
+                                            .attr('id', plot_container_id);
+
+                    draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
                 }
-
-                tabs.append('li')
-                        .append('a')
-                            .attr('href', '#' + plot_container_id)
-                            .attr('data-toggle', 'tab')
-                            .text(source.replace(/_/g, ' '));
-
-
-                var plot_container = tab_content.append('div')
-                                        .attr('class', 'tab-pane')
-                                        .attr('role', 'tabpanel')
-                                        .attr('id', plot_container_id);
-
-                draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
             });
 
             $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
