@@ -3590,6 +3590,21 @@ def is_genes_db(db_path):
         raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
     return True
 
+
+def is_gene_caller_id(gene_caller_id, raise_if_fail=True):
+    """Test whether a given `gene_caller_id` looks like a legitimate anvi'o gene caller id"""
+    try:
+        assert(int(gene_caller_id) >= 0)
+    except:
+        if raise_if_fail:
+            raise ConfigError(f"Anvi'o gene caller ids are represented by integers between 0 and infinity. "
+                              f"and what you provided ('{gene_caller_id}') doesn't look like one :/")
+        else:
+            return False
+
+    return True
+
+
 def is_kegg_modules_db(db_path):
     if get_db_type(db_path) != 'modules':
         raise ConfigError("'%s' is not an anvi'o KEGG modules database." % db_path)
