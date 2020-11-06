@@ -179,13 +179,13 @@
                 var layer_extent = d3.extent(table_line.slice(1, table_line.length).map(Number));
                 var layer_range = layer_extent[1] - layer_extent[0];
 
-                table_line.forEach(function(table_item, i) { 
+                table_line.forEach(function(table_item, i) {
                     var td_class = (i > 0) ? 'text-center' : '';
                     var td_color =  '#333';
-                    
+
                     if (color_numbers && i > 0 && layer_range > 0) {
                         td_color = getGradientColor('#B3DDCC', '#101648', (table_item - layer_extent[0]) / layer_range );
-                    } 
+                    }
 
                     if (human_readable && i > 0) {
                         table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
@@ -218,7 +218,7 @@
         $('#select-left,#select-right').change(function() {
             $('.parent-container>.row-plots').empty();
             create_plots(parseInt($('#select-left').val()), 'left');
-            create_plots(parseInt($('#select-right').val()), 'right'); 
+            create_plots(parseInt($('#select-right').val()), 'right');
         });
 
         d3.json("/data/get_contigs_stats", function(error, response) {
