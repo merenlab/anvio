@@ -184,7 +184,7 @@ OUTPUT_HEADERS = {'unique_id' : {
                                        "If you choose this header, each line in the output file will be a KOfam hit"
                         },
                   'path' : {
-                        'cdict_key': 'paths',
+                        'cdict_key': None,
                         'mode_type': 'modules',
                         'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
                                        "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
@@ -1527,6 +1527,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return kofam_gene_split_contig
 
 
+    def init_paths_for_modules(self):
+        """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
+        all downstream functions to access.
+        """
+
+        self.module_paths_dict = {}
+        modules = self.kegg_modules_db.get_all_modules_as_list()
+        for m in modules:
+            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
+
+
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates two bin-level dictionaries of dictionaries to store metabolism data.
 
@@ -1673,7 +1684,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
-        "paths"                         a list of all possible paths (each is a list of atomic) through the module DEFINITION
         "pathway_completeness"          a list of the completeness of each pathway
         "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
         "most_complete_paths"           a list of the paths with maximum completeness
@@ -1707,11 +1717,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         has_no_ko_step = False
         defined_by_modules = False
 
-        # unroll the module definition to get all possible paths
-        meta_dict_for_bin[mnum]["paths"] = self.kegg_modules_db.unroll_module_definition(mnum)
         meta_dict_for_bin[mnum]["pathway_completeness"] = []
 
-        for p in meta_dict_for_bin[mnum]["paths"]:
+        for p in self.module_paths_dict[mnum]:
             num_complete_steps_in_path = 0
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
             for atomic_step in p:
@@ -1783,7 +1791,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # this is not very efficient as it takes two passes over the list but okay
         meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
         if meta_dict_for_bin[mnum]["percent_complete"] > 0:
-            meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
 
@@ -1820,8 +1828,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
-        for i in range(len(meta_dict_for_bin[mod]["paths"])):
-            p = meta_dict_for_bin[mod]["paths"][i]
+        for i in range(len(self.module_paths_dict[mod])):
+            p = self.module_paths_dict[mod][i]
             num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
             num_complete_module_steps = 0
 
@@ -1848,7 +1856,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # after adjusting for all paths, adjust overall module completeness
         meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
         if meta_dict_for_bin[mod]["percent_complete"] > 0:
-            meta_dict_for_bin[mod]["most_complete_paths"] = [meta_dict_for_bin[mod]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
+            meta_dict_for_bin[mod]["most_complete_paths"] = [self.module_paths_dict[mod][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
@@ -2239,6 +2247,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         bins_found = []
         additional_keys = set([])
 
+        self.init_paths_for_modules()
+
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
             bins_found.append(bin_name)
             for mod, mod_dict in meta_dict_for_bin.items():
@@ -2318,6 +2328,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
 
             kofam_hits_info = self.init_hits_and_splits()
+            self.init_paths_for_modules()
 
             if self.profile_db_path and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
@@ -2357,7 +2368,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 "contigs_to_genes": { 0: set([132, 133]),
                                       1: set(6777),
                                       2: set(431) },}
-                "paths":             [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
                 "pathway_completeness":     [0.66, 0.66, ...]
                 "present_nonessential_kos":      []
                 "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
@@ -2446,8 +2456,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):
-                    for p_index in range(len(c_dict['paths'])):
-                        p = c_dict['paths'][p_index]
+                    for p_index in range(len(self.module_paths_dict[mnum])):
+                        p = self.module_paths_dict[mnum][p_index]
 
                         # handle ko-level information
                         for ko in c_dict['kofam_hits']:
