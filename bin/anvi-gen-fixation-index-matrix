@@ -26,6 +26,7 @@ __resources__ = [
         "Utilizing fixation index to study SAR11 population structure",
         "http://merenlab.org/data/sar11-saavs/#generating-distance-matrices-from-fixation-index-for-saavs-and-snvs-data"
     ),
+    ("Measuring Distances Between Genomes in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst")
 ]
 __description__ = "Generate a pairwise matrix of a fixation indices between samples"
 
