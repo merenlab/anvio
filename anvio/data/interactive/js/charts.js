@@ -56,6 +56,7 @@ var cog_annotated = false, kegg_annotated = false;
 // note: not called on console open
 $(window).resize(function() {
   VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+  if(!highlightBoxes) return;
   highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + ($("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0));
 });
 
@@ -198,30 +199,15 @@ function loadAll() {
                     prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
-                $('#header').append("<p><small><small>" + prev_str + position + next_str + "</small></small></p>");
-                $('#header').append("<p style='margin-top: -30px; margin-bottom: 15px;'><small><small><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></p>");
+                $('#split-settings').append("<p style='text-align: center'>" + prev_str + position + next_str + "</p>");
+                $('#split-settings').append("<p style='text-align: center; margin-top: -10px; margin-bottom: 15px;'><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></p>");
 
-                $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
+                $('#range-box').append(`<div style="text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
                                         <b>Range:</b>
                                             <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
                                         <b>:</b>
                                             <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
                                     </div>`);
-
-                $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button> \
-                                        <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
-                                    </div>`);
-
-                $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
-                                    </div>`);
-
-                $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
-                                        <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
-                                    </div>');
 
                 geneParser = new GeneParser(genes);
                 geneParser["data"].forEach(function(gene) {
@@ -237,6 +223,16 @@ function loadAll() {
                 $("#largeIndelInput").val(state['large-indel']);
 
                 // create function color menu and table; set default color states
+                $('#gene_color_order').append($('<option>', {
+                  value: 'Source',
+                  text: 'Source'
+                }));
+                if(!state.hasOwnProperty('source-colors')) {
+                  state['source-colors'] = default_source_colors;
+                }
+                generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
+                toggleUnmarkedGenes();
+                mcags = Object.keys(default_source_colors);
                 if(cog_annotated) {
                   $('#gene_color_order').append($('<option>', {
                     value: 'COG',
@@ -246,9 +242,6 @@ function loadAll() {
                   if(!state.hasOwnProperty('cog-colors')) {
                     state['cog-colors'] = default_COG_colors
                   }
-                  generateFunctionColorTable(state['cog-colors'], "COG", highlight_genes=state['highlight-genes']);
-                  toggleUnmarkedGenes();
-                  mcags = Object.keys(COG_categories);
                 }
                 if(kegg_annotated) {
                   $('#gene_color_order').append($('<option>', {
@@ -259,23 +252,6 @@ function loadAll() {
                   if(!state.hasOwnProperty('kegg-colors')) {
                     state['kegg-colors'] = default_KEGG_colors
                   }
-                  if(!cog_annotated) {
-                    generateFunctionColorTable(state['kegg-colors'], "KEGG", highlight_genes=state['highlight-genes']);
-                    toggleUnmarkedGenes();
-                    mcags = Object.keys(KEGG_categories);
-                  }
-                }
-                $('#gene_color_order').append($('<option>', {
-                  value: 'Source',
-                  text: 'Source'
-                }));
-                if(!state.hasOwnProperty('source-colors')) {
-                  state['source-colors'] = default_source_colors;
-                }
-                if(!cog_annotated && !kegg_annotated) {
-                  generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
-                  toggleUnmarkedGenes();
-                  mcags = Object.keys(default_source_colors);
                 }
 
                 // show SNVs and indels?
@@ -328,7 +304,9 @@ function loadAll() {
                 });
 
                 document.body.addEventListener("keydown", function(ev) {
-                    if(ev.which == 37 || ev.which == 39) {
+                    if(ev.which == 83) { // S = 83
+                      toggleSettingsPanel();
+                    } else if(ev.which == 37 || ev.which == 39) {
                       let start = parseInt($('#brush_start').val());
                       let end = parseInt($('#brush_end').val());
 
@@ -410,6 +388,7 @@ function loadAll() {
             }
         });
 
+        toggleSettingsPanel();
 }
 
 function drawHighlightBoxes() {
@@ -581,8 +560,10 @@ function toggleHighlightBoxes() {
   if(show_highlights) {
     $('#highlightBoxesSvg').empty();
     $('#highlight-boxes').css('pointer-events', 'none');
+    $('#context-container').off('mouseover mouseout');
   } else {
     drawHighlightBoxes();
+    if($('#DNA_sequence').length == 1) drawAAHighlightBoxes();
     setSelectionBoxListener();
     $('#highlight-boxes').css('pointer-events', 'all');
   }
@@ -688,7 +669,7 @@ function toggleUnmarkedGenes() {
   }($('#gene_color_order'));
 
   for(var cag in db) {
-    if($('#picker_' + cag).attr('color') == "gray") {
+    if(cag != "None" && $('#picker_' + cag).attr('color') == "gray") {
       var row = document.getElementById("picker_row_" + cag);
       if(row.style.display == "") {
         row.style.display = "none";
@@ -899,9 +880,11 @@ function display_nucleotides() {
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
 
-  drawHighlightBoxes();
-  drawAAHighlightBoxes();
-  setSelectionBoxListener();
+  if(show_highlights) {
+    drawHighlightBoxes();
+    drawAAHighlightBoxes();
+    setSelectionBoxListener();
+  }
 }
 
 function setSelectionBoxListener() {
@@ -1323,18 +1306,14 @@ function saveState()
   *  updates only the function colors.
   */
 function processState(state_name, state) {
-    if(cog_annotated) {
-      if(!state.hasOwnProperty('cog-colors')) state['cog-colors'] = default_COG_colors;
-      generateFunctionColorTable(state['cog-colors'], "COG", highlight_genes=state['highlight-genes']);
-    } else if(kegg_annotated) {
-      if(!state.hasOwnProperty('kegg-colors')) state['kegg-colors'] = default_KEGG_colors;
-      generateFunctionColorTable(state['kegg-colors'], "KEGG", highlight_genes=state['highlight-genes']);
-    } else {
-      if(!state.hasOwnProperty('source-colors')) state['source-colors'] = default_source_colors;
-      generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
-    }
+    if(!state.hasOwnProperty('source-colors')) state['source-colors'] = default_source_colors;
+    generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
     toggleUnmarkedGenes();
     this.state = state;
+
+    if(!state['highlight-genes']) {
+      state['highlight-genes'] = {};
+    }
     redrawArrows();
 
     if(show_indels) {
@@ -1412,6 +1391,15 @@ function createCharts(state){
     $('#chart-container').css("width", (width + 150) + "px");
     $('#chart-container').css("height", height + "px");
 
+    $('#SNV-boxes').empty();
+    var snvBoxesSvg = d3.select("#SNV-boxes").append("svg")
+                            .attr("id", "SNVBoxesSvg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", height + margin.top);
+    $('#SNV-boxes').css("width", (width + 150) + "px");
+    $('#SNV-boxes').css("height", height + "px");
+    $('#SNV-boxes').css("top", (margin.top - 20) + "px");
+
 
     charts = [];
 
@@ -1471,6 +1459,7 @@ function createCharts(state){
                         height: chartHeight,
                         maxVariability: maxVariability,
                         svg: svg,
+                        snv_svg: snvBoxesSvg,
                         margin: margin,
                         showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
@@ -1634,6 +1623,7 @@ function Chart(options){
     this.height = options.height;
     this.maxVariability = options.maxVariability;
     this.svg = options.svg;
+    this.snv_svg = options.snv_svg;
     this.id = options.id;
     this.name = options.name;
     this.margin = options.margin;
@@ -1719,11 +1709,11 @@ function Chart(options){
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
-    this.textContainer = this.svg.append("g")
+    this.textContainer = this.snv_svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
-    this.textContainerIndels = this.svg.append("g")
+    this.textContainerIndels = this.snv_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
