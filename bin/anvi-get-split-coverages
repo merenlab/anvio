@@ -110,6 +110,13 @@ def main(args):
         start = gene_call['start_in_split'] - flank_length if gene_call['start_in_split'] - flank_length > 0 else 0
         stop = gene_call['stop_in_split'] + flank_length
 
+        if gene_call['split'] not in profile_db.split_names:
+            raise ConfigError(f"The gene call '{args.gene_caller_id}' seems to be ocurring on a split ({gene_call['split']}) that is not "
+                              f"in your profile database :/ This can happen since contigs that are shorter than the minimum contig length "
+                              f"cutoff set during the anvi-profile step (which was {profile_db.p_meta['min_contig_length']} nts for this "
+                              f"profile database) are discarded, and the coverages of the genes on them are not recovered. So it is all "
+                              f"fine and it is just not a very good day for the gene call '{args.gene_caller_id}' :/")
+
         target_splits_dict = {gene_call['split']: {'start': start, 'stop': stop}}
     elif args.split_name:
         if args.split_name not in profile_db.split_names:
