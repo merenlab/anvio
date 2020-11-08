@@ -47,7 +47,7 @@
                 <div id="chart-container"></div>
                 <div id="context-container"></div>
                 <div id="highlight-boxes"></div>
-
+                <div id="SNV-boxes"></div>
             </section>
 
             <div class="modal fade" id="setMaxValuesDialog" role="dialog" style="display: none;">
@@ -135,31 +135,19 @@
       </div>
 
 	    <div id="settings-panel">
-        <div id="fixed-sidebar-div">
-          <div role="tabpanel" style="margin: 0px;">
-                <ul class="nav nav-tabs" role="tablist">
-                  <li role="presentation" class="active"><a href="#functions_settings" aria-controls="functions_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-stats" aria-hidden="true" data-help="functions-tab"></span> Functions</a></li>
-                  <li id="sequence_settings_tab" role="presentation"><a href="#sequence_settings" aria-controls="sequence_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true"></span> Sequence</a></li>
-                  <li id="genes_settings_tab" role="presentation"><a href="#genes_settings" aria-controls="genes_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true" data-help="genes-tab"></span> Genes</a></li>
-                  <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
-                </ul>
-          </div>
-        </div>
-
         <div id="sidebar">
-          <div class="tab-content">
-            <div role="tabpanel" class="tab-pane fade in active" id="functions_settings">
-              <div id="functions-settings" class="form-horizontal">
-                <div style="text-align: left; padding-top: 20px; display: inline-block;">
+                  <div id="split-settings"></div>
+
+                  <div id="range-box"></div>
+
+                  <span class="settings-header">Functions</span>
+
                   <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
+                  <button type="button" style="margin-top: 3px" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
 
-                  <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 30px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                  <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 7.5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
-
-                  <table id="toggleSNVIndelTable">
+                  <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
                     <thead>
                       <tr>
                         <td><div style="width: 20px;"><input id="toggle_snv_box" type="checkbox" class="layer_selectors"></div></td>
@@ -177,26 +165,28 @@
                     <tbody></tbody>
                   </table>
 
-                  <div class="alert-box snvs-activated">Showing SNVs...</div>
-                  <div class="alert-box snvs-deactivated">Removing SNVS...</div>
-                  <div class="alert-box indels-activated">Showing indels...</div>
-                  <div class="alert-box indels-deactivated">Removing indels...</div>
+                  <span class="settings-header">Sequence</span>
 
-                </div>
-              </div>
-            </div>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
+                  <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button>
 
-            <div role="tabpanel" class="tab-pane fade in" id="genes_settings">
-              <div id="genes-settings" class="form-horizontal">
-                <div style="text-align: left; padding-top: 20px; display: inline-block;">
+                  <p id="largeIndelLabel"><strong>Mark indels greater than length: </strong></p>
+                  <input id="largeIndelInput" type="text" class="form-control input-sm" value="" size="4" style="margin-bottom: 20px;">
+
+                  <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
+                  <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
+
+                  <span class="settings-header">Genes</span>
+
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="toggleUnmarkedGenes()" class="btn btn-outline-primary">Toggle Unmarked Gene Pickers</button>
 
                   <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                    <label id = "gene_colors_label" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
+                    <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
                     <div class="col-md-8">
-                      <select id="gene_color_order" class="form-control input-xs"></select>
+                      <select id="gene_color_order" stsyle="margin-bottom: 10px" class="form-control input-xs"></select>
                     </div>
                   </div>
 
@@ -211,30 +201,13 @@
                     </table>
                   </div>
 
-                </div>
-              </div>
-            </div>
-
-            <div role="tabpanel" class="tab-pane fade in" id="sequence_settings">
-              <div style="text-align: left; padding-top: 20px; display: inline-block;">
-                <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
-                <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
-                <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button>
-
-                <p id="largeIndelLabel"><strong>Mark indels greater than length: </strong></p>
-                <input id="largeIndelInput" type="text" class="form-control input-sm" value="" size="4">
-
-                <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
-                <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
-              </div>
-            </div>
-
-            <div role="tabpanel" class="tab-pane fade in" id="search_tab">
-              <p style='text-align: center; margin-top: 20px; margin-bottom: 15px'><big><big><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></big></big></p>
-            </div>
-          </div>
+                  <br><br>
         </div>
 
+        <div class="btn-group sidebar-footer" role="group" style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px;">
+          <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+          <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+        </div>
       </div>
 
       <!-- LOAD STATE -->
