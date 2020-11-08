@@ -503,6 +503,7 @@ class BottleApplication(Bottle):
                  'total': None,
                  'coverage': [],
                  'variability': [],
+                 'indels': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -556,17 +557,35 @@ class BottleApplication(Bottle):
         progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
+        ## get the indels information dict for split:
+        progress.new('Indels', discard_previous_if_exists=True)
+        progress.update('Collecting info for "%s"' % split_name)
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+
+
         for layer in layers:
             progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
+            data['indels'].append(split_indels_info_dict[layer]['indels'])
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
 
         for entry_id in gene_entries_in_split:
             gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+
+            # this is a CRAZY case where a gene caller id is found in a split, but
+            # it is not occurring in the genes table. ABSOLUTELY CRAZY, BUT FLORIAN
+            # MANAGED TO DO IT, SO THERE WE GO.
+            if gene_callers_id not in self.interactive.genes_in_contigs_dict:
+                progress.reset()
+                run.info_single(f"Gene caller id {gene_callers_id} is missing from the contigs db. But the "
+                                f"split {split_name} thinks it has it :/ Anvi'o ignores this. Anvi'o is too old "
+                                f"for stuff like this.")
+                continue
+
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
             #
@@ -698,6 +717,7 @@ class BottleApplication(Bottle):
                  'total': None,
                  'coverage': [],
                  'variability': [],
+                 'indels': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -755,6 +775,27 @@ class BottleApplication(Bottle):
 
             data['competing_nucleotides'].append(competing_nucleotides_dict)
             data['variability'].append(variability_dict)
+
+        ## get the indels information dict for split:
+        progress.new('Indels')
+        progress.update('Collecting info for "%s"' % split_name)
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+
+        for layer in layers:
+            progress.update('Formatting indels data: "%s"' % layer)
+
+            # filter and substract offset variability, and competing nucleotide information.
+            indels_dict_original = copy.deepcopy(split_indels_info_dict[layer]['indels'])
+            indels_dict = {}
+            for nucleotide_pos_in_codon in indels_dict_original:
+                indels_dict[nucleotide_pos_in_codon] = {}
+                for pos in indels_dict_original[nucleotide_pos_in_codon]:
+                    if pos < focus_region_start or pos > focus_region_end:
+                        continue
+
+                    indels_dict[nucleotide_pos_in_codon][pos - focus_region_start] = indels_dict_original[nucleotide_pos_in_codon][pos]
+
+            data['indels'].append(indels_dict)
 
         levels_occupied = {1: []}
         for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:

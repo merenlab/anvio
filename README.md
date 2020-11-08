@@ -8,7 +8,7 @@ The [anvi'o project page](http://merenlab.org/software/anvio/) gives access to i
 
 ### Help on anvi'o programs and artifacts
 
-[Thie anvi'o help pages](http://merenlab.org/software/anvio/help) describe individual anvi'o programs as well as artifacts they consume or produce.
+[The anvi'o help pages](http://merenlab.org/software/anvio/help) describe individual anvi'o programs as well as artifacts they consume or produce.
 
 ### Coding style considerations
 

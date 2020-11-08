@@ -66,7 +66,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.states_table = None
         self.p_meta = {}
         self.title = 'Unknown Project'
-        self.anvio_news = None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.mode = A('mode')
@@ -106,7 +105,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
-        self.skip_news = A('skip_news')
+
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments "
@@ -281,7 +280,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
-        self.get_anvio_news()
 
 
     def set_displayed_item_names(self):
@@ -968,7 +966,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ProfileSuperclass.init_items_additional_data(self)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
-        # all the split sequences since only now we know the min_contig_length that was used to profile
+        # all the split sequences since only now we know the mun_contig_length that was used to profile
         # this stuff
         self.init_split_sequences(min_contig_length=self.p_meta['min_contig_length'])
 
@@ -1433,16 +1431,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def end(self):
         # FIXME: remove temp files and stuff
         pass
-
-
-    def get_anvio_news(self):
-        if self.skip_news:
-            return
-        else:
-            try:
-                self.anvio_news = utils.get_anvio_news()
-            except:
-                pass
 
 
 class StructureInteractive(VariabilitySuper, ContigsSuperclass):
@@ -2500,7 +2488,7 @@ class ContigsInteractive():
         basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
         basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
         basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
-        basic_stats.append(['Num Contigs > 50 kb'] + X(50000)) 
+        basic_stats.append(['Num Contigs > 50 kb'] + X(50000))
         basic_stats.append(['Num Contigs > 100 kb'] + X(100000))
 
         self.progress.update('Contig lengths ...')
@@ -2538,7 +2526,7 @@ class ContigsInteractive():
                 all_hmm_sources.add(source)
 
         hmm_table = []
-        for source in all_hmm_sources:
+        for source in sorted(all_hmm_sources):
             line = [source]
             for c in self.contigs_stats.values():
                 if source in c['gene_hit_counts_per_hmm_source']:
