@@ -106,6 +106,7 @@ function loadAll() {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
 
+            state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
         }
     }).keyup(function() {
@@ -341,10 +342,6 @@ function loadAll() {
                 });
 
                 $('#gene_color_order').on('focus', function() {
-                    var cur = $(this).val().toLowerCase() + '-colors';
-                    mcags.forEach(cag => {
-                      state[cur][cag] = $('#picker_' + cag).attr('color');
-                    });
                     Object.keys(state['highlight-genes']).forEach(gene_id => {
                       state['highlight-genes'][gene_id] = $('#picker_' + gene_id).attr('color');
                     });
@@ -360,7 +357,7 @@ function loadAll() {
                       case "Source":
                         mcags = Object.keys(default_source_colors);
                     }
-                    resetFunctionColors();
+                    resetFunctionColors(state[$(this).val().toLowerCase() + '-colors']);
                     redrawArrows();
                     $(this).blur();
                 });
@@ -529,6 +526,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
 
+          state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -600,6 +598,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
 
+          state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -649,9 +648,28 @@ function redrawArrows() {
   drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
 }
 
+/*
+ * Sets gene colors for the selected category type to the default set
+ *
+ * Params:
+ * - fn_colors: If set, resets state to this dictionary instead of the defaults.
+ */
 function resetFunctionColors(fn_colors=null) {
   if($('#gene_color_order') == null) return;
-  generateFunctionColorTable(fn_colors == null ? state[$('#gene_color_order').val().toLowerCase() + '-colors'] : fn_colors,
+
+  switch($('#gene_color_order').val()) {
+    case 'Source':
+      Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
+      break;
+    case 'COG':
+      Object.assign(state['cog-colors'], fn_colors ? fn_colors : default_COG_colors);
+      break;
+    case 'KEGG':
+      Object.assign(state['kegg-colors'], fn_colors ? fn_colors : default_KEGG_colors);
+      break;
+  }
+
+  generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
                              $('#gene_color_order').val(),
                              state['highlight-genes']);
 }
@@ -1332,12 +1350,6 @@ function processState(state_name, state) {
   */
 function serializeSettings() {
     var state = this.state;
-
-    mcags.forEach((category) => {
-      if($('#picker_' + category).length > 0) {
-        state['' + $('#gene_color_order').val().toLowerCase() + '-colors'][category] = $('#picker_' + category).attr('color');
-      }
-    });
 
     if(!isEmpty(state['highlight-genes'])) {
       Object.keys(state['highlight-genes']).forEach(function(gene_id){
