@@ -122,6 +122,16 @@
     border-radius: 2px;
 }
 
+.settings-info-line {
+    text-align: center;
+    border: 1px dashed #c5c5c5;
+    background: #f3f3f3;
+    width: 40%;
+    margin: auto;
+    border-radius: 7px;
+    font-style: italic;
+}
+
 #toggleSNVIndelTable {
   margin-top: 20px;
   float: left;
