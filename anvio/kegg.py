@@ -3925,20 +3925,15 @@ class KeggModulesDatabase(KeggContext):
         This is a driver for the recursive functions that do the actual unrolling of each definition line.
         """
 
-        all_paths = [[]]
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        combined_def_line = ""
         for d in def_lines:
             d = d.strip()
-            def_line_paths = self.recursive_definition_unroller(d)
-            new_paths_list = []
-            for a in def_line_paths:
-                for p in all_paths:
-                    p_copy = copy.copy(p)
-                    p_copy.extend(a)
-                    new_paths_list.append(p_copy)
-            all_paths = new_paths_list
+            combined_def_line += d + " "
+        combined_def_line = combined_def_line.strip()
+        def_line_paths = self.recursive_definition_unroller(combined_def_line)
 
-        return all_paths
+        return def_line_paths
 
 
     def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
