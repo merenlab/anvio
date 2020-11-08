@@ -199,6 +199,7 @@ function loadAll() {
                 if(previous_contig_name)
                     prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
+                $('#window-title').html("anvi-inspect: " + page_header);
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
                 $('#split-settings').append("<p style='text-align: center'>" + prev_str + position + next_str + "</p>");
                 $('#split-settings').append("<p style='text-align: center; margin-top: -10px; margin-bottom: 15px;'><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></p>");
