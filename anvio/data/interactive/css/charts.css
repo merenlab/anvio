@@ -18,7 +18,7 @@
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -41,11 +41,17 @@
 }
 
 #highlight-boxes {
-  z-index: 3;
+  z-index: 2;
   position: relative;
 }
 
-.SNV_text {
+#SNV-boxes {
+  z-index: 3;
+  position: absolute;
+  pointer-events: none;
+}
+
+.SNV_text, .indels_text {
   pointer-events: all;
 }
 
@@ -300,6 +306,30 @@ a{
 
 .highlightbox:mouseleave {
   fill-opacity: 0;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+    color: black;
+    font-weight: 8px;
+}
+
+.sidebar-footer {
+    position: fixed;
+    background-color: white;
+    width: 490px;
+    bottom: -0px;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
+}
+
+.sidebar-footer > .btn {
+    width: 50%;
 }
 
 /* Custom popover styling for indels */
