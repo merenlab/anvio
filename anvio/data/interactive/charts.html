@@ -107,13 +107,15 @@
                   <div class="tab-content"></div>
 
                   <span class="settings-header">Get Sequence for a Range or Selection</span>
+                  <p id="settings-section-info">Using your mouse, you can make regional selections through the panel at the bottom of the inspection screen. Through this section you can make more precise selections by explicitly defining a range, and can get sequences for the selected region or for the entire split.</p>
+
                   <div id="range-box"></div>
                   <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get the entire split sequence</button><br />
                   <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button><br />
 
 
                   <span class="settings-header">Overlay GC Content</span>
-
+                  <p id="settings-section-info">GC content may explain some variation in coverage (<a href="http://merenlab.org/2016/12/14/coverage-variation/" target="_blank">more info on wavy coverage pattersn</a>). Using this section you can overlay GC content signal on your mapping results. The GC content of the reference sequence calculated as the moving average of a 'sliding window' sampled every 'step size'.</p>
                   <table id="gc-overlay" style="margin-bottom: 20px;">
                     <tbody>
                       <tr>
@@ -136,11 +138,13 @@
 
 
                   <span class="settings-header">Set/Reset Maximum Values</span>
+                  <p id="settings-section-info">The y-axis on the left hand-side of each plot is automatically sclaed per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
                   <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
 
 
                   <span class="settings-header">SNVs and IN/DELS</span>
+                  <p id="settings-section-info">Show or hide single-nucleotide variant information and/or insertion/deletions anvi'o identified during the profiling of read recruitment. <a href="http://merenlab.org/2015/07/20/analyzing-variability/" target="_blank">See this</a> for more information on how to study microbial population genetics in anvi'o beyond displaying them in the context of reference sequences.</p>
                   <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
                     <tbody>
                       <tr>
@@ -165,6 +169,7 @@
 
 
                   <span class="settings-header">Dynamic display features</span>
+                  <p id="settings-section-info">If you zoom in enough to a region, the nucleotide and codon information will appear at the bottom of your screen when applicatble. Through this section you can turn that feature off and/or request anvi'o to not add vertical lines to highlight the position of your mouse on the screen.</p>
                   <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button><br />
                   <div class="alert-box nucl-activated">Nucleotide Display Activated</div><div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
 
@@ -179,7 +184,7 @@
 
 
                   <span class="settings-header">Genes</span>
-
+                  <p id="settings-section-info">Change colors of genes based on their functional annotations.</p>
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="toggleUnmarkedGenes()" class="btn btn-outline-primary">Toggle Unmarked Gene Pickers</button>

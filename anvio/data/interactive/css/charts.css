@@ -105,8 +105,7 @@
     margin-top: 12px;
 }
 
-#settings-panel-warning {
-    margin: -8px 14px 5px 17px;
+#settings-section-info {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
