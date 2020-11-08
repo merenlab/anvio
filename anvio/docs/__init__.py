@@ -70,7 +70,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "protein-structure": {
+    "protein-structure-txt": {
         "name": "PDB FILE",
         "type": "TXT",
         "provided_by_anvio": False,
