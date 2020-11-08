@@ -203,10 +203,10 @@ function loadAll() {
                 $('#split-settings').append("<p style='text-align: center'>" + prev_str + position + next_str + "</p>");
                 $('#split-settings').append("<p style='text-align: center; margin-top: -10px; margin-bottom: 15px;'><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></p>");
 
-                $('#range-box').append(`<div style="text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
-                                        <b>Range:</b>
+                $('#range-box').append(`<div style="display: inline-block; margin-bottom:10px;" class="form-inline"> \
+                                        Selection range from 
                                             <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
-                                        <b>:</b>
+                                        to 
                                             <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
                                     </div>`);
 

@@ -43,6 +43,8 @@
             </header>
 
 
+            <div id="split-settings"></div>
+
             <section class="main">
                 <div id="chart-container"></div>
                 <div id="context-container"></div>
@@ -94,88 +96,88 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="GCContentOverlayDialog" role="dialog" style="display: none;">
-                <div class="modal-dialog modal-md">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal">&times;</button>
-                            <h3 class="modal-title" style="color: black;"><b>Overlay GC Content</b></h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Window Size:</label>
-                                <div class="col-md-8">
-                                    <input type="text" id="gc_window_size" value="100">
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Step Size:</label>
-                                <div class="col-md-8">
-                                    <input type="text" id="gc_step_size" value="20">
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color:</label>
-                                <div class="col-md-8">
-                                    <div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div>
-                                </div>
-                            </div>
-                            <div class="clearfix"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" onclick="applyOverlayGCContent();" class="btn btn-primary" data-dismiss="modal">Apply</button>
-                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
 	    <div id="toggle-panel-settings" onclick="toggleSettingsPanel()");">
         <span id="toggle-panel-settings-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
-      </div>
+        </div>
 
 	    <div id="settings-panel">
-        <div id="sidebar">
-                  <div id="split-settings"></div>
+            <div id="sidebar">
+                  <div class="tab-content"></div>
 
+                  <p id="settings-panel-warning"><b>Press 's' to show/hide the settings panel.</b></p>
+
+                  <span class="settings-header">Get Sequence for a Range or Selection</span>
                   <div id="range-box"></div>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get the entire split sequence</button><br />
+                  <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button><br />
 
-                  <span class="settings-header">Functions</span>
 
-                  <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button>
-                  <button type="button" style="margin-top: 3px" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
+                  <span class="settings-header">Overlay GC Content</span>
 
+                  <table id="gc-overlay" style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr>
+                        <td>Sliding window size (nt):</td>
+                        <td><input type="text" class="form-control input-sm" id="gc_window_size" value="100"></td>
+                      </tr>
+                      <tr>
+                        <td>Step size:</td>
+                        <td><input type="text" class="form-control input-sm" id="gc_step_size" value="20"></td>
+                      </tr>
+                      <tr>
+                        <td>Color:</td>
+                        <td><div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <button type="button" class="btn btn-primary btn-xs" onclick="applyOverlayGCContent();">Apply overlay</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();">Reset overlay</button>
+
+
+                  <span class="settings-header">Set/Reset Maximum Values</span>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
+
+
+                  <span class="settings-header">SNVs and IN/DELS</span>
                   <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
-                    <thead>
+                    <tbody>
                       <tr>
                         <td><div style="width: 20px;"><input id="toggle_snv_box" type="checkbox" class="layer_selectors"></div></td>
-                        <td><b id="showSNVsLabel">Toggle SNVs</b></td>
+                        <td>Show SNVs</td>
                       </tr>
                       <tr>
                         <td><div style="width: 20px;"><input id="toggle_indel_box" type="checkbox" class="layer_selectors"></div></td>
-                        <td><b id="showIndelsLabel">Toggle Indels</b></td>
+                        <td>Show IN/DELs</td>
                       </tr>
-                      <tr>
-                        <td><div style="width: 20px;"><input id="toggle_highlight_box" type="checkbox" class="layer_selectors"></div></td>
-                        <td><b id="showHighlightsLabel">Toggle Highlight Boxes</b></td>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
+                    </tbody>
                   </table>
 
-                  <span class="settings-header">Sequence</span>
+                  <table id="indels" style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr>
+                        <td>Min coverage of IN/DELS to show:</td>
+                        <td><input id="largeIndelInput" class="form-control input-sm" type="text" value="" size="4"></td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                  <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
-                  <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button>
 
-                  <p id="largeIndelLabel"><strong>Mark indels greater than length: </strong></p>
-                  <input id="largeIndelInput" type="text" class="form-control input-sm" value="" size="4" style="margin-bottom: 20px;">
+                  <span class="settings-header">Dynamic display features</span>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button><br />
+                  <div class="alert-box nucl-activated">Nucleotide Display Activated</div><div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
 
-                  <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
-                  <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
+                  <table style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr>
+                        <td><div style="width: 20px;"><input id="toggle_highlight_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show vertical mouse-over higlight box</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
 
                   <span class="settings-header">Genes</span>
 

@@ -88,30 +88,38 @@
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
     opacity: 0.9;
-    width: 490px;
-    padding: 10px;
+    width: 420px;
+    padding: 20px;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
     z-index: 999;
+    color: black;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+#settings-panel-warning {
+    margin: -8px 14px 5px 17px;
+    background: #e7f3381a;
+    padding: 3px 6px 5px 10px;
+    border: 1px dashed #a9a9a9;
+    border-radius: 9px;
+    font-size: 12px;
 }
 
 #settings-panel code {
-	  padding: 1.4px 2px;
+	padding: 1.4px 2px;
     font-size: 90%;
     color: #c7254e;
     background-color: #f3f3f3;
     border-radius: 2px;
-}
-
-#largeIndelLabel {
-  float: left;
-  margin-right: 10px;
-}
-
-#largeIndelInput {
-  width: auto;
-  vertical-align: middle;
-  margin-top: 10px;
 }
 
 #toggleSNVIndelTable {
@@ -267,7 +275,7 @@ a{
 }
 
 .toggle-panel-settings-pos {
-    right: 490px !important;
+    right: 420px !important;
 }
 
 .alert-box {
@@ -308,24 +316,18 @@ a{
   fill-opacity: 0;
 }
 
-.settings-header {
-    font-variant: small-caps;
-    font-size: 1.2em;
-    border-bottom: 1px #969696 solid;
-    display: block;
-    margin-bottom: 5px;
-    margin-top: 12px;
-    color: black;
-    font-weight: 8px;
-}
 
 .sidebar-footer {
     position: fixed;
     background-color: white;
-    width: 490px;
+    width: 420px;
     bottom: -0px;
     border-top: 1px solid #D3D3D3;
     border-right: 1px solid #D3D3D3;
+}
+
+#settings-panel .btn {
+    margin-bottom: 5px !important;
 }
 
 .sidebar-footer > .btn {
