@@ -106,7 +106,6 @@ function loadAll() {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
 
-            state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
         }
     }).keyup(function() {
@@ -205,9 +204,9 @@ function loadAll() {
                 $('#split-settings').append("<p style='text-align: center; margin-top: -10px; margin-bottom: 15px;'><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></p>");
 
                 $('#range-box').append(`<div style="display: inline-block; margin-bottom:10px;" class="form-inline"> \
-                                        Selection range from 
+                                        Selection range from
                                             <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
-                                        to 
+                                        to
                                             <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
                                     </div>`);
 
@@ -280,6 +279,7 @@ function loadAll() {
                 if(show_snvs) $('#toggle_snv_box').attr("checked", "checked");
                 if(show_indels) $('#toggle_indel_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
+                $('#toggle_nucl_box').attr("checked", "checked");
 
                 createCharts(state);
                 $('.loading-screen').hide();
@@ -383,10 +383,11 @@ function loadAll() {
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
                 });
+                $('#toggle_nucl_box').on('change', function() {
+                  toggle_nucleotide_display();
+                });
             }
         });
-
-        toggleSettingsPanel();
 }
 
 function drawHighlightBoxes() {
@@ -599,7 +600,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
 
-          state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+          state['highlight-genes'][el.id.substring(7)] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -703,7 +704,6 @@ function toggle_nucleotide_display() {
   show_nucleotides = !show_nucleotides;
   if(show_nucleotides) {
     display_nucleotides();
-    $("div.nucl-activated").fadeIn(300).delay(1500).fadeOut(400);
   } else {
     contextSvg.select("#DNA_sequence").remove();
     contextSvg.select("#AA_sequence").remove();
@@ -716,7 +716,6 @@ function toggle_nucleotide_display() {
     drawHighlightBoxes();
     setSelectionBoxListener();
     $('#context-container').off('mouseover mouseout');
-    $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
   }
 }
 
