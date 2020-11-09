@@ -170,15 +170,16 @@
 
 
                   <span class="settings-header">Dynamic display features</span>
-                  <p id="settings-section-info">If you zoom in enough to a region, the nucleotide and codon information will appear at the bottom of your screen when applicatble. Through this section you can turn that feature off and/or request anvi'o to not add vertical lines to highlight the position of your mouse on the screen.</p>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button><br />
-                  <div class="alert-box nucl-activated">Nucleotide Display Activated</div><div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
-
+                  <p id="settings-section-info">If you zoom in enough on a region, nucleotide and codon information will appear at the bottom of your screen when applicable. Here you can toggle that feature and/or disable vertical lines that highlight the position of your mouse on the screen.</p>
                   <table style="margin-bottom: 20px;">
                     <tbody>
                       <tr>
+                        <td><div style="width: 20px;"><input id="toggle_nucl_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show nucleotides for selected sequence</td>
+                      </tr>
+                      <tr>
                         <td><div style="width: 20px;"><input id="toggle_highlight_box" type="checkbox" class="layer_selectors"></div></td>
-                        <td>Show vertical mouse-over higlight box</td>
+                        <td>Show vertical mouse-over highlight box</td>
                       </tr>
                     </tbody>
                   </table>
