@@ -13,5 +13,3 @@ anvi-script-compute-ani-for-fasta -f %(fasta)s \
 By default, the PyANI method is ANIb (which aligns 1020 nt fragments of your sequences using BLASTN+). You can switch to ANIm, ANIblastall, or TETRA if desired. See the [PyANI documentation](https://github.com/widdowquinn/pyani) for more informaiton. 
 
 You also have the option to change the distance metric (from the default "euclidean") or the linkage method (from the default "ward") or provide a path to a log file for debug messages. 
-
-Instead of outputting a %(genome-similarity)s artifact, you could input a %(pan-db)s that contains these contigs and have the output be put directly into the additional data tables (as %(misc-data-layers)s and %(misc-data-layer-orders)s) of the %(pan-db)s. 
