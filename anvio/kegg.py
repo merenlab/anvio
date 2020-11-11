@@ -3461,7 +3461,7 @@ class KeggModulesDatabase(KeggContext):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
-        Lines for pathway module files can have between 2 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
+        Lines for pathway module files can have between 1 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
         which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
 
         Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
@@ -3485,6 +3485,9 @@ class KeggModulesDatabase(KeggContext):
             the missing information before being added to the database.
         """
 
+        if anvio.DEBUG:
+            self.progress.reset()
+            self.run.info("[DEBUG] Parsing line", line, mc='red', lc='yellow')
         fields = re.split('\s{2,}', line)
         data_vals = None
         data_def = None
@@ -3500,16 +3503,31 @@ class KeggModulesDatabase(KeggContext):
 
             current_data_name = fields[0]
         # note that if data name is known, first field still exists but is actually the empty string ''
-        # so no matter the situation, data value is field 1 and data definition (if any) is field 2
-        data_vals = fields[1]
-        # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
+        # so no matter the situation, data value is field 1 (index 0) and data definition (if any) is field 2 (index 1)
+        # the only exception is that sometimes there is nothing in the data definition field (REFERENCE lines sometimes do this)
+        if len(fields) > 1:
+            data_vals = fields[1]
+            # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
+            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
 
-        if vals_are_okay and len(fields) > 2: # not all lines have a definition field
-            data_def = fields[2]
-        elif not vals_are_okay:
-            data_vals = corrected_vals
-            data_def = corrected_def
+            if vals_are_okay and len(fields) > 2: # not all lines have a definition field
+                data_def = fields[2]
+            elif not vals_are_okay:
+                data_vals = corrected_vals
+                data_def = corrected_def
+        else: # only the data name was in the line
+            # these are the data types that we don't care if they have an empty line
+            data_types_can_be_empty = ['REFERENCE', 'AUTHORS', 'TITLE', 'JOURNAL']
+            if current_data_name in data_types_can_be_empty or self.just_do_it:
+                if anvio.DEBUG:
+                    self.run.warning(f"While parsing module {current_module} we found an empty {current_data_name} line. "
+                                     "We think it is okay and it probably won't cause issues downstream.",
+                                     header="DEBUG OUTPUT", lc='yellow')
+            else:
+                raise ConfigError(f"While parsing module {current_module} we found an empty {current_data_name} line. "
+                                  "We are quitting here so you can check it, because this data type might be important. "
+                                  "However, if you disagree, you can re-run the setup with --just-do-it and we will quietly "
+                                  "incorporate this empty line into the MODULES.db (you may also need the --reset flag when you re-run). ")
 
         # some types of information may need to be split into multiple db entries
         data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
