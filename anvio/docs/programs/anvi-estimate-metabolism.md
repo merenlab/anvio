@@ -6,7 +6,7 @@ Given a properly annotated %(contigs-db)s, this program determines which KOs are
 
 ## Running metabolism estimation on a single contigs database
 
-There are several possible inputs to this program. For single genomes (isolate genomes or MAGs, for example) you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, KOfam hits in the %(contigs-db)s are analyzed as though they belong to one collective genome, despite the fact that the sequences represent multiple different populations. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
+There are several possible inputs to this program. For single genomes (isolate genomes or MAGs, for example) you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, estimation is run on each contig individually - that is, only KOfam hits within the same contig are allowed to contribute to the completeness score of a given KEGG module. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
 
 This program always takes one or more contigs database(s) as input, but what is in those contigs dbs depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
@@ -23,7 +23,11 @@ anvi-estimate-metabolism -c CONTIGS.db --metagenome-mode
 {{ codestop }}
 
 {: .notice}
-Currently, in this case estimation will treat all KOs in the metagenome as belonging to one collective genome. We recognize that this could be misleading (as the KOs in some pathways could be in reality split across different populations), and we are working on improving the algorithm to take gene location information into account. In the meantime, if you are worried about this, we suggest binning your metagenomes first and running estimation for the bins as described below.
+In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that some modules will be broken up across multiple contigs belonging to the same population.
+
+If you prefer to instead treat all KOs in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the KOs will in reality be coming from multiple different populations), and there will be a lot of redundancy.
+
+We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 ### Estimation for bins in a metagenome
 
@@ -178,4 +182,12 @@ Note that this flag only works for matrix output because, well, the long-format 
 Note also that you can combine this flag with the `--only-complete` flag, like so:
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete --include-metadata
+{{ codestop }}
+
+
+## Testing this program
+You can see if this program is working by running the following suite of tests, which will check several common use-cases:
+
+{{ codestart }}
+anvi-self-test --suite metabolism
 {{ codestop }}
