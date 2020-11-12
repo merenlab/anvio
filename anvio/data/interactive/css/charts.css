@@ -18,7 +18,7 @@
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -41,11 +41,17 @@
 }
 
 #highlight-boxes {
-  z-index: 3;
+  z-index: 2;
   position: relative;
 }
 
-.SNV_text {
+#SNV-boxes {
+  z-index: 3;
+  position: absolute;
+  pointer-events: none;
+}
+
+.SNV_text, .indels_text {
   pointer-events: all;
 }
 
@@ -82,30 +88,47 @@
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
     opacity: 0.9;
-    width: 490px;
-    padding: 10px;
+    width: 420px;
+    padding: 20px;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
     z-index: 999;
+    color: black;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+#settings-section-info {
+    background: #e7f3381a;
+    padding: 3px 6px 5px 10px;
+    border: 1px dashed #a9a9a9;
+    border-radius: 9px;
+    font-size: 12px;
 }
 
 #settings-panel code {
-	  padding: 1.4px 2px;
+	padding: 1.4px 2px;
     font-size: 90%;
     color: #c7254e;
     background-color: #f3f3f3;
     border-radius: 2px;
 }
 
-#largeIndelLabel {
-  float: left;
-  margin-right: 10px;
-}
-
-#largeIndelInput {
-  width: auto;
-  vertical-align: middle;
-  margin-top: 10px;
+.settings-info-line {
+    text-align: center;
+    border: 1px dashed #c5c5c5;
+    background: #f3f3f3;
+    width: 40%;
+    margin: auto;
+    border-radius: 7px;
+    font-style: italic;
 }
 
 #toggleSNVIndelTable {
@@ -261,7 +284,7 @@ a{
 }
 
 .toggle-panel-settings-pos {
-    right: 490px !important;
+    right: 420px !important;
 }
 
 .alert-box {
@@ -272,14 +295,14 @@ a{
     border-radius: 4px;
 }
 
-.nucl-activated, .snvs-activated, .indels-activated {
+.snvs-activated, .indels-activated {
     color: #3c763d;
     background-color: #dff0d8;
     border-color: #d6e9c6;
     display: none;
 }
 
-.nucl-deactivated, .snvs-deactivated, .indels-deactivated, .snvs-disabled, .indels-disabled {
+.snvs-deactivated, .indels-deactivated, .snvs-disabled, .indels-disabled {
     color: #a94442;
     background-color: #f2dede;
     border-color: #ebccd1;
@@ -300,6 +323,24 @@ a{
 
 .highlightbox:mouseleave {
   fill-opacity: 0;
+}
+
+
+.sidebar-footer {
+    position: fixed;
+    background-color: white;
+    width: 420px;
+    bottom: -0px;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
+}
+
+#settings-panel .btn {
+    margin-bottom: 5px !important;
+}
+
+.sidebar-footer > .btn {
+    width: 50%;
 }
 
 /* Custom popover styling for indels */
