@@ -23,7 +23,7 @@ anvi-get-short-reads-from-bam -o path/to/output \
 
 ### Changing the output format
 
-You can split the output based on the directionality of paired-end reads. Adding the tag `--split-R1-and-R2` causes the program to create three separate output files: one for R1, one for R2, and one for unparied reads. When doing this, you can name these three files with a prefix by using the flag `-O`.  
+You can split the output based on the directionality of paired-end reads. Adding the tag `--split-R1-and-R2` causes the program to create three separate output files: one for R1 (sequences in the forward direction), one for R2 (sequences in the reverse direction; i.e. reverse complement of R1 sequences), and one for unparied reads. When doing this, you can name these three files with a prefix by using the flag `-O`.  
 
 {{ codestart }}
 anvi-get-short-reads-from-bam -o path/to/output \ 
