@@ -429,6 +429,12 @@ anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
                                   --export-gff3 \
                                   -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
+INFO "Getting back the sequence for gene call 3 with flank-length of 50 nucleotides"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
+                                  --gene-caller-ids 3 \
+                                  --flank-length 50 \
+                                  -o $output_dir/Sequence_for_gene_caller_id_3_50nt.fa
+
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                         -c $output_dir/CONTIGS.db \
