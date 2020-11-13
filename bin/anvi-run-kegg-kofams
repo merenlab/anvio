@@ -38,7 +38,8 @@ if __name__ == '__main__':
                                                     {'help': "If you only want to annotate gene calls in a subset "
                                                     "of sequences, you can provide a path to a profile database with "
                                                     "this flag. In this case, you must also provide a collection "
-                                                    "name so that we know which sequenes to focus on."}))
+                                                    "name so that we know which sequenes to focus on.",
+                                                    'required': False}))
     groupO.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name',
                                                     {'help': "Name of collection you want to focus on. Provide this "
                                                     "(along with a profile db) if you only want to annotate gene calls "
