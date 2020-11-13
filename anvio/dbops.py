@@ -965,7 +965,7 @@ class ContigsSuperclass(object):
         if not len(self.contig_sequences):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
-        if include_aa_sequences:
+        if include_aa_sequences or report_aa_sequences:
             aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
         else:
             aa_sequences_dict = None
@@ -1038,7 +1038,7 @@ class ContigsSuperclass(object):
             gene_call['length'] = gene_call['stop'] - gene_call['start']
             gene_call['rev_compd'] = rev_compd
 
-            if include_aa_sequences:
+            if include_aa_sequences or report_aa_sequences:
                 if gene_callers_id in aa_sequences_dict:
                     gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
