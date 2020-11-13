@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__provides__ = ["hmm-source"]
+__requires__ = []
+__description__ = ("You give this program one or more PFAM accession ids, and it generates "
+                   "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def get_attribute_from_hmm_file(file_path, attribute):
+    filesnpaths.is_file_exists(file_path)
+    value = None
+    with open(file_path) as hmm:
+        for line in hmm.readlines():
+            if line.startswith(attribute):
+                value = [f.strip() for f in line.split(attribute) if len(f)][0]
+                break
+
+    return value
+
+
+def main(args):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    pfam_accession_ids = A('pfam_accessions')
+    output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
+
+    HMMs = dict(zip([e.strip() for e in pfam_accession_ids], [{}] * len(pfam_accession_ids)))
+
+    run.info('PFAM accessions to work with', ', '.join(HMMs.keys()))
+    run.info('The output directory', output_directory_path)
+
+    filesnpaths.check_output_directory(output_directory_path)
+
+    progress.new("Downloading HMMs", progress_total_items=len(HMMs))
+    progress.update('...')
+    for pfam_accession in HMMs:
+        progress.update(pfam_accession + ' ...', increment=True)
+        fp = filesnpaths.get_temp_file_path()
+        utils.download_file(f"http://pfam.xfam.org/family/{pfam_accession}/hmm", fp)
+
+        HMMs[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
+        HMMs[pfam_accession]['name'] = utils.get_attribute_from_hmm_file(fp, 'NAME')
+        HMMs[pfam_accession]['temp_file_path'] = fp
+
+    for pfam_accession in HMMs:
+        os.remove(HMMs[pfam_accession]['temp_file_path'])
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__description__)
+
+    parser.add_argument('pfam_accessions', nargs='+', help='One or more PFAM accession IDs (such as PF14437.6)', metavar='PFAM_ACCESSION')
+    parser.add_argument('-O', '--output-directory', metavar='PATH',
+                        help="Output directory for the anvi'o formatted HMM directoryr. Choose wisely as this will be the name that will "
+                             "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`.")
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
