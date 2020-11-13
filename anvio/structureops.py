@@ -780,10 +780,10 @@ class StructureSuperclass(object):
 
         # Export sequence
         target_fasta_path = filesnpaths.get_temp_file_path()
-        self.contigs_super.gen_FASTA_file_of_sequences_for_gene_caller_ids([corresponding_gene_call],
-                                                                           output_file_path=target_fasta_path,
-                                                                           report_aa_sequences=True,
-                                                                           simple_headers=True)
+        self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
+                                                              output_file_path=target_fasta_path,
+                                                              report_aa_sequences=True,
+                                                              simple_headers=True)
 
         try:
             filesnpaths.is_file_fasta_formatted(target_fasta_path)
