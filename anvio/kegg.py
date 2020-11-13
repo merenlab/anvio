@@ -1036,9 +1036,17 @@ class KeggRunHMMs(KeggContext):
         # this function also includes a safety check for previous annotations so that people don't overwrite those if they don't want to
         self.set_hash_in_contigs_db()
 
+        gene_call_list = []
+        # get only subset of gene calls if requested
+        if self.profile_db_path:
+            profile_db_super = ProfileSuperclass(self.args)
+            gene_call_list = contigs_db.get_gene_caller_ids_for_splits_of_interest(profile_db_super.split_names_of_interest)
+            self.run.info_single(f"{len(gene_call_list)} gene calls have been loaded.")
+
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
+        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(gene_caller_ids_list=gene_call_list,
+                                                                   output_file_path=target_files_dict['AA:GENE'],
                                                                    simple_headers=True,
                                                                    rna_alphabet=False,
                                                                    report_aa_sequences=True)
