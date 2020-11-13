@@ -1118,7 +1118,7 @@ class PanSuperclass(object):
         # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
-        # this one below is initialized by self.init_gene_cluster_functions_summary(): 
+        # this one below is initialized by self.init_gene_cluster_functions_summary():
         self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
@@ -2586,7 +2586,7 @@ class ProfileSuperclass(object):
 
         if self.p_meta['blank'] and not self.p_meta['contigs_db_hash']:
             self.progress.end()
-            raise ConfigError("ProfileSuperclass is upset, because it seems you are tyring to initialize a blank anvi'o profile "
+            raise ConfigError("ProfileSuperclass is upset, because it seems you are trying to initialize a blank anvi'o profile "
                               "database that is not associated with a contigs database. This will not work for multiple reasons. "
                               "The current technical limitation is that blank profile databases that are in this situation do not "
                               "keep track of split names they are working with. Yes. We too know that this is a serious design "
