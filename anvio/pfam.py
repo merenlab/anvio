@@ -311,10 +311,9 @@ class Pfam(object):
 
         # export AA sequences for genes
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
-                                                                   simple_headers=True,
-                                                                   rna_alphabet=False,
-                                                                   report_aa_sequences=True)
+        contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['AA:GENE'],
+                                                      simple_headers=True,
+                                                      report_aa_sequences=True)
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)

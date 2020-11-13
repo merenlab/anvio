@@ -158,10 +158,10 @@ class TablesForHMMHits(Table):
 
             if context == 'GENE':
                 target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
-                contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
-                                                                           simple_headers=True,
-                                                                           rna_alphabet=True if alphabet=='RNA' else False,
-                                                                           report_aa_sequences=True if alphabet=='AA' else False)
+                contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                              simple_headers=True,
+                                                              rna_alphabet=True if alphabet=='RNA' else False,
+                                                              report_aa_sequences=True if alphabet=='AA' else False)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK "
