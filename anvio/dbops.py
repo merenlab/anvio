@@ -927,7 +927,8 @@ class ContigsSuperclass(object):
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every "
                              "%d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
-        filesnpaths.is_output_file_writable(output_file_path)
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
 
         filesnpaths.is_output_file_writable(output_file_path_external_gene_calls) if output_file_path_external_gene_calls else None
 
