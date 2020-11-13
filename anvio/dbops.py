@@ -782,6 +782,18 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
+    def get_gene_caller_ids_for_splits_of_interest(self, splits_of_interest):
+        """Returns a list of gene caller ids that occur in the splits of interest"""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        genes_in_splits_dict = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', splits_of_interest)
+        genes_of_interest = [genes_in_splits_dict[entry]['gene_callers_id'] for entry in genes_in_splits_dict]
+
+        contigs_db.disconnect()
+
+        return genes_of_interest
+
+
     def get_gene_info_for_each_position(self, contig_name, info='all'):
         """For a given contig, calculate per-position gene info
 
