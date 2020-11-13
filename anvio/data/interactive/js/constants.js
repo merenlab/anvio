@@ -81,10 +81,10 @@ var default_KEGG_colors = {
 }
 
 var default_source_colors = {
-  'None': 'gray',
-  'Function': 'green',
+  'None': '#808080',
+  'Function': '#008000',
   'tRNA': '#226ab2',
-  'rRNA': 'firebrick'
+  'rRNA': '#b22222'
 }
 
 var named_functional_sources = {
