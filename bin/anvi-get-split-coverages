@@ -128,7 +128,7 @@ def main(args):
         summary.init()
 
         _bin = summarizer.Bin(summary, args.bin_id)
-        for split_name in sorted(list(_bin.target_splits_dict)):
+        for split_name in sorted(list(_bin.split_names)):
             target_splits_dict[split_name] = {'start': 0, 'stop': sys.maxsize}
 
         run.info('Collection', args.collection_name)
