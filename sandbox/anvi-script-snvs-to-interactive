@@ -26,6 +26,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __provides__ = ["interactive"]
 __requires__ = ["variability-profile-txt"]
+__resources__ = [("Use in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#visualizing-snv-profiles-using-anvio")]
 __description__ = "Take the output of anvi-gen-variability-profile, prepare an output for interactive interface"
 
 
