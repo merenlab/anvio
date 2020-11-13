@@ -234,6 +234,7 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 INFO "Generating per-nt position coverage values for a single gene with its 20nt flanks across samples"
 anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                         -c $output_dir/CONTIGS.db \
                          -o $output_dir/gene_caller_id_5_coverages.txt \
                          --gene-caller-id 5 \
                          --flank-length 20
