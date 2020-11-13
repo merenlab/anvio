@@ -27,7 +27,7 @@ from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
@@ -939,6 +939,8 @@ class KeggRunHMMs(KeggContext):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
+        self.profile_db_path = A('profile_db')
+        self.collection_name = A('collection_name')
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
@@ -958,6 +960,11 @@ class KeggRunHMMs(KeggContext):
                               "to fix this problem. :) " % self.kegg_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
+        if self.profile_db_path:
+            utils.is_profile_db(self.profile_db_path)
+            if not self.collection_name:
+                raise ConfigError("When you specify a profile database, you must also specify a collection name "
+                                  "to focus on.")
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
