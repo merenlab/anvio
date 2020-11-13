@@ -306,7 +306,7 @@ class ContigsSuperclass(object):
             self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
                              f"Usually this is a good thing and means that some good code somewhere is looking after "
                              f"you. Just for your information, this class will only know {len(contig_names_of_interest)} "
-                             f"contig sequences instead of all th things in the database.",
+                             f"contig sequences instead of all the things in the database.",
                              header="THE MORE YOU KNOW 🌈", lc='yellow')
 
         contigs_db.disconnect()
