@@ -14,15 +14,6 @@ Running this program is a pre-requisite for metabolism estimation with %(anvi-es
 anvi-run-kegg-kofams -c CONTIGS.db
 {{ codestop }}
 
-### Annotating specific bins
-If you are working with a large metagenome that you have binned, you can elect to annotate only certain bins to save on some processing time. Simply save the bins you are interested in into a %(collection), and provide the %(profile-db) and collection name when you run this program.
-
-{{ codestart }}
-anvi-run-kegg-kofams -c CONTIGS.db -p PROFILE.db -C COLLECTION_NAME
-{{ codestop }}
-
-If you run %(anvi-estimate-metabolism) after doing this, just keep in mind that only the specified subset of sequences will have KO hits, so in the event you estimate metabolism for sequences outside of the collection you annotated, you will not find any complete modules in those un-annotated sequences. :)
-
 ### Use a specific non-default KEGG data directory
 If you have previously setup your KEGG data directory using `--kegg-data-dir` (see %(anvi-setup-kegg-kofams)s), or have moved the KEGG data directory that you wish to use to a non-default location (maybe you like keeping the older versions around when you update, we don't know how you roll), then you may need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
 

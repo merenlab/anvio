@@ -306,7 +306,7 @@ class ContigsSuperclass(object):
             self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
                              f"Usually this is a good thing and means that some good code somewhere is looking after "
                              f"you. Just for your information, this class will only know {len(contig_names_of_interest)} "
-                             f"contig sequences instead of all the things in the database.",
+                             f"contig sequences instead of all th things in the database.",
                              header="THE MORE YOU KNOW 🌈", lc='yellow')
 
         contigs_db.disconnect()
@@ -780,18 +780,6 @@ class ContigsSuperclass(object):
                                     if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
-
-
-    def get_gene_caller_ids_for_splits_of_interest(self, splits_of_interest):
-        """Returns a list of gene caller ids that occur in the splits of interest"""
-
-        contigs_db = ContigsDatabase(self.contigs_db_path)
-        genes_in_splits_dict = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', splits_of_interest)
-        genes_of_interest = [genes_in_splits_dict[entry]['gene_callers_id'] for entry in genes_in_splits_dict]
-
-        contigs_db.disconnect()
-
-        return genes_of_interest
 
 
     def get_gene_info_for_each_position(self, contig_name, info='all'):
@@ -2675,7 +2663,7 @@ class ProfileSuperclass(object):
 
         if self.p_meta['blank'] and not self.p_meta['contigs_db_hash']:
             self.progress.end()
-            raise ConfigError("ProfileSuperclass is upset, because it seems you are trying to initialize a blank anvi'o profile "
+            raise ConfigError("ProfileSuperclass is upset, because it seems you are tyring to initialize a blank anvi'o profile "
                               "database that is not associated with a contigs database. This will not work for multiple reasons. "
                               "The current technical limitation is that blank profile databases that are in this situation do not "
                               "keep track of split names they are working with. Yes. We too know that this is a serious design "

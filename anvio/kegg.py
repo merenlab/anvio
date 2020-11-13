@@ -27,7 +27,7 @@ from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
@@ -939,8 +939,6 @@ class KeggRunHMMs(KeggContext):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
-        self.profile_db_path = A('profile_db')
-        self.collection_name = A('collection_name')
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
@@ -960,11 +958,6 @@ class KeggRunHMMs(KeggContext):
                               "to fix this problem. :) " % self.kegg_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
-        if self.profile_db_path:
-            utils.is_profile_db(self.profile_db_path)
-            if not self.collection_name:
-                raise ConfigError("When you specify a profile database, you must also specify a collection name "
-                                  "to focus on.")
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
@@ -1036,17 +1029,9 @@ class KeggRunHMMs(KeggContext):
         # this function also includes a safety check for previous annotations so that people don't overwrite those if they don't want to
         self.set_hash_in_contigs_db()
 
-        gene_call_list = []
-        # get only subset of gene calls if requested
-        if self.profile_db_path:
-            profile_db_super = ProfileSuperclass(self.args)
-            gene_call_list = contigs_db.get_gene_caller_ids_for_splits_of_interest(profile_db_super.split_names_of_interest)
-            self.run.info_single(f"{len(gene_call_list)} gene calls have been loaded.")
-
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=gene_call_list,
-                                                      output_file_path=target_files_dict['AA:GENE'],
+        contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['AA:GENE'],
                                                       simple_headers=True,
                                                       report_aa_sequences=True)
 
