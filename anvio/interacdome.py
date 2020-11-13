@@ -155,13 +155,10 @@ class InteracDomeSuper(Pfam):
 
         # export AA sequences for genes
         target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
-            gene_caller_ids_list=gene_caller_ids,
-            output_file_path=target_files_dict['AA:DOMAIN'],
-            simple_headers=True,
-            rna_alphabet=False,
-            report_aa_sequences=True,
-        )
+        self.contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=gene_caller_ids,
+                                                           output_file_path=target_files_dict['AA:DOMAIN'],
+                                                           simple_headers=True,
+                                                           report_aa_sequences=True)
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
