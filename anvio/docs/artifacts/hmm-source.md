@@ -1,8 +1,8 @@
-An HMM source is a collection of one or more HMMs. See the page for %(anvi-run-hmms)s for more information on HMMs. 
+An HMM source is a collection of one or more hidden Markov models (see the page for %(anvi-run-hmms)s for more information on HMMs).
 
-HMMs for any set of genes can be put together and run on any anvi'o %(contigs-db)s which would yield an %(hmm-hits)s.
+In addition to the default HMM sources anvi'o comes with, HMMs for any set of genes can be put together by the user and run on any anvi'o %(contigs-db)s via the program %(anvi-run-hmms)s which would yield an %(hmm-hits)s artifact.
 
-HMM hits in a %(contigs-db)s for a given HMM source will be accessible to anvi'o programs globally (i.e., to recover aligned or non-aligned sequences as %(fasta)s files, or display contigs that contain HMM hits in interactive interfaces, to report hits in summary outputs, etc).
+HMM hits in a %(contigs-db)s for a given HMM source will be accessible to anvi'o programs globally (i.e., to recover aligned or non-aligned sequences as %(fasta)s files, display contigs that contain HMM hits in interactive interfaces, or to report hits in summary outputs, etc).
 
 Running %(anvi-db-info)s on an anvi'o contigs database will list HMM sources available in it.
 
@@ -57,3 +57,12 @@ Anvi'o will expect the HMM source directory to contain six files (see this for [
 All `DNA:CONTIG` targets will add new genes in the database for each hit.
 
 * **noise_cutoff_terms.txt**: A file to specify how to deal with noise. [See this comment](https://github.com/merenlab/anvio/issues/498#issuecomment-362115921) for more information on the contents of this file.
+
+### Creating anvi'o HMM sources from ad hoc PFAM accessions
+
+It is also possible to generate an anvi'o compatible HMMs directory for a given set of PFAM accession ids. For instance, the following command will result in a new directory that can be used immediately with the program %(anvi-run-hmms)s:
+
+{{ codestart }}
+%(anvi-script-pfam-accessions-to-hmms-directory)s --pfam-accessions-list PF00705 PF00706 \
+                                                  -O AD_HOC_HMMs
+{{ codestop }}
