@@ -43,10 +43,26 @@ def get_attribute_from_hmm_file(file_path, attribute):
 
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    pfam_accession_ids = A('pfam_accessions')
+    pfam_accessions_list = A('pfam_accessions_list')
+    pfam_accessions_file = A('pfam_accessions_file')
+
+    if pfam_accessions_list and pfam_accessions_file:
+        raise ConfigError("You should either provide PFAM accession ids thorugh the command line, or "
+                          "list them in a file. In theory you should be able to do both indeed, but in "
+                          "practice why should you, really?")
+
+    if pfam_accessions_list:
+        pfam_accession_ids = pfam_accessions_list
+    elif pfam_accessions_file:
+        filesnpaths.is_file_tab_delimited(pfam_accessions_file, expected_number_of_fields=1)
+        pfam_accession_ids = [a.strip() for a in open(pfam_accessions_file).readlines()]
+    else:
+        raise ConfigError("You should provide *some* PFAM accession ids to this program :/")
+
     output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
     pfam_accession_ids = [e.strip() for e in set(pfam_accession_ids)]
+    failed_accession_ids = set([])
 
     run.info('PFAM accessions to work with', ', '.join(pfam_accession_ids))
     run.info('The output directory', output_directory_path)
@@ -55,21 +71,39 @@ def main(args):
 
     data_dict = {}
 
-    progress.new("Downloading data_dict", progress_total_items=len(data_dict))
+    progress.new("Downloading", progress_total_items=len(data_dict))
     progress.update('...')
     for pfam_accession in pfam_accession_ids:
         progress.update(pfam_accession + ' ...', increment=True)
 
-        data_dict[pfam_accession] = {}
-
         fp = filesnpaths.get_temp_file_path()
-        utils.download_file(f"http://pfam.xfam.org/family/{pfam_accession}/hmm", fp)
 
+        try:
+            utils.download_file(f"http://pfam.xfam.org/family/{pfam_accession}/hmm", fp)
+        except:
+            failed_accession_ids.add(pfam_accession)
+            continue
+
+        data_dict[pfam_accession] = {}
         data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
         data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
         data_dict[pfam_accession]['accession'] = pfam_accession
         data_dict[pfam_accession]['temp_file_path'] = fp
     progress.end()
+
+    if len(failed_accession_ids):
+        if not len(failed_accession_ids) == len(pfam_accession_ids):
+            run.warning(f"Anvi'o couldn't download some of your accession ids :/ But it will continue to build "
+                        f"the HMM directory with {len(pfam_accession_ids) - len(failed_accession_ids)} of "
+                        f"{len(pfam_accession_ids)} accessions. Here is the list of those that failed FYI: "
+                        f"{', '.join(failed_accession_ids)}.")
+
+            for accession in failed_accession_ids:
+                pfam_accession_ids.remove(accession)
+        else:
+            raise ConfigError("Anvi'o couldn't downlaod any of your accession ids. This could be due to bad "
+                              "accession ids that don't exist on PFAM database, or bad internet connectoin "
+                              "on either side :/")
 
     # make sure all models have the GA cutoff defined
     pfam_hmms_without_ga = [p for p in pfam_accession_ids if not data_dict[p]['ga']]
@@ -120,10 +154,18 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument('pfam_accessions', nargs='+', help='One or more PFAM accession IDs (such as PF14437.6)', metavar='PFAM_ACCESSION')
-    parser.add_argument('-O', '--output-directory', metavar='PATH',
-                        help="Output directory for the anvi'o formatted HMM directoryr. Choose wisely as this will be the name that will "
-                             "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`.")
+    parser.add_argument('--pfam-accessions-list', nargs='+', help="One or more PFAM accession IDs "
+                "(such as PF14437.6). If you have multiple accessions, you can separate them from "
+                "each other with a space. If you have too many, consider using the "
+                "`--pfam-accessions-file` parameter instead.", metavar='PFAM_ACCESSION')
+    parser.add_argument('--pfam-accessions-file', help="A single column text file where each column "
+                "is a single PFAM accession ID (such as PF14437.6). You may have as many accession "
+                "ids as you like in this file.", metavar='FILE')
+    parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
+                "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "
+                "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`. "
+                "We suggest you to use a name that does not include an of those millenial characters "
+                "(like space, question mark, comma, and such, you know).")
 
     args = anvio.get_args(parser)
 
