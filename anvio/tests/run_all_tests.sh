@@ -79,6 +79,14 @@ INFO "Populating HMM hits tables in the latest contigs database using a mock HMM
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $files/external_hmm_profile
 
+INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
+                                              -O $output_dir/ADHOC_HMMs
+
+INFO "Running the HMMs in the ad hoc user directory"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -H $output_dir/ADHOC_HMMs
+
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Ribosomal_RNA_16S \
