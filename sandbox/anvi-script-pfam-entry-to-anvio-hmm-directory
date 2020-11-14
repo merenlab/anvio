@@ -46,26 +46,74 @@ def main(args):
     pfam_accession_ids = A('pfam_accessions')
     output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
-    HMMs = dict(zip([e.strip() for e in pfam_accession_ids], [{}] * len(pfam_accession_ids)))
+    pfam_accession_ids = [e.strip() for e in set(pfam_accession_ids)]
 
-    run.info('PFAM accessions to work with', ', '.join(HMMs.keys()))
+    run.info('PFAM accessions to work with', ', '.join(pfam_accession_ids))
     run.info('The output directory', output_directory_path)
 
     filesnpaths.check_output_directory(output_directory_path)
 
-    progress.new("Downloading HMMs", progress_total_items=len(HMMs))
+    data_dict = {}
+
+    progress.new("Downloading data_dict", progress_total_items=len(data_dict))
     progress.update('...')
-    for pfam_accession in HMMs:
+    for pfam_accession in pfam_accession_ids:
         progress.update(pfam_accession + ' ...', increment=True)
+
+        data_dict[pfam_accession] = {}
+
         fp = filesnpaths.get_temp_file_path()
         utils.download_file(f"http://pfam.xfam.org/family/{pfam_accession}/hmm", fp)
 
-        HMMs[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
-        HMMs[pfam_accession]['name'] = utils.get_attribute_from_hmm_file(fp, 'NAME')
-        HMMs[pfam_accession]['temp_file_path'] = fp
+        data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
+        data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
+        data_dict[pfam_accession]['accession'] = pfam_accession
+        data_dict[pfam_accession]['temp_file_path'] = fp
+    progress.end()
 
-    for pfam_accession in HMMs:
-        os.remove(HMMs[pfam_accession]['temp_file_path'])
+    # make sure all models have the GA cutoff defined
+    pfam_hmms_without_ga = [p for p in pfam_accession_ids if not data_dict[p]['ga']]
+    if len(pfam_hmms_without_ga):
+        for pfam_accession in data_dict:
+            os.remove(data_dict[pfam_accession]['temp_file_path'])
+
+        raise ConfigError(f"Not all PFAM accession ids you are interested in seem to have 'GA' "
+                          f"noise cutoff defined in them :/ This script is only able to setup "
+                          f"anvi'o HMM directories from data_dict that have that cutoff defined in them. "
+                          f"So this is kind of the end of the road for us. Here are the PFAM accessions "
+                          f"that violate this: {', '.join(pfam_hmms_without_ga)}.")
+
+
+    progress.new("Generating the contents of the HMM directory", progress_total_items=len(data_dict))
+    progress.update('...')
+
+    # create the output dir
+    filesnpaths.gen_output_directory(output_directory_path)
+    J = lambda x: os.path.join(output_directory_path, x)
+    W = lambda p, c: open(J(p), 'w').write(f'{c}\n')
+
+    # concatenate and compress the genes.hmm
+    utils.concatenate_files(J('genes.hmm'), [data_dict[p]['temp_file_path'] for p in data_dict], remove_concatenated_files=True)
+    utils.gzip_compress_file(J('genes.hmm'))
+
+    # generate genes output
+    with open(J('genes.txt'), 'w') as genestxt:
+        genestxt.write("gene\taccession\thmmsource\n")
+        for e in data_dict.values():
+            genestxt.write(f"{e['gene']}\t{e['accession']}\tpfam.xfam.org\n")
+
+    # kind
+    W('kind.txt', 'userdefined')
+    W('noise_cutoff_terms.txt', '--cut_ga')
+    W('reference.txt', "Anvi'o User, http://localhost")
+    W('target.txt', "AA:GENE")
+
+    progress.end()
+
+    run.info_single(f"Congratulations. Your anvi'o formatted HMM directory for "
+                    f"{terminal.pluralize('PFAM accession id', len(pfam_accession_ids))} is ready "
+                    f"to be used with `anvi-run-hmms` (all you need to do is to provide the path "
+                    f"to your new directory using the `--hmm-profile-dir` parameter).", nl_before=1, nl_after=1)
 
 
 if __name__ == '__main__':
