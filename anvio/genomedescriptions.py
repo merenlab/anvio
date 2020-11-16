@@ -532,9 +532,9 @@ class GenomeDescriptions(object):
             # if this is not full init, stop the sanity check here.
             self.progress.end()
             self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external "
-                             "genomes to be loaded without a 'full init'. There is nothing for you to be concerned. "
-                             "This is just a friendly reminder to make sure if something goes terribly wrong (like your "
-                             "computer sets itself on fire), this may be the reason.")
+                             "genomes to be loaded _without_ a 'full init'. There is nothing for you to be concerned. "
+                             "This is just a friendly reminder to make sure you know that if something goes terribly "
+                             "wrong later (like your computer sets itself on fire), this may be the reason.")
 
             return
 
