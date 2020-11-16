@@ -39,8 +39,13 @@ __status__ = "Development"
 OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
 OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME
 
+# These filter SNVs and INDELs, respectively, based on a coverage-dependent departure from reference value
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
-variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
+indel_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
+
+# These are null filters, which do not filter SNVs and INDELs based on a coverage-dependent departure from reference value
+variability_test_class_null = VariablityTestFactory(params=None)
+indel_test_class_null = VariablityTestFactory(params=None)
 
 
 def gen_split_name(parent_name, order):
@@ -549,6 +554,7 @@ class Auxiliary:
             indel_profile = ProcessIndelCounts(
                 indels=indels,
                 coverage=allele_counts_array.sum(axis=0),
+                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
                 min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
             )
             indel_profile.process()

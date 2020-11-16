@@ -414,6 +414,8 @@ class ProcessIndelCounts(object):
         coverage : array
             What is the coverage for the sequence this is for? This should have length equal to sequence
 
+        test_class : VariablityTestFactory, None
+            If not None, indels will be filtered out if they are deemed not worth reporting
 
         min_coverage_for_variability : int, 1
             positions below this coverage value will be filtered out
@@ -421,6 +423,7 @@ class ProcessIndelCounts(object):
 
         self.indels = indels
         self.coverage = coverage
+        self.test_class = test_class if test_class is not None else VariablityTestFactory(params=None)
         self.min_coverage_for_variability = min_coverage_for_variability
 
 
@@ -453,7 +456,13 @@ class ProcessIndelCounts(object):
                 indel_hashes_to_remove.add(indel_hash)
                 continue
 
-            # FIXME filter based on test_class here
+            # NOTE We call get_min_acceptable_departure_from_reference, yet the threshold value it
+            # spits out is being compared to count/coverage, since there is no "departure from
+            # reference" for indels.
+            if indel['count']/cov < self.test_class.get_min_acceptable_departure_from_reference(cov):
+                # indel count is not high enough compared to coverage value
+                indel_hashes_to_remove.add(indel_hash)
+                continue
 
             self.indels[indel_hash]['coverage'] = cov
 
