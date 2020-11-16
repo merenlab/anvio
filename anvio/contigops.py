@@ -532,7 +532,6 @@ class Auxiliary:
 
         if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
-        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
@@ -540,7 +539,7 @@ class Auxiliary:
             sequence=self.split.sequence,
             sequence_as_index=split_as_index,
             min_coverage_for_variability=self.min_coverage_for_variability,
-            test_class=test_class,
+            test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
             additional_per_position_data=additional_per_position_data,
         )
         nt_profile.process()
