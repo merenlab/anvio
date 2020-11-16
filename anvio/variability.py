@@ -21,7 +21,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class VariablityTestFactory:
-    def __init__(self, params={'b': 3, 'm': 1.45, 'c': 0.05}):
+    def __init__(self, params={'b': 2, 'm': 1.45, 'c': 0.05}):
         self.params = params
 
 
