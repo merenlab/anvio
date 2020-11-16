@@ -25,7 +25,7 @@ class VariablityTestFactory:
         self.params = params
 
 
-    def get_min_acceptable_departure_from_consensus(self, coverage):
+    def get_min_acceptable_departure_from_reference(self, coverage):
         """Get minimum allowable departure from consensus
 
         Notes
@@ -309,7 +309,7 @@ class ProcessAlleleCounts:
         if not self.test_class:
             return worth_reporting
 
-        threshold = self.test_class.get_min_acceptable_departure_from_consensus(coverage)
+        threshold = self.test_class.get_min_acceptable_departure_from_reference(coverage)
 
         return np.where(departure_from_reference >= threshold)[0]
 
