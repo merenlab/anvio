@@ -182,7 +182,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage_for_variability=10, min_indel_fraction=0.05, report_variability_full=False,
+    def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
@@ -191,7 +191,6 @@ class Auxiliary:
         self.split = split
         self.variation_density = 0.0
         self.min_coverage_for_variability = min_coverage_for_variability
-        self.min_indel_fraction = min_indel_fraction
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
@@ -551,7 +550,6 @@ class Auxiliary:
             indel_profile = ProcessIndelCounts(
                 indels=indels,
                 coverage=allele_counts_array.sum(axis=0),
-                min_indel_fraction=self.min_indel_fraction if not self.report_variability_full else 0.0,
                 min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
             )
             indel_profile.process()
