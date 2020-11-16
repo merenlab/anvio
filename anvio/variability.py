@@ -24,6 +24,11 @@ class VariablityTestFactory:
     def __init__(self, params={'b': 2, 'm': 1.45, 'c': 0.05}):
         self.params = params
 
+        if self.params:
+            self.b, self.m, self.c = self.params['b'], self.params['m'], self.params['c']
+        else:
+            self.b, self.m, self.c = None, None, None
+
 
     def get_min_acceptable_departure_from_reference(self, coverage):
         """Get minimum allowable departure from consensus
@@ -41,9 +46,7 @@ class VariablityTestFactory:
             else:
                 return 0
 
-        b, m, c = self.params['b'], self.params['m'], self.params['c']
-
-        return (1 / b) ** (coverage ** (1 / b) - m) + c
+        return (1 / self.b) ** (coverage ** (1 / self.b) - self.m) + self.c
 
 
 class ProcessAlleleCounts:
