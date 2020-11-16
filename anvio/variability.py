@@ -31,9 +31,10 @@ class VariablityTestFactory:
         Notes
         =====
         - 0 returned if self.params is None
-        - https://www.desmos.com/calculator/qwocua4zi5
-        - https://i.imgur.com/zd04pui.png
+        - https://i.imgur.com/oVoDcbT.png (b=2, m=1.45, c=0.05)
+        - https://www.desmos.com/calculator/qwocua4zi5 (interactive plot to tune b, m , and c)
         """
+
         if self.params is None:
             if hasattr(coverage, '__len__'):
                 return np.zeros(len(coverage))
