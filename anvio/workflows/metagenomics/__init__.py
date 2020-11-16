@@ -102,7 +102,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
-                                                        "--min-mean-coverage", "--min-coverage-for-variability", "--min-indel-fraction", "--cluster-contigs",
+                                                        "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
                                                         "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []

@@ -356,7 +356,7 @@ class ProcessCodonCounts(ProcessAlleleCounts):
 
 
 class ProcessIndelCounts(object):
-    def __init__(self, indels, coverage, min_indel_fraction=0, min_coverage_for_variability=1):
+    def __init__(self, indels, coverage, min_indel_fraction=0, test_class=None, min_coverage_for_variability=1):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -411,8 +411,6 @@ class ProcessIndelCounts(object):
         coverage : array
             What is the coverage for the sequence this is for? This should have length equal to sequence
 
-        min_indel_fraction : float, 0
-            indels with a count divided by the position coverage less than this value will be filtered out.
 
         min_coverage_for_variability : int, 1
             positions below this coverage value will be filtered out
@@ -420,7 +418,6 @@ class ProcessIndelCounts(object):
 
         self.indels = indels
         self.coverage = coverage
-        self.min_indel_fraction = min_indel_fraction
         self.min_coverage_for_variability = min_coverage_for_variability
 
 
@@ -453,10 +450,7 @@ class ProcessIndelCounts(object):
                 indel_hashes_to_remove.add(indel_hash)
                 continue
 
-            if indel['count']/cov < self.min_indel_fraction:
-                # indel fraction does not pass minimum threshold
-                indel_hashes_to_remove.add(indel_hash)
-                continue
+            # FIXME filter based on test_class here
 
             self.indels[indel_hash]['coverage'] = cov
 
