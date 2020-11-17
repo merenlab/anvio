@@ -1072,8 +1072,6 @@ class ContigsSuperclass(object):
             self.run.warning(f"While anvi'o was trying to add flanking regions of {flank_length} nucleotides to your gene sequences "
                              f"but things didn't go as smoothly as you may have hoped :/ {msg}")
 
-        self.run.info('flank-length', flank_length)
-
         skipped_gene_calls = []
 
         # Storing the FASTA file for seqeunces
