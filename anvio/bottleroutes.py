@@ -776,6 +776,8 @@ class BottleApplication(Bottle):
             data['competing_nucleotides'].append(competing_nucleotides_dict)
             data['variability'].append(variability_dict)
 
+        progress.end()
+
         ## get the indels information dict for split:
         progress.new('Indels')
         progress.update('Collecting info for "%s"' % split_name)
