@@ -392,11 +392,14 @@ rule trim_alignment:
     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     params:
-        gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
+        gt=M.get_rule_param("trim_alignment", "-gt"),
+        gappyout=M.get_rule_param("trim_alignment", "-gappyout"),
+        additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
     shell:
-        "trimal -in {input} \
+        'trimal -in {input} \
                 -out {output} \
-                -gt {params.gt} 2> {log}"
+                {params.gappyout} \
+                {params.additional_params} 2> {log}'
 
 rule remove_sequences_with_50_percent_gaps:
     """Removing sequences that have > 50% gaps"""
@@ -477,11 +480,14 @@ rule trim_alignment_2:
     input: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     params:
-        gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
+        gt=M.get_param_value_from_config(['trim_alignment', '-gt']),
+        gappyout=M.get_rule_param('trim_alignment', '-gappyout'),
+        additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
     shell:
-        "trimal -in {input} \
+        'trimal -in {input} \
                 -out {output} \
-                -gt {params.gt} 2> {log}"
+                {params.gappyout} \
+                {params.additional_params} 2> {log}'
 
 
 rule count_num_sequences_filtered:

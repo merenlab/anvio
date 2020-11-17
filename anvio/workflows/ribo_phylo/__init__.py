@@ -71,8 +71,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                                                                                      "--prefix"]
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['cluster_90_mmseqs'] = ['--min-seq-id']
-        rule_acceptable_params_dict['trim_alignment'] = ['-gt']
-        rule_acceptable_params_dict['trim_alignment_2'] = ['-gt']
+        rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
+        rule_acceptable_params_dict['trim_alignment_2'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_50_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['calculate_tree'] = ['run',
@@ -95,12 +95,12 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
             'cluster_90_mmseqs': {'threads': 5, '--min-seq-id': 0.9},
             'align_muscle': {'threads': 5},
-            'trim_alignment': {'threads': 5, '-gt': 0.50},
             'remove_sequences_with_50_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'get_gap_count_distribution': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
             'align_muscle_2': {'threads': 5},
-            'trim_alignment_2': {'threads': 5, '-gt': 0.50},
+            'trim_alignment': {'threads': 5, '-gappyout': True},
+            'trim_alignment_2': {'threads': 5, '-gappyout': True},
             'calculate_tree': {'run': True, 'threads': 5,'-m': "MFP"}
             })
 

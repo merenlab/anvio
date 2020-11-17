@@ -28,9 +28,16 @@ else:
 
 	outlier_threshold = Q3 + (IQR * 1.5)
 
-print("The outlier_threshold rule filter_out_outlier_sequences is: " + str(outlier_threshold))
+if outlier_threshold == 0:
+	print("There are no gaps in this alignment")
 
-# Filter out sequences that have gaps > outlier_threshold
-shell("anvi-script-reformat-fasta {snakemake.input.fasta} \
-                                  -M %d \
-                                  -o {snakemake.output}" % (outlier_threshold))
+	shell("anvi-script-reformat-fasta {snakemake.input.fasta} \
+                                  -o {snakemake.output}")
+else:
+
+	print("The outlier_threshold rule filter_out_outlier_sequences is: " + str(outlier_threshold))
+
+	# Filter out sequences that have gaps > outlier_threshold
+	shell("anvi-script-reformat-fasta {snakemake.input.fasta} \
+	                                  -M %d \
+	                                  -o {snakemake.output}" % (outlier_threshold))
