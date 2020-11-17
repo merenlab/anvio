@@ -786,16 +786,15 @@ class BottleApplication(Bottle):
         for layer in layers:
             progress.update('Formatting indels data: "%s"' % layer)
 
-            # filter and substract offset variability, and competing nucleotide information.
             indels_dict_original = copy.deepcopy(split_indels_info_dict[layer]['indels'])
             indels_dict = {}
-            for nucleotide_pos_in_codon in indels_dict_original:
-                indels_dict[nucleotide_pos_in_codon] = {}
-                for pos in indels_dict_original[nucleotide_pos_in_codon]:
-                    if pos < focus_region_start or pos > focus_region_end:
-                        continue
-
-                    indels_dict[nucleotide_pos_in_codon][pos - focus_region_start] = indels_dict_original[nucleotide_pos_in_codon][pos]
+            for indel_entry_id in indels_dict_original:
+                pos = indels_dict_original[indel_entry_id]['pos']
+                if pos < focus_region_start or pos > focus_region_end:
+                    continue
+                else:
+                    indels_dict[indel_entry_id] = indels_dict_original[indel_entry_id]
+                    indels_dict[indel_entry_id]['pos'] = indels_dict[indel_entry_id]['pos'] - focus_region_start
 
             data['indels'].append(indels_dict)
 
