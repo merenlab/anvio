@@ -36,7 +36,8 @@ if outlier_threshold == 0:
 else:
 
 	print("The outlier_threshold rule filter_out_outlier_sequences is: " + str(outlier_threshold))
-
+	print("Here is the five num sum: ")
+	print(gap_counts_distribution_df.num_gaps.describe())
 	# Filter out sequences that have gaps > outlier_threshold
 	shell("anvi-script-reformat-fasta {snakemake.input.fasta} \
 	                                  -M %d \
