@@ -38,7 +38,6 @@ import anvio.homogeneityindex as homogeneityindex
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 
-from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
@@ -916,7 +915,10 @@ class ContigsSuperclass(object):
         return output
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
+                                           output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
+
+        # bunch of sanity checks below
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -925,62 +927,10 @@ class ContigsSuperclass(object):
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every "
                              "%d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
 
-        try:
-            gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
-        except:
-            raise ConfigError("List of IDs for gene calls contains non-integer values :/")
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
 
-        if not len(self.contig_sequences):
-            self.init_contig_sequences()
-
-        sequences_dict = {}
-
-        if include_aa_sequences:
-            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
-        else:
-            aa_sequences_dict = None
-
-        self.progress.new('Working on sequences data structure')
-        self.progress.update('...')
-        for gene_callers_id in gene_caller_ids_list:
-            gene_call = self.genes_in_contigs_dict[gene_callers_id]
-
-            contig_name = gene_call['contig']
-            start, stop = gene_call['start'], gene_call['stop']
-            direction = gene_call['direction']
-            sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
-
-            if direction == 'r' and reverse_complement_if_necessary:
-                sequence = utils.rev_comp(sequence)
-                rev_compd = "True"
-            else:
-                rev_compd = "False"
-
-            sequences_dict[gene_callers_id] = {'sequence': sequence,
-                                               'contig': contig_name,
-                                               'start': start,
-                                               'stop': stop,
-                                               'direction': direction,
-                                               'rev_compd': rev_compd,
-                                               'length': stop - start}
-
-            if include_aa_sequences:
-                if gene_callers_id in aa_sequences_dict:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
-                else:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = None
-
-        self.progress.end()
-
-        return (gene_caller_ids_list, sequences_dict)
-
-
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False):
-        if not output_file_path:
-            raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come "
-                              "here, but please go back and come again.")
-
-        filesnpaths.is_output_file_writable(output_file_path)
+        filesnpaths.is_output_file_writable(output_file_path_external_gene_calls) if output_file_path_external_gene_calls else None
 
         if not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
@@ -989,47 +939,185 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences)
-        skipped_gene_calls = []
+        try:
+            gene_caller_ids_list = [int(gene_callers_id) for gene_callers_id in gene_caller_ids_list]
+        except:
+            raise ConfigError("List of IDs for gene calls contains non-integer values :/")
 
-        output = open(output_file_path, 'w')
+        if flank_length:
+            try:
+                int(flank_length)
+            except ValueError:
+                raise ConfigError("flank_length must be an integer.")
 
-        self.progress.new('Storing sequences')
+            if int(flank_length) < 0:
+                raise ConfigError("flank_length must be a positive integer.")
+
+            if flank_length and include_aa_sequences:
+                raise ConfigError("You indicated --flank-length and --get-aa-sequences. anvi'o can only add flanking regions to nucleotide sequences.")
+
+        if output_file_path_external_gene_calls and not simple_headers:
+            raise ConfigError("If you are asking anvi'o to create an external gene calls file for your gene sequences, you can't also "
+                              "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
+                              "file must match, and anvi'o will have to take care of it without your supervision.")
+
+        # finally getting our sequences initialized.
+        if not len(self.contig_sequences):
+            self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
+
+        if include_aa_sequences or report_aa_sequences:
+            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        else:
+            aa_sequences_dict = None
+
+        # we will put everything we learn into this data structure.
+        sequences_dict = {}
+
+        # this will track whether we successfully recovered desired flanks for genes.
+        gene_flanks_truncated = {'start': set([]), 'end': set([])}
+
+        # ACTION
+        self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
-            entry = sequences_dict[gene_callers_id]
+            gene_call = self.genes_in_contigs_dict[gene_callers_id]
 
-            if simple_headers:
-                header = '%d' % (gene_callers_id)
+            contig_name = gene_call['contig']
+            start, stop = gene_call['start'], gene_call['stop']
+
+            if flank_length:
+                # if the user asked for flanking sequences, then the start / stop positions
+                # to excise the gene sequence with flanks from the contig sequence will
+                # have to be updated. PLEASE NOTE THAT THESE START / STOP ARE NOT FOR
+                # THE GENE CALL ANYMORE.
+                contig_length = len(self.contig_sequences[contig_name]['sequence'])
+
+                start = start - int(flank_length)
+                if start < 0:
+                    gene_flanks_truncated['start'].add(gene_callers_id)
+                    start = 0
+
+                stop = stop + int(flank_length)
+                if stop > contig_length:
+                    gene_flanks_truncated['end'].add(gene_callers_id)
+                    stop = contig_length
+
+            direction = gene_call['direction']
+            sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
+
+            # NOTE: this is a bit ugly here. if there is an external gene calls output file path,
+            # we simply do not reverse-complement reverse genes EVEN when `reverse_complement_if_necessary`
+            # variable is True. and we do it quietly.
+            if not output_file_path_external_gene_calls:
+                if direction == 'r' and reverse_complement_if_necessary:
+                    sequence = utils.rev_comp(sequence)
+                    rev_compd = "True"
+                else:
+                    rev_compd = "False"
             else:
-                header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                rev_compd = "False"
 
-            if report_aa_sequences and rna_alphabet:
-                raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
-            elif rna_alphabet:
-                sequence = entry['sequence'].replace('T', 'U')
-            elif report_aa_sequences:
-                sequence = entry['aa_sequence']
+            ###################################################################################
+            #
+            # UPDATING THE GENE CALL
+            #
+            ###################################################################################
+
+            # time to update the information on the gene call in sequences dict. we first
+            # update start / stop positions of the gene GIVEN the sequence we are reporting
+            # since they are currently showing start/stop positions GIVEN the contig
+            # they were on.
+            original_gene_call_start = gene_call['start']
+            original_gene_call_stop = gene_call['stop']
+            sequence_with_flank_start = start
+            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+
+            # update the sequence
+            gene_call['sequence'] = sequence
+            gene_call['length'] = gene_call['stop'] - gene_call['start']
+            gene_call['rev_compd'] = rev_compd
+
+            if include_aa_sequences or report_aa_sequences:
+                if gene_callers_id in aa_sequences_dict:
+                    gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
+                else:
+                    gene_call['aa_sequence'] = None
+
+            if output_file_path_external_gene_calls:
+                # if the user is asking for an external gene calls file, the FASTA file for sequences
+                # should not start with digits and we also need to set the contig name in sequences
+                # dict properly so the FASTA file and the external gene calls file correspond to each other
+                gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
+                gene_call['contig'] = gene_call['header']
             else:
-                sequence = entry['sequence']
+                if simple_headers:
+                    gene_call['header'] = '%d' % (gene_callers_id)
+                else:
+                    gene_call['header'] = '%d ' % (gene_callers_id) + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+            # adding the updated gene call to our sequences dict.
+            sequences_dict[gene_callers_id] = gene_call
 
-            if not len(sequence):
-                skipped_gene_calls.append(gene_callers_id)
-                continue
-
-            output.write('>%s\n' % header)
-            output.write('%s\n' % sequence)
-
-        output.close()
         self.progress.end()
+
+        if len(gene_flanks_truncated['start']) or len(gene_flanks_truncated['end']):
+            missing_starts = f"{len(gene_flanks_truncated['start'])} genes were too close to the contig start to have the entire flank length at their beginning (gene caller ids: {', '.join([str(g) for g in gene_flanks_truncated['start']])}). "
+            missing_ends = f"{len(gene_flanks_truncated['end'])} genes were too close to the contig end to have the entire flank lenght at their end (gene caller ids: {', '.join([str(g) for g in gene_flanks_truncated['end']])}). "
+
+            msg = ""
+            msg += missing_starts if len(gene_flanks_truncated['start']) else ""
+            msg += missing_ends if len(gene_flanks_truncated['end']) else ""
+
+            self.run.warning(f"While anvi'o was trying to add flanking regions of {flank_length} nucleotides to your gene sequences "
+                             f"but things didn't go as smoothly as you may have hoped :/ {msg}")
+
+        skipped_gene_calls = []
+
+        # Storing the FASTA file for seqeunces
+        if output_file_path:
+            with open(output_file_path, 'w') as output:
+                self.progress.new('Storing sequences')
+                self.progress.update('...')
+                for gene_callers_id in gene_caller_ids_list:
+                    entry = sequences_dict[gene_callers_id]
+
+                    sequence = None
+
+                    if report_aa_sequences and rna_alphabet:
+                        raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
+                    elif rna_alphabet:
+                        sequence = entry['sequence'].replace('T', 'U')
+                    elif report_aa_sequences:
+                        sequence = entry['aa_sequence']
+                    else:
+                        sequence = entry['sequence']
+
+                    if not sequence:
+                        skipped_gene_calls.append(gene_callers_id)
+                        continue
+
+                    if wrap:
+                        sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
+
+                    output.write('>%s\n' % entry['header'])
+                    output.write('%s\n' % sequence)
+
+                self.progress.end()
+
+            self.run.info('Output FASTA', output_file_path)
+
+        # Storing the external gene calls file for sequences stored as FASTA
+        if output_file_path_external_gene_calls:
+            utils.store_dict_as_TAB_delimited_file(sequences_dict,
+                                                   output_file_path_external_gene_calls,
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+            self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
             self.run.warning("Gene caller IDs %s have empty AA sequences and skipped." % (", ".join(map(str, skipped_gene_calls))))
 
-        self.run.info('Output', output_file_path)
+        return (gene_caller_ids_list, sequences_dict)
 
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
@@ -1102,8 +1190,11 @@ class PanSuperclass(object):
         self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
+        # these two are initialized by self.init_gene_clusters_functions():
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
+        # this one below is initialized by self.init_gene_cluster_functions_summary():
+        self.gene_clusters_functions_summary_dict = {}
         self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
@@ -1532,27 +1623,54 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
+        """Returns the most frequently occurring functional annotation across genes in a gene cluster
+        for a given functional annotation source.
+
+        A single function and accession number is determined purely based on frequencies of occurrence.
+        If multiple functions have the same number of votes then one will be chosen arbitrarily.
+
+        Parameters
+        ==========
+        gene_cluster_id : str
+            A gene cluster id that is defined in the `gene_clusters_functions_dict`
+
+        functional_annotation_source : str
+            A known functional annotation source
+
+        Returns
+        =======
+        (most_common_accession, most_common_function) : tuple
+            The representative function and its accession id for `gene_cluster_id` and `functional_annotation_source`
+        """
+
+        if not self.functions_initialized:
+            raise ConfigError("Although it is an expensive step, this function currently requires functions to be "
+                              "initialized first :/ If you are a programmer and need this functionality to be much "
+                              "more effective for ad hoc use, please let us know (the right solution in that case is "
+                              "to work directly with the genome storage database to recover functions for a single gene "
+                              "cluster).")
+
+        functions_counter = Counter({})
+        for genome_name in self.gene_clusters_functions_dict[gene_cluster_id]:
+            for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
+                if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id]:
+                    annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
+                    functions_counter[annotation_blob] += 1
+
+        if not len(functions_counter):
+            return (None, None)
+
+        most_common_accession, most_common_function = functions_counter.most_common()[0][0].split('|||')
+
+        return (most_common_accession, most_common_function)
+
+
     def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
-        """ A function to assign functions to gene clusters for an annotation_source
+        """Returns a dictionary where each gene cluster is associated with a single function.
 
-            use an annotation source and choose a function for the gene cluster
-            using a voting approach, i.e. the most commonly annotated function
-            for the genes in the gene cluster will be chosen.
-
-            If multiple functinos have the same number of votes then one will
-            be chosen arbitrarily.
-
-            OUTPUT:
-
-            gene_clusters_functions_summary_dict
-                dictionary with gene_cluster ids as keys
-                the values are dictionaries, where:
-                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
-
-                If you want to see all the functions and number of votes per function, simply do:
-                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
-                    print('For gene cluster %s: the number of votes for function %s is %s'\
-                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+           See `get_gene_cluster_function_summary` for details since this function is merely
+           calling it for each gene cluster.
         """
 
         if functional_annotation_source not in self.gene_clusters_function_sources:
@@ -1569,32 +1687,44 @@ class PanSuperclass(object):
 
         gene_clusters_functions_summary_dict = {}
 
-        self.progress.new('Summarizing functions for gene clusters')
+        self.progress.new(f'Summarizing "{functional_annotation_source}" for gene clusters')
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
-            gene_clusters_functions_summary_dict[gene_cluster] = {}
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = None
-            max_votes = 0
-            for genome in self.gene_clusters_functions_dict[gene_cluster]:
-                for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
-                    if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
-                        annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
-                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for a, f in zip(accessions, annotations):
-                            if f not in gene_clusters_functions_summary_dict[gene_cluster]:
-                                gene_clusters_functions_summary_dict[gene_cluster][f] = 0
-
-                            gene_clusters_functions_summary_dict[gene_cluster][f] += 1
-                            if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
-                                # The function has the votes!
-                                max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = a
+            accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source)
+            gene_clusters_functions_summary_dict[gene_cluster] = {'gene_cluster_function': function, 'gene_cluster_function_accession': accession}
 
         self.progress.end()
 
         return gene_clusters_functions_summary_dict
+
+
+    def init_gene_clusters_functions_summary_dict(self):
+        """ A function to initialize the `gene_clusters_functions_summary_dict` by calling
+            the atomic function `get_gene_clusters_functions_summary_dict` for all the
+            functional annotaiton sources.
+        """
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            self.run.warning("Someone asked anvi'o to initialize a gene cluster functions summary dict, but it seems there "
+                             "are no gene cluster functions even after initializing functions for the pangenome. So we move "
+                             "on without any summary dict for functions and/or drama about it to let the downstream analyses "
+                             "decide how to punish the unlucky.")
+            return
+
+        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        for gene_cluster_id in self.gene_clusters_functions_dict:
+            self.progress.update(f'{gene_cluster_id} ...', increment=True)
+
+            self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
+
+            for functional_annotation_source in self.gene_clusters_function_sources:
+                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
+                self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
+
+        self.progress.end()
 
 
     def init_gene_clusters_functions(self):
@@ -3023,6 +3153,15 @@ class ProfileSuperclass(object):
 
         return d
 
+    def get_blank_indels_dict(self):
+        """Returns an empty indels dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'indels': {}}
+
+        return d
+
 
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
@@ -3052,6 +3191,28 @@ class ProfileSuperclass(object):
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e
+
+        self.progress.end()
+
+        return d
+
+    def get_indels_information_for_split(self, split_name):
+        if not split_name in self.split_names:
+            raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
+                               "represented in this profile database. Are you sure you are looking for it "
+                               "in the right database?" % split_name)
+
+        self.progress.new('Recovering indels information for split', discard_previous_if_exists=True)
+        self.progress.update('...')
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_indels_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.indels_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+        profile_db.disconnect()
+
+        d = self.get_blank_indels_dict()
+
+        for i, e in enumerate(split_indels_information):
+            d[e['sample_id']]['indels'][i] = e
 
         self.progress.end()
 
@@ -4084,6 +4245,8 @@ class ContigsDatabase:
 
 
 class TRNASeqDatabase:
+    """Used to create and/or access a tRNA-seq database"""
+
     def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
         if not os.path.exists(db_path):
             self.db_type = 'trnaseq'
@@ -4095,13 +4258,13 @@ class TRNASeqDatabase:
         self.meta_float_keys = [] # metadata to be stored as a float
         self.table_info = [
             (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
-            (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
-            (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
+            (t.trnaseq_feature_table_name, t.trnaseq_feature_table_structure, t.trnaseq_feature_table_types),
             (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
             (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
             (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
             (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types),
-            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)]
+            (t.trnaseq_modified_table_name, t.trnaseq_modified_table_structure, t.trnaseq_modified_table_types)
+        ]
 
         self.run = run
         self.progress = progress
@@ -4552,26 +4715,3 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
                                                                               len(matching_item_order_names),
                                                                               default_item_order))
         return default_item_order
-
-
-def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
-    if quiet:
-        run = terminal.Run(verbose=False)
-        progress = terminal.Progress(verbose=False)
-    else:
-        run = terminal.Run()
-        progress = terminal.Progress()
-
-    filesnpaths.is_file_exists(contigs_db_path)
-    filesnpaths.is_output_file_writable(output_file_path)
-
-    class T(Table):
-        def __init__(self, db_path, version, run=run, progress=progress, quiet=False):
-            Table.__init__(self, db_path, version, run, progress, quiet=quiet)
-
-    h = T(contigs_db_path, anvio.__contigs__version__, quiet=quiet)
-    h.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name,
-                                                   output_file_path=output_file_path,
-                                                   item_names=gene_caller_ids)
-
-    return output_file_path

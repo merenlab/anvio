@@ -24,7 +24,7 @@ __description__ = ("This script takes the 'metadata' output of the program `ncbi
                    "GenBank file found in the metadata file to generate a FASTA file, as well as genes "
                    "and functions files for each entry. Plus, it autmatically generates a FASTA TXT "
                    "file descriptor for anvi'o snakemake workfloes. So it is a multi-talented program "
-                   "like that.")
+                   "like that")
 
 
 if __name__ == '__main__':

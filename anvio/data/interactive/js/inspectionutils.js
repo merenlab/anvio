@@ -30,7 +30,7 @@ GeneParser = (function() {
     _ref = this.data;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       gene = _ref[_i];
-      
+
       if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split <= start && gene.stop_in_split >= stop) {
         _data.push(gene);
       }
@@ -55,8 +55,9 @@ $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
     if ($(e.target).data('toggle') !== 'popover'
-        && $(e.target).parents('.popover.in').length === 0) { 
+        && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
+        $('.popover-indel').popover('hide');
     }
   });
 });
@@ -101,13 +102,19 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '<th>Annotation</th></thead>';
     functions_table_html += '<tbody>';
 
-    for (function_source in gene.functions){
+    const gene_functions = {};
+    Object.keys(gene.functions).sort().forEach(function(key) {
+      gene_functions[key] = gene.functions[key];
+    });
+
+    console.log(gene_functions);
+    for (function_source in gene_functions){
         functions_table_html += '<tr>';
 
         functions_table_html += '<td><b>' + function_source + '</b></td>';
         if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
-            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
+            functions_table_html += '<td>' + getPrettyFunctionsString(gene.functions[function_source][0], function_source) + '</td>';
+            functions_table_html += '<td><em>' + getPrettyFunctionsString(gene.functions[function_source][1]) + '</em></td>';
         } else {
             functions_table_html += '<td>&nbsp;</td>';
             functions_table_html += '<td>&nbsp;</td>';
@@ -248,7 +255,7 @@ function removeGeneChart() {
 }
 
 
-function drawArrows(_start, _stop) {
+function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -257,7 +264,7 @@ function drawArrows(_start, _stop) {
 
     paths = contextSvg.append('svg:g')
       .attr('id', 'gene-arrow-chart')
-      .attr('transform', 'translate(50, -10)');
+      .attr('transform', 'translate(50, ' + (gene_offset_y-10) + ')');
 
     paths.selectAll('path');
 
@@ -284,15 +291,30 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      var color = 'gray';
-      if (gene.source == 'Ribosomal_RNAs') {
-        color = 'firebrick';
+      var category = "none";
+      if(colortype == "COG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
+          category = gene.functions["COG_CATEGORY"][0][0];
+        }
+        if(category == null || category == "X") category = "none";
+      } else if(colortype == "KEGG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
+          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
+        }
+        if(category == null) category = "none";
+      } else if(colortype == "Source") {
+        if (gene.source == 'Ribosomal_RNAs') {
+          category = 'rRNA';
+        } else if (gene.source == 'Transfer_RNAs') {
+          category = 'tRNA';
+        } else if (gene.functions !== null) {
+          category = 'Function';
+        } else {
+          category = "None";
+        }
       }
-      else if (gene.source == 'Transfer_RNAs') {
-        color = '#226ab2';
-      }
-      else if (gene.functions !== null) {
-        color = 'green';
+      if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
+        category = gene.gene_callers_id;
       }
 
       if (highlight_gene && gene.gene_callers_id == contig_id)
@@ -310,15 +332,16 @@ function drawArrows(_start, _stop) {
 
       // M10 15 l20 0
       path = paths.append('svg:path')
+           .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', color)
+           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + color + ')';
+                   return 'url(#arrow_' + category + ')';
                  }
 
               return '';
@@ -328,6 +351,11 @@ function drawArrows(_start, _stop) {
              })
            .attr('data-content', get_gene_functions_table_html(gene) + '')
 	    .attr('data-toggle', 'popover');
+      // disable default right-click behavior
+      document.querySelector('#gene_' + gene.gene_callers_id).addEventListener('contextmenu', function (evt) { evt.preventDefault(); });
+      $('#gene_' + gene.gene_callers_id).contextmenu(function() {
+        toggleGeneIDColor(gene.gene_callers_id);
+      });
     });
     $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
 
@@ -350,6 +378,87 @@ function drawArrows(_start, _stop) {
     });
 }
 
+/*
+ *  Draws insertion and deletion markers on the current nucleotide display.
+ *  Params:
+ *  - seq_len: length of sequence displayed in the current window
+ *  - largeInsertion: mark indels greater than this size in red
+ */
+function drawIndels(start, end, largeIndel, data) {
+  $("#indelsSvg").empty();
+
+  var indelContainer = d3.select("#indelsSvg");
+  indelPaths = indelContainer.append('svg:g')
+                             .attr('id', 'indelPaths');
+
+  threshMarkIndel = largeIndel;
+  seq_len = end - start;
+
+  for(var i = 0; i < data['sample'].length; i++) {
+    var pos = (data['pos'][i] - start >= 0) ? (data['pos'][i] - start) : -1;
+    drawIndel(data['pos'][i], pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
+  }
+
+  $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
+}
+
+function drawIndel(truepos, pos, type, dna, indel_len, seq_len, aa) {
+  // pos is relative to the current nucleotide window
+  if(pos < 0 || pos > seq_len) return;
+
+  // TODO: use <p> for data-content (manually make margins padding 0) and then add crossed out text?
+
+  var nucl_width = $("#indelsSvg").attr("width") / seq_len;
+  var strokeWidth;
+  var pathObj;
+
+  if(type == 'insertion') {
+    var markerHeight = .7 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    var markerWidth  = .4 * markerHeight;
+    var x            = pos * nucl_width - .5*markerWidth;
+    var y            = .2 * markerHeight;
+    strokeWidth      = .25*nucl_width;
+    pathObj = 'M ' + x + ',' + y + ' h ' + markerWidth + ' m ' + -.5*markerWidth + ',0 v ' + markerHeight + ' m ' + -.5*markerWidth + ',0 h ' + markerWidth + ' Z';
+  } else if(type == 'deletion') {
+    var markerLength = .4 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    var x            = pos * nucl_width;
+    var y            = .5 * d3.select("#DNA_sequence")[0][0].getBBox().height;
+    strokeWidth      = .4*nucl_width;
+    pathObj = 'M ' + x + ',' + y + ' h ' + -1.3*markerLength + ' Z';
+  } else {
+    console.log('warning: ' + type + ' is not a valid type of indel');
+    return;
+  }
+
+  var content = (type=='insertion' ? 'Insertion [' + indel_len + ']: ' + dna + (aa?"\nAA: "+aa:"") : 'Deletion [' + indel_len + ']');
+  content = content + '\nPosition: ' + truepos;
+
+  indelPaths.append('svg:path')
+        .attr("class", "indelMarker")
+        .attr('d', pathObj)
+        .attr('stroke', threshMarkIndel && indel_len > threshMarkIndel ? 'red' : 'black')
+        .attr('stroke-opacity', 0.8)
+        .attr('stroke-width', strokeWidth)
+        .attr("style", "cursor:pointer;")
+        .attr("data-content", content)
+        .attr("data-toggle", "popover")
+        .attr("data-trigger", "hover")
+        .attr("data-template", '<div class="popover-indel" role="tooltip"> \
+                                   <div class="arrow"></div> \
+                                   <div class="popover-content"></div> \
+                               </div>");');
+}
+
+function getGeneEndpts(_start, _stop) {
+  genes = geneParser.filterData(_start, _stop);
+  var ret = [];
+
+  genes.forEach(function(gene){
+    ret.push(gene.start_in_split - _start, gene.stop_in_split - _start - 1);
+  });
+
+  return ret;
+}
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
@@ -366,6 +475,22 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
+}
+
+function getCategoryForKEGGClass(class_str) {
+  if(class_str == null) return null;
+
+  var category_name = getClassFromKEGGAnnotation(class_str);
+  return getKeyByValue(KEGG_categories, category_name);
+}
+
+function getClassFromKEGGAnnotation(class_str) {
+  return class_str.substring(17, class_str.indexOf(';', 17));
+}
+
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js

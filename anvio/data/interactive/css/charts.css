@@ -8,11 +8,51 @@
     padding: 20px 30px;
 }
 
+#chart-container {
+  position: absolute;
+  z-index: 1;
+}
+
 #context-container {
   position: fixed;
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.fulljustify {
+    	text-align:justify;
+    }
+    .fulljustify:after {
+        content: "";
+        display: inline-block;
+        width: 100%;
+    }
+    #DNA_sequence {
+        height: 80px;
+        overflow: hidden;
+        line-height: 80px; /* vert-center */
+    }
+
+[id^="gene_"], [id^="AA_"] {
+  pointer-events: all;
+}
+
+#highlight-boxes {
+  z-index: 2;
+  position: relative;
+}
+
+#SNV-boxes {
+  z-index: 3;
+  position: absolute;
+  pointer-events: none;
+}
+
+.SNV_text, .indels_text {
+  pointer-events: all;
 }
 
 #display-container h2 {
@@ -24,6 +64,81 @@
     font-size: 24px;
 }
 
+#toggle-panel-settings {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(40%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#settings-panel {
+  	display: none;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.9;
+    width: 420px;
+    padding: 20px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    overflow-y: scroll;
+    z-index: 999;
+    color: black;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+#settings-section-info {
+    background: #e7f3381a;
+    padding: 3px 6px 5px 10px;
+    border: 1px dashed #a9a9a9;
+    border-radius: 9px;
+    font-size: 12px;
+}
+
+#settings-panel code {
+	padding: 1.4px 2px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f3f3f3;
+    border-radius: 2px;
+}
+
+.settings-info-line {
+    text-align: center;
+    border: 1px dashed #c5c5c5;
+    background: #f3f3f3;
+    width: 40%;
+    margin: auto;
+    border-radius: 7px;
+    font-style: italic;
+}
+
+#toggleSNVIndelTable {
+  margin-top: 20px;
+  float: left;
+  display: block;
+  width: 100%;
+  color: black;
+}
+
 svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
@@ -31,7 +146,7 @@ svg {
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
 }
 
-text.country-title {
+text.sample-title {
     font-size: 20px;
 }
 
@@ -62,6 +177,7 @@ g.context g.axis line {
 g.context rect.background{
     fill: rgb(200,200,255);
     visibility: visible !important;
+    pointer-events: all;
 }
 
 
@@ -165,4 +281,124 @@ a{
 .search-results {
     padding: 20px;
     font-size: 12px;
+}
+
+.toggle-panel-settings-pos {
+    right: 420px !important;
+}
+
+.alert-box {
+  	padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.snvs-activated, .indels-activated {
+    color: #3c763d;
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+    display: none;
+}
+
+.snvs-deactivated, .indels-deactivated, .snvs-disabled, .indels-disabled {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+    display: none;
+}
+
+.noselect {
+   -webkit-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+   pointer-events: none;
+}
+
+.highlightbox:hover {
+  fill-opacity: 0.25;
+}
+
+.highlightbox:mouseleave {
+  fill-opacity: 0;
+}
+
+
+.sidebar-footer {
+    position: fixed;
+    background-color: white;
+    width: 420px;
+    bottom: -0px;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
+}
+
+#settings-panel .btn {
+    margin-bottom: 5px !important;
+}
+
+.sidebar-footer > .btn {
+    width: 50%;
+}
+
+/* Custom popover styling for indels */
+.popover-indel {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: 1060;
+  display: none;
+  max-width: 276px;
+  padding: 1px;
+  text-align: center !important;
+  white-space: pre-line !important;
+  background-color: #ffff99 !important;
+  color: black !important;
+  font-weight: bold !important;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  border: 1px solid #ccc;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 6px;
+  -webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, .2);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, .2);
+}
+.popover-del {
+  text-decoration: line-through !important;
+}
+.popover-indel.top {
+  margin-top: -10px;
+}
+.popover-indel > .arrow,
+.popover-indel > .arrow:after {
+  position: absolute;
+  display: block;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+}
+.popover-indel > .arrow {
+  border-width: 11px;
+}
+.popover-indel > .arrow:after {
+  content: "";
+  border-width: 10px;
+}
+.popover-indel.top > .arrow {
+  bottom: -11px;
+  left: 50%;
+  margin-left: -11px;
+  border-top-color: #999;
+  border-top-color: rgba(0, 0, 0, .25);
+  border-bottom-width: 0;
+}
+.popover-indel.top > .arrow:after {
+  bottom: 1px;
+  margin-left: -10px;
+  content: " ";
+  border-top-color: #ffff99 !important;
+  border-bottom-width: 0;
 }

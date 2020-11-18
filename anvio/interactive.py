@@ -929,6 +929,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
+            self.init_gene_clusters_functions_summary_dict()
 
         PanSuperclass.init_items_additional_data(self)
 
@@ -1545,13 +1546,14 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         templates = structure_db.db.get_table_as_dataframe(
             'templates',
-            columns_of_interest=['pdb_id', 'chain_id', 'ppi'],
+            columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
             where_clause='corresponding_gene_call = %d' % gene_callers_id,
         ).rename(columns={
             'pdb_id': 'PDB',
             'chain_id': 'Chain',
-            'ppi': '%Identity',
-        })[['PDB', 'Chain', '%Identity']]
+            'percent_similarity': '%Identity',
+            'align_fraction': 'Align fraction',
+        })[['PDB', 'Chain', '%Identity', 'Align fraction']]
 
         structure_db.disconnect()
 
@@ -2494,12 +2496,12 @@ class ContigsInteractive():
         self.progress.update('Number of contigs ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
         X = lambda n: [len([count for count in contig_lengths_for_one if count >= n]) for contig_lengths_for_one in contig_lengths_for_all]
-        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
-        basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
-        basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
-        basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
-        basic_stats.append(['Num Contigs > 50 kb'] + X(50000)) 
         basic_stats.append(['Num Contigs > 100 kb'] + X(100000))
+        basic_stats.append(['Num Contigs > 50 kb'] + X(50000))
+        basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
+        basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
+        basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
+        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
 
         self.progress.update('Contig lengths ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
@@ -2536,7 +2538,7 @@ class ContigsInteractive():
                 all_hmm_sources.add(source)
 
         hmm_table = []
-        for source in all_hmm_sources:
+        for source in sorted(all_hmm_sources):
             line = [source]
             for c in self.contigs_stats.values():
                 if source in c['gene_hit_counts_per_hmm_source']:
