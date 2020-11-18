@@ -358,46 +358,69 @@ rule align_muscle:
 		"muscle -in {input} \
 				-out {output} 2> {log}"
 
-# rule trim_alignment:
-#     """trim alignment
-    
 
-#     FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
-
-#     I think that trimming twice may not be optimal. Here is my logic:
-#     Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps 
-#     i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
-#     phylogenetically uninformative. If we trimm before removing all sequences we might be 
-#     making sequences seem more aligned because we have just removed gaps.
-
-#     I think trimming should be the very last step in the MSA curation.
-#     for example:
-#     (1) cluster at 100%
-#     (2) calculate MSA
-#     (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
-#     (4) remove positions with a lot of gaps (trimal)   
-
-#     Another thing to consider is calculating a tree based on representative sequences from a
-#     clustered dataset. I already need to do this when I pick representative for the mapping 
-#     steps. Why not just use that set to calculate the tree? Also, the over MSA might be
-#     higher quality because there is less noise with similar sequences.
-#     for example:
-#     (1) cluster at 90%
-#     (2) calculate MSA
-#     (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
-#     (4) remove positions with a lot of gaps (trimal)
-#     """
+# FIXME: odseq in R will only accept a MSA object from the package MSA
+# The MSA package does have muscle as an option for the alignment 
+# algorithm to use but this would mean a massive MSA calculation in R
+# NOT in the mood to figure our the ramifications of this at the moment
+# but I have a feeling that this will really slow down the workflow.
+# Now that I have the --gappyout parameter in trimal, I should be 
+# doing a smarter job at trimming and subsequently removing sequences that 
+# have a high percentage of gaps. 
+# rule remove_outlier_seqs_odseq:
+#     """Removing sequences that have > 50% gaps"""
 
 #     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
 #     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-#     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-#     params:
-#         gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
-#     shell:
-#         "trimal -in {input} \
-#                 -out {output} \
-#                 -gt {params.gt} 2> {log}"
+#     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_odseq.fasta")
+#     threads: M.T('remove_gaps')
+#     script:
+#         "scripts/odseq_remove_outliers.R --msa {input} --output"
+
+rule trim_alignment:
+    """trim alignment
+    
+
+    FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
+
+    I think that trimming twice may not be optimal. Here is my logic:
+    Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps 
+    i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
+    phylogenetically uninformative. If we trimm before removing all sequences we might be 
+    making sequences seem more aligned because we have just removed gaps.
+
+    I think trimming should be the very last step in the MSA curation.
+    for example:
+    (1) cluster at 100%
+    (2) calculate MSA
+    (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
+    (4) remove positions with a lot of gaps (trimal)   
+
+    Another thing to consider is calculating a tree based on representative sequences from a
+    clustered dataset. I already need to do this when I pick representative for the mapping 
+    steps. Why not just use that set to calculate the tree? Also, the over MSA might be
+    higher quality because there is less noise with similar sequences.
+    for example:
+    (1) cluster at 90%
+    (2) calculate MSA
+    (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
+    (4) remove positions with a lot of gaps (trimal)
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
+    params:
+        gt=M.get_param_value_from_config(['trim_alignment', '-gt']),
+        gappyout=M.get_rule_param('trim_alignment', '-gappyout'),
+        additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
+    shell:
+        'trimal -in {input} \
+                -out {output} \
+                {params.gappyout} \
+                {params.additional_params} 2> {log}'
 
 rule remove_sequences_with_50_percent_gaps:
     """Removing sequences that have > 50% gaps"""
