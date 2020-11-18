@@ -358,57 +358,55 @@ rule align_muscle:
 		"muscle -in {input} \
 				-out {output} 2> {log}"
 
-rule trim_alignment:
-    """trim alignment
+# rule trim_alignment:
+#     """trim alignment
     
-    FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
 
-    I think that trimming twice may not be optimal. Here is my logic:
-    Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps 
-    i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
-    phylogenetically uninformative. If we trimm before removing all sequences we might be 
-    making sequences seem more aligned because we have just removed gaps.
+#     FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
 
-    I think trimming should be the very last step in the MSA curation.
-    for example:
-    (1) cluster at 100%
-    (2) calculate MSA
-    (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
-    (4) remove positions with a lot of gaps (trimal)   
+#     I think that trimming twice may not be optimal. Here is my logic:
+#     Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps 
+#     i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
+#     phylogenetically uninformative. If we trimm before removing all sequences we might be 
+#     making sequences seem more aligned because we have just removed gaps.
 
-    Another thing to consider is calculating a tree based on representative sequences from a
-    clustered dataset. I already need to do this when I pick representative for the mapping 
-    steps. Why not just use that set to calculate the tree? Also, the over MSA might be
-    higher quality because there is less noise with similar sequences.
-    for example:
-    (1) cluster at 90%
-    (2) calculate MSA
-    (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
-    (4) remove positions with a lot of gaps (trimal)
-    """
+#     I think trimming should be the very last step in the MSA curation.
+#     for example:
+#     (1) cluster at 100%
+#     (2) calculate MSA
+#     (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
+#     (4) remove positions with a lot of gaps (trimal)   
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    params:
-        gt=M.get_rule_param("trim_alignment", "-gt"),
-        gappyout=M.get_rule_param("trim_alignment", "-gappyout"),
-        additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
-    shell:
-        'trimal -in {input} \
-                -out {output} \
-                {params.gappyout} \
-                {params.additional_params} 2> {log}'
+#     Another thing to consider is calculating a tree based on representative sequences from a
+#     clustered dataset. I already need to do this when I pick representative for the mapping 
+#     steps. Why not just use that set to calculate the tree? Also, the over MSA might be
+#     higher quality because there is less noise with similar sequences.
+#     for example:
+#     (1) cluster at 90%
+#     (2) calculate MSA
+#     (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
+#     (4) remove positions with a lot of gaps (trimal)
+#     """
+
+#     version: 1.0
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
+#     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
+#     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
+#     params:
+#         gt=M.get_param_value_from_config(['trim_alignment', '-gt'])
+#     shell:
+#         "trimal -in {input} \
+#                 -out {output} \
+#                 -gt {params.gt} 2> {log}"
 
 rule remove_sequences_with_50_percent_gaps:
     """Removing sequences that have > 50% gaps"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
-    params: 
+    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+    params:
         seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01"),
         max_percentage_gaps=M.get_param_value_from_config(['remove_sequences_with_50_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_gaps')
@@ -431,7 +429,7 @@ rule get_gap_count_distribution:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gap_count_distribution_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
     output: seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_02.tsv")
     params: tmp_asdf=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_02_tmp"),
             seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_02")
@@ -448,10 +446,10 @@ rule filter_out_outlier_sequences:
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_out_outlier_sequences_{ribosomal_protein_name}.log")
     input:
         tsv = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_02.tsv"),
-        fasta = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta")
+        fasta = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
     params:
         gap_threshold = M.get_param_value_from_config(['MSA_gap_threshold'])
-    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered_final.fasta")
     threads: M.T('filter_out_outlier_sequences')
     script:
         "scripts/filter_gap_count_outlier_sequence.py"
@@ -465,7 +463,7 @@ rule align_muscle_2:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_2_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta")
+    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered_final.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
     threads: M.T('align_muscle_2')
     shell:
@@ -498,8 +496,8 @@ rule count_num_sequences_filtered:
     input:
         step1 = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_renamed.fasta"),
         step2 = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta"),
-        step3 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed.fasta"),
-        step4 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed_gaps_removed_final.fasta"),
+        step3 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta"),
+        step4 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered_final.fasta"),
         step5 = os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_stats.tsv")
     threads: M.T('trim_alignment_2')
