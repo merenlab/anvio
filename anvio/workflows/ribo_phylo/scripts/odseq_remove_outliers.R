@@ -2,17 +2,19 @@
 
 # Load libraries
 #---------------
-packages <- c("tidyverse", "odseq", "optparse", "msa")
+packages <- c("dplyr", "odseq", "optparse", "msa", "readr")
 suppressMessages(lapply(packages, library, character.only = TRUE))
 
-# Set WD
-#-------
-setwd("~/github/ACE_SO_metagenomes/analyses/SCGs_test")
-
-# Parse command line arugments
+# Parse arguments
+#----------------
 option_list <- list(
   make_option(
-    c("-msa"),
+    c("-m", "--msa"),
+    type="character",
+    help="help"
+  ),
+  make_option(
+    c("-o", "--output"),
     type="character",
     help="help"
   )
@@ -20,11 +22,20 @@ option_list <- list(
 
 op <- OptionParser(
   option_list=option_list,
-  description="Use OD-SEQ to remove outliers from MSAs",
+  description="Here is what the program does",
 )
-
-
 args <- parse_args(op)
 
-# Load MSA
-#---------
+
+# Load fasta
+args$msa <- "~/github/ACE_SO_metagenomes/analyses/SCGs_test/05_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.fasta"
+msa_all <- readAAStringSet(args$msa)
+
+# Align with Muscle
+msa_all_muscle <- msa(msa_all, method = "Muscle")
+
+msa_outliers_removed <- odseq(msa_all_muscle)
+msa_outliers_removed
+
+args$output
+
