@@ -20,8 +20,17 @@ __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
 
-M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
-M.init()
+slave_mode = False if 'workflows/ribo_phylo' in workflow.included[0] else True
+
+if not slave_mode:
+    # it is important that this comes before the include statement since
+    # M is defined here and will also be used in the contigs workflow
+    M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
+    M.init()
+    dirs_dict = M.dirs_dict
+    # in order to generate the contigs databases we include the snakefile
+    # for the generation of contigs databases
+    include: w.get_workflow_snake_file_path('metagenomics')
 
 dirs_dict = M.dirs_dict
 
@@ -218,7 +227,7 @@ rule anvi_get_sequences_for_gene_calls_reps_with_leeway:
         """
         anvi-get-sequences-for-gene-calls -c {input.contigsDBs} \
                                     --gene-caller-ids {input.gene_callers_ids} \
-                                    --flank stuf goes here!
+                                    --flank-length 150 \
                                     -o {output} 2> {log}
         """
 
@@ -245,10 +254,31 @@ rule cat_SCG_NT_to_one_fasta_reps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_SCG_NT_to_one_fasta_reps_{ribosomal_protein_name}.log")
     input: expand(os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_names}", "{sample_names}", "{sample_names}_{ribosomal_protein_names}_reps_leeway_renamed.fna"), sample_names = M.external_genome_name_list, ribosomal_protein_names = M.Ribosomal_protein_list)
-    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_reps_leeway.fna")
+    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_leeway.fna")
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell:
         "cat {input} >> {output}"
+
+rule anvi_reformat_fasta_SCG_NT:
+    """Clean up fasta headers for tree calculation."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{ribosomal_protein_name}.log")
+    input: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_reps_leeway.fna")
+    output:
+        fasta = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_reps_leeway_renamed.fna"),
+        report_file = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_reps_leeway_renamed_reformat_report_all.txt")
+    params:
+        prefix = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--prefix"),
+        keep_ids = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--keep-ids"),
+        exclude_ids = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--exclude-ids"),
+        simplify_names = M.get_rule_param("anvi_reformat_fasta_ribosomal_protein_file", "--simplify-names")
+    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
+    shell:
+        "anvi-script-reformat-fasta {input} \
+                              {params.simplify_names} \
+                              --report-file {output.report_file} \
+                              -o {output.fasta} >> {log} 2>&1"
 
 rule anvi_reformat_fasta_ribosomal_protein_file:
     """Clean up fasta headers for tree calculation."""

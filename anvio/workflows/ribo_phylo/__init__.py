@@ -13,6 +13,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.workflows.metagenomics import MetagenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,11 +28,13 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 
-class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
+class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
+# class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ribo_phylo')
 
+        MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
         self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins',
                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
@@ -119,7 +122,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_SEQUENCE_STATS"})
         self.dirs_dict.update({"TREES": "07_TREES"})
         self.dirs_dict.update({"MISC_DATA": "08_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "9_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "09_SCG_NT_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "10_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
@@ -170,6 +173,9 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def get_target_files(self):
         target_files = []
+
+        # FIXME: need to add target files for metagenomics workflow here!
+        # target_files.extend(list(self.profile_databases.values()))
 
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
@@ -226,15 +232,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     target_files.append(target_file)
 
 
-            # # cat_SCG_NT_to_one_fasta
-            # tail_path = "%s_all.fna" % (ribosomal_protein_name)
+            # # cluster_90_mmseqs
+            # tail_path = "%s_mmseqs_NR_rep_seq.fasta" % (ribosomal_protein_name)
             # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
             # target_files.append(target_file)
-
-            # cluster_90_mmseqs
-            tail_path = "%s_mmseqs_NR_rep_seq.fasta" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
 
             # get_filtered_reformat_file
             # tail_path = "%s_reformat_report_mmseqs_NR.txt" % (ribosomal_protein_name)
@@ -256,8 +257,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     print(target_file)
             #     target_files.append(target_file)
 
-
-            # anvi_get_gene_caller_ids_for_reps
+            # # anvi_get_sequences_for_gene_calls_reps_with_leeway
             # for external_genome_name in self.external_genome_name_list:
             #     # Nucleotide fasta
             #     tail_path = "%s_%s_reps_leeway.fna" % (external_genome_name, ribosomal_protein_name)
@@ -265,10 +265,35 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     print(target_file)
             #     target_files.append(target_file)
 
+            # # rename_gene_calls_reps  
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_all_reps_leeway.fna" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
+            #     print(target_file)
+            #     target_files.append(target_file)
+
+            # # anvi_reformat_fasta_SCG_NT  
+            # for external_genome_name in self.external_genome_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_all_reps_leeway_renamed.fna" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
+            #     print(target_file)
+            #     target_files.append(target_file)
            # # cat_SCG_NT_to_one_fasta_reps
            #  tail_path = "%s_all_reps_leeway.fna" % (ribosomal_protein_name)
            #  target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
            #  target_files.append(target_file)
+
+            # cat_SCG_NT_to_one_fasta
+            tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            # from contigs workflow
+            # contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
+            # g + "-annotate_contigs_database.done") for g in self.group_names]
+            # target_files.extend(contigs_annotated)
 
 
         return target_files
