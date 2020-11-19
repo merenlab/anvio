@@ -173,11 +173,13 @@ class HMMer:
         self.verify_hmmpress_output(hmm)
 
         workers = []
+        manager = multiprocessing.Manager() # this dude holds the shared objects that will be modified by workers
+        output_queue = manager.Queue(maxsize=self.num_threads_to_use)
 
         # Holds buffer and write lock for each output
-        merged_files_dict = {}
+        merged_files_dict = manager.dict()
         for output in desired_output:
-            merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': multiprocessing.Lock()}
+            merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': manager.Lock()}
 
         num_parts = len(self.target_files_dict[target])
         cores_per_process = 1
@@ -191,9 +193,6 @@ class HMMer:
         if alphabet in ['DNA', 'RNA'] and self.program_to_use == 'hmmsearch':
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
-
-        manager = multiprocessing.Manager()
-        output_queue = manager.Queue(maxsize=self.num_threads_to_use)
 
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
