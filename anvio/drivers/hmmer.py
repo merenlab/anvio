@@ -6,8 +6,8 @@ import io
 import gzip
 import shutil
 import glob
+import multiprocessing
 from threading import Thread, Lock
-
 
 import anvio
 import anvio.utils as utils
@@ -194,6 +194,9 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
+        manager = multiprocessing.Manager()
+        output_queue = manager.Queue(maxsize=self.num_threads_to_use)
+
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
@@ -216,24 +219,50 @@ class HMMer:
                             out_fmt, table_file,
                             hmm, partial_input_file]
 
-            t = Thread(target=self.hmmer_worker, args=(partial_input_file,
+            t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
                                                        cmd_line,
                                                        table_file,
                                                        output_file,
                                                        desired_output,
                                                        log_file,
-                                                       merged_files_dict))
+                                                       merged_files_dict,
+                                                       output_queue))
             t.start()
             workers.append(t)
 
         self.progress.new('Processing')
         self.progress.update('Running %s in %d threads...' % (self.program_to_use, self.num_threads_to_use))
 
-        # Wait for all workers to finish.
-        for worker in workers:
-            worker.join()
+        finished_workers = 0
+        while finished_workers < self.num_threads_to_use:
+            try:
+                ret_value = output_queue.get()
 
-        self.progress.end()
+                if isinstance(ret_value, Exception):
+                    # If thread returns an exception, we raise it and kill the main thread.
+                    raise ret_value
+
+                finished_workers += 1
+                if ret_value == 0:
+                    if anvio.DEBUG:
+                        self.run.info_single(f"{finished_workers} out of {self.num_threads_to_use} have finished")
+                else:
+                    raise ConfigError("An HMMER worker thread came back with an unexpected return value of {ret_value}. "
+                                      "Something is probably wrong, so you should contact a developer for help.")
+
+            except KeyboardInterrupt:
+                self.run.info_single("HMMER driver received SIGINT, terminating all threads...", nl_before=2)
+                break
+
+            except Exception as worker_error:
+                # An exception was thrown in one of the threads so we kill all of them
+                self.progress.end()
+                for worker in workers:
+                    worker.terminate()
+                raise worker_error
+            
+        for worker in workers:
+            worker.terminate()
 
         output_file_paths = []
         for output in desired_output:
@@ -258,31 +287,39 @@ class HMMer:
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     merged_files_dict):
+                     merged_files_dict, output_queue):
 
-        # First we run the command
-        utils.run_command(cmd_line, log_file)
+        try:
+            # First we run the command
+            utils.run_command(cmd_line, log_file)
 
-        if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file):
-            self.progress.end()
-            raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
-                              "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
-                              "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
+            if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file):
+                self.progress.end()
+                raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
+                                  "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
+                                  "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
 
-        # Then we append the results to the main file(s)
-        for output in desired_output:
-            main_file_buffer = merged_files_dict[output]['buffer']
-            main_file_lock = merged_files_dict[output]['lock']
+            # Then we append the results to the main file(s)
+            for output in desired_output:
+                main_file_buffer = merged_files_dict[output]['buffer']
+                main_file_lock = merged_files_dict[output]['lock']
 
-            if output == 'table':
-                worker_file = table_output_file
-                append_function = self.append_to_main_table_file
-            elif output == 'standard':
-                worker_file = standard_output_file
-                append_function = self.append_to_main_standard_file
+                if output == 'table':
+                    worker_file = table_output_file
+                    append_function = self.append_to_main_table_file
+                elif output == 'standard':
+                    worker_file = standard_output_file
+                    append_function = self.append_to_main_standard_file
 
-            append_function(main_file_buffer, worker_file, main_file_lock)
+                append_function(main_file_buffer, worker_file, main_file_lock)
 
+                # return value of 0 to indicate success
+                output_queue.put(0)
+
+        except Exception as e:
+            # This thread encountered an error. We send the error back to the main thread which
+            # will terminate the job.
+            output_queue.put(e)
 
     def append_to_main_standard_file(self, merged_file_buffer, standard_output_file, buffer_write_lock):
         """Append standard output to the main file.
@@ -305,7 +342,7 @@ class HMMer:
           >>> # model-specific thresholding:     GA cutoffs
           >>> # number of worker threads:        1
           >>> # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-          >>> 
+          >>>
 
           Additionally, there will be as many "[ok]"'s as there are threads, whereas in a proper
           output file there is only one that marks the EOF.
