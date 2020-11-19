@@ -177,7 +177,7 @@ class HMMer:
         # Holds buffer and write lock for each output
         merged_files_dict = {}
         for output in desired_output:
-            merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': Lock()}
+            merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': multiprocessing.Lock()}
 
         num_parts = len(self.target_files_dict[target])
         cores_per_process = 1
