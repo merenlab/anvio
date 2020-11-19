@@ -3,11 +3,9 @@
 
 import os
 import io
-import gzip
 import shutil
 import glob
 import multiprocessing
-from threading import Thread, Lock
 
 import anvio
 import anvio.utils as utils
@@ -260,7 +258,7 @@ class HMMer:
                 for worker in workers:
                     worker.terminate()
                 raise worker_error
-            
+
         for worker in workers:
             worker.terminate()
 
@@ -283,6 +281,7 @@ class HMMer:
 
         # Return output path as string if desired_output is len 1. Else return tuple of output paths
         output = output_file_paths[0] if len(output_file_paths) == 1 else tuple(output_file_paths)
+
         return output
 
 
@@ -320,6 +319,7 @@ class HMMer:
             # This thread encountered an error. We send the error back to the main thread which
             # will terminate the job.
             output_queue.put(e)
+
 
     def append_to_main_standard_file(self, merged_file_buffer, standard_output_file, buffer_write_lock):
         """Append standard output to the main file.
