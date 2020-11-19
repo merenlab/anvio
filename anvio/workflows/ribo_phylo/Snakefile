@@ -20,17 +20,20 @@ __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
 
-slave_mode = False if 'workflows/ribo_phylo' in workflow.included[0] else True
+# slave_mode = False if 'workflows/ribo_phylo' in workflow.included[0] else True
 
-if not slave_mode:
-    # it is important that this comes before the include statement since
-    # M is defined here and will also be used in the contigs workflow
-    M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
-    M.init()
-    dirs_dict = M.dirs_dict
-    # in order to generate the contigs databases we include the snakefile
-    # for the generation of contigs databases
-    include: w.get_workflow_snake_file_path('metagenomics')
+# if not slave_mode:
+#     # it is important that this comes before the include statement since
+#     # M is defined here and will also be used in the contigs workflow
+#     M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
+#     M.init()
+#     dirs_dict = M.dirs_dict
+#     # in order to generate the contigs databases we include the snakefile
+#     # for the generation of contigs databases
+#     include: w.get_workflow_snake_file_path('metagenomics')
+
+M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
+M.init()
 
 dirs_dict = M.dirs_dict
 

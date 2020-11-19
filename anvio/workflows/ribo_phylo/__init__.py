@@ -28,13 +28,13 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 
-class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
-# class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
+# class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
+class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ribo_phylo')
 
-        MetagenomicsWorkflow.__init__(self)
+        # MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
         self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins',
                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
@@ -107,13 +107,7 @@ class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
             'calculate_tree': {'run': True, 'threads': 5,'-m': "MFP"}
             })
 
-        # Added directories in the workflow
-
-        # 01_SCG_HMM_HITS
-        # 02_NR_FASTA
-        # 03_MSA
-        # 04_TREE
-
+        # Workflow directory structure
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_SCG_HMM_HITS"})
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_SCG_TAXONOMY"})
         self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
@@ -131,12 +125,6 @@ class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
 
         super().init()
 
-    #     self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
-    #     self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
-    #     self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
-    #     self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
-    #     self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
-
         # Load table of sample info from samples_txt (sample names, split types, paths to r1, r2).
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
         filesnpaths.is_file_exists(self.external_genomes)
@@ -145,6 +133,7 @@ class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
             self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
             self.external_genome_name_list = self.external_genomes_df.name.to_list()
             self.external_genome_path_list = self.external_genomes_df.contigs_db_path.to_list()
+
             # Dict for when the time comes to tell SCG_taxonomy if it is working with a genome for metagnome
             # add a new column to the external_genomes.txt called type to denote genome or metagenome
             self.external_genome_type_dict = dict(zip(self.external_genomes_df.name, self.external_genomes_df.type))
