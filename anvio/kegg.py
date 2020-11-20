@@ -340,9 +340,11 @@ class KeggSetup(KeggContext):
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-setup-kegg-kofams
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories when testing this class
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
         self.args = args
         self.run = run
         self.progress = progress
@@ -355,10 +357,10 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
-        if not args.reset and not anvio.DEBUG:
+        if not args.reset and not anvio.DEBUG and not skip_init:
             self.is_database_exists()
 
-        if not self.kegg_archive_path:
+        if not self.kegg_archive_path and not skip_init:
             filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
