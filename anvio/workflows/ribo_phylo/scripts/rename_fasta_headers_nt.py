@@ -18,12 +18,31 @@ reformat_report['sample_name'] = reformat_report['old_header'].str.split("bin_id
 
 reformat_report['header'] = reformat_report['sample_name'].map(str) + '_' + reformat_report['gene_callers_id'].map(str)
 
+
+# Add new names to external_gene_calls files
+external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls, \
+                  sep="\t", \
+                  index_col=None)
+
+
+external_gene_calls['sample'] = external_gene_calls['contig'].str.rsplit('_', n=2).str.get(0)
+external_gene_calls['header'] = external_gene_calls['sample'] + "_" + external_gene_calls['gene_callers_id'].astype(str)
+external_gene_calls_filtered = reformat_report[['new_header', 'header']].merge(external_gene_calls, on="header", how="inner").drop(columns=['sample', 'header', 'contig']).rename(columns={'new_header': 'contig'})
+external_gene_calls_filtered = external_gene_calls_filtered[['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version']]
+
+external_gene_calls_filtered.to_csv(snakemake.output.external_gene_calls, \
+           sep="\t", \
+           index=None, \
+           na_rep="NA")
+
 # Import import fasta 
 #-------------------------------------------------------------------
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
 for seq_record in SeqIO.parse(snakemake.input.fna, "fasta"):
-    fasta_df = fasta_df.append({'header': snakemake.wildcards.sample_name + "_" + str(seq_record.description), 'sequence': str(seq_record.seq)}, ignore_index=True)
+    char_list = seq_record.description.split("_")
+    header = "_".join(char_list[:6]) + "_" + char_list[7]
+    fasta_df = fasta_df.append({'header': header, 'sequence': str(seq_record.seq)}, ignore_index=True)
 
 # # Export
 # #------------------------------------------------------------------
@@ -36,6 +55,7 @@ fasta = open(snakemake.output.fasta, 'w')
 for index, line in fasta_new_headers_df.iterrows():
     header = ">" + line['new_header'] + "\n"
     sequence = line['sequence'] + "\n"
+    # print(sequence)
     fasta.write(header)
     fasta.write(sequence)
 

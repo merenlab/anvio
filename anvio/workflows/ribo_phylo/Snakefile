@@ -119,8 +119,6 @@ rule anvi_get_sequences_for_gene_calls:
         """
 
 
-# ruleorder: anvi_get_sequences_for_gene_calls > rename_gene_calls > cat_SCG_NT_to_one_fasta
-
 rule rename_gene_calls:
     """Retrieve SCG taxonomy from extracted ribosomal proteins"""
 
@@ -224,14 +222,17 @@ rule anvi_get_sequences_for_gene_calls_reps_with_leeway:
     input:
         contigsDBs = os.path.join(M.contig_dir, "{sample_name}-contigs.db"),
         gene_callers_ids = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_gene_callers_ids_reps.tsv")
-    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reps_leeway.fna")
+    output:
+        fasta = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reps_leeway.fna"),
+        external_gene_calls = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     shell:
         """
         anvi-get-sequences-for-gene-calls -c {input.contigsDBs} \
                                     --gene-caller-ids {input.gene_callers_ids} \
                                     --flank-length 150 \
-                                    -o {output} 2> {log}
+                                    --external-gene-calls {output.external_gene_calls} \
+                                    -o {output.fasta} 2> {log}
         """
 
 
@@ -242,13 +243,14 @@ rule rename_gene_calls_reps:
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_gene_calls_{sample_name}_{ribosomal_protein_name}.log")
     input:
         fna = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reps_leeway.fna"),
-        report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt")
+        report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt"),
+        external_gene_calls = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
     output:
-        fasta = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reps_leeway_renamed.fna")
+        fasta = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reps_leeway_renamed.fna"),
+        external_gene_calls = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls_renamed.tsv")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     script:
-        "scripts/rename_fasta_headers.py"
-#here
+        "scripts/rename_fasta_headers_nt.py"
 
 rule cat_SCG_NT_to_one_fasta_reps:
     """DOC string
@@ -261,6 +263,35 @@ rule cat_SCG_NT_to_one_fasta_reps:
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell:
         "cat {input} >> {output}"
+
+
+# rule add_header_SCG_NT_external_gene_calls:
+#     """
+#     Need to add a head to the {ribosomal_protein_name}_all_leeway_external_gene_calls.tsv
+#     """
+
+#     version: 1.0
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+#     input: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+#     output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_leeway_external_gene_calls.tsv")
+#     threads: M.T('cat_misc_data_to_one_file')
+#     shell:
+#         """
+#         echo -e "header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
+#         """
+
+rule cat_SCG_NT_external_gene_calls:
+    """
+    FIXME: double check again that the leeway sequences are the correct orientation etc
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_SCG_NT_to_one_fasta_reps_{ribosomal_protein_name}.log")
+    input: expand(os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_names}", "{sample_names}", "{sample_names}_{ribosomal_protein_names}_external_gene_calls_renamed.tsv"), sample_names = M.external_genome_name_list, ribosomal_protein_names = M.Ribosomal_protein_list)
+    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_leeway_external_gene_calls.tsv")
+    threads: M.T('cat_ribo_proteins_to_one_fasta')
+    shell:
+        "cat <(tail -n +2 {input}) >> {output}"
 
 rule anvi_reformat_fasta_SCG_NT:
     """Clean up fasta headers for tree calculation."""

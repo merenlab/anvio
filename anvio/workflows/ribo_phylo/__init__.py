@@ -197,11 +197,22 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     print(target_file)
             #     target_files.append(target_file)
 
+            # cat_SCG_NT_to_one_fasta
+            tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            tail_path = "%s_all_leeway_external_gene_calls.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            # VERY important last rule, turn on when you want to actually complete the whole workflow
+            ##################
             # The FINAL trees :)
             tail_path = "%s.iqtree" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-
+            #########################
 
             # tail_path = "%s_trimmed.fasta" % (ribosomal_protein_name)
             # target_file = os.path.join(self.dirs_dict['MSA'], "MSA_2", ribosomal_protein_name, tail_path)
@@ -274,10 +285,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
            #  target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
            #  target_files.append(target_file)
 
-            # cat_SCG_NT_to_one_fasta
-            tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+         
 
             # from contigs workflow
             # contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
