@@ -5,9 +5,6 @@ import numpy as np
 import glob
 import os.path
 
-
-
-
 # Import fasta header index
 #----------------------------
 reformat_report = pd.read_csv(snakemake.input.report_file, \
@@ -31,7 +28,6 @@ for seq_record in SeqIO.parse(snakemake.input.reps, "fasta"):
 
 # Join represenative header with reformat report to get original gene-callers-ids for each contigsDB
 fasta_reps_df = fasta_df.merge(reformat_report, on="new_header", how="inner")
-
 
 # Export filtered reformat file
 fasta_reps_df.to_csv(snakemake.output.report_file_filtered, \

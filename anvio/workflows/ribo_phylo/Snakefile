@@ -180,7 +180,7 @@ rule cat_ribo_proteins_to_one_fasta:
     shell:
         "cat {input} >> {output}"
 
-rule get_filtered_reformat_file:
+rule get_filtered_gene_callers_ids_for_mapping:
     """
     Retrieve the gene-callers-ids from the representative sequences for anvi_get_sequences_for_gene_calls
     to extract the sequences with 150 nt leeway upstream and downstream
@@ -189,10 +189,10 @@ rule get_filtered_reformat_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
     input:
-        reps = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta"),
+        reps = os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta"),
         report_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}","{ribosomal_protein_name}_reformat_report_all.txt")
     output:
-         report_file_filtered = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_reformat_report_mmseqs_NR.txt")
+         report_file_filtered = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_reformat_report_msa2.txt")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     script:
         "scripts/get_gene_caller_ids_for_mapping.py"
@@ -204,7 +204,7 @@ rule anvi_get_gene_caller_ids_for_reps:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_gene_calls_reps_{sample_name}_{ribosomal_protein_name}.log")
     input:
         gene_callers_ids = os.path.join(dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_gene_callers_ids.tsv"),
-        reformat_file_filtered = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_reformat_report_mmseqs_NR.txt")
+        reformat_file_filtered = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_reformat_report_msa2.txt")
     output:
         gene_callers_ids_reps = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{sample_name}", "{sample_name}_{ribosomal_protein_name}_gene_callers_ids_reps.tsv"),
     threads: M.T('anvi_get_sequences_for_gene_calls')
