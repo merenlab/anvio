@@ -33,6 +33,7 @@ external_gene_calls_filtered = external_gene_calls_filtered[['gene_callers_id', 
 external_gene_calls_filtered.to_csv(snakemake.output.external_gene_calls, \
            sep="\t", \
            index=None, \
+           header=False, \
            na_rep="NA")
 
 # Import import fasta 
