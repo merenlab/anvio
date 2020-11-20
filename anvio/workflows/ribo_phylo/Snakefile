@@ -291,7 +291,7 @@ rule cat_SCG_NT_external_gene_calls:
     output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_all_leeway_external_gene_calls.tsv")
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell:
-        "cat <(tail -n +2 {input}) >> {output}"
+        "cat <(awk NR\>1 {input}) >> {output}"
 
 rule anvi_reformat_fasta_SCG_NT:
     """Clean up fasta headers for tree calculation."""
