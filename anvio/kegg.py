@@ -728,9 +728,8 @@ class KeggSetup(KeggContext):
                     no_kofam_file_list.append(hmm_file)
 
         # now we concatenate the orphan KO hmms into the orphan data directory
-        remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
@@ -738,7 +737,7 @@ class KeggSetup(KeggContext):
                              % (len(no_kofam_file_list), self.orphan_data_dir))
 
         if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
@@ -746,7 +745,7 @@ class KeggSetup(KeggContext):
                              % (len(no_threshold_file_list), self.orphan_data_dir))
 
         if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
