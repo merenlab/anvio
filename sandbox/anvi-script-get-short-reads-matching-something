@@ -171,7 +171,7 @@ if __name__ == '__main__':
                         help="Short sequence to look for..")
     parser.add_argument('-m', '--min-remainder-length', metavar='INT', type=int, default=60,
                         help="Minimum length of the remainder of the read after the match. If your short read\
-                              is XXXMMMMMMYYYYYYYYYYYYYY, where M indicates nucleotides of matchhing sequence,\
+                              is XXXMMMMMMYYYYYYYYYYYYYY, where M indicates nucleotides of matching sequence,\
                               min remainder length is len(Y). Default is %(default)d.")
     parser.add_argument('-s', '--sample-name', required=True, metavar='NAME',
                         help="A short sample name (use a single word without spaces or fancy chars)")
