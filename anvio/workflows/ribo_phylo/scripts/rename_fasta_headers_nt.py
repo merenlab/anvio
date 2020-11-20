@@ -41,7 +41,7 @@ fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
 for seq_record in SeqIO.parse(snakemake.input.fna, "fasta"):
     char_list = seq_record.description.split("_")
-    header = "_".join(char_list[:6]) + "_" + char_list[7]
+    header = "_".join(char_list[:-2]) + "_" + char_list[-1]
     fasta_df = fasta_df.append({'header': header, 'sequence': str(seq_record.seq)}, ignore_index=True)
 
 # # Export
