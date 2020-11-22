@@ -555,6 +555,12 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "pn-ps-data": {
+        "name": "PN/PS OUTPUT",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
     
 }

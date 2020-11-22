@@ -32,6 +32,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+__provides__ = ['pn-ps-data']
 __requires__ = ['contigs-db', 'variability-profile-txt']
 __description__ = ("This program calculates for each gene the ratio of pN/pS (the metagenomic analogy "
                    "of dN/dS; see doi:10.1038/nature11711 and doi:10.7717/peerj.2959) based on metagenomic "
