@@ -37,9 +37,6 @@ var contig_id;
 var page_header;
 var highlight_gene;
 var gene_mode;
-var show_snvs;
-var show_indels;
-var show_highlights;
 var sequence;
 var charts;
 var brush;
@@ -65,7 +62,7 @@ window.onscroll = function() {
 }
 
 function stickyBoxes() {
-  if(!show_highlights) return;
+  if(!state['show_highlights']) return;
   var nucl_shown = $("#DNA_sequence").length > 0;
 
   var boxes = document.getElementById("highlight-boxes");
@@ -115,9 +112,6 @@ function loadAll() {
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
-    show_snvs = getParameterByName('show_snvs') == 'true';
-    show_indels = true;//getParameterByName('show_indels') == 'true';
-    show_highlights = true;
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -127,6 +121,11 @@ function loadAll() {
     {
         state = JSON.parse(localStorage.state);
     }
+
+    if(state['show_snvs'] == null) {
+        state['show_snvs'] = getParameterByName('show_snvs') == 'true';
+    }
+    if(state['show_highlights'] == null) state['show_highlights'] = true;
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
     $.ajax({
@@ -193,10 +192,10 @@ function loadAll() {
                 }
 
                 if(next_contig_name)
-                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['show_snvs']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                 if(previous_contig_name)
-                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['show_snvs']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                 $('#window-title').html("anvi-inspect: " + page_header);
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
@@ -222,6 +221,11 @@ function loadAll() {
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
+
+                if(state['show_indels'] == null) {
+                  console.log("test");
+                  state['show_indels'] = (indels != null && !isEmpty(indels));
+                }
 
                 // create function color menu and table; set default color states
                 $('#gene_color_order').append($('<option>', {
@@ -268,16 +272,16 @@ function loadAll() {
                     if(indels[i].hasOwnProperty(key)) numIndels++;
                   }
                 }
-                if(numSNVs > 1000) {
-                  show_snvs = false;
+                if(state['show_snvs'] && numSNVs > 1000) {
+                  state['show_snvs'] = false;
                   $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
                 }
-                if(numIndels > 1000) {
-                  show_indels = false;
+                if(state['show_indels'] && numIndels > 1000) {
+                  state['show_indels'] = false;
                   $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
                 }
-                if(show_snvs) $('#toggle_snv_box').attr("checked", "checked");
-                if(show_indels) $('#toggle_indel_box').attr("checked", "checked");
+                if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
+                if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -557,7 +561,7 @@ function toggleSNVs() {
   } else {
     $("div.snvs-activated").fadeIn(300).delay(1500).fadeOut(400);
   }*/
-  show_snvs = !show_snvs;
+  state['show_snvs'] = !state['show_snvs'];
   createCharts(state);
 }
 
@@ -567,12 +571,12 @@ function toggleIndels() {
   } else {
     $("div.indels-activated").fadeIn(300).delay(1500).fadeOut(400);
   }*/
-  show_indels = !show_indels;
+  state['show_indels'] = !state['show_indels'];
   createCharts(state);
 }
 
 function toggleHighlightBoxes() {
-  if(show_highlights) {
+  if(state['show_highlights']) {
     $('#highlightBoxesSvg').empty();
     $('#highlight-boxes').css('pointer-events', 'none');
     $('#context-container').off('mouseover mouseout');
@@ -582,7 +586,7 @@ function toggleHighlightBoxes() {
     setSelectionBoxListener();
     $('#highlight-boxes').css('pointer-events', 'all');
   }
-  show_highlights = !show_highlights;
+  state['show_highlights'] = !state['show_highlights'];
 }
 
 function toggleGeneIDColor(gene_id, color="#FF0000") {
@@ -915,7 +919,7 @@ function display_nucleotides() {
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
 
-  if(show_highlights) {
+  if(state['show_highlights']) {
     drawHighlightBoxes();
     drawAAHighlightBoxes();
     setSelectionBoxListener();
@@ -923,7 +927,7 @@ function display_nucleotides() {
 }
 
 function setSelectionBoxListener() {
-  if(!show_snvs && !show_indels) return;
+  if(!state['show_snvs'] && !state['show_indels']) return;
 
   $('.SNV_text, .indels_text').each(function(i) {
     select_boxes[i] = {"left"  : $(this).offset().left,
@@ -1351,7 +1355,10 @@ function processState(state_name, state) {
     }
     redrawArrows();
 
-    if(show_indels) {
+    // Show SNVs if variability data available
+    /*if(!state.hasOwnProperty('show_snvs')) state['show_snvs'] = variability ? true : false;*/
+
+    if(state['show_indels']) {
       if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
       $('#largeIndelInput').val(20);
     }
@@ -1599,7 +1606,7 @@ function createCharts(state){
                 .attr("height", contextHeight);
 
     if(show_nucleotides) display_nucleotides();
-    if(show_highlights) drawHighlightBoxes();
+    if(state['show_highlights']) drawHighlightBoxes();
     setSelectionBoxListener();
 
     function onBrush(){
@@ -1767,7 +1774,7 @@ function Chart(options){
                       .style("fill", "none")
                       .attr("d", this.gc_line);
 
-    if (show_snvs) {
+    if (state['show_snvs']) {
         this.lineContainer.append("path")
             .data([this.variability_b])
             .attr("class", "line")
@@ -1840,7 +1847,7 @@ function Chart(options){
                                 });
     }
 
-    if(show_indels) {
+    if(state['show_indels']) {
       this.indel_coverage = [];
       this.indel_coverage.length = this.coverage.length;
       this.indel_coverage.fill(0);
