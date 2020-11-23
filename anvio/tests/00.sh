@@ -19,7 +19,7 @@ SETUP_WITH_OUTPUT_DIR() {
         output_dir="`pwd`/sandbox/test-output"
         rm -rf $output_dir
     else
-        output_dir="$1/test-output"
+        output_dir="$1"
     fi
 
     mkdir -p $output_dir
