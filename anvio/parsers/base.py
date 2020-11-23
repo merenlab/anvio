@@ -8,7 +8,7 @@ import hashlib
 
 import anvio.terminal as terminal
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, StupidHMMError
 from anvio.constants import levels_of_taxonomy
 from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
@@ -78,11 +78,15 @@ class Parser(object):
                 no_header = f['no_header'] if 'no_header' in f else False
                 separator = f['separator'] if 'separator' in f else '\t'
                 indexing_field = f['indexing_field'] if 'indexing_field' in f else 0
-                self.dicts[alias], failed_lines = get_dict(self.paths[alias], no_header=no_header,
-                                                           column_names=self.files_structure[alias]['col_names'],
-                                                           column_mapping=self.files_structure[alias]['col_mapping'],
-                                                           indexing_field=indexing_field, separator=separator,
-                                                           ascii_only=True, return_failed_lines=True)
+
+                try:
+                    self.dicts[alias], failed_lines = get_dict(self.paths[alias], no_header=no_header,
+                                                               column_names=self.files_structure[alias]['col_names'],
+                                                               column_mapping=self.files_structure[alias]['col_mapping'],
+                                                               indexing_field=indexing_field, separator=separator,
+                                                               ascii_only=True, return_failed_lines=True)
+                except Exception as e:
+                    raise StupidHMMError(f"{e}")
 
                 if failed_lines:
                     if len(failed_lines) > 20:

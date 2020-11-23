@@ -75,6 +75,13 @@ class ConfigError(AnvioError):
         AnvioError.__init__(self)
 
 
+class StupidHMMError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Stupid HMM Error'
+        AnvioError.__init__(self)
+
+
 class GenesDBError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
