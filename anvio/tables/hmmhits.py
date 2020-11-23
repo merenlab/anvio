@@ -15,11 +15,11 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.tables.tableops import Table
 from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
 
 
@@ -213,7 +213,18 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                try:
+                    parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                except StupidHMMError as e:
+                    raise ConfigError(f"Unfortunately something went wrong while anvi'o was trying to parse some HMM output for your data. "
+                                      f"This error is typically due to contig names that are long and variable in length, which that "
+                                      f"confuses HMMER and so it generates output tables that are simply unparseable. Anvi'o does its best, "
+                                      f"but occasionally fails, which leads to this error. If you are curious why is this happening, you can take a "
+                                      f"look at this issue where this issue is described: https://github.com/merenlab/anvio/issues/1564. "
+                                      f"Solution to this is relatively easy: use `anvi-script-reformat-fasta` with `--simplify-names` flag "
+                                      f"BEFORE generating your contigs database as we advice you to. Sorry you came all this way just to "
+                                      f"find out about this :/ Here is the origial error message anvi'o produced from the code beneath: {e}.")
+
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
