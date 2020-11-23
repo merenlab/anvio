@@ -3,11 +3,10 @@
 
 import os
 import io
-import gzip
-import shutil
 import glob
-from threading import Thread, Lock
+import shutil
 
+from threading import Thread, Lock
 
 import anvio
 import anvio.utils as utils
@@ -29,6 +28,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 class HMMer:
@@ -186,9 +186,9 @@ class HMMer:
         if num_parts < self.num_threads_to_use:
             cores_per_process = self.num_threads_to_use // num_parts
 
-            self.run.warning("You requested %s cores but there were only %s entries in the fasta for the target '%s'. "
-                             "Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
-                             (str(self.num_threads_to_use), str(num_parts), target, str(num_parts), cores_per_process))
+            self.run.warning(f"You requested {P('core', self.num_threads_to_use)} but there were only {P('sequence', num_parts)} "
+                             f"in the FASTA file for the target '{target}'. Anvi'o will use {P('process', num_parts, suffix_for_plural='es')} "
+                             f"with {P('core', cores_per_process)} instead. And that's that.")
 
         if alphabet in ['DNA', 'RNA'] and self.program_to_use == 'hmmsearch':
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
@@ -227,7 +227,7 @@ class HMMer:
             workers.append(t)
 
         self.progress.new('Processing')
-        self.progress.update('Running %s in %d threads...' % (self.program_to_use, self.num_threads_to_use))
+        self.progress.update(f'Running {self.program_to_use} in {P("thread", self.num_threads_to_use)}...')
 
         # Wait for all workers to finish.
         for worker in workers:
