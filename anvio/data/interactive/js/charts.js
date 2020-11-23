@@ -38,7 +38,7 @@ var page_header;
 var highlight_gene;
 var gene_mode;
 var show_snvs;
-var show_indels;
+var show_indels = true;
 var show_highlights;
 var sequence;
 var charts;
@@ -116,7 +116,6 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
     show_snvs = getParameterByName('show_snvs') == 'true';
-    show_indels = true;//getParameterByName('show_indels') == 'true';
     show_highlights = true;
 
     if (typeof localStorage.state === 'undefined')
@@ -268,11 +267,11 @@ function loadAll() {
                     if(indels[i].hasOwnProperty(key)) numIndels++;
                   }
                 }
-                if(numSNVs > 1000) {
+                if(show_snvs && numSNVs > 1000) {
                   show_snvs = false;
                   $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
                 }
-                if(numIndels > 1000) {
+                if(show_indels && numIndels > 1000) {
                   show_indels = false;
                   $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
                 }
