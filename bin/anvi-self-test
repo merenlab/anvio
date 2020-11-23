@@ -11,6 +11,7 @@ import subprocess
 
 import anvio
 import anvio.tests
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import FilesNPathsError, ConfigError
@@ -33,6 +34,7 @@ tests = {'mini': ['run_mini_test.sh'],
          'manual-interface': ['run_manual_interactive.sh'],
          'metabolism': ['run_metabolism_tests.sh']}
 
+run = terminal.Run()
 
 def __catch_sig(signum, frame):
     """We need to press CTRL+C to kill the server that is run by this script in a\
@@ -56,13 +58,18 @@ def main(args):
                                     "terrible start :( (it was looking for it under '%s')." \
                                                 % (test, tests[test], tests_dir_path))
 
-    temporary_output_dir = filesnpaths.get_temp_directory_path()
+    if args.output_dir:
+        output_dir = os.path.abspath(args.output_dir)
+        filesnpaths.check_output_directory(output_dir)
+        filesnpaths.gen_output_directory(output_dir)
+    else:
+        output_dir = filesnpaths.get_temp_directory_path()
 
     os.chdir(tests_dir_path)
 
     try:
         for test in tests[args.suite]:
-            exitcode = subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True)
+            exitcode = subprocess.call('./%s %s' % (test, output_dir), shell=True)
             if exitcode != 0:
                 raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while "
                                   "running your tests :/ We hope that the reason is clear to you from the lines above. But if you "
@@ -72,12 +79,11 @@ def main(args):
     except KeyboardInterrupt:
         pass
 
-    print()
-    if anvio.DEBUG:
-        print("Anvi'o's self-test is done, and the temporary output files are still here: %s\n" % temporary_output_dir)
+    if args.output_dir:
+        run.info_single(f"The self-test is done, and all the files anvi'o generated are stored in {args.output_dir}", nl_after=1)
     else:
-        shutil.rmtree(temporary_output_dir)
-        print("Anvi'o's self-test is done, and the temporary output files are cleaned.\n")
+        shutil.rmtree(output_dir)
+        run.info_single(f"Anvi'o's self-test is done, and the temporary files are all gone.", nl_after=1)
 
 
 if __name__ == '__main__':
@@ -89,6 +95,9 @@ if __name__ == '__main__':
                               commands to ensure your installation is ready to run all scenarios anvi'o developers could\
                               think of. Alternatively you can choose a specific test to run. Here is a full list of available\
                               options: %s." % ', '.join(list(tests.keys())))
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {"help": "If you declare an outuput dir, all your data will be "
+                              "stored in there, instead of being stored in a temporary directroy to be deleted once the tests are done. "
+                              "This is particularly useful if you wish to play with general anvi'o output files."}))
 
     args = anvio.get_args(parser)
 
