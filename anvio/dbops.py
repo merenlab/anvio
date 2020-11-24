@@ -107,8 +107,10 @@ class ContigsSuperclass(object):
         self.splits_taxonomy_dict = {}
         self.split_sequences = {}
         self.contigs_basic_info = {}
-        self.contig_sequences = {}
         self.nt_positions_info = {}
+
+        self.contig_sequences = {}
+        self.gene_caller_ids_included_in_contig_sequences_initialized = set([])
 
         self.genes_in_contigs_dict = {}
         self.gene_lengths = {}
@@ -281,7 +283,6 @@ class ContigsSuperclass(object):
         # are we going to read everything, or only those that are of interest?
         if contig_names_of_interest:
             subset_provided = True
-            pass
         elif gene_caller_ids_of_interest:
             subset_provided = True
             contig_names_of_interest = set([])
@@ -301,6 +302,15 @@ class ContigsSuperclass(object):
 
         self.progress.new('Loading contig sequences')
         self.contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+
+        # now we have our contig sequences, and it is time to make sure we
+        # know which gene caller ids they represent if only a subset of contigs
+        # were requested:
+        if subset_provided:
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
+        else:
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
+
         self.progress.end()
 
         if subset_provided:
