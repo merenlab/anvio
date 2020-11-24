@@ -980,7 +980,7 @@ class ContigsSuperclass(object):
         self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
-            gene_call = self.genes_in_contigs_dict[gene_callers_id]
+            gene_call = copy.deepcopy(self.genes_in_contigs_dict[gene_callers_id])
 
             contig_name = gene_call['contig']
             start, stop = gene_call['start'], gene_call['stop']
