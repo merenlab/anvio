@@ -499,6 +499,18 @@ class ContigsSuperclass(object):
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
+        """This method initializes a dictionary of function calls.
+
+        It establishes the following attributes:
+            self.gene_function_call_sources     a list of functional annotation sources
+            self.gene_function_calls_dict       a dictionary of structure (accession, function, evalue) = self.gene_function_calls_dict[gene_callers_id][source]
+                                                (the tuple can be None if there is no annotation from that source for the gene call)
+
+        If requested_sources are provided, the dictionary only includes gene calls from those sources.
+        If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
+
+        Afterwards, it sets self.gene_function_calls_initiated to True.
+        """
         if not self.contigs_db_path:
             return
 
