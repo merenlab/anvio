@@ -825,7 +825,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
                                                      ('Report variability full', T(self.p_meta['report_variability_full'])),
                                                      ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
-                                                     ('Min IN/DEL fraction', self.p_meta['min_indel_fraction']),
                                                     ],
                                          'contigs': [
                                                         ('Project name', self.a_meta['project_name']),
@@ -1005,10 +1004,14 @@ class ContigSummarizer(SummarizerSuperClass):
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
+        if split_names:
+            args.split_names_of_interest = set(split_names)
+
         run = terminal.Run()
         progress = terminal.Progress()
         run.verbose = False
         progress.verbose = False
+
         c = ContigsSuperclass(args, r=run, p=progress)
 
         info_dict = {'path': self.contigs_db_path,
@@ -1019,10 +1022,15 @@ class ContigSummarizer(SummarizerSuperClass):
             info_dict[key] = c.a_meta[key]
 
         gene_calls_from_other_gene_callers = Counter()
+        impossible_gene_calls_missing_from_contigs_db = set([])
 
         # Two different strategies here depending on whether we work with a given set if split ids or
         # everything in the contigs database.
         def process_gene_call(g):
+            if g not in c.genes_in_contigs_dict:
+                impossible_gene_calls_missing_from_contigs_db.add(g)
+                return
+
             gene_caller = c.genes_in_contigs_dict[g]['source']
             if gene_caller == gene_caller_to_use:
                 info_dict['gene_caller_ids'].add(g)
@@ -1054,6 +1062,18 @@ class ContigSummarizer(SummarizerSuperClass):
                                                                 % (sum(gene_calls_from_other_gene_callers.values()), \
                                                                    gene_caller_to_use, \
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
+
+        if len(impossible_gene_calls_missing_from_contigs_db):
+            self.progress.reset()
+            self.run.warning(f"SOMETHING IMPOSSIBLE HAS HAPPENED: splits in your contigs database contains gene calls that "
+                             f"are not found in the gene calls table. This really should not happen under any circumstance "
+                             f"yet there were {len(impossible_gene_calls_missing_from_contigs_db)} of them in your database."
+                             f"Anvi'o ignored those gene calls and is going to continue processing your data, but what you "
+                             f"should be doing is to remove this contigs database, and start everything from scratch. There is "
+                             f"something quite wrong with it. If you are curious, here are the gene calls in question: "
+                             f"{', '.join([str(g) for g in impossible_gene_calls_missing_from_contigs_db])}", overwrite_verbose=True)
+
+
 
         info_dict['gene_calls_from_other_gene_callers'] = gene_calls_from_other_gene_callers
         info_dict['gc_content'] = seqlib.Composition(seq).GC_content
@@ -1138,6 +1158,7 @@ class ContigSummarizer(SummarizerSuperClass):
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
         summary['gene_hit_counts_per_hmm_source'] = hmm.get_gene_hit_counts_per_hmm_source()
+        summary['hmm_sources_for_SCGs'] = sorted([s for s in hmm.hmm_hits_info if hmm.hmm_hits_info[s]['search_type'] == 'singlecopy'])
         summary['num_genomes_per_SCG_source_dict'] = hmm.get_num_genomes_from_SCG_sources_dict()
 
         self.progress.end()

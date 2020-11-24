@@ -532,9 +532,9 @@ class GenomeDescriptions(object):
             # if this is not full init, stop the sanity check here.
             self.progress.end()
             self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external "
-                             "genomes to be loaded without a 'full init'. There is nothing for you to be concerned. "
-                             "This is just a friendly reminder to make sure if something goes terribly wrong (like your "
-                             "computer sets itself on fire), this may be the reason.")
+                             "genomes to be loaded _without_ a 'full init'. There is nothing for you to be concerned. "
+                             "This is just a friendly reminder to make sure you know that if something goes terribly "
+                             "wrong later (like your computer sets itself on fire), this may be the reason.")
 
             return
 
@@ -594,13 +594,18 @@ class GenomeDescriptions(object):
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
         if len(genomes_with_no_gene_calls):
             self.progress.reset()
-            raise ConfigError("Well, %d of your %d genomes had 0 gene calls. We can't think of any reason to include genomes that "
-                              "contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these "
-                              "genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be "
-                              "in the genomes storage for reasons you know and we don't, please get in touch with us, and we will "
-                              "be happy to reconsider. If you think this is happening because you didn't set the right gene caller "
-                              "you can always take a look at the gene caller sources in a given contigs database by running the "
-                              "program `anvi-db-info`" % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))
+            if len(genomes_with_no_gene_calls) == len(self.genomes):
+                raise ConfigError("None of your genomes seem to have a gene call, which is a typical error you get if you are working "
+                                  "with contigs databases with external gene calls. You can solve it by looking at the output of the "
+                                  "program `anvi-db-info` for a given contigs database in your collection, and use one of the gene "
+                                  "caller sources listed in the output using the `--gene-caller` parameter.")
+            else:
+                raise ConfigError(f"Well, {len(genomes_with_no_gene_calls)} of your {len(self.genomes)} genomes seems to have 0 gene calls. "
+                                  f"We can't think of any reason to include genomes that contain no gene calls into a genomes storage, "
+                                  f"hence, we are going to stop here and ask you to remove these genomes from your analysis first: "
+                                  f"{', '.join(genomes_with_no_gene_calls)}. If you think this is happening because you didn't set "
+                                  f"the right source for gene calls, you can always take a look at what is available in a given "
+                                  f"contigs database by running the program `anvi-db-info`.")
 
 
 class MetagenomeDescriptions(object):

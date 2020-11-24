@@ -21,28 +21,32 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class VariablityTestFactory:
-    def __init__(self, params={'b': 3, 'm': 1.45, 'c': 0.05}):
+    def __init__(self, params={'b': 2, 'm': 1.45, 'c': 0.05}):
         self.params = params
 
+        if self.params:
+            self.b, self.m, self.c = self.params['b'], self.params['m'], self.params['c']
+        else:
+            self.b, self.m, self.c = None, None, None
 
-    def get_min_acceptable_departure_from_consensus(self, coverage):
+
+    def get_min_acceptable_departure_from_reference(self, coverage):
         """Get minimum allowable departure from consensus
 
         Notes
         =====
         - 0 returned if self.params is None
-        - https://www.desmos.com/calculator/qwocua4zi5
-        - https://i.imgur.com/zd04pui.png
+        - https://i.imgur.com/oVoDcbT.png (b=2, m=1.45, c=0.05)
+        - https://www.desmos.com/calculator/qwocua4zi5 (interactive plot to tune b, m , and c)
         """
+
         if self.params is None:
             if hasattr(coverage, '__len__'):
                 return np.zeros(len(coverage))
             else:
                 return 0
 
-        b, m, c = self.params['b'], self.params['m'], self.params['c']
-
-        return (1 / b) ** (coverage ** (1 / b) - m) + c
+        return (1 / self.b) ** (coverage ** (1 / self.b) - self.m) + self.c
 
 
 class ProcessAlleleCounts:
@@ -308,7 +312,7 @@ class ProcessAlleleCounts:
         if not self.test_class:
             return worth_reporting
 
-        threshold = self.test_class.get_min_acceptable_departure_from_consensus(coverage)
+        threshold = self.test_class.get_min_acceptable_departure_from_reference(coverage)
 
         return np.where(departure_from_reference >= threshold)[0]
 
@@ -355,7 +359,7 @@ class ProcessCodonCounts(ProcessAlleleCounts):
 
 
 class ProcessIndelCounts(object):
-    def __init__(self, indels, coverage, min_indel_fraction=0, min_coverage_for_variability=1):
+    def __init__(self, indels, coverage, min_indel_fraction=0, test_class=None, min_coverage_for_variability=1):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -410,8 +414,8 @@ class ProcessIndelCounts(object):
         coverage : array
             What is the coverage for the sequence this is for? This should have length equal to sequence
 
-        min_indel_fraction : float, 0
-            indels with a count divided by the position coverage less than this value will be filtered out.
+        test_class : VariablityTestFactory, None
+            If not None, indels will be filtered out if they are deemed not worth reporting
 
         min_coverage_for_variability : int, 1
             positions below this coverage value will be filtered out
@@ -419,77 +423,48 @@ class ProcessIndelCounts(object):
 
         self.indels = indels
         self.coverage = coverage
-        self.min_indel_fraction = min_indel_fraction
+        self.test_class = test_class if test_class is not None else VariablityTestFactory(params=None)
         self.min_coverage_for_variability = min_coverage_for_variability
-
-
-    def should_filter(self):
-        """Decide whether or not indels even need to be processed"""
-
-        if self.min_coverage_for_variability <= 1 and self.min_indel_fraction <= 0:
-            # Save ourselves the effot
-            return False
-
-        return True
 
 
     def process(self):
         """Modify self.indels"""
 
-        if self.should_filter():
-            indel_hashes_to_remove = set()
-            for indel_hash in self.indels:
+        indel_hashes_to_remove = set()
+        for indel_hash in self.indels:
 
-                indel = self.indels[indel_hash]
-                pos = indel['pos']
+            indel = self.indels[indel_hash]
+            pos = indel['pos']
 
-                # Calculate coverage
-                if indel['type'] == 'INS':
-                    if pos == len(self.coverage)-1:
-                        # This is the last position in the sequence. so coverage based off only the
-                        # NT left of the indel
-                        cov = self.coverage[pos]
-                    else:
-                        # The coverage is the average of the coverage left and right of the
-                        # insertion
-                        cov = (self.coverage[pos] + self.coverage[pos+1])/2
+            # Calculate coverage
+            if indel['type'] == 'INS':
+                if pos == len(self.coverage)-1:
+                    # This is the last position in the sequence. so coverage based off only the
+                    # NT left of the indel
+                    cov = self.coverage[pos]
                 else:
-                    # The coverage is the average of the NT coverages that the deletion occurs over
-                    cov = np.mean(self.coverage[pos:pos+indel['length']])
+                    # The coverage is the average of the coverage left and right of the
+                    # insertion
+                    cov = (self.coverage[pos] + self.coverage[pos+1])/2
+            else:
+                # The coverage is the average of the NT coverages that the deletion occurs over
+                cov = np.mean(self.coverage[pos:pos+indel['length']])
 
-                # Filter the entry if need be
-                if cov < self.min_coverage_for_variability:
-                    # coverage of corresponding position is not high enough
-                    indel_hashes_to_remove.add(indel_hash)
-                    continue
+            # Filter the entry if need be
+            if cov < self.min_coverage_for_variability:
+                # coverage of corresponding position is not high enough
+                indel_hashes_to_remove.add(indel_hash)
+                continue
 
-                if indel['count']/cov < self.min_indel_fraction:
-                    # indel fraction does not pass minimum threshold
-                    indel_hashes_to_remove.add(indel_hash)
-                    continue
+            # NOTE We call get_min_acceptable_departure_from_reference, yet the threshold value it
+            # spits out is being compared to count/coverage, since there is no "departure from
+            # reference" for indels.
+            if indel['count']/cov < self.test_class.get_min_acceptable_departure_from_reference(cov):
+                # indel count is not high enough compared to coverage value
+                indel_hashes_to_remove.add(indel_hash)
+                continue
 
-
-                self.indels[indel_hash]['coverage'] = cov
-        else:
-            for indel_hash in self.indels:
-                indel = self.indels[indel_hash]
-                pos = indel['pos']
-
-                # Add coverage
-                if indel['type'] == 'INS':
-                    if pos == len(self.coverage)-1:
-                        # This is the last position in the sequence. so coverage based off only the
-                        # NT left of the indel
-                        cov = self.coverage[pos]
-                    else:
-                        # The coverage is the average of the coverage left and right of the
-                        # insertion
-                        cov = (self.coverage[pos] + self.coverage[pos+1])/2
-                else:
-                    # The coverage is the average of the NT coverages that the deletion occurs over
-                    cov = np.mean(self.coverage[pos:pos+indel['length']])
-
-                self.indels[indel_hash]['coverage'] = cov
+            self.indels[indel_hash]['coverage'] = cov
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
 

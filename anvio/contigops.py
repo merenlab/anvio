@@ -39,8 +39,13 @@ __status__ = "Development"
 OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
 OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME
 
+# These filter SNVs and INDELs, respectively, based on a coverage-dependent departure from reference value
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
-variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
+indel_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
+
+# These are null filters, which do not filter SNVs and INDELs based on a coverage-dependent departure from reference value
+variability_test_class_null = VariablityTestFactory(params=None)
+indel_test_class_null = VariablityTestFactory(params=None)
 
 
 def gen_split_name(parent_name, order):
@@ -182,7 +187,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage_for_variability=10, min_indel_fraction=0.05, report_variability_full=False,
+    def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
@@ -191,7 +196,6 @@ class Auxiliary:
         self.split = split
         self.variation_density = 0.0
         self.min_coverage_for_variability = min_coverage_for_variability
-        self.min_indel_fraction = min_indel_fraction
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
@@ -533,7 +537,6 @@ class Auxiliary:
 
         if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
-        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
@@ -541,7 +544,7 @@ class Auxiliary:
             sequence=self.split.sequence,
             sequence_as_index=split_as_index,
             min_coverage_for_variability=self.min_coverage_for_variability,
-            test_class=test_class,
+            test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
             additional_per_position_data=additional_per_position_data,
         )
         nt_profile.process()
@@ -551,7 +554,7 @@ class Auxiliary:
             indel_profile = ProcessIndelCounts(
                 indels=indels,
                 coverage=allele_counts_array.sum(axis=0),
-                min_indel_fraction=self.min_indel_fraction if not self.report_variability_full else 0.0,
+                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
                 min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
             )
             indel_profile.process()

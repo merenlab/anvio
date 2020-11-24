@@ -32,11 +32,12 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+__provides__ = ['pn-ps-data']
 __requires__ = ['contigs-db', 'variability-profile-txt']
 __description__ = ("This program calculates for each gene the ratio of pN/pS (the metagenomic analogy "
-                   "of dN/dS; see doi:10.1038/nature11711 and doi:10.7717/peerj.2959) based on metagenomic "
-                   "read recruitment, however, unlike standard pN/pS calculations, it relies on "
-                   "codons rather than nucleotides for accurate estimations of synonimity")
+                   "of dN/dS) based on metagenomic read recruitment, however, unlike standard "
+                   "pN/pS calculations, it relies on codons rather than nucleotides for accurate "
+                   "estimations of synonimity")
 
 
 progress = terminal.Progress()
@@ -98,10 +99,12 @@ def load_contigs_db(args):
 
 
 def report(args, pNpS, SAAV, sSCV):
+    index_label = "sample_id" if args.no_gene else "gene_callers_id"
+
     # write it to folder
-    pNpS.to_csv(os.path.join(args.output_dir, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = "gene_callers_id")
-    sSCV.to_csv(os.path.join(args.output_dir, "sSCV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
-    SAAV.to_csv(os.path.join(args.output_dir, "SAAV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    pNpS.to_csv(os.path.join(args.output_dir, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = index_label)
+    sSCV.to_csv(os.path.join(args.output_dir, "sSCV_counts.txt"), sep="\t", index = True, index_label = index_label)
+    SAAV.to_csv(os.path.join(args.output_dir, "SAAV_counts.txt"), sep="\t", index = True, index_label = index_label)
 
     run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
                     nl_before=1,
@@ -121,11 +124,10 @@ def calculate_pN_pS_ratio(args):
     gene_caller_ids = var_dataframe['corresponding_gene_call'].unique()
     samples = var_dataframe['sample_id'].unique()
 
-    # creation of SAAV count table, sSCV count table, and SAAV_to_sSCV ratio table
+    # creation of SAAV count table and sSCV count table
     i = 0
     SAAV = {sample: [] for sample in samples}
     sSCV = {sample: [] for sample in samples}
-    SAAV_to_sSCV = {sample: [] for sample in samples}
     progress.new("Calculating SAAV and sSCV counts")
     for gene_callers_id in gene_caller_ids:
         temp = var_dataframe[var_dataframe['corresponding_gene_call'] == gene_callers_id]
@@ -134,11 +136,6 @@ def calculate_pN_pS_ratio(args):
 
             SAAV[sample].append(counts.get('AA', 0))
             sSCV[sample].append(counts.get('CDN', 0) - counts.get('AA', 0)) # fully synonymous only
-            if counts.get('CDN', 0) < args.minimum_num_variants:
-                SAAV_to_sSCV[sample].append(np.nan)
-            else:
-                with np.errstate(divide='ignore'):
-                    SAAV_to_sSCV[sample].append(counts.get('AA', 0) / (counts['CDN'] - counts.get('AA', 0)))
 
         if i % 100 == 0:
             progress.update('Processed {} of {} genes.'.format(i, len(gene_caller_ids)))
@@ -148,27 +145,43 @@ def calculate_pN_pS_ratio(args):
     # make tables dataframes
     sSCV = pd.DataFrame(sSCV); sSCV.index = gene_caller_ids
     SAAV = pd.DataFrame(SAAV); SAAV.index = gene_caller_ids
-    SAAV_to_sSCV = pd.DataFrame(SAAV_to_sSCV); SAAV_to_sSCV.index = gene_caller_ids
 
-    # calc potential synonymity for each gene
-    potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
-    total_ambiguous_codons = 0
-    for i, gene_callers_id in enumerate(gene_caller_ids):
-        gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
+    if args.no_gene:
+        # We are going to aggregate all the per-gene results
+        codon_list = []
+        for i, gene_callers_id in enumerate(gene_caller_ids):
+            gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
+            codon_list.extend(utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences))
 
-        codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-        syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+        syn_potential, non_syn_potential, total_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list, just_do_it=True)
+        potential_synonymity_ratio = syn_potential / non_syn_potential
 
-        # we are adding the number of codons in this gene that were not included
-        # in the calculations above as they included ambiguous nucleotides
-        total_ambiguous_codons += num_ambiguous_codons
+        SAAV = SAAV.sum(axis=0)
+        sSCV = sSCV.sum(axis=0)
 
-        potential_synonymity_ratio[i] = syn_potential / non_syn_potential
+    else:
+        # calc potential synonymity for each gene
+        potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
+        total_ambiguous_codons = 0
+        for i, gene_callers_id in enumerate(gene_caller_ids):
+            gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
+
+            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
+            syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+
+            # we are adding the number of codons in this gene that were not included
+            # in the calculations above as they included ambiguous nucleotides
+            total_ambiguous_codons += num_ambiguous_codons
+
+            potential_synonymity_ratio[i] = syn_potential / non_syn_potential
 
     if total_ambiguous_codons:
         run.warning("Please note that %d codons among your %d genes included nucleotides "
                     "that were not unambiguous (i.e., 'N's or any other bases than A, T, "
                     "C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
+
+    SAAV_to_sSCV = SAAV / sSCV
+    SAAV_to_sSCV[sSCV < args.minimum_num_variants] = np.nan
 
     # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
     pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)
@@ -203,6 +216,9 @@ if __name__ == '__main__':
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
+    groupO.add_argument('--no-gene', action='store_true', help='Normally, a value is provided for each sample-gene combination. '
+                        'So if you have 10 genes and 100 samples, you would get 10*100=1000 separate values. If this flag is provided, '
+                        'the output is not subdivided on a per-gene basis, and instead you will get 1 aggregated value for each sample.')
 
     args = anvio.get_args(parser)
 
