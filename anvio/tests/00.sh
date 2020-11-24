@@ -22,6 +22,13 @@ SETUP_WITH_OUTPUT_DIR() {
         output_dir="$1"
     fi
 
+    if [ -z "$2"  ]
+    then
+        dry_run_controller=""
+    else
+        dry_run_controller="--dry-run"
+    fi
+
     mkdir -p $output_dir
 
     files="sandbox"
@@ -29,6 +36,17 @@ SETUP_WITH_OUTPUT_DIR() {
     INFO "Output directory"
     echo "$output_dir"
     echo
+
+    INFO "Can has interactive displays?"
+    if [ -z "$2"  ]
+    then
+        echo "Yes, anvi'o will try to show you interactive displays that will require you to come back to the terminal and press CTRL+C to continue"
+        echo
+    else
+        echo "No interactive displays"
+        echo
+    fi
+
 
     INFO "Anvo'o version"
     anvi-profile --version
