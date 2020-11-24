@@ -535,10 +535,10 @@ def multi_index_pivot(df, index = None, columns = None, values = None):
     output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
     if isinstance(columns, list):
         output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
-        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values) 
+        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
         output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
     else:
-        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)    
+        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
     output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
     return output_df
 
@@ -580,7 +580,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -600,6 +600,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         The header for the first column ('key' if None)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
+    do_not_close_file_obj: boolean
+        If True, file object will not be closed after writing the dictionary to the file
 
     Returns
     =======
@@ -670,7 +672,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         else:
             f.write('%s\n' % '\t'.join(line))
 
-    f.close()
+    if not do_not_close_file_obj:
+        f.close()
 
     return output_path
 
@@ -3589,6 +3592,21 @@ def is_genes_db(db_path):
     if get_db_type(db_path) != 'genes':
         raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
     return True
+
+
+def is_gene_caller_id(gene_caller_id, raise_if_fail=True):
+    """Test whether a given `gene_caller_id` looks like a legitimate anvi'o gene caller id"""
+    try:
+        assert(int(gene_caller_id) >= 0)
+    except:
+        if raise_if_fail:
+            raise ConfigError(f"Anvi'o gene caller ids are represented by integers between 0 and infinity. "
+                              f"and what you provided ('{gene_caller_id}') doesn't look like one :/")
+        else:
+            return False
+
+    return True
+
 
 def is_kegg_modules_db(db_path):
     if get_db_type(db_path) != 'modules':

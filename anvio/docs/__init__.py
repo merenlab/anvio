@@ -70,7 +70,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "protein-structure": {
+    "protein-structure-txt": {
         "name": "PDB FILE",
         "type": "TXT",
         "provided_by_anvio": False,
@@ -565,6 +565,12 @@ ANVIO_ARTIFACTS ={
     "hmm-hits-matrix-txt": {
         "name": "HMM HITS MATRIX",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pn-ps-data": {
+        "name": "PN/PS OUTPUT",
+        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     }

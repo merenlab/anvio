@@ -15,11 +15,11 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.tables.tableops import Table
 from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
 
 
@@ -131,8 +131,11 @@ class TablesForHMMHits(Table):
 
         hmmpressed_files = self.hmmpress_sources(sources, tmp_directory_path)
 
+        self.run.info("HMM sources", ', '.join(sources.keys()))
+
         # here we will go through targets and populate target_files_dict based on what we find among them.
         targets = set([s['target'] for s in list(sources.values())])
+        have_hmm_sources_with_non_RNA_contig_context = False
         for target in targets:
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
 
@@ -141,9 +144,12 @@ class TablesForHMMHits(Table):
                                   "HMM profile that wishes to operate on %s context using the %s alphabet. It is not OK. You still could run "
                                   "HMM profiles that does not require gene calls to be present (such as the HMM profile that identifies Ribosomal "
                                   "RNAs in contigs, but for that you would have to explicitly ask for it by using the additional parameter "
-                                  "'--installed-hmm-profile Ribosomal_RNAs')." % (context, alphabet))
+                                  "'--installed-hmm-profile PROFILE_NAME_HERE')." % (context, alphabet))
 
-            self.run.info('Target found', '%s:%s' % (alphabet, context))
+            self.run.info('Alphabet/context target found', '%s:%s' % (alphabet, context))
+
+            if context == 'CONTIG' and alphabet != 'RNA':
+                have_hmm_sources_with_non_RNA_contig_context =True
 
             class Args: pass
             args = Args()
@@ -152,10 +158,10 @@ class TablesForHMMHits(Table):
 
             if context == 'GENE':
                 target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
-                contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
-                                                                           simple_headers=True,
-                                                                           rna_alphabet=True if alphabet=='RNA' else False,
-                                                                           report_aa_sequences=True if alphabet=='AA' else False)
+                contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                              simple_headers=True,
+                                                              rna_alphabet=True if alphabet=='RNA' else False,
+                                                              report_aa_sequences=True if alphabet=='AA' else False)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK "
@@ -166,6 +172,21 @@ class TablesForHMMHits(Table):
                     utils.export_sequences_from_contigs_db(self.db_path,
                                                            target_files_dict['%s:CONTIG' % alphabet],
                                                            rna_alphabet=True if alphabet=='RNA' else False)
+
+        if have_hmm_sources_with_non_RNA_contig_context:
+            # in that case, we should remind people what's up.
+            self.run.warning("The HMM profiles that are about to be run includes at least one HMM profile that runs on "
+                             "contigs and not genes. Thus, this HMM operation will not be working with gene calls anvi'o "
+                             "already knows about. Which means, the resulting hits will need to be added as 'new gene calls' "
+                             "into the contigs database. So far so good. But because we are in the realm of contigs rather "
+                             "than genes, the resulting HMM hits will unlikely correspond to open reading frames that are "
+                             "supposed to be translated (such as ribosomal RNAs). While anvi'o adds new gene calls to your "
+                             "contigs database for these hits, it will NOT report amino acid sequences for the "
+                             "new gene calls that will emerge from these HMMs, expecting you to judge whether this will "
+                             "influence your pangenomic analyses or other things you thought you would be doing with the "
+                             "result of this HMM search downstream. If you do not feel like being the judge of anything today "
+                             "you can move on yet remember to remember this if things look somewhat weird later on.",
+                             header="THE MORE YOU KNOW 🌈", lc="green")
 
         commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use, program_to_use=self.hmm_program)
 
@@ -192,7 +213,18 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                try:
+                    parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                except StupidHMMError as e:
+                    raise ConfigError(f"Unfortunately something went wrong while anvi'o was trying to parse some HMM output for your data. "
+                                      f"This error is typically due to contig names that are long and variable in length, which that "
+                                      f"confuses HMMER and so it generates output tables that are simply unparseable. Anvi'o does its best, "
+                                      f"but occasionally fails, which leads to this error. If you are curious why is this happening, you can take a "
+                                      f"look at this issue where this issue is described: https://github.com/merenlab/anvio/issues/1564. "
+                                      f"Solution to this is relatively easy: use `anvi-script-reformat-fasta` with `--simplify-names` flag "
+                                      f"BEFORE generating your contigs database as we advice you to. Sorry you came all this way just to "
+                                      f"find out about this :/ Here is the origial error message anvi'o produced from the code beneath: {e}.")
+
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
@@ -206,24 +238,6 @@ class TablesForHMMHits(Table):
                 # will go smoothly downstream. two, we will need to update our `search_results_dict` so it looks
                 # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
                 # steps are going to be taken care of in the following function. magic.
-
-                if source != "Ribosomal_RNAs":
-                    self.run.warning("You just called an HMM profile that runs on contigs and not genes. Because this HMM "
-                                     "operation is not directly working with gene calls anvi'o already knows about, the resulting "
-                                     "hits will need to be added as 'new gene calls' into the contigs database. So far so good. "
-                                     "But because we are in the contigs realm rater than genes realm, it is likely that "
-                                     "resulting hits will not correspond to open reading frames that are supposed to be "
-                                     "translated (such as ribosomal RNAs), because otherwise you would be working with genes "
-                                     "instad of defining CONTIGS as your context in that HMM profile you just used unless you "
-                                     "not sure what you are doing. Hence, anvi'o will not report amino acid sequences for the "
-                                     "new gene calls it will recover through these HMMs. Please take a moment and you be the "
-                                     "judge of whether this will influence your pangenomic analyses or other things you thought "
-                                     "you would be doing with the result of this HMM search downstream. If you do not feel like "
-                                     "being the judge of anything today you can move on yet remember to remember this if things "
-                                     "look somewhat weird later on.",
-                                     header="Psst. Your fancy HMM profile '%s' speaking" % source,
-                                     lc="green")
-
                 num_hits_before = len(search_results_dict)
                 search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
                 num_hits_after = len(search_results_dict)

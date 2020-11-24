@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Setting up the pan analysis directory"
@@ -122,7 +122,13 @@ anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
 anvi-import-state -p TEST/ANOTHER_TEST-PAN.db -s default-state.json -n default
 
 INFO "Displaying the initial pangenome analysis results"
-anvi-display-pan -p TEST/TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis"
+anvi-display-pan -p TEST/TEST-PAN.db \
+                 -g TEST-GENOMES.db \
+                 --title "A mock pangenome analysis" \
+                 $dry_run_controller
 
 INFO "Displaying the second pangenome analysis results"
-anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis (with --min-occurrence 2)"
+anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db \
+                 -g TEST-GENOMES.db \
+                 --title "A mock pangenome analysis (with --min-occurrence 2)" \
+                 $dry_run_controller

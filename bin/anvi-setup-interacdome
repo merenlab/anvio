@@ -17,6 +17,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ['interacdome-data']
 __description__ = "Setup InteracDome data"
+__resources__ = [("The setup step in the InteracDome technical blogpost", "http://merenlab.org/2020/07/22/interacdome/#anvi-setup-interacdome")]
 
 
 if __name__ == '__main__':
