@@ -971,8 +971,10 @@ class ContigsSuperclass(object):
                               "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
                               "file must match, and anvi'o will have to take care of it without your supervision.")
 
-        # finally getting our sequences initialized.
-        if not len(self.contig_sequences):
+        # finally getting our sequences initialized. please NOTE that we do it only if there are no
+        # contig sequences available OR if the gene caller ids of interest is not represented among
+        # those that were previously initialized.
+        if not len(self.contig_sequences) or not set(gene_caller_ids_list).issubset(self.gene_caller_ids_included_in_contig_sequences_initialized):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
         if include_aa_sequences or report_aa_sequences:
