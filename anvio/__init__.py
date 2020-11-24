@@ -2789,26 +2789,11 @@ D = {
              'help': "Prints a nicely formatted table of the default tRNA feature parameterizations "
                      "that are written to a tab-delimited .ini file by the option, `--default-feature-param-file`."}
                 ),
-    'include-metadata': (
-            ['--include-metadata'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
-                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
-                    "the sample columns."}
-                ),
     'include-zeros': (
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
             'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
-                ),
-    'only-complete': (
-            ['--only-complete'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
-                    "in any output files."}
                 ),
 }
 
