@@ -1777,6 +1777,13 @@ D = {
              'help': "Don't do a dry run. Just start the workflow! Useful when your job is so big it takes "
                      "hours to do a dry run."}
                 ),
+    'no-interactive': (
+            ['--no-interactive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't show anything interactive (if possible)."}
+                ),
+
     'verbose': (
             ['--verbose'],
             {'default': False,
