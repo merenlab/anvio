@@ -69,7 +69,8 @@ def main(args):
 
     try:
         for test in tests[args.suite]:
-            exitcode = subprocess.call('./%s %s' % (test, output_dir), shell=True)
+            command = f'./{test} {output_dir} {"no_interactive" if args.no_interactive else ""}'
+            exitcode = subprocess.call(command, shell=True)
             if exitcode != 0:
                 raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while "
                                   "running your tests :/ We hope that the reason is clear to you from the lines above. But if you "
@@ -98,6 +99,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {"help": "If you declare an outuput dir, all your data will be "
                               "stored in there, instead of being stored in a temporary directroy to be deleted once the tests are done. "
                               "This is particularly useful if you wish to play with general anvi'o output files."}))
+    parser.add_argument(*anvio.A('no-interactive'), **anvio.K('no-interactive'))
 
     args = anvio.get_args(parser)
 
