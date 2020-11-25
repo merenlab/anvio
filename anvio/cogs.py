@@ -125,7 +125,7 @@ class COGs:
         self.run.info('Directory to store temporary files', self.temp_dir_path)
         self.run.info('Directory will be removed after the run', self.remove_temp_dir_path)
 
-        
+
         if not aa_sequences_file_path:
             aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
             dbops.ContigsSuperclass(self.args).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
@@ -345,11 +345,41 @@ class COGsSetup:
         self.run = run
         self.progress = progress
 
+        # description of COG primary files per version
+        self.cog_files = {'COG14':
+                             {'cog2003-2014.csv': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
+                                  'func': self.format_p_id_to_cog_id_cPickle,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'PID-TO-CID.cPickle'},
+                              'cognames2003-2014.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
+                                  'func': self.format_cog_names,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'COG.txt'},
+                              'fun2003-2014.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
+                                  'func': self.format_categories,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'CATEGORIES.txt'},
+                              'prot2003-2014.fa.gz': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
+                                  'func': self.format_protein_db,
+                                  'type': 'database',
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
+                             },
+                         }
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
         self.cog_data_source = 'unknown'
+        self.cog_version = A('cog_version') or 'COG20'
+
+        if self.cog_version not in self.cog_files:
+            raise ConfigError(f"The COG versions known to anvi'o do not include {self.cog_version} :/ This is "
+                              f"what we know of: {', '.join(self.cog_files.keys())}")
 
         if cog_data_dir:
             self.COG_data_dir = cog_data_dir
@@ -373,27 +403,7 @@ class COGsSetup:
         self.run.info('COG data source', self.cog_data_source)
 
         self.files = {
-                'cog2003-2014.csv': {
-                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
-                    'func': self.format_p_id_to_cog_id_cPickle,
-                    'type': 'essential',
-                    'formatted_file_name': 'PID-TO-CID.cPickle'},
-                'cognames2003-2014.tab': {
-                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
-                    'func': self.format_cog_names,
-                    'type': 'essential',
-                    'formatted_file_name': 'COG.txt'},
-                'fun2003-2014.tab': {
-                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
-                    'func': self.format_categories,
-                    'type': 'essential',
-                    'formatted_file_name': 'CATEGORIES.txt'},
-                'prot2003-2014.fa.gz': {
-                    'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
-                    'func': self.format_protein_db,
-                    'type': 'database',
-                    'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
-        }
+                }
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
