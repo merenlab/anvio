@@ -761,6 +761,16 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
                 ),
+    'cog-version': (
+            ['--cog-version'],
+            {'default': None,
+             'type': str,
+             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
+                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
+                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
+                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
+                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
+                ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
             {'default': None,
