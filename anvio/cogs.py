@@ -79,6 +79,7 @@ class COGs:
         if len(args.__dict__):
             self.COG_setup = COGsSetup(args)
             self.COG_data_dir = self.COG_setup.COG_data_dir
+            self.COG_version = self.COG_setup.COG_version
             self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
             self.essential_files = self.COG_setup.get_essential_file_paths()
 
@@ -209,8 +210,8 @@ class COGs:
             # them later is possible. Am I embarrassed? Yes. Is there a better way of doing this efficiently? Absolutely. What time is it?
             # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
             # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
-            add_entry(gene_callers_id, 'COG_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
-            add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
+            add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
+            add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
 
         # store hits in contigs db.
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
