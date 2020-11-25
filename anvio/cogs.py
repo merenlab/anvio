@@ -374,36 +374,40 @@ class COGsSetup:
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
-        self.cog_data_source = 'unknown'
-        self.cog_version = A('cog_version') or 'COG20'
+        self.COG_data_source = 'unknown'
+        self.COG_version = A('cog_version') or 'COG20'
 
-        if self.cog_version not in self.cog_files:
-            raise ConfigError(f"The COG versions known to anvi'o do not include {self.cog_version} :/ This is "
-                              f"what we know of: {', '.join(self.cog_files.keys())}")
+        if self.COG_version not in self.cog_files:
+            raise ConfigError(f"The COG versions known to anvi'o do not include '{self.COG_version}' :/ This is "
+                              f"what we know of: {', '.join(self.cog_files.keys())}. This is one of those things "
+                              f"that should have never happened. We salute you.")
 
         if cog_data_dir:
             self.COG_data_dir = cog_data_dir
-            self.cog_data_source = 'The function call.'
+            self.COG_data_source = 'The function call.'
         elif A('cog_data_dir'):
             self.COG_data_dir = A('cog_data_dir')
-            self.cog_data_source = 'The command line parameter.'
+            self.COG_data_source = 'The command line parameter.'
         elif 'ANVIO_COG_DATA_DIR' in os.environ:
             self.COG_data_dir = os.environ['ANVIO_COG_DATA_DIR']
-            self.cog_data_source = 'The environmental variable.'
+            self.COG_data_source = 'The environmental variable.'
         else:
             self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
-            self.cog_data_source = "The anvi'o default."
+            self.COG_data_source = "The anvi'o default."
 
+        # WE WILL EXPAND THIS FURTHER WITH THE COG VERSION, but we want to do it after
+        # showing this form of the data path to the user so they are not confused:
         self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
+
+        self.run.info('COG version', self.COG_version)
+        self.run.info('COG data directory', self.COG_data_dir)
+        self.run.info('COG data source', self.COG_data_source)
 
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
+        self.COG_data_dir = os.path.join(self.COG_data_dir, self.COG_version)
 
-        self.run.info('COG data directory', self.COG_data_dir)
-        self.run.info('COG data source', self.cog_data_source)
-
-        self.files = {
-                }
+        self.files = self.cog_files[self.COG_version]
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
