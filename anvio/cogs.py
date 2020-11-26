@@ -463,6 +463,11 @@ class COGsSetup:
         # showing this form of the data path to the user so they are not confused:
         self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
 
+        # this is an additional check after the 2020 COG release.
+        if os.path.exists(os.path.join(self.COG_data_dir, 'COG.txt')):
+            # This means that this installation still has the old COG data. Let's try to solve it:
+            self.move_old_COG_data_to_its_new_location()
+
         self.run.info('COG version', self.COG_version, mc='green')
         self.run.info('COG data source', self.COG_data_source)
         self.run.info('COG base directory', self.COG_data_dir)
@@ -477,6 +482,39 @@ class COGsSetup:
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
+
+
+    def move_old_COG_data_to_its_new_location(self):
+        try:
+            filesnpaths.is_output_dir_writable(self.COG_data_dir)
+        except:
+            raise ConfigError(f"Please read this carefully: The NCBI has made a new release of COGs. To make room for that "
+                              f"while maintaining the old COG data from 2014 version, anvi'o needs to move some files around. "
+                              f"While anvi'o can do it automatically, your user does not seem to have permission to do that. "
+                              f"One alternative is to ask your system administrator to run this program on your behalf. It will "
+                              f"solve everything. OR you can ask them to do exactly these steps: (1) go to the directory "
+                              f"'{self.COG_data_dir}', (2) create a new directory called `COG14`, and (3) move everything in "
+                              f"'{self.COG_data_dir}' (WHICH INCLUDES the files: CATEGORIES.txt, COG.txt, DB_BLAST/ "
+                              f"DB_DIAMOND/, MISSING_COG_IDs.cPickle, PID-TO-CID.cPickle, and RAW_DATA_FROM_NCBI/ as well as the "
+                              f"hidden file .VERSION) into the new `COG14` directory. Then you will be golden.")
+
+        # we have the write permission, so let's do this.
+        tmp_dir = filesnpaths.get_temp_directory_path(just_the_path=True)
+        self.run.warning(f"This is a bit important: The NCBI has made a new release of COGs. To make room for that "
+                         f"while maintaining the old COG data from 2014 version, anvi'o needs to move some files around. "
+                         f"It seems you have the necessary permissions to write into anvi'o misc data directory, so anvi'o "
+                         f"will now attempt to do it automatically by first moving things to a temporary directory "
+                         f"('{tmp_dir}') and then moving them back into their new target location. If you have not been "
+                         f"having an exceptinally bad day, this should go smoothly. But if you see an error below, anvi'o is "
+                         f"very sorry for breaking itself on your system :( In which case please find us on our Slack channel "
+                         f"and we will try to help you to sort things out.")
+        self.progress.new("Moving files around")
+        shutil.move(self.COG_data_dir, tmp_dir)
+        os.makedirs(self.COG_data_dir)
+        shutil.move(tmp_dir, os.path.join(self.COG_data_dir, 'COG14'))
+
+        self.run.info_single("Congratulations! Anvi'o managed to migrate your old data into its new location without breaking "
+                             "things. We are all very proud here but let's never do this again.", mc='green', nl_after=1)
 
 
     def get_formatted_db_paths(self):
