@@ -14,6 +14,7 @@ import hashlib
 import anvio
 import anvio.db as db
 import anvio.tables as t
+import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -49,6 +50,7 @@ class GenomeStorage(object):
         if create_new:
             self.check_storage_path_for_create_new()
         else:
+            utils.is_genome_storage(self.storage_path)
             self.check_storage_path_for_load()
 
         self.db = db.DB(self.storage_path, self.version, new_database=create_new)
