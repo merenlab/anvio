@@ -19,11 +19,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'cogs-data',]
 __provides__ = ['functions',]
-__description__ = ("Run NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
+__description__ = ("This program runs NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
                    "COGs database was been designed as an attempt to classify proteins from completely "
-                   "sequenced genomes on the basis of the orthology concept. It is no longer actively "
-                   "developed, however, it is still very effective for daily needs. You may want to "
-                   "consider Pfams or the eggNOG database for more comprehensive functional insights")
+                   "sequenced genomes on the basis of the orthology concept.")
 
 
 run = terminal.Run()
