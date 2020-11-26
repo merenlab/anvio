@@ -531,8 +531,6 @@ class COGsSetup:
 
 
     def format_p_id_to_cog_id_cPickle(self, input_file_path, output_file_path):
-        progress.new('Formatting protein ids to COG ids file')
-        progress.update('...')
         num_lines_in_file = filesnpaths.get_num_lines_in_file(input_file_path)
 
         progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
