@@ -675,7 +675,7 @@ class COGsSetup:
             diamond.run.log_file_path = log_file_path
             diamond.makedb(output_db_path)
         else:
-            self.run.warning("Diamond does not seem to be installed on this system, so anvi'o is not going to "
+            self.run.warning("DIAMOND does not seem to be installed on this system, so anvi'o is not going to "
                              "generate a search database for it. Remember this when/if things go South.")
 
         if utils.is_program_exists('makeblastdb', dont_raise=True) and utils.is_program_exists('blastp', dont_raise=True):
