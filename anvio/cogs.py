@@ -475,17 +475,15 @@ class COGsSetup:
 
 
     def create(self):
-        run.info('COG data dir', self.COG_data_dir)
-
         if not os.path.exists(self.COG_data_dir):
             try:
-                os.mkdir(self.COG_data_dir)
+                os.makedirs(self.COG_data_dir)
                 open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
             except Exception as e:
-                raise ConfigError("So the COG data directory is not there, and anvi'o wants to create one. But it didn't "
-                                   "go that well. It could be due to permissions (which may require you to run this with sudo "
-                                   "or may need to ask your sys admin to do it for you since this is a one time operation), or "
-                                   "it could be due to something totally irrelevant. Here is the error message: '%s'" % e)
+                raise ConfigError(f"So the COG data directory is not there, and anvi'o wants to create one. But it didn't "
+                                  f"go that well. It could be due to permissions (which may require you to run this with sudo "
+                                  f"or may need to ask your sys admin to do it for you since this is a one time operation), or "
+                                  f"it could be due to something totally irrelevant. Here is the error message: {e}.")
 
         filesnpaths.is_output_dir_writable(self.COG_data_dir)
 
