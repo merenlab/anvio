@@ -317,7 +317,14 @@ def get_num_lines_in_file(file_path):
     if os.stat(file_path).st_size == 0:
         return 0
 
-    return sum(1 for line in open(file_path))
+    def blocks(files, size=65536):
+        while True:
+            b = files.read(size)
+            if not b: break
+            yield b
+
+    with open(file_path, "r") as f:
+        return sum(bl.count("\n") for bl in blocks(f))
 
 
 def check_output_directory(output_directory, ok_if_exists=False):
