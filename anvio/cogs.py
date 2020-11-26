@@ -562,7 +562,8 @@ class COGsSetup:
             self.cogs_found_in_proteins_fasta.add(COG)
 
             if p_id in p_id_to_cog_id:
-                p_id_to_cog_id[p_id].append(COG)
+                if COG not in p_id_to_cog_id[p_id]:
+                    p_id_to_cog_id[p_id].append(COG)
             else:
                 p_id_to_cog_id[p_id] = [COG]
 
