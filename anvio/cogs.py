@@ -531,13 +531,33 @@ class COGsSetup:
     def format_p_id_to_cog_id_cPickle(self, input_file_path, output_file_path):
         progress.new('Formatting protein ids to COG ids file')
         progress.update('...')
+        num_lines_in_file = filesnpaths.get_num_lines_in_file(input_file_path)
+
+        progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
 
         p_id_to_cog_id = {}
 
+        line_counter = 0
         for line in open(input_file_path, 'rU').readlines():
+            line_counter += 1
+
+            if line_counter % 500 == 0:
+                self.progress.increment(line_counter)
+                progress.update(f"{line_counter * 100 / num_lines_in_file:.2f}%")
+
             fields = line.strip('\n').split(',')
-            p_id = fields[0]
-            COG = fields[6]
+
+            # `p_id` should look just like the FASTA ids, and its location has changed between
+            # 2014 release and 2020 release.
+            if self.COG_version == 'COG14':
+                p_id = fields[0]
+                COG = fields[6]
+            elif self.COG_version == 'COG20':
+                p_id = fields[2].replace('.', '_')
+                COG = fields[6]
+            else:
+                raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                                  "parsing of a new generation of COG files.")
 
             self.cogs_found_in_proteins_fasta.add(COG)
 
@@ -546,6 +566,7 @@ class COGsSetup:
             else:
                 p_id_to_cog_id[p_id] = [COG]
 
+        progress.update("Serializing the data dictionary for future use (a.k.a, very pro stuff).")
         dictio.write_serialized_object(p_id_to_cog_id, output_file_path)
 
         progress.end()
