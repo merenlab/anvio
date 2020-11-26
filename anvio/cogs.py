@@ -624,7 +624,13 @@ class COGsSetup:
             if line.startswith('#'):
                 continue
 
-            category, description = line.strip('\n').split('\t')
+            if self.COG_version == 'COG14':
+                category, description = line.strip('\n').split('\t')
+            elif self.COG_version == 'COG20':
+                category, _, description = line.strip('\n').split('\t')
+            else:
+                raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                                  "parsing of a new generation of COG files.")
 
             # get rid of non-ascii chars:
             description = ''.join([i if ord(i) < 128 else '' for i in description])
