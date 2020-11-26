@@ -454,33 +454,24 @@ class COGsSetup:
                               f"that should have never happened. We salute you.")
 
         if cog_data_dir:
-            self.COG_data_dir = cog_data_dir
+            self.COG_base_dir = cog_data_dir
             self.COG_data_source = 'The function call.'
         elif A('cog_data_dir'):
-            self.COG_data_dir = A('cog_data_dir')
+            self.COG_base_dir = A('cog_data_dir')
             self.COG_data_source = 'The command line parameter.'
         elif 'ANVIO_COG_DATA_DIR' in os.environ:
-            self.COG_data_dir = os.environ['ANVIO_COG_DATA_DIR']
+            self.COG_base_dir = os.environ['ANVIO_COG_DATA_DIR']
             self.COG_data_source = 'The environmental variable.'
         else:
-            self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+            self.COG_base_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
             self.COG_data_source = "The anvi'o default."
 
-        # WE WILL EXPAND THIS FURTHER WITH THE COG VERSION, but we want to do it after
-        # showing this form of the data path to the user so they are not confused:
-        self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
-
-        # this is an additional check after the 2020 COG release.
-        if os.path.exists(os.path.join(self.COG_data_dir, 'COG.txt')):
-            # This means that this installation still has the old COG data. Let's try to solve it:
-            self.move_old_COG_data_to_its_new_location()
+        self.COG_base_dir = os.path.abspath(os.path.expanduser(self.COG_base_dir))
+        self.COG_data_dir = os.path.join(self.COG_base_dir, self.COG_version)
 
         self.run.info('COG version', self.COG_version, mc='green')
         self.run.info('COG data source', self.COG_data_source)
-        self.run.info('COG base directory', self.COG_data_dir)
-
-        self.COG_data_dir = os.path.join(self.COG_data_dir, self.COG_version)
-        self.run.info('COG data directory', self.COG_data_dir)
+        self.run.info('COG base directory', self.COG_base_dir)
 
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
