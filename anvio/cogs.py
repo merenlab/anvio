@@ -73,15 +73,22 @@ class COGs:
         if self.default_search_method not in self.available_search_methods:
             self.default_search_method = self.available_search_methods[0]
 
+        if len(args.__dict__):
+            self.initialize(args)
 
+
+    def initialize(self, args):
         self.hits = None # the search function will take care of this one.
 
-        if len(args.__dict__):
-            self.COG_setup = COGsSetup(args)
-            self.COG_data_dir = self.COG_setup.COG_data_dir
-            self.COG_version = self.COG_setup.COG_version
-            self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
-            self.essential_files = self.COG_setup.get_essential_file_paths()
+        # get an instance of the setup class
+        self.COG_setup = COGsSetup(args)
+
+        self.COG_data_dir = self.COG_setup.COG_data_dir
+        self.COG_base_dir = self.COG_setup.COG_base_dir
+        self.COG_version = self.COG_setup.COG_version
+        self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
+        self.essential_files = self.COG_setup.get_essential_file_paths()
+
 
 
     def process(self, aa_sequences_file_path=None):
