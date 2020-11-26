@@ -137,7 +137,13 @@ class COGs:
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
-        self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
+        if self.COG_version == 'COG14':
+            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
+        elif self.COG_version == 'COG20':
+            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
+        else:
+            raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                              "parsing of a new generation of COG files.")
 
         # store hits into the contigs database
         self.store_hits_into_contigs_db()
@@ -151,7 +157,14 @@ class COGs:
             self.run.warning("COGs class has no hits to process. Returning empty handed, but still adding COGs as "
                              "functional sources.")
             gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'COG_FUNCTION', 'COG_CATEGORY'})
+
+            if self.COG_version == 'COG14':
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG14_FUNCTION', 'COG14_CATEGORY'})
+            elif self.COG_version == 'COG20':
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
+            else:
+                raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                                  "parsing of a new generation of COG files.")
             return
 
         cogs_data = COGsData(self.args)
@@ -190,6 +203,7 @@ class COGs:
 
             annotations = []
             categories = []
+            pathways = []
             category_descriptions = []
             for COG_id in COG_ids:
                 # is missing?
@@ -206,12 +220,30 @@ class COGs:
                 # append annotation
                 annotations.append(cogs_data.cogs[COG_id]['annotation'])
 
+                if self.COG_version == 'COG14':
+                    pass
+                elif self.COG_version == 'COG20':
+                    if cogs_data.cogs[COG_id]['pathway']:
+                        pathways.append(cogs_data.cogs[COG_id]['pathway'])
+                else:
+                    raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                                      "parsing of a new generation of COG files.")
+
             # all these shitty heuristics... If there are multiple COG ids or categories, separate them from each other by '!!!' so parsing
             # them later is possible. Am I embarrassed? Yes. Is there a better way of doing this efficiently? Absolutely. What time is it?
             # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
             # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
-            add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
-            add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
+            if self.COG_version == 'COG14':
+                add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
+                add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
+            elif self.COG_version == 'COG20':
+                add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
+                add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
+                if len(pathways):
+                    add_entry(gene_callers_id, f'{self.COG_version}_PATHWAY', '!!!'.join(COG_ids), '!!!'.join(pathways), self.hits[gene_callers_id]['evalue'])
+            else:
+                raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                                  "parsing of a new generation of COG files.")
 
         # store hits in contigs db.
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -291,6 +323,7 @@ class COGsData:
 
         self.setup = COGsSetup(args)
         self.essential_files = self.setup.get_essential_file_paths()
+        self.COG_version = self.setup.COG_version
 
         self.cogs = None
         self.p_id_to_cog_id = None
@@ -312,7 +345,15 @@ class COGsData:
     def init(self):
         self.progress.new('Initializing COGs Data')
         self.progress.update('Reading COG functions ...')
-        self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
+
+        if self.COG_version == 'COG14':
+            self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
+        elif self.COG_version == 'COG20':
+            self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
+        else:
+            raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
+                              "parsing of a new generation of COG files.")
+
 
         self.progress.update('Reading COG categories ...')
         self.categories = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
