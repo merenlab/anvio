@@ -422,13 +422,15 @@ class COGsSetup:
         # showing this form of the data path to the user so they are not confused:
         self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
 
+        self.run.info('COG data source', self.COG_data_source)
+        self.run.info('COG base directory', self.COG_data_dir)
+
+        self.COG_data_dir = os.path.join(self.COG_data_dir, self.COG_version)
         self.run.info('COG version', self.COG_version)
         self.run.info('COG data directory', self.COG_data_dir)
-        self.run.info('COG data source', self.COG_data_source)
 
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
-        self.COG_data_dir = os.path.join(self.COG_data_dir, self.COG_version)
 
         self.files = self.cog_files[self.COG_version]
 
