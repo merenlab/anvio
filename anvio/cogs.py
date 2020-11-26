@@ -16,9 +16,9 @@ import anvio.dictio as dictio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.drivers.diamond import Diamond
-from anvio.drivers.blast import BLAST
 from anvio.errors import ConfigError
+from anvio.drivers.blast import BLAST
+from anvio.drivers.diamond import Diamond
 from anvio.tables.genefunctions import TableForGeneFunctions
 
 # just to make sure things don't break too far when they do:
