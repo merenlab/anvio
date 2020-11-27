@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Initializing raw BAM files"
@@ -242,6 +242,7 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 INFO "Generating per-nt position coverage values for a single gene with its 20nt flanks across samples"
 anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                         -c $output_dir/CONTIGS.db \
                          -o $output_dir/gene_caller_id_5_coverages.txt \
                          --gene-caller-id 5 \
                          --flank-length 20
@@ -436,6 +437,12 @@ anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
                                   --gene-caller-ids 3 \
                                   --export-gff3 \
                                   -o $output_dir/Sequence_for_gene_caller_id_3.gff
+
+INFO "Getting back the sequence for gene call 3 with flank-length of 50 nucleotides"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
+                                  --gene-caller-ids 3 \
+                                  --flank-length 50 \
+                                  -o $output_dir/Sequence_for_gene_caller_id_3_50nt.fa
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -710,7 +717,8 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --dry-run
 
 INFO "Firing up the interactive interface to display the contigs db stats"
-anvi-display-contigs-stats $output_dir/CONTIGS.db
+anvi-display-contigs-stats $output_dir/CONTIGS.db \
+                           $dry_run_controller
 
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -718,27 +726,36 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -A $files/additional_view_data.txt \
                  -t $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt \
                  -V $files/additional_view.txt \
-                 --split-hmm-layers
+                 --split-hmm-layers \
+                 $dry_run_controller
+
 
 INFO "Firing up the interface to display the split bin, Bin_1"
 anvi-interactive -c $output_dir/CONCOCT_BINS_SPLIT/Bin_1/CONTIGS.db \
                  -p $output_dir/CONCOCT_BINS_SPLIT/Bin_1/PROFILE.db \
-                 --title "Split bin, Bin_1"
+                 --title "Split bin, Bin_1" \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface with the blank profile"
 anvi-interactive -c $output_dir/CONTIGS.db \
-                 -p $output_dir/BLANK-PROFILE/PROFILE.db
+                 -p $output_dir/BLANK-PROFILE/PROFILE.db \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface in 'COLLECTION' mode"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
-                 -C CONCOCT
+                 -C CONCOCT \
+                 $dry_run_controller
 
 INFO "Firing up the interactive interface to refine a bin"
 anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
             -c $output_dir/CONTIGS.db \
             -C CONCOCT \
-            -b Bin_1
+            -b Bin_1 \
+            $dry_run_controller
+
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
@@ -753,4 +770,5 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
                  -C CONCOCT \
                  -b Bin_1 \
-                 --gene-mode
+                 --gene-mode \
+                 $dry_run_controller

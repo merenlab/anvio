@@ -1777,6 +1777,13 @@ D = {
              'help': "Don't do a dry run. Just start the workflow! Useful when your job is so big it takes "
                      "hours to do a dry run."}
                 ),
+    'no-interactive': (
+            ['--no-interactive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't show anything interactive (if possible)."}
+                ),
+
     'verbose': (
             ['--verbose'],
             {'default': False,
@@ -2085,7 +2092,7 @@ D = {
                      "may result in very large output files and millions of reports, but you are the "
                      "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter. "
                      "Also note that this flag controls indel reporting: normally '--min-coverage-for-variability' "
-                     "and '--min-indel-fraction' control whether or not indels should be reported, but with this "
+                     "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
                      "flag all indels are reported."}
                 ),
     'report-extended-deflines': (
@@ -2158,19 +2165,7 @@ D = {
                      "not attempt to make sense of variation in a given nucleotide position if it is covered less than "
                      "%(default)dX. You can change that minimum using this parameter. This parameter also controls the minimum "
                      "coverage for reporting indels. If an indel is observed at a position, yet the coverage of the position "
-                     "in the contig where the indel starts is less than this parameter, the indel will be discarded. For more "
-                     "indel filtering options, see '--min-indel-fraction'."}
-                ),
-    'min-indel-fraction': (
-            ['-I', '--min-indel-fraction'],
-            {'metavar': 'FLOAT',
-             'default': 0.05,
-             'type': float,
-             'help': "Anvi'o profiles indels, and with this parameter you can control what anvi'o considers worth reporting. "
-                     "Basically, anvi'o doesn't want to report an indel if it does not occur in enough reads. If the fraction "
-                     "of times the indel is observed (the indel 'count') divided by the nucleotide coverage at the position in "
-                     "the contig that the indel starts at is less than this parameter, the indel is discarded. The default "
-                     "is %(default)f."}
+                     "in the contig where the indel starts is less than this parameter, the indel will be discarded."}
                 ),
     'contigs-and-positions': (
             ['--contigs-and-positions'],
@@ -2801,26 +2796,11 @@ D = {
              'help': "Prints a nicely formatted table of the default tRNA feature parameterizations "
                      "that are written to a tab-delimited .ini file by the option, `--default-feature-param-file`."}
                 ),
-    'include-metadata': (
-            ['--include-metadata'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
-                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
-                    "the sample columns."}
-                ),
     'include-zeros': (
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
             'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
-                ),
-    'only-complete': (
-            ['--only-complete'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
-                    "in any output files."}
                 ),
 }
 
