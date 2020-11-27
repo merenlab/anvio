@@ -1,4 +1,4 @@
-This is the output tables that are displayed when you run %(anvi-estimate-scg-taxonomy)s or %(anvi-estimate-trna-taxnomy)s, but formatted as a tab-delimited text file. 
+This is the output tables that are displayed when you run %(anvi-estimate-scg-taxonomy)s or %(anvi-estimate-trna-taxonomy)s, but formatted as a tab-delimited text file. 
 
 To get this output, just provide the `-o` or the `-O` flag when running %(anvi-estimate-scg-taxonomy)s or %(anvi-estimate-trna-taxonomy)s. 
 
