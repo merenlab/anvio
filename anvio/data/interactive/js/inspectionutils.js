@@ -303,7 +303,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         }
         if(category == null) category = "none";
       } else if(colortype == "Source") {
-        if (gene.source == 'Ribosomal_RNAs') {
+        if (gene.source.startsWith('Ribosomal_RNA')) {
           category = 'rRNA';
         } else if (gene.source == 'Transfer_RNAs') {
           category = 'tRNA';

@@ -825,7 +825,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
                                                      ('Report variability full', T(self.p_meta['report_variability_full'])),
                                                      ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
-                                                     ('Min IN/DEL fraction', self.p_meta['min_indel_fraction']),
                                                     ],
                                          'contigs': [
                                                         ('Project name', self.a_meta['project_name']),

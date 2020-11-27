@@ -62,7 +62,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.max_contig_length = A('max_contig_length') or sys.maxsize
         self.min_mean_coverage = A('min_mean_coverage')
         self.min_coverage_for_variability = A('min_coverage_for_variability')
-        self.min_indel_fraction = A('min_indel_fraction')
         self.contigs_shall_be_clustered = A('cluster_contigs')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
@@ -192,7 +191,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'INDELs_profiled': not self.skip_INDEL_profiling,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
-                       'min_indel_fraction': self.min_indel_fraction,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
                        'description': self.description if self.description else '_No description is provided_'}
@@ -248,7 +246,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('min_mean_coverage', self.min_mean_coverage)
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
-        self.run.info('min_indel_fraction', self.min_indel_fraction)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('skip_INDEL_profiling', self.skip_INDEL_profiling)
         self.run.info('profile_SCVs', self.profile_SCVs)
@@ -694,7 +691,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
-                                                      min_indel_fraction=self.min_indel_fraction,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity)
 
@@ -1056,8 +1052,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("No such file: '%s'" % self.serialized_profile_path)
         if not self.min_coverage_for_variability >= 0:
             raise ConfigError("Minimum coverage for variability must be 0 or larger.")
-        if not self.min_indel_fraction >= 0:
-            raise ConfigError("Minimum indel fraction must be greater than or equal to 0.")
         if not self.min_mean_coverage >= 0:
             raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:

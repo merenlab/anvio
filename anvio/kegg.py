@@ -340,9 +340,11 @@ class KeggSetup(KeggContext):
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-setup-kegg-kofams
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories when testing this class
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
         self.args = args
         self.run = run
         self.progress = progress
@@ -355,10 +357,10 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
-        if not args.reset and not anvio.DEBUG:
+        if not args.reset and not anvio.DEBUG and not skip_init:
             self.is_database_exists()
 
-        if not self.kegg_archive_path:
+        if not self.kegg_archive_path and not skip_init:
             filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
@@ -726,9 +728,8 @@ class KeggSetup(KeggContext):
                     no_kofam_file_list.append(hmm_file)
 
         # now we concatenate the orphan KO hmms into the orphan data directory
-        remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
@@ -736,7 +737,7 @@ class KeggSetup(KeggContext):
                              % (len(no_kofam_file_list), self.orphan_data_dir))
 
         if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
@@ -744,7 +745,7 @@ class KeggSetup(KeggContext):
                              % (len(no_threshold_file_list), self.orphan_data_dir))
 
         if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d "
                              "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
@@ -1031,10 +1032,9 @@ class KeggRunHMMs(KeggContext):
 
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
-                                                                   simple_headers=True,
-                                                                   rna_alphabet=False,
-                                                                   report_aa_sequences=True)
+        contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['AA:GENE'],
+                                                      simple_headers=True,
+                                                      report_aa_sequences=True)
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)

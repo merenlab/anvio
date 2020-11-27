@@ -148,14 +148,15 @@ def is_output_file_writable(file_path, ok_if_exists=True):
     if not file_path:
         raise FilesNPathsError("No output file is declared...")
     if os.path.isdir(file_path):
-        raise FilesNPathsError("The path you have provided for your output file ('%s') already is used .. by "
-                               "a directory :/" % (os.path.abspath(file_path)))
+        raise FilesNPathsError(f"The path you have provided for your output file ('{os.path.abspath(file_path)}') "
+                               f"already is used by a directory :/")
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
-        raise FilesNPathsError("You do not have permission to generate the output file '%s'" % file_path)
+        raise FilesNPathsError(f"You do not have permission to generate the output file '{file_path}'")
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
-        raise FilesNPathsError("You do not have permission to update the contents of the file '%s' :/" % file_path)
+        raise FilesNPathsError(f"You do not have permission to update the contents of the file '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
-        raise FilesNPathsError("The file, '%s', already exists. anvio does not like overwriting stuff." % file_path)
+        raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
+                               f"avoid overwriting stuff.")
     return True
 
 
@@ -326,7 +327,8 @@ def check_output_directory(output_directory, ok_if_exists=False):
     output_directory = os.path.abspath(output_directory)
 
     if os.path.exists(output_directory) and not ok_if_exists:
-        raise FilesNPathsError("The output directory '%s' already exists. anvio does not like overwriting stuff." % output_directory)
+        raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
+                               f"overwriting stuff (except when it does (typical anvi'o))).")
 
     return output_directory
 
