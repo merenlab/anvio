@@ -626,7 +626,7 @@ class COGsSetup:
         if len(missing_cog_ids):
             self.run.warning("%d of %d COG IDs that appear in the list of orthology domains file (which links protein IDs "
                              "to COG names), are missing from the COG names file (which links COG IDs to function names and "
-                             "categoires). Because clearly even the files that are distributed together should not be expected to "
+                             "categories). Because clearly even the files that are distributed together should not be expected to "
                              "be fully compatible. Anvi'o thanks everyone for their contributions." % \
                                                         (len(missing_cog_ids), len(self.cogs_found_in_proteins_fasta)))
 
