@@ -137,7 +137,7 @@ def main(args):
             genestxt.write(f"{e['gene']}\t{e['accession']}\tpfam.xfam.org\n")
 
     # kind
-    W('kind.txt', 'userdefined')
+    W('kind.txt', os.path.basename(output_directory_path))
     W('noise_cutoff_terms.txt', '--cut_ga')
     W('reference.txt', "Anvi'o User, http://localhost")
     W('target.txt', "AA:GENE")
