@@ -19,7 +19,7 @@ __provides__ = ['trna-taxonomy-db']
 __resources__ = []
 __description__ = ("The purpose of this program is to setup necessary databases for tRNA genes collected from GTDB (https://gtdb.ecogenomic.org/), "
                    "genomes in your local anvi'o installation so taxonomy information for a given set of tRNA sequences can be identified "
-                   "using `anvi-run-trna-taxonomy` and made sense of via `anvi-estimate-trna-taxonomy`).")
+                   "using `anvi-run-trna-taxonomy` and made sense of via `anvi-estimate-trna-taxonomy`)")
 
 
 run = terminal.Run()
