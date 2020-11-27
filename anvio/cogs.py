@@ -140,7 +140,7 @@ class COGs:
                          f"It seems you have the necessary permissions to write into anvi'o misc data directory, so anvi'o "
                          f"will now attempt to do it automatically by first moving things to a temporary directory "
                          f"('{tmp_dir}') and then moving them back into their new target location. If you have not been "
-                         f"having an exceptinally bad day, this should go smoothly. But if you see an error below, anvi'o is "
+                         f"having an exceptionally bad day, this should go smoothly. But if you see an error below, anvi'o is "
                          f"very sorry for breaking itself on your system :( In which case please find us on our Slack channel "
                          f"and we will try to help you to sort things out.")
         self.progress.new("Moving files around")
