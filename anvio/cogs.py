@@ -703,18 +703,18 @@ class COGsSetup:
                 # COG0059	EH	Ketol-acid reductoisomerase	IlvC	Isoleucine, leucine, valine biosynthesis		1NP3
                 COG, category, function, nn, pathway, pubmed_id, PDB_id = line.strip('\n').split('\t')
 
-                self.cogs_found_in_cog_names_file.add(COG)
-
                 function = ''.join([i if ord(i) < 128 else '' for i in function])
                 function = function if not nn else f"{function} ({nn})"
                 function = function if not PDB_id else f"{function} (PDB:{PDB_id})"
                 function = function if not pubmed_id else f"{function} (PUBMED:{pubmed_id})"
 
                 output.write('\t'.join([COG, ', '.join(list(category)), function, pathway]) + '\n')
+
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
 
+            self.cogs_found_in_cog_names_file.add(COG)
             progress.end()
 
 
