@@ -22,7 +22,7 @@ __provides__ = ['trna-taxonomy']
 __resources__ = []
 __description__ = ("The purpose of this program is to affiliate tRNA gene sequences in an anvi'o contigs database with "
                    "taxonomic names. A properly setup local tRNA taxonomy database is required for this program to perform properly. "
-                   "After its successful run, `anvi-estimate-scg-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
+                   "After its successful run, `anvi-estimate-trna-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
 
 
 @terminal.time_program

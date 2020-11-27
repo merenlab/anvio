@@ -637,7 +637,7 @@ D = {
              'type': str,
              'metavar': 'FILE_PATH',
              'help': "If this flag is declared, anvi'o will store a comprehensive list of hits that led to the "
-                     "determination of the consensus hit per sequence (which is the only piece of inormation that). "
+                     "determination of the consensus hit per sequence (which is the only piece of information that "
                      "is stored in the contigs database)."}
                 ),
     'report-scg-frequencies': (
