@@ -223,7 +223,6 @@ function loadAll() {
                 $("#largeIndelInput").val(state['large-indel']);
 
                 if(state['show_indels'] == null) {
-                  console.log("test");
                   state['show_indels'] = (indels != null && !isEmpty(indels));
                 }
 
@@ -1714,24 +1713,24 @@ function Chart(options){
     var yGC = this.yScaleGC;
 
     this.area = d3.svg.area()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y0(this.height)
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
 
     this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(i)+4; })
+                            .x(function(d, i) { return xS(1+i)+4; })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
     this.reverseLine = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y(function(d, i) { if(i == 0) return ySLR(0); if(i == num_data_points - 1) return ySLR(0); return ySLR(d); })
                             .interpolate('step-before');
 
 
     // .x() needs to stay as a arrow function, it has reference to scope.
     this.gc_line = d3.svg.line()
-                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + (i * this.gc_content_step_size)); })
+                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + ((1+i) * this.gc_content_step_size)); })
                             .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
