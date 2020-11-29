@@ -19,7 +19,7 @@ anvi-script-process-genbank-metadata -m ncbi_metadata.txt
 
 ### Choosing an output directory
 
-Alternatively, you can specify a directory in which to generate the output
+Alternatively, you can specify a directory in which to generate the output:
 
 {{ codestart }}
 anvi-script-process-genbank-metadata -m ncbi_metadata.txt -o DOWNLOADED_GENOMES
