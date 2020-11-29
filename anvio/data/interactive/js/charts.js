@@ -1803,20 +1803,6 @@ function Chart(options){
             .style("stroke-width", "0.2")
             .attr("d", this.reverseLine);
 
-        /* Add SNV text background for readability */
-        var snvTextDefs = this.textContainer.append("defs")
-                          .append("filter")
-                          .attr("x", 0)
-                          .attr("y", 0)
-                          .attr("width", 1)
-                          .attr("height", 1)
-                          .attr("id", "solid");
-        snvTextDefs.append("feFlood")
-                   .attr("flood-color", "white")
-                   .attr("flood-opacity", 0.5);
-        snvTextDefs.append("feComposite")
-                   .attr("in", "SourceGraphic");
-
         this.textContainer.selectAll("text")
                                 .data(d3.entries(this.competing_nucleotides))
                                 .enter()
@@ -1828,7 +1814,9 @@ function Chart(options){
                                 .attr("font-size", "7px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
-                                .attr("filter", "url(#solid)")
+                                .attr("paint-order", "stroke")
+                                .attr("stroke", "#FFFFFF")
+                                .attr("stroke-width", "1px")
                                 .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                                 .attr('data-content', function(d) {
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
