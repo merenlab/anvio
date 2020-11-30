@@ -34,24 +34,34 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
     def get_anvio_epilogue(self):
-        url_main = f"http://merenlab.org/software/anvio/help/main/programs/{self.prog}"
-        url_versioned = f"http://merenlab.org/software/anvio/help/{anvio.anvio_version}/programs/{self.prog}"
+        version = "main" if anvio.anvio_version.endswith('master') else anvio.anvio_version
 
-        url = url_main if anvio.anvio_version.endswith('master') else url_versioned
+        general_help = f"https://merenlab.org/software/anvio/help/{version}"
+        program_help = f"{general_help}/{self.prog}"
+        separator = '━' * 80 + '\n'
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             epilog = textwrap.dedent(f'''
                  🔥 Find more on {self.prog} here:
 
-                    {url}
+                    {program_help}
             ''')
+        else:
+            epilog = ""
 
-            separator = '━' * 80 + '\n'
 
-            if atty:
-                return separator + attr('bold') + epilog + attr('reset')
-            else:
-                return separator + epilog
+        epilog += textwrap.dedent(f'''
+             🌊 All anvi'o programs and artifacts:
+
+                {general_help}
+        ''')
+
+
+        if atty:
+            return separator + attr('bold') + epilog + attr('reset')
+        else:
+            return separator + epilog
+
 
     def format_help(self):
         usage_formatter = argparse.ArgumentDefaultsHelpFormatter(self.prog)
