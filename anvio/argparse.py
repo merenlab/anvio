@@ -7,7 +7,6 @@ import sys
 import argparse
 import textwrap
 
-from colored import fore, back, style
 from colored import fg, bg, attr
 
 import anvio
@@ -34,6 +33,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
     def get_anvio_epilogue(self):
+        """Function that formats the additional message that appears at the end of help."""
+
         version = "main" if anvio.anvio_version.endswith('master') else anvio.anvio_version
 
         general_help = f"https://merenlab.org/software/anvio/help/{version}"
@@ -64,6 +65,14 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
     def format_help(self):
+        """Individual formatting of sections in the help text.
+
+        When we use the same formatter for all, we either would lose the
+        explicit spacing in the epilog, or lose the formatting in other
+        sections. In this function we change the formatters, render
+        different sections differently, and then concatenate everything
+        into a single output.
+        """
         usage_formatter = argparse.ArgumentDefaultsHelpFormatter(self.prog)
 
         # usage
@@ -106,10 +115,10 @@ class ArgumentParser(argparse.ArgumentParser):
     def get_args(self, parser):
         """A helper function to parse args anvi'o way.
 
-           This function allows us to make sure some ad hoc parameters such as `--debug`
-           can be used with any anvi'o program spontaneously even if they are not explicitly
-           defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
-           to see can still be sorted out.
+        This function allows us to make sure some ad hoc parameters, such as `--debug`,
+        can be used with any anvi'o program spontaneously even if they are not explicitly
+        defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
+        to see can still be sorted out.
         """
 
         allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
@@ -124,6 +133,3 @@ class ArgumentParser(argparse.ArgumentParser):
             parser.parse_args()
 
         return args
-
-
-
