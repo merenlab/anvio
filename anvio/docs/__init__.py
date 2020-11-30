@@ -304,9 +304,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "binding-frequencies": {
-        "name": "AMINO ACID BINDING FREQUENCIES",
-        "type": "CONCEPT",
+    "binding-frequencies-txt": {
+        "name": "AMINO ACID BINDING FREQUENCIES TEXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -562,5 +562,4 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     }
-    
 }
