@@ -350,6 +350,9 @@ class KeggSetup(KeggContext):
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
 
+        # initializing this to None here so that it doesn't break things downstream
+        self.pathway_dict = None
+
         # init the base class
         KeggContext.__init__(self, self.args)
 
@@ -918,7 +921,7 @@ class KeggSetup(KeggContext):
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
-            self.download_pathways()
+            #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
@@ -3303,9 +3306,10 @@ class KeggModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
-            if not self.pathway_dict:
-                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
-                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+            # This is commented out because we are not yet using pathways. But it should be uncommented when we get to the point of using them :)
+            # if not self.pathway_dict:
+            #     raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
+            #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 
     def touch(self):
