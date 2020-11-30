@@ -115,7 +115,7 @@ class COGs:
                                   f"for COGs on this system: {', '.join(data_available_for_cog_versions)}. You can "
                                   f"either specify which version you wish to use through the parameter `--cog-version`, or you can "
                                   f"run the following command to setup the data files for the version you wish to use: "
-                                  f"`anvi-setup-ncbi-cogs --version {self.COG_version}`, and re-run the same command that brought "
+                                  f"`anvi-setup-ncbi-cogs --cog-version {self.COG_version}`, and re-run the same command that brought "
                                   f"you here.")
 
 
