@@ -337,6 +337,7 @@ class GetSplitNamesInBins:
         self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.collection_name not in self.collections.collections_dict:
+            progress.reset()
             raise ConfigError('The collection id "%s" does not seem to be in the profile database. These are the '
                                'collections that are available through this profile database: "%s".'\
                                                     % (self.collection_name, ', '.join(self.collections.collections_dict)))

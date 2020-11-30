@@ -72,6 +72,7 @@ class TablesForHMMHits(Table):
         if not initializing_for_deletion:
             self.set_next_available_id(t.hmm_hits_table_name)
 
+
     def check_sources(self, sources):
         sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
 
@@ -86,6 +87,7 @@ class TablesForHMMHits(Table):
                                   "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
                                   "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
                                   "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
+
 
     def hmmpress_sources(self, sources, tmp_dir):
         """This function runs hmmpress on the hmm profiles.
@@ -110,6 +112,7 @@ class TablesForHMMHits(Table):
                 raise ConfigError("Sadly, anvi'o failed while attempting to compress the HMM model for source %s. You can check out the log file (%s) for "
                                   "more detailed information on why this happened." % (source, log_file_path))
         return hmmpressed_file_paths
+
 
     def populate_search_tables(self, sources={}):
         # make sure the output file is OK to write.
