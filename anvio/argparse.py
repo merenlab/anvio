@@ -28,6 +28,7 @@ atty = sys.stdout.isatty()
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, description="No description :/", epilog=None):
         super().__init__()
+
         self.description = description
         self.epilog = epilog or self.get_anvio_epilogue()
 
@@ -40,7 +41,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             epilog = textwrap.dedent(f'''
-                 🔥 Find more information and usage satements for {self.prog} here:
+                 🔥 Find more on {self.prog} here:
 
                     {url}
             ''')
