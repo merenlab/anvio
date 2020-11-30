@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -49,7 +49,7 @@ def write_stats_to_file(tables, output_file):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
                         help = "Anvio'o Contig databases to display statistics, \
                                 you can give multiple databases by seperating them with space.")
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:

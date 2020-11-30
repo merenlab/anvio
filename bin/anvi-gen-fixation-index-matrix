@@ -3,7 +3,7 @@
 """Fetches information from the variable positions table"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -32,7 +32,7 @@ __description__ = "Generate a pairwise matrix of a fixation indices between samp
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                                 0 so the results are reflective of a standard distance metric. \
                                 Provide this flag if you would prefer otherwise.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         if args.engine not in variability_engines:

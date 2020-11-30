@@ -4,7 +4,7 @@
 
 import os
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
@@ -117,7 +117,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASES', "Which anvi'o databases do you wish to work today?")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
     groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
 
     try:

@@ -4,7 +4,7 @@
 import os
 import sys
 import copy
-import argparse
+from anvio.argparse import ArgumentParser
 import shutil
 
 import anvio
@@ -203,7 +203,7 @@ class Migrater(object):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUTS', "You will literally give us any anvi'o database.")
     groupA.add_argument('input', metavar = 'DATABASE(S)', nargs='+', help = "Anvi'o database or config file for migration. You "

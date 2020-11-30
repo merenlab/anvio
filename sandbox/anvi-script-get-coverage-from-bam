@@ -6,7 +6,7 @@ import sys
 import pysam
 import numpy as np
 import pandas as pd
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.bamops as bamops
@@ -269,8 +269,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group(
         'REQUIRED',
@@ -361,7 +361,7 @@ if __name__ == '__main__':
                 "names can take a really long time if you have a large enough number of contigs. Use "
                 "this flag to forego checking, and find out the hard way.")
     )
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

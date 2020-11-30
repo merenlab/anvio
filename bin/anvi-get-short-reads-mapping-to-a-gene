@@ -91,9 +91,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "An anvi'o contigs database and one or more BAM files.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OUTPUT', "How should results be stored.")
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

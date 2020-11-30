@@ -3,7 +3,7 @@
 """Split an anvi'o profile into smaller pieces."""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.splitter as splitter
@@ -29,7 +29,7 @@ __description__ = ("Split an anvi'o pan or profile database into smaller, self-c
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         splitter.DBSplitter(args).get()(args).process()

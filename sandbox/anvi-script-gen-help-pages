@@ -7,6 +7,7 @@ import anvio
 import anvio.programs as programs
 import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -24,12 +25,11 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         docs = programs.AnvioDocs(args)
