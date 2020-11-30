@@ -12,6 +12,9 @@ from colored import fg, bg, attr
 import anvio
 import anvio.docs as docs
 
+from anvio.programs import Program
+from anvio.utils import is_program_exists as get_program_path
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -41,8 +44,11 @@ class ArgumentParser(argparse.ArgumentParser):
         program_help = f"{general_help}/{self.prog}"
         separator = '━' * 80 + '\n'
 
+        # starting with the requires / provides statements
+        epilog = self.get_requires_and_provides_statements_for_program()
+
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
-            epilog = textwrap.dedent(f'''
+            epilog += textwrap.dedent(f'''
                  🔥 Find more on {self.prog} here:
 
                     {program_help}
@@ -59,9 +65,40 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
         if atty:
-            return separator + attr('bold') + epilog + attr('reset')
+            return separator + epilog + '\n' + separator + attr('reset')
         else:
-            return separator + epilog
+            return separator + epilog + '\n' + separator
+
+
+    def get_requires_and_provides_statements_for_program(self):
+        """Formats and returns requires and provides statements for the program"""
+
+        requires_and_provides_statements = []
+
+        program = Program(get_program_path(self.prog))
+        requires = [v.id for v in program.meta_info['requires']['value']]
+        provides = [v.id for v in program.meta_info['provides']['value']]
+
+        def get_block(statement, header):
+            block = []
+            if len(requires):
+                split = header
+                for item in statement:
+                    addition = f"{item} / " if statement[-1] != item else f"{item}"
+                    if len(split + addition) > 80:
+                        block.append(split)
+                        split = f"{' ' * len(header)} {addition}"
+                    else:
+                        split += addition
+
+                block.append(split)
+                block.append("")
+            return block
+
+        requires_and_provides_statements.extend(get_block(requires, """🧀 Can consume: """))
+        requires_and_provides_statements.extend(get_block(provides, """🍕 Can provide: """))
+
+        return '\n' + '\n'.join(requires_and_provides_statements)
 
 
     def format_help(self):
