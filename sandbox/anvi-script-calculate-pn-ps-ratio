@@ -8,7 +8,7 @@ Citations: doi:10.1038/nature11711, doi:10.7717/peerj.2959 (and references there
 import os
 import sys
 import time
-import argparse
+from anvio.argparse import ArgumentParser
 
 import numpy as np
 import pandas as pd
@@ -190,7 +190,7 @@ def calculate_pN_pS_ratio(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupV = parser.add_argument_group('VARIABILITY', 'You provide two variability tables generated with anvi-gen-variability-profile:\
                                         one for SAAVs (generated with --engine AA) and for SCVs (generated with --engine CDN). They \
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                         'So if you have 10 genes and 100 samples, you would get 10*100=1000 separate values. If this flag is provided, '
                         'the output is not subdivided on a per-gene basis, and instead you will get 1 aggregated value for each sample.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         calculate_pN_pS_ratio(args)

@@ -32,9 +32,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASE', "An anvi'o contigs databaes to search for and  store the taxonomic\
                                         affiliations of tRNA genes.")
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                                                   information into the contigs database. But if the user wants more, they get more.")
     groupI.add_argument(*anvio.A('all-hits-output-file'), **anvio.K('all-hits-output-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

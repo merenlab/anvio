@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -42,7 +42,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT', 'The data you wish to cluster')
     groupA.add_argument('input_matrix', metavar='PATH', default=None,
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
     try:
-        args = anvio.get_args(parser)
+        args = parser.get_args(parser)
         main(args)
     except ConfigError as e:
         print(e)

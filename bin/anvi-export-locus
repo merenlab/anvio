@@ -29,7 +29,7 @@
 """
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -64,7 +64,7 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
     groupD.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         locus_splitter = LocusSplitter(args)

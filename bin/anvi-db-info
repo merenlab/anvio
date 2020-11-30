@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.db as db
@@ -194,7 +194,7 @@ class DatabaseInfo:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('Input', "The database path you wish to access.")
     groupA.add_argument("input", metavar = "DATABASE_PATH", nargs=None, help = "An anvi'o database for pan, profile, contigs, or auxiliary data")
