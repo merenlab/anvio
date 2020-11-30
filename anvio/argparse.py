@@ -49,7 +49,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             epilog += textwrap.dedent(f'''
-                 🔥 Find more on {self.prog} here:
+                 🔥 More on `{self.prog}`:
 
                     {program_help}
             ''')
