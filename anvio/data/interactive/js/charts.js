@@ -1808,12 +1808,15 @@ function Chart(options){
                                 .enter()
                                 .append("text")
                                 .attr("class", "SNV_text")
-                                .attr("x", function (d) { return xS(d.key); })
+                                .attr("x", function (d) { return xS(1+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
                                 .attr("font-size", "7px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
+                                .attr("paint-order", "stroke")
+                                .attr("stroke", "#FFFFFF")
+                                .attr("stroke-width", "1px")
                                 .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                                 .attr('data-content', function(d) {
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
@@ -1924,7 +1927,7 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(d.value['pos']); })
+                              .attr("x", function (d) { return xS(1+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
@@ -1998,7 +2001,7 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
-    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.value['pos']); });
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(1+parseInt(d.key)); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(1+d.value['pos']); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
