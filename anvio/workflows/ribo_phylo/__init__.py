@@ -28,13 +28,13 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 
-# class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
-class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
+class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
+# class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ribo_phylo')
 
-        # MetagenomicsWorkflow.__init__(self)
+        MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
         self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins',
                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
@@ -108,16 +108,21 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             })
 
         # Workflow directory structure
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "01_SCG_HMM_HITS"})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "02_SCG_TAXONOMY"})
-        self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "04_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "05_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "06_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "07_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "08_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "09_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "10_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+
+        # The magical line that will put the whole metagenomics workflow into a dir to keep things organized, thanks Sam!
+        self.dirs_dict = {directory: 'METAGENOMICS_WORKFLOW/' + dir_path for directory,dir_path in self.dirs_dict.items()}
+
+        # Adding directories specific to Ribo_phylo workflow
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'RIBO_PHYLO_WORKFLOW/01_SCG_HMM_HITS'})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "RIBO_PHYLO_WORKFLOW/02_SCG_TAXONOMY"})
+        self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "RIBO_PHYLO_WORKFLOW/03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "RIBO_PHYLO_WORKFLOW/04_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "RIBO_PHYLO_WORKFLOW/05_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "RIBO_PHYLO_WORKFLOW/06_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "RIBO_PHYLO_WORKFLOW/07_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "RIBO_PHYLO_WORKFLOW/08_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "RIBO_PHYLO_WORKFLOW/09_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "RIBO_PHYLO_WORKFLOW/10_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
@@ -198,13 +203,13 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             #     target_files.append(target_file)
 
             # cat_SCG_NT_to_one_fasta
-            tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
 
-            tail_path = "%s_all_leeway_external_gene_calls.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_all_leeway_external_gene_calls.tsv" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
 
             # VERY important last rule, turn on when you want to actually complete the whole workflow
             ##################
