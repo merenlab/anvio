@@ -83,7 +83,6 @@ def gen_paired_end_reads_from_fastq(args):
             progress.increment(i)
             progress.update('%d / %d' % (i, fastq.num_reads))
 
-        read_len = len(read.seq)
         read1_len = len(read.seq)//2
 
         read1_seq = read.seq[:read1_len]
