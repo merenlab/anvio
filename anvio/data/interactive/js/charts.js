@@ -418,7 +418,7 @@ function drawHighlightBoxes() {
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
                   .attr("height", boxH)
-                  .attr("fill", endpts.includes(i) ? "red" : "blue")
+                  .attr("fill", endpts.includes(i) ? "red" : "#989898")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
@@ -433,16 +433,16 @@ function drawAAHighlightBoxes() {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     var marked = endpts.includes(box_num) || endpts.includes(box_num+2);
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : 'blue');
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : '#989898');
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
 
     if(endpts.includes(box_num)) {
-      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', 'blue');
+      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', '#989898');
     } else if(endpts.includes(box_num+2)) {
-      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', 'blue');
+      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', '#989898');
     }
   });
 }
