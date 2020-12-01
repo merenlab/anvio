@@ -72,6 +72,8 @@ if __name__ == '__main__':
             if not A('output_file'):
                 raise ConfigError("You set the --report-as-text flag but didn't give any --output-file. ")
 
+        d = interactive.ContigsInteractive(args)
+
         if A('output_file'):
             write_stats_to_file(d.tables, A('output_file'))
 
@@ -81,7 +83,6 @@ if __name__ == '__main__':
                 sys.exit()
 
             args.mode = 'contigs'
-            d = interactive.ContigsInteractive(args)
             port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
 
             app = BottleApplication(d)
