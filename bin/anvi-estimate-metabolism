@@ -39,9 +39,9 @@ def main(args):
         m.estimate_metabolism()
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
                                                    "The minimum you must provide this program is a contigs database. In which case "
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('store-json-without-estimation'), **anvio.K('store-json-without-estimation'))
     groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -25,9 +25,9 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory for COG data to be stored. If you leave it\
                         as is without specifying anything, the default destination for the data directory will be used to set things\
                         up. The advantage of it is that everyone will be using a single data directory, but then you may need\
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         setup = COGsSetup(args)

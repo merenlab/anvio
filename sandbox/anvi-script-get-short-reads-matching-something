@@ -163,8 +163,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('fastq_files', nargs='+', help='One or more FASTQ formatted files', metavar='FASTQ_FILES')
     parser.add_argument('--match-sequence', required=True, metavar='SHORT SEQUENCE',
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument('--stop-after', metavar='INT', type=int, default=0,
                         help="Stop after X number of hits because who needs data.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

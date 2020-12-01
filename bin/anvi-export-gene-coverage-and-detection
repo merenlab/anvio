@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -126,7 +126,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Anvi'o databases to read from")
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
     groupC.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

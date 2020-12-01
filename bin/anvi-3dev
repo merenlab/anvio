@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
 
 import anvio
 import anvio.utils as utils
@@ -10,6 +9,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
@@ -32,7 +32,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupS = parser.add_argument_group("STRUCTURE", "Information related to the structure database, which can be \
                                                      created with anvi-gen-structure-database.")
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
     try:
-        args = anvio.get_args(parser)
+        args = parser.get_args(parser)
         args.mode = 'structure'
 
         d = interactive.StructureInteractive(args)
