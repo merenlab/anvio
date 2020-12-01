@@ -159,7 +159,7 @@ class ArgumentParser(argparse.ArgumentParser):
         else:
             description_text = ['⚙  Program description:', '']
 
-        description_text.extend([textwrap.indent(l, '   ') for l in textwrap.wrap(textwrap.dedent(self.description), width=77)])
+        description_text.extend([textwrap.indent(l, '   ') for l in textwrap.wrap(" ".join(textwrap.dedent(self.description).split()), width=77)])
         description_formatter.add_text('\n'.join(description_text))
 
         # epilog
