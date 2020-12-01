@@ -88,8 +88,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--suite', default='full',
                         help="Suite of tests to execute. By default this program will execute a full suite of example anvi'o\
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                               "This is particularly useful if you wish to play with general anvi'o output files."}))
     parser.add_argument(*anvio.A('no-interactive'), **anvio.K('no-interactive'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         signal.signal(signal.SIGINT, __catch_sig)

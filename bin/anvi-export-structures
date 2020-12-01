@@ -3,7 +3,7 @@
 
 import sys
 import anvio
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
@@ -55,7 +55,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))

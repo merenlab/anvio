@@ -215,8 +215,8 @@ def sanity_check(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('data', metavar = "TAB DELIMITED FILE",
                         help = 'The input file that describes bin IDs for each split or contig.')
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
     parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
 
     try:

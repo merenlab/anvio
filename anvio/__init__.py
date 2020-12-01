@@ -3,11 +3,11 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-import argparse
 import os
 import sys
 import json
 import copy
+import argparse
 import platform
 
 from tabulate import tabulate
@@ -56,29 +56,6 @@ except Exception:
 class EmptyArgs(argparse.Namespace):
     def __init__(self):
         super().__init__()
-
-
-def get_args(parser):
-    """A helper function to parse args anvi'o way.
-
-       This function allows us to make sure some ad hoc parameters such as `--debug`
-       can be used with any anvi'o program spontaneously even if they are not explicitly
-       defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
-       to see can still be sorted out.
-    """
-
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
-
-    args, unknown = parser.parse_known_args()
-
-    # if there are any args in the unknown that we do not expect to find
-    # we we will make argparse complain about those.
-    if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
-        for f in allowed_ad_hoc_flags:
-            parser.add_argument(f, action='store_true')
-        parser.parse_args()
-
-    return args
 
 
 import anvio.constants as constants
