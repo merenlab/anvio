@@ -41,33 +41,28 @@ class ArgumentParser(argparse.ArgumentParser):
         version = "main" if anvio.anvio_version.endswith('master') else anvio.anvio_version
 
         general_help = f"https://merenlab.org/software/anvio/help/{version}"
-        program_help = f"{general_help}/{self.prog}"
-        separator = '━' * 80 + '\n'
+        program_help = f"{general_help}/programs/{self.prog}"
 
         # starting with the requires / provides statements
         epilog = self.get_requires_and_provides_statements_for_program()
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
-            epilog += textwrap.dedent(f'''
-                 🔥 More on `{self.prog}`:
-
-                    {program_help}
-            ''')
+            if atty:
+                epilog += f'''\n🔥 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('blue') + program_help + attr('reset')}'''
+            else:
+                epilog += f'''\n🔥 More on `{self.prog}`:\n\n   {program_help}'''
         else:
             epilog = ""
 
-
-        epilog += textwrap.dedent(f'''
-             🌊 All anvi'o programs and artifacts:
-
-                {general_help}
-        ''')
-
+        if atty:
+            epilog += f'''\n\n🌊 {attr('bold')}All anvi'o programs and artifacts:{attr('reset')}\n\n   {fg('blue') + general_help + attr('reset')}'''
+        else:
+            epilog += f'''\n\n🌊 All anvi'o programs and artifacts:\n\n   {general_help}'''
 
         if atty:
-            return separator + epilog + '\n' + separator + attr('reset')
+            return epilog + attr('reset')
         else:
-            return separator + epilog + '\n' + separator
+            return epilog
 
 
     def get_requires_and_provides_statements_for_program(self):
@@ -80,23 +75,45 @@ class ArgumentParser(argparse.ArgumentParser):
         provides = [v.id for v in program.meta_info['provides']['value']]
 
         def get_block(statement, header):
-            block = []
+            blocks = []
             if len(requires):
-                split = header
+                split = []
                 for item in statement:
-                    addition = f"{item} / " if statement[-1] != item else f"{item}"
-                    if len(split + addition) > 80:
-                        block.append(split)
-                        split = f"{' ' * len(header)} {addition}"
+                    addition = [item, " / "] if statement[-1] != item else [item]
+                    if len(' '.join(['   '] + split + addition)) > 90:
+                        blocks.append(split)
+                        split = addition
                     else:
-                        split += addition
+                        split.extend(addition)
 
-                block.append(split)
-                block.append("")
-            return block
+                blocks.append(split)
+                blocks.append([''])
 
-        requires_and_provides_statements.extend(get_block(requires, """🧀 Can consume: """))
-        requires_and_provides_statements.extend(get_block(provides, """🍕 Can provide: """))
+            for i in range(0, len(blocks)):
+                block = blocks[i]
+                if atty:
+                    block = [f"{fg('red') + b + attr('reset')}" if not b.strip() == '/' else b for b in block]
+                else:
+                    pass
+
+                block.insert(0, '   ')
+
+                blocks[i] = block
+
+            if atty:
+                blocks.insert(0, attr('bold') + header + attr('reset'))
+            else:
+                blocks.insert(0, header)
+
+            blocks.insert(1, "")
+
+            blocks = [''.join(b) for b in blocks]
+
+            return '\n'.join(blocks)
+
+
+        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume: """))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide: """))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
@@ -110,18 +127,15 @@ class ArgumentParser(argparse.ArgumentParser):
         different sections differently, and then concatenate everything
         into a single output.
         """
+
+        # we get our formatters here, fill them up down bleow, and finally render them at the end:
         usage_formatter = argparse.ArgumentDefaultsHelpFormatter(self.prog)
+        description_formatter = argparse.RawDescriptionHelpFormatter(self.prog)
+        epilog_formatter = argparse.RawDescriptionHelpFormatter(prog=self.prog)
+        separator_formatter = argparse.RawDescriptionHelpFormatter(prog=self.prog)
 
         # usage
         usage_formatter.add_usage(self.usage, self._actions, self._mutually_exclusive_groups)
-
-        # description
-        if atty:
-            description_text =  attr('bold') + self.description + attr('reset')
-        else:
-            description_text =  self.description
-
-        usage_formatter.add_text(description_text)
 
         # positionals, optionals and user-defined groups
         for action_group in self._action_groups:
@@ -136,17 +150,29 @@ class ArgumentParser(argparse.ArgumentParser):
             usage_formatter.add_arguments(action_group._group_actions)
             usage_formatter.end_section()
 
+        # separator
+        separator_formatter.add_text('━' * 80 + '\n')
+
+        # description
+        if atty:
+            description_text = [attr('bold') + '⚙  Program description:' + attr('reset'), '']
+        else:
+            description_text = ['⚙  Program description:', '']
+
+        description_text.extend([textwrap.indent(l, '   ') for l in textwrap.wrap(textwrap.dedent(self.description), width=77)])
+        description_formatter.add_text('\n'.join(description_text))
+
         # epilog
-        epilog_formatter = argparse.RawDescriptionHelpFormatter(prog=self.prog)
         epilog_formatter.add_text(self.epilog)
 
         # determine help from format above
-        if atty:
-            help_text = usage_formatter.format_help().replace(":\n", "\n") + "\n" + epilog_formatter.format_help()
-        else:
-            help_text = usage_formatter.format_help() + "\n" + epilog_formatter.format_help()
+        help_text = '\n'.join([usage_formatter.format_help().replace(":\n", "\n") if atty else usage_formatter.format_help(),
+                               separator_formatter.format_help(),
+                               description_formatter.format_help(),
+                               epilog_formatter.format_help(),
+                               separator_formatter.format_help()]) + '\n'
 
-        return help_text + "\n"
+        return help_text
 
 
     def get_args(self, parser):
