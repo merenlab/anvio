@@ -275,11 +275,13 @@ function loadAll() {
                 }
                 if(state['show_snvs'] && numSNVs > 1000) {
                   state['show_snvs'] = false;
-                  $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                  $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.snvs-disabled").fadeIn(300);
                 }
                 if(state['show_indels'] && numIndels > 1000) {
                   state['show_indels'] = false;
-                  $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                  $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.indels-disabled").fadeIn(300);
                 }
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
