@@ -43,6 +43,8 @@ var brush;
 var inspect_mode;
 var highlightBoxes;
 var show_nucleotides = true;
+var maxNucleotidesInWindow = 300;
+var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
 
@@ -756,7 +758,7 @@ function display_nucleotides() {
   let start = parseInt($('#brush_start').val());
   let end = parseInt($('#brush_end').val());
 
-  if(end - start > 300 || end - start < 30) {
+  if(end - start > maxNucleotidesInWindow || end - start < minNucleotidesInWindow) {
     contextSvg.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
@@ -1604,6 +1606,9 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
+    $('#brush_start').val(contextXScale.domain()[0]);
+    $('#brush_end').val(contextXScale.domain()[1]);
+
     if(show_nucleotides) display_nucleotides();
     if(state['show_highlights']) drawHighlightBoxes();
     setSelectionBoxListener();
@@ -1808,7 +1813,7 @@ function Chart(options){
                                 .enter()
                                 .append("text")
                                 .attr("class", "SNV_text")
-                                .attr("x", function (d) { return xS(1+parseInt(d.key)); })
+                                .attr("x", function (d) { return xS(0.5+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
                                 .attr("font-size", "7px")
@@ -1927,7 +1932,7 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(1+d.value['pos']); })
+                              .attr("x", function (d) { return xS(0.5+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
@@ -2001,7 +2006,15 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
-    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(1+parseInt(d.key)); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(1+d.value['pos']); });
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
+
+    let numNucl = $('#brush_end').val()-$('#brush_start').val();
+    let mk_font_size = 2000/numNucl;
+    if(mk_font_size < 7) mk_font_size = 7;
+    if(mk_font_size > 36) mk_font_size = 36;
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
+
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
