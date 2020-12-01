@@ -36,8 +36,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
-
     parser = ArgumentParser(__description__)
 
     groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
