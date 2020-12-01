@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
+
+from anvio.errors import ConfigError, FilesNPathsError
 
 SOME_GENOME_SIZE = 42
 

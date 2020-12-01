@@ -5,7 +5,6 @@ import sys
 
 import anvio
 import anvio.agglomeration as agglomeration
-import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError

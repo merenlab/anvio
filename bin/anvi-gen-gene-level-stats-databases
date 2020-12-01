@@ -4,7 +4,8 @@
 
 import os
 import sys
-from anvio.argparse import ArgumentParser
+
+from argparse import Namespace
 
 import anvio
 import anvio.dbops as dbops
@@ -12,6 +13,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 
@@ -103,11 +105,11 @@ def main(args):
                 continue
 
         # we don't have a genes database, so we will create one.
-        profile = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db,
-                                                             contigs_db=args.contigs_db,
-                                                             collection_name=args.collection_name,
-                                                             bin_id=bin_name,
-                                                             inseq_stats=args.inseq_stats,),
+        profile = dbops.ProfileSuperclass(Namespace(profile_db=args.profile_db,
+                                                    contigs_db=args.contigs_db,
+                                                    collection_name=args.collection_name,
+                                                    bin_id=bin_name,
+                                                    inseq_stats=args.inseq_stats,),
                                           r=terminal.Run(verbose=False))
 
         profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,

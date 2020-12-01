@@ -3,12 +3,12 @@
 
 import sys
 import random
-from anvio.argparse import ArgumentParser
 import configparser
 
 import anvio
 import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 

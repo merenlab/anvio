@@ -4,13 +4,12 @@
 import os
 import sys
 import glob
-import stat
 import uuid
 import shutil
 import zipfile
-from anvio.argparse import ArgumentParser
 import requests
 import subprocess
+
 from distutils.spawn import find_executable
 
 import anvio
@@ -18,7 +17,8 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import UpgradeError
+from anvio.argparse import ArgumentParser
+from anvio.errors import UpgradeError, ConfigError
 
 __description__ = "Download and install minor releases of anvi'o from a Github repository"
 

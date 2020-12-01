@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import anvio.terminal as terminal
 import anvio.kegg as kegg
 
 from anvio.errors import ConfigError, FilesNPathsError
