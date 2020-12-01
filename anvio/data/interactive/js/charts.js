@@ -2013,8 +2013,8 @@ Chart.prototype.showOnly = function(b){
 
     let numNucl = $('#brush_end').val()-$('#brush_start').val();
     let mk_font_size = 2000/numNucl;
-    if(mk_font_size < 7) mk_font_size = 7;
-    if(mk_font_size > 36) mk_font_size = 36;
+    if(mk_font_size < 5) mk_font_size = 5;
+    if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
 
