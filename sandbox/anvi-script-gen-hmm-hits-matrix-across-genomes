@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -10,6 +9,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.hmmopswrapper as hmmopswrapper
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 

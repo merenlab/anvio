@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import pysam
 import numpy as np
 import pandas as pd
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -269,7 +267,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group(

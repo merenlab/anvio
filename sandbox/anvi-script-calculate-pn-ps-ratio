@@ -7,8 +7,6 @@ Citations: doi:10.1038/nature11711, doi:10.7717/peerj.2959 (and references there
 
 import os
 import sys
-import time
-from anvio.argparse import ArgumentParser
 
 import numpy as np
 import pandas as pd
@@ -21,8 +19,9 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.variabilityops import variability_engines, VariabilityData
+from anvio.variabilityops import VariabilityData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"

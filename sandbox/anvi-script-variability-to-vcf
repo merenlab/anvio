@@ -6,7 +6,6 @@ Converts anvi'o variability output to VCF
 
 
 import sys
-from anvio.argparse import ArgumentParser
 import datetime
 
 import numpy as np
@@ -20,6 +19,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
