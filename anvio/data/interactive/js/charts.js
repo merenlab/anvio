@@ -383,9 +383,11 @@ function loadAll() {
 
                 $('#toggle_snv_box').on('change', function() {
                   toggleSNVs();
+                  if($('div.snvs-disabled').length > 0) $('div.snvs-disabled').remove();
                 });
                 $('#toggle_indel_box').on('change', function() {
                   toggleIndels();
+                  if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -1818,7 +1820,7 @@ function Chart(options){
                                 .attr("x", function (d) { return xS(0.5+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
-                                .attr("font-size", "7px")
+                                .attr("font-size", "5px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
                                 .attr("paint-order", "stroke")
