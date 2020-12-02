@@ -225,93 +225,6 @@ class SummarizerSuperClass(object):
             return open(file_path, 'w')
 
 
-    def functional_enrichment_stats(self):
-        '''
-            Compute functional enrichment.
-
-            To learn more refer to the docummentation:
-                anvi-get-enriched-functions-per-pan-group -h
-        '''
-        # Before we do anything let's make sure the user has R installed
-        utils.is_program_exists('Rscript')
-
-        # Let's make sure all the required packages are installed
-        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
-        missing_packages = []
-        log_file = filesnpaths.get_temp_file_path()
-        package_dict = utils.get_required_packages_for_enrichment_test()
-        for lib in package_dict:
-            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
-            if ret_val != 0:
-                missing_packages.append(lib)
-
-        if missing_packages:
-            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                              "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                      {'missing': ', '.join(missing_packages),
-                                                                       'conda': ', '.join(['"%s"' % package_dict[i] for i in missing_packages]),
-                                                                       'example': missing_packages[0]})
-
-        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        output_file_path = A('output_file')
-        tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
-
-        enrichment_file_path = output_file_path
-        if not enrichment_file_path:
-            # if no output was requested it means a programmer is calling this function
-            # in that case, we will use a tmp file for the enrichment output
-            enrichment_file_path = filesnpaths.get_temp_file_path()
-
-        # set the tmp output_file for the functional occurrence.
-        # this is a little hacky, but allows for the functional occurrence to be used without
-        # the functional enrichment (if we will want that at some point)
-        self.args.output_file = tmp_functional_occurrence_file
-
-        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            if not self.just_do_it:
-                raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
-
-        # Call functional occurrence. Output is saved to the tmp file
-        self.functional_occurrence_stats()
-
-        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
-                                                                                      output_file_path)
-
-        log_file = filesnpaths.get_temp_file_path()
-        self.progress.new('Functional enrichment analysis')
-        self.progress.update('Running enrichment analysis')
-        utils.run_command(cmd, log_file)
-        self.progress.end()
-        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
-                              'We don\'t know what happened, but this log file could contain some clues: %s' % log_file)
-
-        if filesnpaths.is_file_empty(enrichment_file_path):
-            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
-                              'An output file was created, but it is empty '
-                              'We don\'t know why this happened, but this log file could contain some clues: %s' % log_file)
-
-        run.info('Functional enrichment summary log file:', log_file)
-        run.info('Functional enrichment summary', output_file_path)
-
-        if not output_file_path:
-            # if a programmer called this function then we return a dict
-            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
-
-
 class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     """Creates a dictionary of summary for anvi'o pan profiles"""
     def __init__(self, args=None, lazy_init=False, r=run, p=progress):
@@ -398,6 +311,93 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.progress.end()
 
         return pd.DataFrame.from_dict(D), occurrence_of_functions_in_pangenome_dict
+
+
+    def functional_enrichment_stats(self):
+        '''
+            Compute functional enrichment.
+
+            To learn more refer to the docummentation:
+                anvi-get-enriched-functions-per-pan-group -h
+        '''
+        # Before we do anything let's make sure the user has R installed
+        utils.is_program_exists('Rscript')
+
+        # Let's make sure all the required packages are installed
+        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
+        missing_packages = []
+        log_file = filesnpaths.get_temp_file_path()
+        package_dict = utils.get_required_packages_for_enrichment_test()
+        for lib in package_dict:
+            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
+            if ret_val != 0:
+                missing_packages.append(lib)
+
+        if missing_packages:
+            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                              "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
+                                                                      {'missing': ', '.join(missing_packages),
+                                                                       'conda': ', '.join(['"%s"' % package_dict[i] for i in missing_packages]),
+                                                                       'example': missing_packages[0]})
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
+
+        enrichment_file_path = output_file_path
+        if not enrichment_file_path:
+            # if no output was requested it means a programmer is calling this function
+            # in that case, we will use a tmp file for the enrichment output
+            enrichment_file_path = filesnpaths.get_temp_file_path()
+
+        # set the tmp output_file for the functional occurrence.
+        # this is a little hacky, but allows for the functional occurrence to be used without
+        # the functional enrichment (if we will want that at some point)
+        self.args.output_file = tmp_functional_occurrence_file
+
+        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
+            if not self.just_do_it:
+                raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
+
+        # Call functional occurrence. Output is saved to the tmp file
+        self.functional_occurrence_stats()
+
+        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
+                                                                                      output_file_path)
+
+        log_file = filesnpaths.get_temp_file_path()
+        self.progress.new('Functional enrichment analysis')
+        self.progress.update('Running enrichment analysis')
+        utils.run_command(cmd, log_file)
+        self.progress.end()
+        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
+            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
+                              'We don\'t know what happened, but this log file could contain some clues: %s' % log_file)
+
+        if filesnpaths.is_file_empty(enrichment_file_path):
+            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
+                              'An output file was created, but it is empty '
+                              'We don\'t know why this happened, but this log file could contain some clues: %s' % log_file)
+
+        run.info('Functional enrichment summary log file:', log_file)
+        run.info('Functional enrichment summary', output_file_path)
+
+        if not output_file_path:
+            # if a programmer called this function then we return a dict
+            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
 
 
     def functional_occurrence_stats(self):
