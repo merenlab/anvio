@@ -27,9 +27,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
-    args = anvio.get_args(parser)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
+    args = parser.get_args(parser)
 
     try:
         main(args)

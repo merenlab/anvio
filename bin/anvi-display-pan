@@ -6,7 +6,7 @@ The massage of the data is being taken care of in the interactive module,
 and this file implements the bottle callbacks."""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -34,7 +34,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupF.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         args.mode = 'pan'
