@@ -6,8 +6,8 @@ import sys
 import anvio
 import anvio.terminal as terminal
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.cogs import COGsSetup
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -28,6 +28,8 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('cog-version'), **anvio.K('cog-version'))
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory for COG data to be stored. If you leave it\
                         as is without specifying anything, the default destination for the data directory will be used to set things\
                         up. The advantage of it is that everyone will be using a single data directory, but then you may need\
