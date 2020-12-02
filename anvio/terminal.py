@@ -65,7 +65,7 @@ def remove_spaces(text):
     return text
 
 
-def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None):
+def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None, prefix_for_singular="a single"):
     """Pluralize a given word mindfully.
 
     We often run into a situation where the word of choice depends on the number of items
@@ -107,7 +107,7 @@ def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None):
         if suffix_for_singular:
             return f"{number} {word}{suffix_for_singular}"
         else:
-            return f"a single {word}"
+            return f"{prefix_for_singular} {word}"
 
 
 class Progress:

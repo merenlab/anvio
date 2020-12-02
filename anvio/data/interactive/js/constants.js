@@ -95,12 +95,34 @@ var named_functional_sources = {
 
     },
 
-    'COG_FUNCTION': {
+    'COG14_FUNCTION': {
         'accession_decorator': (function (d) {
                                     var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
                                     return cogs.join(', ');
                                 }),
     },
+
+    'COG14_CATEGORY': {
+        'annotation_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
+                                    return cogs.join('; ');
+                                }),
+    },
+
+    'COG20_FUNCTION': {
+        'accession_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return cogs.join(', ');
+                                }),
+    },
+
+    'COG20_CATEGORY': {
+        'annotation_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
+                                    return cogs.join('; ');
+                                }),
+    },
+
 
     'KOfam': {
         'accession_decorator': (function (d) {
@@ -120,13 +142,6 @@ var named_functional_sources = {
         'accession_decorator': (function (d) {
                                     var pfams = d.split(', ').map((function (c){return '<a href="https://pfam.xfam.org/family/' + c +'" target=_"blank">' + c + '</a>';}));
                                     return pfams.join(', ');
-                                }),
-    },
-
-    'COG_CATEGORY': {
-        'annotation_decorator': (function (d) {
-                                    var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
-                                    return cogs.join('; ');
                                 }),
     },
 
