@@ -223,7 +223,6 @@ function loadAll() {
                 $("#largeIndelInput").val(state['large-indel']);
 
                 if(state['show_indels'] == null) {
-                  console.log("test");
                   state['show_indels'] = (indels != null && !isEmpty(indels));
                 }
 
@@ -1714,24 +1713,24 @@ function Chart(options){
     var yGC = this.yScaleGC;
 
     this.area = d3.svg.area()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y0(this.height)
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
 
     this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(i)+4; })
+                            .x(function(d, i) { return xS(1+i)+4; })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
     this.reverseLine = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y(function(d, i) { if(i == 0) return ySLR(0); if(i == num_data_points - 1) return ySLR(0); return ySLR(d); })
                             .interpolate('step-before');
 
 
     // .x() needs to stay as a arrow function, it has reference to scope.
     this.gc_line = d3.svg.line()
-                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + (i * this.gc_content_step_size)); })
+                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + ((1+i) * this.gc_content_step_size)); })
                             .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
@@ -1809,12 +1808,15 @@ function Chart(options){
                                 .enter()
                                 .append("text")
                                 .attr("class", "SNV_text")
-                                .attr("x", function (d) { return xS(d.key); })
+                                .attr("x", function (d) { return xS(1+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
                                 .attr("font-size", "7px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
+                                .attr("paint-order", "stroke")
+                                .attr("stroke", "#FFFFFF")
+                                .attr("stroke-width", "1px")
                                 .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                                 .attr('data-content', function(d) {
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
@@ -1925,7 +1927,7 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(d.value['pos']); })
+                              .attr("x", function (d) { return xS(1+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
@@ -1999,7 +2001,7 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
-    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.value['pos']); });
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(1+parseInt(d.key)); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(1+d.value['pos']); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
