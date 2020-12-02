@@ -3,7 +3,7 @@
 """A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -23,7 +23,7 @@ __description__ = ("Identify redundant (highly similar) genomes")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupH.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         derep = Dereplicate(args)

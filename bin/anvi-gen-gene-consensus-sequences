@@ -3,7 +3,7 @@
 """Collapses variation for a given list of gene caller ids"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.variabilityops as variabilityops
@@ -24,7 +24,7 @@ __description__ = "Collapse variability for a set of genes across samples"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                               consenus sequence for each gene/contig will be output.")
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         c = variabilityops.ConsensusSequences(args)

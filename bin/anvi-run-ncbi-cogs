@@ -3,12 +3,15 @@
 
 import sys
 
+from argparse import Namespace
+
 import anvio
 import anvio.terminal as terminal
 
 from anvio.cogs import COGs
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -35,17 +38,15 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-
     try:
-        cogs = COGs(argparse.Namespace())
+        cogs = COGs(Namespace())
         available_search_methods = cogs.available_search_methods
         default_search_method = cogs.default_search_method
     except ConfigError as e:
         print(e)
         sys.exit(-1)
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('cog-version'), **anvio.K('cog-version'))
@@ -60,7 +61,7 @@ if __name__ == '__main__':
                                         % {'serach_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

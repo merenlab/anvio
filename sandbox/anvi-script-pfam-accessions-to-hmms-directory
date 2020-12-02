@@ -151,8 +151,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--pfam-accessions-list', nargs='+', help="One or more PFAM accession IDs "
                 "(such as PF14437.6). If you have multiple accessions, you can separate them from "
@@ -167,7 +167,7 @@ if __name__ == '__main__':
                 "We suggest you to use a name that does not include an of those millenial characters "
                 "(like space, question mark, comma, and such, you know).")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

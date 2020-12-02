@@ -43,6 +43,8 @@ var brush;
 var inspect_mode;
 var highlightBoxes;
 var show_nucleotides = true;
+var maxNucleotidesInWindow = 300;
+var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
 
@@ -273,11 +275,13 @@ function loadAll() {
                 }
                 if(state['show_snvs'] && numSNVs > 1000) {
                   state['show_snvs'] = false;
-                  $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                  $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.snvs-disabled").fadeIn(300);
                 }
                 if(state['show_indels'] && numIndels > 1000) {
                   state['show_indels'] = false;
-                  $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                  $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.indels-disabled").fadeIn(300);
                 }
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
@@ -379,9 +383,11 @@ function loadAll() {
 
                 $('#toggle_snv_box').on('change', function() {
                   toggleSNVs();
+                  if($('div.snvs-disabled').length > 0) $('div.snvs-disabled').remove();
                 });
                 $('#toggle_indel_box').on('change', function() {
                   toggleIndels();
+                  if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -414,7 +420,7 @@ function drawHighlightBoxes() {
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
                   .attr("height", boxH)
-                  .attr("fill", endpts.includes(i) ? "red" : "blue")
+                  .attr("fill", endpts.includes(i) ? "red" : "#989898")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
@@ -429,16 +435,16 @@ function drawAAHighlightBoxes() {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     var marked = endpts.includes(box_num) || endpts.includes(box_num+2);
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : 'blue');
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : '#989898');
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
 
     if(endpts.includes(box_num)) {
-      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', 'blue');
+      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', '#989898');
     } else if(endpts.includes(box_num+2)) {
-      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', 'blue');
+      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', '#989898');
     }
   });
 }
@@ -756,7 +762,7 @@ function display_nucleotides() {
   let start = parseInt($('#brush_start').val());
   let end = parseInt($('#brush_end').val());
 
-  if(end - start > 300 || end - start < 30) {
+  if(end - start > maxNucleotidesInWindow || end - start < minNucleotidesInWindow) {
     contextSvg.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
@@ -1604,6 +1610,9 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
+    $('#brush_start').val(contextXScale.domain()[0]);
+    $('#brush_end').val(contextXScale.domain()[1]);
+
     if(show_nucleotides) display_nucleotides();
     if(state['show_highlights']) drawHighlightBoxes();
     setSelectionBoxListener();
@@ -1808,10 +1817,10 @@ function Chart(options){
                                 .enter()
                                 .append("text")
                                 .attr("class", "SNV_text")
-                                .attr("x", function (d) { return xS(1+parseInt(d.key)); })
+                                .attr("x", function (d) { return xS(0.5+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
-                                .attr("font-size", "7px")
+                                .attr("font-size", "5px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
                                 .attr("paint-order", "stroke")
@@ -1927,7 +1936,7 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(1+d.value['pos']); })
+                              .attr("x", function (d) { return xS(0.5+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
@@ -2001,7 +2010,15 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
-    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(1+parseInt(d.key)); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(1+d.value['pos']); });
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
+
+    let numNucl = $('#brush_end').val()-$('#brush_start').val();
+    let mk_font_size = 2000/numNucl;
+    if(mk_font_size < 5) mk_font_size = 5;
+    if(mk_font_size > 10) mk_font_size = 10;
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
+
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

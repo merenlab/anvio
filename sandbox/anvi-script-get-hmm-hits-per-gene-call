@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
 
 import anvio
 import anvio.tables as t
@@ -11,6 +10,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -60,7 +60,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupB = parser.add_argument_group("INPUT: ANVI'O CONTIGS DB")
     groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
