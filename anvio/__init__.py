@@ -19,6 +19,8 @@ import pkg_resources
 anvio_version = '6.2-master'
 anvio_codename = 'esther'
 
+anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
+
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
