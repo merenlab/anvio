@@ -103,11 +103,11 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('INPUT OPTION #3: GROUPS OF GENOMES',
                                         "Estimating enriched functions across groups of genomes. All you need to do is provide an external genomes"
                                         "file that includes a 'group' column.")
-    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', 'help': "A three-column TAB-delimited flat text file that "
+    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'help': "A three-column TAB-delimited flat text file that "
                         "lists anvi'o contigs databases. The first item in the header line should read 'name', the second should read "
                         "'contigs_db_path', and the third should read 'group'. Each line in the file should describe a single entry, "
                         "where the first column is the name of the genome (or MAG), the second column is the anvi'o contigs database "
-                        "generated for this genome, and the third is the group that this genome belongs to."))
+                        "generated for this genome, and the third is the group that this genome belongs to."}))
 
     groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
