@@ -185,23 +185,10 @@ function mouseMoveHandler(event) {
         var node = samples_id_to_node_map[id[0]];
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
-        // TODO render options based on checkbox status 
 
-        if($("#support_value_checkbox").prop("checked")){
-            write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
-                               <tr><td>Support</td><td>${node.branch_support}</td></tr>
-                               <tr><td>Some Parameter</td><td><input type="checkbox"></input></td></tr>
-                               <tr><td>Other Parameter</td><td><input type="checkbox"></input></td></tr>
-                               <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
-        } else {
-            write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
-                               <tr><td>Support</td><td>${node.branch_support}</td></tr>
-                               <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
-        }
-
-        // write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
-        //                    <tr><td>Support</td><td>${node.branch_support}</td></tr>
-        //                    <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
+        write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
+                           <tr><td>Support</td><td>${node.branch_support}</td></tr>
+                           <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
 
         while (_q != null)
         {
