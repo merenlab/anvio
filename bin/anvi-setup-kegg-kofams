@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
-__provides__ = ["kegg-db",]
+__provides__ = ["kegg-data", "modules-db"]
 __description__ = "Download and setup KEGG KOfam HMM profiles"
 
 @time_program
