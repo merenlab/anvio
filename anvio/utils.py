@@ -23,10 +23,10 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
-import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
+import itertools as it
 
 from numba import jit
 from collections import Counter
@@ -39,9 +39,9 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
 with SuppressAllOutput():
     from ete3 import Tree
