@@ -2501,6 +2501,8 @@ function processState(state_name, state) {
         $('#begins_from_branch').val(state['begins-from-branch'])
     }
 
+    // TODO add conditional for checkbox here
+
     // reload layers
     var current_view = $('#views_container').val();
     $("#tbody_layers").empty();

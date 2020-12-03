@@ -218,17 +218,23 @@
 
                                 <span class="settings-header">Support</span>
                                 <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Show Support Value</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" 
-                                                   onchange="emit('bin-settings-changed');" 
-                                                   value="checked" 
-                                                   id="support_value_checkbox" 
-                                            >
-                                            </input>
-                                        </div>
-
+                                    <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Show Support Value</label>
+                                    <div class="col-md-8">
+                                        <input type="checkbox" 
+                                                onchange="emit('bin-settings-changed') ;if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } " 
+                                                id="support_value_checkbox";
+                                                >
+                                        </input>
+                                    </div>   
                                 </div>
+
+                                <div id="support_value_params" class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" data-help="support-value-checkbox">Some Param</label>
+                                    <div class='col-md-8'>
+                                        <input type='checkbox'></input>
+                                    </div>                             
+                                </div>
+
 
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin">
