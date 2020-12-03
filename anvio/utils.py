@@ -23,10 +23,10 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
-import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
+import itertools as it
 
 from numba import jit
 from collections import Counter
@@ -39,9 +39,9 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
 with SuppressAllOutput():
     from ete3 import Tree
@@ -2914,6 +2914,52 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 def is_ascii_only(text):
     """test whether 'text' is composed of ASCII characters only"""
     return all(ord(c) < 128 for c in text)
+
+
+def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
+    "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    expected_columns = ['sample', 'r1', 'r2']
+    possible_columns = expected_columns + ['group']
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+    extra_columns = set(columns_found).difference(set(possible_columns))
+
+    if not set(expected_columns).issubset(set(columns_found)):
+        raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+
+    if len(extra_columns):
+        run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
+                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
+                    f"business, but we wanted you to be aware of the fact that your input file does not "
+                    f"fully match anvi'o expectations from this file type.")
+
+    samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    samples_with_missing_files = []
+    samples_with_identical_r1_r2_files = []
+    for sample_name in samples_txt:
+        check_sample_id(sample_name)
+
+        if not os.path.exists(samples_txt[sample_name]['r1']) or not os.path.exists(samples_txt[sample_name]['r2']):
+            samples_with_missing_files.append(sample_name)
+
+        if samples_txt[sample_name]['r1'] == samples_txt[sample_name]['r2']:
+            samples_with_identical_r1_r2_files.append(sample_name)
+
+    if len(samples_with_missing_files):
+        raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
+                          f"({', '.join(samples_with_missing_files)}) with missing files (by which we mean that the "
+                          f"r1/r2 paths are there, but the files they point to are not).")
+
+    if len(samples_with_identical_r1_r2_files):
+        raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
+                          f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
+
+
+    return samples_txt
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\

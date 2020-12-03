@@ -82,6 +82,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "samples-txt": {
+        "name": "SAMPLES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
