@@ -22,6 +22,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "modules-db": {
+        "name": "MODULES",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
@@ -106,7 +112,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "kegg-db": {
+    "kegg-data": {
         "name": "KEGG DB",
         "type": "DB",
         "provided_by_anvio": True,
@@ -518,7 +524,7 @@ ANVIO_ARTIFACTS ={
         "name": "AUGUSTUS GENE CALLS",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user": True 
+        "provided_by_user": True
     },
     "genes-stats": {
         "name": "GENE STATS",
