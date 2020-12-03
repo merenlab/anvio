@@ -34,35 +34,25 @@ progress = terminal.Progress()
 def main(args):
 
     # sanity check for multiple input options
-    if ((args.pan_or_profile_db or args.genomes_storage) and (args.modules_txt or args.groups_txt)) \
-    or (args.genomes_storage and args.contigs_db) \
-    or ((args.modules_txt or args.groups_txt) and (args.contigs_db or args.pan_or_profile_db)):
+    if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt or args.external_genomes)) \
+    or ((args.modules_txt or args.groups_txt) and (args.external_genomes)):
         raise ConfigError("Confused anvi'o is confused. You appear to have selected multiple input options. "
                           "For obvious reasons, this will not work, so please go pick one option. ")
 
     # sanity checks for including all required inputs (for inputs that are not sanity checked downstream)
-    if (args.pan_or_profile_db and not (args.genomes_storage or args.contigs_db)):
-        raise ConfigError("If you have provided a pan database (input option #1), you must also provide a genomes storage database. "
-                          "If you have provided a profile database (input option #3), you must also provide a contigs database.")
-    if (args.genomes_storage and not args.pan_or_profile_db):
-        raise ConfigError("For input option #1, you must provide both a genomes storage db and a pan db, but you haven't given anvi'o the pan db.")
+    if (args.pan_db and not args.genomes_storage) or (args.genomes_storage and not args.pan_db):
+        raise ConfigError("For input option #1, you must provide both a genomes storage db (-g) and a pan db (-p).")
     if (args.modules_txt and not args.groups_txt) or (args.groups_txt and not args.modules_txt):
         raise ConfigError("For input option #2, you must provide both a modules-txt file and a groups-txt file.")
-    if (args.contigs_db and not args.pan_or_profile_db):
-        raise ConfigError("For input option #3, you must provide both a contigs db and a profile db, but you haven't given anvi'o the profile db.")
 
-    db_type = utils.get_db_type(args.pan_or_profile_db) if args.pan_or_profile_db else None
-
-    if db_type == 'pan':
-        args.pan_db = args.pan_or_profile_db
+    if args.pan_db:
         s = summarizer.PanSummarizer(args, lazy_init=True)
         s.functional_enrichment_stats()
     elif args.modules_txt:
         e = kegg.KeggModuleEnrichment(args)
         e.run_enrichment_stats()
-    elif db_type == 'profile':
-        args.profile_db = args.pan_or_profile_db
-        s = summarizer.ProfileSummarizer(args)
+    elif args.external_genomes:
+        raise ConfigError("Oops anvi'o doesn't know what to do with external genomes yet.")
     else:
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
 
