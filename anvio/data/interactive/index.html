@@ -216,6 +216,20 @@
                                         </div>
                                 </div>
 
+                                <span class="settings-header">Support</span>
+                                <div class="form-group form-margin">
+                                    <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Show Support Value</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox" 
+                                                   onchange="emit('bin-settings-changed');" 
+                                                   value="checked" 
+                                                   id="support_value_checkbox" 
+                                            >
+                                            </input>
+                                        </div>
+
+                                </div>
+
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
@@ -775,12 +789,6 @@
                     <tr>
                         <td width="40%">Layer Name</th>
                         <td width="60%" id="cell_layer_name">#</th>
-                    </tr>
-                    <tr>
-                        <td width="40%">Support</th>
-                        <td width="60%" id="support_value">
-                            <input id="support_value_checkbox" type="checkbox" value="checked"> Show Support Values</input>
-                        </th>
                     </tr>
                 </thead>
             </table>

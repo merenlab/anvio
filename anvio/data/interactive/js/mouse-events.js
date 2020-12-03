@@ -291,22 +291,9 @@ function mouseMoveHandler(event) {
         return;
 
     if (!p.IsLeaf()) {
-        // write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-        //                    <tr><td>Support</td><td>${p.branch_support}</td></tr>
-        //                    <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
-        if($("#support_value_checkbox").prop("checked")){
-            write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-                               <tr><td>Support</td><td>${p.branch_support}</td></tr>
-                               <tr><td>Some Parameter</td><td><input type="checkbox"></input></td></tr>
-                               <tr><td>Low Range Color</td><td><input type="color"></input></td></tr>
-                               <tr><td>High Range Color</td><td><input type="color"></input></td></tr>
-                               <tr><td>Ranged Param</td><td><input type="number"></input> to <input type="number"></input></td></tr>
-                               <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
-        } else {
-            write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-                               <tr><td>Support</td><td>${p.branch_support}</td></tr>
-                               <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
-        }
+        write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
+                           <tr><td>Support</td><td>${p.branch_support}</td></tr>
+                           <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
     }
 
     var layer_id_exp = event.target.parentNode.id.match(/\d+/);
