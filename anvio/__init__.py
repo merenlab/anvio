@@ -1340,6 +1340,14 @@ D = {
              'help': "A file with samples names. There should be only one column in the file, and each line "
                      "should correspond to a unique sample name (without a column header)."}
                 ),
+    'samples-txt': (
+            ['--samples-txt'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with columns ['sample', 'r1', 'r2'] or ['sample', 'group', 'r1', 'r2'] "
+                     "where `r1` and `r2` columns are paths to compressed or flat FASTQ files for each `sample` and "
+                     "`group` is an optional column for relevant applications where samples are affiliated with one-word "
+                     "categorical variables that define to which group they are assigned."}
+                ),
     'genes-of-interest': (
             ['--genes-of-interest'],
             {'metavar': 'FILE',
