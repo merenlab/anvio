@@ -13,7 +13,7 @@ Of course, we will always suggest that migrating safely is better, because fewer
 ```
 anvi-migrate --migrate-dbs-quickly *.db
 ```
-Please remember that by living life in the fast line, you forego your safety net. On the rare occasion that the migration does fail, this program will let you know what happened, leave you with a database that has a `.broken` file extension, and sassily remind you that this all could have been avoided if you chose the other option. In this unlikely event, you can always reach out to us. We will probably be sassy to you, too, but we will still see if we can help you unbreak things. :)
+Please remember that by living life in the fast lane, you forego your safety net. On the rare occasion that the migration does fail, this program will let you know what happened, leave you with a database that has a `.broken` file extension, and sassily remind you that this all could have been avoided if you chose the other option. In this unlikely event, you can always reach out to us. We will probably be sassy to you, too, but we will still see if we can help you unbreak things. :)
 
 ### Migrating to a specific version
 If your database is a few versions behind the highest available version but for whatever reason you don't want to migrate it all the way, you can specify which version to update your database to. Just use the `-t` flag (note: migrating with this parameter only works on ONE database at a time):
