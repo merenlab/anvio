@@ -34,7 +34,7 @@ def migrate(db_path):
     gene_function_sources = contigs_db.get_meta_value('gene_function_sources')
 
     # there is no need to do anything if COG functions are not in the database
-    if 'COG_FUNCTION' in gene_function_sources:
+    if gene_function_sources and 'COG_FUNCTION' in gene_function_sources:
         progress.update("Dealing with the functions table")
 
         functions_updated = []
