@@ -375,7 +375,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
 
-        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
+        cmd = 'anvi-script-run-functional-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
                                                                                       output_file_path)
 
         log_file = filesnpaths.get_temp_file_path()
@@ -510,9 +510,20 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
+        categories_few_genomes = []
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
+            if function_occurrence_table[c]['N'] < 8:
+                categories_few_genomes.append(c)
+
+        # warn user if they have a low number of genomes per group
+        if categories_few_genomes:
+            categories_string = ", ".join(categories_few_genomes)
+            self.run.warning("Some of your groups have very few genomes in them, and the statistical test may not be very reliable. "
+                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+                             f"{categories_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
         for f in functions_names:
@@ -522,7 +533,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             functional_occurrence_summary_dict[f] = {}
             functional_occurrence_summary_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-            functional_occurrence_summary_dict[f]["accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            functional_occurrence_summary_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
@@ -538,7 +549,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'accession', 'gene_clusters_ids', 'associated_groups']
+            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids', 'associated_groups']
             columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
             functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
