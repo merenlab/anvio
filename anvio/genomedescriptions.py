@@ -614,11 +614,34 @@ class GenomeDescriptions(object):
         It first prepares an input file describing the occurrence of functions in each group, then feeds this file to
         the script.
         """
-        pass
+
         # sanity check for R packages
-        # sanity check that groups are defined
-        # warning if group sizes are too small for statistical reliability
-        # get functional occurrence input
+        package_dict = utils.get_required_packages_for_enrichment_test()
+        utils.check_R_packages_are_installed(package_dict)
+
+        # output wrangling
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
+
+        enrichment_file_path = output_file_path
+        if not enrichment_file_path:
+            # if no output was requested it means a programmer is calling this function
+            # in that case, we will use a tmp file for the enrichment output
+            enrichment_file_path = filesnpaths.get_temp_file_path()
+        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
+            if not self.just_do_it:
+                raise ConfigError(f"The file {enrichment_file_path} already exists and anvi'o doesn't want to overwrite it "
+                                  "without express permission. If you think overwriting it is okay, then either `rm` the "
+                                  "existing file or re-run this command with the --just-do-it flag.")
+
+        # this is a hack (credits to Alon) which will make the functional occurrence method print to the tmp file
+        # (we need this because the functional occurrence method prints to the args.output_file)
+        self.args.output_file = tmp_functional_occurrence_file
+
+        # get functional occurrence input file
+        self.functional_occurrence_stats()
+
         # run enrichment script
 
 
