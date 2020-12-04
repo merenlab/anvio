@@ -21,6 +21,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
