@@ -685,12 +685,35 @@ class GenomeDescriptions(object):
                               "among one of the sources that are available to you. Here are the ones you should choose from: "
                               f"{sources_string}.")
 
-        # sanity check that groups are defined
+        # get the groups
+        genomes_to_groups_dict = {}
         for g in self.genomes:
             if 'group' not in self.genomes[g].keys():
                 raise ConfigError("Groups are not defined in at least one of your input files. To rectify this you must ensure that "
                 "your input file has a column called 'group'. To help you figure out where this information is missing, here is a genome "
                 f" that does not have a group: {g}")
+            else:
+                genomes_to_groups_dict[g] = self.genomes[g]['group']
+
+        values_that_are_not_none = [s for s in genomes_to_groups_dict.values() if s is not None]
+        if not values_that_are_not_none:
+            raise ConfigError("Your group column(s) contains only values of type None. "
+                              "This is probably a mistake, surely you didn't mean to provide no groups. "
+                              "Do you think this is a mistake on our part? Let us know.")
+
+        groups = set([str(genomes_to_groups_dict[g]) for g in genomes_to_groups_dict.keys() if \
+                            (genomes_to_groups_dict[g] is not None or not exclude_ungrouped)])
+
+        groups_to_genomes_dict = {}
+        for grp in groups:
+            groups_to_genomes_dict[grp] = set([genome for genome in genomes_to_groups_dict.keys() if str(genomes_to_groups_dict[genome]) == grp])
+
+        # give the user some info before we continue
+        if not anvio.QUIET:
+            self.run.info('Functional annotation source', functional_annotation_source)
+            self.run.info('Groups', ', '.join(groups))
+            self.run.info('Exclude ungrouped', exclude_ungrouped)
+
         # warning if group sizes are too small for statistical reliability
 
 
