@@ -39,7 +39,7 @@ def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     samples_txt = A('samples_txt')
     primers_file_path = A('primer_sequences')
-    output_directory_path = A('output_directory') or os.path.abspath('./MATCHING_SEQUENCES')
+    output_directory_path = A('output_dir') or os.path.abspath('./MATCHING_SEQUENCES')
     min_remainder_length = A('min_remainder_length') or 60
     report_raw = A('report_raw')
     stop_after = A('stop_after')
