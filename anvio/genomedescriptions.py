@@ -608,6 +608,21 @@ class GenomeDescriptions(object):
                                   f"contigs database by running the program `anvi-db-info`.")
 
 
+    def functional_enrichment_stats(self):
+        """This function runs Amy Willis's enrichment script to compute functional enrichment in groups of genomes.
+
+        It first prepares an input file describing the occurrence of functions in each group, then feeds this file to
+        the script.
+        """
+        pass
+        # sanity check for R packages
+        # sanity check that groups are defined
+        # warning if group sizes are too small for statistical reliability
+        # get functional occurrence input
+        # run enrichment script
+
+
+
 class MetagenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress, enforce_single_profiles=True):
         self.args = args
