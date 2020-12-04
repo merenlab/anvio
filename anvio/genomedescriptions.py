@@ -646,17 +646,20 @@ class GenomeDescriptions(object):
         # run enrichment script
 
 
-def functional_occurrence_stats(self):
-    """This function summarizes functional occurrence for groups of genomes.
+    def functional_occurrence_stats(self):
+        """This function summarizes functional occurrence for groups of genomes.
 
-    If an output file is provided, the functional occurrence dictionary is written to that file.
-    Otherwise, the dictionary is returned.
-    """
+        If an output file is provided, the functional occurrence dictionary is written to that file.
+        Otherwise, the dictionary is returned.
+        """
 
-    # sanity check that groups are defined
-    if 'group' not in self.genomes:
-        raise ConfigError("Groups are not defined in your ")
-    # warning if group sizes are too small for statistical reliability
+        # sanity check that groups are defined
+        for g in self.genomes:
+            if 'group' not in self.genomes[g].keys():
+                raise ConfigError("Groups are not defined in at least one of your input files. To rectify this you must ensure that "
+                "your input file has a column called 'group'. To help you figure out where this information is missing, here is a genome "
+                f" that does not have a group: {g}")
+        # warning if group sizes are too small for statistical reliability
 
 
 class MetagenomeDescriptions(object):
