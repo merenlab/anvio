@@ -240,7 +240,7 @@ class GenomeDescriptions(object):
         # finding genomes with identical hashes, let them know
         if self.skip_checking_genome_hashes and (len(self.internal_genomes_with_identical_hashes) or len(self.external_genomes_with_identical_hashes)):
             self.run.warning("While processing internal and/or external genomes files you have provided, "
-                             "anvi'o found genomes with indentical hashes (which means they were practically "
+                             "anvi'o found genomes with identical hashes (which means they were practically "
                              "identical to each other). But since you have instructed anvi'o to ignore that "
                              "it is now continuing with the flow (even %d hashes for your internal genomes and %d) "
                              "hashes for your external gneomes appeared more than once). See below the genome names "
@@ -393,7 +393,7 @@ class GenomeDescriptions(object):
             else:
                 self.progress.reset()
                 raise ConfigError("While working on your external genomes, anvi'o realized that genome %s and %s seem to have the same hash. "
-                                  "If you are aware of this and/or if you would like anvi'o to not chech genome hashes, please use the flag "
+                                  "If you are aware of this and/or if you would like anvi'o to not check genome hashes, please use the flag "
                                   "`--skip-checking-genome-hashes`." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
 
         return genome_hash
