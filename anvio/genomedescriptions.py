@@ -653,6 +653,38 @@ class GenomeDescriptions(object):
         Otherwise, the dictionary is returned.
         """
 
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        functional_annotation_source = A('annotation_source')
+        list_functional_annotation_sources = A('list_annotation_sources')
+        functional_occurrence_table_output = A('functional_occurrence_table_output')
+        exclude_ungrouped = A('exclude_ungrouped')
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+        if functional_occurrence_table_output:
+            filesnpaths.is_output_file_writable(functional_occurrence_table_output)
+
+        if not self.functions_are_available:
+            raise ConfigError("We are sorry to tell you that there are no functions available for your genomes (or, if some of your genomes"
+                              "are annotated, there are at least no functional sources common to all your genomes, hence functional "
+                              "occurrence cannot be computed. :/")
+
+        if list_functional_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.function_annotation_sources))
+            sys.exit()
+
+        if not functional_annotation_source:
+            raise ConfigError("You haven't provided a functional annotation source to make sense of functional "
+                              "occurrence stats in your genomes. These are the available annotation sources "
+                              f"that are common to all genomes, so pick one: {self.function_annotation_sources}.")
+
+        if functional_annotation_source not in self.function_annotation_sources:
+            sources_string = ", ".join(self.function_annotation_sources)
+            raise ConfigError(f"Your favorite functional annotation source '{functional_annotation_source}' does not seem to be "
+                              "among one of the sources that are available to you. Here are the ones you should choose from: "
+                              f"{sources_string}.")
+
         # sanity check that groups are defined
         for g in self.genomes:
             if 'group' not in self.genomes[g].keys():
