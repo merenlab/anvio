@@ -527,8 +527,9 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag if you want anvi'o to ignore genomes/samples with no group (for pangenomes, this means "
-                     "the genome has no value set for the category variable which you specified using --category-variable, "
-                     "and for modules, this means the sample has no group specified in the groups-txt file). By default all "
+                     "the genome has no value set for the category variable which you specified using --category-variable. "
+                     "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
+                     "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
                      "variables with no value will be considered as a single group when performing the statistical analysis."}
                 ),
     'functional-occurrence-table-output': (
