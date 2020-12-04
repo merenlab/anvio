@@ -94,13 +94,19 @@ if __name__ == '__main__':
                                          "if you wish. The default threshold is %(default)g."}))
 
     groupC = parser.add_argument_group('INPUT OPTION #3: GROUPS OF GENOMES',
-                                        "Estimating enriched functions across groups of genomes. All you need to do is provide an external genomes"
-                                        "file that includes a 'group' column.")
+                                        "Estimating enriched functions across groups of genomes. You must provide an external genomes"
+                                        "file and/or an internal genomes file which include a 'group' column. You also have to indicate "
+                                        "which functional annotation source to use with --annotation-source (see OPTION #1 for details on "
+                                        "that parameter).")
     groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'help': "A three-column TAB-delimited flat text file that "
                         "lists anvi'o contigs databases. The first item in the header line should read 'name', the second should read "
                         "'contigs_db_path', and the third should read 'group'. Each line in the file should describe a single entry, "
                         "where the first column is the name of the genome (or MAG), the second column is the anvi'o contigs database "
                         "generated for this genome, and the third is the group that this genome belongs to."}))
+    groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes', {'help': "A six-column TAB-delimited flat text file. "
+                        "The header line must contain these columns: 'name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path', "
+                        "'group'. Each line should list a single entry, where 'name' can be any name to describe the anvi'o bin identified "
+                        "as 'bin_id' that is stored in a collection. The 'group' column should indicate which group the bin belongs to."}))
 
     groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
