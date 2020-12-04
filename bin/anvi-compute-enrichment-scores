@@ -94,7 +94,7 @@ if __name__ == '__main__':
                                          "if you wish. The default threshold is %(default)g."}))
 
     groupC = parser.add_argument_group('INPUT OPTION #3: GROUPS OF GENOMES',
-                                        "Estimating enriched functions across groups of genomes. You must provide an external genomes"
+                                        "Estimating enriched functions across groups of genomes. You must provide an external genomes "
                                         "file and/or an internal genomes file which include a 'group' column. You also have to indicate "
                                         "which functional annotation source to use with --annotation-source (see OPTION #1 for details on "
                                         "that parameter).")
@@ -112,8 +112,7 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     groupO.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
 
-    groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR PANGENOMES', "Reporting options that only make sense for input option #1, aka functional "
-                                                                         "enrichment in pangenomes.")
+    groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR FUNCTIONAL ENRICHMENT', "Reporting options that only make sense for input option #1 or #3.")
     groupOP.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
 
     groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
