@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.kegg as kegg
 import anvio.utils as utils
+import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -52,7 +53,8 @@ def main(args):
         e = kegg.KeggModuleEnrichment(args)
         e.run_enrichment_stats()
     elif args.external_genomes:
-        raise ConfigError("Oops anvi'o doesn't know what to do with external genomes yet.")
+        g = genomedescriptions.GenomeDescriptions(args)
+        g.load_genomes_descriptions(init=False)
     else:
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
 
