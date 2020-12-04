@@ -380,7 +380,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             If self.args.output_file_path exists then an output file is created.
 
-            To learn more about how this works refer to the docummentation:
+            To learn more about how this works refer to the documentation:
                 anvi-get-functional-occurrence-summary-per-pan-group -h
         """
 

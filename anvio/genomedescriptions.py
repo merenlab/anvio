@@ -680,7 +680,7 @@ class MetagenomeDescriptions(object):
         names = utils.get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
 
         if len(names) != len(set(names)):
-            raise ConfigError("Each entry in your metagenomes file must e unique :/")
+            raise ConfigError("Each entry in your metagenomes file must be unique :/")
 
 
     def read_paths_from_input_file(self):
