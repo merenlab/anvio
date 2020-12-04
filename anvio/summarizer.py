@@ -320,38 +320,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             To learn more refer to the docummentation:
                 anvi-get-enriched-functions-per-pan-group -h
         '''
-        # Before we do anything let's make sure the user has R installed
-        utils.is_program_exists('Rscript')
-
-        # Let's make sure all the required packages are installed
-        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
-        missing_packages = []
-        log_file = filesnpaths.get_temp_file_path()
+        # Before we do anything let's make sure the user has R and all required packages installed
         package_dict = utils.get_required_packages_for_enrichment_test()
-        for lib in package_dict:
-            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
-            if ret_val != 0:
-                missing_packages.append(lib)
-
-        if missing_packages:
-            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                              "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                      {'missing': ', '.join(missing_packages),
-                                                                       'conda': ', '.join(['"%s"' % package_dict[i] for i in missing_packages]),
-                                                                       'example': missing_packages[0]})
+        utils.check_R_packages_are_installed(package_dict)
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
