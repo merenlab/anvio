@@ -282,14 +282,34 @@ class GenomeDescriptions(object):
         self.sanity_check()
 
 
-    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name):
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None):
+        """This function fetches dictionaries of functions, AA sequences, and DNA sequences for a particular genome.
+
+        PARAMETERS
+        ==========
+        genome_name, str
+            the genome name you want data for
+        requested_source_list, list
+            the functional annotation sources you want data for. If not provided, data will be fetched for all sources in
+            self.function_annotation_sources
+
+        RETURNS
+        =======
+        function_calls_dict : dictionary of function annotations
+        aa_sequences_dict : dictionary of corresponding amino acid sequences
+        dna_sequences_dict : dictionary of corresponding nucleotide sequences
+        """
+
+        if not requested_source_list:
+            requested_source_list = list(self.function_annotation_sources)
+
         g = self.genomes[genome_name]
 
         args = argparse.Namespace(contigs_db=g['contigs_db_path'])
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
-            contigs_super.init_functions(requested_sources=list(self.function_annotation_sources))
+            contigs_super.init_functions(requested_sources=requested_source_list)
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
@@ -716,7 +736,7 @@ class GenomeDescriptions(object):
 
         functions_summary_dict = {}
         for g in self.genomes:
-            func, aa, dna  = self.get_functions_and_sequences_dicts_from_contigs_db(g)
+            func, aa, dna  = self.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=[functional_annotation_source])
             functions_summary_dict[g] = func
 
         # warning if group sizes are too small for statistical reliability
