@@ -54,7 +54,7 @@ def main(args):
         e.run_enrichment_stats()
     elif args.external_genomes:
         g = genomedescriptions.GenomeDescriptions(args)
-        g.load_genomes_descriptions(init=False)
+        g.load_genomes_descriptions()
         g.functional_enrichment_stats()
     else:
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
