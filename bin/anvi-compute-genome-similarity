@@ -74,7 +74,7 @@ if __name__ == '__main__':
                         choices=['pyANI','fastANI','sourmash'], default='pyANI')
 
     group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
-                                                                   Only if `--program` is set to `pyANI`")
+                                                                   Only if `--program` is set to `fastANI`")
     group_FASTANI.add_argument('--fastani-kmer-size', type=int, default=16, help="Choose a kmer. The default is %(default)s.")
     group_FASTANI.add_argument('--fragment-length', type=int, default=3000, help="Choose a fragment length. The default is %(default)s.")
     group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths that can\
