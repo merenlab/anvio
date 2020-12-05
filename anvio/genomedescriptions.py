@@ -714,6 +714,11 @@ class GenomeDescriptions(object):
             self.run.info('Groups', ', '.join(groups))
             self.run.info('Exclude ungrouped', exclude_ungrouped)
 
+        functions_summary_dict = {}
+        for g in self.genomes:
+            func, aa, dna  = self.get_functions_and_sequences_dicts_from_contigs_db(g)
+            functions_summary_dict[g] = func
+
         # warning if group sizes are too small for statistical reliability
 
 
