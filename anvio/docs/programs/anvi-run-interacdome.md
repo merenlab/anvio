@@ -2,7 +2,7 @@ This program runs [InteracDome](https://interacdome.princeton.edu/) on your %(co
 
 The full process that this program goes through is detailed in [this blog post by Evan Kiefl](https://merenlab.org/2020/07/22/interacdome/). In summary, this program runs the HMM search against all of the genes in your %(contigs-db)s, parses and filters the results, and then stores the per-residue binding frequencies for each gene into the %(contigs-db)s.  
 
-Before running this program, you'll have to have run %(anvi-setup-interacdome)s to set up a local copy of [InteracDome's tab-separated files](https://interacdome.princeton.edu/#tab-6136-4), as well as %(anvi-setup-pfams)s. 
+Before running this program, you'll have to have run %(anvi-setup-interacdome)s to set up a local copy of [InteracDome's tab-separated files](https://interacdome.princeton.edu/#tab-6136-4).
 
 ### Parameters
 
@@ -11,12 +11,6 @@ A basic run of this program looks like this:
 {{ codestart }}
 anvi-run-interacdome -c %(contigs-db)s \
 {{ codestop }}
-
-{:.notice}
-If you get an error that looks something like this:  "File/Path Error: No such file: 'PathToAnvio/anvio/data/misc/Interacdome/representable_interactions.txt' :/" It's because you forgot to run %(anvi-setup-interacdome)s or you forgot to link to the %(interacdome-data)s with the `--interacdome-data-dir` parameter. 
-
-{:.notice}
-If instead you get an error that looks something like this: "FileNotFoundError: [Errno 2] No such file or directory: 'PathToAnvio/anvio/data/misc/Interacdome/Pfam.version'" after a warning that Anvi'o will try to unpack your Pfam database, that means you forgot to run %(anvi-setup-pfams)s
 
 If you want to annotate potential ligand-binding positions in your sequences instead of domain-binding properties, you can choose to only use Pfams that correspond to domain-ligand interactions that had nonredundant instances across three or more distinct PDB entries and achieved a cross-validated precision of at least 0.5. 
 
