@@ -851,10 +851,11 @@ class LocusSplitter:
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
 
-        # Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
-        # the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
-        # based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
-        # gene-caller-ids provided.
+        # Here we will differentiate between being in default-mode OR flank-mode. If in
+        # default-mode, we will iterate through self.gene_caller_ids_of_interest and cut out the
+        # locus X amount of genes above and below the gene_callers_id based on the --num-genes given
+        # by the user. If in flank-mode, we will only export 1 locus based on the flanking gene
+        # caller ids provided (--gene-caller-ids).
 
         # default
         if not self.is_in_flank_mode:
@@ -932,10 +933,12 @@ class LocusSplitter:
             >>> '/path/to/dir/file_name_prefix.fa'
             >>> '/path/to/dir/file_name_prefix.db'
 
-
-        Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
+        FIXME Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
         then you have more then how to choose which contig to cut out?????????
+
+        NOTE ^^^ has this FIXME been addressed? It looks like this _is_ checked, and raises an error - Evan
         """
+
         if gene_callers_id is not None and not isinstance(gene_callers_id, int):
             raise ConfigError("The gene_caller_id must be an integer.")
         if gene_callers_id is not None and gene_caller_ids_flank_pair is not None:
@@ -950,18 +953,18 @@ class LocusSplitter:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
             if len(gene_caller_ids_flank_pair) == 1:
-                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. "
-                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
+                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene caller id(s). "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene caller id's "
                                   "to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your "
                                   "search-terms was not found the functions of the CONTIGS.db. Please try again with another "
                                   "search-term :)" % (len(self.gene_caller_ids_of_interest)))
             elif len(gene_caller_ids_flank_pair) > 2:
-                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. "
-                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
-                                  "to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found "
+                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene caller id's from the search-terms provided. "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene caller id's "
+                                  "to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene caller ids anvi'o found "
                                   "from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate "
-                                  "these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you "
-                                  "use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus "
+                                  "these gene caller id's, then confirm the correct flanking gene caller ids. Anvi'o recommends you "
+                                  "use the --gene caller ids flag to specify the specific pair gene caller ids you need to cut out the locus "
                                   "so there are no more mix ups. On the other hand, if you are trying to extract multiple loci from a genome "
                                   "using the same flanking genes, anvi'o cannot currently handle this in --flank-mode. If this functionality "
                                   "is necessary for your analysis, please make an issue on github and we will address it." % (len(self.gene_caller_ids_of_interest),
