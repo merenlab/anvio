@@ -87,7 +87,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                     ['run', '--keep-ids', '--exclude-ids', '--min-len', "--prefix", "--simplify-names", "--seq-type"]
 
 
-        gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
+        gen_contigs_params = ['--description', '--skip-gene-calling',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
                               '--contigs-fasta', '--project-name',\
                               '--description', '--split-length', '--kmer-size',\
