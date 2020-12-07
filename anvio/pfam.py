@@ -149,15 +149,16 @@ class PfamSetup(object):
 
         for file_name in self.files:
             if not filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
-                 # TO DO: Fix messages :(
-                raise ConfigError("Have missing file %s, please run --reset" % file_name)
+                raise ConfigError(f"Unfortunately, we failed to download the file {file_name}, please re-run setup "
+                                  "with the --reset flag.")
 
             hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
             expected_hash = checksums[file_name]
 
             if not expected_hash == hash_on_disk:
-                # TO DO: Fix messages :(
-                raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
+                raise ConfigError(f"Please re-run setup with --reset, the file hash for {file_name} doesn't match to the hash "
+                                  "we expected. If you continue to get this error after doing that, try removing the entire "
+                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again (without the --reset flag).")
 
 
     def decompress_files(self):
@@ -604,5 +605,3 @@ class HMMProfile(object):
         profile['MATCH_STATES'].set_index('MATCH_STATE', drop=True, inplace=True)
 
         return profile
-
-
