@@ -88,6 +88,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "fasta-txt": {
+        "name": "FASTA TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
@@ -573,5 +579,11 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "snakemake-config": {
+        "name": "SNAKEMAKE CONFIG",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     }
 }
