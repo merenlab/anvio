@@ -227,12 +227,49 @@
                                         </input>
                                     </div>   
                                 </div>
+                                <div id='support_value_params'>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Range:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox" id="support_value_checkbox" name="" value="value" onchange="emit('bin-settings-changed'); 
+                                                if (this.checked) { $('#support_color_range_param').show(); } 
+                                                else { $('#support_color_range_param').hide(); }" style="float: left;">
+                                            <div id="support_color_range_param">
+                                                <div id="support_picker_low" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15x;"></div>
+                                                <div id="support_picker_high" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Some Param:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" style="width: 40px;">
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Other Param:</label>
+                                        <div class="col-md-8">
+                                            <input type="text" style="width: 120px;" placeholder="some input value">
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bonus Param:</label>
+                                        <div class="col-md-8">
+                                            <select>
+                                                <option>cats</option>
+                                                <option>dogs</option>
+                                                <option>some kind of phage</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                <div id="support_value_params" class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" data-help="support-value-checkbox">Some Param</label>
-                                    <div class='col-md-8'>
-                                        <input type='checkbox'></input>
-                                    </div>                             
+                                    
+                                   
+
+                                        <!-- <span class="grid_details" style="display: none; margin-left:5px; float-left;">
+                                            Range: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" />
+                                        </span> -->
                                 </div>
 
 
