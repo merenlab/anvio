@@ -31,7 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
-workflow_config_version = "1"
+workflow_config_version = anvio.tables.versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
