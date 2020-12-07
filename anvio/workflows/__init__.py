@@ -251,8 +251,20 @@ class WorkflowSuperClass:
 
 
     def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=True):
-        """This function gets a snakemake workflow object and checks whether each shell command
-           exists in the path.
+        """Check whether each shell command in a snakemake_workflow_object exists in PATH
+
+        Parameters
+        ==========
+        snakemake_workflow_object: snakemake.workflow
+            Source code of this object found at
+            https://snakemake.readthedocs.io/en/stable/_modules/snakemake/workflow.html
+
+        Notes
+        =====
+        - FIXME Not all of the programs identified here will _actually_ be used in the workflow.
+          Finding out which commands will actually be used requires building the DAG and then
+          finding the appropriate place in the Snakemake API where we can expose this information.
+          See https://github.com/merenlab/anvio/issues/1316 for discussion.
         """
 
         if self.slave_mode:
