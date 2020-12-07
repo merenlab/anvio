@@ -24,6 +24,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['linkmers-txt',]
 __provides__ = ['oligotypes',]
+__resources__ = [("An application of the oligotyping workflow in metagenomics", "https://merenlab.org/2015/12/09/musings-over-commamox/#an-application-of-oligotyping-in-the-metagenomic-context-oligotyping-amoc")]
 __description__ = "Takes an anvi'o linkmers report, generates an oligotyping output"
 
 
