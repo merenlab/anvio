@@ -5,7 +5,7 @@ This program **downloads and organizes a local copy of the data from EBI's [Pfam
 anvi-setup-pfams 
 {{ codestop }}
 
-To set up this data in a non-default location, run 
+By default, this data is stored at `anvio/data/misc/Pfam`. To set up this data in a non-default location, run 
 {{ codestart }}
 anvi-setup-pfams --pfam-data-dir path/to/location
 {{ codestop }}
