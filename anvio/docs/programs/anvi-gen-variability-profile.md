@@ -1,5 +1,7 @@
 This program takes the variability data stored within a %(profile-db)s and compiles it from across samples into a single matrix that comprehensively describes your SNVs, SCVs or SAAVs (a %(variability-profile-txt)s).
 
+By default, this program will just put the variability data into your %(contigs-db)s. If you would like a %(variability-profile-txt)s file, just provide the `-o` parameter with a filename. 
+
 This program is described on [this blog post](http://merenlab.org/2015/07/20/analyzing-variability/#the-anvio-way), so take a look at that for more details. 
 
 ## Let's talk parameters 
