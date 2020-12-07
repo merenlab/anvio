@@ -55,6 +55,7 @@ class WorkflowSuperClass:
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
         self.additional_params = A('additional_params')
+        self.skip_version_check = A('skip_version_check')
 
         if self.additional_params:
             run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. "
@@ -74,6 +75,14 @@ class WorkflowSuperClass:
         if self.config_file:
             filesnpaths.is_file_json_formatted(self.config_file)
             self.config = json.load(open(self.config_file))
+
+        # Check if config version is current
+        if not self.skip_version_check and self.config['config_version'] != workflow_config_version:
+            raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
+                              f"of date (your version: {self.config['config_version']}; up-to-date version: "
+                              f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
+                              f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
+                              f"this error message.")
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
@@ -659,7 +668,7 @@ def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
     config = json.load(open(config_file))
     workflow_name = config.get('workflow_name')
     # Notice that if there is no config_version then we return "0".
-    # This is in order to accomodate early contig files that had no such parameter.
+    # This is in order to accomodate early config files that had no such parameter.
     version = config.get('config_version', "0")
 
     if (not dont_raise) and (not workflow_name):
