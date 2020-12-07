@@ -148,7 +148,8 @@
                 </div>
             </div>
 
-            <div id="sidebar">
+            <div id="sidebar" onload="{$('#support_value_params').hide()}">
+                <!-- this hide function needs to happen upon initial render, currently only called onchange -->
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
@@ -216,18 +217,18 @@
                                         </div>
                                 </div>
 
-                                <span class="settings-header">Support</span>
-                                <div class="form-group form-margin">
+                            <span class="settings-header" >Support</span>
+                                <div class="form-group form-margin" >
                                     <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Show Support Value</label>
                                     <div class="col-md-8">
-                                        <input type="checkbox" 
+                                        <input type="checkbox"
                                                 onchange="emit('bin-settings-changed') ;if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } " 
                                                 id="support_value_checkbox";
                                                 >
                                         </input>
                                     </div>   
                                 </div>
-                                <div id='support_value_params'>
+                                <div id="support_value_params">
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Range:</label>
                                         <div class="col-md-8">
