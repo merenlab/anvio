@@ -788,6 +788,7 @@ class GenomeDescriptions(object):
         if functional_occurrence_table_output:
             function_occurrence_df.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
             if not anvio.QUIET:
+                self.progress.reset()
                 self.run.info('Occurrence frequency of functions:', functional_occurrence_table_output)
 
         function_occurrence_table = {}
