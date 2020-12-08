@@ -400,7 +400,7 @@ class AnvioArtifacts:
         artifacts_without_descriptions = set([])
 
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
 
             # learn about the description of the artifact
             artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
@@ -419,7 +419,7 @@ class AnvioArtifacts:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
 
             # register artifact type
-            artifact_type = ANVIO_ARTIFACTS[artifact]['type']
+            artifact_type = self.artifacts_info[artifact]['type']
 
             if artifact_type not in self.artifact_types:
                 self.artifact_types[artifact_type] = []
