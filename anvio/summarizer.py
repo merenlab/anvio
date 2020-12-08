@@ -490,6 +490,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # warn user if they have a low number of genomes per group
         if categories_few_genomes:
+            self.progress.reset()
             categories_string = ", ".join(categories_few_genomes)
             self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
                              "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
