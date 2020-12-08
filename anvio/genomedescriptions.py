@@ -744,6 +744,10 @@ class GenomeDescriptions(object):
         # get a dictionary of function occurrences per genome
         function_occurrence_df, function_occurrence_dict = self.get_occurrence_of_functions_in_genomes(functions_summary_dict)
 
+        if functional_occurrence_table_output:
+            function_occurrence_df.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
+            self.run.info('Occurrence frequency of functions:', functional_occurrence_table_output)
+
         # warning if group sizes are too small for statistical reliability
 
 
@@ -784,6 +788,8 @@ class GenomeDescriptions(object):
                         func_occurrence_dict[function][g] += 1
 
         func_occurrence_dataframe = pd.DataFrame.from_dict(func_occurrence_dict)
+        func_occurrence_dataframe.drop('accession', inplace=True)
+
         return func_occurrence_dataframe, func_occurrence_dict
 
 
