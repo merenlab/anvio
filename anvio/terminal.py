@@ -132,10 +132,12 @@ class Progress:
 
 
     def get_terminal_width(self):
-        # FIXME Program flow here is not clear. When does try fail?
         try:
-            self.terminal_width = max(get_terminal_size()[0], 120)
+            self.terminal_width = max(get_terminal_size()[0], 60)
         except:
+            # Getting the terminal size failed. It could be for many reasons: they may not have a
+            # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
+            # width so that if they can see it at all, it truncates only the longest update messages.
             self.terminal_width = 120
 
 
