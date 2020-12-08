@@ -662,6 +662,7 @@ class GenomeDescriptions(object):
         # this is a hack (credits to Alon) which will make the functional occurrence method print to the tmp file
         # (we need this because the functional occurrence method prints to the args.output_file)
         self.args.output_file = tmp_functional_occurrence_file
+        self.run.info("Temporary functional occurrence file: ", tmp_functional_occurrence_file)
 
         # get functional occurrence input file
         self.functional_occurrence_stats()
@@ -792,7 +793,6 @@ class GenomeDescriptions(object):
         func_occurrence_dataframe.drop('accession', inplace=True)
 
         return func_occurrence_dataframe, func_occurrence_dict
-
 
 
 class MetagenomeDescriptions(object):
