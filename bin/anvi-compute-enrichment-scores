@@ -23,7 +23,7 @@ __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __resources__ = []
 __tags__ = ["pangenomics", "functions", "metabolism"]
-__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers-category', 'pan-db', 'genomes-storage-db',]
+__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db',]
 __provides__ = ['enrichment-txt',]
 __description__ = ("A program that creates the input for `anvi-script-enrichment-stats` and runs that "
                    "script to compute enrichment scores and group associations for annotated entities "
@@ -60,9 +60,9 @@ def main(args):
         raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
                                         "Estimating enriched functions across pangenome groups. This option accomplishes the same thing "
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)
