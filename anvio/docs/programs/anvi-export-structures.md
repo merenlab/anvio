@@ -1,6 +1,6 @@
 This program exports the structures in a %(structure-db)s as %(protein-structure-txt)s files. 
 
-This allows you to view your 3D structures through other softwares that aren't focused on variable positions (like %(anvi-3dev)s is). 
+This allows you to view your 3D structures through other softwares that aren't focused on variable positions (like %(anvi-display-structure)s is). 
 
 To run, just provide a %(structure-db)s and an output path:
 

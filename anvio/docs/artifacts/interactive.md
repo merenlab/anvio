@@ -23,7 +23,7 @@ If you're new to the anvi'o interactive interface, you'll probably want to check
 
 However, there are more interfaces available in anvi'o than just that one, so let's list them out: 
 
-- %(anvi-3dev)s lets you examine specific protein structures, along with SCV and SAAVs within it. (It even has [its own software page.](http://merenlab.org/software/anvi-3dev/). It's kind of a big deal.)
+- %(anvi-display-structure)s lets you examine specific protein structures, along with SCV and SAAVs within it. (It even has [its own software page.](http://merenlab.org/software/anvio-structure/). It's kind of a big deal.)
 
 - %(anvi-display-contigs-stats)s shows you various stats about the contigs within a %(contigs-db)s, such as their hmm-hits, lengths, N and L statistics, and so on.
 
