@@ -22,11 +22,11 @@ See **[program help menu](../../../vignette#{{ program.name }})** or go back to 
 
 ## Provides
 
-<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Requires or uses
 
-<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Usage
 

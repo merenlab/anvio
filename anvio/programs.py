@@ -634,6 +634,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
                 run.warning(None, 'THE OUTPUT DICT')
