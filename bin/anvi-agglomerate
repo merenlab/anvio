@@ -5,8 +5,8 @@ import sys
 
 import anvio
 import anvio.agglomeration as agglomeration
-import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -23,8 +23,7 @@ __description__ = "Generate a new anvi'o tRNA-seq database."
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
     groupA.add_argument(*anvio.A('input-fasta-file'), **anvio.K('input-fasta-file'))
@@ -38,7 +37,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('sort-index-bam-output'), **anvio.K('sort-index-bam-output'))
     groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         agglomerator = agglomeration.Agglomerator(

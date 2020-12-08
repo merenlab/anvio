@@ -3,7 +3,7 @@
 """Populate misc data tables"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -44,7 +44,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
                         for layers or items. The expected format of this file depends on the data table you will target. This\
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     group2.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

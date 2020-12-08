@@ -37,15 +37,14 @@ var contig_id;
 var page_header;
 var highlight_gene;
 var gene_mode;
-var show_snvs;
-var show_indels;
-var show_highlights;
 var sequence;
 var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
 var show_nucleotides = true;
+var maxNucleotidesInWindow = 300;
+var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
 
@@ -65,7 +64,7 @@ window.onscroll = function() {
 }
 
 function stickyBoxes() {
-  if(!show_highlights) return;
+  if(!state['show_highlights']) return;
   var nucl_shown = $("#DNA_sequence").length > 0;
 
   var boxes = document.getElementById("highlight-boxes");
@@ -115,9 +114,6 @@ function loadAll() {
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
-    show_snvs = getParameterByName('show_snvs') == 'true';
-    show_indels = true;//getParameterByName('show_indels') == 'true';
-    show_highlights = true;
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -127,6 +123,11 @@ function loadAll() {
     {
         state = JSON.parse(localStorage.state);
     }
+
+    if(state['show_snvs'] == null) {
+        state['show_snvs'] = getParameterByName('show_snvs') == 'true';
+    }
+    if(state['show_highlights'] == null) state['show_highlights'] = true;
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
     $.ajax({
@@ -193,10 +194,10 @@ function loadAll() {
                 }
 
                 if(next_contig_name)
-                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['show_snvs']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                 if(previous_contig_name)
-                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['show_snvs']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                 $('#window-title').html("anvi-inspect: " + page_header);
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
@@ -222,6 +223,10 @@ function loadAll() {
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
+
+                if(state['show_indels'] == null) {
+                  state['show_indels'] = (indels != null && !isEmpty(indels));
+                }
 
                 // create function color menu and table; set default color states
                 $('#gene_color_order').append($('<option>', {
@@ -268,16 +273,18 @@ function loadAll() {
                     if(indels[i].hasOwnProperty(key)) numIndels++;
                   }
                 }
-                if(numSNVs > 1000) {
-                  show_snvs = false;
-                  $("div.snvs-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                if(state['show_snvs'] && numSNVs > 1000) {
+                  state['show_snvs'] = false;
+                  $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.snvs-disabled").fadeIn(300);
                 }
-                if(numIndels > 1000) {
-                  show_indels = false;
-                  $("div.indels-disabled").fadeIn(300).delay(6000).fadeOut(400);
+                if(state['show_indels'] && numIndels > 1000) {
+                  state['show_indels'] = false;
+                  $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                  $("div.indels-disabled").fadeIn(300);
                 }
-                if(show_snvs) $('#toggle_snv_box').attr("checked", "checked");
-                if(show_indels) $('#toggle_indel_box').attr("checked", "checked");
+                if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
+                if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -376,9 +383,11 @@ function loadAll() {
 
                 $('#toggle_snv_box').on('change', function() {
                   toggleSNVs();
+                  if($('div.snvs-disabled').length > 0) $('div.snvs-disabled').remove();
                 });
                 $('#toggle_indel_box').on('change', function() {
                   toggleIndels();
+                  if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -411,7 +420,7 @@ function drawHighlightBoxes() {
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
                   .attr("height", boxH)
-                  .attr("fill", endpts.includes(i) ? "red" : "blue")
+                  .attr("fill", endpts.includes(i) ? "red" : "#989898")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
@@ -426,16 +435,16 @@ function drawAAHighlightBoxes() {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     var marked = endpts.includes(box_num) || endpts.includes(box_num+2);
-    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : 'blue');
+    $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0.25).attr('fill', marked ? 'red' : '#989898');
   }).mouseout(function(e) {
     if(!e.target.id.startsWith("AA_")) return;
     var box_num = parseFloat(get_box_id_for_AA(e.target, "highlight_").substring(10));
     $('#highlight_' + box_num + ', #highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill-opacity', 0);
 
     if(endpts.includes(box_num)) {
-      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', 'blue');
+      $('#highlight_' + (box_num+1) + ', #highlight_' + (box_num+2)).attr('fill', '#989898');
     } else if(endpts.includes(box_num+2)) {
-      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', 'blue');
+      $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', '#989898');
     }
   });
 }
@@ -557,7 +566,7 @@ function toggleSNVs() {
   } else {
     $("div.snvs-activated").fadeIn(300).delay(1500).fadeOut(400);
   }*/
-  show_snvs = !show_snvs;
+  state['show_snvs'] = !state['show_snvs'];
   createCharts(state);
 }
 
@@ -567,12 +576,12 @@ function toggleIndels() {
   } else {
     $("div.indels-activated").fadeIn(300).delay(1500).fadeOut(400);
   }*/
-  show_indels = !show_indels;
+  state['show_indels'] = !state['show_indels'];
   createCharts(state);
 }
 
 function toggleHighlightBoxes() {
-  if(show_highlights) {
+  if(state['show_highlights']) {
     $('#highlightBoxesSvg').empty();
     $('#highlight-boxes').css('pointer-events', 'none');
     $('#context-container').off('mouseover mouseout');
@@ -582,7 +591,7 @@ function toggleHighlightBoxes() {
     setSelectionBoxListener();
     $('#highlight-boxes').css('pointer-events', 'all');
   }
-  show_highlights = !show_highlights;
+  state['show_highlights'] = !state['show_highlights'];
 }
 
 function toggleGeneIDColor(gene_id, color="#FF0000") {
@@ -753,7 +762,7 @@ function display_nucleotides() {
   let start = parseInt($('#brush_start').val());
   let end = parseInt($('#brush_end').val());
 
-  if(end - start > 300 || end - start < 30) {
+  if(end - start > maxNucleotidesInWindow || end - start < minNucleotidesInWindow) {
     contextSvg.attr("height", 150);
     $("#gene-chart").attr("transform", "translate(50, 10)");
     $("#context-chart").attr("transform", "translate(50, 80)");
@@ -915,7 +924,7 @@ function display_nucleotides() {
   $("#gene-arrow-chart").attr("transform", "translate(50, " + (10+extra_y) + ")");
   gene_offset_y = 10+extra_y;
 
-  if(show_highlights) {
+  if(state['show_highlights']) {
     drawHighlightBoxes();
     drawAAHighlightBoxes();
     setSelectionBoxListener();
@@ -923,7 +932,7 @@ function display_nucleotides() {
 }
 
 function setSelectionBoxListener() {
-  if(!show_snvs && !show_indels) return;
+  if(!state['show_snvs'] && !state['show_indels']) return;
 
   $('.SNV_text, .indels_text').each(function(i) {
     select_boxes[i] = {"left"  : $(this).offset().left,
@@ -1351,7 +1360,10 @@ function processState(state_name, state) {
     }
     redrawArrows();
 
-    if(show_indels) {
+    // Show SNVs if variability data available
+    /*if(!state.hasOwnProperty('show_snvs')) state['show_snvs'] = variability ? true : false;*/
+
+    if(state['show_indels']) {
       if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
       $('#largeIndelInput').val(20);
     }
@@ -1598,8 +1610,11 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
+    $('#brush_start').val(contextXScale.domain()[0]);
+    $('#brush_end').val(contextXScale.domain()[1]);
+
     if(show_nucleotides) display_nucleotides();
-    if(show_highlights) drawHighlightBoxes();
+    if(state['show_highlights']) drawHighlightBoxes();
     setSelectionBoxListener();
 
     function onBrush(){
@@ -1707,24 +1722,24 @@ function Chart(options){
     var yGC = this.yScaleGC;
 
     this.area = d3.svg.area()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y0(this.height)
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
 
     this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(i)+4; })
+                            .x(function(d, i) { return xS(1+i)+4; })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
     this.reverseLine = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
+                            .x(function(d, i) { return xS(1+i); })
                             .y(function(d, i) { if(i == 0) return ySLR(0); if(i == num_data_points - 1) return ySLR(0); return ySLR(d); })
                             .interpolate('step-before');
 
 
     // .x() needs to stay as a arrow function, it has reference to scope.
     this.gc_line = d3.svg.line()
-                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + (i * this.gc_content_step_size)); })
+                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + ((1+i) * this.gc_content_step_size)); })
                             .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
@@ -1767,7 +1782,7 @@ function Chart(options){
                       .style("fill", "none")
                       .attr("d", this.gc_line);
 
-    if (show_snvs) {
+    if (state['show_snvs']) {
         this.lineContainer.append("path")
             .data([this.variability_b])
             .attr("class", "line")
@@ -1802,12 +1817,15 @@ function Chart(options){
                                 .enter()
                                 .append("text")
                                 .attr("class", "SNV_text")
-                                .attr("x", function (d) { return xS(d.key); })
+                                .attr("x", function (d) { return xS(0.5+parseInt(d.key)); })
                                 .attr("y", function (d) { return 0; })
                                 .attr("writing-mode", "tb")
-                                .attr("font-size", "7px")
+                                .attr("font-size", "5px")
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
+                                .attr("paint-order", "stroke")
+                                .attr("stroke", "#FFFFFF")
+                                .attr("stroke-width", "1px")
                                 .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
                                 .attr('data-content', function(d) {
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
@@ -1840,7 +1858,7 @@ function Chart(options){
                                 });
     }
 
-    if(show_indels) {
+    if(state['show_indels']) {
       this.indel_coverage = [];
       this.indel_coverage.length = this.coverage.length;
       this.indel_coverage.fill(0);
@@ -1918,7 +1936,7 @@ function Chart(options){
                               .enter()
                               .append("text")
                               .attr("class", "indels_text")
-                              .attr("x", function (d) { return xS(d.value['pos']); })
+                              .attr("x", function (d) { return xS(0.5+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
@@ -1992,7 +2010,15 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
-    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(d.value['pos']); });
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
+
+    let numNucl = $('#brush_end').val()-$('#brush_start').val();
+    let mk_font_size = 2000/numNucl;
+    if(mk_font_size < 5) mk_font_size = 5;
+    if(mk_font_size > 10) mk_font_size = 10;
+    this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
+
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

@@ -1,5 +1,7 @@
 This program takes the variability data stored within a %(profile-db)s and compiles it from across samples into a single matrix that comprehensively describes your SNVs, SCVs or SAAVs (a %(variability-profile-txt)s).
 
+By default, this program will just put the variability data into your %(contigs-db)s. If you would like a %(variability-profile-txt)s file, just provide the `-o` parameter with a filename. 
+
 This program is described on [this blog post](http://merenlab.org/2015/07/20/analyzing-variability/#the-anvio-way), so take a look at that for more details. 
 
 ## Let's talk parameters 
@@ -8,26 +10,53 @@ Here is a basic run with no bells or whisles:
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
-                             -c %(contigs-db)s
+                             -c %(contigs-db)s \ 
+                             -C DEFAULT \
+                             -b EVERYTHING
 {{ codestop }}
+
+Note that this program requires you to specify a subset of the databases that you want to focus on, so to focus on everything in the databases, run %(anvi-script-add-default-collection)s and use the resulting %(collection)s and %(bin)s, as shown above. 
 
 You can add structural annotations by providing a %(structure-db)s. 
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
                              -c %(contigs-db)s \
+                             -C DEFAULT \
+                             -b EVERYTHING \
                              -s %(structure-db)s 
 {{ codestop }}
 
 ### Focusing on a subset of the input 
 
-You can focus on a specific %(collection)s, %(bin)s, genes (by providing a file or list of caller IDs) or list of splits (in the form of a %(splits-txt)s). 
+Instead of focusing on everything (providing the collection `DEFAULT` and the bin `EVERYTHING`), there are three ways to focus on a subset of the input: 
 
-{{ codestart }}
-anvi-gen-variability-profile -p %(profile-db)s \
-                             -c %(contigs-db)s \
-                             --gene-caller-ids GENE_1,GENE_2,GENE_3
-{{ codestop }}
+1. Provide a list of gene caller IDs (as a parameter with the flag `--gene-caller-ids` as shown below, or as a file with the flag `--genes-of-interest`)
+
+    {{ codestart }}
+    anvi-gen-variability-profile -p %(profile-db)s \
+                                 -c %(contigs-db)s \
+                                 --gene-caller-ids GENE_1,GENE_2,GENE_3
+    {{ codestop }}
+
+2. Provide a %(splits-txt)s to focus only on a specific set of splits. 
+
+    {{ codestart }}
+    anvi-gen-variability-profile -p %(profile-db)s \
+                                 -c %(contigs-db)s \
+                                 --splits-of-intest %(splits-txt)s
+    {{ codestop }}
+    
+3. Provide some other %(collection)s and %(bin)s. 
+
+    {{ codestart }}
+    anvi-gen-variability-profile -p %(profile-db)s \
+                                 -c %(contigs-db)s \ 
+                                 -C %(collection)s \
+                                 -b %(bin)s
+    {{ codestop }}
+
+### Additional Ways to Focus the Input 
 
 When providing a %(structure-db)s, you can also limit your analysis to only genes that have structures in your database. 
 

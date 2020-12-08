@@ -165,8 +165,8 @@ def reformat_FASTA(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('contigs_fasta', metavar='FASTA FILE')
     parser.add_argument('-l', '--min-len', type=int, default=0, metavar='MIN_LENGTH',
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                               in case you need to go back to this information later. It is not\
                               mandatory to declare one, but it is a very good idea to have it.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         reformat_FASTA(args)

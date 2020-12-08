@@ -74,8 +74,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('db_path', metavar = 'DB',
                         help = "Anvi'o database to read from.")
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('fields'), **anvio.K('fields'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

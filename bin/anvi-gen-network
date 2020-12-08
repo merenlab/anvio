@@ -111,16 +111,16 @@ class NetworkDescriptonSamples:
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         network = NetworkDescriptonSamples(args)

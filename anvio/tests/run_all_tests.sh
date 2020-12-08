@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Initializing raw BAM files"
@@ -78,6 +78,14 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $files/external_hmm_profile
+
+INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
+                                              -O $output_dir/ADHOC_HMMs
+
+INFO "Running the HMMs in the ad hoc user directory"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -H $output_dir/ADHOC_HMMs
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
@@ -709,7 +717,8 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --dry-run
 
 INFO "Firing up the interactive interface to display the contigs db stats"
-anvi-display-contigs-stats $output_dir/CONTIGS.db
+anvi-display-contigs-stats $output_dir/CONTIGS.db \
+                           $dry_run_controller
 
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -717,27 +726,36 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -A $files/additional_view_data.txt \
                  -t $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt \
                  -V $files/additional_view.txt \
-                 --split-hmm-layers
+                 --split-hmm-layers \
+                 $dry_run_controller
+
 
 INFO "Firing up the interface to display the split bin, Bin_1"
 anvi-interactive -c $output_dir/CONCOCT_BINS_SPLIT/Bin_1/CONTIGS.db \
                  -p $output_dir/CONCOCT_BINS_SPLIT/Bin_1/PROFILE.db \
-                 --title "Split bin, Bin_1"
+                 --title "Split bin, Bin_1" \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface with the blank profile"
 anvi-interactive -c $output_dir/CONTIGS.db \
-                 -p $output_dir/BLANK-PROFILE/PROFILE.db
+                 -p $output_dir/BLANK-PROFILE/PROFILE.db \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface in 'COLLECTION' mode"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
-                 -C CONCOCT
+                 -C CONCOCT \
+                 $dry_run_controller
 
 INFO "Firing up the interactive interface to refine a bin"
 anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
             -c $output_dir/CONTIGS.db \
             -C CONCOCT \
-            -b Bin_1
+            -b Bin_1 \
+            $dry_run_controller
+
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
@@ -752,4 +770,5 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
                  -C CONCOCT \
                  -b Bin_1 \
-                 --gene-mode
+                 --gene-mode \
+                 $dry_run_controller
