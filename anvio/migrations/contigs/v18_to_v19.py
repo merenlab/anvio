@@ -77,13 +77,13 @@ def migrate(db_path):
 
     progress.end()
     message = (f"The contigs database is now {next_version}. This upgrade added an empty tRNA taxonomy table "
-               f"in it. Probably you will never use it becasue who cares about tRNA taxonomy amirite? "
+               f"in it. Probably you will never use it because who cares about tRNA taxonomy amirite? "
                f"Well, IT WILL FOREVER BE THERE ANYWAY. BOOM.")
 
     if relevant_gene_calls:
         message += (" This update also removed tRNA HMM hits from your contis database :/ It was really very "
                     "necessary since one of the developers of anvi'o (*COUGH* meren *COUGH*) was very confused "
-                    "anticodons. Now everything is fixed, but unfortunatley you will have to re-run "
+                    "anticodons. Now everything is fixed, but unfortunately you will have to re-run "
                     "`anvi-scan-trnas` program on your contigs database :( ")
 
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
