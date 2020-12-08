@@ -1,0 +1,1 @@
+A Snakemake config file is a JSON formated configuration file that lets you turn on and off Snakemake rules and/or adjust parameters for specfic rules in a workflow provided by anvi'o (e.g. contigs, metagenomics, pangenomics). Please checkout this [blogpost](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/) on Snakemake workflows in anvi'o for more details.

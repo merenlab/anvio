@@ -580,9 +580,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "snakemake-config": {
-        "name": "SNAKEMAKE CONFIG",
-        "type": "TXT",
+    "workflow-config": {
+        "name": "WORKFLOW CONFIG",
+        "type": "JSON",
         "provided_by_anvio": False,
         "provided_by_user": True
     }
