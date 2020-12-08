@@ -23,6 +23,8 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
 
+import pandas as pd
+
 from anvio.errors import ConfigError
 
 
@@ -739,7 +741,51 @@ class GenomeDescriptions(object):
             func, aa, dna  = self.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=[functional_annotation_source])
             functions_summary_dict[g] = func
 
+        # get a dictionary of function occurrences per genome
+        function_occurrence_df, function_occurrence_dict = self.get_occurrence_of_functions_in_genomes(functions_summary_dict)
+
         # warning if group sizes are too small for statistical reliability
+
+
+    def get_occurrence_of_functions_in_genomes(self, genome_to_func_summary_dict):
+        """Here we convert a dictionary of function annotations in each genome to a dictionary of counts per function.
+
+        PARAMETERS
+        ==========
+        genome_to_func_summary_dict : multi-level dict
+            The format of this dictionary is
+            (accession, annotation, e_value) = genome_to_func_summary_dict[genome_name][gene_caller_id][annotation_source]
+
+        RETURNS
+        =======
+        func_occurrence_dict :
+            dictionary of function annotation counts in each genome. Its format is
+            count of gene calls with function = func_occurrence_dict[function][genome]
+            (set of accession numbers with this annotation) = func_occurrence_dict[function]['accession']
+        func_occurrence_dataframe : dataframe
+            dataframe version of the above dictionary
+        """
+
+        func_occurrence_dict = {}
+        for g, genes_to_func in genome_to_func_summary_dict.items():
+            for gc_id, func_annotations in genes_to_func.items():
+                for source, annotation_tuple in func_annotations.items():
+                    acc, function, eval = annotation_tuple
+                    if function not in func_occurrence_dict:
+                        func_occurrence_dict[function] = {}
+                        func_occurrence_dict[function]['accession'] = set([acc])
+                        for genome_name in self.genomes:
+                            func_occurrence_dict[function][genome_name] = 0
+                        func_occurrence_dict[function][g] += 1
+                    else:
+                        # a functional annotation could have multiple accessions
+                        # for example, K00844 and K12407 are both hexokinase/glucokinase
+                        func_occurrence_dict[function]['accession'].add(acc)
+                        func_occurrence_dict[function][g] += 1
+
+        func_occurrence_dataframe = pd.DataFrame.from_dict(func_occurrence_dict)
+        return func_occurrence_dataframe, func_occurrence_dict
+
 
 
 class MetagenomeDescriptions(object):
