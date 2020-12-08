@@ -33,8 +33,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
     groupA.add_argument(*anvio.A('contigs-fasta'), **anvio.K('contigs-fasta'))
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupD.add_argument(*anvio.A('skip-predict-frame'), **anvio.K('skip-predict-frame'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

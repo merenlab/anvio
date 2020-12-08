@@ -453,7 +453,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
 
-        self.base_url = "/software/anvio/help"
+        self.base_url = os.path.join("/software/anvio/help", anvio.anvio_version_for_help_docs)
         self.anvio_markdown_variables_conversion_dict = {}
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)

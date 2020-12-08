@@ -3,11 +3,11 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-import argparse
 import os
 import sys
 import json
 import copy
+import argparse
 import platform
 
 from tabulate import tabulate
@@ -18,6 +18,8 @@ import pkg_resources
 
 anvio_version = '6.2-master'
 anvio_codename = 'esther'
+
+anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
@@ -56,29 +58,6 @@ except Exception:
 class EmptyArgs(argparse.Namespace):
     def __init__(self):
         super().__init__()
-
-
-def get_args(parser):
-    """A helper function to parse args anvi'o way.
-
-       This function allows us to make sure some ad hoc parameters such as `--debug`
-       can be used with any anvi'o program spontaneously even if they are not explicitly
-       defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
-       to see can still be sorted out.
-    """
-
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
-
-    args, unknown = parser.parse_known_args()
-
-    # if there are any args in the unknown that we do not expect to find
-    # we we will make argparse complain about those.
-    if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
-        for f in allowed_ad_hoc_flags:
-            parser.add_argument(f, action='store_true')
-        parser.parse_args()
-
-    return args
 
 
 import anvio.constants as constants
@@ -639,7 +618,7 @@ D = {
              'type': str,
              'metavar': 'FILE_PATH',
              'help': "If this flag is declared, anvi'o will store a comprehensive list of hits that led to the "
-                     "determination of the consensus hit per sequence (which is the only piece of inormation that). "
+                     "determination of the consensus hit per sequence (which is the only piece of information that "
                      "is stored in the contigs database)."}
                 ),
     'report-scg-frequencies': (
@@ -762,6 +741,16 @@ D = {
              'type': str,
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'cog-version': (
+            ['--cog-version'],
+            {'default': None,
+             'type': str,
+             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
+                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
+                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
+                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
+                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
@@ -1352,6 +1341,14 @@ D = {
             {'metavar': 'FILE',
              'help': "A file with samples names. There should be only one column in the file, and each line "
                      "should correspond to a unique sample name (without a column header)."}
+                ),
+    'samples-txt': (
+            ['--samples-txt'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with columns ['sample', 'r1', 'r2'] or ['sample', 'group', 'r1', 'r2'] "
+                     "where `r1` and `r2` columns are paths to compressed or flat FASTQ files for each `sample` and "
+                     "`group` is an optional column for relevant applications where samples are affiliated with one-word "
+                     "categorical variables that define to which group they are assigned."}
                 ),
     'genes-of-interest': (
             ['--genes-of-interest'],
