@@ -638,6 +638,8 @@ class GenomeDescriptions(object):
 
         It first prepares an input file describing the occurrence of functions in each group, then feeds this file to
         the script.
+
+        Based on similar function for pangenomes in summarizer.py - Credits to Alon
         """
 
         # sanity check for R packages
@@ -676,6 +678,8 @@ class GenomeDescriptions(object):
 
         If an output file is provided, the functional occurrence dictionary is written to that file.
         Otherwise, the dictionary is returned.
+
+        Based on similar function for pangenomes in summarizer.py - Credits to Alon
         """
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
