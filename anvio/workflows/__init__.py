@@ -76,13 +76,17 @@ class WorkflowSuperClass:
             filesnpaths.is_file_json_formatted(self.config_file)
             self.config = json.load(open(self.config_file))
 
-        # Check if config version is current
-        if not self.skip_version_check and self.config['config_version'] != workflow_config_version:
-            raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
-                              f"of date (your version: {self.config['config_version']}; up-to-date version: "
-                              f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
-                              f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
-                              f"this error message.")
+        # Check if config version is current unless getting default
+        # config which should already be the current version
+        if self.default_config_output_path:
+           pass
+        else:
+            if not self.skip_version_check and self.config['config_version'] != workflow_config_version:
+                raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
+                                  f"of date (your version: {self.config['config_version']}; up-to-date version: "
+                                  f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
+                                  f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
+                                  f"this error message.")
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
