@@ -1,4 +1,4 @@
-This program downloads a section of the [Protein Data Bank](https://www.rcsb.org/) which is required for strucutral analyses in anvi'o, such as running %(anvi-gen-structure-database)s or %(anvi-3dev)s. 
+This program downloads a section of the [Protein Data Bank](https://www.rcsb.org/) which is required for strucutral analyses in anvi'o, such as running %(anvi-gen-structure-database)s or %(anvi-display-structure)s. 
 
 {{ codestart }}
 anvi-setup-pdb-database --just-do-it

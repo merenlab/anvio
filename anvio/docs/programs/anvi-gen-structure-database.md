@@ -1,8 +1,8 @@
 This program attempts to solve for the 3D strucutres of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER. 
 
-MODELLER first searches your sequence(s) against a database of proteins with a known structure (in Anvi'o, this is either your %(pdb-db)s or the online copy of [the RCSB database](https://www.rcsb.org/) using [DIAMOND](http://www.diamondsearch.org/index.php). After sequence alignments, the program will select a base template based on the best hits. Then, the program creates a 3D alignment for your sequence and makes final adjustments to it based off of intermolecular interactions. For more information, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#how-modeller-works). 
+MODELLER first searches your sequence(s) against a database of proteins with a known structure (in Anvi'o, this is either your %(pdb-db)s or the online copy of [the RCSB database](https://www.rcsb.org/) using [DIAMOND](http://www.diamondsearch.org/index.php). After sequence alignments, the program will select a base template based on the best hits. Then, the program creates a 3D alignment for your sequence and makes final adjustments to it based off of intermolecular interactions. For more information, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works). 
 
-The output of this is a %(structure-db)s, which can be used to run %(anvi-3dev)s to visualize all of this information. You can also export your strucutres into external .pdb files (%(anvi-export-structures)s), generate the fixation index matrix (%(anvi-gen-fixation-index-matrix)s), or the variability profile (%(anvi-gen-variability-profile)s). 
+The output of this is a %(structure-db)s, which can be used to run %(anvi-display-structure)s to visualize all of this information. You can also export your strucutres into external .pdb files (%(anvi-export-structures)s), generate the fixation index matrix (%(anvi-gen-fixation-index-matrix)s), or the variability profile (%(anvi-gen-variability-profile)s). 
 
 ### Basic run 
 
@@ -29,7 +29,7 @@ To quickly get a very rough estimate for your structures, you can run with the f
 
 ### Advanced Parameters
 
-Here, we will go through a brief overview of the MODELLER parameters that you are able to change. See [this page](http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#description-of-all-modeller-parameters) for more information. 
+Here, we will go through a brief overview of the MODELLER parameters that you are able to change. See [this page](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#description-of-all-modeller-parameters) for more information. 
 
 - The number of models to be simultated. The default is 1. 
 - The standard deviation of atomic perturbation of the initial strucutre (i.e. how much you change the position of the atoms before fine tuning with other analysis). The default is 4.
@@ -39,7 +39,7 @@ Here, we will go through a brief overview of the MODELLER parameters that you ar
 - The maximum number of templates that the program will consider. The default is 5. 
 - The MODELLER program to use. The default is `mod9.19`. 
 
-For a case study on how some of these parameters matter, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#a-quick-case-study-on-the-importance-of-key-parameters). 
+For a case study on how some of these parameters matter, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#a-quick-case-study-on-the-importance-of-key-parameters). 
 
 You also have the option to 
 
