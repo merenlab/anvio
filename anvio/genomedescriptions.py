@@ -629,6 +629,7 @@ class GenomeDescriptions(object):
                                   f"{', '.join(genomes_with_no_gene_calls)}. If you think this is happening because you didn't set "
                                   f"the right source for gene calls, you can always take a look at what is available in a given "
                                   f"contigs database by running the program `anvi-db-info`.")
+        self.progress.end()
 
 
     def functional_enrichment_stats(self):
