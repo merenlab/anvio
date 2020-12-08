@@ -738,12 +738,16 @@ class GenomeDescriptions(object):
             self.run.info('Groups', ', '.join(groups))
             self.run.info('Exclude ungrouped', exclude_ungrouped)
 
+        self.progress.new('Functional occurrence analysis')
+        self.progress.update('Getting functions from database')
+
         functions_summary_dict = {}
         for g in self.genomes:
             func, aa, dna  = self.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=[functional_annotation_source])
             functions_summary_dict[g] = func
 
         # get a dictionary of function occurrences per genome
+        self.progress.update('Counting functional occurrence')
         function_occurrence_df, function_occurrence_dict = self.get_occurrence_of_functions_in_genomes(functions_summary_dict)
 
         if functional_occurrence_table_output:
