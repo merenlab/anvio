@@ -33,12 +33,12 @@ The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o v
 
 Anvi'o artifacts represent **concepts, file types, or data types** anvi'o programs can work with. A given anvi'o artifact can be provided by the user (such as a FASTA file), produced by anvi'o (such as a profile database), or both (such as phylogenomic trees). Anvi'o artifacts link anvi'o programs to each other to build novel workflows.
 
-There are a total of {{ artifacts|length }} artifacts:
+Listed below **a total of {{ artifacts|length }} artifacts**.
 
 <table class="artifacts-table">
 {% for artifact_type in artifact_types %}
 {% if forloop.first %}<tr style="border:none;">{% else %}<tr>{% endif %}
-<td><div class="artifact-icon-div"><img src="images/icons/{{artifact_type}}.png" class="artifact-icon" /></div></td><td><span style="line-height: 25px;">{% for artifact in artifact_types|lookup:artifact_type %}<span class="artifact-n" markdown="1">[{{artifact}}]({{artifacts|lookup:artifact|lookup:"path"}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</span></td>
+<td><div class="artifact-icon-div"><img src="images/icons/{{artifact_type}}.png" class="artifact-icon" /></div></td><td class="artifact-list-td">{% for artifact in artifact_types|lookup:artifact_type %}<span class="artifact-n" markdown="1">[{{artifact}}]({{artifacts|lookup:artifact|lookup:"path"}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</td>
 </tr>
 {% endfor %}
 </table>
@@ -60,12 +60,12 @@ Listed below **a total of {{ programs|length }} programs**.
 </tr>
 <tr>
     <td class="artifact-r-td">
-    🧀 {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r" markdown="1">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    🧀 {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
     </td>
 </tr>
 <tr>
     <td class="artifact-p-td">
-    🍕 {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p" markdown="1">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    🍕 {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
     </td>
 </tr>
 </tbody>
