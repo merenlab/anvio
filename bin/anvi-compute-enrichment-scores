@@ -23,7 +23,7 @@ __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __resources__ = []
 __tags__ = ["pangenomics", "functions", "metabolism"]
-__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db',]
+__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db', 'external-genomes', 'internal-genomes']
 __provides__ = ['enrichment-txt',]
 __description__ = ("A program that creates the input for `anvi-script-enrichment-stats` and runs that "
                    "script to compute enrichment scores and group associations for annotated entities "
