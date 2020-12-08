@@ -702,6 +702,10 @@ class GenomeDescriptions(object):
             os.remove(log_file)
             os.remove(tmp_functional_occurrence_file)
 
+        if not output_file_path:
+            # if a programmer called this function then we return a dict
+            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
+
 
     def functional_occurrence_stats(self):
         """This function summarizes functional occurrence for groups of genomes.
