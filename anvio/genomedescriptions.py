@@ -752,9 +752,63 @@ class GenomeDescriptions(object):
 
         if functional_occurrence_table_output:
             function_occurrence_df.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
-            self.run.info('Occurrence frequency of functions:', functional_occurrence_table_output)
+            if not anvio.QUIET:
+                self.run.info('Occurrence frequency of functions:', functional_occurrence_table_output)
 
-        # warning if group sizes are too small for statistical reliability
+        function_occurrence_table = {}
+
+        # populate the number of genomes per group 'N'
+        groups_few_genomes = []
+        for grp in groups:
+            function_occurrence_table[grp] = {}
+            function_occurrence_table[grp]['N'] = len(groups_to_genomes_dict[grp])
+            if function_occurrence_table[grp]['N'] < 8:
+                groups_few_genomes.append(grp)
+
+        # warn user if they have a low number of genomes per group
+        if groups_few_genomes:
+            groups_string = ", ".join(groups_few_genomes)
+            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+                             f"{groups_string}.")
+
+        self.progress.update("Generating the input table for functional enrichment analysis")
+        # get the # of genomes in each group in which function occurs
+        function_occurrence_in_groups_df = function_occurrence_df.astype(bool).astype(int)
+        # add a group column to the dataframe
+        function_occurrence_in_groups_df['group'] = function_occurrence_in_groups_df.index.map(lambda x: str(genomes_to_groups_dict[x]))
+        functions_in_groups = function_occurrence_in_groups_df.groupby('group').sum()
+
+        functional_occurrence_summary_dict = {}
+        for f in function_occurrence_dict.keys():
+            # get proportion of function occurrence in groups 'p'
+            for grp in groups:
+                function_occurrence_table[grp]['p'] = functions_in_groups.loc[grp, f] / function_occurrence_table[grp]['N']
+            function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
+
+            functional_occurrence_summary_dict[f] = {}
+            present_in_genomes = [g for g in self.genomes if function_occurrence_dict[f][g]]
+            functional_occurrence_summary_dict[f]["genomes"] = ", ".join(present_in_genomes)
+            functional_occurrence_summary_dict[f]["accession"] = ", ".join(list(function_occurrence_dict[f]["accession"]))
+            for grp in groups:
+                functional_occurrence_summary_dict[f]['p_' + grp] = function_occurrence_table[grp]['p']
+                functional_occurrence_summary_dict[f]['N_' + grp] = function_occurrence_table[grp]['N']
+            enriched_groups_vector = utils.get_enriched_groups(function_occurrence_table_df['p'].values,
+                                                               function_occurrence_table_df['N'].values)
+            c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
+            associated_groups = [grp for grp in groups if enriched_groups_vector[c_dict[grp]]]
+            functional_occurrence_summary_dict[f]['associated_groups'] = ", ".join(associated_groups)
+
+        if output_file_path:
+            self.progress.update('Generating the output file')
+
+            # Sort the columns the way we want them
+            columns = [functional_annotation_source, 'accession', 'genomes', 'associated_groups']
+            columns.extend([s + grp for s in ['p_', 'N_'] for grp in groups])
+            utils.store_dict_as_TAB_delimited_file(functional_occurrence_summary_dict, output_file_path, headers=columns)
+
+        self.progress.end()
 
 
     def get_occurrence_of_functions_in_genomes(self, genome_to_func_summary_dict):
