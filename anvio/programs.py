@@ -376,6 +376,7 @@ class AnvioArtifacts:
         self.progress = p
 
         self.artifacts_info = {}
+        self.artifact_types = {}
 
         if not hasattr(self, 'programs'):
             raise ConfigError("AnvioArtifacts class is upset. You need to treat this class as a base class, and initialize "
@@ -399,7 +400,7 @@ class AnvioArtifacts:
         artifacts_without_descriptions = set([])
 
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
 
             # learn about the description of the artifact
             artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
@@ -416,6 +417,14 @@ class AnvioArtifacts:
 
                 if artifact in [a.id for a in program.meta_info['provides']['value']]:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
+
+            # register artifact type
+            artifact_type = self.artifacts_info[artifact]['type']
+
+            if artifact_type not in self.artifact_types:
+                self.artifact_types[artifact_type] = []
+
+            self.artifact_types[artifact_type].append(artifact)
 
         if len(artifacts_without_descriptions):
             self.run.info_single("Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
@@ -625,6 +634,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
                 run.warning(None, 'THE OUTPUT DICT')
@@ -641,8 +651,19 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
 
     def generate_index_page(self):
+        """Generates the index page for help where all programs and artifacts are listed"""
+
+        # let's add the 'path' for each artifact to simplify
+        # access from the template:
+        for artifact in self.artifacts_info:
+            self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
+
+        # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
+        # if we need to improve the functionality of the help index page, we may need to update programs
+        # to a fancy dictionary, too.
         d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
-             'artifacts': [(a, 'artifacts/%s' % a) for a in self.artifacts_info],
+             'artifacts': self.artifacts_info,
+             'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
                       'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
                       'date': utils.get_date()}
