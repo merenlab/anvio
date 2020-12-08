@@ -22,6 +22,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "modules-db": {
+        "name": "MODULES",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
@@ -76,6 +82,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "samples-txt": {
+        "name": "SAMPLES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "fasta-txt": {
+        "name": "FASTA TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
@@ -100,7 +118,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "kegg-db": {
+    "kegg-data": {
         "name": "KEGG DB",
         "type": "DB",
         "provided_by_anvio": True,
@@ -304,9 +322,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "binding-frequencies": {
-        "name": "AMINO ACID BINDING FREQUENCIES",
-        "type": "CONCEPT",
+    "binding-frequencies-txt": {
+        "name": "AMINO ACID BINDING FREQUENCIES TEXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -573,6 +591,41 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "workflow-config": {
+        "name": "WORKFLOW CONFIG",
+        "type": "JSON",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "contigs-workflow": {
+        "name": "CONTIGS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "metagenomics-workflow": {
+        "name": "METAGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pangenomics-workflow": {
+        "name": "PANGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "phylogenomics-workflow": {
+        "name": "PHYLOGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-workflow": {
+        "name": "TRNASEQ WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
-
 }

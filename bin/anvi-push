@@ -6,7 +6,7 @@
 
 import sys
 import getpass
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -24,7 +24,7 @@ __description__ = "Push stuff to an anvi'server"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('SERVER DETAILS', "Details of how to access to an anvi'server instance.")
     groupA.add_argument(*anvio.A('user'), **anvio.K('user', {'required': True}))
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group("RISKY CLICKS", "As the name suggests!")
     groupC.add_argument(*anvio.A('delete-if-exists'), **anvio.K('delete-if-exists'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     args.password = getpass.getpass('Enter your password for the server: ')
 

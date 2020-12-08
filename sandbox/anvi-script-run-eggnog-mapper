@@ -53,9 +53,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--use-version', default='0.12.6', metavar="EMAPPER_VERSION",
                         help='The version of eggnog-mapper that generated the annotation file.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

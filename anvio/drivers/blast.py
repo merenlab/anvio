@@ -2,6 +2,7 @@
 """Interface to NCBI's BLAST."""
 
 import os
+import glob
 import tempfile
 
 import anvio
@@ -89,7 +90,7 @@ class BLAST:
 
 
     def check_output(self, expected_output, process='blast'):
-        if not os.path.exists(expected_output):
+        if not len(glob.glob(expected_output)):
             self.progress.end()
             raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing. "
                               "Please check the log file here: '%s'" % (process, self.run.log_file_path))
@@ -112,9 +113,9 @@ class BLAST:
         self.progress.end()
 
         if dbtype == 'prot':
-            expected_output = (output_db_path or self.target_fasta) + '.phr'
+            expected_output = (output_db_path or self.target_fasta) + '*.phr'
         elif dbtype == 'nucl':
-            expected_output = (output_db_path or self.target_fasta) + '.nhr'
+            expected_output = (output_db_path or self.target_fasta) + '*.nhr'
 
         self.check_output(expected_output, 'makeblastdb')
 

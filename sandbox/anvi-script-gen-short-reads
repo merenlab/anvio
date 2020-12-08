@@ -3,12 +3,12 @@
 
 import sys
 import random
-import argparse
 import configparser
 
 import anvio
 import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -119,7 +119,7 @@ def main(config):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('configuration', metavar = 'CONFIG_FILE',
                                         help = 'Configuration file')
     parser.add_argument('--output-file-path', metavar = 'FASTA_FILE',
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
     user_config = configparser.ConfigParser()
     user_config.read(args.configuration)
 

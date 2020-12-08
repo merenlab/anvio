@@ -5,7 +5,7 @@
 import os
 import sys
 import shutil
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -88,7 +88,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': True}))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
@@ -108,7 +108,7 @@ if __name__ == '__main__':
                          clustering. The default is "%(default)s".'}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

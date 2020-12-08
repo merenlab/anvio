@@ -24,6 +24,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['linkmers-txt',]
 __provides__ = ['oligotypes',]
+__resources__ = [("An application of the oligotyping workflow in metagenomics", "https://merenlab.org/2015/12/09/musings-over-commamox/#an-application-of-oligotyping-in-the-metagenomic-context-oligotyping-amoc")]
 __description__ = "Takes an anvi'o linkmers report, generates an oligotyping output"
 
 
@@ -85,15 +86,15 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-file', metavar = 'LINKMER_REPORT', required = True,
                         help = 'Output file of `anvi-report-linkmers`.')
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)
