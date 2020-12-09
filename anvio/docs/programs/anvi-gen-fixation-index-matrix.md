@@ -1,12 +1,19 @@
-This program generates a matrix of the pairwise fixation indices (F<sub>ST</sub>) between your samples. 
+This program generates a matrix of the pairwise fixation indices (F<sub>ST</sub>) between your samples.
 
-### What's a fixation index? 
+### What's a fixation index?
 
-As described [in the Infant Gut Tutorial](https://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst), the fixation index is a measure of the distance between two populations, based on their variable positions (usually SNVs). Specifically, the fixation index is the ratio between the variance in allele frequency between subpopulations and the variance in the total population. 
+As described [in the Infant Gut
+Tutorial](https://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst),
+the fixation index is a measure of the distance between two populations, based on their sequence
+variants (usually SNVs). Specifically, the fixation index is the ratio between the variance in
+allele frequency between subpopulations and the variance in the total population. 
 
-The fixation index has its own [Wikipedia page](https://en.wikipedia.org/wiki/Fixation_index) and is a special case of [F-statistics](https://en.wikipedia.org/wiki/F-statistics). 
+The fixation index has its own [Wikipedia page](https://en.wikipedia.org/wiki/Fixation_index) and is
+a special case of [F-statistics](https://en.wikipedia.org/wiki/F-statistics). 
 
-In anvi'o, the fixation index is calculated in accordance with [Schloissnig et al. (2013)](https://doi.org/10.1038/nature11711)'s work to allow variant positions with multiple competing alleles. 
+In anvi'o, the fixation index is calculated in accordance with [Schloissnig et al.
+(2013)](https://doi.org/10.1038/nature11711)'s work to allow variant positions with multiple
+competing alleles.
 
 ## Anvi-gen-fixation-index
 
@@ -20,8 +27,8 @@ The simplest one is the one shown [in the Infant Gut Tutorial](https://merenlab.
 anvi-gen-fixation-index-matrix --variability-profile %(variability-profile)s \
                                --output-file my_matrix.txt
 {{ codestop }}
-                                   
-This will use the information in your variablity profile to generate the fixation index for each of the samples, and store the results in a %(fixation-index-matrix)s named `my_matrix.txt`. 
+
+This will use the information in your %() to generate the fixation index for each of the pairwise sample comparisons, and store the results in a %(fixation-index-matrix)s named `my_matrix.txt`. 
 
 ### Input 2: Anvi'o databases
 
