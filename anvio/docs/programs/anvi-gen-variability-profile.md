@@ -81,6 +81,7 @@ where `my_samples.txt` looks like this:
 DAY_17A
 DAY_18A
 DAY_22A
+...
 {{ codestop }}
 
 ### SNVs vs. SCVs vs. SAAVs 
