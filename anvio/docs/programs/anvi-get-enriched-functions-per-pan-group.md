@@ -33,10 +33,10 @@ The parameter `--category-variable` gives the name of the categorical %(misc-dat
 
 You must also provide the `--annotation-source` parameter to indicate which source of functional annotations to use. Use the parameter `--list-annotation-sources` to list the available annotation sources in your %(pan-db)s.
 
-You can choose to not group together gene clusters with the same function by adding the parameter `--include-gc-identity-as-function` and setting the annotation source to `IDENTITY`
+You can choose to not group together gene clusters with the same function by adding the parameter `--include-gc-identity-as-function` and setting the annotation source to `IDENTITY`.
 
 #### Additional Output
 
-You can also output a functional occurrence table, which describes the number of times each of your functional associations occurs in each genome you're looking at. You can interact more with this data by using %(anvi-matrix-to-newick)s. 
+You can also output a functional occurrence table, which describes the number of times each of your functional associations occurs in each genome you're looking at. You can interact more with this data by using %(anvi-matrix-to-newick)s.
 
 You can find more information about this [here](http://merenlab.org/2016/11/08/pangenomics-v2/#creating-a-quick-pangenome-with-functions).
