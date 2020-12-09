@@ -71,7 +71,7 @@ When doing this kind of run, anvi'o does not expect you to have a profile databa
 
 You can extend any %(anvi-interactive)s display with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.
 
-While the use of %(anvi-import-misc-data)s is the most effective way to improve anvi'o displays, you can also use the parameter `--additional-layers` to provide a TAB-delimited file that contains additional layers of information over your items.
+While the use of %(anvi-import-misc-data)s is the most effective way to improve anvi'o displays, you can also use the parameter `--additional-layers` to provide a TAB-delimited file (%(misc-data-items-txt)s) that contains additional layers of information over your items.
 
 If you want to add an entirely new view to the interface, you can do that too, as long as you provide a file containing all split names and their associated values. For more information, see the parameter `--additional-view`.
 
