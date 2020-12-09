@@ -19,6 +19,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["contigs-db", "profile-db", "collection", "bin"]
+__provides__ = ["view-data", "misc-data-items-txt"]
 __resources__ = [("This program in action as part of the metapangenomic workflow", "http://merenlab.org/data/prochlorococcus-metapangenome/#classification-of-genes-as-ecgs-and-eags-by-the-distribution-of-genes-in-a-genome-across-metagenomes")]
 __description__ = ("Quantify the detection of genes in genomes in metagenomes to identify the "
                    "environmental core. This is a helper script for anvi'o metapangenomic workflow")
