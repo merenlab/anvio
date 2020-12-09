@@ -1,20 +1,20 @@
-This matrix describes the gene cluster level functional associations that are enriched within specific groups of your pangenome. It is the output of %(anvi-get-enriched-functions-per-pan-group)s and is described in more detail [in the pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome). 
+This matrix describes the gene cluster level functional associations that are enriched within specific groups of your pangenome. It is the output of %(anvi-get-enriched-functions-per-pan-group)s and is described in more detail [in the pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome).
 
-Each row in this matrix describes a functional assocation that is associated with one or more of your gene clusters. These are listed in order of their pan-group, with the highest enrichment scores displayed first. 
+Each row in this matrix describes a functional association that is associated with one or more of your gene clusters. These are listed in order of their pan-group, with the highest enrichment scores displayed first.
 
-The following columns of information are listed 
+The following columns of information are listed
 
-- your functional annotation source (as the column header): describes the functional assocation that this row is about. 
-- enrichment_score: a measure of much this particular function is enriched in the pan-group it is associated with (i.e., measures how unique this function [see column 1] is to this group [see column 5]) 
-- unadjusted_p_value 
-- adjusted_q_value 
-- associated groups: the list of pan groups that this function is associated with (for example, the low light group in the pangenomic tutorial)
-- function_accession number 
-- gene_cluster_ids: lists the gene clusters that are included in this functional assocation. 
--  p values for each group: gives the portion of the group member genomes where this functional association was found. 
--N values for each group: gives the total number of genomes in each group. 
+- your functional annotation source (as the column header): describes the functional association that this row is about.
+- enrichment_score: a measure of much this particular function is enriched in the pan-group it is associated with (i.e., measures how unique this function [see column 1] is to this group [see column 5])
+- unadjusted_p_value
+- adjusted_q_value
+- associated groups: the list of pan groups that this function is associated with (for example, the low light group in the pangenomics tutorial)
+- function_accession number
+- gene_cluster_ids: lists the gene clusters that are included in this functional assocation.
+- p values for each group: gives the portion of the group member genomes where this functional association was found.
+- N values for each group: gives the total number of genomes in each group.
 
-Here is a more concrete example (the same example as the [pangenomic tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)). Note that that tutorial uses `COG_FUNCTION` as the functional annotation source, and has `LL` (low light) and `HL` (high light) as the two pan-groups. 
+Here is a more concrete example (the same example as in the [pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)). Note that that tutorial uses `COG_FUNCTION` as the functional annotation source, and has `LL` (low light) and `HL` (high light) as the two pan-groups. 
 
 |COG_FUNCTION | enrichment_score | unadjusted_p_value | adjusted_q_value | associated_groups | function_accession | gene_clusters_ids | p_LL | p_HL | N_LL | N_HL|
 |-- | -- | -- | -- | -- | -- | -- | -- | -- | --| --|
