@@ -270,7 +270,7 @@ class ProgramSearch:
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
-    parser.add_argument('search-term', help='Find programs associated with this search term. if you want all programs, use \'ALL\'')
+    parser.add_argument('search-term', help='Find programs associated with this search term (optional)', nargs='?', default='ALL')
     parser.add_argument('--requires', '-r', action='store_true', help='Restrict to programs that require this search term')
     parser.add_argument('--provides', '-p', action='store_true', help='Restrict to programs that provide this search term')
     parser.add_argument('--name', '-n', action='store_true', help='Restrict to programs that contain this search term in their name')
