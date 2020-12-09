@@ -1,10 +1,11 @@
-This program uses the user's similarity metric of choice to identify genomes that are highly similar to each other. 
-
-This is done by analyzing the results of %(anvi-compute-genome-similarity)s to cluster your input genomes based on the provided threshold. For each cluster, the program then finds a representative sequence and outputs it in a fasta file. 
+This program uses the user's similarity metric of choice to identify genomes that are highly similar
+to each other, and groups them together into redundant clusters. The program finds representative
+sequences for each cluster and outputs them into %(fasta)s files.
 
 #### Input Options 
 
 You have two options for the input to this program: 
+
 - the results of %(anvi-compute-genome-similarity)s (a %(genome-similarity)s directory). If you used `fastANI` or `pyANI` when you ran %(anvi-compute-genome-similarity)s, provide this using the parameter `--ani-dir`; if you used sourmash, use the parameter `--mash-dir`. 
 
 - an %(internal-genomes)s, %(external-genomes)s or a series of %(fasta)s files (each of which represents a genome), in which case anvi'o will run %(anvi-compute-genome-similarity)s for you.  When providing these inputs, you can also provide any of the parameters that %(anvi-compute-genome-similarity)s can take, including the `--program` you want to use (out of  [PyANI](https://github.com/widdowquinn/pyani), [fastANI](https://github.com/ParBLiSS/FastANI),  [sourmash](https://sourmash.readthedocs.io/en/latest/)) and their parameters. Details about all of this can be found in the help menu for %(anvi-compute-genome-similarity)s.
@@ -31,7 +32,7 @@ By default, the output of this program is a directory containing two descriptive
     G11_IGD_MAG_00012    fasta    cluster_000002    G11_IGD_MAG_00012    GENOMES/G11_IGD_MAG_00012.fa
     G03_IGD_MAG_00011    fasta    cluster_000003    G03_IGD_MAG_00011    GENOMES/G03_IGD_MAG_00011.fa
 
-You can also choose to report all genome fasta files (including from redundant genomes) (with `--report-all`) or report no fasta files (with `--skip-fasta-report`). This would change the fasta files included in `GENOMES` and the genomes mentioned in the fasta report. The cluster report would be identical. 
+You can also choose to report all genome fasta files (including redundant genomes) (with `--report-all`) or report no fasta files (with `--skip-fasta-report`). This would change the fasta files included in `GENOMES` and the genomes mentioned in the fasta report. The cluster report would be identical.
 
 #### Required Parameters and Example Runs
 
@@ -59,9 +60,9 @@ anvi-dereplictate-genomes -e %(external-genomes)s \
 
 You can change how anvi'o picks the representative sequence from each cluster with the parameter `--representative-method`. For this you have three options:
 
-- `Qscore`: picks the genome with highest completition and lowest redundency 
--`length`: picks the longest genome in the cluster
--`Centrality` (default): picks the genome with highest average similiarty to every other genome in the cluster
+- `Qscore`: picks the genome with highest completion and lowest redundancy
+- `length`: picks the longest genome in the cluster
+- `centrality` (default): picks the genome with highest average similiarty to every other genome in the cluster
 
-You can also choose to skip checking genome hashes (which will warn you if you have identical sequences in separate genomes with different names), provide a log path for debug messages or use multithreading. 
+You can also choose to skip checking genome hashes (which will warn you if you have identical sequences in separate genomes with different names), provide a log path for debug messages or use multithreading (relevant only if not providing `--ani-dir` or `--mash-dir`).
 
