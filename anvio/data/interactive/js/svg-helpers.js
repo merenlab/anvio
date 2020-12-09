@@ -30,6 +30,7 @@ function createBin(parent, bin_id) {
 //--------------------------------------------------------------------------------------------------
 
 function drawTitle(settings) {
+    // refers to centered top box in middle pane 
     createBin('viewport', 'title_group');
     _bbox = document.getElementById('viewport').getBBox();
 
