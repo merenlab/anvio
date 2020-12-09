@@ -85,11 +85,15 @@ If you do plan to cluster, you can set a custom distance metric or a custom link
 
 ### Variability 
 
-Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all, if you have a single C read at a position with a 1000X coverage where all other reads are T, this is probably not a variant position that you want to investigate further. By default, it will not analyze positions with coverage less than 10X, and it will not report every position. 
+Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all,
+if you have a single C read at a position with a 1000X coverage where all other reads are T, this is
+probably not a variant position that you want to investigate further. By default, it will not
+analyze positions with coverage less than 10X, and it will further discard variants based on
+[this criteria](https://merenlab.org/2015/07/20/analyzing-variability/#de-novo-characterization-and-reporting-of-snvs). 
 
 However, you can change the coverage threshold using the  `--min-coverage-for-variability` flag. You can also report every variability position using the flag `--report-variability-full`. 
 
-For example, if your data quality was poor and you wanted to view every single position for variants, you could call the following: 
+For example, if you wanted to view every variant, you would profile with the following:
 
 {{ codestart }}
 anvi-profile -c Ross_sea_contigs.db  \ 
@@ -102,8 +106,12 @@ anvi-profile -c Ross_sea_contigs.db  \
 
 You should provide the sample name with the flag `-S` and can provide a description of your project using the `--description` tag followed by a text file. These will help anvi'o name output files and will show up in the anvi'o interfaces down the line. 
 
-You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful downstream. Simply add the tag `--profile-SCVs` and watch the magic happen. 
+You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful downstream. Simply add the tag `--profile-SCVs` and watch the magic happen.
+
+{:.notice}
+If you have prior experience with `--profile-SCVs` being slow, you will be surprised how fast it is
+since v6.2
 
 Alternatively, you can choose not to store insertion and deletion data or single nucleotide variant data.
 
-If you know the limits of your system, you can also multithread this program. See the program help menu for more information. 
+If you know the limits of your system, you can also multithread this program. See the program help menu for more information.
