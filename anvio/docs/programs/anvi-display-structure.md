@@ -1,12 +1,22 @@
-This program opens the interactive interface to visualize variable positions directly on the 3D structure of a protein. There are many example uses [here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#display-metagenomic-sequence-variants-directly-on-predicted-structures) and you can work through an example as part of [the infant gut tutorial](http://merenlab.org/tutorials/infant-gut/#chapter-vii-from-single-amino-acid-variants-to-protein-structures). 
+This program opens an interactive interface to explore sequence variants (SAAVs and SCVs) in the
+context of tertiary protein structure and predicted binding sites. There are many example uses
+[here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#display-metagenomic-sequence-variants-directly-on-predicted-structures)
+and you can work through an example as part of [the infant gut
+tutorial](http://merenlab.org/tutorials/infant-gut/#chapter-vii-from-single-amino-acid-variants-to-protein-structures).
+This is an integral program of anvi'o structure, which you can learn more about
+[here](https://merenlab.org/software/anvio-structure/).
 
-In short, though, this interface lets you view the predicted 3D structures of your protein (as stored in a %(structure-db)s) with the variability positions (SCVs and SAAVs, usually determined from your metagenomic data) directly mapped on. This can give you new insights, for example the solvent accessibility of individual SAAVs and the strucutral distribution of variability positions. This is espeically useful after using %(anvi-import-misc-data)s to annotate additional data into your %(contigs-db)s, such as binding sites for substrates or other enzymes. 
+In short, this program enables users to explore sequence variation in the context of 3D protein
+structure, which reveals insight that cannot be learned from purely sequence-based approaches.
 
 ### Before running
 
-To run this program, you'll need to have used your %(contigs-db)s created a %(structure-db)s with %(anvi-gen-structure-database)s. 
+To run this program, you'll need to have created a %(structure-db)s which can be easily done with a
+%(contigs-db)s and the program %(anvi-gen-structure-database)s. 
 
-You'll also need a %(profile-db)s that has had its SCVs profiled. In other words, when you ran either %(anvi-profile)s or %(anvi-merge)s, you need to have added the flag `--profile-SCVs` for this to work. This may be computationally intensive, but it is also necessary to run anvi-display-structure. 
+You'll also need a %(profile-db)s that was run with `--profile-SCVs`, which means that single codon
+variants (SCVs) have been profiled. Very sorry for this inconvenience.
+
 
 ### Basic Run
 
