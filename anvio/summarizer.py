@@ -402,7 +402,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
-        exclude_ungrouped = A('exclude_ungrouped')
+        include_ungrouped = A('include_ungrouped')
 
 
         if output_file_path:
@@ -458,7 +458,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
-        self.run.info('Exclude ungrouped', exclude_ungrouped)
+        self.run.info('Include ungrouped', include_ungrouped)
 
         occurrence_frequency_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
@@ -483,7 +483,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # unique names of categories
         categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
-                            (categories_dict[g][category_variable] is not None or not exclude_ungrouped)])
+                            (categories_dict[g][category_variable] is not None or include_ungrouped)])
 
         categories_to_genomes_dict = {}
         for c in categories:

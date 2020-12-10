@@ -62,7 +62,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
 
     groupD = parser.add_argument_group('OPTIONAL PARAMETERS', "Parameters to help you filter the output.")
-    groupD.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
+    groupD.add_argument(*anvio.A('include-ungrouped'), **anvio.K('include-ungrouped'))
 
     groupE = parser.add_argument_group('MORE OPTIONAL THINGS', "Parameters that are there for you to help you in any way they can.")
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
