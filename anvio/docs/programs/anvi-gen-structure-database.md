@@ -1,25 +1,18 @@
-This program attempts to solve for the 3D strucutres of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER. 
 
-DIAMOND first searches your sequence(s) against a database of proteins with a known structure.  This
-database is downloaded from the [Sali lab](https://salilab.org/modeller/supplemental.html), who
-created and maintain MODELLER, and contains all of the PDB sequences clustered at 95%% identity.
+This program attempts to solve for the 3D strucutres of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER.  
 
-If any good hits are found, they are selected as templates, and their structures are nabbed either
-from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can
-create yourself with %(anvi-setup-pdb-database)s. Then, anvi'o passes control over to MODELLER,
-which creates a 3D alignment for your sequence to the template structures, and makes final
-adjustments to it based off of empirical distributions of bond angles. For more information, check
-[the blogpost](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works).
+DIAMOND first searches your sequence(s) against a database of proteins with a known structure.  This database is downloaded from the [Sali lab](https://salilab.org/modeller/supplemental.html), who created and maintain MODELLER, and contains all of the PDB sequences clustered at 95%% identity.
 
-The output of this program is a %(structure-db)s, which contains all of the modelled structures.
-Currently, the primary use of the %(structure-db)s is for interactive exploration with
-%(anvi-display-structure)s. You can also export your structures into external .pdb files with
-%(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s
-with %(anvi-gen-variability-profile)s.
+
+If any good hits are found, they are selected as templates, and their structures are nabbed either from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can create yourself with %(anvi-setup-pdb-database)s. Then, anvi'o passes control over to MODELLER, which creates a 3D alignment for your sequence to the template structures, and makes final adjustments to it based off of empirical distributions of bond angles. For more information, check [the blogpost](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works).
+
+
+The output of this program is a %(structure-db)s, which contains all of the modelled structures.  Currently, the primary use of the %(structure-db)s is for interactive exploration with %(anvi-display-structure)s. You can also export your structures into external .pdb files with %(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s with %(anvi-gen-variability-profile)s.
+
 
 ### Basic run 
 
-Here is a simple run:
+Here is a simple run: 
 
 {{ codestart }}
 anvi-gen-structure-database -c %(contigs-db)s \
@@ -27,9 +20,9 @@ anvi-gen-structure-database -c %(contigs-db)s \
                             -o STRUCTURE.db 
 {{ codestop }}
 
-Following this, you will have the structures for genes 1, 2, and 3 stored in `STRUCTURE.db`, assuming reasonable templates were found. Alternatively, you can provide a file name with the gene caller IDs (one ID per line) with the flag `--genes-of-interest`. 
+Following this, you will have the structures for genes 1, 2, and 3 stored in `STRUCTURE.db`, assuming reasonable templates were found. Alternatively, you can provide a file name with the gene caller IDs (one ID per line) with the flag `--genes-of-interest`.  
 
-If you have already run %(anvi-setup-pdb-database)s and therefore have a local copy of representative PDB structures, make sure you use it by providing the `--offline` flag. If you put it in a non-default location, provide the path to your %(pdb-db)s:
+If you have already run %(anvi-setup-pdb-database)s and therefore have a local copy of representative PDB structures, make sure you use it by providing the `--offline` flag. If you put it in a non-default location, provide the path to your %(pdb-db)s: 
 
 {{ codestart }}
 anvi-gen-structure-database -c %(contigs-db)s \
@@ -61,4 +54,5 @@ You also have the option to
 - Skip the use of DSSP, which predicts beta sheets, alpha helices, certain bond angles, and relative
   solvent acessibility of residues.
 - Additionally, to output **all** the raw data, just provide a path to the desired directory with the flag `--dump-dir`.
+
 
