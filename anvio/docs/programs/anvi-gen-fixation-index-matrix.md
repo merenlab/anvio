@@ -28,7 +28,7 @@ anvi-gen-fixation-index-matrix --variability-profile %(variability-profile)s \
                                --output-file my_matrix.txt
 {{ codestop }}
 
-This will use the information in your %() to generate the fixation index for each of the pairwise sample comparisons, and store the results in a %(fixation-index-matrix)s named `my_matrix.txt`. 
+This will use the information in your %(variability-profile-txt)s to generate the fixation index for each of the pairwise sample comparisons, and store the results in a %(fixation-index-matrix)s named `my_matrix.txt`. 
 
 ### Input 2: Anvi'o databases
 

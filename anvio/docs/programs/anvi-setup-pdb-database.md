@@ -3,10 +3,10 @@
 This program creates a %(pdb-db)s local database that holds PDB structures from [this sequence
 database](https://salilab.org/modeller/supplemental.html), which is hosted by the [Sali
 lab](https://salilab.org/).  Their database comprises all PDB RCSB sequences that have been
-clustered at 95% sequence similarity. They seem to update their database every couple of months
+clustered at 95%% sequence similarity. They seem to update their database every couple of months
 (thank you guys!).
 
-The purpose of %(anvi-setup-pdb-database) to have a local copy of reference structures that
+The purpose of %(anvi-setup-pdb-database)s to have a local copy of reference structures that
 can be used to, for example, get template structures for homology modelling when
 %(anvi-gen-structure-database)s is ran.
 

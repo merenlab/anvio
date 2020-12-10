@@ -93,8 +93,8 @@ For example, to analyze SAAVs, run
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
                              -c %(contigs-db)s \
-                             -C %(collection) \
-                             -b %(bin) \
+                             -C %(collection)s \
+                             -b %(bin)s \
                              --engine AA
 {{ codestop }}
 
@@ -103,8 +103,8 @@ When analyzing single codon variants, you can choose to skip computing synonymit
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
                              -c %(contigs-db)s \
-                             -C %(collection) \
-                             -b %(bin) \
+                             -C %(collection)s \
+                             -b %(bin)s \
                              --engine CDN \
                              --skip-synonymity
 {{ codestop }}
