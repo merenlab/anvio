@@ -657,10 +657,9 @@ class GenomeDescriptions(object):
             # in that case, we will use a tmp file for the enrichment output
             enrichment_file_path = filesnpaths.get_temp_file_path()
         if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            if not self.just_do_it:
-                raise ConfigError(f"The file {enrichment_file_path} already exists and anvi'o doesn't want to overwrite it "
-                                  "without express permission. If you think overwriting it is okay, then either `rm` the "
-                                  "existing file or re-run this command with the --just-do-it flag.")
+            raise ConfigError(f"The file {enrichment_file_path} already exists and anvi'o doesn't want to overwrite it "
+                               "without express permission. If you think overwriting it is okay, then please `rm` the "
+                               "existing file before you run this program again.")
 
         # this is a hack (credits to Alon) which will make the functional occurrence method print to the tmp file
         # (we need this because the functional occurrence method prints to the args.output_file)
