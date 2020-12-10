@@ -1,6 +1,6 @@
 This program has multiple abilities. It can compute enriched functions across categories in a pangenome, enriched metabolic modules across groups of samples, or enriched functions across groups of genomes. To do this it relies on the script `anvi-script-enrichment-stats` by [Amy Willis](https://github.com/adw96).
 
-Regardless of the situation, it returns a **matrix of things that are enriched within specific groups in your dataset**, as an %(enrichment-txt)s file.
+Regardless of the situation, it returns a **matrix of things that are enriched within specific groups in your dataset**, as a %(functional-enrichment-txt)s file.
 
 ## Input option 1: Enriched functions in a pangenome
 
@@ -13,7 +13,7 @@ You must provide this program with a %(pan-db)s and its corresponding %(genomes-
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source FUNCTION_SOURCE
 {{ codestop }}
@@ -27,7 +27,7 @@ By default, gene clusters with the same functional annotation will be merged. Bu
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source IDENTITY \
                                --include-gc-identity-as-function
@@ -38,7 +38,7 @@ You can get a tab-delimited matrix describing the occurrence (counts) of each fu
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source FUNCTION_SOURCE \
                                --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
@@ -51,7 +51,7 @@ This option computes enrichment scores for metabolic modules in groups of sample
 ### How it works
 
 1. Determining presence of modules. Each module in the "modules" mode output has a completeness score associated with it in each sample, and any module with a completeness score over a given threshold (set by `--module-completion-threshold`) will be considered to be present in that sample.
-2. Examining the distribution of modules in each group of samples to compute an enrichment score for each module. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(enrichment-txt)s file.
+2. Examining the distribution of modules in each group of samples to compute an enrichment score for each module. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(functional-enrichment-txt)s file.
 
 ### Basic usage
 
@@ -60,7 +60,7 @@ See %(kegg-metabolism)s for more information on the "modules" mode output format
 {{ codestart }}
 anvi-compute-enrichment-scores -M MODULES.TXT \
                                -G %(groups-txt)s \
-                               -o %(enrichment-txt)s
+                               -o %(functional-enrichment-txt)s
 {{ codestop }}
 
 ### Additional parameters
@@ -70,7 +70,7 @@ The default completeness threshold for a module to be considered 'present' in a 
 {{ codestart }}
 anvi-compute-enrichment-scores -M MODULES.TXT \
                                -G %(groups-txt)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --module-completion-threshold 0.9
 {{ codestop }}
 
@@ -79,7 +79,7 @@ By default, the column containing sample names in your MODULES.TXT file will hav
 {{ codestart }}
 anvi-compute-enrichment-scores -M MODULES.TXT \
                                -G %(groups-txt)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --sample-header metagenome_name
 {{ codestop }}
 
@@ -93,7 +93,7 @@ You are not limited to computing functional enrichment in pangenomes, you can do
 This is similar to computing functional enrichment in pangenomes (as described in %(anvi-get-enriched-functions-per-pan-group)s), but a bit simpler.
 
 1. Counting functions. Gene calls in each genome are tallied according to their functional annotations from the given annotation source.
-2. Looking at the functions and their relative levels of abundance across the groups of genomes. This again uses `anvi-script-enrichment-stats` to fit a GLM to determine A) the level that a particular functional annotation is unique to a single group and B) the percent of genomes it appears in in each group. This produces a %(enrichment-txt)s file.
+2. Looking at the functions and their relative levels of abundance across the groups of genomes. This again uses `anvi-script-enrichment-stats` to fit a GLM to determine A) the level that a particular functional annotation is unique to a single group and B) the percent of genomes it appears in in each group. This produces a %(functional-enrichment-txt)s file.
 
 ### Basic usage
 
@@ -102,7 +102,7 @@ You can provide either an %(external-genomes)s file or an %(internal-genomes)s f
 {{ codestart }}
 anvi-compute-enrichment-scores -i %(internal-genomes)s\
                                -e %(external-genomes)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --annotation-source FUNCTION_SOURCE
 {{ codestop }}
 
@@ -113,7 +113,7 @@ Also similar to option 1, you can get a tab-delimited matrix describing the occu
 {{ codestart }}
 anvi-compute-enrichment-scores -i %(internal-genomes)s\
                                -e %(external-genomes)s \
-                               -o %(enrichment-txt)s \
+                               -o %(functional-enrichment-txt)s \
                                --annotation-source FUNCTION_SOURCE
                                --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
 {{ codestop }}
