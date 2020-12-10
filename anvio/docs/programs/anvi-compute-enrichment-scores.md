@@ -1,8 +1,8 @@
 This program has multiple abilities. It can compute enriched functions across categories in a pangenome, enriched metabolic modules across groups of samples, or enriched functions across groups of genomes. To do this it relies on the script `anvi-script-enrichment-stats` by [Amy Willis](https://github.com/adw96).
 
-Regardless of the situation, it returns a **matrix of things that are enriched within specific groups in your dataset**.
+Regardless of the situation, it returns a **matrix of things that are enriched within specific groups in your dataset**, as an %(enrichment-txt)s file.
 
-## Enriched functions in a pangenome
+## Input option 1: Enriched functions in a pangenome
 
 This option achieves the same thing as the program %(anvi-get-enriched-functions-per-pan-group)s. You can check that page for additional details and helpful tips, but below you will find some usage information.
 
@@ -13,7 +13,7 @@ You must provide this program with a %(pan-db)s and its corresponding %(genomes-
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(functional-enrichment-txt)s \
+                               -o %(enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source FUNCTION_SOURCE
 {{ codestop }}
@@ -27,26 +27,98 @@ By default, gene clusters with the same functional annotation will be merged. Bu
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(functional-enrichment-txt)s \
+                               -o %(enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source IDENTITY \
                                --include-gc-identity-as-function
 {{ codestop }}
-
-If you provide the `--exclude-ungrouped` parameter, then genomes without a category in the provided `--category-variable` will be excluded from the analysis. (By default, these genomes go into their own 'ungrouped' category.)
 
 You can get a tab-delimited matrix describing the occurrence (counts) of each function within each genome using the `--functional-occurrence-table-output` parameter, like so:
 
 {{ codestart }}
 anvi-compute-enrichment-scores -p %(pan-db)s\
                                -g %(genomes-storage-db)s \
-                               -o %(functional-enrichment-txt)s \
+                               -o %(enrichment-txt)s \
                                --category-variable CATEGORY \
                                --annotation-source FUNCTION_SOURCE \
-                               --functional-occurrence-table-output functional_occurrence.txt
+                               --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
+{{ codestop }}
+
+## Input option 2: Enriched modules
+
+This option computes enrichment scores for metabolic modules in groups of samples. In order to do this, you must already have estimated completeness of metabolic modules in your samples using %(anvi-estimate-metabolism)s and obtained a "modules" mode output file (the default). You must provide that file to this program along with a %(groups-txt)s file indicating which samples belong to which groups.
+
+### How it works
+
+1. Determining presence of modules. Each module in the "modules" mode output has a completeness score associated with it in each sample, and any module with a completeness score over a given threshold (set by `--module-completion-threshold`) will be considered to be present in that sample.
+2. Examining the distribution of modules in each group of samples to compute an enrichment score for each module. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(enrichment-txt) file.
+
+### Basic usage
+
+See %(kegg-metabolism)s for more information on the "modules" mode output format from %(anvi-estimate-metabolism)s, which you must provide with the `-M` flag. The sample names in this file must match those in the %(groups-txt)s file, provided with `-G`. You must also provide the name of the output file.
+
+{{ codestart }}
+anvi-compute-enrichment-scores -M MODULES.TXT \
+                               -G %(groups-txt)s \
+                               -o %(enrichment-txt)s
+{{ codestop }}
+
+### Additional parameters
+
+The default completeness threshold for a module to be considered 'present' in a sample is 0.75 (75%). If you wish to change this, you can do so by providing a different threshold - as a number in the range (0, ] - using the `--module-completion-threshold` parameter. For example:
+
+{{ codestart }}
+anvi-compute-enrichment-scores -M MODULES.TXT \
+                               -G %(groups-txt)s \
+                               -o %(enrichment-txt)s \
+                               --module-completion-threshold 0.9
+{{ codestop }}
+
+By default, the column containing sample names in your MODULES.TXT file will have the header `db_name`, but there are certain cases in which you might have them in a different column - for example, if you did not run %(anvi-estimate-metabolism)s in multi-mode. In those cases, you can specify that a different column contains the sample names by providing its header with `--sample-header`. For example, if you sample names were in the `metagenome_name` column, you would do the following:
+
+{{ codestart }}
+anvi-compute-enrichment-scores -M MODULES.TXT \
+                               -G %(groups-txt)s \
+                               -o %(enrichment-txt)s \
+                               --sample-header metagenome_name
 {{ codestop }}
 
 
-## Enriched modules
+## Input option 3: Enriched functions in groups of genomes
 
-## Enriched functions in groups of genomes
+You are not limited to computing functional enrichment in pangenomes, you can do it for regular genomes, too. This option takes either external or internal genomes (or both) which are organized into groups, and computes enrichment scores and associated groups for annotated functions in those genomes.
+
+### How it works
+
+This is similar to computing functional enrichment in pangenomes (as described in %(anvi-get-enriched-functions-per-pan-groups)s), but a bit simpler.
+
+1. Counting functions. Gene calls in each genome are tallied according to their functional annotations from the given annotation source.
+2. Looking at the functions and their relative levels of abundance across the groups of genomes. This again uses `anvi-script-enrichment-stats` to fit a GLM to determine A) the level that a particular functional annotation is unique to a single group and B) the percent of genomes it appears in in each group. This produces a %(enrichment-txt) file.
+
+### Basic usage
+
+You can provide either an %(external-genomes)s file or an %(internal-genomes)s file or both, but no matter what these files must contain a `group` column which indicates the group that each genome belongs to. Similar to option 1, you must also provide an annotation source from which to extract the functional annotations of interest. In the example below, we provide both types of input files.
+
+{{ codestart }}
+anvi-compute-enrichment-scores -i %(internal-genomes)s\
+                               -e %(external-genomes)s \
+                               -o %(enrichment-txt)s \
+                               --annotation-source FUNCTION_SOURCE
+{{ codestop }}
+
+### Additional Parameters
+
+Also similar to option 1, you can get a tab-delimited matrix describing the occurrence (counts) of each function within each genome using the `--functional-occurrence-table-output` parameter:
+
+{{ codestart }}
+anvi-compute-enrichment-scores -i %(internal-genomes)s\
+                               -e %(external-genomes)s \
+                               -o %(enrichment-txt)s \
+                               --annotation-source FUNCTION_SOURCE
+                               --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
+{{ codestop }}
+
+
+## Parameters common to all options
+
+If you provide the `--exclude-ungrouped` parameter, then genomes (or samples) without a category in the provided `--category-variable` will be excluded from the analysis. (By default, these genomes/samples go into their own 'ungrouped' category.)
