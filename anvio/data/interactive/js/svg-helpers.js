@@ -248,16 +248,30 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 function drawSupportValue(svg_id, p, p0, p1) {
     let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    let fillColor;
+    let circleRadius;  
+
+    if(p.branch_support > 99){
+        fillColor = 'green'
+        circleRadius = 8
+    } else if (p.branch_support < 99 && p.branch_support > 80){
+        fillColor = 'yellow'
+        circleRadius = 7
+    } else {
+        fillColor = 'red'
+        circleRadius = 6
+    }
 
     circle.setAttribute('cx', p0.x)
     circle.setAttribute('cy', p0.y)
-    circle.setAttribute('r', 10)
+    circle.setAttribute('r', circleRadius)
     circle.setAttribute('id', p.id)
-
-    // radius will be dynamically set based on SV strength
-
+    circle.setAttribute('fill', fillColor)
+    
     var svg = document.getElementById(svg_id);
     svg.appendChild(circle);
+
+    drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline')
     return circle;
 }
 
