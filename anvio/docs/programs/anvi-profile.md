@@ -85,11 +85,7 @@ If you do plan to cluster, you can set a custom distance metric or a custom link
 
 ### Variability 
 
-Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all,
-if you have a single C read at a position with a 1000X coverage where all other reads are T, this is
-probably not a variant position that you want to investigate further. By default, it will not
-analyze positions with coverage less than 10X, and it will further discard variants based on
-[this criteria](https://merenlab.org/2015/07/20/analyzing-variability/#de-novo-characterization-and-reporting-of-snvs). 
+Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all, if you have a single C read at a position with a 1000X coverage where all other reads are T, this is probably not a variant position that you want to investigate further. By default, it will not analyze positions with coverage less than 10X, and it will further discard variants based on [this criteria](https://merenlab.org/2015/07/20/analyzing-variability/#de-novo-characterization-and-reporting-of-snvs). 
 
 However, you can change the coverage threshold using the  `--min-coverage-for-variability` flag. You can also report every variability position using the flag `--report-variability-full`. 
 
