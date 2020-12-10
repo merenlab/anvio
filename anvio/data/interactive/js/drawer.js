@@ -788,8 +788,7 @@ Drawer.prototype.draw_internal_node = function(p) {
             
             drawLine(this.tree_svg_id, p, p0, p1);
 
-
-            drawSupportValue(this.tree_svg_id, p, p0, p1);
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1) : null;
             // renders support value SVG circle at each tree bifurcation 
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);   
