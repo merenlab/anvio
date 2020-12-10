@@ -4279,6 +4279,7 @@ class KeggModuleEnrichment(KeggContext):
                 missing_headers.append(h)
         if missing_headers:
             missing_string = ", ".join(missing_headers)
+            self.progress.reset()
             raise ConfigError("We cannot go on! *dramatic sweep*   We trust that you have provided us with "
                               "modules mode output, but unfortunately the modules-txt input does not contain "
                               f"the following required headers: {missing_string}   Please re-generate your "
@@ -4290,6 +4291,7 @@ class KeggModuleEnrichment(KeggContext):
         # samples column sanity check - this column will become the index
         if self.sample_header_in_modules_txt not in modules_df.columns:
             col_list = ", ".join(modules_df.columns)
+            self.progress.reset()
             raise ConfigError(f"You have specified that your sample names are in the column with header '{self.sample_header_in_modules_txt}' "
                                "in the modules-txt file, but that column does not exist. :( Please figure out which column is right and submit "
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
@@ -4303,6 +4305,7 @@ class KeggModuleEnrichment(KeggContext):
                 missing_headers.append(h)
         if missing_headers:
             missing_string = ", ".join(missing_headers)
+            self.progress.reset()
             raise ConfigError("Your groups-txt file is missing some columns. We don't care what else you do, but at least "
                               "this file should have a 'sample' column and a 'group' column, and it does not because we couldn't "
                               f"find the following: {missing_string}")
@@ -4321,6 +4324,7 @@ class KeggModuleEnrichment(KeggContext):
         if samples_missing_in_groups_txt:
             missing_samples_str = ", ".join(samples_missing_in_groups_txt)
             if self.exclude_ungrouped:
+                self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). You have elected to --exclude-ungrouped, so we are not going to take these samples into consideration at all. "
                                 "Here are the samples that we will be ignoring: "
@@ -4331,6 +4335,7 @@ class KeggModuleEnrichment(KeggContext):
                     self.run.info("Samples remaining in modules-txt dataframe after removing ungrouped", ", ".join(modules_df[self.sample_header_in_modules_txt].unique()))
 
             else:
+                self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). For the purposes of this analysis, we will now consider all of these samples to belong to one group called "
                                 "'UNGROUPED'. If you wish to ignore these samples instead, please run again with the --exclude-ungrouped parameter. "
@@ -4345,6 +4350,7 @@ class KeggModuleEnrichment(KeggContext):
         if samples_missing_in_modules_txt:
             missing_samples_str = ", ".join(samples_missing_in_modules_txt)
             if not self.just_do_it:
+                self.progress.reset()
                 raise ConfigError(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
                                  "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
                                  "not be included in the enrichment analysis because, well, you don't have any module information for them. "
@@ -4353,6 +4359,7 @@ class KeggModuleEnrichment(KeggContext):
                                  "the enrichment results for those groups will be wrong. Here are the samples in question: "
                                   f"{missing_samples_str}")
             else:
+                self.progress.reset()
                 self.run.warning(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
                                  "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
                                  "not be included in the enrichment analysis because, well, you don't have any module information for them. "
