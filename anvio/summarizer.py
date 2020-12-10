@@ -350,7 +350,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         log_file = filesnpaths.get_temp_file_path()
         self.progress.new('Functional enrichment analysis')
-        self.progress.update('Running enrichment analysis')
+        self.progress.update("Running Amy Willis's enrichment script")
         utils.run_command(cmd, log_file)
         self.progress.end()
         if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
