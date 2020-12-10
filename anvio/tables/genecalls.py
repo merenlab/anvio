@@ -322,7 +322,6 @@ class TablesForGeneCalls(Table):
 
         from collections import Counter
         frame_count = Counter()
-        correct = []
         quality = []
 
         # the main loop to go through all the gene calls.
@@ -363,10 +362,9 @@ class TablesForGeneCalls(Table):
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
-                frame, amino_acid_sequence, qual = utils.get_most_likely_translation_frame(sequence, model=model)
+                frame, amino_acid_sequence, d = utils.get_most_likely_translation_frame(sequence, model=model)
                 frame_count[frame] += 1
-                correct.append('correct' if frame == 0 else 'incorrect')
-                quality.append(qual)
+                quality.append(d)
 
                 if frame is None:
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
@@ -431,9 +429,11 @@ class TablesForGeneCalls(Table):
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
 
-        print(frame_count)
         import pandas as pd
-        pd.DataFrame({'outcome': correct, 'quality': quality}).to_csv('results.txt', sep='\t', index=False)
+        df = pd.concat(quality)
+        print(df.outcome_stop.value_counts())
+        print(df.outcome_prob.value_counts())
+        df.to_csv('results.txt', sep='\t', index=False)
 
         # reporting time
         self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")

@@ -2142,7 +2142,9 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     log_prob_second = candidates[frame_second]['log_prob']
     log_prob_worst = candidates[frame_worst]['log_prob']
 
-    quality = 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst)
+    seq_best = candidates[frame_best]['sequence']
+    seq_second = candidates[frame_second]['sequence']
+    seq_worst = candidates[frame_worst]['sequence']
 
     #if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
     #    # Frame is not league's better than the competing frame, which it should be if we are to
@@ -2154,7 +2156,24 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     # if the best amino acid sequence ends with a stop codon, remove it.
     amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
 
-    return frame_best, amino_acid_sequence, quality
+    d = {
+        'frame_best_prob': frame_best,
+        'frame_best_stop': min(candidates, key=lambda frame: candidates[frame]['sequence'].count('*')),
+        'outcome_prob': 'correct' if frame_best == 0 else 'incorrect',
+        'outcome_stop': 'correct' if min(candidates, key=lambda frame: candidates[frame]['sequence'].count('*')) == 0 else 'incorrect',
+
+        'log_prob_0': candidates[0]['log_prob'],
+        'stop_count_0': candidates[0]['sequence'].count('*'),
+        'log_prob_1': candidates[1]['log_prob'],
+        'stop_count_1': candidates[1]['sequence'].count('*'),
+        'log_prob_2': candidates[2]['log_prob'],
+        'stop_count_2': candidates[2]['sequence'].count('*'),
+
+        'prob_quality': 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst),
+        'stop_quality': min([candidates[0]['sequence'].count('*'), candidates[1]['sequence'].count('*'), candidates[2]['sequence'].count('*')])
+    }
+
+    return frame_best, amino_acid_sequence, pd.DataFrame(d, index=[0])
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
