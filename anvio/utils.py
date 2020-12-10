@@ -2137,21 +2137,24 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
         candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
 
-    frame_second, frame_best = sorted(candidates, key=lambda frame: candidates[frame]['log_prob'])[-2:]
+    frame_worst, frame_second, frame_best = sorted(candidates, key=lambda frame: candidates[frame]['log_prob'])[-3:]
     log_prob_best = candidates[frame_best]['log_prob']
     log_prob_second = candidates[frame_second]['log_prob']
+    log_prob_worst = candidates[frame_worst]['log_prob']
 
-    if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
-        # Frame is not league's better than the competing frame, which it should be if we are to
-        # have any confidence in it. The sequence is returned
-        return None, candidates[frame_best]['sequence']
+    quality = 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst)
+
+    #if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
+    #    # Frame is not league's better than the competing frame, which it should be if we are to
+    #    # have any confidence in it. The sequence is returned
+    #    return None, candidates[frame_best]['sequence'], quality
 
     amino_acid_sequence = candidates[frame_best]['sequence']
 
     # if the best amino acid sequence ends with a stop codon, remove it.
     amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
 
-    return frame_best, amino_acid_sequence
+    return frame_best, amino_acid_sequence, quality
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):

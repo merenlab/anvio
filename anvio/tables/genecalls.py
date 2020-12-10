@@ -233,7 +233,7 @@ class TablesForGeneCalls(Table):
         """Recover amino acid sequences for gene calls in a gene_calls_dict.
 
         If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this function will take
-        those seqeunces into consideration and use them without trying to predict frames even if the gene
+        those sequences into consideration and use them without trying to predict frames even if the gene
         call is partial. So user-defined aa sequences in `aa_sequence` column will have priority.
 
         Please note this FIXME: By reading all contig sequences into memory, anvi'o does a pretty bad job
@@ -280,7 +280,7 @@ class TablesForGeneCalls(Table):
                     estimated_length_for_aa = gene_length / 3
                     user_provided_aa_length = len(amino_acid_sequences[gene_callers_id])
 
-                    # there is already a sanity check for htis, but one can't be too careful
+                    # there is already a sanity check for hits, but one can't be too careful
                     if gene_calls_dict[gene_callers_id]['call_type'] != constants.gene_call_types['CODING'] and user_provided_aa_length:
                         raise ConfigError("You have provided an amino acid sequence for at least one gene call in your external gene calls "
                                            "(%d) file that was not marked as CODING type :(" % gene_callers_id)
@@ -320,6 +320,11 @@ class TablesForGeneCalls(Table):
                   "num_partial_genes_with_internal_stops": 0,
                   "num_genes_with_internal_stops": 0}
 
+        from collections import Counter
+        frame_count = Counter()
+        correct = []
+        quality = []
+
         # the main loop to go through all the gene calls.
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
@@ -358,7 +363,10 @@ class TablesForGeneCalls(Table):
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
-                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model)
+                frame, amino_acid_sequence, qual = utils.get_most_likely_translation_frame(sequence, model=model)
+                frame_count[frame] += 1
+                correct.append('correct' if frame == 0 else 'incorrect')
+                quality.append(qual)
 
                 if frame is None:
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
@@ -422,6 +430,10 @@ class TablesForGeneCalls(Table):
                                       "sense as a gene call: '%s'." % (str(gene_callers_id), sequence, amino_acid_sequence))
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
+
+        print(frame_count)
+        import pandas as pd
+        pd.DataFrame({'outcome': correct, 'quality': quality}).to_csv('results.txt', sep='\t', index=False)
 
         # reporting time
         self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")
