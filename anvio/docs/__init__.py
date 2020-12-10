@@ -346,7 +346,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "enrichment-txt": {
+    "functional-enrichment-txt": {
         "name": "ENRICHMENT SCORES",
         "type": "TXT",
         "provided_by_anvio": True,
