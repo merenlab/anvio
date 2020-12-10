@@ -1,10 +1,10 @@
 
-This program attempts to solve for the 3D strucutres of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER.  
+This program attempts to solve for the 3D structures of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER.  
 
 DIAMOND first searches your sequence(s) against a database of proteins with a known structure.  This database is downloaded from the [Sali lab](https://salilab.org/modeller/supplemental.html), who created and maintain MODELLER, and contains all of the PDB sequences clustered at 95%% identity.
 
 
-If any good hits are found, they are selected as templates, and their structures are nabbed either from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can create yourself with %(anvi-setup-pdb-database)s. Then, anvi'o passes control over to MODELLER, which creates a 3D alignment for your sequence to the template structures, and makes final adjustments to it based off of empirical distributions of bond angles. For more information, check [the blogpost](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works).
+If any good hits are found, they are selected as templates, and their structures are nabbed either from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can create yourself with %(anvi-setup-pdb-database)s. Then, anvi'o passes control over to MODELLER, which creates a 3D alignment for your sequence to the template structures, and makes final adjustments to it based off of empirical distributions of bond angles. For more information, check [this blogpost](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works).
 
 
 The output of this program is a %(structure-db)s, which contains all of the modelled structures.  Currently, the primary use of the %(structure-db)s is for interactive exploration with %(anvi-display-structure)s. You can also export your structures into external .pdb files with %(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s with %(anvi-gen-variability-profile)s.
@@ -53,6 +53,6 @@ You also have the option to
 
 - Skip the use of DSSP, which predicts beta sheets, alpha helices, certain bond angles, and relative
   solvent acessibility of residues.
-- Additionally, to output **all** the raw data, just provide a path to the desired directory with the flag `--dump-dir`.
+- Output **all** the raw data, just provide a path to the desired directory with the flag `--dump-dir`.
 
 

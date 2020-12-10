@@ -43,5 +43,5 @@ You can find more information about these parameters on the page for %(anvi-gen-
 
 ### Additional Parameters
 
-While a fixation index is usually betwene 0 and 1, it is possible for an index to be negative (usually because of out-breeding). By default, anvi'o sets these negative values to 0, but you can choose to keep the negative values with the flag `--keep-negatives` 
+While a fixation index is usually between 0 and 1, it is possible for an index to be negative (usually because of out-breeding). By default, anvi'o sets these negative values to 0, but you can choose to keep the negative values with the flag `--keep-negatives` 
 
