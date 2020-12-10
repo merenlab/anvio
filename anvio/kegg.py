@@ -4437,7 +4437,7 @@ class KeggModuleEnrichment(KeggContext):
         cmd = f"anvi-script-enrichment-stats --input {enrichment_input_path} --output {self.output_file_path}"
         log_file_path = filesnpaths.get_temp_file_path()
 
-        self.progress.update('Running enrichment analysis')
+        self.progress.update("Running Amy Willis's enrichment script")
         utils.run_command(cmd, log_file_path)
         self.progress.end()
         if not filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):

@@ -675,7 +675,7 @@ class GenomeDescriptions(object):
         log_file = filesnpaths.get_temp_file_path()
         self.run.info("Enrichment script log file", log_file)
         self.progress.new('Functional enrichment analysis')
-        self.progress.update('Running enrichment analysis')
+        self.progress.update("Running Amy Willis's enrichment script")
         utils.run_command(cmd, log_file)
         self.progress.end()
 
