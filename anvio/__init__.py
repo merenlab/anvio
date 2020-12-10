@@ -501,15 +501,16 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'exclude-ungrouped': (
-            ['--exclude-ungrouped'],
+    'include-ungrouped': (
+            ['--include-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to ignore genomes/samples with no group (for pangenomes, this means "
+             'help': "Use this flag if you want anvi'o to include genomes/samples with no group in the analysis. (For pangenomes, this means "
                      "the genome has no value set for the category variable which you specified using --category-variable. "
                      "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
                      "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
-                     "variables with no value will be considered as a single group when performing the statistical analysis."}
+                     "variables with no value will be ignored, but if you apply this flag, they will instead considered as "
+                     "a single group when performing the statistical analysis."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
