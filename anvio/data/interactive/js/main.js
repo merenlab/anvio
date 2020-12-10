@@ -1442,6 +1442,10 @@ function serializeSettings(use_layer_names) {
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
     state['draw-guide-lines'] = $('#draw_guide_lines').val();
+    //
+    // grab support value user input, store in state
+    state['show-support-values'] = $('#support_value_checkbox').is(':checked')
+    state['support-range'] = $('#support_value_range').val()
 
     // sync views object and layers table
     syncViews();

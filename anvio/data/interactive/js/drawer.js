@@ -762,7 +762,7 @@ Drawer.prototype.draw_leaf = function(p) {
 };
 
 Drawer.prototype.draw_internal_node = function(p) {
-    let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
+    let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:6;';
 
     if (this.settings['tree-type'] == 'circlephylogram')
     {
@@ -788,9 +788,14 @@ Drawer.prototype.draw_internal_node = function(p) {
             
             drawLine(this.tree_svg_id, p, p0, p1);
 
+
+            drawSupportValue(this.tree_svg_id, p, p0, p1);
+            // renders support value SVG circle at each tree bifurcation 
+
             let line = drawLine(this.tree_svg_id, p, p0, p1);   
             line.setAttribute('style', PADDING_STYLE);
             line.classList.add('clone');
+
         }
         p0 = p.child.backarc;
         p1 = p.child.GetRightMostSibling().backarc;
@@ -835,6 +840,13 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         drawLine(this.tree_svg_id, p, p0, p1, true);
 
+        // let canvas = document.getElementById('svg')
+        // let ctx = canvas.getContext('2d')
+        // ctx.beginPath()
+        // ctx.arc(this.tree_svg_id, p, p0, 3, 0*Math.PI,1.5*Math.PI)
+        // ctx.stroke()
+
+        
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
         line.setAttribute('style', PADDING_STYLE);
         line.classList.add('clone');

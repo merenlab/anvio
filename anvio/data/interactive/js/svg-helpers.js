@@ -246,6 +246,19 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
+function drawSupportValue(svg_id, p, p0, p1) {
+    let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+
+    circle.setAttribute('cx', p0.x)
+    circle.setAttribute('cy', p0.y)
+    circle.setAttribute('r', 10)
+    circle.setAttribute('id', p.id)
+
+    var svg = document.getElementById(svg_id);
+    svg.appendChild(circle);
+    return circle;
+}
+
 function drawLine(svg_id, p, p0, p1, isArc) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
@@ -535,6 +548,10 @@ function circeArcPath(p0, p1, radius, large_arc_flag) {
 }
 
 function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
+
+    // responsible for mapping the circular arc at each branch bifurcation 
+    // change fill attribute to 'red' to visualize arc path 
+    
     var arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     arc.setAttribute('id', 'arc' + p.id);
 
