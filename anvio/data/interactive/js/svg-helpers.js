@@ -254,6 +254,8 @@ function drawSupportValue(svg_id, p, p0, p1) {
     circle.setAttribute('r', 10)
     circle.setAttribute('id', p.id)
 
+    // radius will be dynamically set based on SV strength
+
     var svg = document.getElementById(svg_id);
     svg.appendChild(circle);
     return circle;
