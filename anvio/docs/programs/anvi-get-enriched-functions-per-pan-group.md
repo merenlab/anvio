@@ -1,6 +1,6 @@
 This program returns a **matrix of functions that are enriched within specific groups in your pangenome**.
 
-You provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that stores categorical data, and the program will consider each of the categories their own 'pan-group'. It will then find functions that are enriched in that group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group). It returns this output as a %(functional-enrichment-txt)s
+You provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that stores categorical data, and the program will consider each of the categories their own 'pan-group'. It will then find functions that are enriched in that group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group). It returns this output as a %(enrichment-txt)s
 
 {:.notice}
 Note that your %(genomes-storage-db)s must have at least one functional annotation source for this to work.
@@ -13,7 +13,7 @@ What this program does can be broken down into three steps:
 
 1. Determining the pan-groups. Firstly, the program uses a %(misc-data-layers)s (containing categorical, not numerical, data) to split the pangenome into several groups. For example, in the pangenome tutorial, this was the low-light and high-light groups.
 2.  Determine the "functional associations" for each of your gene clusters. In short, this is collecting the functional annotations for all of the genes in each cluster and assigning the one that appears most frequently to represent the entire cluster.
-3. Looking at the functional associations and their relative levels of abundance across the pan-groups. Specifically, it looks at the level that a particular gene cluster's functional association is unique to a single pan-group and the percent of genomes it appears in in each pan-group. This is what is reported in the output matrix, a %(functional-enrichment-txt)s
+3. Looking at the functional associations and their relative levels of abundance across the pan-groups. Specifically, it looks at the level that a particular gene cluster's functional association is unique to a single pan-group and the percent of genomes it appears in in each pan-group. This is what is reported in the output matrix, a %(enrichment-txt)s
 
 If you're still curious, check out [Alon's behind the scenes post](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome), which goes into a lot more detail.
 
@@ -24,7 +24,7 @@ Here is the simplest run of this program:
 {{ codestart }}
 anvi-get-enriched-functions-per-pan-group -p %(pan-db)s\
                                           -g %(genomes-storage-db)s \
-                                          -o %(functional-enrichment-txt)s \
+                                          -o %(enrichment-txt)s \
                                           --category-variable CATEGORY
                                           --annotation-source FUNCTION_SOURCE
 {{ codestop }}
