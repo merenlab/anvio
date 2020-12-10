@@ -23,7 +23,7 @@ __resources__ = [("An example usage of the program in the context of the Prochlo
                  ("An older version of this program was used in this publication by Benjamin Tully", "https://www.nature.com/articles/s41467-018-07840-4")]
 __tags__ = ["pangenomics", "functions"]
 __requires__ = ['misc-data-layers', 'pan-db', 'genomes-storage-db',]
-__provides__ = ['functional-enrichment-txt',]
+__provides__ = ['enrichment-txt',]
 __description__ = ("A program that takes a pangenome, and a categorical layers additional data item, and "
                    "generates a table describing functions that are enriched in those groups. If requested, a "
                    "functional occurrence table across genomes is also generated")
