@@ -580,6 +580,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "clustering-configuration": {
+        "name": "CLUSTERING CONFIG",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "workflow-config": {
         "name": "WORKFLOW CONFIG",
         "type": "JSON",
