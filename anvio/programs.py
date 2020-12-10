@@ -439,11 +439,11 @@ class AnvioArtifacts:
 class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     """Generate a docs output.
 
-       The purpose of this class is to generate a static HTML output with
-       interlinked files that serve as the primary documentation for anvi'o
-       programs, input files they expect, and output files the generate.
+    The purpose of this class is to generate a static HTML output with
+    interlinked files that serve as the primary documentation for anvi'o
+    programs, input files they expect, and output files the generate.
 
-       The default client of this class is `anvi-script-gen-help-docs`.
+    The default client of this class is `anvi-script-gen-help-docs`.
     """
 
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
@@ -547,7 +547,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                               "for everything to be linked together." % (e, file_path))
         except Exception as e:
             self.progress.end()
-            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'." % (file_path, e))
+            additional_info = ("If you're stumped by that message, here are some common errors and their solutions: "
+                               "(1) 'unsupported format character' could mean that one of your tags specified with "
+                               "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
+                               "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
+                               "This must be replaced with '85%% similar'.")
+            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'. %s" % (file_path, e, additional_info))
 
         # now we have replaced anvi'o variables with markdown links, it is time to replace
         # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
