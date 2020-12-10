@@ -185,8 +185,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-            tail_path = "%s_mmseqs_NR_rep_seq_gene_callers_ids.txt" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
+            tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
                # Misc metadata files
             # tail_path = "%s_reformat_report_mmseqs_NR.txt" % (ribosomal_protein_name)

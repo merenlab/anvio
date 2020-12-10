@@ -235,12 +235,31 @@ rule get_gene_callers_ids:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
     input:
-        reps = rules.cluster_X_percent_sim_mmseqs.output,
-        test = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta")
+        reps = rules.cluster_X_percent_sim_mmseqs.output
     output:
          gene_callers_ids = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq_gene_callers_ids.txt")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     script: "scripts/get_gene_caller_ids_for_mapping.py"
+
+
+
+rule filter_for_aa_seqs:
+    """Clean up fasta headers for tree calculation."""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{ribosomal_protein_name}.log")
+    input:
+        faa = rules.cat_ribo_proteins_to_one_fasta.output
+    output:
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_filtered.fasta")
+    params:
+        gene_callers_ids = rules.get_gene_callers_ids.output.gene_callers_ids
+    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
+    shell:
+        "anvi-script-reformat-fasta {input.faa} \
+                              -I {params.gene_callers_ids} \
+                              -o {output.fasta} >> {log} 2>&1"
+
 
 # rule get_gene_callers_ids_for_mapping:
 #     """
