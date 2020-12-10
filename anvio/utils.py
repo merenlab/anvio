@@ -2154,7 +2154,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     amino_acid_sequence = candidates[frame_best]['sequence']
 
     # if the best amino acid sequence ends with a stop codon, remove it.
-    amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
+    #amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
 
     d = {
         'frame_best_prob': frame_best,
@@ -2164,10 +2164,21 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
         'log_prob_0': candidates[0]['log_prob'],
         'stop_count_0': candidates[0]['sequence'].count('*'),
+        'sequence_0': candidates[0]['sequence'],
+        'ends_stop_0': True if candidates[0]['sequence'].endswith('*') else False,
+        'starts_m_0': True if candidates[0]['sequence'].startswith('M') else False,
+
         'log_prob_1': candidates[1]['log_prob'],
         'stop_count_1': candidates[1]['sequence'].count('*'),
+        'sequence_1': candidates[1]['sequence'],
+        'ends_stop_1': True if candidates[1]['sequence'].endswith('*') else False,
+        'starts_m_1': True if candidates[1]['sequence'].startswith('M') else False,
+
         'log_prob_2': candidates[2]['log_prob'],
         'stop_count_2': candidates[2]['sequence'].count('*'),
+        'sequence_2': candidates[2]['sequence'],
+        'ends_stop_2': True if candidates[2]['sequence'].endswith('*') else False,
+        'starts_m_2': True if candidates[2]['sequence'].startswith('M') else False,
 
         'prob_quality': 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst),
         'stop_quality': min([candidates[0]['sequence'].count('*'), candidates[1]['sequence'].count('*'), candidates[2]['sequence'].count('*')])
