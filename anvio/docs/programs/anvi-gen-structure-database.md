@@ -2,7 +2,7 @@ This program attempts to solve for the 3D strucutres of proteins encoded by gene
 
 DIAMOND first searches your sequence(s) against a database of proteins with a known structure.  This
 database is downloaded from the [Sali lab](https://salilab.org/modeller/supplemental.html), who
-created and maintain MODELLER, and contains all of the PDB sequences clustered at 95% identity.
+created and maintain MODELLER, and contains all of the PDB sequences clustered at 95%% identity.
 
 If any good hits are found, they are selected as templates, and their structures are nabbed either
 from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can

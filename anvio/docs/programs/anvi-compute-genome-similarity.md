@@ -72,7 +72,7 @@ You can also set the compression ratio for your fasta files. Decreasing this fro
 ### Other Parameters
 
 Once calculated, the similarity matrix is used to create dendrograms via hierarchical clustering,
-which are stored in the output directory (and in the %(pan-db), if provided). You can choose to
+which are stored in the output directory (and in the %(pan-db)s, if provided). You can choose to
 change the distance metric or linkage algorithm used for this clustering.
 
 If you're getting a lot of debug/output messages, you can turn them off with `--just-do-it` or
