@@ -51,7 +51,7 @@ This option computes enrichment scores for metabolic modules in groups of sample
 ### How it works
 
 1. Determining presence of modules. Each module in the "modules" mode output has a completeness score associated with it in each sample, and any module with a completeness score over a given threshold (set by `--module-completion-threshold`) will be considered to be present in that sample.
-2. Examining the distribution of modules in each group of samples to compute an enrichment score for each module. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(enrichment-txt) file.
+2. Examining the distribution of modules in each group of samples to compute an enrichment score for each module. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(enrichment-txt)s file.
 
 ### Basic usage
 
@@ -65,7 +65,7 @@ anvi-compute-enrichment-scores -M MODULES.TXT \
 
 ### Additional parameters
 
-The default completeness threshold for a module to be considered 'present' in a sample is 0.75 (75%). If you wish to change this, you can do so by providing a different threshold - as a number in the range (0, ] - using the `--module-completion-threshold` parameter. For example:
+The default completeness threshold for a module to be considered 'present' in a sample is 0.75 (75 percent). If you wish to change this, you can do so by providing a different threshold - as a number in the range (0, 1] - using the `--module-completion-threshold` parameter. For example:
 
 {{ codestart }}
 anvi-compute-enrichment-scores -M MODULES.TXT \
@@ -90,10 +90,10 @@ You are not limited to computing functional enrichment in pangenomes, you can do
 
 ### How it works
 
-This is similar to computing functional enrichment in pangenomes (as described in %(anvi-get-enriched-functions-per-pan-groups)s), but a bit simpler.
+This is similar to computing functional enrichment in pangenomes (as described in %(anvi-get-enriched-functions-per-pan-group)s), but a bit simpler.
 
 1. Counting functions. Gene calls in each genome are tallied according to their functional annotations from the given annotation source.
-2. Looking at the functions and their relative levels of abundance across the groups of genomes. This again uses `anvi-script-enrichment-stats` to fit a GLM to determine A) the level that a particular functional annotation is unique to a single group and B) the percent of genomes it appears in in each group. This produces a %(enrichment-txt) file.
+2. Looking at the functions and their relative levels of abundance across the groups of genomes. This again uses `anvi-script-enrichment-stats` to fit a GLM to determine A) the level that a particular functional annotation is unique to a single group and B) the percent of genomes it appears in in each group. This produces a %(enrichment-txt)s file.
 
 ### Basic usage
 
