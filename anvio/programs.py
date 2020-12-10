@@ -551,7 +551,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                                "(1) 'unsupported format character' could mean that one of your tags specified with "
                                "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
                                "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
-                               "This must be replaced with '85%% percent similar'.")
+                               "This must be replaced with '85%% similar'.")
             raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'. %s" % (file_path, e, additional_info))
 
         # now we have replaced anvi'o variables with markdown links, it is time to replace
