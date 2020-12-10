@@ -261,10 +261,7 @@ class TablesForGeneCalls(Table):
                 raise ConfigError("The task at hand calls for the use of the anvi'o Markov model to predict proper open reading "
                                   "frames for external gene calls when necessary, but the model does not seem to be in the right "
                                   "place in the anvi'o codebase. FAILING BIG HERE.")
-
             model = numpy.load(model_path)
-            null_prob = numpy.median(model)
-            stop_prob = model.min()/1e6
 
         gene_caller_ids_with_user_provided_amino_acid_sequences = set([])
 
@@ -361,7 +358,7 @@ class TablesForGeneCalls(Table):
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
-                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model, stop_prob=stop_prob, null_prob=null_prob)
+                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model)
 
                 if frame is None:
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
