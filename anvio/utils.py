@@ -2090,7 +2090,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
     order = len(model.shape)
     null_prob = stop_prob if stop_prob is not None else np.median(model)
-    stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
+    stop_prob = stop_prob if stop_prob is not None else np.median(model)
 
     aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
     aa_to_array_index = {aa: i for i, aa in enumerate(aas)}
@@ -2186,6 +2186,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         'starts_m_2': True if candidates[2]['sequence'].startswith('M') else False,
 
         'prob_quality': 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst),
+        'prob_diff': log_prob_best - log_prob_second,
         'stop_qual': stop_qual,
     }
 

@@ -447,6 +447,9 @@ class TablesForGeneCalls(Table):
             gc = 0
         total = correct + incorrect
 
+        output = pd.concat(quality)
+        output.to_csv("results.txt", sep='\t', index=False)
+
         print(correct)
         print(incorrect)
         print(gc)
