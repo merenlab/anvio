@@ -294,6 +294,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             circle.setAttribute('r', 8) // radius can be dynamically set 
             circle.setAttribute('id', p.id)
             circle.setAttribute('fill', calculatedFinalRgb )
+            circle.setAttribute('opacity', .6)
             
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
@@ -344,6 +345,7 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('text-rendering', 'optimizeLegibility');
     text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
+
 
     switch (align) {
         case 'left':

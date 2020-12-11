@@ -801,7 +801,7 @@ Drawer.prototype.draw_internal_node = function(p) {
             // pass additional arguments to drawSupportValue based on UI 
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);   
-            line.setAttribute('style', PADDING_STYLE);
+            line.setAttribute('style', 'stroke:rgba(0,0,0,0);stroke-width:16;');
             line.classList.add('clone');
 
         }
