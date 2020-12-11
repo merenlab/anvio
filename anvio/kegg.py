@@ -4297,18 +4297,8 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        sample_groups_df = pd.read_csv(self.groups_txt, sep='\t', index_col=False)
         required_groups_txt_headers = ['sample', 'group']
-        missing_headers = []
-        for h in required_groups_txt_headers:
-            if h not in sample_groups_df.columns:
-                missing_headers.append(h)
-        if missing_headers:
-            missing_string = ", ".join(missing_headers)
-            self.progress.reset()
-            raise ConfigError("Your groups-txt file is missing some columns. We don't care what else you do, but at least "
-                              "this file should have a 'sample' column and a 'group' column, and it does not because we couldn't "
-                              f"find the following: {missing_string}")
+        sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
 
         # make sure the samples all have a group
         sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
