@@ -96,6 +96,7 @@ if __name__ == '__main__':
                                          "any groups). Note that the closer this number is to 0, the more meaningless this whole enrichment analysis is... "
                                          "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
                                          "if you wish. The default threshold is %(default)g."}))
+    groupB.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
 
     groupC = parser.add_argument_group('INPUT OPTION #3: GROUPS OF GENOMES',
                                         "Estimating enriched functions across groups of genomes. You must provide an external genomes "
