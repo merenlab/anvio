@@ -568,7 +568,7 @@ class MODELLER:
             raise self.EndModeller
 
         # Filter out templates with proper_pident more than 5% less than best match
-        # http://merenlab.org/2018/09/04/getting-started-with-anvi-3dev/#how-much-do-templates-matter
+        # http://merenlab.org/2018/09/04/getting-started-with-anvi-structure/#how-much-do-templates-matter
         search_df = search_df[search_df['proper_pident'] >= (search_df['proper_pident'].max() - 5)]
 
         # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.

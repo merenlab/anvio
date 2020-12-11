@@ -1,4 +1,4 @@
-An internal genome is any %(bin)s described in an anvi'o %(collection)s stored in an anvi'o %(profile-db)s.
+An internal genome is any %(bin)s described in an anvi'o %(collection)s stored in an anvi'o %(profile-db)s. You can obtain one of these by binning a metagenome assembly (stored in an anvi'o %(contigs-db)s), which you can do either manually in the interactive interface or automatically with a binning software, and saving or importing it into a %(collection)s.
 
 The internal genomes file format enables anvi'o to work with one or more bins from one or more collections that may be defined in different anvi'o %(profile-db)s files. A TAB-delimited internal genomes file will be composed of at least the following five columns:
 
