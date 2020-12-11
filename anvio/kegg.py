@@ -4206,7 +4206,7 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
-        self.exclude_ungrouped = True if A('exclude_ungrouped') else False
+        self.include_ungrouped = True if A('include_ungrouped') else False
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -4323,10 +4323,10 @@ class KeggModuleEnrichment(KeggContext):
 
         if samples_missing_in_groups_txt:
             missing_samples_str = ", ".join(samples_missing_in_groups_txt)
-            if self.exclude_ungrouped:
+            if not self.include_ungrouped:
                 self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
-                                "column). You have elected to --exclude-ungrouped, so we are not going to take these samples into consideration at all. "
+                                "column). Since you have not elected to --include-ungrouped, we are not going to take these samples into consideration at all. "
                                 "Here are the samples that we will be ignoring: "
                                 f"{missing_samples_str}")
                 # drop the samples that are not in groups-txt
@@ -4337,8 +4337,9 @@ class KeggModuleEnrichment(KeggContext):
             else:
                 self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
-                                "column). For the purposes of this analysis, we will now consider all of these samples to belong to one group called "
-                                "'UNGROUPED'. If you wish to ignore these samples instead, please run again with the --exclude-ungrouped parameter. "
+                                "column). Since you have chosen to --include-ungrouped, for the purposes of this analysis we will now consider all of "
+                                "these samples to belong to one group called 'UNGROUPED'. If you wish to ignore these samples instead, please run again "
+                                "without the --include-ungrouped parameter. "
                                 "Here are the UNGROUPED samples that we will consider as one big happy family: "
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
