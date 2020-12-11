@@ -509,8 +509,18 @@ D = {
                      "the genome has no value set for the category variable which you specified using --category-variable. "
                      "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
                      "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
-                     "variables with no value will be ignored, but if you apply this flag, they will instead considered as "
-                     "a single group when performing the statistical analysis."}
+                     "variables with no value will be ignored, but if you apply this flag, they will instead be considered as "
+                     "a single group (called 'UNGROUPED' when performing the statistical analysis."}
+                ),
+    'include-samples-missing-from-groups-txt': (
+            ['--include-samples-missing-from-groups-txt'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
+                    "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
+                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
+                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
+                    "group together samples that are not supposed to be friends."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
