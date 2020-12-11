@@ -4192,7 +4192,7 @@ class KeggModuleEnrichment(KeggContext):
 
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-compute-enrichment-scores
+        All the arguments supplied by user to anvi-compute-functional-enrichment
     """
 
     def __init__(self, args, run=run, progress=progress):
