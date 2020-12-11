@@ -29,7 +29,7 @@ anvi-get-enriched-functions-per-pan-group -p %(pan-db)s\
                                           --annotation-source FUNCTION_SOURCE
 {{ codestop }}
 
-The parameter `--category-variable` gives the name of the categorical %(misc-data-layers)s that you want to use to define your pan-groups. Note that this will consider all items not in a category in their own 'ungrouped' pan-group; you can ignore those items with the flag `--exlcude-ungrouped`
+The parameter `--category-variable` gives the name of the categorical %(misc-data-layers)s that you want to use to define your pan-groups. Note that by default any genomes not in a category will be ignored; you can instead include these in the analysis by using the flag `--include-ungrouped`
 
 You must also provide the `--annotation-source` parameter to indicate which source of functional annotations to use. Use the parameter `--list-annotation-sources` to list the available annotation sources in your %(pan-db)s.
 

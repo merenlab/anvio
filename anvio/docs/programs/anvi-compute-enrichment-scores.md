@@ -83,6 +83,15 @@ anvi-compute-enrichment-scores -M MODULES.TXT \
                                --sample-header metagenome_name
 {{ codestop }}
 
+If you ran %(anvi-estimate-metabolism)s on a bunch of extra samples but only want to include a subset of those samples in the %(groups-txt)s, that is fine - by default any samples from the MODULES.TXT file that are missing from the %(groups-txt)s will be ignored. However, there is also an option to include those missing samples in the analysis, as one big group called 'UNGROUPED'. To do this, you can use the --include-samples-missing-from-groups-txt parameter. Just be careful that if you are also using the --include-ungrouped flag (see below), any samples without a specified group in the %(groups-txt)s will also be included in the 'UNGROUPED' group.
+
+{{ codestart }}
+anvi-compute-enrichment-scores -M MODULES.TXT \
+                               -G %(groups-txt)s \
+                               -o %(functional-enrichment-txt)s \
+                               --include-samples-missing-from-groups-txt
+{{ codestop }}
+
 
 ## Input option 3: Enriched functions in groups of genomes
 
@@ -121,4 +130,4 @@ anvi-compute-enrichment-scores -i %(internal-genomes)s\
 
 ## Parameters common to all options
 
-If you provide the `--exclude-ungrouped` parameter, then genomes (or samples) without a category in the provided `--category-variable` will be excluded from the analysis. (By default, these genomes/samples go into their own 'ungrouped' category.)
+If you provide the `--include-ungrouped` parameter, then genomes (or samples) without a group will be included from the analysis. (By default, these genomes/samples are ignored.) For the pangenome case, these genomes are those without a category in the provided `--category-variable`. For metabolic modules or the genomes in groups case, these samples/genomes are those with an empty value in the 'group' column (of either the %(groups-txt)s or the %(external-genomes)s/%(internal-genomes)s files).
