@@ -131,3 +131,8 @@ anvi-compute-enrichment-scores -i %(internal-genomes)s\
 ## Parameters common to all options
 
 If you provide the `--include-ungrouped` parameter, then genomes (or samples) without a group will be included from the analysis. (By default, these genomes/samples are ignored.) For the pangenome case, these genomes are those without a category in the provided `--category-variable`. For metabolic modules or the genomes in groups case, these samples/genomes are those with an empty value in the 'group' column (of either the %(groups-txt)s or the %(external-genomes)s/%(internal-genomes)s files).
+
+
+## More information on `anvi-script-enrichment-stats`
+
+This program serves as the interface to `anvi-script-enrichment-stats`, an R script which performs an enrichment test on your input. You will find a brief description of how this script works in Alon's "Behind the Scenes" note in [the pangenomics tutorial](https://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome). Better yet, check out the methods section of Alon's paper, found as a pre-print [here](https://www.biorxiv.org/content/10.1101/2020.04.29.069278v2).
