@@ -369,7 +369,7 @@ class TablesForGeneCalls(Table):
                     correct += 1
                 else:
                     incorrect += 1
-                frame_count['correct' if frame == 0 else 'incorrect'] += 1
+                frame_count[frame] += 1
                 quality.append(d)
 
                 if frame is None:
@@ -439,19 +439,22 @@ class TablesForGeneCalls(Table):
         df = pd.concat(quality)
         from pathlib import Path
 
-        name = anvio.dbops.ContigsDatabase(self.db_path).get_meta_value('project_name')
-        gc = sum(utils.get_GC_content_for_FASTA_entries().values())/len(utils.get_GC_content_for_FASTA_entries(name + '.fa'))
+        name = db.DB(self.db_path, anvio.__contigs__version__).get_meta_value('project_name')
+        try:
+            gc_dict = utils.get_GC_content_for_FASTA_entries('contigs.fa').values()
+            gc = sum(list(gc_dict))/len(gc_dict)
+        except:
+            gc = 0
+        total = correct + incorrect
 
         print(correct)
         print(incorrect)
         print(gc)
         print(name)
         with open('many_genomes.txt', 'a') as f:
-            f.write(f"{name}\t{total}\t{correct}\t{incorrect}\t{GC}")
-        #print(frame_count)
-        print(df.outcome_stop.value_counts())
-        print(df.outcome_prob.value_counts())
-        df.to_csv('results.txt', sep='\t', index=False)
+            f.write(f"{name}\t{total}\t{correct}\t{incorrect}\t{correct/total}\t{gc}\n")
+
+        import sys; sys.exit()
 
         # reporting time
         self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")
