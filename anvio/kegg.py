@@ -4299,10 +4299,36 @@ class KeggModuleEnrichment(KeggContext):
 
         required_groups_txt_headers = ['sample', 'group']
         sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
+        samples_to_groups_dict = {samp : sample_groups_dict[samp]['group'] for samp in sample_groups_dict.keys()}
 
         # make sure the samples all have a group
+        samples_with_none_group = []
+        for s,g in samples_to_groups_dict.items():
+            if not g:
+                samples_with_none_group.append(s)
+                if self.include_ungrouped:
+                    samples_to_groups_dict[s] = 'UNGROUPED'
+
+        if not self.include_ungrouped:
+            for s in samples_with_none_group:
+                samples_to_groups_dict.pop(s)
+
+        if samples_with_none_group:
+            self.progress.reset()
+            none_group_str = ", ".join(samples_with_none_group)
+            if self.include_ungrouped:
+                self.run.warning("Some samples in your groups-txt did not have a group, but since you elected to --include-ungrouped, "
+                                 "we will consider all of those samples to belong to one group called 'UNGROUPED'. Here are those "
+                                 f"UNGROUPED samples: {none_group_str}")
+            else:
+                self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
+                                 "want them to be included in the analysis (but without assigning a group), you can simply re-run "
+                                 "this program with the --include-ungrouped flag. Now. Here are the samples we will be ignoring: "
+                                 f"{none_group_str}")
+
+        # sanity check for mismatch between modules-txt and groups-txt
         sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
-        sample_names_in_groups_txt = set(sample_groups_df['sample'].unique())
+        sample_names_in_groups_txt = set(sample_groups_dict.keys())
         samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
         samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
         if anvio.DEBUG:
@@ -4334,9 +4360,8 @@ class KeggModuleEnrichment(KeggContext):
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
                 ungrouped_samples = list(samples_missing_in_groups_txt)
-                ungrouped_groups = ['UNGROUPED' for s in ungrouped_samples]
-                ungrouped_df = pd.DataFrame(list(zip(ungrouped_samples, ungrouped_groups)), columns =['sample', 'group'])
-                sample_groups_df = pd.concat([sample_groups_df, ungrouped_df])
+                for s in ungrouped_samples:
+                    samples_to_groups_dict[s] = 'UNGROUPED'
 
         if samples_missing_in_modules_txt:
             missing_samples_str = ", ".join(samples_missing_in_modules_txt)
@@ -4358,13 +4383,14 @@ class KeggModuleEnrichment(KeggContext):
                                  "going anyway. We hope you know what you are doing :) Here are the samples in question: "
                                   f"{missing_samples_str}")
                 # drop the samples that are not in modules-txt
-                sample_groups_df = sample_groups_df[~sample_groups_df['sample'].isin(list(samples_missing_in_modules_txt))]
+                for s in list(samples_missing_in_modules_txt):
+                    samples_to_groups_dict.pop(s)
                 if anvio.DEBUG:
-                    self.run.info("Samples remaining in groups-txt dataframe after removing ungrouped", ", ".join(sample_groups_df['sample'].unique()))
+                    self.run.info("Samples remaining in groups-txt dataframe after removing ungrouped", ", ".join(samples_to_groups_dict.keys()))
 
 
         modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
-        sample_groups_df.set_index('sample', inplace=True)
+        sample_groups_df = pd.DataFrame.from_dict(samples_to_groups_dict, orient="index", columns=['group'])
 
         # convert modules mode output to enrichment input
         N_values = sample_groups_df['group'].value_counts()
