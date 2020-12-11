@@ -248,41 +248,59 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
-    let calculatedRange = parseInt(supportValueData.numberRange[0]) + parseInt(supportValueData.numberRange[1])
-   
-    supportValueData.showNumber ? drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline') : null 
-    supportValueData.showSymbol ? drawSymbol() : null 
+    function checkInRange(){ // check to see if SV data point is within user specified range 
+        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
+            return true 
+        } else {
+            return false 
+        }
+    }
+       
+    if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
+        drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline')
+    }
+    if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
+        drawSymbol()  
+    } 
 
     function drawSymbol(){
-
         let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let fillColor;
-        let circleRadius; 
+        let rgbLow;
+        let rgbHigh;
+        let calculatedFinalRgb
 
-        // function getPoint(d, a1, a2) {
-        //     // find a color d% between a1 and a2
-        //     return a1.map((p, i) => Math.floor(a1[i] + d * (a2[i] - a1[i])))
-        // }
-
-        if(p.branch_support >= calculatedRange / 2 ){
-            fillColor = supportValueData.colorRange[1]
-            circleRadius = 8
-        } else {
-            fillColor = supportValueData.colorRange[0]
-            circleRadius = 6
+        function calculateColorPercentile(){ // calculate percentile of data point in range
+            return (p.branch_support - parseInt(supportValueData.numberRange[0])) / (parseInt(supportValueData.numberRange[1]) - parseInt(supportValueData.numberRange[0]))  
         }
-    
-        circle.setAttribute('cx', p0.x)
-        circle.setAttribute('cy', p0.y)
-        circle.setAttribute('r', circleRadius)
-        circle.setAttribute('id', p.id)
-        circle.setAttribute('fill', fillColor)
         
-        var svg = document.getElementById(svg_id);
-        svg.appendChild(circle);
-        return circle;
-    }
+        function hexToRgb(hex) { // use regex magic to convert hex to rgb https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [ parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16) ] : null 
+        }
 
+        function getPoint(percentile, color1, color2) { // calculate rgb color value based on percentile between two colors in linear gradient
+            return color1.map((p, i) => Math.floor(color1[i] + percentile * (color2[i] - color1[i])))
+        }
+
+        function makeCircle(){ // time to make the gravy
+            rgbLow = hexToRgb(supportValueData.colorRange[0])
+            rgbHigh = hexToRgb(supportValueData.colorRange[1])
+            valuePercentile = calculateColorPercentile()
+            calculatedRgbArr = getPoint(valuePercentile, rgbLow, rgbHigh)
+            calculatedFinalRgb = 'rgb(' + calculatedRgbArr.join(', ') + ')';
+
+            circle.setAttribute('cx', p0.x)
+            circle.setAttribute('cy', p0.y)
+            circle.setAttribute('r', 8) // radius can be dynamically set 
+            circle.setAttribute('id', p.id)
+            circle.setAttribute('fill', calculatedFinalRgb )
+            
+            var svg = document.getElementById(svg_id);
+            svg.appendChild(circle);
+            return circle;
+        }
+        return makeCircle()
+    }
 }
 
 function drawLine(svg_id, p, p0, p1, isArc) {
