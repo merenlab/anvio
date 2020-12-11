@@ -1,5 +1,8 @@
 This program returns a **matrix of functions that are enriched within specific groups in your pangenome**.
 
+{:.notice}
+As of `v7`, there is a more general version of this program that can compute enrichment scores for other things. See %(anvi-compute-enrichment-scores)s for details.
+
 You provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that stores categorical data, and the program will consider each of the categories their own 'pan-group'. It will then find functions that are enriched in that group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group). It returns this output as a %(functional-enrichment-txt)s
 
 {:.notice}
