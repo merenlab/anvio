@@ -56,7 +56,7 @@ def main(args):
     elif args.modules_txt:
         e = kegg.KeggModuleEnrichment(args)
         e.run_enrichment_stats()
-    elif args.external_genomes:
+    elif args.external_genomes or args.internal_genomes:
         g = genomedescriptions.GenomeDescriptions(args)
         g.load_genomes_descriptions()
         g.functional_enrichment_stats()
