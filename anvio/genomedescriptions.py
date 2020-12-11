@@ -720,7 +720,7 @@ class GenomeDescriptions(object):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
-        exclude_ungrouped = A('exclude_ungrouped')
+        include_ungrouped = A('include_ungrouped')
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -764,7 +764,7 @@ class GenomeDescriptions(object):
                               "Do you think this is a mistake on our part? Let us know.")
 
         groups = set([str(genomes_to_groups_dict[g]) for g in genomes_to_groups_dict.keys() if \
-                            (genomes_to_groups_dict[g] is not None or not exclude_ungrouped)])
+                            (genomes_to_groups_dict[g] is not None or include_ungrouped)])
 
         groups_to_genomes_dict = {}
         for grp in groups:
@@ -774,7 +774,7 @@ class GenomeDescriptions(object):
         if not anvio.QUIET:
             self.run.info('Functional annotation source', functional_annotation_source)
             self.run.info('Groups', ', '.join(groups))
-            self.run.info('Exclude ungrouped', exclude_ungrouped)
+            self.run.info('Include ungrouped', include_ungrouped)
 
         self.progress.new('Functional occurrence analysis')
         self.progress.update('Getting functions from database')
