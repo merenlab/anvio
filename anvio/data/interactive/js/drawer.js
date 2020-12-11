@@ -788,8 +788,17 @@ Drawer.prototype.draw_internal_node = function(p) {
             
             drawLine(this.tree_svg_id, p, p0, p1);
 
-            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1) : null;
+            let supportValueData = {
+                numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
+                colorRange : [ this.settings['support-color-low'], this.settings['support-color-high']],
+                showSymbol : this.settings['support-display-symbol'], 
+                showNumber : this.settings['support-display-number'] 
+            }
+
+
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
             // renders support value SVG circle at each tree bifurcation 
+            // pass additional arguments to drawSupportValue based on UI 
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);   
             line.setAttribute('style', PADDING_STYLE);

@@ -1445,7 +1445,12 @@ function serializeSettings(use_layer_names) {
     //
     // grab support value user input, store in state
     state['show-support-values'] = $('#support_value_checkbox').is(':checked')
-    state['support-range'] = $('#support_value_range').val()
+    state['support-range-low'] = $('#support_range_low').val()
+    state['support-range-high'] = $('#support_range_high').val()
+    state['support-color-low'] = $('#support_color_low').attr('color')
+    state['support-color-high'] = $('#support_color_high').attr('color')
+    state['support-display-symbol'] = $('#support_display_symbol').is(':checked') 
+    state['support-display-number'] = $('#support_display_number').is(':checked') 
 
     // sync views object and layers table
     syncViews();

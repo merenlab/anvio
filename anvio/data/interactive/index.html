@@ -230,28 +230,36 @@
                                     </div>   
                                 </div>
                                 <div id="support_value_params">
+
                                     <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Range:</label>
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to 
+                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Color Range:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="support_value_checkbox" name="" value="value" onchange="emit('bin-settings-changed'); 
                                                 if (this.checked) { $('#support_color_range_param').show(); } 
                                                 else { $('#support_color_range_param').hide(); }" style="float: left;">
                                             <div id="support_color_range_param">
-                                                <div id="support_picker_low" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15x;"></div>
-                                                <div id="support_picker_high" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15px;"></div>
+                                                <div id="support_color_low" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15x;"></div>
+                                                <div id="support_color_high" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15px;"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Some Param:</label>
+                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Display Symbol:</label>
                                         <div class="col-md-8">
-                                            <input type="number" style="width: 40px;">
+                                            <input type="checkbox" id="support_display_symbol" style="float: left;" name="show-symbol">
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Other Param:</label>
+                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Display Number:</label>
                                         <div class="col-md-8">
-                                            <input type="text" style="width: 120px;" placeholder="some input value">
+                                            <input type="checkbox" id="support_display_number" style="float: left;" name="show-number" >
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">
