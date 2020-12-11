@@ -18,6 +18,6 @@ In some cases additional columns may be required to be in this file. Below is a 
 
 | header | description | required for |
 |----|----|----|
-| group | name of the group that the genome belongs to (can be empty) | %(anvi-compute-enrichment-scores)s |
+| group | name of the group that the genome belongs to (can be empty) | %(anvi-compute-functional-enrichment)s |
 
 Also see **%(external-genomes)s** and **%(metagenomes)s**.
