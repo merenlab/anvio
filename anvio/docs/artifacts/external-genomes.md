@@ -1,4 +1,4 @@
-An external genome is anything you have in a FASTA file format (i.e., a genome you have downloaded from NCBI, or obtained through any other way) that was converted into a %(contigs-db)s.
+An external genome is any genome assembly that was converted into a %(contigs-db)s from its original FASTA file format using the program %(anvi-gen-contigs-database)s. You can obtain one of these in a variety of ways, the most common being 1) downloading a genome from a database such as NCBI and 2) assembling a genome yourself from sequencing reads. The key thing is that the sequences in the %(contigs-db)s represent a _single_ microbial population (or species, if you are not working with microbes) - ie, it is not a metagenome.
 
 The external genomes file format enables anvi'o to work with one or more external genomes. A TAB-delimited external genomes file will be composed of at least the following two columns:
 
