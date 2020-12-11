@@ -323,6 +323,8 @@ class TablesForGeneCalls(Table):
         from collections import Counter
         frame_count = Counter()
         quality = []
+        correct = 0
+        incorrect = 0
 
         # the main loop to go through all the gene calls.
         for gene_callers_id in gene_calls_dict:
@@ -363,7 +365,11 @@ class TablesForGeneCalls(Table):
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
                 frame, amino_acid_sequence, d = utils.get_most_likely_translation_frame(sequence, model=model)
-                frame_count[frame] += 1
+                if frame == 0:
+                    correct += 1
+                else:
+                    incorrect += 1
+                frame_count['correct' if frame == 0 else 'incorrect'] += 1
                 quality.append(d)
 
                 if frame is None:
@@ -431,6 +437,18 @@ class TablesForGeneCalls(Table):
 
         import pandas as pd
         df = pd.concat(quality)
+        from pathlib import Path
+
+        name = anvio.dbops.ContigsDatabase(self.db_path).get_meta_value('project_name')
+        gc = sum(utils.get_GC_content_for_FASTA_entries().values())/len(utils.get_GC_content_for_FASTA_entries(name + '.fa'))
+
+        print(correct)
+        print(incorrect)
+        print(gc)
+        print(name)
+        with open('many_genomes.txt', 'a') as f:
+            f.write(f"{name}\t{total}\t{correct}\t{incorrect}\t{GC}")
+        #print(frame_count)
         print(df.outcome_stop.value_counts())
         print(df.outcome_prob.value_counts())
         df.to_csv('results.txt', sep='\t', index=False)

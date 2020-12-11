@@ -2156,7 +2156,12 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     # if the best amino acid sequence ends with a stop codon, remove it.
     #amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
 
-    d = {
+    garbage_1 = [candidates[0]['sequence'].count('*'), candidates[1]['sequence'].count('*'), candidates[2]['sequence'].count('*')]
+    garbage = [candidates[0]['sequence'].count('*'), candidates[1]['sequence'].count('*'), candidates[2]['sequence'].count('*')]
+    garbage.remove(max(garbage))
+    stop_qual = abs(garbage[0] - garbage[1])
+
+    df = {
         'frame_best_prob': frame_best,
         'frame_best_stop': min(candidates, key=lambda frame: candidates[frame]['sequence'].count('*')),
         'outcome_prob': 'correct' if frame_best == 0 else 'incorrect',
@@ -2181,10 +2186,88 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         'starts_m_2': True if candidates[2]['sequence'].startswith('M') else False,
 
         'prob_quality': 1 - (log_prob_second - log_prob_worst)/(log_prob_best - log_prob_worst),
-        'stop_quality': min([candidates[0]['sequence'].count('*'), candidates[1]['sequence'].count('*'), candidates[2]['sequence'].count('*')])
+        'stop_qual': stop_qual,
     }
 
-    return frame_best, amino_acid_sequence, pd.DataFrame(d, index=[0])
+    new = {
+        0: {'n': df['stop_count_0'], 'stop': df['ends_stop_0'], 'm': df['starts_m_0']},
+        1: {'n': df['stop_count_1'], 'stop': df['ends_stop_1'], 'm': df['starts_m_1']},
+        2: {'n': df['stop_count_2'], 'stop': df['ends_stop_2'], 'm': df['starts_m_2']},
+    }
+
+    if df['stop_qual'] in set([0,1]):
+        if max(garbage_1) - min(garbage_1) < 2:
+            score_1 = new[1]['m'] + new[1]['stop']
+            score_2 = new[2]['m'] + new[2]['stop']
+            score_0 = new[0]['m'] + new[0]['stop']
+
+            # who is the lowest
+            max_score = max([score_0, score_1, score_2])
+
+            if score_0 == max_score:
+                return 0, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            elif score_1 == max_score and score_2 == max_score:
+                # prioritize ending with stop
+                if new[1]['stop']:
+                    return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+                else:
+                    return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            elif score_1 > score_2:
+                return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            elif score_2 > score_1:
+                return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            else:
+                print("Should never end up here")
+                import sys; sys.exit()
+
+        if new[0]['n'] >= new[1]['n'] and new[0]['n'] >= new[2]['n']:
+            score_1 = new[1]['m'] + new[1]['stop']
+            score_2 = new[2]['m'] + new[2]['stop']
+            if score_1 > score_2:
+                return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_2 < score_1:
+                return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_1 == score_2:
+                # prioritize ending with stop
+                if new[1]['stop']:
+                    return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+                else:
+                    return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+
+        elif new[1]['n'] >= new[0]['n'] and new[1]['n'] >= new[2]['n']:
+            score_0 = new[0]['m'] + new[0]['stop']
+            score_2 = new[2]['m'] + new[2]['stop']
+            if score_0 > score_2:
+                return 0, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_2 < score_0:
+                return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_0 == score_2:
+                # prioritize ending with stop
+                if new[0]['stop']:
+                    return 0, amino_acid_sequence, pd.DataFrame(df, index=[0])
+                else:
+                    return 2, amino_acid_sequence, pd.DataFrame(df, index=[0])
+
+        elif new[2]['n'] >= new[0]['n'] and new[2]['n'] >= new[1]['n']:
+            score_0 = new[0]['m'] + new[0]['stop']
+            score_1 = new[1]['m'] + new[1]['stop']
+            if score_0 > score_1:
+                return 0, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_1 < score_0:
+                return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+            if score_0 == score_1:
+                # prioritize ending with stop
+                if new[0]['stop']:
+                    return 0, amino_acid_sequence, pd.DataFrame(df, index=[0])
+                else:
+                    return 1, amino_acid_sequence, pd.DataFrame(df, index=[0])
+
+        else:
+            print("SHould never end up here")
+            import sys; sys.exit()
+
+
+    return df['frame_best_stop'], amino_acid_sequence, pd.DataFrame(df, index=[0])
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
