@@ -382,11 +382,25 @@ function loadAll() {
                 });
 
                 $('#toggle_snv_box').on('change', function() {
-                  toggleSNVs();
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleSNVs();
+                              waitingDialog.hide();
+                          },
+                      });
                   if($('div.snvs-disabled').length > 0) $('div.snvs-disabled').remove();
                 });
                 $('#toggle_indel_box').on('change', function() {
-                  toggleIndels();
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleIndels();
+                              waitingDialog.hide();
+                          },
+                      });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
                 $('#toggle_highlight_box').on('change', function() {
