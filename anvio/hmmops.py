@@ -92,11 +92,15 @@ class SequencesForHMMHits:
                                                                     error_if_no_data=False)
 
         # if the user sent a split names of interest, it means they are interested in hits that only occur
-        # in a specific set of split names.
+        # in a specific set of split names. NOTE: this really makes it very difficult to deal with HMM hits
+        # that span through multiple splits. here we will mark such HMM hits in `hmm_hits_splits_entry_ids_to_remove`
+        # for removal, but we will also keep track of those guys and let the user know what happened.
         if len(split_names_of_interest):
             total_num_split_names = len(set(self.hmm_hits_splits[entry_id]['split'] for entry_id in self.hmm_hits_splits))
             hmm_hits_splits_entry_ids_to_remove = set([])
             hmm_hits_entry_ids_to_remove = set([])
+            hmm_hits_entry_ids_associated_with_fragmented_hmm_hits = set([])
+            hmm_sources_associated_with_fragmented_hmm_hits = set([])
             for entry_id in self.hmm_hits_splits:
                 if self.hmm_hits_splits[entry_id]['split'] not in split_names_of_interest:
                     hmm_hits_splits_entry_ids_to_remove.add(entry_id)
