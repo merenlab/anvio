@@ -106,6 +106,23 @@ class SequencesForHMMHits:
                     hmm_hits_splits_entry_ids_to_remove.add(entry_id)
                     hmm_hits_entry_ids_to_remove.add(self.hmm_hits_splits[entry_id]['hmm_hit_entry_id'])
 
+                    if not self.hmm_hits_splits[entry_id]['percentage_in_split'] == 100:
+                        # this is important. if we are here, there is a bit more to do since it means that
+                        # the split name associated with self.hmm_hits_splits[entry_id] is not in
+                        # `split_names_of_interest`. but since the `percentage_in_split` for this HMM hit is NOT
+                        # 100%, it could be the case that other splits that contain pieces of this HMM hit may
+                        # still be in `split_names_of_interest`. But here we are setting the stage for this
+                        # HMM hit to be removed from `self.hmm_hits` altogether. To make things right, we must
+                        # go through `hmm_hits_splits`, and remove remaining entries there that is associated with
+                        # this HMM hit later using the contents of this variable:
+                        hmm_hits_entry_ids_associated_with_fragmented_hmm_hits.add(self.hmm_hits_splits[entry_id]['hmm_hit_entry_id'])
+                        hmm_sources_associated_with_fragmented_hmm_hits.add(self.hmm_hits_splits[entry_id]['source'])
+
+            if len(hmm_hits_entry_ids_associated_with_fragmented_hmm_hits):
+                # if we are here, we will have to update `hmm_hits_splits_entry_ids_to_remove` carefully:
+                additional_entry_ids_to_be_removed = set([e for e in self.hmm_hits_splits if self.hmm_hits_splits[e]['hmm_hit_entry_id'] in hmm_hits_entry_ids_associated_with_fragmented_hmm_hits])
+                hmm_hits_splits_entry_ids_to_remove.update(additional_entry_ids_to_be_removed)
+
             if len(hmm_hits_splits_entry_ids_to_remove):
                 for entry_id in hmm_hits_splits_entry_ids_to_remove:
                     self.hmm_hits_splits.pop(entry_id)
