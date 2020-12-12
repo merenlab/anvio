@@ -24,7 +24,7 @@ progress = terminal.Progress()
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None):
         self.run = run
         self.progress = progress
 
@@ -34,6 +34,7 @@ class SequencesForHMMHits:
         if not isinstance(split_names_of_interest, type(set([]))):
             raise ConfigError("'split_names_of_interest' variable has to be a set instance.")
 
+        self.bin_name = bin_name # this is only relevant for some output messages
         self.sources = set([s for s in sources if s])
         self.hmm_hits = {}
         self.hmm_hits_info ={}

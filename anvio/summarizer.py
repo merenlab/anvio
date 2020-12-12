@@ -1570,7 +1570,7 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         if self.summary.reformat_contig_names:
