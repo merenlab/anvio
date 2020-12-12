@@ -21,6 +21,7 @@ from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 
 
 class SequencesForHMMHits:
@@ -123,6 +124,28 @@ class SequencesForHMMHits:
                 # if we are here, we will have to update `hmm_hits_splits_entry_ids_to_remove` carefully:
                 additional_entry_ids_to_be_removed = set([e for e in self.hmm_hits_splits if self.hmm_hits_splits[e]['hmm_hit_entry_id'] in hmm_hits_entry_ids_associated_with_fragmented_hmm_hits])
                 hmm_hits_splits_entry_ids_to_remove.update(additional_entry_ids_to_be_removed)
+
+                # let's warn the user while we're at it so they panic, too.
+                progress.reset()
+                if self.bin_name:
+                    header = f"A WARNING RELATED TO HMMs IN '{self.bin_name}'"
+                else:
+                    header = f"WARNING"
+
+                self.run.warning(f"While anvi'o was trying to finalize HMM hits associated with splits of interest, "
+                                 f"it realized that there were one or more HMM hits that spanned through multiple splits "
+                                 f"yet not all of those splits were among the splits of interest. This can happen if you "
+                                 f"refined a contig by excluding some of its splits either manually during binning or "
+                                 f"automatically during whatever black magic you were engaged in. Anvi'o does not judge. But "
+                                 f"In these situations anvi'o excludes the entire HMM hit from being reported to be on the "
+                                 f"safe side. Some HMM hits coming from {P('HMM source', len(hmm_sources_associated_with_fragmented_hmm_hits))} "
+                                 f"(\"{', '.join(hmm_sources_associated_with_fragmented_hmm_hits)}\"), will not appear in your "
+                                 f"downstream analyses (including in your `anvi-summarize` outputs). If you are really really "
+                                 f"interested in those partial HMM hits and sequences associated with them, there are multiple "
+                                 f"ways to recover them (one of the best way to do it involves the use of `anvi-split` and "
+                                 f"re-running HMMs in your final bins). Please feel free to reach out to the anvi'o community "
+                                 f"for ideas.", header=header)
+
 
             if len(hmm_hits_splits_entry_ids_to_remove):
                 for entry_id in hmm_hits_splits_entry_ids_to_remove:
