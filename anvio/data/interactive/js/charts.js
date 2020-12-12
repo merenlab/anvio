@@ -602,7 +602,6 @@ function toggleHighlightBoxes() {
   } else {
     drawHighlightBoxes();
     if($('#DNA_sequence').length == 1) drawAAHighlightBoxes();
-    setSelectionBoxListener();
     $('#highlight-boxes').css('pointer-events', 'all');
   }
   state['show_highlights'] = !state['show_highlights'];
@@ -754,7 +753,6 @@ function toggle_nucleotide_display() {
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
     gene_offset_y = 0;
     drawHighlightBoxes();
-    setSelectionBoxListener();
     $('#context-container').off('mouseover mouseout');
   }
 }
@@ -941,33 +939,7 @@ function display_nucleotides() {
   if(state['show_highlights']) {
     drawHighlightBoxes();
     drawAAHighlightBoxes();
-    setSelectionBoxListener();
   }
-}
-
-function setSelectionBoxListener() {
-  if(!state['show_snvs'] && !state['show_indels']) return;
-
-  $('.SNV_text, .indels_text').each(function(i) {
-    select_boxes[i] = {"left"  : $(this).offset().left,
-                    "right" : $(this).offset().left + this.getBoundingClientRect().width,
-                    "top"   : $(this).offset().top,
-                    "bottom": $(this).offset().top + this.getBoundingClientRect().height};
-  });
-
-  $(".highlightbox").off("mouseover mouseout");
-  $(".highlightbox").on("mouseover", function(e) {
-    var x = e.pageX, y = e.pageY;
-    Object.keys(select_boxes).forEach(function(i) {
-      var box = select_boxes[i];
-      if(box.left-10 <= x && x <= box.right+10 && box.top-10 <= y && y <= box.bottom+10) {
-        $("#highlight-boxes").hide();
-        return;
-      }
-    });
-  }).mouseout(function(e) {
-    $("#highlight-boxes").delay(1000).show(0);
-  });
 }
 
 
@@ -1629,7 +1601,6 @@ function createCharts(state){
 
     if(show_nucleotides) display_nucleotides();
     if(state['show_highlights']) drawHighlightBoxes();
-    setSelectionBoxListener();
 
     function onBrush(){
         /* this will return a date range to pass into the chart object */
@@ -1651,8 +1622,6 @@ function createCharts(state){
 
         // highlight bars as % of page width without nucleotide display
         if($("#DNA_sequence").length == 0) drawHighlightBoxes();
-
-        setSelectionBoxListener();
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
