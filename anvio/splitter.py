@@ -554,6 +554,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
         hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
         where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
         bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
+        bin_contigs_db.disconnect()
 
         self.progress.end()
 
