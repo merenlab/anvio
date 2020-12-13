@@ -1,6 +1,8 @@
 How to regenerate the contents of this directory
 ================================================
 
+FIXME FIXME
+
 ## Note
 
 For a briefing on what the purpose of this folder is, please review this pull request:

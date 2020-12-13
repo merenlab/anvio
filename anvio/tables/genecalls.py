@@ -257,14 +257,14 @@ class TablesForGeneCalls(Table):
         if predict_frame:
             # Preload the markov model to predict frames and assign null codon and stop codon transition probabilities
             model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+            model_path2 = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/MM_GC_0-39.npy')
             if not filesnpaths.is_file_exists(model_path, dont_raise=True):
                 raise ConfigError("The task at hand calls for the use of the anvi'o Markov model to predict proper open reading "
                                   "frames for external gene calls when necessary, but the model does not seem to be in the right "
                                   "place in the anvi'o codebase. FAILING BIG HERE.")
 
             model = numpy.load(model_path)
-            null_prob = numpy.median(model)
-            stop_prob = model.min()/1e6
+            model2 = numpy.load(model_path2)
 
         gene_caller_ids_with_user_provided_amino_acid_sequences = set([])
 
@@ -323,6 +323,9 @@ class TablesForGeneCalls(Table):
                   "num_partial_genes_with_internal_stops": 0,
                   "num_genes_with_internal_stops": 0}
 
+        correct, correct2 = 0, 0
+        incorrect, incorrect2 = 0, 0
+
         # the main loop to go through all the gene calls.
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
@@ -361,7 +364,17 @@ class TablesForGeneCalls(Table):
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
-                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model, stop_prob=stop_prob, null_prob=null_prob)
+                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model)
+                frame2, amino_acid_sequence2 = utils.get_most_likely_translation_frame(sequence, model=model2)
+
+                if frame == 0:
+                    correct += 1
+                else:
+                    incorrect += 1
+                if frame2 == 0:
+                    correct2 += 1
+                else:
+                    incorrect2 += 1
 
                 if frame is None:
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
@@ -425,6 +438,21 @@ class TablesForGeneCalls(Table):
                                       "sense as a gene call: '%s'." % (str(gene_callers_id), sequence, amino_acid_sequence))
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
+
+        cdb = db.DB(self.db_path, None, ignore_version=True)
+        name = cdb.get_meta_value('project_name')
+        gcs = []
+        for c, seqq in contig_sequences.items():
+            gcs.append((seqq['sequence'].count('C') + seqq['sequence'].count('G')) / len(seqq['sequence']))
+        gc = sum(gcs)
+
+        with open('many_genomes.txt', 'a') as f:
+            total = incorrect + correct
+            total2 = incorrect2 + correct2
+
+            f.write(f"{name}\t{gc}\t{correct}\t{incorrect}\t{total}\t{correct2}\t{incorrect2}\t{total2}\n")
+
+        import sys; sys.exit()
 
         # reporting time
         self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")
