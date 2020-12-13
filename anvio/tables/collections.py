@@ -28,6 +28,7 @@ __status__ = "Development"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 class TablesForCollections(Table):
@@ -167,20 +168,20 @@ class TablesForCollections(Table):
         num_bins_to_report = 50
         if not drop_collection:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names added to this collection: {}.".format(", ".join(bins_to_report))
+            bin_report_msg = f"Here is a full list of the bin names added to this collection: {', '.join(bins_to_report)}."
         elif num_bins <= num_bins_to_report:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(", ".join(bins_to_report))
+            bin_report_msg = f"Here is a full list of the bin names in this collection: {', '.join(bins_to_report)}."
         else:
             bins_to_report = bin_names[:num_bins_to_report]
-            bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ", ".join(bins_to_report))
+            bin_report_msg = f"Here is a list of the first {P('bin name', num_bins_to_report)} in this collection: {', '.join(bins_to_report)}."
 
         if drop_collection:
-            self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\
-                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+            self.run.info('Collections', f"The collection '{collection_name}' that describes {P('split', num_splits)} in {P('bin', num_bins)} was successfully "
+                                         f"added to the to the database at '{self.db_path}'. {bin_report_msg}", mc='green')
         else:
-            self.run.info('Collections', 'The existing collection "%s" updated, %s splits and %s bins has been successfully added to the\
-                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+            self.run.info('Collections', f"The existing collection '{collection_name}' updated and {P('split', num_splits)} in {P('bin', num_bins)} were successfully "
+                                         f"added to the to the database at '{self.db_path}'. {bin_report_msg}", mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):
