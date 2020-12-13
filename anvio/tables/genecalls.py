@@ -444,7 +444,7 @@ class TablesForGeneCalls(Table):
         gcs = []
         for c, seqq in contig_sequences.items():
             gcs.append((seqq['sequence'].count('C') + seqq['sequence'].count('G')) / len(seqq['sequence']))
-        gc = sum(gcs)
+        gc = sum(gcs)/len(gcs)
 
         with open('many_genomes.txt', 'a') as f:
             total = incorrect + correct
