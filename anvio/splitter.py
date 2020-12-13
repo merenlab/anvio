@@ -10,6 +10,8 @@ import sys
 import copy
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -527,6 +529,31 @@ class BinSplitter(summarizer.Bin, XSplitter):
                 }
 
         self.migrate_data(tables, self.contigs_db_path, self.bin_contigs_db_path)
+
+        # We're done here in theroy, but there is one more thing to do due to reasons partially explained in
+        # issue https://github.com/merenlab/anvio/issues/1593 and PR https://github.com/merenlab/anvio/pull/1595.
+        # The solution presented in the PR does not apply to split projects. so here we will calculate
+        # what percentage of HMM hits are in splits described in this bin, and remove those that are less
+        # than 100%.
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
+        hmm_hits_in_splits_dict = bin_contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+
+        # the purpose of the folloing dict is to keep track of what total percentage of a given HMM hit is
+        # described by all contig splits involved in this bin
+        hmm_hits_id_percentage_described_dict = Counter({})
+        for entry in hmm_hits_in_splits_dict.values():
+            hmm_hits_id_percentage_described_dict[entry['hmm_hit_entry_id']] += entry['percentage_in_split']
+
+        # now the `hmm_hits_id_percentage_described_dict` looks like this:
+        #
+        #   {2: 100, 3: 100.0, 5: 90.86727989487517, 6: 99.99999999999999, 4: 63.99858956276446}
+        #
+        # HMM hit ids that need to be cleared out from th `hmm_hits_in_splits` table is clear: 5 and 4, in this
+        # example. But the problem is, due floating point logistics, in some cases things are not quite 100%,
+        # although in reality they are, hence the need for `round`ing the percentages below.
+        hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
+        where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
+        bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
 
         self.progress.end()
 
