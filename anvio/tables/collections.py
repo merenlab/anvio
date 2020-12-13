@@ -97,9 +97,9 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict. '
-                                   'They do not have to be identical, but for each bin id, there must be a unique '
-                                   'entry in the bins informaiton dict. There is something wrong with your input :/')
+                raise ConfigError(f"Bins in the collection dict do not match to the ones in the bins info dict. "
+                                  f"They do not have to be identical, but for each bin id, there must be a unique "
+                                  f"entry in the bins informaiton dict. There is something wrong with your input :/")
 
         if drop_collection:
             # remove any pre-existing information for 'collection_name'
@@ -108,9 +108,9 @@ class TablesForCollections(Table):
         num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
         splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
         if len(splits_in_collection_dict) != num_splits_in_collection_dict:
-            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in "
-                               "your collections input. It is unclear to anvi'o how did you manage to do this, but we "
-                               "cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
+            raise ConfigError(f"TablesForCollections::append: {(num_splits_in_collection_dict - len(splits_in_collection_dict))} "
+                              f"split names or contig IDs appear more than once in your input for this collection. This part of "
+                              f"the code is unable to predict how you may have ended up here, but check your input file maybe? :/")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -148,10 +148,10 @@ class TablesForCollections(Table):
             splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
 
             if len(splits_only_in_collection_dict):
-                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
-                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
-                                          and make sure all is fine before going forward with you analysis.'\
-                                                % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
+                self.run.warning(f"{len(splits_only_in_collection_dict)} of {len(splits_in_collection_dict)} splits found in "
+                                 f"collection '{collection_name}' are not known to the contigs database. This may be OK, but "
+                                 f"you must be the judge of it. If this surprises you, please use caution and make sure all "
+                                 f"is fine before going forward with you analysis.")
 
             if len(splits_only_in_db):
                 self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this '
