@@ -47,43 +47,11 @@ var maxNucleotidesInWindow = 300;
 var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
+var curr_height;
 
 var mcags;
 
 var cog_annotated = false, kegg_annotated = false;
-
-// note: not called on console open
-$(window).resize(function() {
-  VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-  if(!highlightBoxes) return;
-  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + ($("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0));
-});
-
-window.onscroll = function() {
-  stickyBoxes();
-}
-
-function stickyBoxes() {
-  if(!state['show_highlights']) return;
-  var nucl_shown = $("#DNA_sequence").length > 0;
-
-  var boxes = document.getElementById("highlight-boxes");
-  var boxH = window.innerHeight - contextSvg.attr("height")
-                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
-
-  var el_top = parseFloat(boxes.getBoundingClientRect().top);
-      el_top -= parseFloat(window.getComputedStyle(boxes).top);
-      el_top += 50;
-      el_top *= -1;
-
-  if(el_top > 0){
-    boxes.style.top = el_top + "px";
-    highlightBoxes.attr("height", boxH);
-  } else{
-    boxes.style.top = "0px";
-    if(boxH + el_top >= 0) highlightBoxes.attr("height", boxH + el_top);
-  }
-}
 
 function loadAll() {
     $.ajaxPrefilter(function(options) {
@@ -418,12 +386,9 @@ function drawHighlightBoxes() {
 
   var width = VIEWER_WIDTH * .80;
 
-  var boxH = window.innerHeight - contextSvg.attr("height")
-                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
-
   var start = $('#brush_start').val(), end = $('#brush_end').val();
 
-  highlightBoxes.attr("height", boxH);
+  highlightBoxes.attr("height", curr_height);
   $("#highlightBoxesSvg").empty();
   var nBoxes = nucl_shown ? end - start : 100;
   var endpts = nucl_shown ? getGeneEndpts(start, end) : [];
@@ -433,13 +398,11 @@ function drawHighlightBoxes() {
                   .attr("class", "highlightbox")
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
-                  .attr("height", boxH)
+                  .attr("height", curr_height)
                   .attr("fill", endpts.includes(i) ? "red" : "#989898")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
-
-  stickyBoxes();
 }
 
 function drawAAHighlightBoxes() {
@@ -1408,6 +1371,7 @@ function createCharts(state){
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
     var height = ((chartHeight + 10) * visible_layers);
+    curr_height = height;
     var contextHeight = 50;
     var contextWidth = width;
 
@@ -1501,7 +1465,7 @@ function createCharts(state){
     highlightBoxes = d3.select("#highlight-boxes").append("svg")
                                                   .attr("id", "highlightBoxesSvg")
                                                   .attr("width", width + margin.left + margin.right)
-                                                  .attr("height", 0);
+                                                  .attr("height", height);
     $('#highlight-boxes').css("width", (width + 150) + "px");
 
     var defs = contextSvg.append('svg:defs')
