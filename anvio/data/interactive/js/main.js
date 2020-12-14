@@ -317,6 +317,10 @@ function initData() {
             }
         }
     });
+
+    // hide support value params on onready -- there is probably a better place to do this?
+    $('#support_value_params').hide()
+    $('#support_color_range_param').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
