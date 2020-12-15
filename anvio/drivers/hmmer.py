@@ -176,9 +176,10 @@ class HMMer:
         workers = []
         manager = multiprocessing.Manager() # this dude holds the shared objects that will be modified by workers
         ret_value_queue = manager.Queue(maxsize=self.num_threads_to_use)
+        output_queue = manager.Queue()
 
         # Holds buffer and write lock for each output
-        merged_files_dict = manager.dict()
+        merged_files_dict = {}
         for output in desired_output:
             merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': manager.Lock()}
 
@@ -223,7 +224,7 @@ class HMMer:
                                                        output_file,
                                                        desired_output,
                                                        log_file,
-                                                       merged_files_dict,
+                                                       output_queue,
                                                        ret_value_queue))
             t.start()
             workers.append(t)
@@ -247,6 +248,19 @@ class HMMer:
                 else:
                     raise ConfigError("An HMMER worker thread came back with an unexpected return value of {ret_value}. "
                                       "Something is probably wrong, so you should contact a developer for help.")
+
+                # if worker finished successfully we can take its individual output file(s) and append them to the main file(s)
+                output_dict = output_queue.get()
+                for file_type, file in output_dict.items():
+                    main_file_buffer = merged_files_dict[file_type]['buffer']
+                    main_file_lock = merged_files_dict[file_type]['lock']
+                    worker_file = file
+                    if file_type == 'table':
+                        append_function = self.append_to_main_table_file
+                    elif file_type == 'standard':
+                        append_function = self.append_to_main_standard_file
+
+                    append_function(main_file_buffer, worker_file, main_file_lock)
 
             except KeyboardInterrupt:
                 self.run.info_single("HMMER driver received SIGINT, terminating all threads...", nl_before=2)
@@ -286,7 +300,7 @@ class HMMer:
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     merged_files_dict, ret_value_queue):
+                     output_queue, ret_value_queue):
 
         try:
             # First we run the command
@@ -298,22 +312,17 @@ class HMMer:
                                   "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
                                   "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
 
-            # Then we append the results to the main file(s)
+            # Then we send the results back to the main thread to be appended to the main files
+            output_dict = {}
             for output in desired_output:
-                main_file_buffer = merged_files_dict[output]['buffer']
-                main_file_lock = merged_files_dict[output]['lock']
-
                 if output == 'table':
-                    worker_file = table_output_file
-                    append_function = self.append_to_main_table_file
+                    output_dict['table'] = table_output_file
                 elif output == 'standard':
-                    worker_file = standard_output_file
-                    append_function = self.append_to_main_standard_file
+                    output_dict['standard'] = standard_output_file
+            output_queue.put(output_dict)
 
-                append_function(main_file_buffer, worker_file, main_file_lock)
-
-                # return value of 0 to indicate success
-                ret_value_queue.put(0)
+            # return value of 0 to indicate success
+            ret_value_queue.put(0)
 
         except Exception as e:
             # This thread encountered an error. We send the error back to the main thread which
