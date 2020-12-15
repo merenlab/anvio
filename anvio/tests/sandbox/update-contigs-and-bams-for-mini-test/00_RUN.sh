@@ -17,10 +17,12 @@ do
 done
 
 # put all 'main' contigs into a single file
-cat contigs/*orig.fa > output/contigs.fa
+cat contigs/*orig.fa > output/contigs-orig.fa
 
 # change work directory
 cd output
+
+anvi-script-reformat-fasta contigs-orig.fa --simplify-names -o contigs.fa
 
 # generate a bowtie2 reference database
 bowtie2-build contigs.fa contigs
@@ -39,6 +41,27 @@ do
     gzip $sample-R1.fastq
     gzip $sample-R2.fastq
 done
+
+#############################################
+# why not go through a test run.
+#############################################
+anvi-gen-contigs-database -f contigs.fa -o CONTIGS.db -L 1000 --project-name "Mini test"
+anvi-run-hmms -c CONTIGS.db --num-threads 4
+for sample in $samples
+do
+    anvi-init-bam $sample-RAW.bam --output-file $sample.bam
+
+    anvi-profile -i $sample.bam \
+                 -o $sample \
+                 -c CONTIGS.db \
+                 --profile-SCVs
+done
+anvi-merge SAMPLE-*/PROFILE.db -o SAMPLES-MERGED -c CONTIGS.db
+mv SAMPLES-MERGED/*db .
+anvi-interactive -p PROFILE.db -c CONTIGS.db
+#############################################
+# Done with the test run
+#############################################
 
 # go back to where you came from
 cd ../
