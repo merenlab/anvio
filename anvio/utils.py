@@ -2089,7 +2089,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         model = np.load(default_model_path)
 
     order = len(model.shape)
-    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    null_prob = null_prob if null_prob is not None else np.median(model)
     stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
 
     aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
