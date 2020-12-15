@@ -59,6 +59,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 aligners = Aligners()
 
 
@@ -106,8 +107,10 @@ class ContigsSuperclass(object):
         self.splits_taxonomy_dict = {}
         self.split_sequences = {}
         self.contigs_basic_info = {}
-        self.contig_sequences = {}
         self.nt_positions_info = {}
+
+        self.contig_sequences = {}
+        self.gene_caller_ids_included_in_contig_sequences_initialized = set([])
 
         self.genes_in_contigs_dict = {}
         self.gene_lengths = {}
@@ -280,7 +283,6 @@ class ContigsSuperclass(object):
         # are we going to read everything, or only those that are of interest?
         if contig_names_of_interest:
             subset_provided = True
-            pass
         elif gene_caller_ids_of_interest:
             subset_provided = True
             contig_names_of_interest = set([])
@@ -300,14 +302,22 @@ class ContigsSuperclass(object):
 
         self.progress.new('Loading contig sequences')
         self.contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+
+        # now we have our contig sequences, and it is time to make sure we
+        # know which gene caller ids they represent if only a subset of contigs
+        # were requested:
+        if subset_provided:
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
+        else:
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
+
         self.progress.end()
 
         if subset_provided:
             self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
                              f"Usually this is a good thing and means that some good code somewhere is looking after "
-                             f"you. Just for your information, this class will only know {len(contig_names_of_interest)} "
-                             f"contig sequences instead of all th things in the database.",
-                             header="THE MORE YOU KNOW 🌈", lc='yellow')
+                             f"you. Just FYI, this class will only know about {P('contig sequence', len(contig_names_of_interest))} "
+                             f"instead of all the things in the database.", header="THE MORE YOU KNOW 🌈", lc='yellow')
 
         contigs_db.disconnect()
 
@@ -961,8 +971,10 @@ class ContigsSuperclass(object):
                               "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
                               "file must match, and anvi'o will have to take care of it without your supervision.")
 
-        # finally getting our sequences initialized.
-        if not len(self.contig_sequences):
+        # finally getting our sequences initialized. please NOTE that we do it only if there are no
+        # contig sequences available OR if the gene caller ids of interest is not represented among
+        # those that were previously initialized.
+        if not len(self.contig_sequences) or not set(gene_caller_ids_list).issubset(self.gene_caller_ids_included_in_contig_sequences_initialized):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
         if include_aa_sequences or report_aa_sequences:
@@ -980,7 +992,7 @@ class ContigsSuperclass(object):
         self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
-            gene_call = self.genes_in_contigs_dict[gene_callers_id]
+            gene_call = copy.deepcopy(self.genes_in_contigs_dict[gene_callers_id])
 
             contig_name = gene_call['contig']
             start, stop = gene_call['start'], gene_call['stop']
@@ -2822,9 +2834,9 @@ class ProfileSuperclass(object):
             return
 
         if not self.auxiliary_profile_data_available:
-            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile "
-                              "data does not seem to be available for this project. Yeah. That's what happens if you don't "
-                              "download everything from the server :(")
+            raise ConfigError("Someone is asking gene-level coverage stats to be computed, but then there is no AUXILIARY-DATA.db "
+                              "available for this project. Yeah. That's what happens if you don't download everything from the "
+                              "server :(")
 
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 

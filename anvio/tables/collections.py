@@ -28,6 +28,7 @@ __status__ = "Development"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 class TablesForCollections(Table):
@@ -96,9 +97,9 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict. '
-                                   'They do not have to be identical, but for each bin id, there must be a unique '
-                                   'entry in the bins informaiton dict. There is something wrong with your input :/')
+                raise ConfigError(f"Bins in the collection dict do not match to the ones in the bins info dict. "
+                                  f"They do not have to be identical, but for each bin id, there must be a unique "
+                                  f"entry in the bins informaiton dict. There is something wrong with your input :/")
 
         if drop_collection:
             # remove any pre-existing information for 'collection_name'
@@ -107,9 +108,9 @@ class TablesForCollections(Table):
         num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
         splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
         if len(splits_in_collection_dict) != num_splits_in_collection_dict:
-            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in "
-                               "your collections input. It is unclear to anvi'o how did you manage to do this, but we "
-                               "cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
+            raise ConfigError(f"TablesForCollections::append: {(num_splits_in_collection_dict - len(splits_in_collection_dict))} "
+                              f"split names or contig IDs appear more than once in your input for this collection. This part of "
+                              f"the code is unable to predict how you may have ended up here, but check your input file maybe? :/")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -147,10 +148,10 @@ class TablesForCollections(Table):
             splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
 
             if len(splits_only_in_collection_dict):
-                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
-                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
-                                          and make sure all is fine before going forward with you analysis.'\
-                                                % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
+                self.run.warning(f"{len(splits_only_in_collection_dict)} of {len(splits_in_collection_dict)} splits found in "
+                                 f"collection '{collection_name}' are not known to the contigs database. This may be OK, but "
+                                 f"you must be the judge of it. If this surprises you, please use caution and make sure all "
+                                 f"is fine before going forward with you analysis.")
 
             if len(splits_only_in_db):
                 self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this '
@@ -167,20 +168,20 @@ class TablesForCollections(Table):
         num_bins_to_report = 50
         if not drop_collection:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names added to this collection: {}.".format(", ".join(bins_to_report))
+            bin_report_msg = f"Here is a full list of the bin names added to this collection: {', '.join(bins_to_report)}."
         elif num_bins <= num_bins_to_report:
             bins_to_report = bin_names
-            bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(", ".join(bins_to_report))
+            bin_report_msg = f"Here is a full list of the bin names in this collection: {', '.join(bins_to_report)}."
         else:
             bins_to_report = bin_names[:num_bins_to_report]
-            bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ", ".join(bins_to_report))
+            bin_report_msg = f"Here is a list of the first {P('bin name', num_bins_to_report)} in this collection: {', '.join(bins_to_report)}."
 
         if drop_collection:
-            self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\
-                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+            self.run.info('Collections', f"The collection '{collection_name}' that describes {P('split', num_splits)} in {P('bin', num_bins)} was successfully "
+                                         f"added to the to the database at '{self.db_path}'. {bin_report_msg}", mc='green')
         else:
-            self.run.info('Collections', 'The existing collection "%s" updated, %s splits and %s bins has been successfully added to the\
-                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+            self.run.info('Collections', f"The existing collection '{collection_name}' updated and {P('split', num_splits)} in {P('bin', num_bins)} were successfully "
+                                         f"added to the to the database at '{self.db_path}'. {bin_report_msg}", mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):

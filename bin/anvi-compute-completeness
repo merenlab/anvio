@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.tables as t
@@ -73,7 +73,7 @@ def compute_completeness(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('min-e-value'), **anvio.K('min-e-value'))
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('completeness-source'), **anvio.K('completeness-source'))
 
     try:
-        args = anvio.get_args(parser)
+        args = parser.get_args(parser)
         compute_completeness(args)
     except ConfigError as e:
         print(e)

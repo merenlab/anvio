@@ -14,7 +14,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "19"
+contigs_db_version = "20"
 profile_db_version = "35"
 genes_db_version = "6"
 pan_db_version = "14"
@@ -22,7 +22,7 @@ auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
 trnaseq_db_version = "1"
-workflow_config_version = "1"
+workflow_config_version = "2"
 metabolic_modules_db_version = "2"
 
 versions_for_db_types = {'contigs': contigs_db_version,
@@ -355,6 +355,11 @@ requires_unique_entry_id = {
     'variable_amino_acid_frequencies': False,
     'gene_protein_sequences': False,
     'genes_in_splits_summary': False,
+    'gene_coverages': False,
+    'mean_coverage_Q1Q3_splits': False,
+    'mean_coverage_Q1Q3_contigs': False,
+    'portion_covered_contigs': False,
+    'portion_covered_splits': False,
     pan_gene_clusters_table_name: True,
     genes_in_splits_table_name: True,
     gene_function_calls_table_name: True,

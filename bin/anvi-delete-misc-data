@@ -3,7 +3,7 @@
 """Remove stuff from misc data tables"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -51,7 +51,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('Database input', "Provide 1 of these")
     group2 = parser.add_argument_group('Details', "Everything else.")
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                                                   the target data table and quit without doing anything else.")
     group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

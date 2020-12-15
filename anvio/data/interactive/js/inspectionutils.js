@@ -57,7 +57,6 @@ $(document).ready(function() {
     if ($(e.target).data('toggle') !== 'popover'
         && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
-        $('.popover-indel').popover('hide');
     }
   });
 });
@@ -303,7 +302,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         }
         if(category == null) category = "none";
       } else if(colortype == "Source") {
-        if (gene.source == 'Ribosomal_RNAs') {
+        if (gene.source.startsWith('Ribosomal_RNA')) {
           category = 'rRNA';
         } else if (gene.source == 'Transfer_RNAs') {
           category = 'tRNA';
@@ -376,77 +375,6 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         $(popover).css('left', '0px');
       }
     });
-}
-
-/*
- *  Draws insertion and deletion markers on the current nucleotide display.
- *  Params:
- *  - seq_len: length of sequence displayed in the current window
- *  - largeInsertion: mark indels greater than this size in red
- */
-function drawIndels(start, end, largeIndel, data) {
-  $("#indelsSvg").empty();
-
-  var indelContainer = d3.select("#indelsSvg");
-  indelPaths = indelContainer.append('svg:g')
-                             .attr('id', 'indelPaths');
-
-  threshMarkIndel = largeIndel;
-  seq_len = end - start;
-
-  for(var i = 0; i < data['sample'].length; i++) {
-    var pos = (data['pos'][i] - start >= 0) ? (data['pos'][i] - start) : -1;
-    drawIndel(data['pos'][i], pos, data['type'][i], data['sequence'][i], data['length'][i], seq_len);
-  }
-
-  $('.indelMarker').closest('.popover').popover('hide').popover({ trigger: "hover" });
-}
-
-function drawIndel(truepos, pos, type, dna, indel_len, seq_len, aa) {
-  // pos is relative to the current nucleotide window
-  if(pos < 0 || pos > seq_len) return;
-
-  // TODO: use <p> for data-content (manually make margins padding 0) and then add crossed out text?
-
-  var nucl_width = $("#indelsSvg").attr("width") / seq_len;
-  var strokeWidth;
-  var pathObj;
-
-  if(type == 'insertion') {
-    var markerHeight = .7 * d3.select("#DNA_sequence")[0][0].getBBox().height;
-    var markerWidth  = .4 * markerHeight;
-    var x            = pos * nucl_width - .5*markerWidth;
-    var y            = .2 * markerHeight;
-    strokeWidth      = .25*nucl_width;
-    pathObj = 'M ' + x + ',' + y + ' h ' + markerWidth + ' m ' + -.5*markerWidth + ',0 v ' + markerHeight + ' m ' + -.5*markerWidth + ',0 h ' + markerWidth + ' Z';
-  } else if(type == 'deletion') {
-    var markerLength = .4 * d3.select("#DNA_sequence")[0][0].getBBox().height;
-    var x            = pos * nucl_width;
-    var y            = .5 * d3.select("#DNA_sequence")[0][0].getBBox().height;
-    strokeWidth      = .4*nucl_width;
-    pathObj = 'M ' + x + ',' + y + ' h ' + -1.3*markerLength + ' Z';
-  } else {
-    console.log('warning: ' + type + ' is not a valid type of indel');
-    return;
-  }
-
-  var content = (type=='insertion' ? 'Insertion [' + indel_len + ']: ' + dna + (aa?"\nAA: "+aa:"") : 'Deletion [' + indel_len + ']');
-  content = content + '\nPosition: ' + truepos;
-
-  indelPaths.append('svg:path')
-        .attr("class", "indelMarker")
-        .attr('d', pathObj)
-        .attr('stroke', threshMarkIndel && indel_len > threshMarkIndel ? 'red' : 'black')
-        .attr('stroke-opacity', 0.8)
-        .attr('stroke-width', strokeWidth)
-        .attr("style", "cursor:pointer;")
-        .attr("data-content", content)
-        .attr("data-toggle", "popover")
-        .attr("data-trigger", "hover")
-        .attr("data-template", '<div class="popover-indel" role="tooltip"> \
-                                   <div class="arrow"></div> \
-                                   <div class="popover-content"></div> \
-                               </div>");');
 }
 
 function getGeneEndpts(_start, _stop) {

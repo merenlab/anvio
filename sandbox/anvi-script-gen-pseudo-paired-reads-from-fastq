@@ -83,7 +83,6 @@ def gen_paired_end_reads_from_fastq(args):
             progress.increment(i)
             progress.update('%d / %d' % (i, fastq.num_reads))
 
-        read_len = len(read.seq)
         read1_len = len(read.seq)//2
 
         read1_seq = read.seq[:read1_len]
@@ -114,15 +113,15 @@ def gen_paired_end_reads_from_fastq(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-f', '--fastq', required=True)
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'help': \
                         'If you want final FASTQs with the format myfastq_1.fastq and myfastq_2.fastq, '
                         'then this parameter should be set to myfastq'}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         gen_paired_end_reads_from_fastq(args)

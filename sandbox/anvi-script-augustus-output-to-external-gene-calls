@@ -115,8 +115,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument("-i", "--input-file", required=True, help=("Gene calls file from AUGUSTUS (that ends with .gff). Please note that "
                                     "the script is only tested with AUGUSTUS v3.3.3 output (although it may still work with other versions of "
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A("output-file"), **anvio.K("output-file"))
     parser.add_argument(*anvio.A("just-do-it"), **anvio.K("just-do-it"))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)
