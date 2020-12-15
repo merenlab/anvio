@@ -175,7 +175,7 @@ class HMMer:
 
         workers = []
         manager = multiprocessing.Manager() # this dude holds the shared objects that will be modified by workers
-        output_queue = manager.Queue(maxsize=self.num_threads_to_use)
+        ret_value_queue = manager.Queue(maxsize=self.num_threads_to_use)
 
         # Holds buffer and write lock for each output
         merged_files_dict = manager.dict()
@@ -224,7 +224,7 @@ class HMMer:
                                                        desired_output,
                                                        log_file,
                                                        merged_files_dict,
-                                                       output_queue))
+                                                       ret_value_queue))
             t.start()
             workers.append(t)
 
@@ -234,7 +234,7 @@ class HMMer:
         finished_workers = 0
         while finished_workers < self.num_threads_to_use:
             try:
-                ret_value = output_queue.get()
+                ret_value = ret_value_queue.get()
 
                 if isinstance(ret_value, Exception):
                     # If thread returns an exception, we raise it and kill the main thread.
@@ -286,7 +286,7 @@ class HMMer:
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     merged_files_dict, output_queue):
+                     merged_files_dict, ret_value_queue):
 
         try:
             # First we run the command
@@ -313,12 +313,12 @@ class HMMer:
                 append_function(main_file_buffer, worker_file, main_file_lock)
 
                 # return value of 0 to indicate success
-                output_queue.put(0)
+                ret_value_queue.put(0)
 
         except Exception as e:
             # This thread encountered an error. We send the error back to the main thread which
             # will terminate the job.
-            output_queue.put(e)
+            ret_value_queue.put(e)
 
 
     def append_to_main_standard_file(self, merged_file_buffer, standard_output_file, buffer_write_lock):
