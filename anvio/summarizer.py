@@ -1510,6 +1510,16 @@ class Bin:
             d[gene_callers_id] = {}
             # add sample independent information into `d`;
             for header in headers:
+                if gene_callers_id not in self.summary.genes_in_contigs_dict:
+                    progress.reset()
+                    raise ConfigError("Bad news :( A very rare error has occurred. A gene caller id found in your splits table "
+                                      "is not occurring in the genes in contigs table of your contigs database. To fix this "
+                                      "error, please go here & search for \"Meren's Solution\": "
+                                      "https://github.com/merenlab/anvio/issues/1596. It would be extremely "
+                                      "helpful if you add a comment to that thread to describe the journey of your databases "
+                                      "so perhaps we can finally recapitulate this error and fix it once and for all. Apologies "
+                                      "for this, and thank you for your patience.")
+
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
             self.progress.update('Sorting out functions ...')
