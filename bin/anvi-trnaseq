@@ -23,8 +23,8 @@ __description__ = ("An anvi'o script to process a tRNA-seq dataset, generating a
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     group1A = parser.add_argument_group('MANDATORY')
     group1A.add_argument(*anvio.A('fasta-file'),
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     group2.add_argument(*anvio.A('default-feature-param-file'), **anvio.K('default-feature-param-file'))
     group2.add_argument(*anvio.A('print-default-feature-params'), **anvio.K('print-default-feature-params'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
     try:
         if args.default_feature_param_file:
             trnaidentifier.TRNAFeature.write_param_file(args.default_feature_param_file)

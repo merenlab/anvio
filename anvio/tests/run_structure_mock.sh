@@ -31,14 +31,14 @@ gen_var_profile2() {
                                  -o test-output/variability_CDN.txt
 }
 display_structure1() {
-    anvi-3dev -p test-output/SAMPLES-MERGED/PROFILE.db \
+    anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
               -c test-output/one_contig_five_genes.db \
               -s test-output/STRUCTURE.db \
               --gene-caller-ids 2,4 \
               --debug
 }
 display_structure2() {
-    anvi-3dev -V test-output/variability_AA.txt \
+    anvi-display-structure -V test-output/variability_AA.txt \
               -c test-output/one_contig_five_genes.db \
               -s test-output/STRUCTURE.db \
               --debug
@@ -114,10 +114,10 @@ then
     INFO "anvi-gen-variability-profile --engine CDN"
     gen_var_profile2
 
-    INFO "anvi-3dev with profile database"
+    INFO "anvi-display-structure with profile database"
     display_structure1
 
-    INFO "anvi-3dev with variability"
+    INFO "anvi-display-structure with variability"
     display_structure2
 
 
@@ -158,10 +158,10 @@ then
     INFO "anvi-gen-variability-profile --engine CDN"
     gen_var_profile2
 
-    INFO "anvi-3dev with profile database"
+    INFO "anvi-display-structure with profile database"
     display_structure1
 
-    INFO "anvi-3dev with variability"
+    INFO "anvi-display-structure with variability"
     display_structure2
 
     echo
@@ -192,10 +192,10 @@ then
     INFO "anvi-gen-variability-profile --engine CDN"
     gen_var_profile2
 
-    INFO "anvi-3dev with profile and contigs databases"
+    INFO "anvi-display-structure with profile and contigs databases"
     display_structure1
 
-    INFO "anvi-3dev with variability"
+    INFO "anvi-display-structure with variability"
     display_structure2
 
     echo

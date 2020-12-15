@@ -87,11 +87,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                     ['run', '--keep-ids', '--exclude-ids', '--min-len', "--prefix", "--simplify-names", "--seq-type"]
 
 
-        gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
+        gen_contigs_params = ['--description', '--skip-gene-calling',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
                               '--contigs-fasta', '--project-name',\
                               '--description', '--split-length', '--kmer-size',\
-                              '--skip-mindful-splitting', '--skip-gene-calling', '--external-gene-calls',\
+                              '--skip-mindful-splitting', '--skip-gene-calling',\
                               '--ignore-internal-stop-codons', '--skip-predict-frame', '--prodigal-translation-table']
 
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params

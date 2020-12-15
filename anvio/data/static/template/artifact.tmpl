@@ -23,12 +23,16 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 {% if artifact.provided_by %}
 <p style="text-align: left" markdown="1">{% for name, path in artifact.provided_by %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% else %}
-Most likely provided by the user.
+There are no anvi'o tools that generate this artifact, which means it is most likely provided to the anvi'o ecosystem by the user.
 {% endif %}
 
 ## Required or used by
 
+{% if artifact.required_by %}
 <p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% else %}
+There are no anvi'o tools that use or require this artifact directly, which means it is most likely an end-product for the user.
+{% endif %}
 
 ## Description
 {% if artifact.description %}

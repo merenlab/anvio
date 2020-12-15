@@ -75,9 +75,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('CRITICAL INPUT', 'Basically the input file and the target database')
     groupI.add_argument('-i', '--input-order', metavar = 'FILE', help = "One of the two important things you must provide: the file\
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                                 it will not work because the default items order in the state file overwrites the one that comes\
                                 from the database. So not that big of a responsibility.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

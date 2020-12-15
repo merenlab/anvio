@@ -15,11 +15,11 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.tables.tableops import Table
 from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
 
 
@@ -72,8 +72,18 @@ class TablesForHMMHits(Table):
         if not initializing_for_deletion:
             self.set_next_available_id(t.hmm_hits_table_name)
 
+
     def check_sources(self, sources):
         sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
+
+        if 'Ribosomal_RNAs' in sources_in_db and len([s for s in sources if s.startswith('Ribosomal_RNA_')]):
+            raise ConfigError("Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
+                              "already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
+                              "its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
+                              "database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
+                              "as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
+                              "model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
+                              "sword. Here it is for your grace: \"anvi-delete-hmms -c CONTIGS.db --hmm-source Ribosomal_RNAs\".")
 
         sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
 
@@ -86,6 +96,7 @@ class TablesForHMMHits(Table):
                                   "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
                                   "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
                                   "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
+
 
     def hmmpress_sources(self, sources, tmp_dir):
         """This function runs hmmpress on the hmm profiles.
@@ -110,6 +121,7 @@ class TablesForHMMHits(Table):
                 raise ConfigError("Sadly, anvi'o failed while attempting to compress the HMM model for source %s. You can check out the log file (%s) for "
                                   "more detailed information on why this happened." % (source, log_file_path))
         return hmmpressed_file_paths
+
 
     def populate_search_tables(self, sources={}):
         # make sure the output file is OK to write.
@@ -213,7 +225,18 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                try:
+                    parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                except StupidHMMError as e:
+                    raise ConfigError(f"Unfortunately something went wrong while anvi'o was trying to parse some HMM output for your data. "
+                                      f"This error is typically due to contig names that are long and variable in length, which that "
+                                      f"confuses HMMER and so it generates output tables that are simply unparseable. Anvi'o does its best, "
+                                      f"but occasionally fails, which leads to this error. If you are curious why is this happening, you can take a "
+                                      f"look at this issue where this issue is described: https://github.com/merenlab/anvio/issues/1564. "
+                                      f"Solution to this is relatively easy: use `anvi-script-reformat-fasta` with `--simplify-names` flag "
+                                      f"BEFORE generating your contigs database as we advice you to. Sorry you came all this way just to "
+                                      f"find out about this :/ Here is the origial error message anvi'o produced from the code beneath: {e}.")
+
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):

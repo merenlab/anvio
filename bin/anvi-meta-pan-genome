@@ -3,7 +3,7 @@
 """Entering anvi'o metapangenomic workflow"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.metapanops as metapanops
@@ -29,7 +29,7 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group("PANGENOME", "Files for the pangenome.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                         that. 0 would mean no detection test required, 1 would mean the entire genome must be detected.")
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         pan = metapanops.MetaPangenome(args, run, progress)

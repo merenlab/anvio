@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['contigs-db', 'interacdome-data']
-__provides__ = ['binding-frequencies',]
+__provides__ = ['binding-frequencies-txt', "misc-data-amino-acids"] 
 __description__ = "Run InteracDome on a contigs database"
 __resources__ = [("Estimating per-residue binding frequencies with InteracDome", "http://merenlab.org/2020/07/22/interacdome/")]
 
@@ -27,9 +27,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('interacdome-data-dir'), **anvio.K('interacdome-data-dir'))
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'default': 'INTERACDOME'}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

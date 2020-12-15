@@ -50,8 +50,9 @@ class TRNATaxonomyContext(AccessionIdToTaxonomy):
 
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
-        self.target_database = "GTDB"
-        self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
+        self.target_database_name = "GTDB"
+        self.target_database_release = "v89.0"
+        self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/"
 
         # some variables from anvi'o constants
         self.hmm_source_for_trna_genes = constants.default_hmm_source_for_trna_genes
@@ -61,7 +62,7 @@ class TRNATaxonomyContext(AccessionIdToTaxonomy):
 
         # these are all the user accessible paths. defaults will serve well for all applications,
         # but these can be used for debugging.
-        self.tRNA_taxonomy_data_dir = (os.path.abspath(trna_taxonomy_data_dir) if trna_taxonomy_data_dir else None) or (os.path.join(self.default_trna_taxonomy_data_dir, self.target_database))
+        self.tRNA_taxonomy_data_dir = (os.path.abspath(trna_taxonomy_data_dir) if trna_taxonomy_data_dir else None) or (os.path.join(self.default_trna_taxonomy_data_dir, self.target_database_name))
         self.accession_to_taxonomy_file_path = os.path.join(self.tRNA_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt.gz')
         self.database_version_file_path = os.path.join(self.tRNA_taxonomy_data_dir, 'VERSION')
         self.search_databases_dir_path = os.path.join(self.tRNA_taxonomy_data_dir, 'ANTICODON_SEARCH_DATABASES')

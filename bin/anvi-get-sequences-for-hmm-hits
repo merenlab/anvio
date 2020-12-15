@@ -36,7 +36,7 @@
 
 import os
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -234,7 +234,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
                                         provide a contigs database, and call it a day. In this case the program will return you\
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)
