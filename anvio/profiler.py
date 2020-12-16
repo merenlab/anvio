@@ -798,17 +798,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
             self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
 
         if not self.skip_INDEL_profiling:
-            self.layer_additional_data['num_INDELs_reported'] = TableForIndels(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
             self.layer_additional_keys.append('num_INDELs_reported')
             self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
 
         if self.profile_SCVs:
-            self.layer_additional_data['num_SCVs_reported'] = TableForCodonFrequencies(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
             self.layer_additional_keys.append('num_SCVs_reported')
             self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
@@ -938,17 +938,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
             self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
 
         if not self.skip_INDEL_profiling:
-            self.layer_additional_data['num_INDELs_reported'] = TableForIndels(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
             self.layer_additional_keys.append('num_INDELs_reported')
             self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
 
         if self.profile_SCVs:
-            self.layer_additional_data['num_SCVs_reported'] = TableForCodonFrequencies(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
             self.layer_additional_keys.append('num_SCVs_reported')
             self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
