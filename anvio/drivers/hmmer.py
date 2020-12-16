@@ -269,6 +269,7 @@ class HMMer:
             except Exception as worker_error:
                 # An exception was thrown in one of the threads so we kill all of them
                 self.progress.end()
+                self.run.warning("An exception was thrown in one of the worker threads (see output below for details).")
                 for worker in workers:
                     worker.terminate()
                 raise worker_error
