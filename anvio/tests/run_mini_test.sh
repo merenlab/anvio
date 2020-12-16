@@ -46,7 +46,6 @@ do
     echo
 done
 
-
 INFO "Merging profiles"
 # merge samples
 anvi-merge $output_dir/SAMPLE-*/PROFILE.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
