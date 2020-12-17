@@ -83,7 +83,7 @@ def migrate(db_path):
     if relevant_gene_calls:
         message += (" This update also removed tRNA HMM hits from your contis database :/ It was really very "
                     "necessary since one of the developers of anvi'o (*COUGH* meren *COUGH*) was very confused "
-                    "anticodons. Now everything is fixed, but unfortunately you will have to re-run "
+                    "about anticodons. Now everything is fixed, but unfortunately you will have to re-run "
                     "`anvi-scan-trnas` program on your contigs database :( ")
 
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
