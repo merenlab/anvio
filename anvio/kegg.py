@@ -1271,6 +1271,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for m in self.available_modes:
             if m != 'modules_custom' and self.name_header not in self.available_modes[m]['headers']:
                 self.available_modes[m]['headers'].insert(1, self.name_header)
+            if self.metagenome_mode and self.available_modes[m]['headers'] and 'contig' in self.available_modes[m]['headers']:
+                # avoid duplicate columns since contig_name is the name_header in metagenome_mode
+                self.available_modes[m]['headers'].remove('contig')
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
                                         'mode_type' : 'all',
