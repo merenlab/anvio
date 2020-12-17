@@ -51,7 +51,7 @@ def migrate(db_path):
     contigs_db.create_table(trna_taxonomy_table_name, trna_taxonomy_table_structure, trna_taxonomy_table_types)
 
     progress.update("Removing tRNA hits")
-    relevant_gene_calls = [g[0] for g in contigs_db._exec("select entry_id from hmm_hits where source='Transfer_RNAs'").fetchall()]
+    relevant_gene_calls = [g[0] for g in contigs_db._exec("select gene_callers_id from hmm_hits where source='Transfer_RNAs'").fetchall()]
 
     if len(relevant_gene_calls):
         for table_name in ['hmm_hits_info', 'hmm_hits', 'hmm_hits_in_splits', 'genes_in_contigs', 'gene_functions']:
