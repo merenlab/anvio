@@ -105,12 +105,17 @@
     margin-top: 12px;
 }
 
-#settings-section-info {
+.settings-section-info {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
     border-radius: 9px;
     font-size: 12px;
+}
+
+#settings-section-info-SNV-warning {
+  display: none;
+  color: red;
 }
 
 #settings-panel code {

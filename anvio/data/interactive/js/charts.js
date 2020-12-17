@@ -27,6 +27,7 @@ var layers;
 var coverage;
 var variability;
 var maxVariability = 0;
+var maxCountOverCoverage = 0;
 var indels;
 var geneParser;
 var contextSvg;
@@ -42,6 +43,7 @@ var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
+var indels_enabled;
 var show_nucleotides = true;
 var maxNucleotidesInWindow = 300;
 var minNucleotidesInWindow = 30;
@@ -92,12 +94,13 @@ function loadAll() {
         state = JSON.parse(localStorage.state);
     }
 
-    if(state['show_snvs'] == null) {
-        state['show_snvs'] = getParameterByName('show_snvs') == 'true';
+    if(state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
     }
     if(state['show_highlights'] == null) state['show_highlights'] = true;
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+
     $.ajax({
             type: 'POST',
             cache: false,
@@ -119,7 +122,7 @@ function loadAll() {
                         for (var h=0; h<coverage[i].length; h++) {
                             if (contig_data.variability[i][l].hasOwnProperty(h)) {
                                 variability[i][l].push(contig_data.variability[i][l][h]);
-                                if (contig_data.variability[i][l][h] > maxVariability) {
+                                if (state['snvs_enabled'] && contig_data.variability[i][l][h] > maxVariability) {
                                     maxVariability = contig_data.variability[i][l][h];
                                 }
                             } else {
@@ -131,6 +134,20 @@ function loadAll() {
 
                 competing_nucleotides = contig_data.competing_nucleotides;
                 indels = contig_data.indels;
+
+                for(var i=0; i<indels.length; i++) {
+                  var ikeys = Object.keys(indels[i]);
+                  for(var j=0; j<ikeys.length; j++) {
+                    let ccVal = indels[i][ikeys[j]]["count"]/indels[i][ikeys[j]]["coverage"];
+                    if(ccVal > maxCountOverCoverage) maxCountOverCoverage = ccVal;
+                    if(maxCountOverCoverage >= 1) {
+                      maxCountOverCoverage = 1;
+                      i = indels.length;
+                      break;
+                    }
+                  }
+                }
+
                 previous_contig_name = contig_data.previous_contig_name;
                 next_contig_name = contig_data.next_contig_name;
                 index = contig_data.index;
@@ -162,10 +179,10 @@ function loadAll() {
                 }
 
                 if(next_contig_name)
-                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['show_snvs']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['snvs_enabled']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                 if(previous_contig_name)
-                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['show_snvs']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['snvs_enabled']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                 $('#window-title').html("anvi-inspect: " + page_header);
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
@@ -191,9 +208,33 @@ function loadAll() {
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
+                state['min-indel-coverage'] = 0;
+                //$("#minIndelInput").val(state['min-indel-coverage']);
 
-                if(state['show_indels'] == null) {
-                  state['show_indels'] = (indels != null && !isEmpty(indels));
+                if(state['show_snvs'] == null) {
+                  state['show_snvs'] = state['snvs_enabled']!=null ? (state['snvs_enabled'] && maxVariability!=0) : false;
+                }
+                indels_enabled = maxCountOverCoverage != 0;
+                if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+
+                // adjust menu options
+                if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
+                  $('#toggleSNVIndelTable').hide();
+                  $("#indels").hide();
+                  $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
+                  $('#settings-section-info-SNV-warning').show();
+                } else {
+                  if(!indels_enabled) {
+                    $('#indels').hide();
+                    $('#indels_picker').hide();
+                    $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
+                    $('#settings-section-info-SNV-warning').show();
+                  }
+                  if(!state['snvs_enabled'] || maxVariability==0) {
+                    $('#snv_picker').hide();
+                    $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
+                    $('#settings-section-info-SNV-warning').show();
+                  }
                 }
 
                 // create function color menu and table; set default color states
@@ -229,28 +270,33 @@ function loadAll() {
                 }
 
                 // show SNVs and indels?
-                var numSNVs = 0;
-                for(var i = 0; i < competing_nucleotides.length; i++) {
-                  for(var key in competing_nucleotides[i]) {
-                    if(competing_nucleotides[i].hasOwnProperty(key)) numSNVs++;
+                if(state['snvs_enabled']) {
+                  let numSNVs = 0;
+                  for(var i = 0; i < competing_nucleotides.length; i++) {
+                    for(var key in competing_nucleotides[i]) {
+                      if(competing_nucleotides[i].hasOwnProperty(key)) numSNVs++;
+                    }
+                  }
+                  if(state['show_snvs'] && numSNVs > 1000) {
+                    state['show_snvs'] = false;
+                    $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                    $("div.snvs-disabled").fadeIn(300);
                   }
                 }
-                var numIndels = 0;
-                for(var i = 0; i < indels.length; i++) {
-                  for(var key in indels[i]) {
-                    if(indels[i].hasOwnProperty(key)) numIndels++;
+                if(indels_enabled) {
+                  let numIndels = 0;
+                  for(var i = 0; i < indels.length; i++) {
+                    for(var key in indels[i]) {
+                      if(indels[i].hasOwnProperty(key)) numIndels++;
+                    }
+                  }
+                  if(state['show_indels'] && numIndels > 1000) {
+                    state['show_indels'] = false;
+                    $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                    $("div.indels-disabled").fadeIn(300);
                   }
                 }
-                if(state['show_snvs'] && numSNVs > 1000) {
-                  state['show_snvs'] = false;
-                  $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
-                  $("div.snvs-disabled").fadeIn(300);
-                }
-                if(state['show_indels'] && numIndels > 1000) {
-                  state['show_indels'] = false;
-                  $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
-                  $("div.indels-disabled").fadeIn(300);
-                }
+
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
@@ -348,6 +394,17 @@ function loadAll() {
                     }
                   }
                 });
+
+                /*$('#minIndelInput').on('keydown', function(e) {
+                  if(e.keyCode == 13) { // 13 = enter key
+                    if($(this).val() < 0 || $(this).val() > 9999) {
+                      alert("Invalid value, value needs to be in range 0-9999");
+                    } else {
+                      state['min-indel-coverage'] = $(this).val();
+                      $(this).blur();
+                    }
+                  }
+                });*/
 
                 $('#toggle_snv_box').on('change', function() {
                   waitingDialog.show('Drawing ...',
@@ -1089,7 +1146,7 @@ function search_items(search_query, page) {
 
                     }
 
-                    let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': show_snvs}) +'" '+target_str+'>' + item_name_pretty + '</a>';
+                    let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': state['snvs_enabled']}) +'" '+target_str+'>' + item_name_pretty + '</a>';
                     results_html += link + '<br />';
 
                 }
@@ -1309,12 +1366,11 @@ function processState(state_name, state) {
     }
     redrawArrows();
 
-    // Show SNVs if variability data available
-    /*if(!state.hasOwnProperty('show_snvs')) state['show_snvs'] = variability ? true : false;*/
-
     if(state['show_indels']) {
-      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
+      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 10;
+      if(!state.hasOwnProperty('min-indel-coverage')) state['large-indel'] = 0;
       $('#largeIndelInput').val(20);
+      //$('#minIndelInput').val(0);
     }
 
     current_state_name = state_name;
@@ -1336,6 +1392,7 @@ function serializeSettings() {
     }
 
     state['large-indel'] = $("#largeIndelInput").val();
+    //state['min-indel-coverage'] = $("#minIndelInput").val();
 
     return state;
 }
@@ -1449,6 +1506,7 @@ function createCharts(state){
                         width: width,
                         height: chartHeight,
                         maxVariability: maxVariability,
+                        maxCountOverCoverage: maxCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
                         margin: margin,
@@ -1614,6 +1672,7 @@ function Chart(options){
     this.width = options.width;
     this.height = options.height;
     this.maxVariability = options.maxVariability;
+    this.maxCountOverCoverage = options.maxCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
     this.id = options.id;
@@ -1645,17 +1704,19 @@ function Chart(options){
     this.maxGCContent = gc_min_max['Min'];
     this.minGCContent = gc_min_max['Max'];
 
+    let yScaleMax = Math.max(this.maxVariability, this.maxCountOverCoverage);
+
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
                             .domain([0,this.maxCoverageForyScale]);
 
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
-                            .domain([0, this.maxVariability]);
+                            .domain([0, yScaleMax]);
 
     yScaleLineReverse = d3.scale.linear()
                             .range([0, this.height])
-                            .domain([0, this.maxVariability]);
+                            .domain([0, yScaleMax]);
 
     this.yScaleGC = d3.scale.linear()
                             .range([this.yScale(this.minCoverage),
@@ -1672,11 +1733,12 @@ function Chart(options){
                             .x(function(d, i) { return xS(1+i); })
                             .y0(this.height)
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
-
-    this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(1+i)+4; })
-                            .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
-                            .interpolate('step-before');
+    if(indels_enabled) {
+      this.line = d3.svg.line()
+                              .x(function(d, i) { return xS(1+i)+4; })
+                              .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
+                              .interpolate('step-before');
+    }
 
     this.reverseLine = d3.svg.line()
                             .x(function(d, i) { return xS(1+i); })
@@ -1806,6 +1868,16 @@ function Chart(options){
     }
 
     if(state['show_indels']) {
+      // save new dict where coverage vals < <VAL> are removed
+      /*var f_indels = this.indels;
+      f_indels.forEach((item, i) => { //foreachdoesnt work for dicts...
+        Object.keys(item).forEach((j) => {
+          if(item[j].coverage < 0) f_indels[i][j].coverage = 0;
+        });
+
+        //f_indels = Object.keys(item).reduce(function(f_indels,key){ if(item[key].coverage < 0) filtered[key] = 0; return f_indels; })
+      });*/
+
       this.indel_coverage = [];
       this.indel_coverage.length = this.coverage.length;
       this.indel_coverage.fill(0);
@@ -1869,7 +1941,6 @@ function Chart(options){
         this.indel_coverage[pos] = this.indel_coverage[pos] / mult_indels[pos][0];
       }
 
-
       this.lineContainer.append("path")
           .data([this.indel_coverage])
           .attr("class", "reverseLine")
@@ -1882,6 +1953,7 @@ function Chart(options){
                               .data(d3.entries(this.indels))
                               .enter()
                               .append("text")
+                              //.filter(function(d){ return d.value['coverage'] >= state['min-indel-coverage']})
                               .attr("class", "indels_text")
                               .attr("x", function (d) { return xS(0.5+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
@@ -1936,10 +2008,12 @@ function Chart(options){
                    .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
-    this.lineContainer.append("g")
-                   .attr("class", "y axis noselect")
-                   .attr("transform", "translate(" + (this.width + 15) + ",0)")
-                   .call(this.yAxisLine);
+    if(state['show_snvs'] || state['show_indels']) {
+      this.lineContainer.append("g")
+                     .attr("class", "y axis noselect")
+                     .attr("transform", "translate(" + (this.width + 15) + ",0)")
+                     .call(this.yAxisLine);
+    }
 
     this.chartContainer.append("text")
                    .attr("class","sample-title")
@@ -1956,7 +2030,7 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
-    this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
+    if(indels_enabled) this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
 
