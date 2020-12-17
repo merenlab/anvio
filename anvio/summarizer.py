@@ -1520,7 +1520,6 @@ class Bin:
 
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
-            self.progress.update('Sorting out functions ...')
             # add functions if there are any:
             if len(self.summary.gene_function_call_sources):
                 for source in self.summary.gene_function_call_sources:
