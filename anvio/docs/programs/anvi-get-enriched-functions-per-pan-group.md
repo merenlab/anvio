@@ -8,7 +8,7 @@ You provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-da
 {:.notice}
 Note that your %(genomes-storage-db)s must have at least one functional annotation source for this to work.
 
-This helps you highlight functions or pathways that separate a specific pan-group and determine the functional core of your pangenome. For example, in the *Prochlorococcus* pangenome (the one used in [the pangenomics tutorial, where you can find morei info about this program](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)), this program finds that `Exonuclease VII` is enriched in the low-light pan-group. The output file provides various statistics about how confident the program is in making this association.
+This helps you highlight functions or pathways that separate a specific pan-group and determine the functional core of your pangenome. For example, in the *Prochlorococcus* pangenome (the one used in [the pangenomics tutorial, where you can find more info about this program](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)), this program finds that `Exonuclease VII` is enriched in the low-light pan-group. The output file provides various statistics about how confident the program is in making this association.
 
 ### How does it work?
 
