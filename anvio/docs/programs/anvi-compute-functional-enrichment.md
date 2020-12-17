@@ -135,4 +135,4 @@ If you provide the `--include-ungrouped` parameter, then genomes (or samples) wi
 
 ## More information on `anvi-script-enrichment-stats`
 
-This program serves as the interface to `anvi-script-enrichment-stats`, an R script which performs an enrichment test on your input. You will find a brief description of how this script works in Alon's "Behind the Scenes" note in [the pangenomics tutorial](https://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome). Better yet, check out the methods section of Alon's paper, found as a pre-print [here](https://www.biorxiv.org/content/10.1101/2020.04.29.069278v2).
+This program serves as the interface to `anvi-script-enrichment-stats`, an R script which performs an enrichment test on your input. You will find a brief description of how this script works in Alon's "Behind the Scenes" note in [the pangenomics tutorial](https://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome). Better yet, check out the methods section of Alon's paper, published in Genome Biology [here](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w).
