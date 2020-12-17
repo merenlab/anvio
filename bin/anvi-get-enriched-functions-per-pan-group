@@ -19,7 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
-__resources__ = [("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/"),
+__resources__ = [("This program was used to study functional enrichment in TM7 clades in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w"),
+                 ("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/"),
                  ("An older version of this program was used in this publication by Benjamin Tully", "https://www.nature.com/articles/s41467-018-07840-4")]
 __tags__ = ["pangenomics", "functions"]
 __requires__ = ['misc-data-layers', 'pan-db', 'genomes-storage-db',]
