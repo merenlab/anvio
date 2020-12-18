@@ -17,7 +17,8 @@
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
-
+let outerLimit1;
+let outerLimit2;
 
 ContextMenu = function(options) {
     this.container = options.container;
@@ -25,6 +26,8 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
+    // this.all = options.all
+    let all = options.all
 
     this.menu_items = {
         'select': {
@@ -311,8 +314,45 @@ ContextMenu = function(options) {
         'hmm_Ribosomal_L10': {
             'title': 'Ribosomal L10',
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_L10'); }
+        },
+        'set_outer_limit_1' : {
+            'title' : 'Set First Outer Limit',
+            'action': (node, layer, param, all) => {
+                bins.AppendNode(node);
+                outerLimit1 = node.order
+            }
+        },
+        'set_outer_limit_2' : {
+            'title' : 'Set Second Outer Limit',
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+
+                setBinningRange(outerLimit1, outerLimit2, all)
+            }
         }
     }
+}
+
+function setBinningRange(limit1, limit2, all) {
+    limit1 > limit2 ? countDown() : countUp()
+
+    function countDown() {
+        for(let i = limit1 - 1; i > limit2; i--){
+            bins.AppendNode([all[i]])
+            outerLimit1 = null
+            outerLimit2 = null
+        }
+    }
+
+    function countUp() {
+        for (let i = limit1 + 1; i < limit2; i++){
+            bins.AppendNode([all[i]])
+            outerLimit1 = null
+            outerLimit2 = null
+        }
+    }
+
 }
 
 ContextMenu.prototype.BuildMenu = function() {
@@ -337,7 +377,8 @@ ContextMenu.prototype.BuildMenu = function() {
             if (this.layer) {
                 menu.push('select_layer');
                 menu.push('unselect_layer');
-                menu.push('divider');       
+                menu.push('divider');  
+                outerLimit1 ? menu.push('set_outer_limit_2') : menu.push('set_outer_limit_1')
             }
 
             if (mode == 'gene' && inspection_available) {
