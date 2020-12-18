@@ -16,6 +16,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__provides__ = ["view-data", "functions-txt", "misc-data-items-txt", "misc-data-layers-txt", "gene-calls-txt", "linkmers-txt"]
+__requires__ = ["view-data", "functions-txt", "misc-data-items-txt", "misc-data-layers-txt", "gene-calls-txt", "linkmers-txt"]
 __description__ = "Transpose a TAB-delimited file"
 
 
