@@ -287,7 +287,7 @@ class HMMer:
 
             if output == 'table':
                 num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
-                self.run.info('Number of raw hits', num_raw_hits)
+                self.run.info('Number of raw hits', num_raw_hits, progress=self.progress)
                 output_file_path = output_file_path if num_raw_hits else None
 
             output_file_paths.append(output_file_path)
