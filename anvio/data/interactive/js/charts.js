@@ -199,7 +199,10 @@ function loadAll() {
                 geneParser = new GeneParser(genes);
                 geneParser["data"].forEach(function(gene) {
                   if(gene.functions != null) {
-                    if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
+                    if(gene.functions.hasOwnProperty("COG20_CATEGORY")) {
+                      gene.functions["COG_CATEGORY"] = gene.functions["COG20_CATEGORY"];
+                      gene.functions["COG_FUNCTION"] = gene.functions["COG20_FUNCTION"];
+                    } else if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
                       gene.functions["COG_CATEGORY"] = gene.functions["COG14_CATEGORY"];
                       gene.functions["COG_FUNCTION"] = gene.functions["COG14_FUNCTION"];
                     }
