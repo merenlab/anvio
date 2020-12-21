@@ -106,7 +106,6 @@ function get_gene_functions_table_html(gene){
       gene_functions[key] = gene.functions[key];
     });
 
-    console.log(gene_functions);
     for (function_source in gene_functions){
         functions_table_html += '<tr>';
 

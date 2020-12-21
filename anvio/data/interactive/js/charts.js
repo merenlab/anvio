@@ -199,6 +199,11 @@ function loadAll() {
                 geneParser = new GeneParser(genes);
                 geneParser["data"].forEach(function(gene) {
                   if(gene.functions != null) {
+                    if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
+                      gene.functions["COG_CATEGORY"] = gene.functions["COG14_CATEGORY"];
+                      gene.functions["COG14_FUNCTION"] = gene.functions["COG14_FUNCTION"];
+                    }
+
                     if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
                     if(gene.functions.hasOwnProperty("KEGG_Class")) kegg_annotated = true;
                     if(cog_annotated && kegg_annotated) return;
@@ -249,6 +254,7 @@ function loadAll() {
                 toggleUnmarkedGenes();
                 mcags = Object.keys(default_source_colors);
                 if(cog_annotated) {
+                  console.log("COGS!!!!");
                   $('#gene_color_order').append($('<option>', {
                     value: 'COG',
                     text: 'COG'
@@ -538,8 +544,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
      '<tr id="picker_row_' + category + '"> \
         <td></td> \
         <td> \
-          <div id="picker_start_' + category + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + fn_colors[category] + '; ; visibility: hidden;"></div> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px"></div> \
+          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px; margin-left:16px"></div> \
         </td> \
         <td>' + category_name + '</td> \
       </tr>';
@@ -568,8 +573,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
        '<tr id="picker_row_' + gene_callers_id + '"> \
           <td></td> \
           <td> \
-            <div id="picker_start_' + gene_callers_id + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + highlight_genes[gene_callers_id] + '; ; visibility: hidden;"></div> \
-            <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px"></div> \
+            <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
           </td> \
           <td>Gene ID: ' + gene_callers_id + '</td> \
         </tr>';
@@ -641,8 +645,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
    '<tr id="picker_row_' + gene_id + '"> \
       <td></td> \
       <td> \
-        <div id="picker_start_' + gene_id + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + color + '; ; visibility: hidden;"></div> \
-        <div id="picker_' + gene_id + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px"></div> \
+        <div id="picker_' + gene_id + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
       </td> \
       <td>Gene ID: ' + gene_id + '</td> \
     </tr>';
@@ -2039,7 +2042,7 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size < 5) mk_font_size = 5;
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
