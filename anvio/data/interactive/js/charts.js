@@ -201,7 +201,7 @@ function loadAll() {
                   if(gene.functions != null) {
                     if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
                       gene.functions["COG_CATEGORY"] = gene.functions["COG14_CATEGORY"];
-                      gene.functions["COG14_FUNCTION"] = gene.functions["COG14_FUNCTION"];
+                      gene.functions["COG_FUNCTION"] = gene.functions["COG14_FUNCTION"];
                     }
 
                     if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
