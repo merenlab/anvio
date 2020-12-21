@@ -254,7 +254,6 @@ function loadAll() {
                 toggleUnmarkedGenes();
                 mcags = Object.keys(default_source_colors);
                 if(cog_annotated) {
-                  console.log("COGS!!!!");
                   $('#gene_color_order').append($('<option>', {
                     value: 'COG',
                     text: 'COG'
@@ -335,7 +334,7 @@ function loadAll() {
                 document.body.addEventListener("keydown", function(ev) {
                     if(ev.which == 83) { // S = 83
                       toggleSettingsPanel();
-                    } else if(ev.which == 37 || ev.which == 39) {
+                    } else if(!($('#brush_start', '#brush_end').is(':focus')) && (ev.which == 37 || ev.which == 39)) {
                       let start = parseInt($('#brush_start').val());
                       let end = parseInt($('#brush_end').val());
 
