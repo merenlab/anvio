@@ -15,7 +15,7 @@ misc_data_with_original_headers = pd.read_csv(snakemake.input.misc_data_all, \
                   sep="\t", \
                   index_col=None)
 
-print("misc_data")
+print("WE ARE HERE")
 print(misc_data_with_original_headers)
 # Import reformat file with new names for tree calculation (output of anvi-script-reformat-fasta)
 # ----------------------------
@@ -25,7 +25,7 @@ reformat_report = pd.read_csv(snakemake.input.reformat_report_all, \
 									names=["name_new", "header"] \
 									)
 
-# print(misc_data_with_original_headers)
+print("we are here")
 print(reformat_report)
 
 # # Join tables to give the misc data the new shortened names for the tree calculation
