@@ -180,6 +180,13 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
 
+            # IMPORTANTTTT TURN THIS ON LATER
+            # Num sequences removed per step
+            ###################################
+            # tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+            ####################################
 
             # for metagenome in self.metagenomes_name_list:
             #     # Nucleotide fasta
@@ -206,13 +213,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
             # target_files.append(target_file)
 
-            # IMPORTANTTTT TURN THIS ON LATER
-            # Num sequences removed per step
-            ###################################
-            tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
-            ####################################
           
             # for external_genome_name in self.metagenomes_name_list:
             #     # Nucleotide fasta
