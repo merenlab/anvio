@@ -117,20 +117,18 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # Adding directories specific to Ribo_phylo workflow
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'RIBO_PHYLO_WORKFLOW/01_SCG_HMM_HITS'})
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "RIBO_PHYLO_WORKFLOW/02_SCG_TAXONOMY"})
-        self.dirs_dict.update({"FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR": "RIBO_PHYLO_WORKFLOW/03_FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "RIBO_PHYLO_WORKFLOW/04_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "RIBO_PHYLO_WORKFLOW/05_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "RIBO_PHYLO_WORKFLOW/06_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "RIBO_PHYLO_WORKFLOW/07_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "RIBO_PHYLO_WORKFLOW/08_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "RIBO_PHYLO_WORKFLOW/09_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "RIBO_PHYLO_WORKFLOW/10_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "RIBO_PHYLO_WORKFLOW/03_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "RIBO_PHYLO_WORKFLOW/04_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "RIBO_PHYLO_WORKFLOW/06_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "RIBO_PHYLO_WORKFLOW/07_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "RIBO_PHYLO_WORKFLOW/08_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "RIBO_PHYLO_WORKFLOW/9_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
 
-        # super().__init__()
         super().init()
         # WorkflowSuperclass().init()
 
@@ -138,15 +136,14 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
         filesnpaths.is_file_exists(self.metagenomes)
         try:
-            self.Ribosomal_protein_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+            self.metagenomes_name_list = self.metagenomes_df.name.to_list()
+            self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
+            self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
+
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
-
-        self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
-        self.metagenomes_name_list = self.metagenomes_df.name.to_list()
-        self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
-        self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
 
         # Load external-genomes.txt
         if self.get_param_value_from_config(['external_genomes']):
@@ -165,15 +162,12 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
         filesnpaths.is_file_exists(self.Ribosomal_protein_list_path)
-
         try:
-            # An error will subsequently be raised in `check_samples_txt` if there is no header.
             self.Ribosomal_protein_df = pd.read_csv(self.Ribosomal_protein_list_path, sep='\t', index_col=False)
-
+            self.Ribosomal_protein_list = self.Ribosomal_protein_df['Ribosomal_protein'].to_list()
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
-        self.Ribosomal_protein_list = self.Ribosomal_protein_df['Ribosomal_protein'].to_list()
 
         self.target_files = self.get_target_files()
 
@@ -194,14 +188,23 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # target_files.append(target_file)
             ####################################
 
+            # for metagenome in self.metagenomes_name_list:
+            #     # Nucleotide fasta
+            #     tail_path = "%s_%s_reformat_report_all.txt" % (metagenome, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], metagenome, tail_path)
+            #     target_files.append(target_file)
+
             # Misc metadata files
-            tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
+            # tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+            # os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv")
+            tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-
-            tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
             # tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
             # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             # target_files.append(target_file)
@@ -210,11 +213,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
             # target_files.append(target_file)
 
-            for external_genome_name in self.metagenomes_name_list:
-                # Nucleotide fasta
-                tail_path = "%s_%s_seq_counts.tsv" % (external_genome_name, ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], external_genome_name, tail_path)
-                target_files.append(target_file)
+          
             # for external_genome_name in self.metagenomes_name_list:
             #     # Nucleotide fasta
             #     tail_path = "%s_%s_seq_counts.tsv" % (external_genome_name, ribosomal_protein_name)

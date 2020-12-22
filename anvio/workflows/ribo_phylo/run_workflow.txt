@@ -14,12 +14,12 @@ anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json -A --until count_num_s
 
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
 
-
+ anvi-run-workflow -w ribo_phylo -c config.json -A --cores 15
 
 # checkout tree
-anvi-interactive -p 07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
-                 -t 07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
-                 -A 08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv   \
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A RIBO_PHYLO_WORKFLOW/08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv   \
                  --manual
 
 # Clusterize it
