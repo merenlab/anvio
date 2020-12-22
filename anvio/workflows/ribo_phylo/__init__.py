@@ -154,6 +154,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.external_genomes_name_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
+                # add names to metagenomes list so they are all processed
+                self.metagenomes_name_list.extend(self.external_genomes_name_list)
 
             except IndexError as e:
                 raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
@@ -199,44 +201,25 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             # target_files.append(target_file)
             # os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv")
+
+
+            tail_path = "%s_all.fasta" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
             tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-            # tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-            # tail_path = "%s_all_filtered.fasta" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-               # Misc metadata files
-            # tail_path = "%s_reformat_report_mmseqs_NR.txt" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
 
-          
             for external_genome_name in self.external_genomes_name_list:
                 # Nucleotide fasta
-                print(external_genome_name)
-                tail_path = "%s_%s_hmm_hits.fna" % (external_genome_name, ribosomal_protein_name)
-                print(tail_path)
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], external_genome_name, tail_path)
+                # tail_path = "%s_%s_hmm_hits_renamed.fna" % (external_genome_name, ribosomal_protein_name)
+                # target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], external_genome_name, tail_path)
+                # target_files.append(target_file)
+
+                tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
+                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
                 target_files.append(target_file)
-            # for external_genome_name in self.external_genome_name_list:
-            #     # Nucleotide fasta
-            #     tail_path = "%s_%s_gene_callers_ids_reps.tsv" % (external_genome_name, ribosomal_protein_name)
-            #     target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, external_genome_name, tail_path)
-            #     print(target_file)
-            #     target_files.append(target_file)
-
-            # cat_SCG_NT_to_one_fasta
-            # tail_path = "%s_all_leeway.fna" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-
-            # tail_path = "%s_all_leeway_external_gene_calls.tsv" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['SCG_NT_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-
             # VERY important last rule, turn on when you want to actually complete the whole workflow
             ##################
             # The FINAL trees :)
