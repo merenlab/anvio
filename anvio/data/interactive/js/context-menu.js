@@ -26,7 +26,6 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
-    // this.all = options.all
     let all = options.all
 
     this.menu_items = {
@@ -322,6 +321,12 @@ ContextMenu = function(options) {
                 outerLimit1 = node.order
             }
         },
+        'remove_outer_limit_1' : {
+            'title' : 'Remove First Outer Limit',
+            'action': (node, layer, param) => {
+                removeOuterLimit1(all)
+            }
+        },
         'set_outer_limit_2' : {
             'title' : 'Set Second Outer Limit',
             'action': (node, layer, param) => {
@@ -336,23 +341,26 @@ ContextMenu = function(options) {
 
 function setBinningRange(limit1, limit2, all) {
     limit1 > limit2 ? countDown() : countUp()
-
+    // for each node within range, add node to bin 
     function countDown() {
         for(let i = limit1 - 1; i > limit2; i--){
             bins.AppendNode([all[i]])
-            outerLimit1 = null
-            outerLimit2 = null
         }
     }
-
+    
     function countUp() {
         for (let i = limit1 + 1; i < limit2; i++){
             bins.AppendNode([all[i]])
-            outerLimit1 = null
-            outerLimit2 = null
         }
     }
+    // reset limits once complete
+    outerLimit1 = null
+    outerLimit2 = null
+}
 
+removeOuterLimit1 = (all) => {
+    bins.RemoveNode(all[outerLimit1])
+    outerLimit1 = null 
 }
 
 ContextMenu.prototype.BuildMenu = function() {
@@ -379,6 +387,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('unselect_layer');
                 menu.push('divider');  
                 outerLimit1 ? menu.push('set_outer_limit_2') : menu.push('set_outer_limit_1')
+                outerLimit1 ? menu.push('remove_outer_limit_1') : null
             }
 
             if (mode == 'gene' && inspection_available) {
