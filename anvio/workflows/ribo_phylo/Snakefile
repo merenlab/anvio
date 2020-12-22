@@ -787,7 +787,6 @@ rule remove_sequences_with_X_percent_gaps:
 #                 {params.gappyout} \
 #                 {params.additional_params} 2> {log}'
 
-
 rule count_num_sequences_filtered:
     """This rule will count the number of Ribosomal sequences filtered at each step of the workflow"""
 
@@ -816,7 +815,6 @@ rule count_num_sequences_filtered:
         step3=$(grep -c '>' {input.step3})
         echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
-
 
 rule calculate_tree:
     """Calculate a phylogenetic tree using iqtree"""
