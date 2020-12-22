@@ -464,22 +464,22 @@ var named_layers = {
 };
 
 named_category_colors = {
-    'KNOWN'    : '#233B43',
-    'UNKNOWN'  : '##65ADC',
-    'ECG'      : '#00AA00',
-    'EAG'      : '#AA0000',
-    'NA'       : '#F0F0F0',
-    'TSC'      : '#e38181',
-    'TSA'      : '#0000AA',
-    'TNC'      : '#00AA00',
-    'TNA'      : '#00d1ca',
-    'NaN'      : '#73727a',
-    'K'        : '#233B43',
-    'KWP'      : '#556C74',
-    'GU'       : '#65ADC2',
-    'EU'       : '#E84646',
-    'SINGL'    : '#BCC8CC',
-    'DISC'     : '#BCC8CC'
+    'KNOWN'           : '#00AA00',
+    'UNKNOWN'         : '#F0F0F0',
+    'ECG'             : '#00AA00',
+    'EAG'             : '#AA0000',
+    'NA'              : '#F0F0F0',
+    'TSC'             : '#e38181',
+    'TSA'             : '#0000AA',
+    'TNC'             : '#00AA00',
+    'TNA'             : '#00d1ca',
+    'NaN'             : '#73727a',
+    'AGNOSTOS_K'      : '#233B43',
+    'AGNOSTOS_KWP'    : '#556C74',
+    'AGNOSTOS_GU'     : '#65ADC2',
+    'AGNOSTOS_EU'     : '#E84646',
+    'AGNOSTOS_SINGL'  : '#BCC8CC',
+    'AGNOSTOS_DISC'   : '#BCC8CC'
 };
 
 function getNamedCategoryColor(name)
