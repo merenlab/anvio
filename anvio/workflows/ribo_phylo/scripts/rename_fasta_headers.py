@@ -38,8 +38,7 @@ reformat_report['sample'] = snakemake.wildcards.sample_name
 # print(fasta_df)
 # # # # Export
 # # # #------------------------------------------------------------------
-misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="inner")[['new_header', 'sample', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
-print("look here dipshit")
+misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
 print(misc_new_headers_df)
 
 
