@@ -788,34 +788,34 @@ rule remove_sequences_with_X_percent_gaps:
 #                 {params.additional_params} 2> {log}'
 
 ##KEEEEEEEEEEEEEPPPPPT HIS
-# rule count_num_sequences_filtered:
-#     """This rule will count the number of Ribosomal sequences filtered at each step of the workflow"""
+rule count_num_sequences_filtered:
+    """This rule will count the number of Ribosomal sequences filtered at each step of the workflow"""
 
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{ribosomal_protein_name}.log")
-#     input:
-#         step3 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta"),
-#         step4 = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered_final.fasta"),
-#         step5 = os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-#     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_stats.tsv")
-#     threads: M.T('trim_alignment_2')
-#     shell:
-#         """
-#         # Headers
-#         # echo -e "Description\tRule_name\tNum_sequences\n > {output}"
-#         # # Rule: anvi_reformat_fasta_ribosomal_protein_file
-#         # # Rule: remove_redundant_sequences_mmseqs
-#         # echo -e "NR_sumseq\tremove_redundant_sequences_mmseqs\t$step2\n" >> {output}
-#         # Rule: remove_gaps
-#         step3=$(grep -c '>' {input.step3})
-#         echo -e "seq_X_gaps_removed\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
-#         # Rule: filter_out_outlier_sequences
-#         step4=$(grep -c '>' {input.step4})
-#         echo -e "remove_outliers\tfilter_out_outlier_sequences\t$step4\n" >> {output}
-#         # Rule: trim_alignment_2
-#         step5=$(grep -c '>' {input.step4})
-#         echo -e "num_seq_for_tree\ttrim_alignment_2\t$step5\n" >> {output}
-#         """
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{ribosomal_protein_name}.log")
+    input:
+        step1 = rules.cat_scgs_to_one_fasta_nt.output,
+        step2 = rules.cluster_X_percent_sim_mmseqs.output,
+        step3 = rules.remove_sequences_with_X_percent_gaps.output
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_stats.tsv")
+    threads: M.T('trim_alignment_2')
+    shell:
+        """
+        # Headers
+        echo -e "Description\tRule_name\tNum_sequences\n > {output}"
+
+        # How many SCGs do we start with?
+        step1=$(grep -c '>' {input.step1})
+        echo -e "input\tcat_scgs_to_one_fasta_nt\t$step1\n" >> {output}
+       
+        # How many seqs are in the NR set?
+        step2=$(grep -c '>' {input.step2})
+        echo -e "NR\tcluster_X_percent_sim_mmseqs\t$step2\n" >> {output}
+
+        # How many seqs are in the NR set?
+        step3=$(grep -c '>' {input.step3})
+        echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
+        """
 
 # 4. Calculate the tree, FINALLY
 
