@@ -183,9 +183,9 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # IMPORTANTTTT TURN THIS ON LATER
             # Num sequences removed per step
             ###################################
-            # tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
+            tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
             ####################################
 
             # for metagenome in self.metagenomes_name_list:

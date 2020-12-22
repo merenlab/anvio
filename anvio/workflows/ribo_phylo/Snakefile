@@ -590,21 +590,6 @@ rule add_header_to_misc_file:
         echo -e "new_header\tpercent_identity\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
         """
 
-# asdf asdf asdf 
-rule join_renamed_fasta_with_misc_data:
-    """Add simplified fasta headers to the misc data file"""
-
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{ribosomal_protein_name}.log")
-    input:
-        misc_data_all = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
-        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat.txt")
-    output: misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
-    threads: M.T('join_renamed_fasta_with_misc_data')
-    script:
-        "scripts/join_renamed_fasta_with_misc_data.py"
-
-
 # rule remove_redundant_sequences_mmseqs:
 #     """Remove redundant ribosomal sequences with mmseqs"""
 

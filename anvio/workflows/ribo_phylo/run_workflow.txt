@@ -17,10 +17,10 @@ anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
  anvi-run-workflow -w ribo_phylo -c config.json -A --cores 15
 
 # checkout tree
-anvi-interactive -p RIBO_PHYLO_WORKFLOW/07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
-                 -t RIBO_PHYLO_WORKFLOW/07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
-                 -A RIBO_PHYLO_WORKFLOW/08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data.tsv \
-                 -f 
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_seqs_filtered.fasta \
                  --manual
 
 # Clusterize it
