@@ -146,18 +146,18 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
         # Load external-genomes.txt
-        if self.get_param_value_from_config(['external_genomes']):
-            self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             try:
                 self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
+                self.external_genomes_name_list = self.external_genomes_df.name.to_list()
+                self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
+                self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
+
             except IndexError as e:
                 raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
-            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
-            self.external_genomes_name_list = self.external_genomes_df.name.to_list()
-            self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
-            self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
 
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
@@ -214,11 +214,13 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             # target_files.append(target_file)
 
           
-            # for external_genome_name in self.metagenomes_name_list:
-            #     # Nucleotide fasta
-            #     tail_path = "%s_%s_seq_counts.tsv" % (external_genome_name, ribosomal_protein_name)
-            #     target_file = os.path.join(self.dirs_dict['FILTERED_RIBO_PROTEINS_SEQUENCES_TAXONOMY_DIR'], external_genome_name, tail_path)
-            #     target_files.append(target_file)
+            for external_genome_name in self.external_genomes_name_list:
+                # Nucleotide fasta
+                print(external_genome_name)
+                tail_path = "%s_%s_hmm_hits.fna" % (external_genome_name, ribosomal_protein_name)
+                print(tail_path)
+                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], external_genome_name, tail_path)
+                target_files.append(target_file)
             # for external_genome_name in self.external_genome_name_list:
             #     # Nucleotide fasta
             #     tail_path = "%s_%s_gene_callers_ids_reps.tsv" % (external_genome_name, ribosomal_protein_name)

@@ -80,6 +80,23 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_nt:
                                        --gene-name {wildcards.ribosomal_protein_name} \
                                        -o {output} 2> {log}"
 
+if M.external_genomes:
+    rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_external_genomes_nt:
+        """Extract all ribosomal proteins listed in Ribosomal_protein_list.txt from metagenomes and genomes in samples.txt."""
+
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
+        input: os.path.join(M.external_genomes_contig_dir, "{sample_name}-contigs.db")
+        output:
+            fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.fna")
+        params:
+            hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source')
+        threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+        shell: "anvi-get-sequences-for-hmm-hits -c {input} \
+                                           {params.hmm_source} \
+                                           --gene-name {wildcards.ribosomal_protein_name} \
+                                           -o {output} 2> {log}"
+
 rule simplify_names_from_scg_hits_nt:
     """Clean up fasta headers for tree calculation."""
 
