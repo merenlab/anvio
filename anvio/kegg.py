@@ -349,6 +349,11 @@ class KeggSetup(KeggContext):
         self.run = run
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
+        self.download_from_kegg = True if args.download_from_kegg else False
+
+        if self.kegg_archive_path and self.download_from_kegg:
+            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
+                              "Please pick either just one or none of these. ")
 
         # initializing this to None here so that it doesn't break things downstream
         self.pathway_dict = None
@@ -369,6 +374,9 @@ class KeggSetup(KeggContext):
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+
+        # default download path for frozen KEGG release
+        #self.default_kegg_data_url =
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
