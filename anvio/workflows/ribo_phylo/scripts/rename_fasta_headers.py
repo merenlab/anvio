@@ -5,8 +5,6 @@ import numpy as np
 import glob
 import os.path
 
-print('asdfasdfasdfsdaf')
-print(snakemake.params.external_genomes)
 # Import fasta header index
 #----------------------------
 reformat_report = pd.read_csv(snakemake.input.report_file, \
