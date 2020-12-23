@@ -140,6 +140,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             self.metagenomes_name_list = self.metagenomes_df.name.to_list()
             self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
             self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
+            self.name_list = self.metagenomes_name_list
 
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
@@ -155,7 +156,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
                 # add names to metagenomes list so they are all processed
-                self.metagenomes_name_list.extend(self.external_genomes_name_list)
+                self.name_list.extend(self.external_genomes_name_list)
 
             except IndexError as e:
                 raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
