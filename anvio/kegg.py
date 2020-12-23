@@ -916,7 +916,7 @@ class KeggSetup(KeggContext):
                               "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
-    def setup_profiles(self):
+    def setup_data(self):
         """This is a driver function which executes the KEGG setup process.
 
         It downloads, decompresses, and hmmpresses the KOfam profiles.

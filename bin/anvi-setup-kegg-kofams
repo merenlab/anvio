@@ -21,7 +21,7 @@ __description__ = "Download and setup KEGG KOfam HMM profiles and KEGG MODULE da
 @time_program
 def main(args):
     setup = kegg.KeggSetup(args)
-    setup.setup_profiles()
+    setup.setup_data()
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
