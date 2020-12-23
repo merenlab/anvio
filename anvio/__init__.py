@@ -813,6 +813,21 @@ D = {
                      "the KEGG data directory from the archive rather than downloading and building it from "
                      "the KEGG website."}
                 ),
+    'download-from-kegg': (
+            ['-D', '--download-from-kegg'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This flag is for those people who always need the latest data. You know who you are :) "
+                     "By default, this program will set up a snapshot of the KEGG databases, which will be "
+                     "dated to the time of the anvi'o release that you are currently working with. The pros of "
+                     "this are that the KEGG data will be the same for everyone (which makes sharing your KEGG-annotated "
+                     "datasets easy), and you will not have to worry about updating your datasets with new annotations "
+                     "every time that KEGG updates. However, KEGG updates regularly, so the con of this is that "
+                     "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
+                     "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
+                     "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
+                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
             {'default': False,
