@@ -917,6 +917,26 @@ class KeggSetup(KeggContext):
                               "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used
+        os.remove(self.default_kegg_archive_file)
+
+
     def setup_data(self):
         """This is a driver function which executes the KEGG setup process.
 
@@ -937,7 +957,7 @@ class KeggSetup(KeggContext):
             self.setup_modules_db()
         else:
             # the default, set up from frozen KEGG release
-            pass
+            self.setup_kegg_snapshot()
 
 
 class KeggRunHMMs(KeggContext):
