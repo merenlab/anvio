@@ -323,9 +323,7 @@ ContextMenu = function(options) {
         },
         'remove_outer_limit_1' : {
             'title' : 'Remove First Outer Limit',
-            'action': (node, layer, param) => {
-                removeOuterLimit1(all)
-            }
+            'action': (node, layer, param) => { removeOuterLimit1(all) }
         },
         'set_outer_limit_2' : {
             'title' : 'Set Second Outer Limit',
