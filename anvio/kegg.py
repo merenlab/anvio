@@ -927,6 +927,9 @@ class KeggSetup(KeggContext):
         It is essentially a special case of setting up from an archive.
         """
 
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
         utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
 
         # a hack so we can use the archive setup function
