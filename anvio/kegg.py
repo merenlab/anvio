@@ -925,7 +925,8 @@ class KeggSetup(KeggContext):
 
         if self.kegg_archive_path:
             self.setup_from_archive()
-        else:
+        elif self.download_from_kegg:
+            # mostly for developers and the adventurous
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
@@ -933,6 +934,9 @@ class KeggSetup(KeggContext):
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
+        else:
+            # the default, set up from frozen KEGG release
+            pass
 
 
 class KeggRunHMMs(KeggContext):
