@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __provides__ = ["kegg-data", "modules-db"]
-__description__ = "Download and setup KEGG KOfam HMM profiles"
+__description__ = "Download and setup KEGG KOfam HMM profiles and KEGG MODULE data"
 
 @time_program
 def main(args):
