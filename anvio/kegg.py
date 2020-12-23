@@ -28,7 +28,6 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
-from anvio.constants import KEGG_SETUP_INTERVAL
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
@@ -3331,15 +3330,6 @@ class KeggModulesDatabase(KeggContext):
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
                 self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
-            days_since_created = self.get_days_since_creation()
-            if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
-                self.run.warning("Just a friendly PSA here: it has been at least %s days since the MODULES.db was created (%s days to be exact). "
-                                 "It is entirely possible that KEGG has been updated since then, so perhaps it is a good idea to re-run "
-                                 "anvi-setup-kegg-kofams to be sure that you are working with the latest KEGG data. No pressure, though. If you do "
-                                 "want to reset your KEGG setup, we STRONGLY encourage saving a copy of your current KEGG data directory, just "
-                                 "in case there was an update that breaks everything and you need to go back to your previous KEGG setup. Don't say we "
-                                 "didn't warn you. And we will even be so nice as to tell you that your current KEGG data directory is %s"
-                                 % (KEGG_SETUP_INTERVAL, days_since_created, self.kegg_data_dir))
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:

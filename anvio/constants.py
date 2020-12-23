@@ -442,8 +442,5 @@ codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
 codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
 
 
-# KEGG setup constant - used to warn user that the KEGG MODULES.db data may need to be updated
-KEGG_SETUP_INTERVAL = 90 # days since last MODULES.db creation
-
 # anvi'o news stuff
 anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md"
