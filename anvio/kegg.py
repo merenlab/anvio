@@ -376,7 +376,7 @@ class KeggSetup(KeggContext):
             filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
         # default download path for frozen KEGG release
-        #self.default_kegg_data_url =
+        self.default_kegg_data_url = https://ndownloader.figshare.com/files/25878342
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
