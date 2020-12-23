@@ -13,9 +13,9 @@ By default, this program downloads a snapshot of the KEGG databases, already con
 
 After the default KEGG archive is downloaded, it is unpacked, checked that all the expected files are present, and moved into the KEGG data directory.
 
-Doing it this way ensures that almost everyone uses the same version of KEGG data, which is good for reproducibility and easier sharing of datasets. The KEGG resources are updated fairly often, and we found that constantly keeping the KEGG data directory in sync with them was not ideal, because every time the data directory is updated, you have to update the KOfam annotations in all your contigs databases to keep them compatible with the current %(modules-db)s (unless you were smart enough to keep the old version of the KEGG data directory around somewhere). And of course that introduces a new nightmare as soon as you want to share datasets with your collaborators who do not have the same KEGG data directory version as you.
+Doing it this way ensures that almost everyone uses the same version of KEGG data, which is good for reproducibility and makes it easy to share annotated datasets. The KEGG resources are updated fairly often, and we found that constantly keeping the KEGG data directory in sync with them was not ideal, because every time the data directory is updated, you have to update the KOfam annotations in all your contigs databases to keep them compatible with the current %(modules-db)s (unless you were smart enough to keep the old version of the KEGG data directory around somewhere). And of course that introduces a new nightmare as soon as you want to share datasets with your collaborators who do not have the same KEGG data directory version as you. With everyone using the same %(kegg-data)s by default, we can avoid these issues.
 
-But the trade-off to this is that the default KEGG data version is tied to its anvi'o release, and it will not always include the most up-to-date information from KEGG. Luckily, for those who want the most updated version of KEGG, you can still use this program to generate the KEGG data directory by downloading directly from KEGG (see 'Generating an anvi'o compatible KEGG data directory from scratch' below).
+But the trade-off to this is that the default KEGG data version is tied to an anvi'o release, and it will not always include the most up-to-date information from KEGG. Luckily, for those who want the most updated version of KEGG, you can still use this program to generate the KEGG data directory by downloading directly from KEGG (see 'Generating an anvi'o compatible KEGG data directory from scratch' below).
 
 ### How to set up KEGG data in a non-default location
 
@@ -38,9 +38,9 @@ anvi-setup-kegg-kofams --download-from-kegg
 **How does it work?**
 KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/db/kofam/) and all other KEGG data is accessible as flat text files through their [API](https://www.kegg.jp/kegg/rest/keggapi.html). When you run this program it will first get all the files that it needs from these sources, and then it will process them by doing the following:
 
-- determine if any KOfam profiles are missing bitscore thresholds, and removing those from the standard profile location so that they are not used for annotation (if you want to see these, you will find them in the `orphan_data` folder in your KEGG data directory)
+- determine if any KOfam profiles are missing bitscore thresholds, and remove those from the standard profile location so that they are not used for annotation (if you want to see these, you will find them in the `orphan_data` folder in your KEGG data directory)
 - concatenate all remaining KOfam profiles into one file and run `hmmpress` on them
-- parse the flat text file for each KEGG module and store it into the %(modules-db)s
+- parse the flat text file for each KEGG module and store the information into the %(modules-db)s
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
