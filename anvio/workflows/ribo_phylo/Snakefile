@@ -201,6 +201,7 @@ rule join_renamed_fastas_with_taxonomy_data:
         "scripts/rename_fasta_headers.py"
 
 
+
 # rule filter_for_scg_sequences_and_metadata:
 #     """Remove sequences that do not have SCG taxonomy"""
 
@@ -604,28 +605,28 @@ rule cat_misc_data_to_one_file:
 #         echo -e "header\tsample_name\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
 #         """
 
-rule add_header_to_misc_file:
-    """
-    Adding header to misc data file.
+# rule add_header_to_misc_file:
+#     """
+#     Adding header to misc data file.
 
-    See rule cat_misc_data_to_one_file for why this sucks
+#     See rule cat_misc_data_to_one_file for why this sucks
 
-    FIXME: replace with sed when running on linux
+#     FIXME: replace with sed when running on linux
 
-    # grep -v "header" {input} | sed -i '1s|^|header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n|' > {output}
+#     # grep -v "header" {input} | sed -i '1s|^|header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n|' > {output}
 
-    FIXME: the tmp misc_data files before *_all_misc_data_final.tsv could be removed from the final output
-    """
+#     FIXME: the tmp misc_data files before *_all_misc_data_final.tsv could be removed from the final output
+#     """
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
-    output: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
-    threads: M.T('cat_misc_data_to_one_file')
-    shell:
-        """
-        echo -e "new_header\tpercent_identity\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
-        """
+#     version: 1.0
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+#     input: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+#     output: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
+#     threads: M.T('cat_misc_data_to_one_file')
+#     shell:
+#         """
+#         echo -e "new_header\tpercent_identity\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
+#         """
 
 # rule remove_redundant_sequences_mmseqs:
 #     """Remove redundant ribosomal sequences with mmseqs"""
@@ -837,6 +838,21 @@ rule count_num_sequences_filtered:
         step3=$(grep -c '>' {input.step3})
         echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
+rule to_end_all_rules:
+    """"""
+
+    version: 1.0
+    input:
+        final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta"),
+        misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv")
+    output:
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
+    params:
+        external_genomes = M.external_genomes_name_list,
+        cluster_rep_index = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    script:
+        "scripts/add_layer_for_reps.py"
 
 rule calculate_tree:
     """Calculate a phylogenetic tree using iqtree"""

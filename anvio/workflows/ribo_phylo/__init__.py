@@ -208,9 +208,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-            tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
 
             for external_genome_name in self.external_genomes_name_list:
                 # Nucleotide fasta
@@ -221,6 +218,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
                 target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
                 target_files.append(target_file)
+                
+            tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
             # VERY important last rule, turn on when you want to actually complete the whole workflow
             ##################
             # The FINAL trees :)
