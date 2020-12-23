@@ -880,7 +880,7 @@ rule filter_for_nt_seqs_for_mapping:
     shell:
         "anvi-script-reformat-fasta {input} \
                                     -o {output} \
-                                    -I <(cut -f 1 {input})"
+                                    -I <({params})"
 
 rule calculate_tree:
     """Calculate a phylogenetic tree using iqtree"""
