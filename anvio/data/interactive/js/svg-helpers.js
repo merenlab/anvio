@@ -257,7 +257,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
     }
        
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
-        drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline')
+        drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline', true)
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
         drawSymbol()  
@@ -294,7 +294,16 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             circle.setAttribute('r', 8) // radius can be dynamically set 
             circle.setAttribute('id', p.id)
             circle.setAttribute('fill', calculatedFinalRgb )
-            circle.setAttribute('opacity', .6)
+            circle.setAttribute('opacity', .6) 
+
+            // toggle showing symbol onclick
+            circle.addEventListener('click', function(event){
+                if(event.target.getAttribute('opacity') == 0.6){
+                    event.target.setAttribute('opacity', 0.0) 
+                } else {
+                    event.target.setAttribute('opacity', 0.6)
+                }
+            })
             
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
@@ -327,7 +336,7 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string, font_size, align, color, baseline) {
+function drawText(svg_id, p, string, font_size, align, color, baseline, supportClickable) {
 
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
@@ -338,7 +347,6 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
     if (typeof baseline === 'undefined')
         baseline = 'middle';
 
-
     text.setAttribute('style', 'alignment-baseline:' + baseline + '; font-size:' + font_size);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
@@ -346,6 +354,11 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
     text.setAttribute('text-rendering', 'optimizeLegibility');
     text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
 
+    text.setAttribute('onclick', function(event){
+        console.log(event)
+    }) 
+
+  
 
     switch (align) {
         case 'left':
@@ -688,6 +701,6 @@ function getGradientColor(start_color, end_color, percent) {
 
    if( diff_blue.length == 1 )
      diff_blue = '0' + diff_blue
-
-   return '#' + diff_red + diff_green + diff_blue;
+     
+     return '#' + diff_red + diff_green + diff_blue;
  };
