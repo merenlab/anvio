@@ -183,47 +183,32 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         for ribosomal_protein_name in self.Ribosomal_protein_list:
 
 
-            # IMPORTANTTTT TURN THIS ON LATER
-            # Num sequences removed per step
-            ###################################
+            # Count num sequences removed per step
             tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-            ####################################
 
-            # for metagenome in self.metagenomes_name_list:
-            #     # Nucleotide fasta
-            #     tail_path = "%s_%s_reformat_report_all.txt" % (metagenome, ribosomal_protein_name)
-            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], metagenome, tail_path)
-            #     target_files.append(target_file)
-
-            # Misc metadata files
-            # tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-            # os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv")
-
-
-            tail_path = "%s_all.fasta" % (ribosomal_protein_name)
+            tail_path = "%s_all.fna" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-
+            # Get SCG taxonomy for each metagenome or external-genome 
             for external_genome_name in self.external_genomes_name_list:
-                # Nucleotide fasta
-                # tail_path = "%s_%s_hmm_hits_renamed.fna" % (external_genome_name, ribosomal_protein_name)
-                # target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], external_genome_name, tail_path)
-                # target_files.append(target_file)
-
                 tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
                 target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
                 target_files.append(target_file)
-                
+
+            # Get final misc data for anvi-interactive display of tree
             tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-            # VERY important last rule, turn on when you want to actually complete the whole workflow
-            ##################
+
+            # Get fasta of nt SCGs for mapping
+            tail_path = "%s_scgs_for_mapping.fna" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            #########################
             # The FINAL trees :)
             tail_path = "%s.iqtree" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)

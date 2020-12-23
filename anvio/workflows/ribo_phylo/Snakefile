@@ -308,7 +308,7 @@ rule cat_scgs_to_one_fasta_nt:
     input: 
         fasta = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}_hmm_hits_renamed.fna"), sample_names = M.metagenomes_name_list, ribosomal_protein_names = M.Ribosomal_protein_list),
     output: 
-        fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fasta"),
+        fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fna"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell: 
         "cat {input.fasta} >> {output.fasta_all}"
@@ -386,10 +386,10 @@ rule cluster_X_percent_sim_mmseqs:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{ribosomal_protein_name}.log")
     input: rules.cat_scgs_to_one_fasta_nt.output
-    output: os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq.fasta")
     params:
-        output_prefix = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR"),
-        mmseqs_tmp = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_tmp"),
+        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR"),
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_tmp"),
         min_seq_id = M.get_param_value_from_config(['remove_redundant_sequences_mmseqs', '--min-seq-id'])
     threads: M.T('remove_redundant_sequences_mmseqs')
     shell:
@@ -406,7 +406,7 @@ rule get_headers:
     input:
         reps = rules.cluster_X_percent_sim_mmseqs.output,
     output:
-        headers = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq_headers.txt")
+        headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_rep_seq_headers.txt")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     script: "scripts/get_sequence_headers.py"
 
@@ -731,7 +731,7 @@ rule remove_sequences_with_X_percent_gaps:
     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
     params:
-        seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01"),
+        seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01.tsv"),
         max_percentage_gaps=M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_gaps')
 	shell:
@@ -838,21 +838,49 @@ rule count_num_sequences_filtered:
         step3=$(grep -c '>' {input.step3})
         echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
-rule to_end_all_rules:
+rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
     """"""
 
     version: 1.0
     input:
-        final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta"),
-        misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv")
+        misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+        final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
     output:
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
     params:
         external_genomes = M.external_genomes_name_list,
-        cluster_rep_index = os.path.join(dirs_dict['SCG_NT_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
     threads: M.T('join_renamed_fasta_with_misc_data')
     script:
         "scripts/add_layer_for_reps.py"
+
+rule get_headers_for_mapping:
+    """
+    """
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
+    input:
+        fasta = rules.cat_scgs_to_one_fasta_nt.output
+    output:
+        headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_headers_for_mapping.txt")
+    threads: M.T('anvi_get_sequences_for_gene_calls')
+    script: "scripts/get_sequence_headers_for_mapping.py"
+
+rule filter_for_nt_seqs_for_mapping:
+    """"""
+
+    version: 1.0
+    input:
+        rules.cat_scgs_to_one_fasta_nt.output
+    output:
+        nt_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_scgs_for_mapping.fna")
+    params:
+        rules.get_headers_for_mapping.output.headers
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    shell:
+        "anvi-script-reformat-fasta {input} \
+                                    -o {output} \
+                                    -I <(cut -f 1 {input})"
 
 rule calculate_tree:
     """Calculate a phylogenetic tree using iqtree"""
