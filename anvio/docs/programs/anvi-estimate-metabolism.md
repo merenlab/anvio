@@ -191,3 +191,17 @@ You can see if this program is working by running the following suite of tests, 
 {{ codestart }}
 anvi-self-test --suite metabolism
 {{ codestop }}
+
+
+## Help! I'm getting version errors!
+If you have gotten an error that looks something like this:
+
+```
+Config Error: The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now.
+```
+
+This means that the MODULES.db used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
+
+1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently set up a new %(anvi-setup-kegg-kofams)s (probably with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, and you have saved your former version of %(kegg-data)s somewhere, then you are in luck - you can simply direct %(anvi-estimate-metabolism)s to use the old version of KEGG with `--kegg-data-dir`. If you didn't save it, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
+2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and%(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash (you can use %(anvi-db-info)s on the MODULES.db to find the hash value) as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program.
+3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) has probably set up a non-default version of %(kegg-data)s. If they were using the default snapshot of KEGG data but you are not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
