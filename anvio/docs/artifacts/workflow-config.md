@@ -32,7 +32,6 @@ For example, the default config file for the %(contigs-workflow) has no rule spe
 
 On the other hand, the default config file for the %(metagenomics-workflow)s is much longer, because it has sections for each rule specific parameter. For example, its section on parameters for the program %(anvi-gen-contigs-database)s looks like this:
 
-    (...)
     "anvi_gen_contigs_database": {
        "--project-name": "{group}",
        "threads": 5,
@@ -44,7 +43,6 @@ On the other hand, the default config file for the %(metagenomics-workflow)s is 
        "--split-length": "",
        "--kmer-size": ""
     },
-    (...)
 
 Note that the empty string `""` here means that the default parameter for the program %(anvi-gen-contigs-database)s will be used. 
 
