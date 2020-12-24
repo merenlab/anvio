@@ -994,7 +994,7 @@ class KeggRunHMMs(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
                               "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
                               "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_data_dir)
+                              "to fix this problem. :) " % self.hmm_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
