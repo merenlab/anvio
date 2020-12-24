@@ -117,6 +117,7 @@ And here is an example of using this flag with matrix output. In this case, we a
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete
 {{ codestop }}
 
+
 ## Output options
 This program has two major output options: long format (tab-delimited) output files and matrices.
 
@@ -156,6 +157,15 @@ Here is an example of defining the modules output to contain columns with the mo
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes custom --custom-output-headers kegg_module,module_name,module_is_complete
 {{ codestop }}
+
+### Including modules with 0% completeness in long-format output
+
+By default, modules with a completeness score of 0 are left out of the output files to save on space. But you can explicitly include them by adding the `--include-zeros` flag.
+
+{{ codestart }}
+anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules --include-zeros
+{{ codestop }}
+
 
 **Matrix Output**
 Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. Rows will describe modules or KOs, columns will describe your input samples (ie genomes, metagenomes, bins), and each cell of the matrix will be the corresponding statistic for a module in a sample. You can see examples of this output format by viewing %(kegg-metabolism)s.
