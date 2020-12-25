@@ -545,8 +545,14 @@ INFO "Oligotype linkmers report generated for adjacent nucleotide positions"
 anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt \
                         -o $output_dir/
 
-INFO "Running anvi'o script to correct homopolymer INDELs"
+INFO "Running anvi'o script to correct homopolymer INDELs in --test-run mode"
 anvi-script-fix-homopolymer-indels --test-run
+
+INFO "Running anvi'o script to correct homopolymer INDELs with real files"
+anvi-script-fix-homopolymer-indels --input $files/single_contig_with_INDEL_errors.fa \
+                                   --reference $files/single_contig.fa \
+                                   --output $output_dir/single_contig_INDEL_errors_FIXED.fa \
+                                   --verbose
 
 INFO "Search for functions to get split names with matching genes"
 anvi-search-functions -c $output_dir/CONTIGS.db \
