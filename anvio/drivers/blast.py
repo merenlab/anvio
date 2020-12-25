@@ -123,12 +123,12 @@ class BLAST:
         self.run.info('BLAST search db', self.target_fasta)
 
 
-    def blast(self):
+    def blast(self, outputfmt='6'):
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
                     '-db', self.target_fasta,
                     '-evalue', self.evalue,
-                    '-outfmt', '6',
+                    '-outfmt', str(outputfmt),
                     '-out', self.search_output_path,
                     '-num_threads', self.num_threads]
 
