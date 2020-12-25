@@ -301,4 +301,6 @@ At the end, there were no more homopolymers associated with INDELs.
 
 * You can always add `--verbose` to your command to see every single case that is considered, and resolution anvi'o reached.
 
+* The script cleans after itself. But if you add the flag `--debug` to your call, you will find the raw blast output in XML form, which is the primary file this script uses to identify and correct INDELS associated with homopolymers.
+
 * Under all circumstances, it is important to double check your results, and make sure you keep in mind that anything you see outstanding in your downstream analyses may be due to this step.
