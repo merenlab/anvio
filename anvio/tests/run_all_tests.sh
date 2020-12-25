@@ -545,6 +545,9 @@ INFO "Oligotype linkmers report generated for adjacent nucleotide positions"
 anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt \
                         -o $output_dir/
 
+INFO "Running anvi'o script to correct homopolymer INDELs"
+anvi-script-fix-homopolymer-indels --test-run
+
 INFO "Search for functions to get split names with matching genes"
 anvi-search-functions -c $output_dir/CONTIGS.db \
                       --search transporter,kinase \
