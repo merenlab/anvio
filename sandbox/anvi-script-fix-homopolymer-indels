@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
 import xml.etree.ElementTree as ET
 
 import anvio
-import anvio.programs as programs
 import anvio.terminal as terminal
 import anvio.fastalib as fastalib
 import anvio.filesnpaths as filesnpaths
@@ -120,6 +120,14 @@ class RefBasedHomopolymerINDELCorrector:
 
         # this will report a FASTA file with corrected seqeunces in input FASTA
         self.edit_input_sequences()
+
+        # clean after yourself unless --debug
+        if not anvio.DEBUG:
+            for f in ['blast-log-file.txt', 'blast_output.xml', self.reference_fasta + '.nin', self.reference_fasta + '.nhr', self.reference_fasta + '.nsq']:
+                try:
+                    os.remove(f)
+                except:
+                    pass
 
 
     def edit_sequence(self, input_seq, actions_by_nucleotide):
