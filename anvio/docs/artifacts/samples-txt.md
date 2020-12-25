@@ -1,4 +1,4 @@
-A **TAB-delimited** file to describe samples and paired-end FASTQ files associated with them. By doing so, this file type, which we commonly refer to as %(samples-txt)s, is a way to links sample names to raw sequencing reads.
+A **TAB-delimited** file to describe samples and paired-end FASTQ files associated with them. By doing so, this file type links sample names to raw sequencing reads.
 
 This file type includes required and optional columns.
 
@@ -12,7 +12,9 @@ While you can use relative paths for `r1` and `r2`, it is always better to have 
 
 The following is an **optional** column:
 
-* `group`: A single-word categorical variable that assigns two or more samples into two or more groups.
+* `group`: A single-word categorical variable that assigns two or more samples into two or more groups. This is useful to co-assemble multiple samples so that you can bin them later. 
+
+For more information, see the [anvi'o workflow tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#samplestxt)
 
 ### Examples samples.txt file
 
