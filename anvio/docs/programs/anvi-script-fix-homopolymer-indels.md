@@ -3,7 +3,15 @@ This program takes an input %(fasta)s file with one or more sequences, then **co
 {:.warning}
 You must be extremely careful with this program since it reports edited sequences.
 
-We developed this tool to ameliorate the large number of INDEL errors Oxford Nanopore Technology yields. When there is a high-quality reference genome, this program can align a set of input sequences to the reference, and when it sees something like this in the alignment:
+## Better alternatives
+
+If you need a comprehensive solution to correct your long-read sequencing data for serious applications, you should not use this script, but resort to better alternatives designed to correct frameshift errors.
+
+For instance, [Arumugam et al's solution](https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-019-0665-y) leverages NCBI's nr protein database to correct frameshift errors through modified-DIAMOND alignments. Another solution, [homopolish](https://github.com/ythuang0522/homopolish) by Yao-Ting Huang et al, uses mash sketches to correct minION sequences. You may also want to check [proovframe](https://github.com/thackl/proovframe) by Thomas Hackl, which aims to correct frame-shift errors in long-read sequencing data.
+
+## Motivation
+
+We developed this tool largely to test the impact of INDEL errors associated with homopolymers Oxford Nanopore Technology yields. When there is a high-quality reference genome, this program can align a set of input sequences to the reference, and when it sees something like this in the alignment:
 
 ```
 Input sequence ......: ... CGAAAAACG ...
@@ -30,6 +38,8 @@ The program would correct the input sequence this way, assuming that the lacking
 Input sequence ......: ... CGAAAAACG ...
 ```
 
+{:.warning}
+Please note that INDEL errors associated with homopolymers are only a subset of errors that will casue frameshifts and impact amino acid sequences.
 
 ## Homopolymer length
 
@@ -305,8 +315,6 @@ At the end, there were no more homopolymers associated with INDELs.
 
 * Under all circumstances, it is important to double check your results, and make sure you keep in mind that anything you see outstanding in your downstream analyses may be due to this step.
 
-* Finally, you may also want to check [proovframe](https://github.com/thackl/proovframe) by Thomas Hackl, which aims to correct frame-shift errors in long-read sequencing data, or [homopolish](https://github.com/ythuang0522/homopolish) by Yao-Ting Huang et al, which uses mash sketches to correct minION sequences.
-
 ## A real-world example
 
 This example involves two circular bacterial genomes, `W01` and `W48`, both of which were reconstructed using minION long-reads that were assembled by [Flye](https://github.com/fenderglass/Flye) and polished by [Pilon](https://github.com/broadinstitute/pilon/wiki).
@@ -323,6 +331,7 @@ As this preliminary analysis shows, not only there is a reasonable reduction in 
 Since in this example the 'reference genome', `W48` is also a genome with substantial homopolymer errors, the corrected sequences in `W01` do not necessarily yield amino acid sequences that are globally correct. But they are as incorrect as the ones in `W48` and not more. When a very closely related reference genome is used, the corrections will not only remove spurious gene clusters from pangenomes, but also yield more accurate amino acid sequences. 
 
 For posterity, the following shell script shows how each pangenome shown in the GIF above is generated and displayed:
+
 
 ``` bash
 ###########################################################################################
