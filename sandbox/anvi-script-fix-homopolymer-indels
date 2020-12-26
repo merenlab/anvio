@@ -112,6 +112,13 @@ class RefBasedHomopolymerINDELCorrector:
     def process(self):
         """Do the thing."""
 
+        # warn the user
+        self.run.warning("You must be extremely careful with this program since it reports edited sequences. In addition, "
+                         "if you need a comprehensive solution to correct frameshift errors in your long-read sequencing "
+                         "data for mission critical applications, you should NOT use this script. To find out about other "
+                         "solutions that may be more suitale for your needs, please see the online help for thsi script "
+                         "(the URL for the online help will appear at the end of the `--help` output).")
+
         # let's BLAST all all input sequences against reference sequences
         self.gen_blast_output()
 
