@@ -305,7 +305,7 @@ At the end, there were no more homopolymers associated with INDELs.
 
 * Under all circumstances, it is important to double check your results, and make sure you keep in mind that anything you see outstanding in your downstream analyses may be due to this step.
 
-* Finally, you may want to check this tool by Thomas Hackl, which is designed to correct frame-shift errors in long-read sequencing data: [https://github.com/thackl/proovframe](https://github.com/thackl/proovframe).
+* Finally, you may also want to check [proovframe](https://github.com/thackl/proovframe) by Thomas Hackl, which aims to correct frame-shift errors in long-read sequencing data, or [homopolish](https://github.com/ythuang0522/homopolish) by Yao-Ting Huang et al, which uses mash sketches to correct minION sequences.
 
 ## A real-world example
 
