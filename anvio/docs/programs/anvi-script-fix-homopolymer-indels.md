@@ -223,14 +223,14 @@ Query sequence edited correctly? .............: No
 
 ## Tips and Warnings
 
-As you correct your input sequences one round, the BLAST may produce new homopolymers. So you may want to re-run the tool by turning the output sequence into an input sequence. For instance, We had an *Akkermensia* genome reconstructed using long-read sequencing that matched to a gold-standard genome on NCBI.
+As you correct your input sequences one round, the BLAST may produce new homopolymers. So you may want to re-run the tool by turning the output sequence into an input sequence. For instance, we had a genome reconstructed using long-read sequencing that matched to a gold-standard genome on NCBI.
 
 Running the script the first time this way,
 
 ``` bash
-anvi-script-fix-homopolymer-indels --input Akkermansia_minION.fasta \
-                                   --reference Akkermansia_REFERENCE.fasta \
-                                   --output Akkermansia_minION_CORRECTED.fasta
+anvi-script-fix-homopolymer-indels --input Genome_minION.fasta \
+                                   --reference Genome_NCBI_REF.fasta \
+                                   --output Genome_minION_CORRECTED.fasta
 ```
 
 Produced the following output:
@@ -249,13 +249,13 @@ Num deletions ................................: 305
     - Insertions: 292
     - Deletions: 305
 
-Corrected output FASTA .......................: Akkermansia_minION_CORRECTED.fasta
+Corrected output FASTA .......................: Genome_minION_CORRECTED.fasta
 ```
 
 Then copying the output file as the input file,
 
 ```
-cp Akkermansia_minION_CORRECTED.fasta Akkermansia_minION.fasta
+cp Genome_minION_CORRECTED.fasta Genome_minION.fasta
 ```
 
 And re-running the script the same way multiple times gave the following outputs:
@@ -304,3 +304,87 @@ At the end, there were no more homopolymers associated with INDELs.
 * The script cleans after itself. But if you add the flag `--debug` to your call, you will find the raw blast output in XML form, which is the primary file this script uses to identify and correct INDELS associated with homopolymers.
 
 * Under all circumstances, it is important to double check your results, and make sure you keep in mind that anything you see outstanding in your downstream analyses may be due to this step.
+
+* Finally, you may want to check this tool by Thomas Hackl, which is designed to correct frame-shift errors in long-read sequencing data: [https://github.com/thackl/proovframe](https://github.com/thackl/proovframe).
+
+## A real-world example
+
+This example involves two circular bacterial genomes, `W01` and `W48`, both of which were reconstructed using minION long-reads that were assembled by [Flye](https://github.com/fenderglass/Flye) and polished by [Pilon](https://github.com/broadinstitute/pilon/wiki).
+
+Although `W01` and `W48` were supposed to be near-identical genomes based on our understanding of the system, the pangenome contained a lot of gene clusters that were either found only in `W01` or only in `W48`, which was quite unexpected. We thought that the spurious gene clusters were in-part due to frame-shifts caused by INDELs associated with random and erroneous homopolymers that influenced both genomes.
+
+The following GIF shows three pangenomes for (1) the uncorrected genomes, (2) `W01` corrected by `W02` using `--min-homopolymer-lenth 3` and (3) `W01` corrected by `W02` using `--min-homopolymer-lenth 2`. Please note that the sequence for `W48` is unchanged throughout these steps, but it is only `W01` that is modified:
+
+![an anvi'o display](../../images/anvi-script-fix-homopolymer-indels-test.gif){:.center-img}
+
+As this preliminary analysis shows, not only there is a reasonable reduction in spurious gene clusters, but also the homogeneity indices for core gene clusters display remarkable improvement. `--min-homopolymer-lenth 2` seems to be doing slightly better than `--min-homopolymer-lenth 3`. Overall, the script seems to be doing its job.
+
+{:.warning}
+Since in this example the 'reference genome', `W48` is also a genome with substantial homopolymer errors, the corrected sequences in `W01` do not necessarily yield amino acid sequences that are globally correct. But they are as incorrect as the ones in `W48` and not more. When a very closely related reference genome is used, the corrections will not only remove spurious gene clusters from pangenomes, but also yield more accurate amino acid sequences. 
+
+For posterity, the following shell script shows how each pangenome shown in the GIF above is generated and displayed:
+
+``` bash
+###########################################################################################
+# NO CORRECTION
+###########################################################################################
+anvi-gen-contigs-database -f W01.fa -o W01.db
+anvi-gen-contigs-database -f W48.fa -o W48.db
+
+anvi-gen-genomes-storage -e external-genomes-01.txt \
+                         -o UNCORRECTED-GENOMES.db
+
+anvi-pan-genome -g UNCORRECTED-GENOMES.db \
+                -n UNCORRECTED \
+                --num-threads 4
+
+anvi-display-pan -g UNCORRECTED-GENOMES.db \
+                 -p UNCORRECTED/UNCORRECTED-PAN.db \
+                 --title "UNCORRECTED"
+
+###########################################################################################
+# W1 CORRECTED BY W48 --min-homopolymer-length 3
+###########################################################################################
+
+anvi-script-fix-homopolymer-indels -i W01.fa \
+                                   -r W48.fa \
+                                   --min-homopolymer-length 3 \
+                                   -o W01_CBW48_MHL3.fa
+
+anvi-gen-contigs-database -f W01_CBW48_MHL3.fa \
+                          -o W01_CBW48_MHL3.db
+
+anvi-gen-genomes-storage -e external-genomes-02.txt \
+                         -o CORRECTED-BY-W48-MHL3-GENOMES.db
+
+anvi-pan-genome -g CORRECTED-BY-W48-MHL3-GENOMES.db \
+                -n CORRECTED-BY-W48-MHL3 \
+                --num-threads 4
+
+anvi-display-pan -g CORRECTED-BY-W48-MHL3-GENOMES.db \
+                 -p CORRECTED-BY-W48-MHL3/CORRECTED-BY-W48-MHL3-PAN.db \
+                 --title "W01 CORRECTED BY W48 w/MHL3"
+
+###########################################################################################
+# W1 CORRECTED BY W48 --min-homopolymer-length 2
+###########################################################################################
+
+anvi-script-fix-homopolymer-indels -i W01.fa \
+                                   -r W48.fa \
+                                   --min-homopolymer-length 2 \
+                                   -o W01_CBW48_MHL2.fa
+
+anvi-gen-contigs-database -f W01_CBW48_MHL2.fa \
+                          -o W01_CBW48_MHL2.db
+
+anvi-gen-genomes-storage -e external-genomes-03.txt \
+                         -o CORRECTED-BY-W48-MHL2-GENOMES.db
+
+anvi-pan-genome -g CORRECTED-BY-W48-MHL2-GENOMES.db \
+                -n CORRECTED-BY-W48-MHL2 \
+                --num-threads 4
+
+anvi-display-pan -g CORRECTED-BY-W48-MHL2-GENOMES.db \
+                 -p CORRECTED-BY-W48-MHL2/CORRECTED-BY-W48-MHL2-PAN.db \
+                 --title "W01 CORRECTED BY W48 w/MHL2"
+```
