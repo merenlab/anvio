@@ -291,7 +291,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
             circle.setAttribute('cx', p0.x)
             circle.setAttribute('cy', p0.y)
-            circle.setAttribute('r', 8) // radius can be dynamically set 
+            circle.setAttribute('r', 12) // radius can be dynamically set 
             circle.setAttribute('id', p.id)
             circle.setAttribute('fill', calculatedFinalRgb )
             circle.setAttribute('opacity', .6) 
