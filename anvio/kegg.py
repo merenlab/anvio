@@ -349,6 +349,7 @@ class KeggSetup(KeggContext):
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
+        self.kegg_snapshot = args.kegg_snapshot
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -374,18 +375,23 @@ class KeggSetup(KeggContext):
             filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
-        # default download path for frozen KEGG release
-        self.default_kegg_data_url = "https://ndownloader.figshare.com/files/25878342"
-        self.default_kegg_archive_file = "DEFAULT_KEGG.tar.gz"
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
-        # ftp path for HMM profiles and KO list
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict['url']
+        self.default_kegg_archive_file = self.snapshot_dict['archive_name']
+
+        # download from KEGG option: ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
             # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         # dictionary mapping downloaded file name to final decompressed file name or folder location
         self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-        # Kegg module text files
+        # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
