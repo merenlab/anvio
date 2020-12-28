@@ -315,43 +315,51 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_L10'); }
         },
         'set_outer_limit_1' : {
-            'title' : 'Set First Outer Limit',
+            'title' : 'Set First Range Limit',
             'action': (node, layer, param, all) => {
                 bins.AppendNode(node);
                 outerLimit1 = node.order
             }
         },
         'remove_outer_limit_1' : {
-            'title' : 'Remove First Outer Limit',
+            'title' : 'Remove First Range Limit',
             'action': (node, layer, param) => { removeOuterLimit1(all) }
         },
-        'set_outer_limit_2' : {
-            'title' : 'Set Second Outer Limit',
+        'set_outer_limit_2_add' : {
+            'title' : 'Set Range And Add Nodes',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
                 outerLimit2 = node.order
-
-                setBinningRange(outerLimit1, outerLimit2, all)
+                setBinningRange(outerLimit1, outerLimit2, all, 'add')
+            }
+        },
+        'set_outer_limit_2_remove' : {
+            'title' : 'Set Range And Remove Nodes',
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+                setBinningRange(outerLimit1, outerLimit2, all, 'remove')
             }
         }
     }
 }
 
-function setBinningRange(limit1, limit2, all) {
+function setBinningRange(limit1, limit2, all, action) {
     limit1 > limit2 ? countDown() : countUp()
-    // for each node within range, add node to bin 
     function countDown() {
         for(let i = limit1 - 1; i > limit2; i--){
-            bins.AppendNode([all[i]])
+            action === 'add' ? bins.AppendNode([all[i]]) : bins.RemoveNode([all[i]])
         }
     }
-    
     function countUp() {
         for (let i = limit1 + 1; i < limit2; i++){
-            bins.AppendNode([all[i]])
+            action === 'add' ? bins.AppendNode([all[i]]) : bins.RemoveNode([all[i]])
         }
     }
-    // reset limits once complete
+    if(action === 'remove'){
+        bins.RemoveNode([all[outerLimit1]])
+        bins.RemoveNode([all[outerLimit2]])
+    }
     outerLimit1 = null
     outerLimit2 = null
 }
@@ -392,8 +400,13 @@ ContextMenu.prototype.BuildMenu = function() {
                         return  
                     } 
                 })
-                limit1Exists ? menu.push('set_outer_limit_2') : menu.push('set_outer_limit_1')
-                limit1Exists ? menu.push('remove_outer_limit_1') : null
+                if(limit1Exists){
+                    menu.push('set_outer_limit_2_add') 
+                    menu.push('set_outer_limit_2_remove') 
+                    menu.push('remove_outer_limit_1')
+                 } else {
+                     menu.push('set_outer_limit_1')
+                 } 
             }
 
             if (mode == 'gene' && inspection_available) {
