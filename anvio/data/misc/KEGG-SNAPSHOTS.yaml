@@ -3,20 +3,20 @@
 
 v2020-06-23:
     url: https://ndownloader.figshare.com/files/23701919
-    hash: 4a75508b48aa
     archive_name: KEGG_build_2020-06-23_4a75508b48aa.tar.gz
+    hash: 4a75508b48aa
     modules_db_version: 2
 
 v2020-08-06:
     url: https://ndownloader.figshare.com/files/25464530
-    hash: 8f88ef165f4c
     archive_name: KEGG_build_2020-08-06_8f88ef165f4c.tar.gz
+    hash: 8f88ef165f4c
     modules_db_version: 2
 
 v2020-12-23:
     url: https://ndownloader.figshare.com/files/25878342
-    hash: 45b7cc2e4fdc
     archive_name: KEGG_build_2020-12-23_45b7cc2e4fdc.tar.gz
+    hash: 45b7cc2e4fdc
     modules_db_version: 2
 
 # How to add a new KEGG snapshot to this file:
@@ -30,4 +30,4 @@ v2020-12-23:
 # 4. Upload the .tar.gz archive to figshare and get the download url
 # 5. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. You should also update the
 # default self.target_snapshot variable in kegg.py to point to this latest version that you have added.
-# 6. Test it, and if it works you are done :) 
+# 6. Test it, and if it works you are done :)
