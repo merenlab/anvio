@@ -1,0 +1,7 @@
+# This file contains information about the snapshots of KOfam + KEGG databases released with
+# anvi'o. See the comments section at the end of this file for more information.
+
+v2020-12-23:
+    url: https://ndownloader.figshare.com/files/25878342
+    hash: 45b7cc2e4fdc
+    archive_name: KEGG_build_2020-12-23_45b7cc2e4fdc.tar.gz
