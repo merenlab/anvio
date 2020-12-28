@@ -381,8 +381,8 @@ class KeggSetup(KeggContext):
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
         # default download path for KEGG snapshot
-        self.default_kegg_data_url = self.snapshot_dict['url']
-        self.default_kegg_archive_file = self.snapshot_dict['archive_name']
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
 
         # download from KEGG option: ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
