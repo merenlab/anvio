@@ -354,6 +354,9 @@ class KeggSetup(KeggContext):
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
                               "Please pick either just one or none of these. ")
+        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
+            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
+                              "KEGG archives. Please pick just one setup option and try again.")
 
         # initializing this to None here so that it doesn't break things downstream
         self.pathway_dict = None
