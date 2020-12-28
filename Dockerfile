@@ -28,7 +28,6 @@ ENV CONDA_DEFAULT_ENV anvioenv
 ENV CONDA_PREFIX /opt/conda/envs/anvioenv
 
 RUN echo "conda activate anvioenv" >> ~/.bashrc
-SHELL ["/bin/bash", "-c"]
 
 RUN conda install -y conda-build
 RUN conda install -y conda-verify
