@@ -394,7 +394,9 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');
 
                 let limit1Exists; 
-                bins.selections['0'].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
+                let currentBin = $('input[name="active_bin"]:checked').val();
+                
+                bins.selections[`${currentBin}`].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
                     if(node.order === outerLimit1){
                         limit1Exists = true 
                         return  
