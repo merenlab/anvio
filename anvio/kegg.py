@@ -366,6 +366,9 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
+        if '/' not in self.kegg_data_dir:
+            self.kegg_data_dir += '/'
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
         if not args.reset and not anvio.DEBUG and not skip_init:
