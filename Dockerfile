@@ -8,7 +8,7 @@
 #
 # after that, you can start the build with the following:
 #
-# docker build -t meren/anvio:test-build .
+# BUILDKIT_PROGRESS=plain docker build -t meren/anvio:test-build .
 
 FROM continuumio/miniconda3:4.9.2
 ENV ANVIO_VERSION "7"
