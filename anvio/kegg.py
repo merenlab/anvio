@@ -884,28 +884,20 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
-    def migrate_modules_db(self):
-        """This function updates the MODULES.db from KEGG archives, if necessary."""
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
 
         # get current version of db
         db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
         current_db_version = int(db_conn.get_meta_value('version'))
         db_conn.disconnect()
 
-        # if modules.db is out of date, migrate it
-        tmp_log_path = None
+        # if modules.db is out of date, give warning
         target_version = int(anvio.tables.versions_for_db_types['modules'])
         if current_db_version != target_version:
-            self.run.warning(f"Just so you know, the KEGG archive that is being set up contains an outdated MODULES.db (version: "
-                             "{current_db_version}). We are migrating it to the latest version for your convenience.")
-            tmp_log_path = filesnpaths.get_temp_file_path()
-            utils.run_command(f"anvi-migrate --migrate-dbs-safely {self.kegg_modules_db_path}", tmp_log_path)
-
-            if tmp_log_path and not anvio.DEBUG:
-                os.remove(tmp_log_path)
-            else:
-                self.run.warning(f"The temporary log file for db migration at {tmp_log_path} has been kept. Feel free to remove it once "
-                                 "you are done with it.")
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
 
 
     def setup_from_archive(self):
@@ -940,8 +932,8 @@ class KeggSetup(KeggContext):
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
 
-            # if necessary, migrate the modules db
-            self.migrate_modules_db()
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
 
         else:
             debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
