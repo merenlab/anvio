@@ -950,6 +950,7 @@ class KeggSetup(KeggContext):
         self.setup_from_archive()
 
         # if modules.db is out of date, migrate it
+        tmp_log_path = None
         target_version = int(anvio.tables.versions_for_db_types['modules'])
         if self.snapshot_dict[self.target_snapshot]['modules_db_version'] != target_version:
             self.run.warning("Just so you know, the KEGG archive that is being set up contains an outdated MODULES.db. We are "
@@ -960,7 +961,14 @@ class KeggSetup(KeggContext):
         # if all went well, let's get rid of the archive we used and the log file
         if not anvio.DEBUG:
             os.remove(self.default_kegg_archive_file)
-            os.remove(tmp_log_path)
+            if tmp_log_path:
+                os.remove(tmp_log_path)
+        else:
+            log_str = "has "
+            if tmp_log_path:
+                log_str = f"and temporary log file for db migration at {tmp_log_path} have "
+            self.run.warning(f"The KEGG archive file at {self.default_kegg_archive_file} {log_str}been kept. Feel free to remove once "
+                             "those files are no longer needed.")
 
 
     def setup_data(self):
