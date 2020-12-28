@@ -81,3 +81,7 @@ RUN Rscript -e 'install.packages(c("optparse"), repos="https://cran.rstudio.com"
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o v$ANVIO_VERSION :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
 
 CMD /bin/bash -l
+
+# To test the build, you can run this:
+#
+# docker run --rm -it -v `pwd`:`pwd` -w `pwd` -p 8080:8080 meren/anvio:test-build
