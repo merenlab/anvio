@@ -7,8 +7,6 @@ package:
 source:
   git_url: https://github.com/merenlab/anvio
   git_tag: release-candidate
-  git_rev: HEAD
-  git_depth: 1 # shallow clone
 
 build:
   number: 0
