@@ -10,8 +10,8 @@
 #
 # docker build -t meren/anvio:test-build .
 
-FROM continuumio/miniconda3:4.8.2
-ENV ANVIO_VERSION "6.2_master"
+FROM continuumio/miniconda3:4.9.2
+ENV ANVIO_VERSION "7"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
@@ -31,6 +31,7 @@ RUN echo "conda activate anvioenv" >> ~/.bashrc
 SHELL ["/bin/bash", "-c"]
 
 RUN conda install -y conda-build
+RUN conda install -y conda-verify
 
 COPY conda-recipe /tmp/conda-recipe
 
