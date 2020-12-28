@@ -383,9 +383,17 @@ ContextMenu.prototype.BuildMenu = function() {
             if (this.layer) {
                 menu.push('select_layer');
                 menu.push('unselect_layer');
-                menu.push('divider');  
-                outerLimit1 ? menu.push('set_outer_limit_2') : menu.push('set_outer_limit_1')
-                outerLimit1 ? menu.push('remove_outer_limit_1') : null
+                menu.push('divider');
+
+                let limit1Exists; 
+                bins.selections['0'].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
+                    if(node.order === outerLimit1){
+                        limit1Exists = true 
+                        return  
+                    } 
+                })
+                limit1Exists ? menu.push('set_outer_limit_2') : menu.push('set_outer_limit_1')
+                limit1Exists ? menu.push('remove_outer_limit_1') : null
             }
 
             if (mode == 'gene' && inspection_available) {

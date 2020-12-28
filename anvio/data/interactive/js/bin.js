@@ -233,7 +233,7 @@ Bins.prototype.PushHistory = function(transaction) {
 
 Bins.prototype.Undo = function() {
     let transaction = this.history.pop();
-
+    // console.log(bins.selections['0'])
     if (transaction) {
         this.ProcessTransaction(transaction, reversed=true);
         this.future.push(transaction);
