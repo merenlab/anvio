@@ -380,6 +380,11 @@ class KeggSetup(KeggContext):
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            snapshot_str = ", ".join(self.snapshot_dict.keys())
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                              f"this time pick from one of these: {snapshot_str}")
+
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
         self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
