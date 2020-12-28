@@ -829,6 +829,15 @@ D = {
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
                      "from KEGG's REST API and set it up into an anvi'o-compatible database."}
                 ),
+    'kegg-snapshot': (
+            ['--kegg-snapshot'],
+            {'default': None,
+             'type': str,
+             'metavar': 'RELEASE_NUM',
+             'help': "If you are particularly interested in an earlier snapshot of KEGG that anvi'o knows about, you can set it here. "
+                     "Otherwise anvi'o will always use the latest snapshot it knows about, which is likely to be the one associated with "
+                     "the current release of anvi'o."}
+                ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
             {'default': False,
