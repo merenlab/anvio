@@ -15,7 +15,7 @@ requirements:
     - mcl
     - muscle
     - hmmer
-    - diamond ==0.9.14
+    - diamond
     - blast
     - megahit
     - bowtie2
