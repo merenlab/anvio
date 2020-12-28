@@ -16,8 +16,8 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '6.2-master'
-anvio_codename = 'esther'
+anvio_version = '7-rc'
+anvio_codename = 'NONAMEYET'
 
 anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
 
