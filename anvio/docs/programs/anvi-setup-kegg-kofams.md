@@ -27,6 +27,22 @@ anvi-setup-kegg-kofams --kegg-data-dir /path/to/directory/KEGG
 
 This is helpful if you don't have write access to the default directory location, or if you want to keep several different versions of the KEGG data on your computer. Just remember that when you want to use this specific KEGG data directory with later programs such as %(anvi-run-kegg-kofams)s, you will have to specify its location with the `--kegg-data-dir` flag.
 
+### Setting up an earlier KEGG snapshot
+
+By default, the KEGG snapshot that will be installed is the latest one, which is up-to-date with your current version of anvi'o. If, however, you want a snapshot from an earlier version, you can run something like the following to get it:
+
+{{ codestart }}
+anvi-setup-kegg-kofams --kegg-data-dir /path/to/directory/KEGG --kegg-snapshot v2020-04-27
+{{ codestop }}
+
+Just keep in mind that you may need to migrate the MODULES.db from these earlier versions in order to make it compatible with the current metabolism code. Anvi'o will tell you if you do.
+
+Not sure what KEGG snapshots are available for you to request? Well, you could check out the YAML file at `anvio/anvio/data/misc/KEGG-SNAPSHOTS.yaml` in your anvi'o directory, or you could just give something random to the `--kegg-snapshot` parameter and watch anvi'o freak out and tell you what is available:
+{{ codestart }}
+anvi-setup-kegg-kofams --kegg-snapshot hahaha
+{{ codestop }}
+
+
 ### Generating an anvi'o compatible KEGG data directory from scratch
 
 This program is also capable of downloading data directly from KEGG and converting it into an anvi'o-compatible format. In fact, this is how we generate the default KEGG archive. If you want the latest KEGG data instead of the default snapshot of KEGG, try the following:
