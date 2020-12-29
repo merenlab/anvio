@@ -280,7 +280,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
-        self.convert_view_data_into_json()
+        self.finalize_view_data()
         self.get_anvio_news()
 
 
@@ -1302,8 +1302,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
 
-    def convert_view_data_into_json(self):
-        '''This function's name must change to something more meaningful.'''
+    def finalize_view_data(self):
+        '''Finalize what will be shown in the interactive interface.
+
+        This includes expanding available 'view's with additional layers to be shown,
+        including HMM hits, or user-provided data through the command line or misc
+        data tables.
+        '''
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
