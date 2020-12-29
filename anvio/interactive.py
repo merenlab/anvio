@@ -258,8 +258,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.set_displayed_item_names()
 
         # now we know what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
-        # unnecessary splits stored in views dicts.
-        self.prune_view_dicts()
+        # unnecessary splits stored in views and other additional dicts.
+        self.prune_view_and_additional_data_dicts()
 
         self.process_external_item_order()
         self.gen_alphabetical_orders_of_items()
@@ -1289,9 +1289,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                             "are warned!" % (one_example, num_all))
 
 
-    def prune_view_dicts(self):
+    def prune_view_and_additional_data_dicts(self):
         self.progress.new('Pruning view dicts')
         self.progress.update('...')
+
         splits_in_views = set(list(self.views.values())[0]['dict'].keys())
         splits_to_remove = splits_in_views - set(self.displayed_item_names_ordered)
 
@@ -1299,6 +1300,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.progress.update('processing view "%s"' % view)
             for split_name in splits_to_remove:
                 self.views[view]['dict'].pop(split_name)
+
+        self.progress.update("working on items additional data")
+        splits_in_items_additional_data_dict = set(list(self.items_additional_data_dict.keys()))
+        splits_to_remove = splits_in_items_additional_data_dict - set(self.displayed_item_names_ordered)
+
+        for split_name in splits_to_remove:
+            self.items_additional_data_dict.pop(split_name)
 
         self.progress.end()
 
