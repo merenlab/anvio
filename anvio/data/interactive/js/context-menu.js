@@ -315,7 +315,7 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_L10'); }
         },
         'set_outer_limit_1' : {
-            'title' : 'Set First Range Limit',
+            'title' : 'Mark Item as Range Start',
             'action': (node, layer, param, all) => {
                 bins.AppendNode(node);
                 outerLimit1 = node.order
@@ -326,7 +326,7 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => { removeOuterLimit1(all) }
         },
         'set_outer_limit_2_add' : {
-            'title' : 'Set Range And Add Nodes',
+            'title' : 'Set Range and Add Items',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
                 outerLimit2 = node.order
@@ -334,7 +334,7 @@ ContextMenu = function(options) {
             }
         },
         'set_outer_limit_2_remove' : {
-            'title' : 'Set Range And Remove Nodes',
+            'title' : 'Set Range and Remove Items',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
                 outerLimit2 = node.order
@@ -405,6 +405,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 if(limit1Exists){
                     menu.push('set_outer_limit_2_add') 
                     menu.push('set_outer_limit_2_remove') 
+                    menu.push('divider');
                     menu.push('remove_outer_limit_1')
                  } else {
                      menu.push('set_outer_limit_1')
