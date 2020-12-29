@@ -1366,10 +1366,28 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
+                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
             if self.hmm_searches_dict:
+                if not self.split_hmm_layers:
+                    layer_names_for_hmm_hits = self.get_layer_names_with_at_least_one_hit_for_splits([tpl[1] for tpl in self.hmm_searches_header], self.hmm_searches_dict)
+
+                    # because keys for HMMs are weird to make sure we can easily switch between
+                    # the regular form of displaying HMMs and the form comes with the user flag
+                    # `self.split_hmm_layers`, we have to do something more here to clean up
+                    # the global `self.hmm_searches_header` list that is used again down
+                    # below:
+                    self.hmm_searches_header = [tpl for tpl in self.hmm_searches_header if tpl[1] in layer_names_for_hmm_hits]
+                else:
+                    # if the user asked for HMM layers to be split, we don't want to do anything.
+                    # it gets too prickly otherwise.
+                    pass
+
+                # let's sort these layers alphabetically
+                self.hmm_searches_header = sorted(self.hmm_searches_header)
+
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
             # (6) add taxonomy, if exitsts:
@@ -1391,7 +1409,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (4) adding additional layers
-                if self.items_additional_data_dict:
+                if self.items_additional_data_keys:
                     json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
