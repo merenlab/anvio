@@ -1358,10 +1358,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         if self.matrix_format:
-            raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
-                             "with. You do know that your matrices would each have only one column, right? Since that doesn't "
-                             "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
-                             "Anyhow, now is your chance to quietly go figure out what you are really doing.")
+            raise ConfigError("You have asked for output in matrix format, but unfortunately this currently only works in "
+                             "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
+                             "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
         if self.matrix_include_metadata and not self.matrix_format:
             raise ConfigError("The option --include-metadata is only relevant for --matrix-format, which in turn is only "
