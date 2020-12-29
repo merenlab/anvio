@@ -18,6 +18,7 @@ requirements:
     - diamond
     - blast
     - megahit
+    - spades
     - bowtie2
     - bwa
     - samtools
