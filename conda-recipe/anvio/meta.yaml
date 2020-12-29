@@ -25,6 +25,7 @@ requirements:
     - trimal
     - iqtree
     - fastani
+    - trnascan-se
     - r-base
     - r-stringi
     - r-tidyverse
