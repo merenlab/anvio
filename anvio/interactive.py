@@ -1302,6 +1302,42 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
 
+    def get_layer_names_with_at_least_one_hit_for_splits(self, layer_names_list, splits_dict):
+        """This is a funciton to remove layers with no hits from default displays."""
+
+        layer_names_with_hits = []
+        layer_names_to_consider = copy.deepcopy(layer_names_list)
+        layer_names_considered = set([])
+
+        layer_types = {}
+        for layer_name in layer_names_to_consider:
+            layer_types[layer_name] = utils.get_predicted_type_of_items_in_a_dict(splits_dict, layer_name)
+
+        for hits in splits_dict.values():
+            for layer_name in layer_names_to_consider:
+                if layer_name in layer_names_considered:
+                    continue
+
+                if layer_types[layer_name] == None:
+                    # all items in this layer has type None, there can't possibly
+                    # be anything worth showing here.
+                    layer_names_considered.add(layer_name)
+                    continue
+
+                if layer_name in hits:
+                    if layer_types[layer_name] in [int, float]:
+                        if hits[layer_name] > 0:
+                            layer_names_with_hits.append(layer_name)
+                            layer_names_considered.add(layer_name)
+                    else:
+                        # which means we have layer type of str, dict, or list
+                        if len(hits[layer_name]):
+                            layer_names_with_hits.append(layer_name)
+                            layer_names_considered.add(layer_name)
+
+        return layer_names_with_hits
+
+
     def finalize_view_data(self):
         '''Finalize what will be shown in the interactive interface.
 
