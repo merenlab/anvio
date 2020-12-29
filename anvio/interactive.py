@@ -1335,6 +1335,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                             layer_names_with_hits.append(layer_name)
                             layer_names_considered.add(layer_name)
 
+        # update our class variable so we know what is not going to be shown
+        self.layers_that_will_not_be_shown.update(set(layer_names_list) - set(layer_names_with_hits))
+
         return layer_names_with_hits
 
 
@@ -1345,6 +1348,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         including HMM hits, or user-provided data through the command line or misc
         data tables.
         '''
+
+        # we will fill this one up through `self.get_layer_names_with_at_least_one_hit_for_splits`
+        # to warn the user.
+        self.layers_that_will_not_be_shown = set([])
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -1430,6 +1437,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_object.append(json_entry)
 
             self.views[view] = json_object
+
+        if len(self.layers_that_will_not_be_shown):
+            self.run.warning(f"Even thought he following layer names were associated with your data, they "
+                             f"will not be shown in your interactive display since none of the splits you "
+                             f"are in terested at this point had any hits in those layers: "
+                             f"\"{', '.join(sorted(list(self.layers_that_will_not_be_shown)))}\". If you "
+                             f"would like every layer to be shown in the interface even when there are no"
+                             "hits, please include the flag `--show-all-layers` in your command.")
 
 
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
