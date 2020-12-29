@@ -77,6 +77,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
+        self.show_all_layers = A('show_all_layers')
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
@@ -1304,6 +1305,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def get_layer_names_with_at_least_one_hit_for_splits(self, layer_names_list, splits_dict):
         """This is a funciton to remove layers with no hits from default displays."""
+
+        if self.show_all_layers:
+            return layer_names_list
 
         layer_names_with_hits = []
         layer_names_to_consider = copy.deepcopy(layer_names_list)
