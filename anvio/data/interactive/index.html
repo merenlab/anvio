@@ -237,7 +237,7 @@
                                             <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin">
+                                    <!-- <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Color Range:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="support_value_checkbox" name="" value="value" onchange="emit('bin-settings-changed'); 
@@ -248,11 +248,22 @@
                                                 <div id="support_color_high" class="colorpicker" color="#FFFFFF" style="background-color: #FFFFFF; margin-left: 15px;"></div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> -->
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Display Symbol:</label>
                                         <div class="col-md-8">
-                                            <input type="checkbox" id="support_display_symbol" style="float: left;" name="show-symbol">
+                                            <input type="checkbox" 
+                                                   id="support_display_symbol" 
+                                                   style="float: left;" 
+                                                   name="show-symbol"
+                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_invert_symbol').show();} else { $('#show_invert_symbol').hide(); } " 
+                                                   >
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id="show_invert_symbol">
+                                        <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">

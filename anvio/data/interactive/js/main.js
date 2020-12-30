@@ -321,6 +321,7 @@ function initData() {
     // hide support value params on onready -- there is probably a better place to do this?
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
+    $('#show_invert_symbol').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1451,9 +1452,8 @@ function serializeSettings(use_layer_names) {
     state['show-support-values'] = $('#support_value_checkbox').is(':checked')
     state['support-range-low'] = $('#support_range_low').val()
     state['support-range-high'] = $('#support_range_high').val()
-    state['support-color-low'] = $('#support_color_low').attr('color')
-    state['support-color-high'] = $('#support_color_high').attr('color')
-    state['support-display-symbol'] = $('#support_display_symbol').is(':checked') 
+    state['support-display-symbol'] = $('#support_display_symbol').is(':checked')
+    state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked') 
     state['support-display-number'] = $('#support_display_number').is(':checked') 
 
     // sync views object and layers table

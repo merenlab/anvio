@@ -265,46 +265,37 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     function drawSymbol(){
         let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let rgbLow;
-        let rgbHigh;
-        let calculatedFinalRgb
+        let fillColor
+        let radius 
 
-        function calculateColorPercentile(){ // calculate percentile of data point in range
+        function calculatePercentile(){ // calculate percentile of data point in range
             return (p.branch_support - parseInt(supportValueData.numberRange[0])) / (parseInt(supportValueData.numberRange[1]) - parseInt(supportValueData.numberRange[0]))  
         }
+
+        function setDetails(percentile){
+            if(percentile > .67){
+                radius = 9
+                fillColor = 'green'
+            } else if (percentile < .67 && percentile > .33){
+                radius = 7
+                fillColor = 'yellow'
+            } else {
+                radius = 5
+                fillColor = 'red'
+            }
+
+        }
         
-        function hexToRgb(hex) { // use regex magic to convert hex to rgb https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
-            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? [ parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16) ] : null 
-        }
-
-        function getPoint(percentile, color1, color2) { // calculate rgb color value based on percentile between two colors in linear gradient
-            return color1.map((p, i) => Math.floor(color1[i] + percentile * (color2[i] - color1[i])))
-        }
-
         function makeCircle(){ // time to make the gravy
-            rgbLow = hexToRgb(supportValueData.colorRange[0])
-            rgbHigh = hexToRgb(supportValueData.colorRange[1])
-            valuePercentile = calculateColorPercentile()
-            calculatedRgbArr = getPoint(valuePercentile, rgbLow, rgbHigh)
-            calculatedFinalRgb = 'rgb(' + calculatedRgbArr.join(', ') + ')';
+            setDetails(calculatePercentile())
 
             circle.setAttribute('cx', p0.x)
             circle.setAttribute('cy', p0.y)
-            circle.setAttribute('r', 12) // radius can be dynamically set 
+            circle.setAttribute('r', radius) // radius can be dynamically set 
             circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', calculatedFinalRgb )
+            circle.setAttribute('fill', fillColor )
             circle.setAttribute('opacity', .6) 
 
-            // toggle showing symbol onclick
-            circle.addEventListener('click', function(event){
-                if(event.target.getAttribute('opacity') == 0.6){
-                    event.target.setAttribute('opacity', 0.0) 
-                } else {
-                    event.target.setAttribute('opacity', 0.6)
-                }
-            })
-            
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
             return circle;
