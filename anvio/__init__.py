@@ -552,6 +552,14 @@ D = {
                      "searches that were performed against non-singlecopy gene HMM profiles into "
                      "their own layer. Please see the documentation for details."}
                 ),
+    'show-all-layers': (
+            ['--show-all-layers'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, this flag tells the interface to show every additional layer even if "
+                     "there are no hits. By default, anvi'o doesn't show layers if there are no hits for "
+                     "any of your items."}
+                ),
     'taxonomic-level': (
             ['--taxonomic-level'],
             {'default': 't_genus',
