@@ -11,7 +11,7 @@
 # BUILDKIT_PROGRESS=plain docker build -t meren/anvio:test-build .
 
 FROM continuumio/miniconda3:4.9.2
-ENV ANVIO_VERSION "7"
+ENV ANVIO_VERSION "7_rc"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
