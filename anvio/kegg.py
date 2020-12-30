@@ -28,7 +28,6 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
-from anvio.constants import KEGG_SETUP_INTERVAL
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
@@ -349,6 +348,15 @@ class KeggSetup(KeggContext):
         self.run = run
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
+        self.download_from_kegg = True if args.download_from_kegg else False
+        self.kegg_snapshot = args.kegg_snapshot
+
+        if self.kegg_archive_path and self.download_from_kegg:
+            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
+                              "Please pick either just one or none of these. ")
+        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
+            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
+                              "KEGG archives. Please pick just one setup option and try again.")
 
         # initializing this to None here so that it doesn't break things downstream
         self.pathway_dict = None
@@ -358,26 +366,43 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
+        if '/' not in self.kegg_data_dir:
+            self.kegg_data_dir += '/'
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
         if not args.reset and not anvio.DEBUG and not skip_init:
             self.is_database_exists()
 
-        if not self.kegg_archive_path and not skip_init:
+        if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
             filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
-        # ftp path for HMM profiles and KO list
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            snapshot_str = ", ".join(self.snapshot_dict.keys())
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                              f"this time pick from one of these: {snapshot_str}")
+
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+
+        # download from KEGG option: ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
             # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         # dictionary mapping downloaded file name to final decompressed file name or folder location
         self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-        # Kegg module text files
+        # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
@@ -862,6 +887,22 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
+
+        # get current version of db
+        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
+        current_db_version = int(db_conn.get_meta_value('version'))
+        db_conn.disconnect()
+
+        # if modules.db is out of date, give warning
+        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        if current_db_version != target_version:
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+
     def setup_from_archive(self):
         """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
 
@@ -894,6 +935,9 @@ class KeggSetup(KeggContext):
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
 
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
+
         else:
             debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
                            "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
@@ -908,7 +952,34 @@ class KeggSetup(KeggContext):
                               "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
-    def setup_profiles(self):
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used and the log file
+        if not anvio.DEBUG:
+            os.remove(self.default_kegg_archive_file)
+        else:
+            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
+                             "has been kept. You may want to remove it later.")
+
+
+    def setup_data(self):
         """This is a driver function which executes the KEGG setup process.
 
         It downloads, decompresses, and hmmpresses the KOfam profiles.
@@ -917,7 +988,8 @@ class KeggSetup(KeggContext):
 
         if self.kegg_archive_path:
             self.setup_from_archive()
-        else:
+        elif self.download_from_kegg:
+            # mostly for developers and the adventurous
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
@@ -925,6 +997,9 @@ class KeggSetup(KeggContext):
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
+        else:
+            # the default, set up from frozen KEGG release
+            self.setup_kegg_snapshot()
 
 
 class KeggRunHMMs(KeggContext):
@@ -959,7 +1034,7 @@ class KeggRunHMMs(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
                               "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
                               "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_data_dir)
+                              "to fix this problem. :) " % self.hmm_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
@@ -3294,15 +3369,6 @@ class KeggModulesDatabase(KeggContext):
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
                 self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
-            days_since_created = self.get_days_since_creation()
-            if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
-                self.run.warning("Just a friendly PSA here: it has been at least %s days since the MODULES.db was created (%s days to be exact). "
-                                 "It is entirely possible that KEGG has been updated since then, so perhaps it is a good idea to re-run "
-                                 "anvi-setup-kegg-kofams to be sure that you are working with the latest KEGG data. No pressure, though. If you do "
-                                 "want to reset your KEGG setup, we STRONGLY encourage saving a copy of your current KEGG data directory, just "
-                                 "in case there was an update that breaks everything and you need to go back to your previous KEGG setup. Don't say we "
-                                 "didn't warn you. And we will even be so nice as to tell you that your current KEGG data directory is %s"
-                                 % (KEGG_SETUP_INTERVAL, days_since_created, self.kegg_data_dir))
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
