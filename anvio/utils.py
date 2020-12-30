@@ -3785,6 +3785,7 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     progress.update('...')
 
     downloaded_size = 0
+    counter = 0
     while True:
         buffer = response.read(10000)
 
@@ -3792,12 +3793,15 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
             downloaded_size += len(buffer)
             f.write(buffer)
 
-            if file_size:
-                progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
-            else:
-                progress.update('%s' % human_readable_file_size(downloaded_size))
+            if counter % 500 == 0:
+                if file_size:
+                    progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+                else:
+                    progress.update('%s' % human_readable_file_size(downloaded_size))
         else:
             break
+
+        counter += 1
 
     f.close()
 
