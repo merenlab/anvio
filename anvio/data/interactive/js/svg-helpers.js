@@ -274,13 +274,13 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
         function setDetails(percentile){
             if(percentile > .67){
-                radius = 9
+                supportValueData.invertSymbol ? radius = 5 : radius = 9
                 fillColor = 'green'
             } else if (percentile < .67 && percentile > .33){
                 radius = 7
                 fillColor = 'yellow'
             } else {
-                radius = 5
+                supportValueData.invertSymbol ? radius = 9 : radius = 5
                 fillColor = 'red'
             }
 
