@@ -499,6 +499,18 @@ class ContigsSuperclass(object):
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
+        """This method initializes a dictionary of function calls.
+
+        It establishes the following attributes:
+            self.gene_function_call_sources     a list of functional annotation sources
+            self.gene_function_calls_dict       a dictionary of structure (accession, function, evalue) = self.gene_function_calls_dict[gene_callers_id][source]
+                                                (the tuple can be None if there is no annotation from that source for the gene call)
+
+        If requested_sources are provided, the dictionary only includes gene calls from those sources.
+        If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
+
+        Afterwards, it sets self.gene_function_calls_initiated to True.
+        """
         if not self.contigs_db_path:
             return
 
@@ -1740,6 +1752,16 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters_functions(self):
+        """This function initializes a dictionary of functions for a pangenome.
+
+        It establishes the following attributes:
+            self.gene_clusters_function_sources     a set() of functional annotation sources
+            self.gene_clusters_functions_dict       a 3-level dictionary with the structure
+                                                    "accession|||function" = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id][source]
+
+        Afterwards it sets self.functions_initialized to True.
+        """
+
         if not self.genomes_storage_is_available:
             self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes "
                              "storage available to this run. That's OK. But no gene clusters functions for you "

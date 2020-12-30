@@ -501,13 +501,26 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'exclude-ungrouped': (
-            ['--exclude-ungrouped'],
+    'include-ungrouped': (
+            ['--include-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to ignore genomes with no value set for the catergory variable "
-                     "(which you specified using --category-variable). By default all variables with no value will be "
-                     "considered as a single group when preforming the statistical analysis."}
+             'help': "Use this flag if you want anvi'o to include genomes/samples with no group in the analysis. (For pangenomes, this means "
+                     "the genome has no value set for the category variable which you specified using --category-variable. "
+                     "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
+                     "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
+                     "variables with no value will be ignored, but if you apply this flag, they will instead be considered as "
+                     "a single group (called 'UNGROUPED' when performing the statistical analysis."}
+                ),
+    'include-samples-missing-from-groups-txt': (
+            ['--include-samples-missing-from-groups-txt'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
+                    "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
+                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
+                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
+                    "group together samples that are not supposed to be friends."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -2809,6 +2822,33 @@ D = {
              'type': int,
              'help': "Progress in sequence agglomeration, a stage in the identification of modifications, "
                      "is reported after a certain number of sequences have been processed (by default %(default)d)."}
+                ),
+    'modules-txt': (
+            ['-M', '--modules-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
+                    "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
+                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                ),
+    'groups-txt': (
+            ['-G', '--groups-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
+                    "The first column should have the header 'sample' and contain sample names matching "
+                    "to those in the modules-txt file. The second column should have the header 'group' "
+                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+                ),
+    'sample-header': (
+            ['--sample-header'],
+            {'default': 'db_name',
+            'help': "The header of the column containing your sample names in the modules-txt input file. By "
+                    "default this is 'db_name' because we are assuming you got your modules mode output by "
+                    "running `anvi-estimate-metabolism` in multi mode (on multiple genomes or metagenomes), but "
+                    "just in case you got it a different way, this is how you can tell anvi'o which column to "
+                    "look at. The values in this column should correspond to those in the 'sample' column in "
+                    "the groups-txt input file."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
