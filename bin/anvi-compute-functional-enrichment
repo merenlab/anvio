@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 """A program that computes enrichment scores and group associations for annotated
-   entities across groups of genomes or samples. General version of anvi-get-enriched-functions-per-pan-group."""
+   entities across groups of genomes or samples"""
 
 import sys
 
@@ -69,8 +69,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
-                                        "Estimating enriched functions across pangenome groups. This option accomplishes the same thing "
-                                        "as running `anvi-get-enriched-functions-per-pan-group`. You must provide a pan db and its "
+                                        "Estimating enriched functions across pangenome groups. You must provide a pan db and its "
                                         "genomes storage db, as well as the category variable to use for establishing groups and the "
                                         "annotation source which provides your functions of interest.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))

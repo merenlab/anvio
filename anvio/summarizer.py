@@ -318,7 +318,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             Compute functional enrichment.
 
             To learn more refer to the docummentation:
-                anvi-get-enriched-functions-per-pan-group -h
+                anvi-compute-functional-enrichment -h
         '''
         # Before we do anything let's make sure the user has R and all required packages installed
         package_dict = utils.get_required_packages_for_enrichment_test()

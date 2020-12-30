@@ -1,4 +1,4 @@
-This is a TAB-delimited output file that describes enrichment scores and associated groups for functions or metabolic modules in groups of genomes or samples. It is produced by either %(anvi-compute-functional-enrichment)s or %(anvi-get-enriched-functions-per-pan-group)s.
+This is a TAB-delimited output file that describes enrichment scores and associated groups for functions or metabolic modules in groups of genomes or samples. It is produced by %(anvi-compute-functional-enrichment)s.
 
 ## General format
 
@@ -11,18 +11,18 @@ The following columns of information are listed in the file:
 - unadjusted_p_value: the significance value of the hypothesis test for enrichment, unadjusted for multiple hypothesis testing
 - adjusted_q_value: the adjusted p-value after taking into account multiple hypothesis testing
 - associated groups: the list of groups that this entity is associated with
-- accession: a function accession number or KEGG module number (depends on your input option for %(anvi-compute-functional-enrichment)s, but always is a function accession number for (anvi-get-enriched-functions-per-pan-group)s)
-- a list of gene cluster ids, sample names, or genome names that this entity is found in (also depends on your input option for %(anvi-compute-functional-enrichment)s. Is always gene cluster ids for %(anvi-get-enriched-functions-per-pan-group)s)
+- accession: a function accession number or KEGG module number (depends on your input option for %(anvi-compute-functional-enrichment)s)
+- a list of gene cluster ids, sample names, or genome names that this entity is found in (also depends on your input option for %(anvi-compute-functional-enrichment)s)
 - p values for each group: gives the proportion of the group's member genomes or samples in which this entity was found.
 - N values for each group: gives the total number of genomes or samples in each group.
 
 ## A specific example - enriched functions in pangenomes
 
-When you run %(anvi-get-enriched-functions-per-pan-group)s or %(anvi-compute-functional-enrichment)s (with input option 1) to compute enrichment scores for functions in a pangenome, the resulting matrix describes the gene cluster-level functional associations that are enriched within specific groups of your pangenome. This is described in more detail [in the pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome).
+When you run %(anvi-compute-functional-enrichment)s (with input option 1) to compute enrichment scores for functions in a pangenome, the resulting matrix describes the gene cluster-level functional associations that are enriched within specific groups of your pangenome. This is described in more detail [in the pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome).
 
 Here is a more concrete example (the same example as in the [pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)). Note that that tutorial uses `COG_FUNCTION` as the functional annotation source, and has `LL` (low light) and `HL` (high light) as the two pan-groups.
 
-|COG_FUNCTION | enrichment_score | unadjusted_p_value | adjusted_q_value | associated_groups | function_accession | gene_clusters_ids | p_LL | p_HL | N_LL | N_HL|
+|COG_FUNCTION | enrichment_score | unadjusted_p_value | adjusted_q_value | associated_groups | accession | gene_clusters_ids | p_LL | p_HL | N_LL | N_HL|
 |-- | -- | -- | -- | -- | -- | -- | -- | -- | --| --|
 |Proteasome lid subunit RPN8/RPN11, contains Jab1/MPN domain metalloenzyme (JAMM) motif | 31.00002279 | 2.58E-08 | 1.43E-06 | LL | COG1310 | GC_00002219, GC_00003850, GC_00004483 | 1 | 0 | 11 | 20|
 |Adenine-specific DNA glycosylase, acts on AG and A-oxoG pairs | 31.00002279 | 2.58E-08 | 1.43E-06 | LL | COG1194 | GC_00001711 | 1 | 0 | 11 | 20|
