@@ -317,7 +317,7 @@ ContextMenu = function(options) {
         'set_outer_limit_1' : {
             'title' : 'Mark Item as Range Start',
             'action': (node, layer, param, all) => {
-                bins.AppendNode(node);
+                bins.AppendNode(node); // TODO flag node in interface instead of appending
                 outerLimit1 = node.order
             }
         },
@@ -326,7 +326,7 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => { removeOuterLimit1(all) }
         },
         'set_outer_limit_2_add' : {
-            'title' : 'Set Range and Add Items',
+            'title' : 'Add Items in Range to Selected Bin',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
                 outerLimit2 = node.order
@@ -334,7 +334,7 @@ ContextMenu = function(options) {
             }
         },
         'set_outer_limit_2_remove' : {
-            'title' : 'Set Range and Remove Items',
+            'title' : 'Remove Items in Range from any Bin',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
                 outerLimit2 = node.order
