@@ -220,10 +220,33 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     items = [x[key] for x in d.values()]
 
-    if(set(items) == set([None])):
-        # all items is of type None.
+    if not items:
+        # there is nothing to see here
         return None
 
+    try:
+        if(set(items) == set([None])):
+            # all items is of type None.
+            return None
+    except TypeError:
+        # this means we are working with an unhashable type.
+        # it is either list or dict. we will go through items
+        # and return the type of first item that is not None:
+        for item in items:
+            if item == None:
+                continue
+            else:
+                return type(item)
+
+        # the code should never come to this line since if everything
+        # was None that would have been captured by the try block and the
+        # exception would have never been thrown, but here is a final line
+        # just to be sure we are not moving on with the rest of the code
+        # if we entered into this block:
+        return None
+
+    # if we are here, it means not all items are None, and they are not of
+    # unhashable types (so they must be atomic types such as int, float, or str)
     not_float = False
     for item in items:
         try:

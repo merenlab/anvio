@@ -15,8 +15,6 @@ from anvio.tables.tableops import Table
 
 import pandas as pd
 
-from math import floor
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
