@@ -1451,12 +1451,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.views[view] = json_object
 
         if len(self.layers_that_will_not_be_shown):
-            self.run.warning(f"Even thought he following layer names were associated with your data, they "
+            self.run.warning(f"Even though the following layer names were associated with your data, they "
                              f"will not be shown in your interactive display since none of the splits you "
                              f"are in terested at this point had any hits in those layers: "
                              f"\"{', '.join(sorted(list(self.layers_that_will_not_be_shown)))}\". If you "
                              f"would like every layer to be shown in the interface even when there are no"
-                             "hits, please include the flag `--show-all-layers` in your command.")
+                             f"hits, please include the flag `--show-all-layers` in your command.")
 
 
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
