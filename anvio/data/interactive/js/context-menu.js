@@ -110,13 +110,13 @@ ContextMenu = function(options) {
             }
         },
         'inspect_context': {
-            'title': 'Inspect context',
+            'title': 'Inspect gene and context',
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'context');
             }
         },
         'inspect_gene': {
-            'title': 'Inspect gene',
+            'title': 'Inspect gene alone',
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'gene');
             }
