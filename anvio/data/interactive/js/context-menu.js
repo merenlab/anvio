@@ -30,7 +30,7 @@ ContextMenu = function(options) {
 
     this.menu_items = {
         'select': {
-            'title': 'Add item to bin',
+            'title': 'Add item to active bin',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
             }
@@ -39,6 +39,33 @@ ContextMenu = function(options) {
             'title': 'Remove item from bin',
             'action': (node, layer, param) => {
                 bins.RemoveNode(node);
+            }
+        },
+        'set_outer_limit_1' : {
+            'title' : "Mark item as 'range start'",
+            'action': (node, layer, param, all) => {
+                bins.AppendNode(node); // TODO flag node in interface instead of appending
+                outerLimit1 = node.order
+            }
+        },
+        'remove_outer_limit_1' : {
+            'title' : 'Remove marked range start',
+            'action': (node, layer, param) => { removeOuterLimit1(all) }
+        },
+        'set_outer_limit_2_add' : {
+            'title' : "Add items in 'range' to active bin",
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+                setBinningRange(outerLimit1, outerLimit2, all, 'add')
+            }
+        },
+        'set_outer_limit_2_remove' : {
+            'title' : "Remove items in 'range' from any bin",
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+                setBinningRange(outerLimit1, outerLimit2, all, 'remove')
             }
         },
         'select_layer': {
@@ -142,13 +169,13 @@ ContextMenu = function(options) {
             }
         },
         'collapse': {
-            'title': 'Collapse',
+            'title': 'Collapse these items',
             'action': (node, layer, param) => {
                 new CollapseNodeDialog(node);
             }
         },
         'expand': {
-            'title': 'Expand',
+            'title': 'Expand this collapsed node',
             'action': (node, layer, param) => {
                 for (let i=0; i < collapsedNodes.length; i++) {
                     if (collapsedNodes[i]['label'] == node.label) {
@@ -160,7 +187,7 @@ ContextMenu = function(options) {
             }
         },
         'rotate': {
-            'title': 'Rotate',
+            'title': 'Rotate the tree/dendrogram here',
             'action': (node, layer, param) => {
                 new_tree = new Tree();
                 new_tree.Parse(clusteringData.trim(), false);
@@ -171,7 +198,7 @@ ContextMenu = function(options) {
             }
         },
         'reroot': {
-            'title': 'Reroot',
+            'title': 'Reroot the tree/denrogram here',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -313,33 +340,6 @@ ContextMenu = function(options) {
         'hmm_Ribosomal_L10': {
             'title': 'Ribosomal L10',
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_L10'); }
-        },
-        'set_outer_limit_1' : {
-            'title' : 'Mark Item as Range Start',
-            'action': (node, layer, param, all) => {
-                bins.AppendNode(node); // TODO flag node in interface instead of appending
-                outerLimit1 = node.order
-            }
-        },
-        'remove_outer_limit_1' : {
-            'title' : 'Remove First Range Limit',
-            'action': (node, layer, param) => { removeOuterLimit1(all) }
-        },
-        'set_outer_limit_2_add' : {
-            'title' : 'Add Items in Range to Selected Bin',
-            'action': (node, layer, param) => {
-                bins.AppendNode(node);
-                outerLimit2 = node.order
-                setBinningRange(outerLimit1, outerLimit2, all, 'add')
-            }
-        },
-        'set_outer_limit_2_remove' : {
-            'title' : 'Remove Items in Range from any Bin',
-            'action': (node, layer, param) => {
-                bins.AppendNode(node);
-                outerLimit2 = node.order
-                setBinningRange(outerLimit1, outerLimit2, all, 'remove')
-            }
         }
     }
 }
@@ -379,39 +379,8 @@ ContextMenu.prototype.BuildMenu = function() {
     else
     {
         if (this.node.IsLeaf() && !this.node.collapsed) {
-            if (bins.IsNodeMemberOfBin(this.node)) {
-                menu.push('remove');
-            } else {
-                menu.push('select');
-            }
-            menu.push('divider');
-            menu.push('reroot');
-            menu.push('divider');
-
-            if (this.layer) {
-                menu.push('select_layer');
-                menu.push('unselect_layer');
-                menu.push('divider');
-
-                let limit1Exists;
-                let currentBin = $('input[name="active_bin"]:checked').val();
-
-                bins.selections[`${currentBin}`].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
-                    if(node.order === outerLimit1){
-                        limit1Exists = true
-                        return
-                    }
-                })
-                if(limit1Exists){
-                    menu.push('set_outer_limit_2_add')
-                    menu.push('set_outer_limit_2_remove')
-                    menu.push('divider');
-                    menu.push('remove_outer_limit_1')
-                 } else {
-                     menu.push('set_outer_limit_1')
-                 }
-            }
-
+            // start with menu items for inspection pages
+            // as they are most frequently used
             if (mode == 'gene' && inspection_available) {
                 menu.push('inspect_context');
                 menu.push('inspect_gene');
@@ -429,6 +398,41 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');
             }
 
+            // next, we have adding/removing items to bins individually
+            // or as a range
+            if (bins.IsNodeMemberOfBin(this.node)) {
+                menu.push('remove');
+            } else {
+                menu.push('select');
+            }
+
+            let limit1Exists;
+            let currentBin = $('input[name="active_bin"]:checked').val();
+
+            bins.selections[`${currentBin}`].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
+                if(node.order === outerLimit1){
+                    limit1Exists = true
+                    return
+                }
+            })
+            if(limit1Exists){
+                menu.push('set_outer_limit_2_add')
+                menu.push('set_outer_limit_2_remove')
+                menu.push('remove_outer_limit_1')
+            } else {
+                menu.push('set_outer_limit_1')
+            }
+
+            menu.push('divider');
+
+            // menu items to select/unselect layers in the Settings tab
+            if (this.layer) {
+                menu.push('select_layer');
+                menu.push('unselect_layer');
+                menu.push('divider');
+            }
+
+            // getting back sequences for things
             if (mode == 'pan') {
                 menu.push('get_AA_sequences_for_gene_cluster');
             }
@@ -446,6 +450,13 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');
                 menu.push('bigsi');
             }
+
+            // tree/dendrogram operations
+            // FIXME: this option should not appear when there is no
+            //        tree/dendrogram available
+            menu.push('divider');
+            menu.push('reroot');
+
         }
         else
         {
