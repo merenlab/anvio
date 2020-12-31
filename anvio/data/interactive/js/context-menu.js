@@ -314,21 +314,6 @@ ContextMenu = function(options) {
                 });
             }
         },
-        'bigsi': {
-            'title': 'Search random 150bp on BIGSI',
-            'action': (node, layer, param) => {
-                let target = (mode == 'gene') ? 'gene' : 'contig';
-                $.ajax({
-                    type: 'GET',
-                    cache: false,
-                    url: '/data/' + target + '/' + node.label,
-                    success: function(data) {
-                        let bigsi = new BIGSI(data['header'], data['sequence']);
-                        bigsi.Search();
-                    }
-                });
-            }
-        },
         'hmm_RecA': {
             'title': 'RecA',
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'RecA'); }
@@ -447,8 +432,6 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('blastx_nr');
                 menu.push('blastn_refseq_genomic');
                 menu.push('blastx_refseq_protein');
-                menu.push('divider');
-                menu.push('bigsi');
             }
 
             // tree/dendrogram operations
