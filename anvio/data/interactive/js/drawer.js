@@ -793,7 +793,8 @@ Drawer.prototype.draw_internal_node = function(p) {
                 colorRange : [ this.settings['support-color-low'], this.settings['support-color-high']],
                 showSymbol : this.settings['support-display-symbol'], 
                 showNumber : this.settings['support-display-number'],
-                invertSymbol : this.settings['support-symbol-invert'] 
+                invertSymbol : this.settings['support-symbol-invert'],
+                maxRadius : this.settings['support-symbol-size'] 
             }
 
 

@@ -1454,7 +1454,8 @@ function serializeSettings(use_layer_names) {
     state['support-range-high'] = $('#support_range_high').val()
     state['support-display-symbol'] = $('#support_display_symbol').is(':checked')
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked') 
-    state['support-display-number'] = $('#support_display_number').is(':checked') 
+    state['support-display-number'] = $('#support_display_number').is(':checked')
+    state['support-symbol-size'] = $('#support_symbol_size').val() 
 
     // sync views object and layers table
     syncViews();

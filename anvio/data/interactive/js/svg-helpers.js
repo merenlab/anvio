@@ -265,8 +265,8 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     function drawSymbol(){
         let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let fillColor
         let radius 
+        let maxRadius = supportValueData.maxRadius
 
         function calculatePercentile(){ // calculate percentile of data point in range
             return (p.branch_support - parseInt(supportValueData.numberRange[0])) / (parseInt(supportValueData.numberRange[1]) - parseInt(supportValueData.numberRange[0]))  
@@ -274,14 +274,11 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
         function setDetails(percentile){
             if(percentile > .67){
-                supportValueData.invertSymbol ? radius = 5 : radius = 9
-                fillColor = 'green'
+                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
             } else if (percentile < .67 && percentile > .33){
-                radius = 7
-                fillColor = 'yellow'
+                radius = maxRadius * .7
             } else {
-                supportValueData.invertSymbol ? radius = 9 : radius = 5
-                fillColor = 'red'
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
             }
 
         }
@@ -291,9 +288,9 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
             circle.setAttribute('cx', p0.x)
             circle.setAttribute('cy', p0.y)
-            circle.setAttribute('r', radius) // radius can be dynamically set 
+            circle.setAttribute('r', radius) 
             circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', fillColor )
+            circle.setAttribute('fill', 'grey' )
             circle.setAttribute('opacity', .6) 
 
             var svg = document.getElementById(svg_id);
