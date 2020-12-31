@@ -2643,8 +2643,7 @@ D = {
             ['--skip-fasta-check'],
             {'default': False,
              'action': 'store_true',
-             'help': "Don't check the input FASTA file "
-                     "for such things as proper defline formatting to speed things up."}
+             'help': "Don't check the input FASTA file for such things as proper defline formatting to speed things up."}
                 ),
     'write-checkpoints': (
             ['--write-checkpoints'],
