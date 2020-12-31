@@ -655,10 +655,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
-        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        tab = '\t'
+        f.write(f"|{header_text.replace(tab, '|')}|\n")
         f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
     else:
-        f.write('%s\n' % header_text)
+        f.write('{header_text}\n')
 
     if not keys_order:
         keys_order = sorted(d.keys())
