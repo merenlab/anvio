@@ -2639,6 +2639,12 @@ D = {
             'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
                     "in any output files."}
                 ),
+    'include-zeros': (
+            ['--include-zeros'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,
@@ -2859,13 +2865,7 @@ D = {
              'action': 'store_true',
              'help': "Prints a nicely formatted table of the default tRNA feature parameterizations "
                      "that are written to a tab-delimited .ini file by the option, `--default-feature-param-file`."}
-                ),
-    'include-zeros': (
-            ['--include-zeros'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
-                ),
+    )
 }
 
 # two functions that works with the dictionary above.
