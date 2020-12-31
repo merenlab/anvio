@@ -1325,6 +1325,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for layer_name in layer_names_to_consider:
             layer_types[layer_name] = utils.get_predicted_type_of_items_in_a_dict(splits_dict, layer_name)
 
+        # while this looks extremely inefficient, it is not that bad, in fact. This loop simply goes thorugh
+        # every layer name that is in `layer_names_to_consider` until it hits the first non-None value that
+        # has a length or larger than 0 given the type of the layer. The fate of the well-populated layers
+        # is determined very rapidly. What takes much longer are those that have no values for any splits
+        # or values that are very sparse, and they will not be common to most profiles.
         for hits in splits_dict.values():
             for layer_name in layer_names_to_consider:
                 if layer_name in layer_names_considered:
@@ -1338,12 +1343,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 if layer_name in hits:
                     if layer_types[layer_name] in [int, float]:
-                        if hits[layer_name] > 0:
+                        if hits[layer_name] and float(hits[layer_name]) > 0:
                             layer_names_with_hits.append(layer_name)
                             layer_names_considered.add(layer_name)
                     else:
                         # which means we have layer type of str, dict, or list
-                        if len(hits[layer_name]):
+                        if hits[layer_name] and len(hits[layer_name]):
                             layer_names_with_hits.append(layer_name)
                             layer_names_considered.add(layer_name)
 
