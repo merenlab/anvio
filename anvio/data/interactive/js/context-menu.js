@@ -69,13 +69,13 @@ ContextMenu = function(options) {
             }
         },
         'select_layer': {
-            'title': 'Select layer',
+            'title': 'Select layer in the main panel',
             'action': (node, layer, param) => {
                 $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', true);
             }
         },
         'unselect_layer': {
-            'title': 'Unselect layer',
+            'title': 'Unselect layer in the main panel',
             'action': (node, layer, param) => {
                 $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', false);
             }
