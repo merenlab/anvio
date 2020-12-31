@@ -1361,9 +1361,10 @@ function saveState()
   *  updates only the function colors and indel variables.
   */
 function processState(state_name, state) {
-    if(!state.hasOwnProperty('source-colors')) state['source-colors'] = default_source_colors;
-    generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
+    var curr_db = $('#gene_color_order').val();
+    generateFunctionColorTable(state[curr_db.toLowerCase() + '-colors'], curr_db, highlight_genes=state['highlight-genes']);
     toggleUnmarkedGenes();
+    mcags = Object.keys(state[curr_db.toLowerCase() + '-colors']);
     this.state = state;
 
     if(!state['highlight-genes']) {

@@ -23,11 +23,7 @@ anvi-estimate-metabolism -c CONTIGS.db --metagenome-mode
 {{ codestop }}
 
 {: .notice}
-In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that some modules will be broken up across multiple contigs belonging to the same population.
-
-If you prefer to instead treat all KOs in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the KOs will in reality be coming from multiple different populations), and there will be a lot of redundancy.
-
-We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that some modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all KOs in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the KOs will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 ### Estimation for bins in a metagenome
 
@@ -121,39 +117,40 @@ And here is an example of using this flag with matrix output. In this case, we a
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete
 {{ codestop }}
 
+
 ## Output options
 This program has two major output options: long format (tab-delimited) output files and matrices.
 
-**Long Format Output**
+### Long Format Output
 Long format output has several preset "modes" as well as a "custom" mode in which the user can define the contents of the output file. Multiple modes can be used at once, and each requested "mode" will result in a separate output file. The default output mode is "modules" mode.
 
 You can find more details on the output format by looking at %(kegg-metabolism)s.
 
-### Viewing available output modes
+**Viewing available output modes**
 
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db --list-available-modes
 {{ codestop }}
 
-### Using a non-default output mode
+**Using a non-default output mode**
 
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes kofam_hits
 {{ codestop }}
 
-### Using multiple output modes
+**Using multiple output modes**
 
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes kofam_hits,modules
 {{ codestop }}
 
-### Viewing available output headers for 'custom' mode
+**Viewing available output headers for 'custom' mode**
 
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db --list-available-output-headers
 {{ codestop }}
 
-### Using custom output mode
+**Using custom output mode**
 
 Here is an example of defining the modules output to contain columns with the module number, the module name, and the completeness score.
 
@@ -161,16 +158,26 @@ Here is an example of defining the modules output to contain columns with the mo
 anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes custom --custom-output-headers kegg_module,module_name,module_is_complete
 {{ codestop }}
 
-**Matrix Output**
+**Including modules with 0%% completeness in long-format output**
+
+By default, modules with a completeness score of 0 are left out of the output files to save on space. But you can explicitly include them by adding the `--include-zeros` flag.
+
+{{ codestart }}
+anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules --include-zeros
+{{ codestop }}
+
+
+### Matrix Output
 Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. Rows will describe modules or KOs, columns will describe your input samples (ie genomes, metagenomes, bins), and each cell of the matrix will be the corresponding statistic for a module in a sample. You can see examples of this output format by viewing %(kegg-metabolism)s.
 
-### Obtaining matrix-formatted output
+**Obtaining matrix-formatted output**
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format
 {{ codestop }}
 
-### Including KEGG metadata in the matrix output
+**Including KEGG metadata in the matrix output**
+
 By default, the matrix output is a matrix ready for use in other computational applications, like visualizing as a heatmap or performing clustering. But you may want to instead have a matrix that is annotated with more information, like the names and categories of each module or the functional annotations of each KO. To include this additional information in the matrix output (as columns that occur before the sample columns), use the `--include-metadata` flag.
 
 {{ codestart }}
@@ -191,3 +198,17 @@ You can see if this program is working by running the following suite of tests, 
 {{ codestart }}
 anvi-self-test --suite metabolism
 {{ codestop }}
+
+
+## Help! I'm getting version errors!
+If you have gotten an error that looks something like this:
+
+```
+Config Error: The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now.
+```
+
+This means that the MODULES.db used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
+
+1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently set up a new %(anvi-setup-kegg-kofams)s (probably with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, and you have saved your former version of %(kegg-data)s somewhere, then you are in luck - you can simply direct %(anvi-estimate-metabolism)s to use the old version of KEGG with `--kegg-data-dir`. If you didn't save it, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
+2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and%(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash (you can use %(anvi-db-info)s on the MODULES.db to find the hash value) as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program.
+3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) has probably set up a non-default version of %(kegg-data)s. If they were using the default snapshot of KEGG data but you are not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
