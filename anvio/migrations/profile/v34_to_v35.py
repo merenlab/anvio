@@ -52,9 +52,11 @@ def migrate(db_path):
     profile_db.disconnect()
 
     progress.end()
-    run.info_single("The profile database is now %s. This upgrade redefined the stored format of indels to "
-                    "provide a more robust working framework. Unfortunately, if you had indels, you don't anymore." \
-                    % (next_version), nl_after=1, nl_before=1, mc='green')
+    run.info_single("The profile database is now %s. This upgrade redefined the stored format of INDELS to "
+                    "provide a more robust working framework. If you are upgrading this database from `v6`, "
+                    "you don't have anything to worry about. But if you were using the active branch of anvi'o, "
+                    "then you lost your INDELs now and you would need to re-profile your BAM files if you want "
+                    "them back :)" % (next_version), nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

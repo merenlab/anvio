@@ -57,7 +57,8 @@ def migrate(db_path):
     progress.end()
 
     if is_full_profile:
-        run.info_single("Your profile db is now %s." % next_version, nl_after=1, nl_before=1, mc='green')
+        run.info_single("Your profile db is now %s. We just added a bunch of new variables to the `self` table "
+                        "of your database. All good now." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
                         "database since it was a blank profile (which is OK, move along)." \
