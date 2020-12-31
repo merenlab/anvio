@@ -55,11 +55,6 @@ except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
-class EmptyArgs(argparse.Namespace):
-    def __init__(self):
-        super().__init__()
-
-
 import anvio.constants as constants
 
 
