@@ -347,7 +347,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": True
     },
     "functional-enrichment-txt": {
-        "name": "ENRICHED FUNCTIONS",
+        "name": "ENRICHMENT SCORES",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -558,6 +558,12 @@ ANVIO_ARTIFACTS ={
     },
     "genbank-file": {
         "name": "GENBANK FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "groups-txt": {
+        "name": "GROUPS",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True

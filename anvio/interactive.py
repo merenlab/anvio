@@ -77,6 +77,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
+        self.show_all_layers = A('show_all_layers')
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
@@ -257,8 +258,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.set_displayed_item_names()
 
         # now we know what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
-        # unnecessary splits stored in views dicts.
-        self.prune_view_dicts()
+        # unnecessary splits stored in views and other additional dicts.
+        self.prune_view_and_additional_data_dicts()
 
         self.process_external_item_order()
         self.gen_alphabetical_orders_of_items()
@@ -280,7 +281,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
-        self.convert_view_data_into_json()
+        self.finalize_view_data()
         self.get_anvio_news()
 
 
@@ -1288,9 +1289,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                             "are warned!" % (one_example, num_all))
 
 
-    def prune_view_dicts(self):
+    def prune_view_and_additional_data_dicts(self):
         self.progress.new('Pruning view dicts')
         self.progress.update('...')
+
         splits_in_views = set(list(self.views.values())[0]['dict'].keys())
         splits_to_remove = splits_in_views - set(self.displayed_item_names_ordered)
 
@@ -1299,11 +1301,74 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for split_name in splits_to_remove:
                 self.views[view]['dict'].pop(split_name)
 
+        self.progress.update("working on items additional data")
+        splits_in_items_additional_data_dict = set(list(self.items_additional_data_dict.keys()))
+        splits_to_remove = splits_in_items_additional_data_dict - set(self.displayed_item_names_ordered)
+
+        for split_name in splits_to_remove:
+            self.items_additional_data_dict.pop(split_name)
+
         self.progress.end()
 
 
-    def convert_view_data_into_json(self):
-        '''This function's name must change to something more meaningful.'''
+    def get_layer_names_with_at_least_one_hit_for_splits(self, layer_names_list, splits_dict):
+        """This is a funciton to remove layers with no hits from default displays."""
+
+        if self.show_all_layers:
+            return layer_names_list
+
+        layer_names_with_hits = []
+        layer_names_to_consider = copy.deepcopy(layer_names_list)
+        layer_names_considered = set([])
+
+        layer_types = {}
+        for layer_name in layer_names_to_consider:
+            layer_types[layer_name] = utils.get_predicted_type_of_items_in_a_dict(splits_dict, layer_name)
+
+        # while this looks extremely inefficient, it is not that bad, in fact. This loop simply goes thorugh
+        # every layer name that is in `layer_names_to_consider` until it hits the first non-None value that
+        # has a length or larger than 0 given the type of the layer. The fate of the well-populated layers
+        # is determined very rapidly. What takes much longer are those that have no values for any splits
+        # or values that are very sparse, and they will not be common to most profiles.
+        for hits in splits_dict.values():
+            for layer_name in layer_names_to_consider:
+                if layer_name in layer_names_considered:
+                    continue
+
+                if layer_types[layer_name] == None:
+                    # all items in this layer has type None, there can't possibly
+                    # be anything worth showing here.
+                    layer_names_considered.add(layer_name)
+                    continue
+
+                if layer_name in hits:
+                    if layer_types[layer_name] in [int, float]:
+                        if hits[layer_name] and float(hits[layer_name]) > 0:
+                            layer_names_with_hits.append(layer_name)
+                            layer_names_considered.add(layer_name)
+                    else:
+                        # which means we have layer type of str, dict, or list
+                        if hits[layer_name] and len(hits[layer_name]):
+                            layer_names_with_hits.append(layer_name)
+                            layer_names_considered.add(layer_name)
+
+        # update our class variable so we know what is not going to be shown
+        self.layers_that_will_not_be_shown.update(set(layer_names_list) - set(layer_names_with_hits))
+
+        return layer_names_with_hits
+
+
+    def finalize_view_data(self):
+        '''Finalize what will be shown in the interactive interface.
+
+        This includes expanding available 'view's with additional layers to be shown,
+        including HMM hits, or user-provided data through the command line or misc
+        data tables.
+        '''
+
+        # we will fill this one up through `self.get_layer_names_with_at_least_one_hit_for_splits`
+        # to warn the user.
+        self.layers_that_will_not_be_shown = set([])
 
         for view in self.views:
             # here we will populate runinfo['views'] with json objects.
@@ -1325,10 +1390,28 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
+                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
             if self.hmm_searches_dict:
+                if not self.split_hmm_layers:
+                    layer_names_for_hmm_hits = self.get_layer_names_with_at_least_one_hit_for_splits([tpl[1] for tpl in self.hmm_searches_header], self.hmm_searches_dict)
+
+                    # because keys for HMMs are weird to make sure we can easily switch between
+                    # the regular form of displaying HMMs and the form comes with the user flag
+                    # `self.split_hmm_layers`, we have to do something more here to clean up
+                    # the global `self.hmm_searches_header` list that is used again down
+                    # below:
+                    self.hmm_searches_header = [tpl for tpl in self.hmm_searches_header if tpl[1] in layer_names_for_hmm_hits]
+                else:
+                    # if the user asked for HMM layers to be split, we don't want to do anything.
+                    # it gets too prickly otherwise.
+                    pass
+
+                # let's sort these layers alphabetically
+                self.hmm_searches_header = sorted(self.hmm_searches_header)
+
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
             # (6) add taxonomy, if exitsts:
@@ -1350,7 +1433,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (4) adding additional layers
-                if self.items_additional_data_dict:
+                if self.items_additional_data_keys:
                     json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
@@ -1371,6 +1454,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_object.append(json_entry)
 
             self.views[view] = json_object
+
+        if len(self.layers_that_will_not_be_shown):
+            self.run.warning(f"Even though the following layer names were associated with your data, they "
+                             f"will not be shown in your interactive display since none of the splits you "
+                             f"are in terested at this point had any hits in those layers: "
+                             f"\"{', '.join(sorted(list(self.layers_that_will_not_be_shown)))}\". If you "
+                             f"would like every layer to be shown in the interface even when there are no"
+                             f"hits, please include the flag `--show-all-layers` in your command.")
 
 
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
