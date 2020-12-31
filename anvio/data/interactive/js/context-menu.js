@@ -6,12 +6,12 @@
  *  Copyright 2018, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/merenlab/anvio>).
- * 
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
@@ -61,7 +61,7 @@ ContextMenu = function(options) {
                 }
 
                 localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': show_snvs}), '_blank'); 
+                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': show_snvs}), '_blank');
             }
         },
         'inspect_split': {
@@ -158,7 +158,7 @@ ContextMenu = function(options) {
                 }
                 drawTree();
             }
-        }, 
+        },
         'rotate': {
             'title': 'Rotate',
             'action': (node, layer, param) => {
@@ -182,7 +182,7 @@ ContextMenu = function(options) {
                     data: {
                         'newick': clusteringData,
                         'left_most': left_most.label,
-                        'right_most': right_most.label  
+                        'right_most': right_most.label
                     },
                     success: function(data) {
                         collapsedNodes = [];
@@ -211,25 +211,25 @@ ContextMenu = function(options) {
         },
         'blastn_nr': {
             'title': ' - blastn @ nr',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_nr': {
             'title': ' - blastx @ nr',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastx', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastn_refseq_genomic': {
             'title': ' - blastn @ refseq_genomic',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastn', 'refseq_genomic', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_refseq_protein': {
             'title': ' - blastx @ refseq_protein',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
@@ -247,7 +247,7 @@ ContextMenu = function(options) {
         },
         'samples_reroot': {
             'title': 'Reroot',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
                 $.ajax({
@@ -257,7 +257,7 @@ ContextMenu = function(options) {
                     data: {
                         'newick': samplesClusteringData['newick'],
                         'left_most': left_most.label,
-                        'right_most': right_most.label  
+                        'right_most': right_most.label
                     },
                     success: function(data) {
                         samplesClusteringData['newick'] = data['newick'];
@@ -366,7 +366,7 @@ function setBinningRange(limit1, limit2, all, action) {
 
 removeOuterLimit1 = (all) => {
     bins.RemoveNode(all[outerLimit1])
-    outerLimit1 = null 
+    outerLimit1 = null
 }
 
 ContextMenu.prototype.BuildMenu = function() {
@@ -393,23 +393,23 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('unselect_layer');
                 menu.push('divider');
 
-                let limit1Exists; 
+                let limit1Exists;
                 let currentBin = $('input[name="active_bin"]:checked').val();
-                
+
                 bins.selections[`${currentBin}`].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
                     if(node.order === outerLimit1){
-                        limit1Exists = true 
-                        return  
-                    } 
+                        limit1Exists = true
+                        return
+                    }
                 })
                 if(limit1Exists){
-                    menu.push('set_outer_limit_2_add') 
-                    menu.push('set_outer_limit_2_remove') 
+                    menu.push('set_outer_limit_2_add')
+                    menu.push('set_outer_limit_2_remove')
                     menu.push('divider');
                     menu.push('remove_outer_limit_1')
                  } else {
                      menu.push('set_outer_limit_1')
-                 } 
+                 }
             }
 
             if (mode == 'gene' && inspection_available) {
@@ -457,7 +457,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('remove');
 
                 menu.push('divider');
-                
+
                 menu.push('collapse');
                 menu.push('rotate');
                 menu.push('reroot');
@@ -465,7 +465,7 @@ ContextMenu.prototype.BuildMenu = function() {
         }
 
     }
-    
+
     return menu;
 };
 
