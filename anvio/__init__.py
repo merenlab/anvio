@@ -2648,7 +2648,7 @@ D = {
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
-             'required': True,
+             'required': False,
              'help': "The FASTA file containing merged (quality-controlled) tRNA-seq reads from a sample. "
                      "We recommend generating this file via `anvi-run-workflow -w trnaseq` "
                      "to ensure proper merging of read pairs that may be partially or fully overlapping, "
