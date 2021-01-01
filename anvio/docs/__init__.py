@@ -17,7 +17,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "trnaseq-db": {
-        "name": "CONTIGS",
+        "name": "TRNASEQ",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -38,6 +38,12 @@ ANVIO_ARTIFACTS ={
         "name": "CONTIGS",
         "type": "FASTA",
         "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "trnaseq-fasta": {
+        "name": "TRNASEQ",
+        "type": "FASTA",
+        "provided_by_anvio": False,
         "provided_by_user": True
     },
     "configuration-ini": {
