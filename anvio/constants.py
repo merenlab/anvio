@@ -95,11 +95,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'threeprime_acceptor_stem_sequence',
                       'discriminator',
                       'acceptor']
-
-# the longest known tRNA (selenocysteine) is 101 bp
-# ref: Santesmasses, Mariotti & Guigo, 2017, "Computational identification of the selenocysteine tRNA (tRNASec) in genomes," PLoS Comp. Biol., 13(2): e1005383
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
-LONGEST_KNOWN_TRNA_LENGTH = 101
+TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
@@ -107,6 +103,7 @@ blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default = "presence-absence"
+trnaseq_default = "cov"
 
 default_gene_caller = "prodigal"
 
@@ -174,8 +171,10 @@ levels_of_taxonomy_unknown = {"t_domain": 'Unknown_domains',
                               "t_genus": 'Unknown_genera',
                               "t_species": 'Unknown_species'}
 
-for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
-    run_type, default_config = run_type_and_default_config_tuples
+for run_type, default_config in [('single', single_default),
+                                 ('merged', merged_default),
+                                 ('trnaseq', trnaseq_default),
+                                 ('blank', blank_default)]:
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
         print("Error: The default clustering configuration file for %s runs, '%s',\n\
        is missing from data/clusterconfigs dir! I don't know how this happened,\n\
@@ -204,7 +203,7 @@ WC_base_pairs = {
     'N': ('', )
 }
 # In tRNA, wobble base pairing, including G/U, is common
-WC_plus_wobble_base_pairs = {
+WC_PLUS_WOBBLE_BASE_PAIRS = {
     'A': ('T', ),
     'T': ('A', 'G'),
     'C': ('G', ),
