@@ -1,4 +1,0 @@
-Sample  Demethylase_Treated Demethylase_Untreated
-sample-01   three_tRNAseq_samples_example/sample-01-DM.fasta   three_tRNAseq_samples_example/sample-01-noDM.fasta
-sample-02   NA   three_tRNAseq_samples_example/sample-02-noDM.fasta
-sample-03   three_tRNAseq_samples_example/sample-03-DM.fasta   NA
