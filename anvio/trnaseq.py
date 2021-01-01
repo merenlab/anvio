@@ -837,7 +837,7 @@ class TRNASeqDataset(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # Argument group 1A: MANDATORY
-        self.input_fasta_path = A('fasta_file')
+        self.input_fasta_path = A('trnaseq_fasta')
         self.sample_id = A('sample_name')
         self.out_dir = os.path.abspath(A('output_dir')) if A('output_dir') else None
 
