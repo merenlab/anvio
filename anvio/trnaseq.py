@@ -1322,7 +1322,7 @@ class TRNASeqDataset(object):
 
     def report_fragment_mapping_params(self):
         """Add fragment mapping parameters to the database."""
-        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=False)
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         trnaseq_db.db.set_meta_value('min_mapped_trna_fragment_size', self.min_trna_frag_size)
         trnaseq_db.disconnect()
 
@@ -1332,7 +1332,7 @@ class TRNASeqDataset(object):
 
     def report_modification_analysis_params(self):
         """Add modification analysis parameters to the database."""
-        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=False)
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         trnaseq_db.db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
         trnaseq_db.db.set_meta_value('fiveprimemost_deletion_start', self.fiveprimemost_del_start)
         trnaseq_db.db.set_meta_value('threeprimemost_deletion_start', self.threeprimemost_del_start)
@@ -2583,7 +2583,7 @@ class TRNASeqDataset(object):
             if mod_trna_seq.del_configs:
                 mod_seqs_with_dels += 1
 
-        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=False)
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         trnaseq_db.db.set_meta_value('total_trna_reads', total_trna_reads)
         trnaseq_db.db.set_meta_value('profiled_trna_reads', profiled_trna_reads)
         trnaseq_db.db.set_meta_value('trna_reads_with_threeprime_cca', trna_reads_with_threeprime_cca)
