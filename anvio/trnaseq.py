@@ -1253,11 +1253,7 @@ class TRNASeqDataset(object):
 
         self.run.info("Input FASTA file", self.input_fasta_path)
 
-        # UNCOMMENT
-        # if not self.load_checkpoint:
-        #     utils.check_fasta_id_uniqueness(self.input_fasta_path)
-
-        if not self.skip_fasta_check:
+        if not self.skip_fasta_check and not self.load_checkpoint:
             self.progress.new("Checking input FASTA defline format")
             self.progress.update("...")
 
