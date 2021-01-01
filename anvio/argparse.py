@@ -48,14 +48,14 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             if atty:
-                epilog += f'''\n🍺 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('blue') + program_help + attr('reset')}'''
+                epilog += f'''\n🍺 {attr('bold')}More on `{self.prog}`:{attr('reset')}\n\n   {fg('cyan') + program_help + attr('reset')}'''
             else:
                 epilog += f'''\n🍺 More on `{self.prog}`:\n\n   {program_help}'''
         else:
             epilog = ""
 
         if atty:
-            epilog += f'''\n\n🍻 {attr('bold')}All anvi'o programs and artifacts:{attr('reset')}\n\n   {fg('blue') + general_help + attr('reset')}'''
+            epilog += f'''\n\n🍻 {attr('bold')}All anvi'o programs and artifacts:{attr('reset')}\n\n   {fg('cyan') + general_help + attr('reset')}'''
         else:
             epilog += f'''\n\n🍻 All anvi'o programs and artifacts:\n\n   {general_help}'''
 
