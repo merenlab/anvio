@@ -20,7 +20,6 @@ import shutil
 import random
 import hashlib
 import argparse
-import warnings
 import itertools
 import numpy as np
 import pandas as pd
@@ -3978,10 +3977,8 @@ class DatabaseConverter(object):
                 sample_specific_covs_dict[sample_id] = np.zeros(seed_seq_length, int)
                 sample_nonspecific_covs_dict[sample_id] = np.zeros(seed_seq_length, int)
 
-                sample_specific_nt_covs_dict[sample_id] = specific_nt_covs = [
-                    np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
-                sample_nonspecific_nt_covs_dict[sample_id] = nonspecific_nt_covs = [
-                    np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
+                sample_specific_nt_covs_dict[sample_id] = [np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
+                sample_nonspecific_nt_covs_dict[sample_id] = [np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
 
             for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
                 sample_id = norm_seq_summary.sample_id
