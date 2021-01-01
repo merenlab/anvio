@@ -38,11 +38,20 @@ def P(d, dont_exit=False):
         sys.exit()
 
 
-def TABULATE(table, header, numalign="right"):
+def TABULATE(table, header, numalign="right", max_width=0):
     """Encoding-safe `tabulate`"""
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
-    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign))
+    table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
+
+    if max_width:
+        # let's don't print everything if things need to be cut.
+        prefix = " // "
+        lines_in_table = table.split('\n')
+        if len(lines_in_table[0]) + len(prefix) + 2 > max_width:
+            table = '\n'.join([l[:max_width - len(prefix)] + prefix + l[-2:] for l in lines_in_table])
+
+    print(table)
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
