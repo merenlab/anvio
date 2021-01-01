@@ -48,7 +48,7 @@ SETUP_WITH_OUTPUT_DIR() {
     fi
 
 
-    INFO "Anvo'o version"
+    INFO "Anvi'o version"
     anvi-profile --version
 }
 
