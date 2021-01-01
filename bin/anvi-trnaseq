@@ -21,7 +21,8 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __requires__ = ['trnaseq-fasta']
 __provides__ = ['trnaseq-db']
-__description__ = ("An anvi'o script to process a tRNA-seq dataset, generating a tRNA-seq database")
+__description__ = ("A program to process raw tRNA-seq dataset, which is the paired-end sequencing of tRNA transcripts "
+                   "in a given sample, to generating an anvi'o tRNA-seq database")
 
 
 if __name__ == '__main__':
