@@ -6,18 +6,19 @@
  *  Copyright 2018, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/merenlab/anvio>).
- * 
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
-
+let outerLimit1;
+let outerLimit2;
 
 ContextMenu = function(options) {
     this.container = options.container;
@@ -25,10 +26,11 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
+    let all = options.all
 
     this.menu_items = {
         'select': {
-            'title': 'Add item to bin',
+            'title': 'Add item to active bin',
             'action': (node, layer, param) => {
                 bins.AppendNode(node);
             }
@@ -39,14 +41,41 @@ ContextMenu = function(options) {
                 bins.RemoveNode(node);
             }
         },
+        'set_outer_limit_1' : {
+            'title' : "Mark item as 'range start'",
+            'action': (node, layer, param, all) => {
+                bins.AppendNode(node); // TODO flag node in interface instead of appending
+                outerLimit1 = node.order
+            }
+        },
+        'remove_outer_limit_1' : {
+            'title' : 'Remove marked range start',
+            'action': (node, layer, param) => { removeOuterLimit1(all) }
+        },
+        'set_outer_limit_2_add' : {
+            'title' : "Add items in 'range' to active bin",
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+                setBinningRange(outerLimit1, outerLimit2, all, 'add')
+            }
+        },
+        'set_outer_limit_2_remove' : {
+            'title' : "Remove items in 'range' from any bin",
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+                outerLimit2 = node.order
+                setBinningRange(outerLimit1, outerLimit2, all, 'remove')
+            }
+        },
         'select_layer': {
-            'title': 'Select layer',
+            'title': 'Select layer in the main panel',
             'action': (node, layer, param) => {
                 $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', true);
             }
         },
         'unselect_layer': {
-            'title': 'Unselect layer',
+            'title': 'Unselect layer in the main panel',
             'action': (node, layer, param) => {
                 $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', false);
             }
@@ -59,7 +88,7 @@ ContextMenu = function(options) {
                 }
 
                 localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': show_snvs}), '_blank'); 
+                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': show_snvs}), '_blank');
             }
         },
         'inspect_split': {
@@ -81,13 +110,13 @@ ContextMenu = function(options) {
             }
         },
         'inspect_context': {
-            'title': 'Inspect context',
+            'title': 'Inspect gene and context',
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'context');
             }
         },
         'inspect_gene': {
-            'title': 'Inspect gene',
+            'title': 'Inspect gene alone',
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'gene');
             }
@@ -140,13 +169,13 @@ ContextMenu = function(options) {
             }
         },
         'collapse': {
-            'title': 'Collapse',
+            'title': 'Collapse these items',
             'action': (node, layer, param) => {
                 new CollapseNodeDialog(node);
             }
         },
         'expand': {
-            'title': 'Expand',
+            'title': 'Expand this collapsed node',
             'action': (node, layer, param) => {
                 for (let i=0; i < collapsedNodes.length; i++) {
                     if (collapsedNodes[i]['label'] == node.label) {
@@ -156,9 +185,9 @@ ContextMenu = function(options) {
                 }
                 drawTree();
             }
-        }, 
+        },
         'rotate': {
-            'title': 'Rotate',
+            'title': 'Rotate the tree/dendrogram here',
             'action': (node, layer, param) => {
                 new_tree = new Tree();
                 new_tree.Parse(clusteringData.trim(), false);
@@ -169,7 +198,7 @@ ContextMenu = function(options) {
             }
         },
         'reroot': {
-            'title': 'Reroot',
+            'title': 'Reroot the tree/denrogram here',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -180,7 +209,7 @@ ContextMenu = function(options) {
                     data: {
                         'newick': clusteringData,
                         'left_most': left_most.label,
-                        'right_most': right_most.label  
+                        'right_most': right_most.label
                     },
                     success: function(data) {
                         collapsedNodes = [];
@@ -209,25 +238,25 @@ ContextMenu = function(options) {
         },
         'blastn_nr': {
             'title': ' - blastn @ nr',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_nr': {
             'title': ' - blastx @ nr',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastx', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastn_refseq_genomic': {
             'title': ' - blastn @ refseq_genomic',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastn', 'refseq_genomic', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_refseq_protein': {
             'title': ' - blastx @ refseq_protein',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 get_sequence_and_blast(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
@@ -245,7 +274,7 @@ ContextMenu = function(options) {
         },
         'samples_reroot': {
             'title': 'Reroot',
-            'action': (node, layer, param) => { 
+            'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
                 $.ajax({
@@ -255,7 +284,7 @@ ContextMenu = function(options) {
                     data: {
                         'newick': samplesClusteringData['newick'],
                         'left_most': left_most.label,
-                        'right_most': right_most.label  
+                        'right_most': right_most.label
                     },
                     success: function(data) {
                         samplesClusteringData['newick'] = data['newick'];
@@ -285,21 +314,6 @@ ContextMenu = function(options) {
                 });
             }
         },
-        'bigsi': {
-            'title': 'Search random 150bp on BIGSI',
-            'action': (node, layer, param) => {
-                let target = (mode == 'gene') ? 'gene' : 'contig';
-                $.ajax({
-                    type: 'GET',
-                    cache: false,
-                    url: '/data/' + target + '/' + node.label,
-                    success: function(data) {
-                        let bigsi = new BIGSI(data['header'], data['sequence']);
-                        bigsi.Search();
-                    }
-                });
-            }
-        },
         'hmm_RecA': {
             'title': 'RecA',
             'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'RecA'); }
@@ -315,6 +329,31 @@ ContextMenu = function(options) {
     }
 }
 
+function setBinningRange(limit1, limit2, all, action) {
+    limit1 > limit2 ? countDown() : countUp()
+    function countDown() {
+        for(let i = limit1 - 1; i > limit2; i--){
+            action === 'add' ? bins.AppendNode([all[i]]) : bins.RemoveNode([all[i]])
+        }
+    }
+    function countUp() {
+        for (let i = limit1 + 1; i < limit2; i++){
+            action === 'add' ? bins.AppendNode([all[i]]) : bins.RemoveNode([all[i]])
+        }
+    }
+    if(action === 'remove'){
+        bins.RemoveNode([all[outerLimit1]])
+        bins.RemoveNode([all[outerLimit2]])
+    }
+    outerLimit1 = null
+    outerLimit2 = null
+}
+
+removeOuterLimit1 = (all) => {
+    bins.RemoveNode(all[outerLimit1])
+    outerLimit1 = null
+}
+
 ContextMenu.prototype.BuildMenu = function() {
     var menu = [];
 
@@ -325,21 +364,8 @@ ContextMenu.prototype.BuildMenu = function() {
     else
     {
         if (this.node.IsLeaf() && !this.node.collapsed) {
-            if (bins.IsNodeMemberOfBin(this.node)) {
-                menu.push('remove');
-            } else {
-                menu.push('select');
-            }
-            menu.push('divider');
-            menu.push('reroot');
-            menu.push('divider');
-
-            if (this.layer) {
-                menu.push('select_layer');
-                menu.push('unselect_layer');
-                menu.push('divider');       
-            }
-
+            // start with menu items for inspection pages
+            // as they are most frequently used
             if (mode == 'gene' && inspection_available) {
                 menu.push('inspect_context');
                 menu.push('inspect_gene');
@@ -357,6 +383,41 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');
             }
 
+            // next, we have adding/removing items to bins individually
+            // or as a range
+            if (bins.IsNodeMemberOfBin(this.node)) {
+                menu.push('remove');
+            } else {
+                menu.push('select');
+            }
+
+            let limit1Exists;
+            let currentBin = $('input[name="active_bin"]:checked').val();
+
+            bins.selections[`${currentBin}`].forEach(node => { // iterate through bin selections to make sure limit1 hasnt been removed elsewhere
+                if(node.order === outerLimit1){
+                    limit1Exists = true
+                    return
+                }
+            })
+            if(limit1Exists){
+                menu.push('set_outer_limit_2_add')
+                menu.push('set_outer_limit_2_remove')
+                menu.push('remove_outer_limit_1')
+            } else {
+                menu.push('set_outer_limit_1')
+            }
+
+            menu.push('divider');
+
+            // menu items to select/unselect layers in the Settings tab
+            if (this.layer) {
+                menu.push('select_layer');
+                menu.push('unselect_layer');
+                menu.push('divider');
+            }
+
+            // getting back sequences for things
             if (mode == 'pan') {
                 menu.push('get_AA_sequences_for_gene_cluster');
             }
@@ -371,9 +432,14 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('blastx_nr');
                 menu.push('blastn_refseq_genomic');
                 menu.push('blastx_refseq_protein');
-                menu.push('divider');
-                menu.push('bigsi');
             }
+
+            // tree/dendrogram operations
+            // FIXME: this option should not appear when there is no
+            //        tree/dendrogram available
+            menu.push('divider');
+            menu.push('reroot');
+
         }
         else
         {
@@ -385,7 +451,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('remove');
 
                 menu.push('divider');
-                
+
                 menu.push('collapse');
                 menu.push('rotate');
                 menu.push('reroot');
@@ -393,7 +459,7 @@ ContextMenu.prototype.BuildMenu = function() {
         }
 
     }
-    
+
     return menu;
 };
 
