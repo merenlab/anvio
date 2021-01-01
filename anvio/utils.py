@@ -3627,10 +3627,10 @@ def is_contigs_db(db_path):
     return True
 
 
-def is_tRNAseq_db(db_path):
+def is_trnaseq_db(db_path):
     filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'tRNAseq':
-        raise ConfigError("'%s' is not an anvi'o tRNAseq database." % db_path)
+    if get_db_type(db_path) != 'trnaseq':
+        raise ConfigError("'%s' is not an anvi'o trnaseq database." % db_path)
     return True
 
 
