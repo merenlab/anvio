@@ -176,9 +176,13 @@ for run_type, default_config in [('single', single_default),
                                  ('trnaseq', trnaseq_default),
                                  ('blank', blank_default)]:
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
-        print("Error: The default clustering configuration file for %s runs, '%s',\n\
-       is missing from data/clusterconfigs dir! I don't know how this happened,\n\
-       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config))
+        print()
+        print(f"Error: Although there is a run type defined in the anvi'o constants for \n"
+              f"       '{run_type}', the default clustering configuration file for it, namely \n"
+              f"       '{default_config}', is missing from the 'anvio/data/clusterconfigs' dir. \n"
+              f"       If you are a developer and getting this error, please make sure the file \n"
+              f"       is in anvi'o distribution. If you are a user and getting this error, it \n"
+              f"       something went terribly wrong with your installation :(\n")
         sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
