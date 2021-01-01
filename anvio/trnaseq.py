@@ -20,7 +20,6 @@ import shutil
 import random
 import hashlib
 import argparse
-import warnings
 import itertools
 import numpy as np
 import pandas as pd
