@@ -7,7 +7,6 @@ import os
 import sys
 import json
 import copy
-import argparse
 import platform
 
 from tabulate import tabulate
@@ -2654,6 +2653,33 @@ D = {
             {'default': False,
             'action': 'store_true',
             'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+                ),
+    'modules-txt': (
+            ['-M', '--modules-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
+                    "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
+                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                ),
+    'groups-txt': (
+            ['-G', '--groups-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
+                    "The first column should have the header 'sample' and contain sample names matching "
+                    "to those in the modules-txt file. The second column should have the header 'group' "
+                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+                ),
+    'sample-header': (
+            ['--sample-header'],
+            {'default': 'db_name',
+            'help': "The header of the column containing your sample names in the modules-txt input file. By "
+                    "default this is 'db_name' because we are assuming you got your modules mode output by "
+                    "running `anvi-estimate-metabolism` in multi mode (on multiple genomes or metagenomes), but "
+                    "just in case you got it a different way, this is how you can tell anvi'o which column to "
+                    "look at. The values in this column should correspond to those in the 'sample' column in "
+                    "the groups-txt input file."}
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
