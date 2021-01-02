@@ -601,21 +601,11 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
 }
 
 function toggleSNVs() {
-  /*if(show_snvs) {
-    $("div.snvs-deactivated").fadeIn(300).delay(1500).fadeOut(400);
-  } else {
-    $("div.snvs-activated").fadeIn(300).delay(1500).fadeOut(400);
-  }*/
   state['show_snvs'] = !state['show_snvs'];
   createCharts(state);
 }
 
 function toggleIndels() {
-  /*if(show_indels) {
-    $("div.indels-deactivated").fadeIn(300).delay(1500).fadeOut(400);
-  } else {
-    $("div.indels-activated").fadeIn(300).delay(1500).fadeOut(400);
-  }*/
   state['show_indels'] = !state['show_indels'];
   createCharts(state);
 }
@@ -700,8 +690,12 @@ function redrawArrows() {
 }
 
 function resetArrowMarkers() {
+  $('#contextSvgDefs').empty();
+
   ["none"].concat(mcags).concat(Object.keys(state['highlight-genes'])).forEach(function(category){
-    contextSvg.select('#contextSvgDefs').select('#arrow_' + category )
+    contextSvg.select('#contextSvgDefs')
+        .append('svg:marker')
+        .attr('id', 'arrow_' + category)
         .attr('markerHeight', 2)
         .attr('markerWidth', 2)
         .attr('orient', 'auto')
@@ -1361,6 +1355,11 @@ function saveState()
   *  updates only the function colors and indel variables.
   */
 function processState(state_name, state) {
+    // set color defaults
+    if(!state['cog-colors']) state['source-colors'] = default_source_colors;
+    if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
+    if(!state['cog-colors']) state['kegg-colors'] = default_KEGG_colors;
+
     var curr_db = $('#gene_color_order').val();
     generateFunctionColorTable(state[curr_db.toLowerCase() + '-colors'], curr_db, highlight_genes=state['highlight-genes']);
     toggleUnmarkedGenes();
@@ -1370,6 +1369,22 @@ function processState(state_name, state) {
     if(!state['highlight-genes']) {
       state['highlight-genes'] = {};
     }
+
+    // define arrow markers for highlighted gene ids
+    Object.keys(state['highlight-genes']).forEach(function(gene_id){
+      contextSvg.select('#contextSvgDefs')
+          .append('svg:marker')
+          .attr('id', 'arrow_' + gene_id)
+          .attr('markerHeight', 2)
+          .attr('markerWidth', 2)
+          .attr('orient', 'auto')
+          .attr('refX', 0)
+          .attr('refY', 0)
+          .attr('viewBox', '-5 -5 10 10')
+          .append('svg:path')
+            .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
+            .attr('fill', $('#picker_' + gene_id).attr('color'));
+    });
     redrawArrows();
 
     if(state['show_indels']) {
@@ -1574,7 +1589,7 @@ function createCharts(state){
               .attr('fill', category != "none" ? $('#picker_' + category).attr('background-color') : "gray");
       });
     }
-    Object.keys(default_source_colors).concat(Object.keys(state['highlight-genes'])).forEach(function(category){
+    ["none"].concat(Object.keys(default_source_colors)).concat(Object.keys(state['highlight-genes'])).forEach(function(category){
       defs.append('svg:marker')
           .attr('id', 'arrow_' + category )
           .attr('markerHeight', 2)

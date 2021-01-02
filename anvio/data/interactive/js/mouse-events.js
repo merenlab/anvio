@@ -164,6 +164,7 @@ function lineMouseLeaveHandler(event) {
 }
 
 function mouseMoveHandler(event) {
+
     if (drawing_zoom)
         return;
 
@@ -185,6 +186,7 @@ function mouseMoveHandler(event) {
 
     if (event.target.parentNode.id == 'samples_tree')
     {
+
         var id = event.target.id.match(/\d+/);
         var node = samples_id_to_node_map[id[0]];
         var _n = new NodeIterator(node);

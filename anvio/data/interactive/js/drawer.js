@@ -6,12 +6,12 @@
  *  Copyright 2015, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/meren/anvio>).
- * 
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
@@ -21,13 +21,13 @@
 var Drawer = function(settings) {
     this.timer = new BasicTimer('tree_draw');
     this.settings = settings;
-    
+
     this.tree_svg_id = 'tree';
     this.fontHeight = 10;
     this.root_length = 0.1;
-    
+
     this.has_tree = (clusteringData.constructor !== Array);
-    
+
     //
     this.layerdata_dict = new Array();
     this.layer_fonts = new Array();
@@ -35,13 +35,13 @@ var Drawer = function(settings) {
 
 Drawer.prototype.iterate_layers = function(callback) {
     for (var i = 0; i < this.settings['layer-order'].length; i++) {
-        
+
         // order 0 belongs to tree itself, so layer indexes start from 1
         var order = i + 1;
         var index = parseInt(this.settings['layer-order'][i]);
 
         var ret = callback.call(this, {
-            order: order, 
+            order: order,
             index: index,
             is_parent:      (layer_types[index] == 0),
             is_stackbar:    (layer_types[index] == 1),
@@ -71,7 +71,7 @@ Drawer.prototype.draw = function() {
 
     if (parseFloat(this.settings['angle-max']) >= 360) {
         this.settings['angle-max'] = 359.9999999;
-    } 
+    }
 
     this.initialize_tree();
 
@@ -85,7 +85,7 @@ Drawer.prototype.draw = function() {
     this.normalize_values();
     this.calculate_bar_sizes();
     this.calculate_leaf_sizes();
-        
+
     createBin('svg', 'viewport');
     createBin('viewport', 'tree_bin');
     createBin('tree_bin', 'tree');
@@ -115,7 +115,7 @@ Drawer.prototype.draw = function() {
     bins.RedrawLineColors();
 
     createBin('tree_bin', 'bin');
-    
+
     this.initialize_tree_observer();
 
     // Scale to fit window
@@ -126,14 +126,14 @@ Drawer.prototype.draw = function() {
     // pan and mouse zoom
     $('svg').svgPan(
         {
-            'viewportId': 'viewport', 
+            'viewportId': 'viewport',
             'onlyPanOnMouseUp': (this.total_object_count > 10000 || this.tree.leaves.length > 5000),
         });
 
     this.bind_tree_events();
     initialize_area_zoom(); // area-zoom.js
     this.update_title_panel();
-    
+
     ANIMATIONS_ENABLED = false;
 };
 
@@ -149,13 +149,13 @@ Drawer.prototype.draw_collapsed_nodes = function() {
     }
 };
 
-    
+
 Drawer.prototype.assign_leaf_order = function() {
     if (this.has_tree) {
         var n = new NodeIterator(this.tree.root);
         var q = n.Begin();
 
-        var order_counter = 0;   
+        var order_counter = 0;
         while (q != null) {
             if (q.IsLeaf()) {
                 q.order = order_counter++;
@@ -163,7 +163,7 @@ Drawer.prototype.assign_leaf_order = function() {
             }
             q=n.Next();
         }
-        
+
         this.tree.num_leaves = order_counter;
         leaf_count = order_counter;
     }
@@ -226,18 +226,18 @@ Drawer.prototype.generate_tooltips = function() {
     $('#tooltip_content').html(empty_tooltip);
     $('#mouse_hover_scroll').css('top', '0');
 
-    for (var index = 1; index < layerdata.length; index++) 
+    for (var index = 1; index < layerdata.length; index++)
     {
         var params = layerdata[index];
         this.layerdata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        for (var i = 0; i < this.settings['layer-order'].length; i++) 
+        for (var i = 0; i < this.settings['layer-order'].length; i++)
         {
             var pindex = this.settings['layer-order'][i];
 
             if (layer_types[pindex] == 0) // check if parent
-            {   
+            {
                 if (layerdata[index][pindex] == '')
                 {
                     title.push('<td>parent</td><td>n/a</td>');
@@ -246,7 +246,7 @@ Drawer.prototype.generate_tooltips = function() {
                 {
                     title.push('<td>parent</td><td>' + layerdata[index][pindex] + '</td>');
                 }
-                
+
             }
             else if (layer_types[pindex] == 1) {
                 let stack_names = layerdata[0][pindex].split('!')[1].split(';');
@@ -254,7 +254,7 @@ Drawer.prototype.generate_tooltips = function() {
                 let layer_title = layerdata[0][pindex];
                 message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
-                    let bar_name = stack_names[j]; 
+                    let bar_name = stack_names[j];
                     message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][bar_name]}"></div>${bar_name}</td><td>${stack_items[j]}</td></tr>`;
                 }
                 message += '</table></td>';
@@ -277,7 +277,7 @@ Drawer.prototype.normalize_values = function() {
     // we will need this when calculating bar sizes
     this.param_max = {};
 
-    for (var id in this.layerdata_dict) 
+    for (var id in this.layerdata_dict)
     {
         this.iterate_layers(function(layer) {
             if (layer.is_categorical || layer.is_parent) {
@@ -291,7 +291,7 @@ Drawer.prototype.normalize_values = function() {
                 for (var j=0; j < stack_bar_items.length; j++) {
                     if (normalization == 'sqrt') {
                         stack_bar_items[j] = Math.sqrt(parseFloat(stack_bar_items[j]));
-                    } 
+                    }
                     else if (normalization == 'log') {
                         stack_bar_items[j] = log10(parseFloat(stack_bar_items[j]) + 1);
                     }
@@ -302,16 +302,16 @@ Drawer.prototype.normalize_values = function() {
             else { // numerical
                 if (isNumber(this.layerdata_dict[id][layer.index])) {
                     var normalization = layer.get_view_attribute('normalization');
-                    if (normalization == 'sqrt') 
+                    if (normalization == 'sqrt')
                     {
                         this.layerdata_dict[id][layer.index] = Math.sqrt(parseFloat(this.layerdata_dict[id][layer.index]));
                     }
-                    else if (normalization == 'log') 
+                    else if (normalization == 'log')
                     {
                         this.layerdata_dict[id][layer.index] = log10(parseFloat(this.layerdata_dict[id][layer.index]) + 1);
                     }
-                    
-                    if (!this.param_max.hasOwnProperty(layer.index)|| parseFloat(this.layerdata_dict[id][layer.index]) > parseFloat(this.param_max[layer.index])) 
+
+                    if (!this.param_max.hasOwnProperty(layer.index)|| parseFloat(this.layerdata_dict[id][layer.index]) > parseFloat(this.param_max[layer.index]))
                     {
                         this.param_max[layer.index] = parseFloat(this.layerdata_dict[id][layer.index]);
                     }
@@ -359,7 +359,7 @@ Drawer.prototype.calculate_bar_sizes = function() {
                 else // numerical data
                 {
                     var bar_size = isNumber(this.layerdata_dict[id][layer.index]) ? parseFloat(this.layerdata_dict[id][layer.index]) : 0;
-                                        
+
                     if (!min_max_disabled)
                     {
                         if (bar_size > max) {
@@ -379,11 +379,11 @@ Drawer.prototype.calculate_bar_sizes = function() {
                         }
                     }
                     else
-                    {  
+                    {
                         if ((min_new == null) || bar_size < min_new) {
                             min_new = bar_size;
                         }
-                        
+
                         if ((max_new == null) || bar_size > max_new) {
                             max_new = bar_size;
                         }
@@ -404,7 +404,7 @@ Drawer.prototype.calculate_bar_sizes = function() {
             if (min_max_disabled)
             {
                 $('#min' + layer.index).prop('disabled', false);
-                $('#max' + layer.index).val(max_new).prop('disabled', false);        
+                $('#max' + layer.index).val(max_new).prop('disabled', false);
             }
         }
     });
@@ -452,11 +452,11 @@ Drawer.prototype.collapse_nodes = function(node_list) {
             }
 
             var d = q.edge_length;
-            
+
             if (d < 0.00001) {
                 d = 0.0;
             }
-            
+
             if (q.ancestor == cnode) {
                 q.edge_length = d;
             } else {
@@ -569,7 +569,7 @@ Drawer.prototype.calculate_tree_coordinates = function() {
             if (d < 0.00001) {
                 d = 0.0;
             }
-            
+
             if (q != this.tree.root) {
                 q.path_length = q.ancestor.path_length + d;
             }
@@ -581,12 +581,12 @@ Drawer.prototype.calculate_tree_coordinates = function() {
         var n = new NodeIterator(this.tree.root);
         var p = n.Begin();
         while (p != null) {
-            if (p.IsLeaf()) 
+            if (p.IsLeaf())
             {
                 this.calculate_leaf_coordinate(p);
-            } 
+            }
             else
-            {   
+            {
                 this.calculate_internal_node_coordinate(p);
             }
             p = n.Next();
@@ -662,7 +662,7 @@ Drawer.prototype.calculate_internal_node_coordinate = function(p) {
         var right_angle = p.child.GetRightMostSibling().angle;
 
         p.angle = left_angle + (right_angle - left_angle) / 2;
-        
+
         if (this.tree.has_edge_lengths) {
             p.radius = this.root_length + (p.path_length / this.max_path_length) * ((this.radius / 2) - this.root_length);
         }
@@ -721,7 +721,7 @@ Drawer.prototype.draw_tree = function() {
         var n = new NodeIterator(this.tree.root);
         var p = n.Begin();
         while (p != null) {
-            if (p.IsLeaf()) 
+            if (p.IsLeaf())
             {
                 this.draw_leaf(p);
             }
@@ -737,6 +737,17 @@ Drawer.prototype.draw_tree = function() {
             var p = this.tree.leaves[i];
             p.backarc = p.xy;
             this.draw_leaf(p);
+        }
+    }
+
+    // a check is triggered if the user clicks `support_value_checkbox` AFTER
+    // drawing the tree. This one is here for those who first click, and then
+    // draw so the warning message is added retrospectively:
+
+    if (this.settings['show-support-values']) {
+        if (max_branch_support_value_seen == 0 || max_branch_support_value_seen == null){
+            $('#max_branch_support_value_seen_is_zero_warning').show();
+            $('#support_value_checkbox').prop("checked", false);
         }
     }
 };
@@ -764,6 +775,17 @@ Drawer.prototype.draw_leaf = function(p) {
 Drawer.prototype.draw_internal_node = function(p) {
     let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
 
+    let supportValueData = {
+        numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
+        colorRange : [ this.settings['support-color-low'], this.settings['support-color-high']],
+        showSymbol : this.settings['support-display-symbol'],
+        showNumber : this.settings['support-display-number'],
+        invertSymbol : this.settings['support-symbol-invert'],
+        maxRadius : this.settings['support-symbol-size'],
+        symbolColor : this.settings['support-symbol-color'],
+        fontSize : this.settings['support-font-size']
+    }
+
     if (this.settings['tree-type'] == 'circlephylogram')
     {
         var p0 = [];
@@ -782,15 +804,23 @@ Drawer.prototype.draw_internal_node = function(p) {
             // you can see same thing happening multiple times in this function.
             // ---
             // also actual line drawing should be placed before padding line drawing funtion.
-            // in an ideal world they should not share same element ID but they do to trigger 
+            // in an ideal world they should not share same element ID but they do to trigger
             // same mouse events. So when bin changes color first object with that ID changes color.
             // padding line should placed second to avoid that.
-            
+
             drawLine(this.tree_svg_id, p, p0, p1);
 
-            let line = drawLine(this.tree_svg_id, p, p0, p1);   
-            line.setAttribute('style', PADDING_STYLE);
+            // support value business happens here:
+            min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+            max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+            p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+            p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
+
+            let line = drawLine(this.tree_svg_id, p, p0, p1);
+            line.setAttribute('style', 'stroke:rgba(0,0,0,0);stroke-width:16;');
             line.classList.add('clone');
+
         }
         p0 = p.child.backarc;
         p1 = p.child.GetRightMostSibling().backarc;
@@ -835,6 +865,13 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         drawLine(this.tree_svg_id, p, p0, p1, true);
 
+        // support value business happens here:
+        min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+        max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+        p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+        p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
+
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
         line.setAttribute('style', PADDING_STYLE);
         line.classList.add('clone');
@@ -858,11 +895,11 @@ Drawer.prototype.draw_collapsed_node = function(p, attributes) {
         var tp1_y = p0['y'] - p.size / 3;
         var tp2_y = p0['y'] + p.size / 3;
 
-        drawRotatedText('tree_bin', 
+        drawRotatedText('tree_bin',
             {
-                'x': tp1_x + 20, 
+                'x': tp1_x + 20,
                 'y': (tp1_y + tp2_y) / 2
-            }, 
+            },
             p.label,
             0,
             'left',
@@ -891,11 +928,11 @@ Drawer.prototype.draw_collapsed_node = function(p, attributes) {
             angle += 180.0;
         }
 
-        drawRotatedText('tree_bin', 
+        drawRotatedText('tree_bin',
             {
-                'x': (_radius + 20) * Math.cos(p.angle), 
+                'x': (_radius + 20) * Math.cos(p.angle),
                 'y': (_radius + 20) * Math.sin(p.angle)
-            }, 
+            },
             p.label,
             angle,
             align,
@@ -920,7 +957,7 @@ Drawer.prototype.draw_root = function() {
         p1['x'] = 0;
         p1['y'] = p0['y'];
     }
-    
+
     drawLine(this.tree_svg_id, this.tree.root, p0, p1);
 };
 
@@ -932,7 +969,7 @@ Drawer.prototype.initialize_screen = function() {
     if (this.width == 0) {
         this.width = VIEWER_WIDTH;
     }
-    
+
     if (this.height == 0) {
         this.height = VIEWER_HEIGHT;
     }
@@ -962,11 +999,11 @@ Drawer.prototype.draw_categorical_layers = function() {
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
                 layer_items.push(this.layerdata_dict[q.label][layer.index]);
-            } 
-            else 
+            }
+            else
             {
                 var _label = (this.layerdata_dict[q.label][layer.index] == null) ? '' : this.layerdata_dict[q.label][layer.index];
-                
+
                 if (this.settings['tree-type'] == 'circlephylogram')
                 {
                     var align = 'left';
@@ -974,7 +1011,7 @@ Drawer.prototype.draw_categorical_layers = function() {
                     var offset_xy = [];
                     var _radius = this.layer_boundaries[layer.order][0] + this.layer_fonts[layer.order] * MONOSPACE_FONT_ASPECT_RATIO;
                     var font_gap = Math.atan(this.layer_fonts[layer.order] / _radius) / 3;
-                    
+
                     if ((q.angle > Math.PI / 2.0) && (q.angle < 1.5 * Math.PI)) {
                         align = 'right';
                         new_angle += 180.0;
@@ -982,20 +1019,20 @@ Drawer.prototype.draw_categorical_layers = function() {
                         offset_xy['y'] = Math.sin(q.angle - font_gap) * _radius;
                     } else {
                         offset_xy['x'] = Math.cos(q.angle + font_gap) * _radius;
-                        offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;       
+                        offset_xy['y'] = Math.sin(q.angle + font_gap) * _radius;
                     }
 
-                    drawRotatedText('layer_' + layer.order, 
-                                    offset_xy, 
-                                    _label, 
-                                    new_angle, 
+                    drawRotatedText('layer_' + layer.order,
+                                    offset_xy,
+                                    _label,
+                                    new_angle,
                                     align,
-                                    this.layer_fonts[layer.order], 
+                                    this.layer_fonts[layer.order],
                                     "monospace",
                                     layer.get_visual_attribute('color'),
                                     layer.get_visual_attribute('height'),
                                     'center');
-                } 
+                }
                 else
                 {
 
@@ -1004,9 +1041,9 @@ Drawer.prototype.draw_categorical_layers = function() {
                     offset_xy['x'] = _offsetx;
                     offset_xy['y'] = q.xy['y'] + this.layer_fonts[layer.order] / 4;
 
-                    drawRotatedText('layer_' + layer.order, 
-                                    offset_xy, 
-                                    _label, 
+                    drawRotatedText('layer_' + layer.order,
+                                    offset_xy,
+                                    _label,
                                     0,
                                     'left',
                                     this.layer_fonts[layer.order],
@@ -1027,7 +1064,7 @@ Drawer.prototype.draw_categorical_layers = function() {
             // and if it is 'null' we have to add something different.
 
             if (layer_items[layer_items.length-1] == null) {
-                layer_items.push(-1); 
+                layer_items.push(-1);
             } else {
                 layer_items.push(null)
             }
@@ -1061,7 +1098,7 @@ Drawer.prototype.draw_categorical_layers = function() {
                     if (_category_name == null || _category_name == '' || _category_name == 'null')
                         _category_name = 'None';
                     color = categorical_data_colors[layer.index][_category_name];
-                } 
+                }
                 else // parent
                 {
                     if (j % 2 == 1 && j == items_to_draw.length - 1)
@@ -1081,7 +1118,7 @@ Drawer.prototype.draw_categorical_layers = function() {
                         'categorical_' + layer.order + '_' + j, // path_<layer>_<id>
                         start.angle - start.size / 2,
                         end.angle + end.size / 2,
-                        this.layer_boundaries[layer.order][0], 
+                        this.layer_boundaries[layer.order][0],
                         this.layer_boundaries[layer.order][1],
                         (end.angle - start.angle + (end.size / 2) + (start.size / 2) > Math.PI) ? 1 : 0,
                         color,
@@ -1111,14 +1148,14 @@ Drawer.prototype.calculate_layer_boundaries = function() {
     this.layer_boundaries = new Array();
 
     if (this.settings['tree-type'] == 'phylogram') {
-        if (this.has_tree) 
+        if (this.has_tree)
         {
             this.layer_boundaries.push([0, this.height]);
         }
         else
         {
             this.layer_boundaries.push([0, 0]);
-        } 
+        }
     }
     else
     {
@@ -1190,8 +1227,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
                 this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
                 '#ffffff',
                 0,
-                true);  
-        } 
+                true);
+        }
         else
         {
             var _first = this.tree.leaves[0];
@@ -1308,8 +1345,8 @@ Drawer.prototype.draw_numerical_layers = function() {
                         q.size,
                         this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
                         getGradientColor(
-                            layer.get_visual_attribute('color-start'), 
-                            layer.get_visual_attribute('color'),  
+                            layer.get_visual_attribute('color-start'),
+                            layer.get_visual_attribute('color'),
                             this.layerdata_dict[q.label][layer.index] / layer.get_visual_attribute('height')
                         ),
                         1,
@@ -1322,8 +1359,8 @@ Drawer.prototype.draw_numerical_layers = function() {
                         {
                             if (q.order == 0 || (q.order > 0 && this.layerdata_dict[this.tree.leaves[i-1].label][layer.index] == 0)) {
                                 numeric_cache.push(
-                                    "M", 
-                                    this.layer_boundaries[layer.order][1], 
+                                    "M",
+                                    this.layer_boundaries[layer.order][1],
                                     q.xy['y'] - q.size / 2
                                     );
                             }
@@ -1331,27 +1368,27 @@ Drawer.prototype.draw_numerical_layers = function() {
                             if (layer.get_visual_attribute('type') == 'line')
                             {
                                 numeric_cache.push(
-                                    "L", 
-                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                    "L",
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index],
                                     q.xy['y']
                                     );
                             }
                             else
                             {
                                 numeric_cache.push(
-                                    "L", 
-                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                                    q.xy['y'] - q.size / 2, 
-                                    "L", 
-                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                    "L",
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index],
+                                    q.xy['y'] - q.size / 2,
+                                    "L",
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index],
                                     q.xy['y'] + q.size / 2
                                     );
                             }
 
                             if ((q.order == this.tree.leaves.length - 1) || (q.order < (this.tree.leaves.length - 1) && this.layerdata_dict[this.tree.leaves[i+1].label][layer.index] == 0)) {
                                 numeric_cache.push(
-                                    "L", 
-                                    this.layer_boundaries[layer.order][1], 
+                                    "L",
+                                    this.layer_boundaries[layer.order][1],
                                     q.xy['y'] + q.size / 2,
                                     "Z"
                                     );
@@ -1381,12 +1418,12 @@ Drawer.prototype.draw_numerical_layers = function() {
                         q.id,
                         q.angle - q.size / 2,
                         q.angle + q.size / 2,
-                        this.layer_boundaries[layer.order][0], 
+                        this.layer_boundaries[layer.order][0],
                         this.layer_boundaries[layer.order][1],
                         (Math.abs(q.size) > Math.PI) ? 1 : 0,
                         getGradientColor(
-                            layer.get_visual_attribute('color-start'), 
-                            layer.get_visual_attribute('color'),  
+                            layer.get_visual_attribute('color-start'),
+                            layer.get_visual_attribute('color'),
                             this.layerdata_dict[q.label][layer.index] / layer.get_visual_attribute('height')
                         ),
                         1,
@@ -1407,7 +1444,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 var ay = Math.sin(start_angle) * inner_radius;
 
                                 numeric_cache.push("M", ax, ay);
-                                previous_non_zero_order = q.order; 
+                                previous_non_zero_order = q.order;
                             }
 
                             if (layer.get_visual_attribute('type') == 'line') {
@@ -1423,7 +1460,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
                                 var cx = Math.cos(end_angle) * outer_radius;
                                 var cy = Math.sin(end_angle) * outer_radius;
-                                
+
                                 numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
                             }
 
@@ -1437,7 +1474,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
                                 var ex = Math.cos(first_node_start_angle) * inner_radius;
                                 var ey = Math.sin(first_node_start_angle) * inner_radius;
-                                
+
                                 numeric_cache.push("A", inner_radius, inner_radius, 1, is_large_angle(end_angle, first_node_start_angle), 0, ex, ey, "Z");
                             }
                         }
@@ -1449,7 +1486,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 q.id,
                                 q.angle - q.size / 2,
                                 q.angle + q.size / 2,
-                                this.layer_boundaries[layer.order][0], 
+                                this.layer_boundaries[layer.order][0],
                                 this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index],
                                 0,
                                 layer.get_visual_attribute('color'),
@@ -1468,7 +1505,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
             if (layer.get_visual_attribute('type') == 'line') {
                 path.setAttribute('stroke', layer.get_visual_attribute('color-start'));
-                path.setAttribute('stroke-width', '1px');  
+                path.setAttribute('stroke-width', '1px');
                 path.setAttribute('vector-effect', 'non-scaling-stroke');
                 path.setAttribute('fill', layer.get_visual_attribute('color'));
             }
@@ -1510,27 +1547,27 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                         path_cache[j] = [];
                         path_cache[j].push(
                             "M",
-                            this.layer_boundaries[layer.order][1], 
+                            this.layer_boundaries[layer.order][1],
                             q.xy['y'] - q.size / 2
                             );
                     }
 
                     path_cache[j].push(
-                        "L", 
-                        this.layer_boundaries[layer.order][1] - stack_item_value - offset, 
-                        q.xy['y'] - q.size / 2, 
-                        "L", 
-                        this.layer_boundaries[layer.order][1] - stack_item_value - offset, 
+                        "L",
+                        this.layer_boundaries[layer.order][1] - stack_item_value - offset,
+                        q.xy['y'] - q.size / 2,
+                        "L",
+                        this.layer_boundaries[layer.order][1] - stack_item_value - offset,
                         q.xy['y'] + q.size / 2
                         );
 
                     if (q.order == (this.tree.leaves.length - 1)) {
                         path_cache[j].push(
-                            "L", 
-                            this.layer_boundaries[layer.order][1], 
+                            "L",
+                            this.layer_boundaries[layer.order][1],
                             q.xy['y'] + q.size / 2,
                             "Z"
-                            );   
+                            );
                     }
                 }
                 else
@@ -1547,7 +1584,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                         var ax = Math.cos(start_angle) * inner_radius;
                         var ay = Math.sin(start_angle) * inner_radius;
 
-                        path_cache[j].push("M", ax, ay); 
+                        path_cache[j].push("M", ax, ay);
                     }
 
                     var bx = Math.cos(start_angle) * outer_radius;
@@ -1565,16 +1602,16 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                         var _min = Math.toRadians(this.settings['angle-min']);
                         var _max = Math.toRadians(this.settings['angle-max']);
 
-                        path_cache[j].push("L", bx, by, 
-                            "A", inner_radius, inner_radius, 0, is_large_angle(_min, _max), 0, path_cache[j][1], path_cache[j][2], 
+                        path_cache[j].push("L", bx, by,
+                            "A", inner_radius, inner_radius, 0, is_large_angle(_min, _max), 0, path_cache[j][1], path_cache[j][2],
                             "Z");
                     }
                 }
-                
+
                 offset += stack_item_value;
             }
         }
-        
+
         let layer_name = getLayerName(layer.index);
         let bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
 
@@ -1588,7 +1625,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
             path.setAttribute('d', path_cache[j].join(' '));
 
             var layer_group = document.getElementById('layer_' + layer.order);
-            layer_group.appendChild(path); 
+            layer_group.appendChild(path);
         }
     }.bind(this));
 };
@@ -1603,7 +1640,7 @@ Drawer.prototype.initialize_tree_observer = function() {
 };
 
 Drawer.prototype.draw_layer_names = function() {
-    
+
     createBin('tree_bin', 'layer_labels');
 
     this.iterate_layers(function(layer) {
@@ -1629,8 +1666,8 @@ Drawer.prototype.draw_layer_names = function() {
             var textobj = drawFixedWidthText('layer_labels', {
                     'x': cx,
                     'y': cy
-                }, 
-                layer_title, 
+                },
+                layer_title,
                 font_size + 'px',
                 layer.get_visual_attribute('color'),
                 total_radius,
@@ -1642,16 +1679,16 @@ Drawer.prototype.draw_layer_names = function() {
         {
             drawRotatedText('layer_labels', {
                 'x': this.layer_boundaries[layer.order][1] - (height / 2) + (font_size * 1/3),
-                'y': this.width + 40,  
-                }, 
-                layer_title, 
-                -90, 
-                'right', 
-                font_size + 'px', 
-                'sans-serif', 
-                layer.get_visual_attribute('color'), 
-                0, 
-                'baseline');   
+                'y': this.width + 40, 
+                },
+                layer_title,
+                -90,
+                'right',
+                font_size + 'px',
+                'sans-serif',
+                layer.get_visual_attribute('color'),
+                0,
+                'baseline');
         }
     }.bind(this));
 };
