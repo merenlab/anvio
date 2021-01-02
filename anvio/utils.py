@@ -659,7 +659,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         f.write(f"|{header_text.replace(tab, '|')}|\n")
         f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
     else:
-        f.write('{header_text}\n')
+        f.write(f"{header_text}\n")
 
     if not keys_order:
         keys_order = sorted(d.keys())
