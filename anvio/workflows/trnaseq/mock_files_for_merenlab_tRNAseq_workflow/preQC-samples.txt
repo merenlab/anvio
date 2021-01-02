@@ -1,4 +1,0 @@
-sample	group	demethylase_r1	demethylase_r2	untreated_r1	untreated_r2
-sample-01	G01	three_tRNAseq_samples_example/sample-01-DM-R1.fastq.gz	three_tRNAseq_samples_example/sample-01-DM-R2.fastq.gz	three_tRNAseq_samples_example/sample-01-noDM-R1.fastq.gz	three_tRNAseq_samples_example/sample-01-noDM-R2.fastq.gz
-sample-02	G02	three_tRNAseq_samples_example/sample-02-DM-R1.fastq.gz	three_tRNAseq_samples_example/sample-02-DM-R2.fastq.gz	NA	NA
-sample-03	G02	NA	NA	three_tRNAseq_samples_example/sample-03-noDM-R1.fastq.gz	three_tRNAseq_samples_example/sample-03-noDM-R2.fastq.gz

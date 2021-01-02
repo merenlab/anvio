@@ -19,6 +19,9 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+pp = terminal.pretty_print
+
+
 class Agglomerator:
     def __init__(self, seq_names, seq_strings, num_threads=1, progress=None):
         """This class agglomerates sequences into clusters.
@@ -35,13 +38,13 @@ class Agglomerator:
             Number of threads available for alignment
 
         progress : terminal.Progress object, None
-            An existing Progress object to be updated
-            With the default of None, no progress will be printed.
         """
-
         self.seq_names = seq_names
         self.seq_strings = seq_strings
         self.num_threads = num_threads
+        if not progress:
+            progress = terminal.Progress()
+            progress.new("Agglomerating")
         self.progress = progress
         self.agglom_aligned_query_dict = None
         self.agglom_aligned_ref_dict = None
@@ -84,9 +87,7 @@ class Agglomerator:
         agglomeration_progress_interval : int, 10000
             The number of alignment references remapped between progress statements
         """
-
-        if self.progress:
-            self.progress.update("Aligning sequences to themselves")
+        self.progress.update("Aligning sequences to themselves")
 
         if priority_function is None:
             priority_function = lambda aligned_ref: (-len(aligned_ref.seq_string),
@@ -108,8 +109,7 @@ class Agglomerator:
         for agglom_aligned_query in agglom_aligned_query_dict.values():
             agglom_aligned_query.alignments = []
 
-        if self.progress:
-            self.progress.update("Agglomerating alignments")
+        self.progress.update("Agglomerating alignments")
 
         # Agglomerated clusters should preferentially be seeded
         # by the longest reference sequences with the most alignments.
@@ -133,10 +133,9 @@ class Agglomerator:
                 # The reference sequence has already been processed,
                 # as it mapped to another reference sequence that had been processed.
                 processed_input_count += 1
-                if self.progress:
-                    if processed_input_count % agglom_progress_interval == 0:
-                        self.progress.update("%d/%d sequences processed in agglomerative remapping"
-                                             % (processed_input_count, total_input_count))
+                if processed_input_count % agglom_progress_interval == 0:
+                    self.progress.update("%s/%s sequences processed in agglomerative remapping"
+                                         % (pp(processed_input_count), pp(total_input_count)))
                 continue
 
             processed_ref_dict[name] = agglom_ref_priority
@@ -282,14 +281,12 @@ class Agglomerator:
 
             agglom_aligned_refs.append(agglom_aligned_ref)
             processed_input_count += 1
-            if self.progress:
-                if processed_input_count % agglom_progress_interval == 0:
-                    self.progress.update("%d/%d sequences processed in agglomerative remapping"
-                                         % (processed_input_count, total_input_count))
-        if self.progress:
-            if processed_input_count % agglom_progress_interval != 0:
-                self.progress.update("%d/%d sequences processed in agglomerative remapping"
-                                     % (total_input_count, total_input_count))
+            if processed_input_count % agglom_progress_interval == 0:
+                self.progress.update("%s/%s sequences processed in agglomerative remapping"
+                                     % (pp(processed_input_count), pp(total_input_count)))
+        if processed_input_count % agglom_progress_interval != 0:
+            self.progress.update("%s/%s sequences processed in agglomerative remapping"
+                                 % (pp(total_input_count), pp(total_input_count)))
 
         agglom_aligned_ref_dict = {ref.name: ref for ref in agglom_aligned_refs}
 

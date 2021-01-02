@@ -27,53 +27,54 @@ dirs_dict = M.dirs_dict
 
 
 rule trnaseq_workflow_target_rule:
-    """The target rule for the workflow"""
+    """The target rule for the workflow, automatically detected as such by snakemake, being the first rule."""
     input: M.target_files
 
 
 rule make_iu_input:
-    """Create an Illumina-utils samples file from samples_txt (run once)."""
-
+    """Create an Illumina-utils samples file for each sequence library."""
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
-    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
-    # when the samples_txt file has been changed.
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-make_iu_input.log")
+    # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
+    # paths of the FASTQ files have changed.
     input: ancient(M.get_param_value_from_config(['samples_txt']))
-    output: os.path.join(dirs_dict['QC_DIR'], "iu_samples_input.txt")
+    output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "iu_samples_input.txt")
     threads: M.T('make_iu_input')
     resources: nodes = M.T('make_iu_input')
     run:
-        samples_txt_df = pd.read_csv(input[0], sep='\t', index_col=False)
-        iu_samples_input_df = samples_txt_df[['r1', 'r2']] # r1 and r2 filepaths
-        iu_samples_input_df['sample'] = samples_txt_df['sample'] + '_' + samples_txt_df['split'] # e.g., sample1_demethylase, sample1_untreated
-        iu_samples_input_df[['sample', 'r1', 'r2']].to_csv(output[0], sep='\t', index=False) # reorder columns
+        library_num = M.sample_names.index(wildcards.sample_name)
+        r1_path = M.r1_paths[library_num]
+        r2_path = M.r2_paths[library_num]
+        iu_samples_input_df = pd.DataFrame([[wildcards.sample_name, r1_path, r2_path]], columns=['sample', 'r1', 'r2'])
+        iu_samples_input_df.to_csv(output[0], sep='\t', index=False)
 
 
 rule iu_gen_configs:
-    """Create an Illumina-utils config file for each sample+split pair from the Illumina-utils samples file (run once)."""
+    """Create an Illumina-utils config file from each Illumina-utils samples file representing each sequence library."""
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
-    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
-    # when the iu_samples_input file has been changed.
-    input: ancient(os.path.join(dirs_dict["QC_DIR"], "iu_samples_input.txt"))
-    output: expand(os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini"), sample_split_prefix=M.sample_split_prefixes)
-    params:
-        DIR = dirs_dict['QC_DIR'],
-        r1_prefix = M.get_rule_param('iu_gen_configs', '--r1-prefix'), # regex-formatted adapter tag at the beginning of the forward read, e.g., "^...AAGT"
-        r2_prefix = M.get_rule_param('iu_gen_configs', '--r2-prefix') # regex-formatted adapter tag at the beginning of the reverse read
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-iu_gen_configs.log")
+    # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
+    # paths of the FASTQ files have changed.
+    input: ancient(rules.make_iu_input.output)
+    output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
     threads: M.T('iu_gen_configs')
     resources: nodes = M.T('iu_gen_configs')
-    shell: "iu-gen-configs {input} -o {params.DIR} {params.r1_prefix} {params.r2_prefix} >> {log} 2>&1"
+    run:
+        out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
+        library_num = M.sample_names.index(wildcards.sample_name)
+        r1_prefix = M.r1_prefixes[library_num]
+        r2_prefix = M.r2_prefixes[library_num]
+        shell("iu-gen-configs {input} -o {out_dir} --r1-prefix %s --r2-prefix %s >> {log} 2>&1" % (r1_prefix, r2_prefix))
 
 
 rule iu_merge_pairs:
     """Merge paired-end reads using Illumina-utils."""
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
-    input: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.ini")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_merge_pairs.log")
+    input: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
     output:
-        merged = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED")) if M.gzip_iu_merge_pairs_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED"),
-        stats = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS")
+        merged = temp(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_MERGED")) if M.gzip_iu_merge_pairs_output else os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_MERGED"),
+        stats = os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
         max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
@@ -84,20 +85,21 @@ rule iu_merge_pairs:
     run:
         shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
         if M.gzip_iu_merge_pairs_output:
+            out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
             shell("gzip -k {output.merged} >> {log} 2>&1")
-            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED"))
-            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED_WITH_Ns"))
+            shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
+            shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
             if params.report_r1_prefix:
-                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"))
+                shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R1_PREFIX"))
             if params.report_r2_prefix:
-                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R2_PREFIX"))
+                shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R2_PREFIX"))
 
 
 rule gen_qc_report:
     """Report all quality control statistics (run once)."""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
-    input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS"), sample_split_prefix=M.sample_split_prefixes)
+    input: expand(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_STATS"), sample_name=M.sample_names)
     output: report = os.path.join(dirs_dict['QC_DIR'], "qc_report.txt") # optional target file that triggers Illumina-utils QC steps
     threads: M.T('gen_qc_report')
     resources: nodes = M.T('gen_qc_report')
@@ -105,8 +107,8 @@ rule gen_qc_report:
         report_dict = {}
         headers = []
         for i, filename in enumerate(input):
-            sample_split = os.path.basename(filename).split("_STATS")[0]
-            report_dict[sample_split] = {}
+            sample_name = os.path.basename(filename).split("_STATS")[0]
+            report_dict[sample_name] = {}
             file_headers = []
             with open(filename) as f:
                 firstline = True
@@ -117,7 +119,7 @@ rule gen_qc_report:
                     header = line_frags[0]
                     file_headers.append(header)
                     number = line_frags[1].split('\t')[1]
-                    report_dict[sample_split][header] = number
+                    report_dict[sample_name][header] = number
             if i == 0:
                 headers = file_headers
             else:
@@ -126,7 +128,7 @@ rule gen_qc_report:
                                       "indicates an inconsistency in how files were processed by 'iu-merge-pairs'. "
                                       "These files, for example, have a difference between their headers: "
                                       "%s and %s" % (input[i], input[i - 1]))
-        u.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample + split'] + headers)
+        u.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample'] + headers)
 
 
 def gunzip_fasta(fasta, log):
@@ -138,11 +140,11 @@ def gunzip_fasta(fasta, log):
 rule anvi_reformat_fasta:
     """Reformat the FASTA file with Anvi\'o-compliant deflines."""
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-reformat_fasta.log")
     input: M.get_input_for_anvi_reformat_fasta
     output:
-        fasta = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta")) if M.gzip_anvi_reformat_fasta_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta"),
-        report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformat_report.txt") # optional target file that triggers reformatting
+        fasta = temp(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}-reformatted.fasta")) if M.gzip_anvi_reformat_fasta_output else os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}-reformatted.fasta"),
+        report = os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}-reformat_report.txt") # optional target file that triggers reformatting
     threads: M.T('anvi_reformat_fasta')
     resources: nodes = M.T('anvi_reformat_fasta')
     params:
@@ -161,44 +163,82 @@ rule anvi_reformat_fasta:
 
 rule anvi_trnaseq:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_trnaseq.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-anvi_trnaseq.log")
     input: M.get_input_for_anvi_trnaseq
-    output:
-        uniqued_nontrna_supplement = os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}"), "{sample_split_prefix}-UNIQUED_NONTRNA.txt"),
-        trimmed_ends_supplement = os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}"), "{sample_split_prefix}-TRIMMED_ENDS.txt")
+    output: touch(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}.done"))
     threads: M.T('anvi_trnaseq')
     resources: nodes = M.T('anvi_trnaseq')
     params:
         overwrite_output_destinations = M.get_rule_param('anvi_trnaseq', '--overwrite-output-destinations'),
         description = M.get_rule_param('anvi_trnaseq', '--description'),
-        skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
         write_checkpoints = M.get_rule_param('anvi_trnaseq', '--write-checkpoints'),
         load_checkpoint = M.get_rule_param('anvi_trnaseq', '--load-checkpoint'),
-        write_buffer_size = M.get_rule_param('anvi_trnaseq', '--write-buffer-size'),
-        alignment_target_chunk_size = M.get_rule_param('anvi_trnaseq', '--alignment-target-chunk-size'),
-        fragment_mapping_query_chunk_length = M.get_rule_param('anvi_trnaseq', '--fragment-mapping-query-chunk-length'),
         feature_param_file = M.get_rule_param('anvi_trnaseq', '--feature-param-file'),
         min_length_long_fiveprime = M.get_rule_param('min_length_long_fiveprime', '--min-length-long-fiveprime'),
         min_trna_fragment_size = M.get_rule_param('anvi_trnaseq', '--min-trna-fragment-size'),
         agglomeration_max_mismatch_freq = M.get_rule_param('anvi_trnaseq', '--agglomeration-max-mismatch-freq'),
-        min_modification_count = M.get_rule_param('anvi_trnaseq', '--min-modification-count'),
-        min_modification_fraction = M.get_rule_param('anvi_trnaseq', '--min-modification-fraction'),
-        max_deletion_size = M.get_rule_param('anvi_trnaseq', '--max-deletion-size'),
+        skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
+        write_buffer_size = M.get_rule_param('anvi_trnaseq', '--write-buffer-size'),
+        alignment_target_chunk_size = M.get_rule_param('anvi_trnaseq', '--alignment-target-chunk-size'),
+        fragment_mapping_query_chunk_length = M.get_rule_param('anvi_trnaseq', '--fragment-mapping-query-chunk-length'),
         alignment_progress_interval = M.get_rule_param('anvi_trnaseq', '--alignment-progress-interval'),
-        agglomeration_progress_interval = M.get_rule_param('anvi_trnaseq', '--agglomeration-progress-interval')
+        agglomeration_progress_interval = M.get_rule_param('anvi_trnaseq', '--agglomeration-progress-interval'),
+        fiveprimemost_del_start = M.get_rule_param('anvi_trnaseq', '--fiveprimemost-deletion-start'),
+        threeprimemost_del_start = M.get_rule_param('anvi_trnaseq', '--threeprimemost-deletion-start'),
+        fiveprimemost_del_stop = M.get_rule_param('anvi_trnaseq', '--fiveprimemost-deletion-stop'),
+        threeprimemost_del_stop = M.get_rule_param('anvi_trnaseq', '--threeprimemost-deletion-stop'),
+        max_distinct_dels = M.get_rule_param('anvi_trnaseq', '--max-distinct-deletions')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
-        output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
-<<<<<<< HEAD
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.overwrite_output_destinations} {params.description} {params.skip_fasta_check} {params.write_checkpoints} {params.load_checkpoint} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.feature_param_file} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.min_modification_count} {params.min_modification_fraction} {params.max_deletion_size} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
-=======
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.overwrite_output_destinations} {params.description} {params.skip_fasta_check} {params.write_checkpoints} {params.load_checkpoint} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.feature_param_file} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.max_deletion_size} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
->>>>>>> master
+        output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_name)
+        library_num = M.sample_names.index(wildcards.sample_name)
+        treatment = M.treatments[library_num]
+        shell("anvi-trnaseq --fasta-file %s --sample-name {wildcards.sample_name} --output-dir %s --treatment %s {params.overwrite_output_destinations} {params.description} {params.write_checkpoints} {params.load_checkpoint} {params.feature_param_file} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.fiveprimemost_del_start} {params.threeprimemost_del_start} {params.fiveprimemost_del_stop} {params.threeprimemost_del_stop} {params.skip_fasta_check} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir, treatment))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
+
+
+rule anvi_convert_trnaseq_database:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_convert_trnaseq_database.log")
+    input: expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}.done"), sample_name=M.sample_names)
+    output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "CONVERT.done"))
+    threads: M.T('anvi_convert_trnaseq_database')
+    resources: nodes = M.T('anvi_convert_trnaseq_database')
+    params:
+        trnaseq_db_paths = expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}-TRNASEQ.db"), sample_name=M.sample_names),
+        project_name = M.get_rule_param('anvi_convert_trnaseq_database', '--project-name'),
+        output_dir = os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])),
+        max_reported_trna_seeds = M.get_rule_param('anvi_convert_trnaseq_database', '--max-reported-trna-seeds'),
+        overwrite_output_destinations = M.get_rule_param('anvi_convert_trnaseq_database', '--overwrite-output-destinations'),
+        description = M.get_rule_param('anvi_convert_trnaseq_database', '--description'),
+        feature_threshold = M.get_rule_param('anvi_convert_trnaseq_database', '--feature-threshold'),
+        preferred_treatment = M.get_rule_param('anvi_convert_trnaseq_database', '--preferred-treatment'),
+        nonspecific_output = M.get_rule_param('anvi_convert_trnaseq_database', '--nonspecific-output'),
+        min_variation = M.get_rule_param('anvi_convert_trnaseq_database', '--min-variation'),
+        min_third_fourth_nt = M.get_rule_param('anvi_convert_trnaseq_database', '--min-third-fourth-nt'),
+        distance = M.get_rule_param('anvi_convert_trnaseq_database', '--distance'),
+        linkage = M.get_rule_param('anvi_convert_trnaseq_database', '--linkage'),
+    shell: "anvi-convert-trnaseq-database {params.trnaseq_db_paths} --output-dir {params.output_dir} {params.project_name} {params.max_reported_trna_seeds} {params.overwrite_output_destinations} {params.description} {params.feature_threshold} {params.preferred_treatment} {params.nonspecific_output} {params.min_variation} {params.min_third_fourth_nt} {params.distance} {params.linkage} >> {log} 2>&1"
+
+
+rule anvi_run_trna_taxonomy:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_trna_taxonomy.log")
+    input: rules.anvi_convert_trnaseq_database.output
+    output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
+    threads: M.T('anvi_run_trna_taxonomy')
+    resources: nodes = M.get_param_value_from_config(['anvi_run_trna_taxonomy', '--num-parallel-processes'])
+    params:
+        contigs_db_path = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'CONTIGS.db'),
+        min_percent_identity = M.get_rule_param('anvi_run_trna_taxonomy', '--min-percent-identity'),
+        max_num_target_sequences = M.get_rule_param('anvi_run_trna_taxonomy', '--max-num-target-sequences'),
+        write_buffer_size = M.get_rule_param('anvi_run_trna_taxonomy', '--write-buffer-size'),
+        all_hits_output_file = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'TAXONOMY-HITS.txt')
+    shell: "anvi-run-trna-taxonomy -c {params.contigs_db_path} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -P {resources.nodes} -T {threads} >> {log} 2>&1"
 
 
 if 'workflows/trnaseq' in workflow.included[0]:
