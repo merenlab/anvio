@@ -764,6 +764,17 @@ Drawer.prototype.draw_leaf = function(p) {
 Drawer.prototype.draw_internal_node = function(p) {
     let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
 
+    let supportValueData = {
+        numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
+        colorRange : [ this.settings['support-color-low'], this.settings['support-color-high']],
+        showSymbol : this.settings['support-display-symbol'],
+        showNumber : this.settings['support-display-number'],
+        invertSymbol : this.settings['support-symbol-invert'],
+        maxRadius : this.settings['support-symbol-size'],
+        symbolColor : this.settings['support-symbol-color'],
+        fontSize : this.settings['support-font-size']
+    }
+
     if (this.settings['tree-type'] == 'circlephylogram')
     {
         var p0 = [];
@@ -787,18 +798,6 @@ Drawer.prototype.draw_internal_node = function(p) {
             // padding line should placed second to avoid that.
 
             drawLine(this.tree_svg_id, p, p0, p1);
-
-            let supportValueData = {
-                numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
-                colorRange : [ this.settings['support-color-low'], this.settings['support-color-high']],
-                showSymbol : this.settings['support-display-symbol'],
-                showNumber : this.settings['support-display-number'],
-                invertSymbol : this.settings['support-symbol-invert'],
-                maxRadius : this.settings['support-symbol-size'],
-                symbolColor : this.settings['support-symbol-color'],
-                fontSize : this.settings['support-font-size']
-            }
-
 
             this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
             // renders support value SVG circle at each tree bifurcation
