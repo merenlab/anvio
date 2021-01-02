@@ -739,6 +739,17 @@ Drawer.prototype.draw_tree = function() {
             this.draw_leaf(p);
         }
     }
+
+    // a check is triggered if the user clicks `support_value_checkbox` AFTER
+    // drawing the tree. This one is here for those who first click, and then
+    // draw so the warning message is added retrospectively:
+
+    if (this.settings['show-support-values']) {
+        if (max_branch_support_value_seen == 0 || max_branch_support_value_seen == null){
+            $('#max_branch_support_value_seen_is_zero_warning').show();
+            $('#support_value_checkbox').prop("checked", false);
+        }
+    }
 };
 
 Drawer.prototype.draw_leaf = function(p) {
