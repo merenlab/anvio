@@ -7,13 +7,16 @@ SETUP_WITH_OUTPUT_DIR $1 $2
 
 INFO "Writing tRNA feature parameterization file"
 anvi-trnaseq --default-feature-param-file ${output_dir}/DEFAULT-PARAMS.txt
+anvi-trnaseq --print-default-feature-params
 
 INFO "Analyzing each sample FASTA of merged tRNA reads"
 for sample in S01 S02
 do
     for split in untreated demethylase
     do
-        anvi-trnaseq -f ${files}/TRNASEQ-SAMPLE-${sample}_${split}.fa \
+        gzip -cd ${files}/TRNASEQ-SAMPLE-${sample}_${split}.fa.gz > \
+                 ${output_dir}/TRNASEQ-SAMPLE-${sample}_${split}.fa
+        anvi-trnaseq -f ${output_dir}/TRNASEQ-SAMPLE-${sample}_${split}.fa \
                      -S ${sample}_${split} \
                      -o ${output_dir}/${sample}_${split} \
                      --treatment ${split} \
