@@ -217,11 +217,17 @@
                                 </div>
 
                             <span class="settings-header" >Branch Support</span>
+                               <div id="max_branch_support_value_seen_is_zero_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                   You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                   tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
+                               </div>
+
                                 <div class="form-group form-margin" >
                                     <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
                                     <div class="col-md-8">
                                         <input type="checkbox"
-                                                onchange="emit('bin-settings-changed') ;if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
+                                                onclick="checkMaxSupportValueSeen();"
+                                                onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
                                                 id="support_value_checkbox"
                                                 value="true"
                                                 >
@@ -286,6 +292,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>

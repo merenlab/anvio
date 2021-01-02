@@ -2839,6 +2839,29 @@ function showGenePopup(element, gene_callers_id) {
     });
 }
 
+function checkMaxSupportValueSeen() {
+    if (max_branch_support_value_seen == null){
+        if (a_display_is_drawn){
+            // a display is drawn, but `max_branch_support_value_seen` is zero, which means
+            // there is no dendrogram here. probably the user used a linear order.
+            $('#max_branch_support_value_seen_is_zero_warning').show();
+            $('#support_value_checkbox').prop("checked", false);
+        } else {
+            // we know nothing Jon Snow.
+            return;
+        }
+    } else if (max_branch_support_value_seen == 0 && $('#support_value_checkbox').is(':checked')) {
+        // this means we alrady know min/max values for branch support (`max_branch_support_value_seen`
+        // is not `null`) but the max is zero. bad news.
+        $('#max_branch_support_value_seen_is_zero_warning').show();
+        $('#support_value_checkbox').prop("checked", false);
+    } else {
+        // set the min/max values since we clearly know them by now.
+        $('#support_range_low').val(min_branch_support_value_seen);
+        $('#support_range_high').val(max_branch_support_value_seen);
+    }
+}
+
 function toggleTaxonomyEstimation() {
     let is_checked = $('#estimate_taxonomy').is(':checked');
 
