@@ -76,6 +76,7 @@ var sequences_available = false;
 var load_full_state = false;
 var bbox;
 
+var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
 var min_branch_support_value_seen = null;
 
@@ -1612,6 +1613,9 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
+
+                a_display_is_drawn = true;
+
                 waitingDialog.hide();
             },
         });
