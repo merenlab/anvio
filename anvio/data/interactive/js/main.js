@@ -2516,7 +2516,31 @@ function processState(state_name, state) {
         $('#begins_from_branch').val(state['begins-from-branch'])
     }
 
-    // TODO add conditional for checkbox here
+    // bootstrap values
+    if (state.hasOwnProperty('show-support-values')){
+        $('#support_value_checkbox').prop('checked', state['show-support-values'])
+    }
+    if (state.hasOwnProperty('support-range-low')){
+        $('#support_range_low').val(state['support-range-low'])
+    }
+    if (state.hasOwnProperty('support-range-high')){
+        $('#support_range_high').val(state['support-range-high'])
+    }
+    if (state.hasOwnProperty('support-display-symbol')){
+        $('#support_display_symbol').prop('checked', state['support-display-symbol'])
+    }
+    if (state.hasOwnProperty('support-symbol-invert')){
+        $('#support_invert_symbol').prop('checked', state['support-symbol-invert'])
+    }
+    if (state.hasOwnProperty('support-symbol-color')){
+        $('#support_symbol_color').attr('color', state['support-symbol-color'])
+    }
+    if (state.hasOwnProperty('support-symbol-size')){
+        $('#support_symbol_size').val(state['support-symbol-size'])
+    }
+    if (state.hasOwnProperty('support-display-number')){
+        $('#support_display_number').prop('checked', state['support-display-number'])
+    }
 
     // reload layers
     var current_view = $('#views_container').val();
