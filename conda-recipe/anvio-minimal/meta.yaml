@@ -1,4 +1,4 @@
-{% set version = "7_rc" %}
+{% set version = "7" %}
 
 package:
   name: anvio-minimal

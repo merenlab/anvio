@@ -2,16 +2,17 @@
 # to clean up your docker (although please note that it will remove all existing containers
 # and cached states):
 #
-# docker rmi --force $(docker images -a --filter=dangling=true -q)
-# docker rm --force $(docker ps --filter=status=exited --filter=status=created -q)
-# docker system prune --force -a
+#     docker rmi --force $(docker images -a --filter=dangling=true -q)
+#     docker rm --force $(docker ps --filter=status=exited --filter=status=created -q)
+#     docker system prune --force -a
 #
 # after that, you can start the build with the following:
 #
-# BUILDKIT_PROGRESS=plain docker build -t meren/anvio:test-build .
+#     BUILDKIT_PROGRESS=plain docker build -t meren/anvio:$ANVIO_VERSION .
+#
 
 FROM continuumio/miniconda3:4.9.2
-ENV ANVIO_VERSION "7_rc"
+ENV ANVIO_VERSION "7"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
