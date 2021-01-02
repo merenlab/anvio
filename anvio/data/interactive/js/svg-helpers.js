@@ -257,7 +257,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
     }
        
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
-        drawText(svg_id, p.xy, p.branch_support, 15, 'right', 'black', 'baseline', true)
+        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
         drawSymbol()  

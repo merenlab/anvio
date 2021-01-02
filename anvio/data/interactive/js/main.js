@@ -322,6 +322,7 @@ function initData() {
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
+    $('#show_font_size').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1457,6 +1458,7 @@ function serializeSettings(use_layer_names) {
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val() 
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
+    state['support-font-size'] = $('#support_font_size').val()
 
     // sync views object and layers table
     syncViews();
@@ -2547,6 +2549,12 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
+        if($('#support_display_number').is(':checked')){
+            $('#show_font_size').show()
+        }
+    }
+    if (state.hasOwnProperty('support-font-size')){
+        $('#support_font_size').val(state['support-font-size'])
     }
 
     // reload layers
