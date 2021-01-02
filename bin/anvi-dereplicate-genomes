@@ -96,7 +96,8 @@ if __name__ == '__main__':
                         based on a simple greedy algorithm. Let's say your similarity threshold is 0.90. If genome A\
                         is 0.95 similar to B, and B is 0.95 similar to C, and C is 0.95 similar to D, then {A,B,C,D}\
                         will form a cluster. This is *even though* D may share a similarity to A of merely 0.80,\
-                        which is below similarity threshold. You want better alternatives? Contact the developers.",
+                        which is below similarity threshold. You want better alternatives? Contact the developers with\
+                        your ideas.",
                         choices=['simple_greedy'])
     groupG.add_argument('--representative-method', default='centrality', type=str, help="After genomes are grouped into\
                         redundancy clusters, you can define how anvi'o picks the representative genome from the\

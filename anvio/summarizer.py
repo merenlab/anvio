@@ -1510,9 +1510,16 @@ class Bin:
             d[gene_callers_id] = {}
             # add sample independent information into `d`;
             for header in headers:
+                if gene_callers_id not in self.summary.genes_in_contigs_dict:
+                    progress.reset()
+                    raise ConfigError("Bad news :( A very very rare error has occurred. A gene caller id found in your splits table "
+                                      "is not occurring in the genes in contigs table of your contigs database. This is due to a "
+                                      "rare migration error we discovered thanks to the following issue Jon Sanders filed: "
+                                      "https://github.com/merenlab/anvio/issues/1596. If you are seeing this error please "
+                                      "get in touch with us so we can help you recover from this.")
+
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
-            self.progress.update('Sorting out functions ...')
             # add functions if there are any:
             if len(self.summary.gene_function_call_sources):
                 for source in self.summary.gene_function_call_sources:
@@ -1570,7 +1577,7 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         if self.summary.reformat_contig_names:

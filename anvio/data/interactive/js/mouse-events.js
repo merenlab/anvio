@@ -292,7 +292,7 @@ function mouseMoveHandler(event) {
 
     if (!p.IsLeaf()) {
         write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-                           <tr><td>Support</td><td>${p.branch_support}</td></tr>
+                           <tr><td>Support test</td><td>${p.branch_support}</td></tr>
                            <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
     }
 

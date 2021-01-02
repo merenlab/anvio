@@ -1,4 +1,4 @@
-As an artifact, this describes the variability information about a single sample caluclated when you ran %(anvi-profile)s. To examine variability across samples, you'll want to use this information (which is stored within your %(profile-db)s) to run %(anvi-gen-variability-profile)s. 
+As an artifact, this describes the variability information about a single sample calculated when you ran %(anvi-profile)s. To examine variability across samples, you'll want to use this information (which is stored within your %(profile-db)s) to run %(anvi-gen-variability-profile)s. 
 
 ## Details about Variability
 

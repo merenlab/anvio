@@ -1261,7 +1261,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.name_header = None
         if self.metagenome_mode:
-            self.name_header = 'metagenome_name'
+            self.name_header = 'contig_name'
         elif self.profile_db_path and not self.metagenome_mode:
             self.name_header = 'bin_name'
         elif not self.profile_db_path and not self.metagenome_mode:
@@ -1271,6 +1271,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for m in self.available_modes:
             if m != 'modules_custom' and self.name_header not in self.available_modes[m]['headers']:
                 self.available_modes[m]['headers'].insert(1, self.name_header)
+            if self.metagenome_mode and self.available_modes[m]['headers'] and 'contig' in self.available_modes[m]['headers']:
+                # avoid duplicate columns since contig_name is the name_header in metagenome_mode
+                self.available_modes[m]['headers'].remove('contig')
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
                                         'mode_type' : 'all',
@@ -2423,7 +2426,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
+        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "contig_name", "kegg_module", "db_name",
                                      "kofam_hits_in_module", "gene_caller_ids_in_module"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates"])
@@ -2851,7 +2854,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # set name header
         if self.metagenomes_file:
-            self.name_header = 'metagenome_name'
+            self.name_header = 'contig_name'
         elif self.external_genomes_file:
             self.name_header = 'genome_name'
         elif self.internal_genomes_file:
@@ -2891,11 +2894,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                             'mode_type': 'all',
                                             'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
                                             }
-        elif self.name_header == 'metagenome_name':
-            self.available_headers["metagenome_name"] = {
+        elif self.name_header == 'contig_name':
+            self.available_headers["contig_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
+                                            'description': "Name of contig (in a metagenome) in which we find KOfam hits and/or KEGG modules"
                                             }
 
         # here we make sure db_name is always included in the multi-mode output

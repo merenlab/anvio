@@ -38,7 +38,7 @@ class ArgumentParser(argparse.ArgumentParser):
     def get_anvio_epilogue(self):
         """Function that formats the additional message that appears at the end of help."""
 
-        version = "main" if anvio.anvio_version.endswith('master') else anvio.anvio_version
+        version = anvio.anvio_version_for_help_docs
 
         general_help = f"https://merenlab.org/software/anvio/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"

@@ -607,6 +607,8 @@ class GenomeDescriptions(object):
                                   f"the right source for gene calls, you can always take a look at what is available in a given "
                                   f"contigs database by running the program `anvi-db-info`.")
 
+        self.progress.end()
+
 
 class MetagenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress, enforce_single_profiles=True):

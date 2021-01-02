@@ -1320,7 +1320,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
             anvio.TABULATE(table, header)
         else:
-            self.run.info_single(f"No hits to anything in {self.ctx.target_database} at minimum percent identity of {self.min_pct_id} :/", nl_after=1, mc="red")
+            self.run.info_single(f"No hits to anything in {self.ctx.target_database_name} {self.ctx.target_database_release} at minimum percent identity of {self.min_pct_id} :/", nl_after=1, mc="red")
 
 
     def update_dict_with_taxonomy(self, d, mode=None):

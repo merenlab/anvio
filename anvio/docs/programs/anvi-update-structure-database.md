@@ -12,7 +12,7 @@ anvi-update-structure-database -c %(contigs-db)s \
                                --gene-caller-ids 1,4,5
 {{ codestop }}
 
-Then the strucutral analysis for genes 4 and 5 will be added to your %(structure-db)s. Gene 1 will be ignored, since it is already present.
+Then the structural analysis for genes 4 and 5 will be added to your %(structure-db)s (assuming templates are found). Gene 1 will be ignored, since it is already present.
 
 If instead you want to re-run the structural analysis on genes that are already in your %(structure-db)s, you'll need to specify that by adding the flag `--rerun-genes`
 
@@ -25,5 +25,5 @@ anvi-update-structure-database -c %(contigs-db)s \
 
 Now, the program will rerun the analysis for gene 1 and will still add genes 4 and 5 to the %(structure-db)s. 
 
-Both of these runs will have the same MODELLER parameters as your run of %(anvi-gen-structure-database)s. However, to get the raw outputs, you will need to use the parameter `--dump-dir`. You can also set a specific MODELLER program with `--modular-executable`.  Parameters for multi-threading would also have to be given again. 
+Both of these runs will have the same MODELLER parameters as your run of %(anvi-gen-structure-database)s. However, to get the raw outputs, you will need to use the parameter `--dump-dir`. You can also set a specific MODELLER program with `--modeller-executable`. Parameters for multi-threading would also have to be given again.
 

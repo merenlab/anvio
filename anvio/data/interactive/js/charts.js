@@ -27,6 +27,7 @@ var layers;
 var coverage;
 var variability;
 var maxVariability = 0;
+var maxCountOverCoverage = 0;
 var indels;
 var geneParser;
 var contextSvg;
@@ -42,48 +43,17 @@ var charts;
 var brush;
 var inspect_mode;
 var highlightBoxes;
+var indels_enabled;
 var show_nucleotides = true;
 var maxNucleotidesInWindow = 300;
 var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
+var curr_height;
 
 var mcags;
 
 var cog_annotated = false, kegg_annotated = false;
-
-// note: not called on console open
-$(window).resize(function() {
-  VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-  if(!highlightBoxes) return;
-  highlightBoxes.attr("height", window.innerHeight-contextSvg.attr("height") + ($("#DNA_sequence").length > 0 ? (contextSvg.select("#DNA_sequence")[0][0].getBBox().height+50) : 0));
-});
-
-window.onscroll = function() {
-  stickyBoxes();
-}
-
-function stickyBoxes() {
-  if(!state['show_highlights']) return;
-  var nucl_shown = $("#DNA_sequence").length > 0;
-
-  var boxes = document.getElementById("highlight-boxes");
-  var boxH = window.innerHeight - contextSvg.attr("height")
-                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
-
-  var el_top = parseFloat(boxes.getBoundingClientRect().top);
-      el_top -= parseFloat(window.getComputedStyle(boxes).top);
-      el_top += 50;
-      el_top *= -1;
-
-  if(el_top > 0){
-    boxes.style.top = el_top + "px";
-    highlightBoxes.attr("height", boxH);
-  } else{
-    boxes.style.top = "0px";
-    if(boxH + el_top >= 0) highlightBoxes.attr("height", boxH + el_top);
-  }
-}
 
 function loadAll() {
     $.ajaxPrefilter(function(options) {
@@ -124,12 +94,13 @@ function loadAll() {
         state = JSON.parse(localStorage.state);
     }
 
-    if(state['show_snvs'] == null) {
-        state['show_snvs'] = getParameterByName('show_snvs') == 'true';
+    if(state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
     }
     if(state['show_highlights'] == null) state['show_highlights'] = true;
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+
     $.ajax({
             type: 'POST',
             cache: false,
@@ -151,7 +122,7 @@ function loadAll() {
                         for (var h=0; h<coverage[i].length; h++) {
                             if (contig_data.variability[i][l].hasOwnProperty(h)) {
                                 variability[i][l].push(contig_data.variability[i][l][h]);
-                                if (contig_data.variability[i][l][h] > maxVariability) {
+                                if (state['snvs_enabled'] && contig_data.variability[i][l][h] > maxVariability) {
                                     maxVariability = contig_data.variability[i][l][h];
                                 }
                             } else {
@@ -163,6 +134,20 @@ function loadAll() {
 
                 competing_nucleotides = contig_data.competing_nucleotides;
                 indels = contig_data.indels;
+
+                for(var i=0; i<indels.length; i++) {
+                  var ikeys = Object.keys(indels[i]);
+                  for(var j=0; j<ikeys.length; j++) {
+                    let ccVal = indels[i][ikeys[j]]["count"]/indels[i][ikeys[j]]["coverage"];
+                    if(ccVal > maxCountOverCoverage) maxCountOverCoverage = ccVal;
+                    if(maxCountOverCoverage >= 1) {
+                      maxCountOverCoverage = 1;
+                      i = indels.length;
+                      break;
+                    }
+                  }
+                }
+
                 previous_contig_name = contig_data.previous_contig_name;
                 next_contig_name = contig_data.next_contig_name;
                 index = contig_data.index;
@@ -194,10 +179,10 @@ function loadAll() {
                 }
 
                 if(next_contig_name)
-                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['show_snvs']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['snvs_enabled']}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                 if(previous_contig_name)
-                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['show_snvs']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['snvs_enabled']}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                 $('#window-title').html("anvi-inspect: " + page_header);
                 $('#header').append("<strong>" + page_header + "</strong> detailed");
@@ -214,6 +199,14 @@ function loadAll() {
                 geneParser = new GeneParser(genes);
                 geneParser["data"].forEach(function(gene) {
                   if(gene.functions != null) {
+                    if(gene.functions.hasOwnProperty("COG20_CATEGORY")) {
+                      gene.functions["COG_CATEGORY"] = gene.functions["COG20_CATEGORY"];
+                      gene.functions["COG_FUNCTION"] = gene.functions["COG20_FUNCTION"];
+                    } else if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
+                      gene.functions["COG_CATEGORY"] = gene.functions["COG14_CATEGORY"];
+                      gene.functions["COG_FUNCTION"] = gene.functions["COG14_FUNCTION"];
+                    }
+
                     if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
                     if(gene.functions.hasOwnProperty("KEGG_Class")) kegg_annotated = true;
                     if(cog_annotated && kegg_annotated) return;
@@ -223,9 +216,33 @@ function loadAll() {
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
                 $("#largeIndelInput").val(state['large-indel']);
+                state['min-indel-coverage'] = 0;
+                //$("#minIndelInput").val(state['min-indel-coverage']);
 
-                if(state['show_indels'] == null) {
-                  state['show_indels'] = (indels != null && !isEmpty(indels));
+                if(state['show_snvs'] == null) {
+                  state['show_snvs'] = state['snvs_enabled']!=null ? (state['snvs_enabled'] && maxVariability!=0) : false;
+                }
+                indels_enabled = maxCountOverCoverage != 0;
+                if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+
+                // adjust menu options
+                if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
+                  $('#toggleSNVIndelTable').hide();
+                  $("#indels").hide();
+                  $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
+                  $('#settings-section-info-SNV-warning').show();
+                } else {
+                  if(!indels_enabled) {
+                    $('#indels').hide();
+                    $('#indels_picker').hide();
+                    $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
+                    $('#settings-section-info-SNV-warning').show();
+                  }
+                  if(!state['snvs_enabled'] || maxVariability==0) {
+                    $('#snv_picker').hide();
+                    $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
+                    $('#settings-section-info-SNV-warning').show();
+                  }
                 }
 
                 // create function color menu and table; set default color states
@@ -261,28 +278,33 @@ function loadAll() {
                 }
 
                 // show SNVs and indels?
-                var numSNVs = 0;
-                for(var i = 0; i < competing_nucleotides.length; i++) {
-                  for(var key in competing_nucleotides[i]) {
-                    if(competing_nucleotides[i].hasOwnProperty(key)) numSNVs++;
+                if(state['snvs_enabled']) {
+                  let numSNVs = 0;
+                  for(var i = 0; i < competing_nucleotides.length; i++) {
+                    for(var key in competing_nucleotides[i]) {
+                      if(competing_nucleotides[i].hasOwnProperty(key)) numSNVs++;
+                    }
+                  }
+                  if(state['show_snvs'] && numSNVs > 1000) {
+                    state['show_snvs'] = false;
+                    $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                    $("div.snvs-disabled").fadeIn(300);
                   }
                 }
-                var numIndels = 0;
-                for(var i = 0; i < indels.length; i++) {
-                  for(var key in indels[i]) {
-                    if(indels[i].hasOwnProperty(key)) numIndels++;
+                if(indels_enabled) {
+                  let numIndels = 0;
+                  for(var i = 0; i < indels.length; i++) {
+                    for(var key in indels[i]) {
+                      if(indels[i].hasOwnProperty(key)) numIndels++;
+                    }
+                  }
+                  if(state['show_indels'] && numIndels > 1000) {
+                    state['show_indels'] = false;
+                    $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
+                    $("div.indels-disabled").fadeIn(300);
                   }
                 }
-                if(state['show_snvs'] && numSNVs > 1000) {
-                  state['show_snvs'] = false;
-                  $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
-                  $("div.snvs-disabled").fadeIn(300);
-                }
-                if(state['show_indels'] && numIndels > 1000) {
-                  state['show_indels'] = false;
-                  $("div.indels-disabled").append("WARNING: A total of " + numIndels + " INDELs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
-                  $("div.indels-disabled").fadeIn(300);
-                }
+
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
@@ -315,7 +337,7 @@ function loadAll() {
                 document.body.addEventListener("keydown", function(ev) {
                     if(ev.which == 83) { // S = 83
                       toggleSettingsPanel();
-                    } else if(ev.which == 37 || ev.which == 39) {
+                    } else if(!($('#brush_start', '#brush_end').is(':focus')) && (ev.which == 37 || ev.which == 39)) {
                       let start = parseInt($('#brush_start').val());
                       let end = parseInt($('#brush_end').val());
 
@@ -381,12 +403,37 @@ function loadAll() {
                   }
                 });
 
+                /*$('#minIndelInput').on('keydown', function(e) {
+                  if(e.keyCode == 13) { // 13 = enter key
+                    if($(this).val() < 0 || $(this).val() > 9999) {
+                      alert("Invalid value, value needs to be in range 0-9999");
+                    } else {
+                      state['min-indel-coverage'] = $(this).val();
+                      $(this).blur();
+                    }
+                  }
+                });*/
+
                 $('#toggle_snv_box').on('change', function() {
-                  toggleSNVs();
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleSNVs();
+                              waitingDialog.hide();
+                          },
+                      });
                   if($('div.snvs-disabled').length > 0) $('div.snvs-disabled').remove();
                 });
                 $('#toggle_indel_box').on('change', function() {
-                  toggleIndels();
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleIndels();
+                              waitingDialog.hide();
+                          },
+                      });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
                 $('#toggle_highlight_box').on('change', function() {
@@ -404,12 +451,9 @@ function drawHighlightBoxes() {
 
   var width = VIEWER_WIDTH * .80;
 
-  var boxH = window.innerHeight - contextSvg.attr("height")
-                                + (nucl_shown ? contextSvg.select("#DNA_sequence")[0][0].getBBox().height + 50 : 35);
-
   var start = $('#brush_start').val(), end = $('#brush_end').val();
 
-  highlightBoxes.attr("height", boxH);
+  highlightBoxes.attr("height", curr_height);
   $("#highlightBoxesSvg").empty();
   var nBoxes = nucl_shown ? end - start : 100;
   var endpts = nucl_shown ? getGeneEndpts(start, end) : [];
@@ -419,13 +463,11 @@ function drawHighlightBoxes() {
                   .attr("class", "highlightbox")
                   .attr("x", i*(width/nBoxes))
                   .attr("width", (width/nBoxes))
-                  .attr("height", boxH)
+                  .attr("height", curr_height)
                   .attr("fill", endpts.includes(i) ? "red" : "#989898")
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
-
-  stickyBoxes();
 }
 
 function drawAAHighlightBoxes() {
@@ -504,8 +546,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
      '<tr id="picker_row_' + category + '"> \
         <td></td> \
         <td> \
-          <div id="picker_start_' + category + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + fn_colors[category] + '; ; visibility: hidden;"></div> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px"></div> \
+          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px; margin-left:16px"></div> \
         </td> \
         <td>' + category_name + '</td> \
       </tr>';
@@ -534,8 +575,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
        '<tr id="picker_row_' + gene_callers_id + '"> \
           <td></td> \
           <td> \
-            <div id="picker_start_' + gene_callers_id + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + highlight_genes[gene_callers_id] + '; ; visibility: hidden;"></div> \
-            <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px"></div> \
+            <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
           </td> \
           <td>Gene ID: ' + gene_callers_id + '</td> \
         </tr>';
@@ -588,7 +628,6 @@ function toggleHighlightBoxes() {
   } else {
     drawHighlightBoxes();
     if($('#DNA_sequence').length == 1) drawAAHighlightBoxes();
-    setSelectionBoxListener();
     $('#highlight-boxes').css('pointer-events', 'all');
   }
   state['show_highlights'] = !state['show_highlights'];
@@ -608,8 +647,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
    '<tr id="picker_row_' + gene_id + '"> \
       <td></td> \
       <td> \
-        <div id="picker_start_' + gene_id + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + color + '; ; visibility: hidden;"></div> \
-        <div id="picker_' + gene_id + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px"></div> \
+        <div id="picker_' + gene_id + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
       </td> \
       <td>Gene ID: ' + gene_id + '</td> \
     </tr>';
@@ -740,7 +778,6 @@ function toggle_nucleotide_display() {
     $("#gene-arrow-chart").attr("transform", "translate(50, -10)");
     gene_offset_y = 0;
     drawHighlightBoxes();
-    setSelectionBoxListener();
     $('#context-container').off('mouseover mouseout');
   }
 }
@@ -927,33 +964,7 @@ function display_nucleotides() {
   if(state['show_highlights']) {
     drawHighlightBoxes();
     drawAAHighlightBoxes();
-    setSelectionBoxListener();
   }
-}
-
-function setSelectionBoxListener() {
-  if(!state['show_snvs'] && !state['show_indels']) return;
-
-  $('.SNV_text, .indels_text').each(function(i) {
-    select_boxes[i] = {"left"  : $(this).offset().left,
-                    "right" : $(this).offset().left + this.getBoundingClientRect().width,
-                    "top"   : $(this).offset().top,
-                    "bottom": $(this).offset().top + this.getBoundingClientRect().height};
-  });
-
-  $(".highlightbox").off("mouseover mouseout");
-  $(".highlightbox").on("mouseover", function(e) {
-    var x = e.pageX, y = e.pageY;
-    Object.keys(select_boxes).forEach(function(i) {
-      var box = select_boxes[i];
-      if(box.left-10 <= x && x <= box.right+10 && box.top-10 <= y && y <= box.bottom+10) {
-        $("#highlight-boxes").hide();
-        return;
-      }
-    });
-  }).mouseout(function(e) {
-    $("#highlight-boxes").delay(1000).show(0);
-  });
 }
 
 
@@ -1140,7 +1151,7 @@ function search_items(search_query, page) {
 
                     }
 
-                    let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': show_snvs}) +'" '+target_str+'>' + item_name_pretty + '</a>';
+                    let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': state['snvs_enabled']}) +'" '+target_str+'>' + item_name_pretty + '</a>';
                     results_html += link + '<br />';
 
                 }
@@ -1360,12 +1371,11 @@ function processState(state_name, state) {
     }
     redrawArrows();
 
-    // Show SNVs if variability data available
-    /*if(!state.hasOwnProperty('show_snvs')) state['show_snvs'] = variability ? true : false;*/
-
     if(state['show_indels']) {
-      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 20;
+      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 10;
+      if(!state.hasOwnProperty('min-indel-coverage')) state['large-indel'] = 0;
       $('#largeIndelInput').val(20);
+      //$('#minIndelInput').val(0);
     }
 
     current_state_name = state_name;
@@ -1387,6 +1397,7 @@ function serializeSettings() {
     }
 
     state['large-indel'] = $("#largeIndelInput").val();
+    //state['min-indel-coverage'] = $("#minIndelInput").val();
 
     return state;
 }
@@ -1422,6 +1433,7 @@ function createCharts(state){
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
     var height = ((chartHeight + 10) * visible_layers);
+    curr_height = height;
     var contextHeight = 50;
     var contextWidth = width;
 
@@ -1499,6 +1511,7 @@ function createCharts(state){
                         width: width,
                         height: chartHeight,
                         maxVariability: maxVariability,
+                        maxCountOverCoverage: maxCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
                         margin: margin,
@@ -1515,7 +1528,7 @@ function createCharts(state){
     highlightBoxes = d3.select("#highlight-boxes").append("svg")
                                                   .attr("id", "highlightBoxesSvg")
                                                   .attr("width", width + margin.left + margin.right)
-                                                  .attr("height", 0);
+                                                  .attr("height", height);
     $('#highlight-boxes').css("width", (width + 150) + "px");
 
     var defs = contextSvg.append('svg:defs')
@@ -1615,7 +1628,6 @@ function createCharts(state){
 
     if(show_nucleotides) display_nucleotides();
     if(state['show_highlights']) drawHighlightBoxes();
-    setSelectionBoxListener();
 
     function onBrush(){
         /* this will return a date range to pass into the chart object */
@@ -1637,8 +1649,6 @@ function createCharts(state){
 
         // highlight bars as % of page width without nucleotide display
         if($("#DNA_sequence").length == 0) drawHighlightBoxes();
-
-        setSelectionBoxListener();
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
@@ -1667,6 +1677,7 @@ function Chart(options){
     this.width = options.width;
     this.height = options.height;
     this.maxVariability = options.maxVariability;
+    this.maxCountOverCoverage = options.maxCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
     this.id = options.id;
@@ -1698,17 +1709,19 @@ function Chart(options){
     this.maxGCContent = gc_min_max['Min'];
     this.minGCContent = gc_min_max['Max'];
 
+    let yScaleMax = Math.max(this.maxVariability, this.maxCountOverCoverage);
+
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
                             .domain([0,this.maxCoverageForyScale]);
 
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
-                            .domain([0, this.maxVariability]);
+                            .domain([0, yScaleMax]);
 
     yScaleLineReverse = d3.scale.linear()
                             .range([0, this.height])
-                            .domain([0, this.maxVariability]);
+                            .domain([0, yScaleMax]);
 
     this.yScaleGC = d3.scale.linear()
                             .range([this.yScale(this.minCoverage),
@@ -1725,11 +1738,12 @@ function Chart(options){
                             .x(function(d, i) { return xS(1+i); })
                             .y0(this.height)
                             .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
-
-    this.line = d3.svg.line()
-                            .x(function(d, i) { return xS(1+i)+4; })
-                            .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
-                            .interpolate('step-before');
+    if(indels_enabled) {
+      this.line = d3.svg.line()
+                              .x(function(d, i) { return xS(1+i)+4; })
+                              .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
+                              .interpolate('step-before');
+    }
 
     this.reverseLine = d3.svg.line()
                             .x(function(d, i) { return xS(1+i); })
@@ -1859,6 +1873,16 @@ function Chart(options){
     }
 
     if(state['show_indels']) {
+      // save new dict where coverage vals < <VAL> are removed
+      /*var f_indels = this.indels;
+      f_indels.forEach((item, i) => { //foreachdoesnt work for dicts...
+        Object.keys(item).forEach((j) => {
+          if(item[j].coverage < 0) f_indels[i][j].coverage = 0;
+        });
+
+        //f_indels = Object.keys(item).reduce(function(f_indels,key){ if(item[key].coverage < 0) filtered[key] = 0; return f_indels; })
+      });*/
+
       this.indel_coverage = [];
       this.indel_coverage.length = this.coverage.length;
       this.indel_coverage.fill(0);
@@ -1922,7 +1946,6 @@ function Chart(options){
         this.indel_coverage[pos] = this.indel_coverage[pos] / mult_indels[pos][0];
       }
 
-
       this.lineContainer.append("path")
           .data([this.indel_coverage])
           .attr("class", "reverseLine")
@@ -1935,6 +1958,7 @@ function Chart(options){
                               .data(d3.entries(this.indels))
                               .enter()
                               .append("text")
+                              //.filter(function(d){ return d.value['coverage'] >= state['min-indel-coverage']})
                               .attr("class", "indels_text")
                               .attr("x", function (d) { return xS(0.5+d.value['pos']); })
                               .attr("y", function (d) { return ySL(0); })
@@ -1989,10 +2013,12 @@ function Chart(options){
                    .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
-    this.lineContainer.append("g")
-                   .attr("class", "y axis noselect")
-                   .attr("transform", "translate(" + (this.width + 15) + ",0)")
-                   .call(this.yAxisLine);
+    if(state['show_snvs'] || state['show_indels']) {
+      this.lineContainer.append("g")
+                     .attr("class", "y axis noselect")
+                     .attr("transform", "translate(" + (this.width + 15) + ",0)")
+                     .call(this.yAxisLine);
+    }
 
     this.chartContainer.append("text")
                    .attr("class","sample-title")
@@ -2009,7 +2035,7 @@ Chart.prototype.showOnly = function(b){
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
-    this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
+    if(indels_enabled) this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
 
@@ -2018,7 +2044,7 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size < 5) mk_font_size = 5;
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
-    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", mk_font_size+"px");
+    this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

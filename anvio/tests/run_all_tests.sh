@@ -203,6 +203,17 @@ do
                                     --parser krakenuniq
 done
 
+# Run anvi-profile on one of the samples using the multi-process routine, just to make sure it does
+# not crash. FIXME Ideally, this step would compare the identicalness of
+# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db 
+INFO "Profiling sample SAMPLE-01 with --force-multi"
+anvi-profile -i $output_dir/SAMPLE-01.bam \
+             -o $output_dir/MULTI-THREAD-SAMPLE-01 \
+             -c $output_dir/CONTIGS.db \
+             --cluster \
+             --profile-SCVs \
+             --force-multi
+rm -rf $output_dir/MULTI-THREAD-SAMPLE-01
 
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \

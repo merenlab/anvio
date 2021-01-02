@@ -2834,9 +2834,9 @@ class ProfileSuperclass(object):
             return
 
         if not self.auxiliary_profile_data_available:
-            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile "
-                              "data does not seem to be available for this project. Yeah. That's what happens if you don't "
-                              "download everything from the server :(")
+            raise ConfigError("Someone is asking gene-level coverage stats to be computed, but then there is no AUXILIARY-DATA.db "
+                              "available for this project. Yeah. That's what happens if you don't download everything from the "
+                              "server :(")
 
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
