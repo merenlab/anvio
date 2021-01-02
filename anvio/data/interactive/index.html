@@ -221,30 +221,30 @@
                                     <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
                                     <div class="col-md-8">
                                         <input type="checkbox"
-                                                onchange="emit('bin-settings-changed') ;if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } " 
+                                                onchange="emit('bin-settings-changed') ;if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
                                                 id="support_value_checkbox"
                                                 value="true"
                                                 >
                                         </input>
-                                    </div>   
+                                    </div>
                                 </div>
                                 <div id="support_value_params">
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-md-8">
-                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to 
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to
                                             <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
                                         </div>
                                     </div>
-                                   
+
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
                                         <div class="col-md-8">
-                                            <input type="checkbox" 
-                                                   id="support_display_symbol" 
-                                                   style="float: left;" 
+                                            <input type="checkbox"
+                                                   id="support_display_symbol"
+                                                   style="float: left;"
                                                    name="show-symbol"
-                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } " 
+                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
                                                    >
                                         </div>
                                     </div>
@@ -264,7 +264,7 @@
                                         <div class="form-group form-margin">
                                             <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
                                             <div class="col-md-8">
-                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'> 
+                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
                                             </div>
                                         </div>
                                     </div>
@@ -272,17 +272,17 @@
                                         <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox"
-                                                   id="support_display_number" 
-                                                   style="float: left;" 
-                                                   name="show-number" 
-                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } " 
+                                                   id="support_display_number"
+                                                   style="float: left;"
+                                                   name="show-number"
+                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
                                                    >
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_font_size'>
                                         <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
                                         <div class="col-md-8">
-                                            <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'> 
+                                            <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'>
                                         </div>
                                     </div>
                                 </div>
