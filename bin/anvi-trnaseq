@@ -8,6 +8,7 @@ import anvio
 import anvio.trnaseq as trnaseq
 import anvio.trnaidentifier as trnaidentifier
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -18,50 +19,56 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
+__requires__ = ['trnaseq-fasta']
 __provides__ = ['trnaseq-db']
-__description__ = ("An anvi'o script to process a tRNA-seq dataset, generating a tRNA-seq database.")
+__description__ = ("A program to process raw tRNA-seq dataset, which is the sequencing of tRNA transcripts "
+                   "in a given sample, to generate an anvi'o tRNA-seq database")
 
 
 if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
     group1A = parser.add_argument_group('MANDATORY')
-    group1A.add_argument(*anvio.A('fasta-file'),
-                        **anvio.K('fasta-file',
-                                  {'help': "A FASTA file of tRNA-seq reads. "
-                                   "tRNA-seq chemistry works from the 3' acceptor (CCA) end of the tRNA molecule, "
-                                   "extending in the 5' direction."}))
-    group1A.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+    group1A.add_argument(*anvio.A('trnaseq-fasta'), **anvio.K('trnaseq-fasta'))
+    group1A.add_argument(*anvio.A('sample-name'),
+                         **anvio.K('sample-name',
+                                   {'help': "Unique sample name, considering all others in the experiment, "
+                                            "that only includes ASCII letters and digits, without spaces"}))
     group1A.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
-    group1B = parser.add_argument_group('MUNDANE')
+    group1B = parser.add_argument_group('EXTRAS')
+    group1B.add_argument(*anvio.A('treatment'), **anvio.K('treatment'))
     group1B.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     group1B.add_argument(*anvio.A('description'), **anvio.K('description'))
 
-    group1C = parser.add_argument_group('PERFORMANCE')
-    group1C.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    group1C.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
+    group1C = parser.add_argument_group('ADVANCED')
     group1C.add_argument(*anvio.A('write-checkpoints'), **anvio.K('write-checkpoints'))
     group1C.add_argument(*anvio.A('load-checkpoint'), **anvio.K('load-checkpoint'))
-    group1C.add_argument(*anvio.A('write-buffer-size'),
-                        **anvio.K('write-buffer-size',
-                                  {'default': 100000,
-                                  'help': "The number of tRNA feature profiles to be kept in memory before writing to the tRNA-seq database. "
-                                          "The default is 100,000. The larger the buffer size, the less frequently the program will access the disk, "
-                                          "yet the more memory will be consumed, as profiles are cleared from memory once processed. "
-                                          "Keep an eye on python memory usage to make sure it never exceeds the physical memory limit."}))
-    group1C.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
-    group1C.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
+    group1C.add_argument(*anvio.A('feature-param-file'), **anvio.K('feature-param-file'))
+    group1C.add_argument(*anvio.A('min-length-long-fiveprime'), **anvio.K('min-length-long-fiveprime'))
+    group1C.add_argument(*anvio.A('min-trna-fragment-size'), **anvio.K('min-trna-fragment-size'))
+    group1C.add_argument(*anvio.A('agglomeration-max-mismatch-freq'), **anvio.K('agglomeration-max-mismatch-freq'))
+    group1C.add_argument(*anvio.A('fiveprimemost-deletion-start'), **anvio.K('fiveprimemost-deletion-start'))
+    group1C.add_argument(*anvio.A('threeprimemost-deletion-start'), **anvio.K('threeprimemost-deletion-start'))
+    group1C.add_argument(*anvio.A('fiveprimemost-deletion-stop'), **anvio.K('fiveprimemost-deletion-stop'))
+    group1C.add_argument(*anvio.A('threeprimemost-deletion-stop'), **anvio.K('threeprimemost-deletion-stop'))
+    group1C.add_argument(*anvio.A('max-distinct-deletions'), **anvio.K('max-distinct-deletions'))
 
-    group1D = parser.add_argument_group('ADVANCED')
-    group1D.add_argument(*anvio.A('feature-param-file'), **anvio.K('feature-param-file'))
-    group1D.add_argument(*anvio.A('min-length-long-fiveprime'), **anvio.K('min-length-long-fiveprime'))
-    group1D.add_argument(*anvio.A('min-trna-fragment-size'), **anvio.K('min-trna-fragment-size'))
-    group1D.add_argument(*anvio.A('agglomeration-max-mismatch-freq'), **anvio.K('agglomeration-max-mismatch-freq'))
-    group1D.add_argument(*anvio.A('max-deletion-size'), **anvio.K('max-deletion-size'))
+    group1D = parser.add_argument_group('PERFORMANCE')
+    group1D.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    group1D.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
+    group1D.add_argument(*anvio.A('write-buffer-size'),
+                         **anvio.K('write-buffer-size',
+                                   {'default': 100000,
+                                    'type': int,
+                                    'help': "The number of tRNA feature profiles to be kept in memory before writing to the tRNA-seq database. "
+                                            "The default is 100,000. The larger the buffer size, the less frequently the program will access the disk, "
+                                            "yet the more memory will be consumed, as profiles are cleared from memory once processed. "
+                                            "Keep an eye on python memory usage to make sure it never exceeds the physical memory limit."}))
+    group1D.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
+    group1D.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
 
-    group1E = parser.add_argument_group('MINUTIAE')
+    group1E = parser.add_argument_group('PROGRESS')
     group1E.add_argument(*anvio.A('alignment-progress-interval'), **anvio.K('alignment-progress-interval'))
     group1E.add_argument(*anvio.A('agglomeration-progress-interval'), **anvio.K('agglomeration-progress-interval'))
 
@@ -72,9 +79,11 @@ if __name__ == '__main__':
     args = parser.get_args(parser)
     try:
         if args.default_feature_param_file:
-            trnaidentifier.TRNAFeature.write_param_file(args.default_feature_param_file)
+            parameterizer = trnaidentifier.TRNAFeatureParameterizer()
+            parameterizer.write_param_file(args.default_feature_param_file)
         elif args.print_default_feature_params:
-            print(trnaidentifier.TRNAFeature.tabulate_params())
+            parameterizer = trnaidentifier.TRNAFeatureParameterizer()
+            print(parameterizer.tabulate_params())
         else:
             trnaseq_dataset = trnaseq.TRNASeqDataset(args)
             trnaseq_dataset.process()

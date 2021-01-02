@@ -38,20 +38,11 @@ def P(d, dont_exit=False):
         sys.exit()
 
 
-def TABULATE(table, header, numalign="right", max_width=0):
+def TABULATE(table, header, numalign="right"):
     """Encoding-safe `tabulate`"""
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
-    table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
-
-    if max_width:
-        # let's don't print everything if things need to be cut.
-        prefix = " // "
-        lines_in_table = table.split('\n')
-        if len(lines_in_table[0]) + len(prefix) + 2 > max_width:
-            table = '\n'.join([l[:max_width - len(prefix)] + prefix + l[-2:] for l in lines_in_table])
-
-    print(table)
+    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign))
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -62,11 +53,6 @@ try:
         sys.exit(-1)
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
-
-
-class EmptyArgs(argparse.Namespace):
-    def __init__(self):
-        super().__init__()
 
 
 import anvio.constants as constants
@@ -2056,7 +2042,7 @@ D = {
              'help': "It is important to set a sample name (using only ASCII letters and digits "
                      "and without spaces) that is unique (considering all others). If you do not "
                      "provide one, anvi'o will try to make up one for you based on other information "
-                     "(although, you should never let the software to decide these things)."}
+                     "(although, you should never let the software decide these things)."}
                 ),
     'project-name': (
             ['-n', '--project-name'],
@@ -2653,12 +2639,32 @@ D = {
             'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
                     "in any output files."}
                 ),
-    'skip-fasta-check': (
-            ['--skip-fasta-check'],
+    'include-zeros': (
+            ['--include-zeros'],
             {'default': False,
-             'action': 'store_true',
-             'help': "Don't check the input FASTA file "
-                     "for such things as proper defline formatting to speed things up."}
+            'action': 'store_true',
+            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+                ),
+    'trnaseq-fasta': (
+            ['-f', '--trnaseq-fasta'],
+            {'metavar': 'FASTA',
+             'required': False,
+             'help': "The FASTA file containing merged (quality-controlled) tRNA-seq reads from a sample. "
+                     "We recommend generating this file via `anvi-run-workflow -w trnaseq` "
+                     "to ensure proper merging of read pairs that may be partially or fully overlapping, "
+                     "and to automatically produce anvi'o-compliant simple deflines. "
+                     "If there is a problem, anvi'o will gracefully complain about it."}
+                ),
+    'treatment': (
+            ['--treatment'],
+            {'default': 'untreated',
+             'help': "The type of treatment applied during tRNA-seq sample preparation. "
+                     "The values which are currently known to anvi'o are \"untreated\" and \"demethylase\", "
+                     "as tRNA-seq samples are commonly split for these treatments. "
+                     "Anvi'o will warn you if you do not choose one of these known options, but it will not affect data processing. "
+                     "Treatment type is stored for further reference in the output tRNA-seq database, "
+                     "and can be used in anvi-convert-trnaseq-database "
+                     "to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
                 ),
     'write-checkpoints': (
             ['--write-checkpoints'],
@@ -2670,24 +2676,167 @@ D = {
                      "This can be useful for saving time if anvi'o crashes "
                      "or in comparing the results of different advanced program parameterizations "
                      "involved in later stages of the analytical pipeline after the checkpoint, "
-                     "such as --min-trna-fragment-size and --min-modification-count. "
-                     "Existing intermediate files in the output directory will be overwritten as needed with this flag."}
+                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
+                     "This flag will overwrite existing intermediate files in the output directory as needed."}
                 ),
     'load-checkpoint': (
             ['--load-checkpoint'],
-            {'choices': ['profile', 'threeprime_normalization', 'fragment_mapping'],
+            {'choices': ['profile', 'fragment_mapping'],
              'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
                      "This can be useful for saving time if anvi'o crashed "
                      "or in comparing the results of different advanced program parameterizations "
                      "involved in later stages of the analytical pipeline after the checkpoint, "
-                     "such as --min-trna-fragment-size and --min-modification-count. "
+                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
                      "Use of this option requires that anvi-trnaseq was previously run with the flag, "
                      "--write-checkpoints, so that intermediate files were generated. "
-                     "The checkpoint, profile, restarts after tRNA have been profiled and written to the database. "
-                     "The checkpoint, threeprime_normalization, restarts after shorter 3' tRNA fragments "
-                     "have been dereplicated from longer tRNA sequences, forming normalized tRNA sequences. "
+                     "The checkpoint, profile, restarts after tRNA have been profiled and dereplicated. "
                      "The checkpoint, fragment_mapping, restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
-                     "To overwrite subsequent checkpoints after loading a checkpoint, remember to also use the flag, --write-checkpoints."}
+                     "To overwrite subsequent checkpoints after loading a checkpoint "
+                     "(i.e., overwrite the fragment_mapping checkpoint files after loading the profile checkpoint), "
+                     "remember to also use the flag, --write-checkpoints."}
+                ),
+    'feature-param-file': (
+            ['--feature-param-file'],
+            {'metavar': 'FILE',
+             'type': str,
+             'help': "A .ini file can be provided to set tRNA feature parameters "
+                     "used in de novo profiling/identification of tRNA sequences from the 3' end. "
+                     "Generate the default file with the command, `anvi-trnaseq --default-feature-param-file`. "
+                     "Dashes in the default file show parameters that cannot be changed, "
+                     "because they do not exist or are set in stone. "
+                     "For instance, the program only detects base pairing in stems, "
+                     "so only stem features are parameterized with a maximum allowed number of unpaired nucleotides, "
+                     "while every other feature has a dash in the \"Number allowed unpaired\" column. "
+                     "Two quotes in the default file show parameters that are not currently set. "
+                     "To lift a constraint, a parameter value can be replaced by \"\". "
+                     "For instance, the conserved purine at D loop/position 21 indicated by the value, 0,R, "
+                     "can be replaced by \"\" to prevent the program from seeking a conserved nucleotide there. "
+                     "Conserved nucleotides in a feature are set by pairs of zero-based indices and nucleotide symbols. "
+                     "The index indicates the conserved position in the feature, relative to the 5' end of the feature. "
+                     "The nucleotide symbol can be A, C, G, T (U in cDNA), R (purine), or Y (pyrimidine). "
+                     "The index is separated from the symbol by a comma. "
+                     "Multiple conserved positions in a feature are separted by a semicolon. "
+                     "Feature profiling of a sequence halts when the number of allowed unconserved nucleotides in a feature "
+                     "or the number of allowed unpaired positions in a stem is exceeded. "
+                     "The default allowed number of unconserved nucleotides in the D loop, for example, is 1, "
+                     "so 4 of the 5 conserved positions must be found for the D loop to be positively identified. "
+                     "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
+                     "in each of the 4 stems; the user could, for instance, "
+                     "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
+                     "There are 4 variable-length sections of tRNA. The user could, for whatever strange reason, "
+                     "prevent the program from considering D stems of length 3 as well as 4 "
+                     "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
+                     "(Logically, the allowed length range of both paired positions in the stem, 13 and 22, must be changed here.)"}
+                ),
+    'min-length-long-fiveprime': (
+            ['--min-length-long-fiveprime'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "tRNA reads often extend beyond the 5' end of a mature tRNA sequence. "
+                     "This can be biological in origin when the read is from pre-tRNA; artifactual in origin "
+                     "when the reverse transcriptase runs off the end of the template, adding a small number ofs random bases; "
+                     "or artifactual when the read is a chimera of tRNA at the 3' end and another, potentially non-tRNA, transcript at the 5' end. "
+                     "Longer 5' extensions are more likely to be biological than artifactual due to the exclusion of runoff bases. "
+                     "This parameter sets the minimum length of 5' sequence extensions "
+                     "that are recorded in the tRNA-seq database output for further analysis."}
+                ),
+    'min-trna-fragment-size': (
+            ['--min-trna-fragment-size'],
+            {'default': 25,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o profiles a sequence as tRNA by identifying tRNA features from the 3' end of the sequence. "
+                     "tRNA-seq datasets can include a significant number of tRNA fragments "
+                     "that are not from the 3' end of the sequence ending in a recognized acceptor tail (CCA, CC, C, CCAN, CCANN). "
+                     "These \"interior\" and 5' fragments can be of significant biological interest. "
+                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs "
+                     "that have their 3' acceptor variants trimmed off. "
+                     "This parameter sets the minimum length of unprofiled reads searched in this manner. "
+                     "The choice of %(default)d as the default value is motivated by considerations "
+                     "of false positive matches and computational performance with a shorter minimum sequence length. "
+                     "Since unprofiled reads are mapped to every unique profiled tRNA sequence, "
+                     "a shorter minimum sequence length can make mapping take a very long time "
+                     "and return too many alignments to store in memory for datasets of millions of reads. "
+                     "Pay attention to python memory usage if you adjust this parameter downwards."}
+                ),
+    'agglomeration-max-mismatch-freq': (
+            ['--agglomeration-max-mismatch-freq'],
+            {'default': 2/71,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "Anvi'o finds potential tRNA modifications by first agglomerating sequences "
+                     "differing from one or more other sequences in the cluster by mismatches at a certain fraction of nucleotides. "
+                     "This parameter sets the maximum mismatch fraction that is allowed, by default 2/71. "
+                     "This number represents 2 mismatches in a full-length tRNA of length 74, not 71, "
+                     "as 3' sequence variants, including the canonical 3'-CCA, are trimmed off prior to sequences being agglomerated. "
+                     "(Average non-mitochondrial tRNAs range in length from 74-95.) "
+                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 70, D. "
+                     "If A differs from B by a substitution at position 1, and C differs from B at positions 10 and 20, "
+                     "such that C differs from A by 3 substitutions, then A, B, and C will still agglomerate into a single cluster, "
+                     "as each differs by no more than 2 substitutions from some other sequence in the cluster. "
+                     "In contrast, sequence D differs from B at positions 30 and 40, "
+                     "exceeding the 2/71 fraction required to agglomerate (2/70 > 2/71), "
+                     "so D forms its own cluster and is not consolidated into a single modified sequence with the others."}
+                ),
+    'fiveprimemost-deletion-start': (
+            ['--fiveprimemost-deletion-start'],
+            {'default': -2,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
+                     "The default value of -2 means deletions can start at most 2 nucleotides 5' of a modification. "
+                     "Logically, the parameter value must be less than or equal to the value of --threeprimemost-deletion-start "
+                     "and less than or equal to the value of --fiveprimemost-deletion-stop."}
+                ),
+    'threeprimemost-deletion-start': (
+            ['--threeprimemost-deletion-start'],
+            {'default': 0,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
+                     "The default value of 0 means the 3'-most start position of a deletion is the modification site itself. "
+                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
+                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
+                ),
+    'fiveprimemost-deletion-stop': (
+            ['--fiveprimemost-deletion-stop'],
+            {'default': -1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
+                     "The default value of -1 means deletions can end at most 1 nucleotide 5' of a modification. "
+                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
+                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
+                ),
+    'threeprimemost-deletion-stop': (
+            ['--threeprimemost-deletion-stop'],
+            {'default': 0,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
+                     "The default value of 0 means the 3'-most stop position of a deletion is the modification site itself. "
+                     "Logically, the parameter value must be greater than or equal to the value of --threeprimemost-deletion-start "
+                     "and greater than or equal to the value of --fiveprimemost-deletion-stop."}
+                ),
+    'max-distinct-deletions': (
+            ['--max-distinct-deletions'],
+            {'default': 2,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of distinct deletions -- which can be of varying size -- "
+                     "that can be introduced around potential modifications in the search for deletions. "
+                     "Higher values of this parameter may lead to identification of more deletions (at the expense of runtime). "
+                     "For example, with the default value of 2 and a sequence containing 3 potential substitutions positions, "
+                     "then some in silico template sequences will be produced containing deletions around the first position; "
+                     "others will be produced containing deletions at the first and second positions; "
+                     "the first and third positions; the second position; the second and third; and the third."}
+                ),
+    'skip-fasta-check': (
+            ['--skip-fasta-check'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't check the input FASTA file for such things as proper defline formatting to speed things up."}
                 ),
     'alignment-target-chunk-size': (
             ['--alignment-target-chunk-size'],
@@ -2698,7 +2847,8 @@ D = {
                      "so that queries are aligned to the first chunk of targets, then the second chunk, and so on. "
                      "This parameter sets the maximum number of target sequences in each chunk (by default %(default)d). "
                      "Memory management becomes important when aligning short queries to a large number of targets, "
-                     "resulting in searches against a massive number of k-mers extracted from targets equal in length to the shortest query. "
+                     "which involves searching queries against a massive number of k-mers "
+                     "(equal in length to the shortest query) that have been extracted from targets. "
                      "Adjust this parameter downward if your system runs out of memory during alignment; "
                      "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
                      "Ideally, we would set this parameter using a heuristic function "
@@ -2720,109 +2870,14 @@ D = {
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
-    'feature-param-file': (
-            ['--feature-param-file'],
-            {'metavar': 'FILE',
-             'type': str,
-             'help': "A .ini file can be provided to set tRNA feature parameters "
-                     "used in de novo profiling/identification of tRNA sequences from the 3' end. "
-                     "Generate the default file with the command, `anvi-trnaseq --default-feature-param-file`. "
-                     "Dashes in the default file show parameters that cannot be changed "
-                     "because they do not exist or are set in stone. "
-                     "For instance, the program only detects base pairing in stems, "
-                     "so only stem features are parameterized with a maximum allowed number of unpaired nucleotides, "
-                     "while every other feature has a dash in the \"Number allowed unpaired\" column. "
-                     "Two quotes show parameters that are not currently set. "
-                     "To lift a constraint, a parameter value can be replaced by \"\". "
-                     "For instance, the conserved purine at D loop/position 21 indicated by the value, 0,R, "
-                     "can be replaced by \"\" to prevent the program from seeking a conserved nucleotide there. "
-                     "Conserved nucleotides in a feature are set by pairs of zero-based indices and nucleotide symbols. "
-                     "The index indicates the conserved position in the feature, relative to the 5' end of the feature. "
-                     "The nucleotide symbol can be A, C, G, T (U in cDNA), R (purine), or Y (pyrimidine). "
-                     "The index is separated from the symbol by a comma. "
-                     "Multiple conserved positions in a feature are separted by a semicolon. "
-                     "Feature profiling of a sequence halts when the number of allowed unconserved nucleotides in a feature "
-                     "or the number of allowed unpaired positions in a stem is exceeded. "
-                     "The default allowed number of unconserved nucleotides in the D loop, for example, is 2, "
-                     "so 3 of the 5 conserved positions must be confirmed for the D loop to be positively identified. "
-                     "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
-                     "in each of the 4 stems, and the user could, for instance, "
-                     "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
-                     "There are 4 variable-length sections of tRNA. "
-                     "The user can prevent the program from considering D stems of length 3 as well as 4, for example, "
-                     "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
-                     "(Logically, the allowed length range of both paired positions in the stem must be changed here.)"}
-                ),
-    'min-length-long-fiveprime': (
-            ['--min-length-long-fiveprime'],
-            {'default': 4,
-             'metavar': 'INT',
-             'type': int,
-             'help': "tRNA reads often extend beyond the 5' end of a mature tRNA sequences. "
-                     "This can be biological in origin when the read is from pre-tRNA, or artifactual in origin "
-                     "when the reverse transcriptase runs off the end of the template, adding a small number or random bases, "
-                     "or if the read is a chimera of tRNA at the 3' end and another RNA transcript at the 5' end. "
-                     "Longer 5' extensions are more likely to be biological than artifactual due to the exclusion of runoff bases. "
-                     "This parameter sets the minimum length of 5' sequence extensions "
-                     "that are recorded in the tRNA-seq database output for further analysis."}
-                ),
-    'min-trna-fragment-size': (
-            ['--min-trna-fragment-size'],
-            {'default': 25,
-             'metavar': 'INT',
-             'type': int,
-             'help': "anvi'o profiles a sequence as tRNA by identifying tRNA features from the 3' end of the sequence. "
-                     "tRNA-seq datasets can include a significant number of tRNA fragments not from the 3' end of the sequence. "
-                     "These interior and 5' fragments are identified by mapping unprofiled reads "
-                     "to profiled tRNA with the 3' acceptor variant (CCA, CC, C, etc.) trimmed off. "
-                     "This parameter sets the minimum length of unprofiled reads searched in this manner. "
-                     "The choice of %(default)d as the default value is motivated by considerations "
-                     "of false positive matches and computational performance with a shorter minimum sequence length. "
-                     "Since unprofiled reads are mapped to every unique profiled tRNA sequence, "
-                     "a shorter minimum sequence length can make mapping take a very long time "
-                     "and return too many alignments to store in memory for datasets of millions of reads. "
-                     "Pay attention to python memory usage if you adjust this parameter downwards. "
-                     "Furthermore, note that by adjusting this parameter downwards, "
-                     "fragments may map to the 3' end of profiled tRNA, as the minimum length of profiled tRNA fragments is also %(default)d, "
-                     "but fragments that include a 3' acceptor variant will not map, "
-                     "as 3' extensions are trimmed off profiled tRNA mapping targets."}
-                ),
-    'agglomeration-max-mismatch-freq': (
-            ['--agglomeration-max-mismatch-freq'],
-            {'default': 2/71,
-             'metavar': 'FLOAT',
-             'type': float,
-             'help': "anvi'o finds tRNA modifications by first agglomerating sequences "
-                     "differing by mismatches at a certain fraction of nucleotides from some other sequence in the cluster. "
-                     "This parameter sets the maximum mismatch fraction that is allowed, by default 2/71. "
-                     "This number represents 2 mismatches in a full-length tRNA of length 74, not 71, "
-                     "as 3' sequence variants, including the canonical 3'-CCA, are trimmed off prior to sequences being agglomerated. "
-                     "(Average non-mitochondrial tRNAs range in length from 74-95.) "
-                     "For example, consider 3 sequences of length 71 -- A, B and C -- and 1 sequence of length 70, D. "
-                     "If A differs from B by a substitution at position 1, and C differs from B at positions 10 and 20, "
-                     "such that C differs from A by 3 substitutions, then A, B, and C will still agglomerate into a single cluster, "
-                     "as each differs by no more than 2 substitutions from another. "
-                     "In contrast, sequence D differs from B at positions 30 and 40, exceeding than the 2/71 fraction required to agglomerate, "
-                     "so D forms its own cluster and cannot be consolidated into a single modified sequence with the others."}
-                ),
-    'max-deletion-size': (
-            ['--max-deletion-size'],
-            {'default': 3,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Modification-induced deletions occur at and to the 5' side of the positions of modified nucleotides. "
-                     "Reads with deletions are found after identifying substitutions at the positions of modifications in other reads. "
-                     "This parameter sets the number of nucleotide deletions considered to the 5' side of predicted modification sites. "
-                     "A value of 0 means that only deletions at modification sites themselves will be considered."}
-                ),
     'alignment-progress-interval': (
             ['--alignment-progress-interval'],
             {'default': 100000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
-                     "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications, "
-                     "is reported after a certain number of mapping queries have been processed (by default %(default)d)."}
+             'help': "Progress is reported after a certain number of queries have been processed (by default %(default)d) "
+                     "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
+                     "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
                 ),
     'agglomeration-progress-interval': (
             ['--agglomeration-progress-interval'],
@@ -2830,34 +2885,7 @@ D = {
              'metavar': 'INT',
              'type': int,
              'help': "Progress in sequence agglomeration, a stage in the identification of modifications, "
-                     "is reported after a certain number of sequences have been processed (by default %(default)d)."}
-                ),
-    'modules-txt': (
-            ['-M', '--modules-txt'],
-            {'default': None,
-            'metavar': 'TEXT_FILE',
-            'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
-                    "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
-                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
-                ),
-    'groups-txt': (
-            ['-G', '--groups-txt'],
-            {'default': None,
-            'metavar': 'TEXT_FILE',
-            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
-                    "The first column should have the header 'sample' and contain sample names matching "
-                    "to those in the modules-txt file. The second column should have the header 'group' "
-                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
-                ),
-    'sample-header': (
-            ['--sample-header'],
-            {'default': 'db_name',
-            'help': "The header of the column containing your sample names in the modules-txt input file. By "
-                    "default this is 'db_name' because we are assuming you got your modules mode output by "
-                    "running `anvi-estimate-metabolism` in multi mode (on multiple genomes or metagenomes), but "
-                    "just in case you got it a different way, this is how you can tell anvi'o which column to "
-                    "look at. The values in this column should correspond to those in the 'sample' column in "
-                    "the groups-txt input file."}
+                     "is reported after a certain number of sequences have been processed."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
@@ -2865,22 +2893,122 @@ D = {
              'type': str,
              'help': "Writes a tab-delimited .ini file containing default tRNA feature parameterizations "
                      "used in de novo profiling/identification of tRNA sequences from the 3' end. "
-                     "Parameters can be modified by the user and the file fed back into `anvi-trnaseq` "
-                     "through the `--feature-param-file` argument, the help description of which explains the file format."}
+                     "Parameters can be modified by the user and the file fed back into anvi-trnaseq "
+                     "through the --feature-param-file argument, the help description of which explains the file format."}
                 ),
     'print-default-feature-params': (
             ['--print-default-feature-params'],
             {'default': False,
              'action': 'store_true',
-             'help': "Prints a nicely formatted table of the default tRNA feature parameterizations "
-                     "that are written to a tab-delimited .ini file by the option, `--default-feature-param-file`."}
+             'help': "Prints to standard output a nicely formatted table of the default tRNA feature parameterizations "
+                     "(which can be written to a tab-delimited .ini file by the option, --default-feature-param-file)."}
                 ),
-    'include-zeros': (
-            ['--include-zeros'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+    'max-reported-trna-seeds': (
+            ['--max-reported-trna-seeds'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "This parameter limits the number of tRNA seed sequences reported in the contigs database, "
+                     "as anvi-interactive can have trouble displaying large numbers of items. "
+                     "To remove the limit on reported seeds, specify a value of -1."}
                 ),
+    'feature-threshold': (
+            ['--feature-threshold'],
+            {'default': 'anticodon_loop',
+             'type': str,
+             'choices': constants.TRNA_SEED_FEATURE_THRESHOLD_CHOICES,
+             'help': "This option prevents formation of tRNA seed sequences from input sequences "
+                     "that did not reach the threshold feature in anvi-trnaseq profiling from the 3' end. "
+                     "The more stringent the threshold, the fewer spurious seeds are formed "
+                     "from rare chimeric and other inaccurate tRNA predictions. "
+                     "The most stringent threshold is \"acceptor_stem\", the most 5' feature, "
+                     "resulting in seeds formed only from tRNAs with a complete feature set "
+                     "(with the exception of the extra 5'-G in tRNA-His)."}
+                ),
+    'preferred-treatment': (
+            ['--preferred-treatment'],
+            {'type': str,
+             'help': "tRNA-seq databases recorded as employing the preferred treatment are given preference "
+                     "in setting nucleotides at predicted modification positions in tRNA seed sequences. "
+                     "By default, equal preference is given to all of the input databases. "
+                     "The reason for this parameter is that paired untreated and enzymatically treated splits "
+                     "can assist in the identification of underlying modified nucleotides. "
+                     "For example, splits treated with a demethylase can be compared to untreated splits "
+                     "to probe which nucleotides are methylated."}
+                ),
+    'nonspecific-output': (
+            ['--nonspecific-output'],
+            {'default': 'nonspecific_db,combined_db',
+             'type': str,
+             'help': "A significant fraction of tRNA-seq reads can be from tRNA fragments. "
+                     "These can be real biomolecules or artifactual 3' fragments "
+                     "produced as a result of incomplete reverse transcription of the tRNA template to cDNA. "
+                     "Rather than randomly assigning fragments to a single target, "
+                     "as in metagenomic read recruitment by Bowtie, "
+                     "anvi-trnaseq tracks all of the longer sequences containing each fragment. "
+                     "This results in two categories of coverage: "
+                     "'specific' for reads that are only found in one seed "
+                     "and 'nonspecific' for reads found in multiple seeds. "
+                     "Specific coverages are always reported in a separate profile database. "
+                     "Nonspecific coverages can be reported in three types of database, as specified by this parameter. "
+                     "'nonspecific_db' produces a profile database only containing nonspecific coverages. "
+                     "'combined_db' produces a database containing separate specific and nonspecific layers. "
+                     "'summed_db' produces a database containing summed specific and nonspecific coverages. "
+                     "To produce multiple types of databases, separate the database types with commas (no spaces). "
+                     "For example, all three databases are produced with the argument, 'nonspecific_db,combined_db,summed_db'."}
+                ),
+    'min-variation': (
+            ['--min-variation'],
+            {'default': 0.01,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When more than 2 nucleotides are found at a position in a tRNA, "
+                     "a modification-induced mutation (substitution) is considered rather than a single nucleotide variant. "
+                     "This parameter sets a key criterion for the prediction of a modification, "
+                     "the minimum fraction of specific coverage at a position with more than 2 nucleotides "
+                     "that must be contributed by nucleotides beside the most abundant nucleotide. "
+                     "For example, if A, C, and G are found at position 20 of a tRNA, "
+                     "and A is represented by 95 reads, C by 3 reads, and G by 1 read, then with a parameter value of 0.05, "
+                     "the site would be 1 C, G, or T short of meeting the threshold for prediction of a modification."}
+                ),
+    'min-third-fourth-nt': (
+            ['--min-third-fourth-nt'],
+            {'default': 0.002,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This parameter sets a key criterion for the prediction of a modification, "
+                     "the minimum fraction of specific coverage at a position with more than 2 nucleotides "
+                     "that must be contributed by nucleotides beside the 2 most abundant nucleotides. "
+                     "Unlike --min-variation, this criterion only needs to be met for 1 sample "
+                     "to permit modification of the position in all samples of the experiment. "
+                     "For example, consider an experiment with 2 samples and a parameter value of 0.01. "
+                     "In Sample 1, A, C, and G are found at position 20 of a tRNA, "
+                     "and A is represented by 95 reads, C by 4 reads, and G by 1 read. "
+                     "The default parameter value of 0.01 is exactly met at the position thanks to G. "
+                     "In Sample 2, A, C, G, and T are found at position 20 of the same tRNA seed, "
+                     "and A is represented by 1000 reads, C by 100 reads, G by 2 reads, and T by 2 reads. "
+                     "The third and fourth nucleotides don't meet the coverage threshold of 0.01, "
+                     "but this is irrelevant for calling the modification, since Sample 1 met the criterion. "
+                     "There is an important consideration due to the way this threshold is currently imposed. "
+                     "Potential modification sites that do not meet the threshold "
+                     "are not treated like single nucleotide variants in anvi-trnaseq: "
+                     "they do not cause the seed sequence to be split "
+                     "such that no seed contains a variant that was not deemed to be a modification. "
+                     "Rather, candidate modification positions that do not meet this threshold "
+                     "are retained in the seed BUT NOT REPORTED. "
+                     "Therefore, we recommend rerunning this command with a parameter value of 0 "
+                     "to inspect seeds for undisplayed variants (possible SNVs) "
+                     "with a low level of third and fourth nucleotides."}
+                ),
+    'min-del-fraction': (
+            ['--min-del-fraction'],
+            {'default': 0.01,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "
+                     "Coverage of a deletion in a sample must meet the minimum fraction of specific coverage. "
+                     "Deletion coverages are calculated separately for specific, nonspecific, and summed coverages."}
+    )
 }
 
 # two functions that works with the dictionary above.
