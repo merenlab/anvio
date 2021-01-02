@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                            the interface.")
+    groupD.add_argument(*anvio.A('show-all-layers'), **anvio.K('show-all-layers'))
     groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
     groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
     groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))

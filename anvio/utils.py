@@ -220,10 +220,33 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     items = [x[key] for x in d.values()]
 
-    if(set(items) == set([None])):
-        # all items is of type None.
+    if not items:
+        # there is nothing to see here
         return None
 
+    try:
+        if(set(items) == set([None])):
+            # all items is of type None.
+            return None
+    except TypeError:
+        # this means we are working with an unhashable type.
+        # it is either list or dict. we will go through items
+        # and return the type of first item that is not None:
+        for item in items:
+            if item == None:
+                continue
+            else:
+                return type(item)
+
+        # the code should never come to this line since if everything
+        # was None that would have been captured by the try block and the
+        # exception would have never been thrown, but here is a final line
+        # just to be sure we are not moving on with the rest of the code
+        # if we entered into this block:
+        return None
+
+    # if we are here, it means not all items are None, and they are not of
+    # unhashable types (so they must be atomic types such as int, float, or str)
     not_float = False
     for item in items:
         try:
@@ -1054,6 +1077,52 @@ def get_required_packages_for_enrichment_test():
                                  "conda install -c conda-forge r-optparse"]
 
     return dict(zip(packages,installation_instructions))
+
+
+def check_R_packages_are_installed(required_package_dict):
+    """Checks if R and the provided R packages are installed on the user's system.
+    If not, raises an error with installation instructions for any missing packages.
+
+    Credits to Ryan Moore (https://github.com/mooreryan) for this solution!
+    (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
+
+    PARAMETERS
+    ==========
+    required_package_dict, dictionary
+        keys should be R package names, values should be the corresponding installation instruction for the package
+        See get_required_packages_for_enrichment_test() for an example
+    """
+
+    is_program_exists('Rscript')
+
+    missing_packages = []
+    log_file = filesnpaths.get_temp_file_path()
+    for lib in required_package_dict:
+        ret_val = run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
+        if ret_val != 0:
+            missing_packages.append(lib)
+
+    if missing_packages:
+        raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                          "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                          "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                          "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                          "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                          "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                          "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                          "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                          "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                          "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                          "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                          "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                          "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                          "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                          "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
+                                                                  {'missing': ', '.join(missing_packages),
+                                                                   'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
+                                                                   'example': missing_packages[0]})
+    else:
+        os.remove(log_file)
 
 
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
@@ -3558,10 +3627,10 @@ def is_contigs_db(db_path):
     return True
 
 
-def is_tRNAseq_db(db_path):
+def is_trnaseq_db(db_path):
     filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'tRNAseq':
-        raise ConfigError("'%s' is not an anvi'o tRNAseq database." % db_path)
+    if get_db_type(db_path) != 'trnaseq':
+        raise ConfigError("'%s' is not an anvi'o trnaseq database." % db_path)
     return True
 
 
@@ -3762,6 +3831,7 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     progress.update('...')
 
     downloaded_size = 0
+    counter = 0
     while True:
         buffer = response.read(10000)
 
@@ -3769,12 +3839,15 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
             downloaded_size += len(buffer)
             f.write(buffer)
 
-            if file_size:
-                progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
-            else:
-                progress.update('%s' % human_readable_file_size(downloaded_size))
+            if counter % 500 == 0:
+                if file_size:
+                    progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+                else:
+                    progress.update('%s' % human_readable_file_size(downloaded_size))
         else:
             break
+
+        counter += 1
 
     f.close()
 

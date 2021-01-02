@@ -95,11 +95,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'threeprime_acceptor_stem_sequence',
                       'discriminator',
                       'acceptor']
-
-# the longest known tRNA (selenocysteine) is 101 bp
-# ref: Santesmasses, Mariotti & Guigo, 2017, "Computational identification of the selenocysteine tRNA (tRNASec) in genomes," PLoS Comp. Biol., 13(2): e1005383
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
-LONGEST_KNOWN_TRNA_LENGTH = 101
+TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
@@ -107,6 +103,7 @@ blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default = "presence-absence"
+trnaseq_default = "cov"
 
 default_gene_caller = "prodigal"
 
@@ -174,12 +171,18 @@ levels_of_taxonomy_unknown = {"t_domain": 'Unknown_domains',
                               "t_genus": 'Unknown_genera',
                               "t_species": 'Unknown_species'}
 
-for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
-    run_type, default_config = run_type_and_default_config_tuples
+for run_type, default_config in [('single', single_default),
+                                 ('merged', merged_default),
+                                 ('trnaseq', trnaseq_default),
+                                 ('blank', blank_default)]:
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
-        print("Error: The default clustering configuration file for %s runs, '%s',\n\
-       is missing from data/clusterconfigs dir! I don't know how this happened,\n\
-       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config))
+        print()
+        print(f"Error: Although there is a run type defined in the anvi'o constants for \n"
+              f"       '{run_type}', the default clustering configuration file for it, namely \n"
+              f"       '{default_config}', is missing from the 'anvio/data/clusterconfigs' dir. \n"
+              f"       If you are a developer and getting this error, please make sure the file \n"
+              f"       is in anvi'o distribution. If you are a user and getting this error, it \n"
+              f"       something went terribly wrong with your installation :(\n")
         sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
@@ -204,7 +207,7 @@ WC_base_pairs = {
     'N': ('', )
 }
 # In tRNA, wobble base pairing, including G/U, is common
-WC_plus_wobble_base_pairs = {
+WC_PLUS_WOBBLE_BASE_PAIRS = {
     'A': ('T', ),
     'T': ('A', 'G'),
     'C': ('G', ),
@@ -441,9 +444,6 @@ nt_to_RC_num_lookup = get_nt_to_num_lookup({'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N':
 codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
 codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
 
-
-# KEGG setup constant - used to warn user that the KEGG MODULES.db data may need to be updated
-KEGG_SETUP_INTERVAL = 90 # days since last MODULES.db creation
 
 # anvi'o news stuff
 anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md"
