@@ -76,6 +76,10 @@ var sequences_available = false;
 var load_full_state = false;
 var bbox;
 
+var a_display_is_drawn = false;
+var max_branch_support_value_seen = null;
+var min_branch_support_value_seen = null;
+
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
 //  Init
@@ -317,6 +321,12 @@ function initData() {
             }
         }
     });
+
+    // hide support value params on onready -- there is probably a better place to do this?
+    $('#support_value_params').hide()
+    $('#support_color_range_param').hide()
+    $('#show_symbol_options').hide()
+    $('#show_font_size').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1442,6 +1452,17 @@ function serializeSettings(use_layer_names) {
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
     state['draw-guide-lines'] = $('#draw_guide_lines').val();
+    //
+    // grab support value user input, store in state
+    state['show-support-values'] = $('#support_value_checkbox').is(':checked')
+    state['support-range-low'] = $('#support_range_low').val()
+    state['support-range-high'] = $('#support_range_high').val()
+    state['support-display-symbol'] = $('#support_display_symbol').is(':checked')
+    state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked') 
+    state['support-display-number'] = $('#support_display_number').is(':checked')
+    state['support-symbol-size'] = $('#support_symbol_size').val() 
+    state['support-symbol-color'] = $('#support_symbol_color').attr('color')
+    state['support-font-size'] = $('#support_font_size').val()
 
     // sync views object and layers table
     syncViews();
@@ -1592,6 +1613,9 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
+
+                a_display_is_drawn = true;
+
                 waitingDialog.hide();
             },
         });
@@ -2501,6 +2525,45 @@ function processState(state_name, state) {
         $('#begins_from_branch').val(state['begins-from-branch'])
     }
 
+    // bootstrap values
+    if (state.hasOwnProperty('show-support-values')){
+        $('#support_value_checkbox').prop('checked', state['show-support-values'])
+        if ($('#support_value_checkbox').is(':checked')){
+            $('#support_value_params').show()
+        }
+    }
+    if (state.hasOwnProperty('support-range-low')){
+        $('#support_range_low').val(state['support-range-low'])
+    }
+    if (state.hasOwnProperty('support-range-high')){
+        $('#support_range_high').val(state['support-range-high'])
+    }
+    if (state.hasOwnProperty('support-display-symbol')){
+        $('#support_display_symbol').prop('checked', state['support-display-symbol'])
+        if ($('#support_display_symbol').is(':checked')){
+            $('#show_symbol_options').show()
+        }
+    }
+    if (state.hasOwnProperty('support-symbol-invert')){
+        $('#support_invert_symbol').prop('checked', state['support-symbol-invert'])
+    }
+    if (state.hasOwnProperty('support-symbol-color')){
+        $('#support_symbol_color').attr('color', state['support-symbol-color'])
+        $('#support_symbol_color').css('background-color', state['support-symbol-color'])
+    }
+    if (state.hasOwnProperty('support-symbol-size')){
+        $('#support_symbol_size').val(state['support-symbol-size'])
+    }
+    if (state.hasOwnProperty('support-display-number')){
+        $('#support_display_number').prop('checked', state['support-display-number'])
+        if($('#support_display_number').is(':checked')){
+            $('#show_font_size').show()
+        }
+    }
+    if (state.hasOwnProperty('support-font-size')){
+        $('#support_font_size').val(state['support-font-size'])
+    }
+
     // reload layers
     var current_view = $('#views_container').val();
     $("#tbody_layers").empty();
@@ -2774,6 +2837,29 @@ function showGenePopup(element, gene_callers_id) {
                 $(element).popover('show');
             }
     });
+}
+
+function checkMaxSupportValueSeen() {
+    if (max_branch_support_value_seen == null){
+        if (a_display_is_drawn){
+            // a display is drawn, but `max_branch_support_value_seen` is zero, which means
+            // there is no dendrogram here. probably the user used a linear order.
+            $('#max_branch_support_value_seen_is_zero_warning').show();
+            $('#support_value_checkbox').prop("checked", false);
+        } else {
+            // we know nothing Jon Snow.
+            return;
+        }
+    } else if (max_branch_support_value_seen == 0 && $('#support_value_checkbox').is(':checked')) {
+        // this means we alrady know min/max values for branch support (`max_branch_support_value_seen`
+        // is not `null`) but the max is zero. bad news.
+        $('#max_branch_support_value_seen_is_zero_warning').show();
+        $('#support_value_checkbox').prop("checked", false);
+    } else {
+        // set the min/max values since we clearly know them by now.
+        $('#support_range_low').val(min_branch_support_value_seen);
+        $('#support_range_high').val(max_branch_support_value_seen);
+    }
 }
 
 function toggleTaxonomyEstimation() {
