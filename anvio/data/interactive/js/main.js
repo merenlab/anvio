@@ -2519,6 +2519,9 @@ function processState(state_name, state) {
     // bootstrap values
     if (state.hasOwnProperty('show-support-values')){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
+        if ($('#support_value_checkbox').is(':checked')){
+            $('#support_value_params').show()
+        }
     }
     if (state.hasOwnProperty('support-range-low')){
         $('#support_range_low').val(state['support-range-low'])
@@ -2528,12 +2531,16 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('support-display-symbol')){
         $('#support_display_symbol').prop('checked', state['support-display-symbol'])
+        if ($('#support_display_symbol').is(':checked')){
+            $('#show_symbol_options').show()
+        }
     }
     if (state.hasOwnProperty('support-symbol-invert')){
         $('#support_invert_symbol').prop('checked', state['support-symbol-invert'])
     }
     if (state.hasOwnProperty('support-symbol-color')){
         $('#support_symbol_color').attr('color', state['support-symbol-color'])
+        $('#support_symbol_color').css('background-color', state['support-symbol-color'])
     }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
