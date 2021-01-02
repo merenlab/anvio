@@ -244,7 +244,7 @@
                                                    id="support_display_symbol"
                                                    style="float: left;"
                                                    name="show-symbol"
-                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
+                                                   onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
                                                    >
                                         </div>
                                     </div>
@@ -275,7 +275,7 @@
                                                    id="support_display_number"
                                                    style="float: left;"
                                                    name="show-number"
-                                                   onchange="emit('bin-settings-changed') ;if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                   onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
                                                    >
                                         </div>
                                     </div>
