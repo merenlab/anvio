@@ -32,7 +32,8 @@ tests = {'mini': ['run_mini_test.sh'],
          'pangenomics': ['run_pangenome_tests.sh'],
          'alons-classifier': ['run_alons_classifier_tests.sh'],
          'manual-interface': ['run_manual_interactive.sh'],
-         'metabolism': ['run_metabolism_tests.sh']}
+         'metabolism': ['run_metabolism_tests.sh'],
+         'mini-trnaseq': ['run_trnaseq_mini_test.sh']}
 
 run = terminal.Run()
 

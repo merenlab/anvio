@@ -1,17 +1,19 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""tRNA identification from input sequence"""
+"""tRNA identification from a nucleotide sequence."""
 
+import sys
 import itertools
 import pandas as pd
 
 from tabulate import tabulate
+from collections import OrderedDict
+
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import TRNAIdentifierError
-from anvio.constants import LONGEST_KNOWN_TRNA_LENGTH
-from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
-from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
+from anvio.constants import WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -23,40 +25,44 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-class TRNAFeature:
+class TRNAFeature(object):
+    """The most ancestral superclass of tRNA features.
+
+    Parameters
+    ==========
+    string_components : tuple
+        Substring components of the feature, with divisions based on "subfeatures," such as the
+        variable-length alpha and beta regions of the D loop:
+        e.g., ('AG', 'TT', 'GG', 'G', 'A') for the D loop of yeast tRNA-Phe-GAA,
+                ('CCA', ) for the acceptor sequence
+
+    num_allowed_unconserved : int, -1
+        Number of unconserved nucleotides allowed among canonically conserved nucleotides in the
+        feature. The default of -1 is equivalent to allowing all to be unconserved.
+
+    cautious : bool, False
+    """
+
     # Full tRNA feature parameter names found in .ini file
-    INI_FEATURE_PARAMS = ['Conserved nucleotides', 'Number allowed unconserved', 'Number allowed unpaired', 'Allowed lengths']
+    INI_FEATURE_PARAMS = [
+        'Conserved nucleotides',
+        'Number allowed unconserved',
+        'Number allowed unpaired',
+        'Allowed lengths'
+    ]
     # Feature parameter attributes
-    ACCESSIBLE_FEATURE_PARAMS = ['conserved_nts', 'num_allowed_unconserved', 'num_allowed_unpaired', 'allowed_input_lengths']
-    # The following TRNAFeature attributes are used for looking up feature subclass attributes,
-    # important in changing subclass attributes from a .ini file.
-    # Since these TRNAFeature attributes directly reference subclasses, they can't be assigned when TRNAFeature is defined.
-    # These attributes are set by `set_param_refs`, which is called the first time certain other methods are called.
-    dict_mapping_feature_or_subfeature_name_to_class = None
-    feature_and_subfeature_names_with_accessible_lengths = None
-    subfeature_section_dict = None
+    ACCESSIBLE_FEATURE_PARAMS = [
+        'conserved_nts',
+        'num_allowed_unconserved',
+        'num_allowed_unpaired',
+        'allowed_input_lengths'
+    ]
 
     def __init__(self,
                  string_components,
                  conserved_nts=None,
                  num_allowed_unconserved=-1,
                  cautious=False):
-        """The most ancestral superclass of tRNA features
-
-        Parameters
-        ==========
-        string_components : tuple
-            Substring components of the feature, with divisions based on "subfeatures,"
-            such as the variable-length alpha and beta regions of the D loop:
-            e.g., ('AG', 'TT', 'GG', 'G', 'A') for the D loop of yeast tRNA-Phe-GAA,
-                  ('CCA', ) for the acceptor sequence
-
-        num_allowed_unconserved : int, -1
-            Number of unconserved nucleotides allowed among canonically conserved nucleotides in the feature
-            The default of -1 is equivalent to allowing all to be unconserved.
-
-        cautious : bool, False
-        """
 
         if cautious:
             if type(string_components) != tuple:
@@ -89,8 +95,8 @@ class TRNAFeature:
         conserved_status : list
             Nested list with the following structure:
             [[(), (), ...], [(), (), ...], ...]
-            There is an inner list for each subsequence (substring component)
-            and an inner tuple for each conserved nucleotide of the subsequence.
+            There is an inner list for each subsequence (substring component) and an inner tuple
+            for each conserved nucleotide of the subsequence.
             Each inner tuple has four elements:
                 1. position of conserved nucleotide in subsequence
                 2. whether nucleotide is conserved (bool)
@@ -128,7 +134,7 @@ class TRNAFeature:
 
     @staticmethod
     def list_all_tRNA_features():
-        """List all tRNA feature classes in order from 5' to 3'"""
+        """List all tRNA feature classes in order from 5' to 3'."""
 
         return [
             TRNAHisPositionZero,
@@ -160,10 +166,791 @@ class TRNAFeature:
 
 
     @staticmethod
-    def set_param_refs():
-        """Set class attributes that reference feature classes and thereby cannot be set during class definition."""
+    def list_primary_tRNA_features():
+        """List tRNA feature classes not including stems and arms (secondary structures) in order
+        from 5' to 3'."""
 
-        TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class = {
+        return [
+            TRNAHisPositionZero,
+            AcceptorStemFiveprimeStrand,
+            PositionEight,
+            PositionNine,
+            DStemFiveprimeStrand,
+            DLoop,
+            DStemThreeprimeStrand,
+            PositionTwentySix,
+            AnticodonStemFiveprimeStrand,
+            AnticodonLoop,
+            AnticodonStemThreeprimeStrand,
+            VLoop,
+            TStemFiveprimeStrand,
+            TLoop,
+            TStemThreeprimeStrand,
+            AcceptorStemThreeprimeStrand,
+            Discriminator,
+            Acceptor
+        ]
+
+
+class Nucleotide(TRNAFeature):
+    """Superclass for tRNA primary features of a single nucleotide, e.g., discriminator, position 8."""
+
+    allowed_input_lengths = ((1, ), )
+    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+
+    def __init__(self,
+                 string, # must be a string of length 1
+                 conserved_nts=None,
+                 num_allowed_unconserved=-1,
+                 start_pos=None,
+                 stop_pos=None,
+                 cautious=False):
+
+        self.string = string
+        self.start_pos = start_pos
+        self.stop_pos = stop_pos
+
+        super().__init__((string, ),
+                         conserved_nts=conserved_nts,
+                         num_allowed_unconserved=num_allowed_unconserved,
+                         cautious=cautious)
+
+        (self.meets_conserved_thresh,
+         self.num_conserved,
+         self.num_unconserved,
+         self.conserved_status) = self.check_conserved_nts()
+
+
+class Sequence(TRNAFeature):
+    """Superclass for tRNA primary sequences, e.g., acceptor, 5' strand of T stem."""
+
+    def __init__(self,
+                 substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
+                 conserved_nts=None,
+                 num_allowed_unconserved=-1,
+                 start_pos=None,
+                 stop_pos=None,
+                 cautious=False):
+
+        if type(substrings) == str:
+            string_components = (substrings, )
+        elif all([type(s) == str for s in substrings]):
+            string_components = substrings
+        elif all([type(s) == Nucleotide or type(s) == Sequence for s in substrings]):
+            string_components = tuple(s.string for s in substrings)
+        self.string = ''.join(substrings)
+        self.start_pos = start_pos
+        self.stop_pos = stop_pos
+
+        super().__init__(string_components,
+                         conserved_nts=conserved_nts,
+                         num_allowed_unconserved=num_allowed_unconserved,
+                         cautious=cautious)
+
+        (self.meets_conserved_thresh,
+         self.num_conserved,
+         self.num_unconserved, # can include N "padding" in extrapolated 5' feature
+         self.conserved_status) = self.check_conserved_nts()
+
+
+class Loop(Sequence):
+    """Superclass for loops: D loop, anticodon loop, T loop."""
+    def __init__(self,
+                 substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
+                 conserved_nts=None,
+                 num_allowed_unconserved=-1,
+                 start_pos=None,
+                 stop_pos=None,
+                 cautious=False):
+
+        super().__init__(substrings,
+                         conserved_nts=conserved_nts,
+                         num_allowed_unconserved=num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class Stem(TRNAFeature):
+    """Superclass for stems: acceptor stem, D stem, anticodon stem, T stem."""
+
+    def __init__(self,
+                 fiveprime_seq, # must be Sequence object
+                 threeprime_seq, # must be Sequence object
+                 num_allowed_unpaired=0,
+                 num_allowed_unconserved=-1,
+                 cautious=False):
+
+        if cautious:
+            if type(fiveprime_seq) != Sequence or type(threeprime_seq) != Sequence:
+                raise TRNAIdentifierError("You can only define a Stem from Sequence objects.")
+        self.fiveprime_seq = fiveprime_seq
+        self.threeprime_seq = threeprime_seq
+
+        self.canonical_positions = (*self.fiveprime_seq.canonical_positions, *self.threeprime_seq.canonical_positions)
+        self.conserved_nts = (*self.fiveprime_seq.conserved_nts, *self.threeprime_seq.conserved_nts)
+
+        if cautious:
+            if tuple(map(len, self.fiveprime_seq.string_components)) != tuple(map(len, self.threeprime_seq.string_components[::-1])):
+                raise TRNAIdentifierError("The two Sequence objects, %s and %s, "
+                                          "that were used to define your Stem are not the same length."
+                                          % (self.fiveprime_seq.string_components, self.threeprime_seq.string_components))
+            length = sum(map(len, self.fiveprime_seq.string_components))
+            if num_allowed_unpaired > length:
+                raise TRNAIdentifierError("You tried to leave at most %d base pairs unpaired, "
+                                          "but there are only %d base pairs in the stem." % (num_allowed_unpaired, length))
+        self.num_allowed_unpaired = num_allowed_unpaired
+
+        self.start_positions = (self.fiveprime_seq.start_pos, self.threeprime_seq.start_pos)
+        self.stop_positions = (self.fiveprime_seq.stop_pos, self.threeprime_seq.stop_pos)
+
+        super().__init__((*self.fiveprime_seq.string_components, *self.threeprime_seq.string_components),
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=num_allowed_unconserved,
+                         cautious=cautious)
+
+        (self.meets_pair_thresh,
+         self.num_paired,
+         self.num_unpaired, # can include N "padding" in extrapolated 5' feature
+         self.paired_status) = self.check_pairs()
+
+
+    def check_pairs(self):
+        """Determine base pairing in the stem.
+
+        Returns
+        =======
+        meets_pair_thresh : bool
+
+        num_paired : int
+
+        num_unpaired : int
+
+        paired_status : list
+            List of tuples, one tuple for each nucleotide pair in the stem. Each tuple has three
+            elements: whether a base pair exists, the 5' nucleotide, and the 3' nucleotide.
+        """
+
+        num_paired = 0
+        num_unpaired = 0 # can include N "padding" in extrapolated 5' feature
+        paired_status = []
+        for fiveprime_nt, threeprime_nt in zip(self.fiveprime_seq.string, self.threeprime_seq.string[::-1]):
+            if fiveprime_nt in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nt]:
+                num_paired += 1
+                paired_status.append((True, fiveprime_nt, threeprime_nt))
+            else:
+                num_unpaired += 1
+                paired_status.append((False, fiveprime_nt, threeprime_nt))
+
+        if num_unpaired > self.num_allowed_unpaired:
+            meets_pair_thresh = False
+        else:
+            meets_pair_thresh = True
+
+        return meets_pair_thresh, num_paired, num_unpaired, paired_status
+
+
+class Arm(TRNAFeature):
+    """Superclass for arms: D arm, anticodon arm, T arm
+
+    The number of unconserved nucleotides allowed in the arm
+    can differ from the sum of the numbers of unconserved nucleotides allowed in the stem and loop.
+    """
+
+    def __init__(self,
+                 stem, # must be Stem object
+                 loop, # must be Loop object
+                 num_allowed_unconserved=-1,
+                 cautious=False):
+
+        if cautious:
+            if type(stem) != Stem or type(loop) != Loop:
+                raise TRNAIdentifierError("A `Stem` and a `Loop` are required input to create an `Arm`.")
+        self.stem = stem
+        self.loop = loop
+
+        self.canonical_positions = (*stem.fiveprime_seq.canonical_positions,
+                                    *loop.canonical_positions,
+                                    *stem.threeprime_seq.canonical_positions)
+        if cautious:
+            if (tuple(pos for component_positions in self.canonical_positions for pos in component_positions)
+                != tuple(range(self.canonical_positions[0][0], (self.canonical_positions[0][0]
+                                                                + len(self.canonical_positions[0])
+                                                                + len(self.canonical_positions[1])
+                                                                + len(self.canonical_positions[2]))))):
+                raise TRNAIdentifierError("The canonical positions in an `Arm` must be contiguous. "
+                                          "These were yours: %s. "
+                                          "These came from the canonical positions in Stem, %s, "
+                                          "and the canonical positions in Loop, %s."
+                                          % (self.canonical_positions,
+                                             stem.canonical_positions,
+                                             loop.canonical_positions))
+
+        self.conserved_nts=(*stem.fiveprime_seq.conserved_nts,
+                            *loop.conserved_nts,
+                            *stem.threeprime_seq.conserved_nts)
+
+        self.start_pos = self.stem.start_positions[0]
+        self.stop_pos = self.stem.stop_positions[1]
+
+        super().__init__((*stem.fiveprime_seq.string_components,
+                          *loop.string_components,
+                          *stem.threeprime_seq.string_components),
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=num_allowed_unconserved,
+                         cautious=cautious)
+
+        if (self.stem.fiveprime_seq.num_unconserved
+            + self.loop.num_unconserved
+            + self.stem.threeprime_seq.num_unconserved) > self.num_allowed_unconserved:
+            self.meets_conserved_thresh = False
+        else:
+            self.meets_conserved_thresh = True
+
+
+class TRNAHisPositionZero(Nucleotide):
+    """The G typically found at the 5' end of mature tRNA-His."""
+
+    name = 'tRNA-His position 0'
+    canonical_positions = ((-1, ), )
+    conserved_nts = ({0: 'G'}, )
+    num_allowed_unconserved = 0
+
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(string,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class AcceptorStem(Stem):
+    """The base-paired nucleotides of the acceptor stem of tRNA (excludes the discriminator and
+    acceptor)."""
+
+    name = 'acceptor stem'
+    num_allowed_unconserved = -1
+    num_allowed_unpaired = 1
+
+    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
+        super().__init__(fiveprime_seq,
+                         threeprime_seq,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         num_allowed_unpaired=self.num_allowed_unpaired,
+                         cautious=cautious)
+
+
+class AcceptorStemFiveprimeStrand(Sequence):
+    """The 5' strand of the acceptor stem of tRNA."""
+
+    name = 'acceptor stem 5\' strand'
+    canonical_positions = ((1, 2, 3, 4, 5, 6, 7), )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+    stem_class = AcceptorStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class PositionEight(Nucleotide):
+    """The nucleotide at canonical position 8 of tRNA, expected but not required to be T."""
+
+    name = 'position 8'
+    canonical_positions = ((8, ), )
+    conserved_nts = ({0: 'T'}, )
+    num_allowed_unconserved = 1
+
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(string,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class PositionNine(Nucleotide):
+    """The nucleotide at canonical position 9 of tRNA."""
+
+    name = 'position 9'
+    canonical_positions = ((9, ), )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(string,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class DArm(Arm):
+    """The D arm of tRNA."""
+
+    name = 'D arm'
+    num_allowed_unconserved = 1
+
+    def __init__(self, stem, loop, cautious=False):
+        super().__init__(stem,
+                         loop,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         cautious=cautious)
+
+
+class DStem(Stem):
+    """The D stem of tRNA, which can be 3 (Type I tRNA) or 4 (Type II) nucleotides long."""
+
+    name = 'D stem'
+    num_allowed_unconserved = -1
+    num_allowed_unpaired = 1
+    arm_class = DArm
+
+    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
+        super().__init__(fiveprime_seq,
+                         threeprime_seq,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         num_allowed_unpaired=self.num_allowed_unpaired,
+                         cautious=cautious)
+
+
+class DStemFiveprimeStrand(Sequence):
+    """The 5' strand of the D stem of tRNA."""
+
+    name = 'D stem 5\' strand'
+    canonical_positions = ((10, 11, 12), (13, ))
+    allowed_section_lengths = ((3, ), (0, 1))
+    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
+    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    conserved_nts = ({}, {})
+    num_allowed_unconserved = -1
+    arm_class = DArm
+    stem_class = DStem
+
+    def __init__(self, positions_10_to_12_string, position_13_string='', start_pos=None, stop_pos=None, cautious=False):
+        if cautious:
+            if len(positions_10_to_12_string) != 3:
+                raise TRNAIdentifierError("Your `positions_10_to_12_string` was not the required 3 bases long: %s"
+                                          % positions_10_to_12_string)
+            if not 0 <= len(position_13_string) <= 1:
+                raise TRNAIdentifierError("Your `position_13_string` was not the required 0 or 1 bases long: %s"
+                                          % position_13_string)
+
+        super().__init__((positions_10_to_12_string, position_13_string),
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=False)
+
+
+class DLoop(Loop):
+    """The D loop of tRNA, allowing for variable alpha (canonical positions 16, 17, 17a, 17b) and
+    beta (canonical positions 20, 20a, 20b) sections."""
+
+    name = 'D loop'
+    canonical_positions = ((14, 15), (16, 17), (18, 19), (20, ), (21, ))
+    allowed_section_lengths = ((2, ), (1, 2, 3), (2, ), (1, 2, 3), (1, ))
+    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
+    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    conserved_nts = ({0: 'A', 1: ('A', 'G')}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
+    num_allowed_unconserved = 1
+    arm_class = DArm
+    stem_class = DStem
+
+    def __init__(self,
+                 positions_14_to_15_string,
+                 alpha_positions_string,
+                 positions_18_to_19_string,
+                 beta_positions_string,
+                 position_21_string,
+                 start_pos=None,
+                 stop_pos=None,
+                 cautious=False):
+        if cautious:
+            if len(positions_14_to_15_string) != 1:
+                raise TRNAIdentifierError("Your `positions_14_to_15_string` was not the required 1 base long: %s" % positions_14_to_15_string)
+            if not 1 <= len(alpha_positions_string) <= 3:
+                raise TRNAIdentifierError("Your `alpha_positions_string` was not the required 1 to 3 bases long: %s" % alpha_positions_string)
+            if len(positions_18_to_19_string) != 2:
+                raise TRNAIdentifierError("Your `positions_18_to_19_string` was not the required 2 bases long: %s" % positions_18_to_19_string)
+            if not 1 <= len(beta_positions_string) <= 3:
+                raise TRNAIdentifierError("Your `beta_positions_string` was not the required 1 to 3 bases long: %s" % beta_positions_string)
+            if len(position_21_string) != 1:
+                raise TRNAIdentifierError("Your `position_21_string` was not the required 1 base long: %s" % position_21_string)
+
+        alpha_start_pos = 1
+        alpha_stop_pos = alpha_start_pos + len(alpha_positions_string)
+        self.alpha_seq = Sequence(alpha_positions_string, start_pos=alpha_start_pos, stop_pos=alpha_stop_pos)
+        beta_start_pos = alpha_stop_pos + 2
+        beta_stop_pos = beta_start_pos + len(beta_positions_string)
+        self.beta_seq = Sequence(beta_positions_string, start_pos=beta_start_pos, stop_pos=beta_stop_pos)
+
+        super().__init__((positions_14_to_15_string,
+                          alpha_positions_string,
+                          positions_18_to_19_string,
+                          beta_positions_string,
+                          position_21_string),
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class DStemThreeprimeStrand(Sequence):
+    """The 3' strand of the D stem of tRNA."""
+
+    name = 'D stem 3\' strand'
+    canonical_positions = ((22, ), (23, 24, 25))
+    allowed_section_lengths = ((0, 1), (3, ))
+    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
+    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    conserved_nts = ({}, {})
+    num_allowed_unconserved = -1
+    arm_class = DArm
+    stem_class = DStem
+
+    def __init__(self, position_22_string, positions_23_to_25_string='', start_pos=None, stop_pos=None, cautious=False):
+        if cautious:
+            if not 0 <= len(position_22_string) <= 1:
+                raise TRNAIdentifierError("Your `position_22_string` was not the required 1 base long: %s" % position_22_string)
+            if len(positions_23_to_25_string) != 3:
+                raise TRNAIdentifierError("Your `positions_23_to_25_string` was not the required 1 to 3 bases long: %s" % positions_23_to_25_string)
+
+        super().__init__((position_22_string, positions_23_to_25_string),
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=False)
+
+
+class PositionTwentySix(Nucleotide):
+    """The nucleotide at canonical position 26 of tRNA."""
+
+    name = 'position 26'
+    canonical_positions = ((26, ), )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(string,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class AnticodonArm(Arm):
+    """The anticodon arm of tRNA."""
+
+    name = 'anticodon arm'
+    num_allowed_unconserved = 1
+
+    def __init__(self, stem, loop, cautious=False):
+        self.anticodon = loop.anticodon
+        super().__init__(stem,
+                         loop,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         cautious=cautious)
+
+
+class AnticodonStem(Stem):
+    """The anticodon stem of tRNA."""
+
+    name = 'anticodon stem'
+    arm_class = AnticodonArm
+    num_allowed_unconserved = -1
+    num_allowed_unpaired = 1
+
+    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
+        super().__init__(fiveprime_seq,
+                         threeprime_seq,
+                         num_allowed_unpaired=self.num_allowed_unpaired,
+                         cautious=cautious)
+
+
+class AnticodonStemFiveprimeStrand(Sequence):
+    """The 5' strand of the anticodon stem of tRNA."""
+
+    name = 'anticodon stem 5\' strand'
+    canonical_positions = ((27, 28, 29, 30, 31), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+    stem_class = AnticodonStem
+    arm_class = AnticodonArm
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class Anticodon(Sequence):
+    """The anticodon sequence of tRNA."""
+
+    name = 'anticodon'
+    canonical_positions = ((34, 35, 36))
+    allowed_input_lengths = ((3, ), )
+    summed_input_lengths = (3, )
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings, start_pos=start_pos, stop_pos=stop_pos, cautious=cautious)
+        try:
+            self.aa_string = ANTICODON_TO_AA[self.string]
+        except KeyError:
+            self.aa_string = 'NA'
+
+
+class AnticodonLoop(Loop):
+    """The anticodon loop of tRNA."""
+
+    name = 'anticodon loop'
+    canonical_positions = ((32, 33, 34, 35, 36, 37, 38), )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    conserved_nts = ({1: 'T', 5: ('A', 'G')}, )
+    num_allowed_unconserved = 1
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+        self.anticodon = Anticodon(self.string[2: 5])
+
+
+class AnticodonStemThreeprimeStrand(Sequence):
+    """The 3' strand of the anticodon stem of tRNA."""
+
+    name = 'anticodon stem 3\' strand'
+    canonical_positions = ((39, 40, 41, 42, 43), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class VLoop(Loop):
+    """The V loop of tRNA: no stem/loop structure and base pairing is considered."""
+
+    name = 'V loop'
+    canonical_positions = ((44, 45, 46, 47, 48), )
+    allowed_input_lengths = tuple(itertools.product(range(4, 24)))
+    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+        if 4 <= len(self.string) <= 5:
+            self.type = 'I'
+        elif 12 <= len(self.string) <= 23:
+            self.type = 'II'
+        else:
+            self.type = 'NA'
+
+
+class TArm(Arm):
+    """The T arm of tRNA."""
+
+    name = 'T arm'
+    num_allowed_unconserved = 1
+
+    def __init__(self, stem, loop, cautious=False):
+        super().__init__(stem,
+                         loop,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         cautious=cautious)
+
+
+class TStem(Stem):
+    """The T stem of tRNA, with canonical positions 53 and 61 expected to be G and C."""
+
+    name = 'T stem'
+    arm_class = TArm
+    num_allowed_unconserved = -1
+    num_allowed_unpaired = 1
+
+    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
+        super().__init__(fiveprime_seq,
+                         threeprime_seq,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         num_allowed_unpaired=self.num_allowed_unpaired,
+                         cautious=cautious)
+
+
+class TStemFiveprimeStrand(Sequence):
+    """The 5' T strand of the T stem of tRNA."""
+
+    name = 'T stem 5\' strand'
+    canonical_positions = ((49, 50, 51, 52, 53), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    conserved_nts = ({4: 'G'}, )
+    num_allowed_unconserved = 1
+    arm_class = TArm
+    stem_class = TStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class TLoop(Loop):
+    """The T loop of tRNA."""
+
+    name = 'T loop'
+    canonical_positions = ((54, 55, 56, 57, 58, 59, 60), )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    conserved_nts = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
+    num_allowed_unconserved = 1
+    arm_class = TArm
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class TStemThreeprimeStrand(Sequence):
+    """The 3' strand of the T stem of tRNA."""
+
+    name = 'T stem 3\' strand'
+    canonical_positions = ((61, 62, 63, 64, 65), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    conserved_nts = ({0: 'C'}, )
+    num_allowed_unconserved = 1
+    arm_class = TArm
+    stem_class = TStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class AcceptorStemThreeprimeStrand(Sequence):
+    """The 3' strand of the acceptor stem of tRNA."""
+
+    name = 'acceptor stem 3\' strand'
+    canonical_positions=((66, 67, 68, 69, 70, 71, 72), )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+    stem_class = AcceptorStem
+
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class Discriminator(Nucleotide):
+    """The discriminator nucleotide 5' of the acceptor sequence."""
+
+    name = 'discriminator'
+    canonical_positions = ((73, ), )
+    conserved_nts = ({}, )
+    num_allowed_unconserved = -1
+
+    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(string,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class Acceptor(Sequence):
+    """The acceptor sequence (CCA in mature tRNA) and various other 3' endings.
+
+    With default values of `self.allowed_input_lengths` and `self.num_extra_threeprime`, a tRNA
+    profile will prioritize CCA > CC > C > CCAN > CCANN.
+    """
+
+    name = 'acceptor'
+    canonical_positions = ((74, 75, 76), )
+    allowed_input_lengths = ((3, ), (2, ), (1, )) # Input lengths of 2 and 1 are 3'-CC and 3'-C.
+    summed_input_lengths = (3, 2, 1)
+    conserved_nts = ({0: 'C', 1: 'C', 2: 'A'}, ) # set in stone
+    num_allowed_unconserved = 0 # set in stone
+    max_extra_threeprime = 2 # set in stone -- allowing this to vary would require a lot of work in `trnaseq.py`
+
+    def __init__(self, substrings, num_extra_threeprime=0, start_pos=None, stop_pos=None, cautious=False):
+        # The possibilities of tRNA ending in 3'-CC and 3'-C are accommodated by
+        # `self.allowed_input_lengths`. When bases beyond the 3' end of 3'-CCA (CCAN...) in
+        # profiling, `self.num_extra_threeprime` SHOULD be set accordingly (1 for CCAN, 2 for CCANN) --
+        # these extra 3' bases are not treated explicitly by this class.
+
+        super().__init__(substrings,
+                         conserved_nts=self.conserved_nts,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         start_pos=start_pos,
+                         stop_pos=stop_pos,
+                         cautious=cautious)
+
+
+class TRNAFeatureParameterizer(object):
+    """Interacts with tRNA feature objects, setting and reporting their tRNA-defining attributes."""
+
+    def __init__(self):
+        self.dict_mapping_feature_or_subfeature_name_to_class = {
             TRNAHisPositionZero.name: TRNAHisPositionZero,
             AcceptorStem.name: AcceptorStem,
             AcceptorStemFiveprimeStrand.name: AcceptorStemFiveprimeStrand,
@@ -197,59 +984,50 @@ class TRNAFeature:
             TStemThreeprimeStrand.name: TStemThreeprimeStrand,
             AcceptorStemThreeprimeStrand.name: AcceptorStemThreeprimeStrand,
             Discriminator.name: Discriminator,
-            Acceptor.name: Acceptor}
+            Acceptor.name: Acceptor
+        }
 
-        TRNAFeature.feature_and_subfeature_names_with_accessible_lengths = [
+        self.feature_and_subfeature_names_with_accessible_lengths = [
             VLoop.name,
             DStemFiveprimeStrand.name + "/position 13",
             DLoop.name + "/alpha positions",
             DLoop.name + "/beta positions",
-            DStemThreeprimeStrand.name + "/position 22"]
+            DStemThreeprimeStrand.name + "/position 22"
+        ]
 
-        TRNAFeature.subfeature_section_dict = {name: 0 for name
-                                               in TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class}
-        TRNAFeature.subfeature_section_dict[DStemFiveprimeStrand.name + "/position 13"] = 1
-        TRNAFeature.subfeature_section_dict[DLoop.name + "/alpha positions"] = 1
-        TRNAFeature.subfeature_section_dict[DLoop.name + "/positions 18-19"] = 2
-        TRNAFeature.subfeature_section_dict[DLoop.name + "/beta positions"] = 3
-        TRNAFeature.subfeature_section_dict[DLoop.name + "/position 21"] = 4
-        TRNAFeature.subfeature_section_dict[DStemThreeprimeStrand.name + "/positions 23-25"] = 1
+        self.subfeature_section_dict = {name: 0 for name in self.dict_mapping_feature_or_subfeature_name_to_class}
+        self.subfeature_section_dict[DStemFiveprimeStrand.name + "/position 13"] = 1
+        self.subfeature_section_dict[DLoop.name + "/alpha positions"] = 1
+        self.subfeature_section_dict[DLoop.name + "/positions 18-19"] = 2
+        self.subfeature_section_dict[DLoop.name + "/beta positions"] = 3
+        self.subfeature_section_dict[DLoop.name + "/position 21"] = 4
+        self.subfeature_section_dict[DStemThreeprimeStrand.name + "/positions 23-25"] = 1
 
 
-    @staticmethod
-    def write_param_file(feature_param_path):
-        """Write the table of feature and "subfeature" parameters (class attributes)
-
-        Parameters
-        ==========
-        feature_param_path : str
-            Output file path
-        """
-
-        is_output_file_writable(feature_param_path)
-        rows = TRNAFeature.get_param_table_as_list()
+    def write_param_file(self, feature_param_path):
+        """Write the table of feature and "subfeature" parameters (class attributes)."""
+        filesnpaths.is_output_file_writable(feature_param_path)
+        rows = self.get_param_table_as_list()
         with open(feature_param_path, 'w') as f:
             for row in rows:
                 f.write("\t".join(row) + "\n")
 
 
-    @staticmethod
-    def tabulate_params():
-        """Get a nicely formatted version of the table of feature and "subfeature" parameters (class attributes)"""
+    def tabulate_params(self):
+        """Get a nicely formatted version of the table of feature and "subfeature" parameters (class
+        attributes)."""
+        rows = self.get_param_table_as_list()
 
-        rows = TRNAFeature.get_param_table_as_list()
         return tabulate(rows, headers='firstrow', tablefmt='github')
 
 
-    @staticmethod
-    def list_accessible_param_tuples(pretty=False):
-        """Get a list of tuples, each containing the name and value of an accessible parameter"""
-
+    def list_accessible_param_tuples(self, pretty=False):
+        """Get a list of tuples, each containing the name and value of an accessible parameter."""
         param_tuples = []
         if pretty:
-            # Currently used in producing anvi-trnaseq analysis summary file.
+            # Used in producing the anvi-trnaseq analysis summary file.
             param_types = TRNAFeature.INI_FEATURE_PARAMS
-            for feature_info in TRNAFeature.get_param_table_as_list()[1: ]:
+            for feature_info in self.get_param_table_as_list()[1: ]:
                 feature_name = feature_info[0]
                 for param_type, param_value in zip(param_types, feature_info[1: ]):
                     if param_value != '-':
@@ -259,9 +1037,9 @@ class TRNAFeature:
                         else:
                             param_tuples.append((feature_name.capitalize() + ': ' + param_type, param_value))
         else:
-            # Currently used in setting tRNA-seq database meta-values.
+            # Used in setting tRNA-seq database meta-values.
             param_types = TRNAFeature.ACCESSIBLE_FEATURE_PARAMS
-            for feature_info in TRNAFeature.get_param_table_as_list()[1: ]:
+            for feature_info in self.get_param_table_as_list()[1: ]:
                 feature_name = feature_info[0].replace(' ', '_')
                 for param_type, param_value in zip(param_types, feature_info[1: ]):
                     if param_value != '-':
@@ -273,25 +1051,18 @@ class TRNAFeature:
         return param_tuples
 
 
-    @staticmethod
-    def get_param_table_as_list():
-        """Get a table of user-accessible feature and "subfeature" parameters (class attributes)
+    def get_param_table_as_list(self):
+        """Get a table of user-accessible feature and "subfeature" parameters (class attributes).
 
-        A dash indicates a parameter that cannot be set for the feature.
-        Quotes indicate a parameter that is currently not set.
+        A dash indicates a parameter that cannot be set for the feature. Quotes indicate a parameter
+        that is currently not set.
         """
-
         ACCESSIBLE_FEATURE_PARAMS = TRNAFeature.ACCESSIBLE_FEATURE_PARAMS
-        if (TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class is None
-            or TRNAFeature.subfeature_section_dict is None
-            or TRNAFeature.feature_and_subfeature_names_with_accessible_lengths is None):
-            TRNAFeature.set_param_refs()
-        dict_mapping_feature_or_subfeature_name_to_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class
-        feature_and_subfeature_names_with_accessible_lengths = TRNAFeature.feature_and_subfeature_names_with_accessible_lengths
-        subfeature_section_dict = TRNAFeature.subfeature_section_dict
+        feature_and_subfeature_names_with_accessible_lengths = self.feature_and_subfeature_names_with_accessible_lengths
+        subfeature_section_dict = self.subfeature_section_dict
 
         rows = [["Feature/subfeature"] + TRNAFeature.INI_FEATURE_PARAMS]
-        for feature_or_subfeature_name, feature_class in dict_mapping_feature_or_subfeature_name_to_class.items():
+        for feature_or_subfeature_name, feature_class in self.dict_mapping_feature_or_subfeature_name_to_class.items():
             row = [feature_or_subfeature_name]
 
             if feature_or_subfeature_name == 'acceptor': # The acceptor is special.
@@ -301,8 +1072,7 @@ class TRNAFeature:
 
             for param_name in ACCESSIBLE_FEATURE_PARAMS:
                 if param_name == 'conserved_nts':
-                    if ('/' not in feature_or_subfeature_name
-                        and 'allowed_section_lengths' in feature_class.__dict__):
+                    if '/' not in feature_or_subfeature_name and 'allowed_section_lengths' in feature_class.__dict__:
                         # Conserved nucleotides can only be set for individual "subfeature" sections of the D arm.
                         row.append("-")
                         continue
@@ -354,68 +1124,62 @@ class TRNAFeature:
         return rows
 
 
-    @staticmethod
-    def set_params_from_file(feature_param_path):
-        """Set user-accessible tRNA feature parameters for de novo tRNA profiling and identification"""
-
-        is_file_exists(feature_param_path)
+    def set_params_from_file(self, feature_param_path):
+        """Set user-accessible tRNA feature parameters for de novo tRNA profiling and
+        identification."""
+        filesnpaths.is_file_exists(feature_param_path)
         feature_param_df = pd.read_csv(feature_param_path, sep='\t', header=0, index_col=0, keep_default_na=False)
+
+        INI_FEATURE_PARAMS = TRNAFeature.INI_FEATURE_PARAMS
+        ACCESSIBLE_FEATURE_PARAMS = TRNAFeature.ACCESSIBLE_FEATURE_PARAMS
         for feature_or_subfeature_name, row in feature_param_df.iterrows():
-            for ini_param_name, param_name in zip(TRNAFeature.INI_FEATURE_PARAMS, TRNAFeature.ACCESSIBLE_FEATURE_PARAMS):
+            for ini_param_name, param_name in zip(INI_FEATURE_PARAMS, ACCESSIBLE_FEATURE_PARAMS):
                 param_value = row[ini_param_name]
                 if param_value == '-':
                     continue
-                TRNAFeature.set_param(feature_or_subfeature_name, param_name, param_value)
+                self.set_param(feature_or_subfeature_name, param_name, param_value)
 
 
-    @staticmethod
-    def set_param(feature_or_subfeature_name, param_name, param_value):
-        """Set tRNA feature parameter class attributes
+    def set_param(self, feature_or_subfeature_name, param_name, param_value):
+        """Set tRNA feature parameter class attributes.
 
         Parameters
         ==========
         feature_or_subfeature_name : str
-            The name of a feature or "subfeature" (in the case of a section of the D arm)
+            The name of a feature or "subfeature" (in the case of a section of the D arm).
 
         param_name : str
-            The name of a parameter that can be set
+            The name of a parameter that can be set.
 
         param_value : str
-            The specifically formatted value of the parameter to be set
+            The particularly formatted value of the parameter to be set.
         """
-
-        if (TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class is None
-            or TRNAFeature.feature_and_subfeature_names_with_accessible_lengths is None
-            or TRNAFeature.subfeature_section_dict is None):
-            TRNAFeature.set_param_refs()
-
-        if feature_or_subfeature_name not in TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class:
-            raise TRNAIdentifierError("`TRNAFeature.set_param` does not recognize the supplied feature or subfeature name, %s. "
-                                      "Here are the recognized feature names: %s"
-                                      % (feature_or_subfeature_name, ", ".join(TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class)))
+        if feature_or_subfeature_name not in self.dict_mapping_feature_or_subfeature_name_to_class:
+            raise TRNAIdentifierError("`TRNAFeatureParameterizer.set_param` does not recognize the supplied feature "
+                                      "or subfeature name, %s. Here are the recognized feature names: %s"
+                                      % (feature_or_subfeature_name, ", ".join(self.dict_mapping_feature_or_subfeature_name_to_class)))
 
         if param_name not in TRNAFeature.ACCESSIBLE_FEATURE_PARAMS:
-            raise TRNAIdentifierError("`TRNAFeature.set_param` does not recognize the supplied feature parameter name, %s. "
-                                      "Here are the recognized parameter names: %s"
+            raise TRNAIdentifierError("`TRNAFeatureParameterizer.set_param` does not recognize the supplied feature "
+                                      "parameter name, %s. Here are the recognized parameter names: %s"
                                       % (param_name, ", ".join(TRNAFeature.ACCESSIBLE_FEATURE_PARAMS)))
 
         if param_name == 'conserved_nts':
-            TRNAFeature.set_conserved_nts(feature_or_subfeature_name, param_value)
+            self.set_conserved_nts(feature_or_subfeature_name, param_value)
         elif param_name == 'num_allowed_unconserved':
             if not param_value:
                 param_value = -1
-            TRNAFeature.set_num_allowed_unconserved(feature_or_subfeature_name, param_value)
+            self.set_num_allowed_unconserved(feature_or_subfeature_name, param_value)
         elif param_name == 'num_allowed_unpaired':
             if not param_value:
-                param_value = 10000 # a default larger than any possible stem length
-            TRNAFeature.set_num_allowed_unpaired(feature_or_subfeature_name, param_value)
+                param_value = sys.maxsize
+            self.set_num_allowed_unpaired(feature_or_subfeature_name, param_value)
         elif param_name == 'allowed_input_lengths':
-            TRNAFeature.set_allowed_input_lengths(feature_or_subfeature_name, param_value)
+            self.set_allowed_input_lengths(feature_or_subfeature_name, param_value)
 
 
-    @staticmethod
-    def set_conserved_nts(feature_or_subfeature_name, param_value=''):
-        """Modify (update a dict in) the `conserved_nts` attribute of a tRNA feature class
+    def set_conserved_nts(self, feature_or_subfeature_name, param_value=''):
+        """Modify (update a dict in) the `conserved_nts` attribute of a tRNA feature class.
 
         Parameters
         ==========
@@ -427,8 +1191,7 @@ class TRNAFeature:
             <Zero-based position relative to the 5' end of the feature>,<Conserved nucleotide symbol>;<Next index>,<Next symbol>;...
             The default empty string indicates that there are no conserved sites.
         """
-
-        feature_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
+        feature_class = self.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
 
         conserved_nts_dict = {}
         if param_value:
@@ -457,53 +1220,48 @@ class TRNAFeature:
                                           "The conserved nucleotide input provided was %s"
                                           % (feature_or_subfeature_name, param_value))
 
-        prev_conserved_nts_dict = feature_class.conserved_nts[TRNAFeature.subfeature_section_dict[feature_or_subfeature_name]]
+        prev_conserved_nts_dict = feature_class.conserved_nts[self.subfeature_section_dict[feature_or_subfeature_name]]
         prev_conserved_nts_dict.clear()
         prev_conserved_nts_dict.update(conserved_nts_dict)
 
 
-    @staticmethod
-    def set_num_allowed_unconserved(feature_name, num_allowed_unconserved=-1):
-        """Set the `num_allowed_unconserved` attribute of a tRNA feature class
+    def set_num_allowed_unconserved(self, feature_name, num_allowed_unconserved=-1):
+        """Set the `num_allowed_unconserved` attribute of a tRNA feature class.
 
         Parameters
         ==========
         feature_name : str
-            The name of a feature
+            The name of a feature.
 
         num_allowed_unconserved : int, -1
             The number of conserved nucleotide positions in the feature allowed to be unconserved
-            but still have positive identification of the feature
-            The default value of -1 means that an "unlimited" number of unconserved positions is allowed.
+            but still have positive identification of the feature. The default value of -1 means
+            that an "unlimited" number of unconserved positions is allowed.
         """
-
-        feature_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class[feature_name]
+        feature_class = self.dict_mapping_feature_or_subfeature_name_to_class[feature_name]
 
         num_allowed_unconserved = int(num_allowed_unconserved)
-        if ('num_allowed_unconserved' not in feature_class.__dict__
-            or '/' in feature_name):
+        if 'num_allowed_unconserved' not in feature_class.__dict__ or '/' in feature_name:
             raise TRNAIdentifierError("\"%s\" does not support assignment of an allowed number of unconserved nucleotides. "
                                       "The number of allowed unconserved nucleotides provided was %s"
                                       % (feature_name, num_allowed_unconserved))
         feature_class.num_allowed_unconserved = num_allowed_unconserved
 
 
-    @staticmethod
-    def set_num_allowed_unpaired(stem_name, num_allowed_unpaired=1000):
-        """Set the `num_allowed_unpaired` attribute of a stem class
+    def set_num_allowed_unpaired(self, stem_name, num_allowed_unpaired=sys.maxsize):
+        """Set the `num_allowed_unpaired` attribute of a stem class.
 
         Parameters
         ==========
         stem_name : str
-            The name of a stem feature
+            The name of a stem feature.
 
-        param_value : int, 1000
-            The number of positions in the stem allowed to be unpaired
-            Pairing means Watson-Crick or wobble G-T.
-            The default value of 1000 means that an "unlimited" number of unpaired positions is allowed.
+        param_value : int, sys.maxsize
+            The number of positions in the stem allowed to be unpaired. Pairing means Watson-Crick
+            or wobble G-T. The huge default value means that an "unlimited" number of unpaired
+            positions is allowed.
         """
-
-        feature_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class[stem_name]
+        feature_class = self.dict_mapping_feature_or_subfeature_name_to_class[stem_name]
 
         num_allowed_unpaired = int(num_allowed_unpaired)
         if 'num_allowed_unpaired' not in feature_class.__dict__:
@@ -513,20 +1271,19 @@ class TRNAFeature:
         feature_class.num_allowed_unpaired = num_allowed_unpaired
 
 
-    @staticmethod
-    def set_allowed_input_lengths(feature_or_subfeature_name, param_value):
-        """Set attributes related to the range of allowed lengths in a variable-length tRNA feature
+    def set_allowed_input_lengths(self, feature_or_subfeature_name, param_value):
+        """Set attributes related to the range of allowed lengths in a variable-length tRNA feature.
 
         Parameters
         ==========
         feature_or_subfeature_name : str
-            The name of a feature or "subfeature" (in the case of a section of the D arm)
+            The name of a feature or "subfeature" (in the case of a section of the D arm).
 
         param_value : str
-            A string representing the allowed length range, with the format <minimum length>-<maximum length>.
+            A string representing the allowed length range, with the format
+            <minimum length>-<maximum length>.
         """
-
-        feature_class = TRNAFeature.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
+        feature_class = self.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
 
         try:
             min_length, max_length = param_value.split('-')
@@ -535,10 +1292,9 @@ class TRNAFeature:
             raise TRNAIdentifierError("The proper format of the allowed feature length field in a parameter string is "
                                       "<Minimum length integer>-<Maximum length integer>. "
                                       "The length range provided was %s" % param_value)
-        if feature_or_subfeature_name not in TRNAFeature.feature_and_subfeature_names_with_accessible_lengths:
+        if feature_or_subfeature_name not in self.feature_and_subfeature_names_with_accessible_lengths:
             raise TRNAIdentifierError("\"%s\" does not support assignment of variable lengths. "
-                                      "The length range provided was %s"
-                                      % (feature_or_subfeature_name, param_value))
+                                      "The length range provided was %s" % (feature_or_subfeature_name, param_value))
 
         if feature_or_subfeature_name == VLoop.name:
             feature_class.allowed_input_lengths = tuple(itertools.product(allowed_lengths))
@@ -549,7 +1305,7 @@ class TRNAFeature:
             # If the possible lengths of position 13 (on the 5' strand of the D stem)
             # or position 22 (on the 3' of the D stem) are changed
             # then the other position should be changed accordingly -- this is not enforced.
-            section = TRNAFeature.subfeature_section_dict[feature_or_subfeature_name]
+            section = self.subfeature_section_dict[feature_or_subfeature_name]
             prev_allowed_section_lengths = feature_class.allowed_section_lengths
             feature_class.allowed_section_lengths = (prev_allowed_section_lengths[: section]
                                                      + (allowed_lengths, )
@@ -559,862 +1315,331 @@ class TRNAFeature:
             feature_class.summed_input_lengths = tuple(map(sum, feature_class.allowed_input_lengths))
 
 
-class Nucleotide(TRNAFeature):
-    allowed_input_lengths = ((1, ), )
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-
-    def __init__(self,
-                 string, # must be a string of length 1
-                 conserved_nts=None,
-                 num_allowed_unconserved=-1,
-                 start_pos=None,
-                 stop_pos=None,
-                 cautious=False):
-        """Superclass for tRNA primary features of a single nucleotide, e.g., discriminator, position 8"""
-
-        self.string = string
-        self.start_pos = start_pos
-        self.stop_pos = stop_pos
-
-        super().__init__((string, ),
-                         conserved_nts=conserved_nts,
-                         num_allowed_unconserved=num_allowed_unconserved,
-                         cautious=cautious)
-
-        (self.meets_conserved_thresh,
-         self.num_conserved,
-         self.num_unconserved,
-         self.conserved_status) = self.check_conserved_nts()
-
-
-class Sequence(TRNAFeature):
-    def __init__(self,
-                 substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
-                 conserved_nts=None,
-                 num_allowed_unconserved=-1,
-                 start_pos=None,
-                 stop_pos=None,
-                 cautious=False):
-        """Superclass for tRNA primary sequences, e.g., acceptor, 5' strand of T stem"""
-
-        if type(substrings) == str:
-            string_components = (substrings, )
-        elif all([type(s) == str for s in substrings]):
-            string_components = substrings
-        elif all([type(s) == Nucleotide or type(s) == Sequence for s in substrings]):
-            string_components = tuple(s.string for s in substrings)
-        self.string = ''.join(substrings)
-        self.start_pos = start_pos
-        self.stop_pos = stop_pos
-
-        super().__init__(string_components,
-                         conserved_nts=conserved_nts,
-                         num_allowed_unconserved=num_allowed_unconserved,
-                         cautious=cautious)
-
-        (self.meets_conserved_thresh,
-         self.num_conserved,
-         self.num_unconserved, # can include N "padding" in extrapolated 5' feature
-         self.conserved_status) = self.check_conserved_nts()
-
-
-class Loop(Sequence):
-    def __init__(self,
-                 substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
-                 conserved_nts=None,
-                 num_allowed_unconserved=-1,
-                 start_pos=None,
-                 stop_pos=None,
-                 cautious=False):
-        """Superclass for loops: D loop, anticodon loop, T loop"""
-
-        super().__init__(substrings,
-                         conserved_nts=conserved_nts,
-                         num_allowed_unconserved=num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class Stem(TRNAFeature):
-    def __init__(self,
-                 fiveprime_seq, # must be Sequence object
-                 threeprime_seq, # must be Sequence object
-                 num_allowed_unpaired=0,
-                 num_allowed_unconserved=-1,
-                 cautious=False):
-        """Superclass for stems: acceptor stem, D stem, anticodon stem, T stem"""
-
-        if cautious:
-            if type(fiveprime_seq) != Sequence or type(threeprime_seq) != Sequence:
-                raise TRNAIdentifierError("You can only define a Stem from Sequence objects.")
-        self.fiveprime_seq = fiveprime_seq
-        self.threeprime_seq = threeprime_seq
-
-        self.canonical_positions = (*self.fiveprime_seq.canonical_positions, *self.threeprime_seq.canonical_positions)
-        self.conserved_nts = (*self.fiveprime_seq.conserved_nts, *self.threeprime_seq.conserved_nts)
-
-        if cautious:
-            if tuple(map(len, self.fiveprime_seq.string_components)) != tuple(map(len, self.threeprime_seq.string_components[::-1])):
-                raise TRNAIdentifierError("The two Sequence objects, %s and %s, "
-                                          "that were used to define your Stem are not the same length."
-                                          % (self.fiveprime_seq.string_components, self.threeprime_seq.string_components))
-            length = sum(map(len, self.fiveprime_seq.string_components))
-            if num_allowed_unpaired > length:
-                raise TRNAIdentifierError("You tried to leave at most %d base pairs unpaired, "
-                                          "but there are only %d base pairs in the stem." % (num_allowed_unpaired, length))
-        self.num_allowed_unpaired = num_allowed_unpaired
-
-        self.start_positions = (self.fiveprime_seq.start_pos, self.threeprime_seq.start_pos)
-        self.stop_positions = (self.fiveprime_seq.stop_pos, self.threeprime_seq.stop_pos)
-
-        super().__init__((*self.fiveprime_seq.string_components, *self.threeprime_seq.string_components),
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=num_allowed_unconserved,
-                         cautious=cautious)
-
-        (self.meets_pair_thresh,
-         self.num_paired,
-         self.num_unpaired, # can include N "padding" in extrapolated 5' feature
-         self.paired_status) = self.check_pairs()
-
-
-    def check_pairs(self):
-        """Determine base pairing in the stem
-
-        Returns
-        =======
-        meets_pair_thresh : bool
-
-        num_paired : int
-
-        num_unpaired : int
-
-        paired_status : list
-            List of tuples, one tuple for each nucleotide pair in the stem
-            Each tuple has three elements: whether a base pair exists, the 5' nucleotide, and the 3' nucleotide
-        """
-
-        num_paired = 0
-        num_unpaired = 0 # can include N "padding" in extrapolated 5' feature
-        paired_status = []
-        for fiveprime_nt, threeprime_nt in zip(self.fiveprime_seq.string, self.threeprime_seq.string[::-1]):
-            if fiveprime_nt in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nt]:
-                num_paired += 1
-                paired_status.append((True, fiveprime_nt, threeprime_nt))
-            else:
-                num_unpaired += 1
-                paired_status.append((False, fiveprime_nt, threeprime_nt))
-
-        if num_unpaired > self.num_allowed_unpaired:
-            meets_pair_thresh = False
-        else:
-            meets_pair_thresh = True
-
-        return meets_pair_thresh, num_paired, num_unpaired, paired_status
-
-
-class Arm(TRNAFeature):
-    def __init__(self,
-                 stem, # must be Stem object
-                 loop, # must be Loop object
-                 num_allowed_unconserved=-1,
-                 cautious=False):
-        """Superclass for arms: D arm, anticodon arm, T arm
-
-        The number of unconserved nucleotides allowed in the arm
-        can differ from the sum of the numbers of unconserved nucleotides allowed in the stem and loop.
-        """
-
-        if cautious:
-            if type(stem) != Stem or type(loop) != Loop:
-                raise TRNAIdentifierError("A `Stem` and a `Loop` are required input to create an `Arm`.")
-        self.stem = stem
-        self.loop = loop
-
-        self.canonical_positions = (*stem.fiveprime_seq.canonical_positions,
-                                    *loop.canonical_positions,
-                                    *stem.threeprime_seq.canonical_positions)
-        if cautious:
-            if (tuple(pos for component_positions in self.canonical_positions for pos in component_positions)
-                != tuple(range(self.canonical_positions[0][0], (self.canonical_positions[0][0]
-                                                                + len(self.canonical_positions[0])
-                                                                + len(self.canonical_positions[1])
-                                                                + len(self.canonical_positions[2]))))):
-                raise TRNAIdentifierError("The canonical positions in an `Arm` must be contiguous. "
-                                          "These were yours: %s. "
-                                          "These came from the canonical positions in Stem, %s, "
-                                          "and the canonical positions in Loop, %s."
-                                          % (self.canonical_positions,
-                                             stem.canonical_positions,
-                                             loop.canonical_positions))
-
-        self.conserved_nts=(*stem.fiveprime_seq.conserved_nts,
-                            *loop.conserved_nts,
-                            *stem.threeprime_seq.conserved_nts)
-
-        self.start_pos = self.stem.start_positions[0]
-        self.stop_pos = self.stem.stop_positions[1]
-
-        super().__init__((*stem.fiveprime_seq.string_components,
-                          *loop.string_components,
-                          *stem.threeprime_seq.string_components),
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=num_allowed_unconserved,
-                         cautious=cautious)
-
-        if (self.stem.fiveprime_seq.num_unconserved
-            + self.loop.num_unconserved
-            + self.stem.threeprime_seq.num_unconserved) > self.num_allowed_unconserved:
-            self.meets_conserved_thresh = False
-        else:
-            self.meets_conserved_thresh = True
-
-
-class TRNAHisPositionZero(Nucleotide):
-    name = 'tRNA-His position 0'
-    canonical_positions = ((-1, ), )
-    conserved_nts = ({0: 'G'}, )
-    num_allowed_unconserved = 0
-
-    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
-        """The G typically found at the 5' end of mature tRNA-His"""
-
-        super().__init__(string,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class AcceptorStem(Stem):
-    name = 'acceptor stem'
-    num_allowed_unconserved = -1
-    num_allowed_unpaired = 1
-
-    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
-        """The base-paired nucleotides of the acceptor stem of tRNA (excludes the discriminator and acceptor)"""
-
-        super().__init__(fiveprime_seq,
-                         threeprime_seq,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         num_allowed_unpaired=self.num_allowed_unpaired,
-                         cautious=cautious)
-
-
-class AcceptorStemFiveprimeStrand(Sequence):
-    name = 'acceptor stem 5\' strand'
-    canonical_positions = ((1, 2, 3, 4, 5, 6, 7), )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-    stem_class = AcceptorStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 5' strand of the acceptor stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class PositionEight(Nucleotide):
-    name = 'position 8'
-    canonical_positions = ((8, ), )
-    conserved_nts = ({0: 'T'}, )
-    num_allowed_unconserved = 1
-
-    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
-        """The nucleotide at canonical position 8 of tRNA, expected but not required to be T"""
-
-        super().__init__(string,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class PositionNine(Nucleotide):
-    name = 'position 9'
-    canonical_positions = ((9, ), )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-
-    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
-        """The nucleotide at canonical position 9 of tRNA"""
-
-        super().__init__(string,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class DArm(Arm):
-    name = 'D arm'
-    num_allowed_unconserved = 2
-
-    def __init__(self, stem, loop, cautious=False):
-        """The D arm of tRNA"""
-
-        super().__init__(stem,
-                         loop,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         cautious=cautious)
-
-
-class DStem(Stem):
-    name = 'D stem'
-    num_allowed_unconserved = -1
-    num_allowed_unpaired = 1
-    arm_class = DArm
-
-    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
-        """The D stem of tRNA, which can be 3 (Type I tRNA) or 4 (Type II) nucleotides long"""
-
-        super().__init__(fiveprime_seq,
-                         threeprime_seq,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         num_allowed_unpaired=self.num_allowed_unpaired,
-                         cautious=cautious)
-
-
-class DStemFiveprimeStrand(Sequence):
-    name = 'D stem 5\' strand'
-    canonical_positions = ((10, 11, 12), (13, ))
-    allowed_section_lengths = ((3, ), (0, 1))
-    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({}, {})
-    num_allowed_unconserved = -1
-    arm_class = DArm
-    stem_class = DStem
-
-    def __init__(self, positions_10_to_12_string, position_13_string='', start_pos=None, stop_pos=None, cautious=False):
-        """The 5' strand of the D stem of tRNA"""
-
-        if cautious:
-            if len(positions_10_to_12_string) != 3:
-                raise TRNAIdentifierError("Your `positions_10_to_12_string` was not the required 3 bases long: %s"
-                                          % positions_10_to_12_string)
-            if not 0 <= len(position_13_string) <= 1:
-                raise TRNAIdentifierError("Your `position_13_string` was not the required 0 or 1 bases long: %s"
-                                          % position_13_string)
-
-        super().__init__((positions_10_to_12_string, position_13_string),
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=False)
-
-
-class DLoop(Loop):
-    name = 'D loop'
-    canonical_positions = ((14, 15), (16, 17), (18, 19), (20, ), (21, ))
-    allowed_section_lengths = ((2, ), (1, 2, 3), (2, ), (1, 2, 3), (1, ))
-    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({0: 'A', 1: ('A', 'G')}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
-    num_allowed_unconserved = 2
-    arm_class = DArm
-    stem_class = DStem
-
-    def __init__(self,
-                 positions_14_to_15_string,
-                 alpha_positions_string,
-                 positions_18_to_19_string,
-                 beta_positions_string,
-                 position_21_string,
-                 start_pos=None,
-                 stop_pos=None,
-                 cautious=False):
-        """The D loop of tRNA, allowing for variable alpha (canonical positions 16, 17, 17a, 17b) and beta (canonical positions 20, 20a, 20b) sections"""
-
-        if cautious:
-            if len(positions_14_to_15_string) != 1:
-                raise TRNAIdentifierError("Your `positions_14_to_15_string` was not the required 1 base long: %s" % positions_14_to_15_string)
-            if not 1 <= len(alpha_positions_string) <= 3:
-                raise TRNAIdentifierError("Your `alpha_positions_string` was not the required 1 to 3 bases long: %s" % alpha_positions_string)
-            if len(positions_18_to_19_string) != 2:
-                raise TRNAIdentifierError("Your `positions_18_to_19_string` was not the required 2 bases long: %s" % positions_18_to_19_string)
-            if not 1 <= len(beta_positions_string) <= 3:
-                raise TRNAIdentifierError("Your `beta_positions_string` was not the required 1 to 3 bases long: %s" % beta_positions_string)
-            if len(position_21_string) != 1:
-                raise TRNAIdentifierError("Your `position_21_string` was not the required 1 base long: %s" % position_21_string)
-
-        alpha_start_pos = 1
-        alpha_stop_pos = alpha_start_pos + len(alpha_positions_string)
-        self.alpha_seq = Sequence(alpha_positions_string, start_pos=alpha_start_pos, stop_pos=alpha_stop_pos)
-        beta_start_pos = alpha_stop_pos + 2
-        beta_stop_pos = beta_start_pos + len(beta_positions_string)
-        self.beta_seq = Sequence(beta_positions_string, start_pos=beta_start_pos, stop_pos=beta_stop_pos)
-
-        super().__init__((positions_14_to_15_string,
-                          alpha_positions_string,
-                          positions_18_to_19_string,
-                          beta_positions_string,
-                          position_21_string),
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class DStemThreeprimeStrand(Sequence):
-    name = 'D stem 3\' strand'
-    canonical_positions = ((22, ), (23, 24, 25))
-    allowed_section_lengths = ((0, 1), (1, 2, 3))
-    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({}, {})
-    num_allowed_unconserved = -1
-    arm_class = DArm
-    stem_class = DStem
-
-    def __init__(self, position_22_string, positions_23_to_25_string='', start_pos=None, stop_pos=None, cautious=False):
-        """The 3' strand of the D stem of tRNA"""
-
-        if cautious:
-            if not 0 <= len(position_22_string) <= 1:
-                raise TRNAIdentifierError("Your `position_22_string` was not the required 1 base long: %s" % position_22_string)
-            if len(positions_23_to_25_string) != 3:
-                raise TRNAIdentifierError("Your `positions_23_to_25_string` was not the required 1 to 3 bases long: %s" % positions_23_to_25_string)
-
-        super().__init__((position_22_string, positions_23_to_25_string),
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=False)
-
-
-class PositionTwentySix(Nucleotide):
-    name = 'position 26'
-    canonical_positions = ((26, ), )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-
-    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
-        """The nucleotide at canonical position 26 of tRNA"""
-
-        super().__init__(string,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class AnticodonArm(Arm):
-    name = 'anticodon arm'
-    num_allowed_unconserved = 1
-
-    def __init__(self, stem, loop, cautious=False):
-        """The anticodon arm of tRNA"""
-
-        self.anticodon = loop.anticodon
-        super().__init__(stem,
-                         loop,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         cautious=cautious)
-
-
-class AnticodonStem(Stem):
-    name = 'anticodon stem'
-    arm_class = AnticodonArm
-    num_allowed_unconserved = -1
-    num_allowed_unpaired = 1
-
-    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
-        """The anticodon stem of tRNA"""
-
-        super().__init__(fiveprime_seq,
-                         threeprime_seq,
-                         num_allowed_unpaired=self.num_allowed_unpaired,
-                         cautious=cautious)
-
-
-class AnticodonStemFiveprimeStrand(Sequence):
-    name = 'anticodon stem 5\' strand'
-    canonical_positions = ((27, 28, 29, 30, 31), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-    stem_class = AnticodonStem
-    arm_class = AnticodonArm
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 5' strand of the anticodon stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class Anticodon(Sequence):
-    name = 'anticodon'
-    canonical_positions = ((34, 35, 36))
-    allowed_input_lengths = ((3, ), )
-    summed_input_lengths = (3, )
-    arm_class = AnticodonArm
-    stem_class = AnticodonStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The anticodon sequence of tRNA"""
-
-        super().__init__(substrings, start_pos=start_pos, stop_pos=stop_pos, cautious=cautious)
-        try:
-            self.aa_string = ANTICODON_TO_AA[self.string]
-        except KeyError:
-            self.aa_string = 'NA'
-
-
-class AnticodonLoop(Loop):
-    name = 'anticodon loop'
-    canonical_positions = ((32, 33, 34, 35, 36, 37, 38), )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-    conserved_nts = ({1: 'T', 5: ('A', 'G')}, )
-    num_allowed_unconserved = 1
-    arm_class = AnticodonArm
-    stem_class = AnticodonStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The anticodon loop of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-        self.anticodon = Anticodon(self.string[2: 5])
-
-
-class AnticodonStemThreeprimeStrand(Sequence):
-    name = 'anticodon stem 3\' strand'
-    canonical_positions = ((39, 40, 41, 42, 43), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-    arm_class = AnticodonArm
-    stem_class = AnticodonStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 3' strand of the anticodon stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class VLoop(Loop):
-    name = 'V loop'
-    canonical_positions = ((44, 45, 46, 47, 48), )
-    allowed_input_lengths = tuple(itertools.product(range(4, 24)))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The V loop of tRNA: no stem/loop structure and base pairing is considered"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-        if 4 <= len(self.string) <= 5:
-            self.type = 'I'
-        elif 12 <= len(self.string) <= 23:
-            self.type = 'II'
-        else:
-            self.type = 'NA'
-
-
-class TArm(Arm):
-    name = 'T arm'
-    num_allowed_unconserved = 2
-
-    def __init__(self, stem, loop, cautious=False):
-        """The T arm of tRNA"""
-
-        super().__init__(stem,
-                         loop,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         cautious=cautious)
-
-
-class TStem(Stem):
-    name = 'T stem'
-    arm_class = TArm
-    num_allowed_unconserved = -1
-    num_allowed_unpaired = 1
-
-    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
-        """The T stem of tRNA, with canonical positions 53 and 61 expected to be G and C"""
-
-        super().__init__(fiveprime_seq,
-                         threeprime_seq,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         num_allowed_unpaired=self.num_allowed_unpaired,
-                         cautious=cautious)
-
-
-class TStemFiveprimeStrand(Sequence):
-    name = 'T stem 5\' strand'
-    canonical_positions = ((49, 50, 51, 52, 53), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-    conserved_nts = ({4: 'G'}, )
-    num_allowed_unconserved = 1
-    arm_class = TArm
-    stem_class = TStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 5' T strand of the T stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class TLoop(Loop):
-    name = 'T loop'
-    canonical_positions = ((54, 55, 56, 57, 58, 59, 60), )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-    conserved_nts = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
-    num_allowed_unconserved = 2
-    arm_class = TArm
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The T loop of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class TStemThreeprimeStrand(Sequence):
-    name = 'T stem 3\' strand'
-    canonical_positions = ((61, 62, 63, 64, 65), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-    conserved_nts = ({0: 'C'}, )
-    num_allowed_unconserved = 1
-    arm_class = TArm
-    stem_class = TStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 3' strand of the T stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class AcceptorStemThreeprimeStrand(Sequence):
-    name = 'acceptor stem 3\' strand'
-    canonical_positions=((66, 67, 68, 69, 70, 71, 72), )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-    stem_class = AcceptorStem
-
-    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
-        """The 3' strand of the acceptor stem of tRNA"""
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class Discriminator(Nucleotide):
-    name = 'discriminator'
-    canonical_positions = ((73, ), )
-    conserved_nts = ({}, )
-    num_allowed_unconserved = -1
-
-    def __init__(self, string, start_pos=None, stop_pos=None, cautious=False):
-        """The discriminator nucleotide 5' of the acceptor sequence"""
-
-        super().__init__(string,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class Acceptor(Sequence):
-    name = 'acceptor'
-    canonical_positions = ((74, 75, 76), )
-    allowed_input_lengths = ((3, ), (2, ), (1, )) # Input lengths of 2 and 1 are 3'-CC and 3'-C.
-    summed_input_lengths = (3, 2, 1)
-    conserved_nts = ({0: 'C', 1: 'C', 2: 'A'}, ) # set in stone
-    num_allowed_unconserved = 0 # set in stone
-    max_extra_threeprime = 2 # set in stone -- allowing this to vary would require a lot of work in `trnaseq.py`
-
-    def __init__(self, substrings, num_extra_threeprime=0, start_pos=None, stop_pos=None, cautious=False):
-        """The acceptor sequence (CCA in mature tRNA) and various other 3' endings
-
-        With default values of `self.allowed_input_lengths` and `self.num_extra_threeprime`,
-        a tRNA profile will prioritize CCA > CC > C > CCAN > CCANN.
-        """
-
-        # The possibilities of tRNA ending in 3'-CC and 3'-C are accommodated by `self.allowed_input_lengths`.
-        # When bases beyond the 3' end of 3'-CCA (CCAN...) in profiling,
-        # `self.num_extra_threeprime` SHOULD be set accordingly (1 for CCAN, 2 for CCANN) --
-        # these extra 3' bases are not treated explicitly by this class.
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
-
-
-class Profile:
-    FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES = TRNAFeature.list_all_tRNA_features()
-    THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES = FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES[::-1]
-    STEM_FORMATION_TRIGGERS = [
-        TStemFiveprimeStrand,
-        AnticodonStemFiveprimeStrand,
-        DStemFiveprimeStrand,
-        AcceptorStemFiveprimeStrand
-    ]
-    ARM_FORMATION_TRIGGERS = [TStem, AnticodonStem, DStem]
-    T_ARM_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TArm)
-    THREEPRIME_STEM_SEQ_POSITIONS = {
-        TStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TStemThreeprimeStrand),
-        AnticodonStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonStemThreeprimeStrand),
-        DStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DStemThreeprimeStrand),
-        AcceptorStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AcceptorStemThreeprimeStrand)
-    }
-    D_LOOP_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(DLoop)
-    ARM_LOOP_POS_DICT = {
-        TArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TLoop),
-        AnticodonArm: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop),
-        DArm: D_LOOP_POS
-    }
-    ANTICODON_LOOP_POS = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(AnticodonLoop)
-    EXTRAPOLATION_INELIGIBLE_FEATURES = [
-        AcceptorStemThreeprimeStrand,
-        TStemThreeprimeStrand,
-        VLoop,
-        AnticodonStemThreeprimeStrand,
-        DStemThreeprimeStrand
-    ]
+class Profile(object):
+    """A profile the tRNA features in a sequence. The function, `Profiler.profile`, creates these
+    objects."""
+
+    __slots__ = (
+        'input_seq',
+        'name',
+        'profiled_seq',
+        'features',
+        'num_conserved',
+        'num_unconserved',
+        'num_paired',
+        'num_unpaired',
+        'num_extra_threeprime',
+        'num_in_extrapolated_fiveprime_feature',
+        'has_complete_feature_set',
+        'num_extra_fiveprime',
+        'feature_names',
+        'acceptor_variant_string',
+        'alpha_start',
+        'alpha_stop',
+        'beta_start',
+        'beta_stop',
+        'anticodon_seq',
+        'anticodon_aa',
+        'is_predicted_trna',
+        'trunc_profile_index',
+        'unconserved_info',
+        'unpaired_info',
+        'is_fully_profiled'
+    )
 
     def __init__(self, input_seq, name=''):
-        """A profile of the tRNA features identified from the 3' end of the input sequence"""
-
-        # The input sequence is treated like a tRNA-seq read starting from the 3' end of a tRNA molecule.
         self.input_seq = input_seq
         self.name = name
 
-        (self.profiled_seq,
-         self.features,
-         self.num_conserved,
-         self.num_unconserved,
-         self.num_paired,
-         self.num_unpaired,
-         self.num_extra_threeprime,
-         self.num_in_extrapolated_fiveprime_feature,
-         self.has_complete_feature_set,
-         self.num_extra_fiveprime) = self.get_profile(unprofiled_seq=self.input_seq[::-1])
+        # The remaining attributes are set in `Profiler.profile`.
+        self.profiled_seq = None
+        self.features = None
+        self.num_conserved = None
+        self.num_unconserved = None
+        self.num_paired = None
+        self.num_unpaired = None
+        self.num_extra_threeprime = None
+        self.num_in_extrapolated_fiveprime_feature = None
+        self.has_complete_feature_set = None
+        self.num_extra_fiveprime = None
+        self.feature_names = None
+        self.acceptor_variant_string = None
+        self.alpha_start = None
+        self.alpha_stop = None
+        self.beta_start = None
+        self.beta_stop = None
+        self.anticodon_seq = None
+        self.anticodon_aa = None
+        self.is_predicted_trna = None
+        self.trunc_profile_index = None
+        self.unconserved_info = None
+        self.unpaired_info = None
+        self.is_fully_profiled = None
 
-        self.feature_names = [f.name for f in self.features]
 
-        if self.features:
+    def get_unconserved_positions(self):
+        """Get information on the unexpectedly unconserved positions in a tRNA feature profile.
+
+        Returns
+        =======
+        unconserved_info : list
+            List of tuples, one for each unconserved nucleotide in the profile.
+            A tuple has three elements:
+                1. position in the input sequence
+                2. observed nucleotide in the input
+                3. expected canonical nucleotides at the site,
+                   a string with nucleotides separated by commas if more than one
+        """
+        unconserved_info = []
+        for feature in self.features:
+            # Only Nucleotide and Sequence subclasses have the attribute.
+            if hasattr(feature, 'conserved_status'):
+                component_start_pos = feature.start_pos
+                # Conserved nucleotides are indexed within the string "component" (substring).
+                for string_component_statuses, string_component in zip(
+                    feature.conserved_status, feature.string_components):
+                    for nt_pos, is_conserved, observed_nt, expected_nts in string_component_statuses:
+                        # Avoid N padding in an extrapolated 5' feature.
+                        if not is_conserved and observed_nt != 'N':
+                            unconserved_info.append((component_start_pos + nt_pos,
+                                                     observed_nt,
+                                                     ','.join(expected_nts)))
+                    component_start_pos += len(string_component)
+        return unconserved_info
+
+
+    def get_unpaired_positions(self):
+        """Get information on the unexpectedly unpaired bases in a tRNA feature profile.
+
+        Returns
+        =======
+        unpaired_info : list
+            List of tuples, one for each unpaired pair of nucleotides.
+            A tuple has four elements:
+                1. position of 5' nucleotide in the input sequence
+                2. position of 3' nucleotide in the input sequence
+                3. observed 5' nucleotide
+                4. observed 3' nucleotide
+        """
+        unpaired_info = []
+        for feature in self.features:
+            # Only the Stem class has the attribute.
+            if hasattr(feature, 'paired_status'):
+                for nt_pos, (is_paired, fiveprime_nt, threeprime_nt) in enumerate(feature.paired_status):
+                    # Avoid N padding in an extrapolated 5' feature.
+                    if not is_paired and fiveprime_nt != 'N':
+                        unpaired_info.append((feature.fiveprime_seq.start_pos + nt_pos,
+                                              feature.threeprime_seq.stop_pos - nt_pos - 1,
+                                              fiveprime_nt,
+                                              threeprime_nt))
+        return unpaired_info
+
+
+class GeneProfile(object):
+    """A profile of the tRNA features in a gene sequence.
+
+    A gene may or may not encode the 3'-CCA acceptor sequence. The function,
+    `Profiler.profile_gene`, creates these objects.
+    """
+
+    __slots__ = (
+        'input_seq',
+        'name',
+        'unencoded_acceptor_profile',
+        'encoded_acceptor_profile',
+        'predicted_profile',
+        'has_encoded_acceptor'
+    )
+
+    def __init__(self, input_seq, name=''):
+        self.input_seq = input_seq
+        self.name = name
+
+        # The remaining attributes are set in `Profiler.profile_gene`.
+        self.unencoded_acceptor_profile = None
+        self.encoded_acceptor_profile = None
+        self.predicted_profile = None
+        self.has_encoded_acceptor = None
+
+
+class Profiler(object):
+    """Creates tRNA feature profiles from full-length or fragmentary transcript or gene DNA
+    sequences."""
+
+    def __init__(self):
+        self.fiveprime_to_threeprime_feature_classes = TRNAFeature.list_all_tRNA_features()
+        self.threeprime_to_fiveprime_feature_classes = self.fiveprime_to_threeprime_feature_classes[::-1]
+
+        self.primary_feature_names = [feature_class.name for feature_class in TRNAFeature.list_primary_tRNA_features()]
+        # The last of the "summed input lengths" possible for a feature is the maximum possible
+        # length of the feature.
+        self.max_length_dict = OrderedDict([(feature_class.name, feature_class.summed_input_lengths[-1])
+                                            for feature_class in TRNAFeature.list_primary_tRNA_features()])
+
+        self.stem_formation_triggers = [
+            TStemFiveprimeStrand,
+            AnticodonStemFiveprimeStrand,
+            DStemFiveprimeStrand,
+            AcceptorStemFiveprimeStrand
+        ]
+        self.arm_formation_triggers = [
+            TStem,
+            AnticodonStem,
+            DStem
+        ]
+
+        self.t_arm_pos = self.threeprime_to_fiveprime_feature_classes.index(TArm)
+        self.threeprime_stem_seq_positions = {
+            TStem: self.threeprime_to_fiveprime_feature_classes.index(TStemThreeprimeStrand),
+            AnticodonStem: self.threeprime_to_fiveprime_feature_classes.index(AnticodonStemThreeprimeStrand),
+            DStem: self.threeprime_to_fiveprime_feature_classes.index(DStemThreeprimeStrand),
+            AcceptorStem: self.threeprime_to_fiveprime_feature_classes.index(AcceptorStemThreeprimeStrand)
+        }
+        self.d_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(DLoop)
+        self.arm_loop_pos_dict = {
+            TArm: self.threeprime_to_fiveprime_feature_classes.index(TLoop),
+            AnticodonArm: self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop),
+            DArm: self.d_loop_pos
+        }
+        self.anticodon_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop)
+
+        self.extrapolation_ineligible_features = [
+            AcceptorStemThreeprimeStrand,
+            TStemThreeprimeStrand,
+            VLoop,
+            AnticodonStemThreeprimeStrand,
+            DStemThreeprimeStrand
+        ]
+
+
+    def profile(self, input_seq, name=''):
+        """Create a tRNA feature profile from a DNA sequence, assuming the presence of some form of
+        3' adapter sequence in the template molecule."""
+        self.p = profile = Profile(input_seq, name=name)
+
+        (profile.profiled_seq,
+         profile.features,
+         profile.num_conserved,
+         profile.num_unconserved,
+         profile.num_paired,
+         profile.num_unpaired,
+         profile.num_extra_threeprime,
+         profile.num_in_extrapolated_fiveprime_feature,
+         profile.has_complete_feature_set,
+         profile.num_extra_fiveprime) = self.get_profile(unprofiled_seq=profile.input_seq[::-1])
+
+        profile.feature_names = [f.name for f in profile.features]
+
+        if profile.features:
             # The extra 3' nucleotides are not explicitly added to the Acceptor object.
-            if self.num_extra_threeprime > 0:
-                self.acceptor_variant_string = self.features[-1].string + self.profiled_seq[-self.num_extra_threeprime: ]
+            if profile.num_extra_threeprime > 0:
+                profile.acceptor_variant_string = profile.features[-1].string + profile.profiled_seq[-profile.num_extra_threeprime: ]
             else:
-                self.acceptor_variant_string = self.features[-1].string
+                profile.acceptor_variant_string = profile.features[-1].string
 
             # Explicitly record the start and stop positions within the input seq
             # of the variable-length alpha and beta regions of the D loop.
-            if self.D_LOOP_POS < len(self.features):
-                D_loop = self.features[-self.D_LOOP_POS - 1]
+            if self.d_loop_pos < len(profile.features):
+                D_loop = profile.features[-self.d_loop_pos - 1]
                 alpha_seq = D_loop.alpha_seq
                 beta_seq = D_loop.beta_seq
-                self.alpha_start = D_loop.start_pos + alpha_seq.start_pos
-                self.alpha_stop = D_loop.start_pos + alpha_seq.stop_pos
-                self.beta_start = D_loop.start_pos + beta_seq.start_pos
-                self.beta_stop = D_loop.start_pos + beta_seq.stop_pos
-            else:
-                self.alpha_start = None
-                self.alpha_stop = None
-                self.beta_start = None
-                self.beta_stop = None
+                profile.alpha_start = D_loop.start_pos + alpha_seq.start_pos
+                profile.alpha_stop = D_loop.start_pos + alpha_seq.stop_pos
+                profile.beta_start = D_loop.start_pos + beta_seq.start_pos
+                profile.beta_stop = D_loop.start_pos + beta_seq.stop_pos
 
-            if self.ANTICODON_LOOP_POS < len(self.features):
-                anticodon = self.features[-self.ANTICODON_LOOP_POS - 1].anticodon
-                self.anticodon_seq = anticodon.string
-                self.anticodon_aa = anticodon.aa_string
-            else:
-                self.anticodon_seq = ''
-                self.anticodon_aa = ''
+            if self.anticodon_loop_pos < len(profile.features):
+                anticodon = profile.features[-self.anticodon_loop_pos - 1].anticodon
+                profile.anticodon_seq = anticodon.string
+                profile.anticodon_aa = anticodon.aa_string
 
-            if len(self.features) > self.T_ARM_POS:
-                self.is_predicted_trna = True
+            if len(profile.features) > self.t_arm_pos:
+                profile.is_predicted_trna = True # Liable to change below...
             else:
-                self.is_predicted_trna = False
-            # If the sequence does not have a complete feature set but is longer than tRNA should be,
-            # there is a high likelihood that this is due to the sequence (tRNA-seq transcript) being a chimera
-            # or another type of RNA with structural features akin to the 3' end of tRNA.
-            # (Longer-than-expected sequences with a complete feature set are often pre-tRNA.)
-            if not self.has_complete_feature_set:
-                if len(self.input_seq) > LONGEST_KNOWN_TRNA_LENGTH:
-                    self.is_predicted_trna = False
+                profile.is_predicted_trna = False
+
+            # tRNA profiling is complicated by the presence of chimeras (sequencing artifacts) and
+            # other RNAs with structural features resembling tRNA. The impact of "camouflaged" RNAs
+            # is minimized by stringent limits on unconserved and unpaired bases in the parameter
+            # settings. Chimeras can form between tRNA sequences and other RNA sequences --
+            # especially tRNA and, because of its abundance, rRNA. In `anvi-trnaseq`, chimeras of
+            # abundant tRNA species can recruit large numbers of other sequences during normalized
+            # and modified sequence formation, as chimeras are often among the longest sequences,
+            # which are "favored" in these processes. In turn, chimeric normalized and modified
+            # sequences become tRNA seeds (contigs) in `anvi-convert-trnaseq-database`. Chimeric
+            # sequences containing a full-length tRNA at the 3' end -- which appear to be relatively
+            # rare -- are difficult to distinguish from pre-tRNA, as both have a long 5' extension.
+            # These chimeras do not impact `anvi-trnaseq` analysis, as bases 5' of the full-length
+            # tRNA are trimmed off. Problematic chimeric sequences containing a fragmentary tRNA at
+            # the 3' end are flagged by comparing the number of unprofiled 5' bases to the maximum
+            # length of the next unprofiled feature; when the former is greater than the latter, the
+            # sequence is labeled as not being predicted tRNA, as the remaining 5' bases cannot be
+            # explained as the 3' part of a feature that cannot be identified. For example, take a
+            # sequence of length 85 in which profiling ends at position 27, which happens to be the
+            # 5' end of the D loop, leaving 26 unprofiled bases. The maximum length of the next
+            # unprofiled feature, the 5' strand of the D stem, is 4 (for the sake of simplicity,
+            # this is not changed if the 3' strand of the D stem was found to only have a length of
+            # 3). Therefore, the sequence is predicted to not be tRNA.
+            if not profile.has_complete_feature_set and profile.is_predicted_trna:
+                for feature_name in profile.feature_names:
+                    try:
+                        primary_feature_pos = self.primary_feature_names.index(feature_name)
+                    except ValueError:
+                        continue
+                    break
+                else:
+                    raise TRNAIdentifierError("To reach this point, the tRNA feature profile should contain primary sequence features, "
+                                              "but that doesn't appear to be the case. "
+                                              "Here are the names of the profiled features: %s" % ", ".join(profile.feature_names))
+                if primary_feature_pos > 1:
+                    # If the last profiled primary feature was the 5' strand of the acceptor stem,
+                    # do not consider tRNA-His position 0 as the next unprofiled feature even if
+                    # dealing with tRNA-His.
+                    if len(input_seq) - len(profile.profiled_seq) > self.max_length_dict[
+                        self.primary_feature_names[primary_feature_pos - 1]]:
+                        profile.is_predicted_trna = False
+                        profile.trunc_profile_index = len(input_seq) - len(profile.profiled_seq)
         else:
-            self.acceptor_variant_string = None
+            profile.anticodon_seq = ''
+            profile.anticodon_aa = ''
 
-            self.alpha_start = None
-            self.alpha_stop = None
-            self.beta_start = None
-            self.beta_stop = None
+            profile.is_predicted_trna = False
 
-            self.anticodon_seq = ''
-            self.anticodon_aa = ''
+        if profile.is_predicted_trna:
+            profile.unconserved_info = profile.get_unconserved_positions()
+            profile.unpaired_info = profile.get_unpaired_positions()
 
-            self.is_predicted_trna = False
+        profile.is_fully_profiled = (profile.input_seq == profile.profiled_seq)
+        return profile
 
-        self.is_fully_profiled = (self.input_seq == self.profiled_seq)
+
+    def profile_gene(self, input_seq, name='', check_encoded_acceptor=True):
+        """Create a tRNA feature profile from a DNA sequence, assuming the presence of some form of
+        3' adapter sequence in the template molecule."""
+        gene_profile = GeneProfile(input_seq, name=name)
+        gene_profile.unencoded_acceptor_profile = self.profile(input_seq + 'CCA', name=name)
+
+        if check_encoded_acceptor:
+            if input_seq[-3: ] == 'CCA':
+                gene_profile.encoded_acceptor_profile = self.profile(input_seq, name=name)
+
+                if gene_profile.unencoded_acceptor_profile.is_predicted_trna and not gene_profile.encoded_acceptor_profile.is_predicted_trna:
+                    gene_profile.predicted_profile = gene_profile.unencoded_acceptor_profile
+                    gene_profile.has_encoded_acceptor = False
+                elif gene_profile.encoded_acceptor_profile.is_predicted_trna and not gene_profile.unencoded_acceptor_profile.is_predicted_trna:
+                    gene_profile.predicted_profile = gene_profile.encoded_acceptor_profile
+                    gene_profile.has_encoded_acceptor = True
+
+                return gene_profile
+            else:
+                if gene_profile.unencoded_acceptor_profile.is_predicted_trna:
+                    gene_profile.predicted_profile = gene_profile.unencoded_acceptor_profile
+                    gene_profile.has_encoded_acceptor = False
+
+        if gene_profile.unencoded_acceptor_profile.is_predicted_trna:
+            gene_profile.predicted_profile = gene_profile.unencoded_acceptor_profile
+            gene_profile.has_encoded_acceptor = False
+        return gene_profile
 
 
     def get_profile(self,
@@ -1428,12 +1653,12 @@ class Profile:
                     num_extra_threeprime=0,
                     feature_pos=0,
                     has_complete_feature_set=False):
-        """A recursive function to sequentially identify tRNA features from the 3' end of a sequence"""
-
+        """A recursive function to sequentially identify tRNA features from the 3' end of a
+        sequence."""
         if features is None:
             features = []
 
-        if feature_pos == len(self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES):
+        if feature_pos == len(self.threeprime_to_fiveprime_feature_classes):
             # To reach this point,
             # all tRNA features including the tRNA-His 5'-G must have been found,
             # and the input sequence must extend 5' of that.
@@ -1463,17 +1688,17 @@ class Profile:
                     0) # input sequence is not longer than full-length tRNA
 
 
-        feature_class = self.THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES[feature_pos]
-        if feature_class in self.STEM_FORMATION_TRIGGERS: # 3' stem seq triggers stem formation
+        feature_class = self.threeprime_to_fiveprime_feature_classes[feature_pos]
+        if feature_class in self.stem_formation_triggers: # 3' stem seq triggers stem formation
             # Prepare to form a stem as well as the 3' sequence.
             make_stem = True
             stem_class = feature_class.stem_class
-            threeprime_stem_seq = features[-self.THREEPRIME_STEM_SEQ_POSITIONS[stem_class] - 1]
-            if stem_class in self.ARM_FORMATION_TRIGGERS:
+            threeprime_stem_seq = features[-self.threeprime_stem_seq_positions[stem_class] - 1]
+            if stem_class in self.arm_formation_triggers:
                 # Prepare to form an arm (stem + loop) as well as the stem.
                 make_arm = True
                 arm_class = stem_class.arm_class
-                loop = features[-self.ARM_LOOP_POS_DICT[arm_class] - 1]
+                loop = features[-self.arm_loop_pos_dict[arm_class] - 1]
             else:
                 make_arm = False
         else:
@@ -1482,7 +1707,7 @@ class Profile:
             if feature_class == TRNAHisPositionZero:
                 # Check for tRNA-His based on the anticodon sequence.
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
-                anticodon_string = features[-self.ANTICODON_LOOP_POS - 1].anticodon.string
+                anticodon_string = features[-self.anticodon_loop_pos - 1].anticodon.string
                 try:
                     aa_string = ANTICODON_TO_AA[anticodon_string]
                 except KeyError:
@@ -1522,7 +1747,7 @@ class Profile:
                 # Features that lack conserved positions
                 # or that do not form base pairs with a previously profiled stem sequence
                 # do not contain any information for extrapolation of an incomplete sequence.
-                if feature_class in self.EXTRAPOLATION_INELIGIBLE_FEATURES:
+                if feature_class in self.extrapolation_ineligible_features:
                     continue
                 # The unprofiled sequence must be at least 6 nucleotides long
                 # to span the 2 conserved positions in the anticodon loop (positions 33 and 37).
@@ -1545,8 +1770,8 @@ class Profile:
                     string_components.insert(0, threeprime_to_fiveprime_string[::-1]) # 5' to 3'
                 # WITH THE N PADDING, THE START POSITION (5') OF THE FEATURE IN THE INPUT SEQUENCE IS NEGATIVE.
                 feature = feature_class(*string_components,
-                                        start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                        stop_pos=len(self.input_seq) - len(profiled_seq))
+                                        start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
+                                        stop_pos=len(self.p.input_seq) - len(profiled_seq))
 
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
@@ -1603,12 +1828,12 @@ class Profile:
                 if feature_class.name == 'acceptor':
                     feature = feature_class(*string_components,
                                             num_extra_threeprime=num_extra_threeprime,
-                                            start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_pos=len(self.input_seq) - len(profiled_seq))
+                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
                 else:
                     feature = feature_class(*string_components,
-                                            start_pos=len(self.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_pos=len(self.input_seq) - len(profiled_seq))
+                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
 
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
@@ -1778,105 +2003,3 @@ class Profile:
                     0, # number of nucleotides in extrapolated 5' feature
                     has_complete_feature_set,
                     0) # input sequence is not longer than full-length tRNA
-
-
-    def get_unconserved_positions(self):
-        """Get information on the unexpectedly unconserved positions in a tRNA feature profile
-
-        Returns
-        =======
-        unconserved_info : list
-            List of tuples, one for each unconserved nucleotide in the profile
-            A tuple has three elements:
-                1. position in the input sequence
-                2. observed nucleotide in the input
-                3. expected canonical nucleotides at the site,
-                   a string with nucleotides separated by commas if more than one
-        """
-
-        unconserved_info = []
-        for feature in self.features:
-            # Only Nucleotide and Sequence subclasses have the attribute.
-            if hasattr(feature, 'conserved_status'):
-                component_start_pos = feature.start_pos
-                # Conserved nucleotides are indexed within the string "component" (substring).
-                for string_component_statuses, string_component in zip(
-                    feature.conserved_status, feature.string_components):
-                    for nt_pos, is_conserved, observed_nt, expected_nts in string_component_statuses:
-                        # Avoid N padding in an extrapolated 5' feature.
-                        if not is_conserved and observed_nt != 'N':
-                            unconserved_info.append((component_start_pos + nt_pos,
-                                                     observed_nt,
-                                                     ','.join(expected_nts)))
-                    component_start_pos += len(string_component)
-
-        return unconserved_info
-
-
-    def get_unpaired_positions(self):
-        """Get information on the unexpectedly unpaired bases in a tRNA feature profile
-
-        Returns
-        =======
-        unpaired_info : list
-            List of tuples, one for each unpaired pair of nucleotides
-            A tuple has four elements:
-                1. position of 5' nucleotide in the input sequence
-                2. position of 3' nucleotide in the input sequence
-                3. observed 5' nucleotide
-                4. observed 3' nucleotide
-        """
-
-        unpaired_info = []
-        for feature in self.features:
-            # Only the Stem class has the attribute.
-            if hasattr(feature, 'paired_status'):
-                for nt_pos, (is_paired, fiveprime_nt, threeprime_nt) in enumerate(feature.paired_status):
-                    # Avoid N padding in an extrapolated 5' feature.
-                    if not is_paired and fiveprime_nt != 'N':
-                        unpaired_info.append((feature.fiveprime_seq.start_pos + nt_pos,
-                                              feature.threeprime_seq.stop_pos - nt_pos - 1,
-                                              fiveprime_nt,
-                                              threeprime_nt))
-
-        return unpaired_info
-
-
-class GeneProfile:
-    __slots__ = ('unencoded_acceptor_profile',
-                 'encoded_acceptor_profile',
-                 'predicted_profile',
-                 'has_encoded_acceptor',
-                 'predicted_genomic_seq')
-
-    def __init__(self, input_seq, name='', check_encoded_acceptor=True):
-        """Profile the tRNA features in a gene sequence
-
-        A gene may or may not encode the 3'-CCA acceptor sequence.
-        """
-
-        self.unencoded_acceptor_profile = Profile(input_seq + 'CCA', name=name)
-        if check_encoded_acceptor:
-            self.encoded_acceptor_profile = Profile(input_seq, name=name)
-            if self.unencoded_acceptor_profile.is_predicted_trna and not self.encoded_acceptor_profile.is_predicted_trna:
-                self.predicted_profile = self.unencoded_acceptor_profile
-                self.has_encoded_acceptor = False
-                self.predicted_genomic_seq = input_seq
-            elif self.encoded_acceptor_profile.is_predicted_trna and not self.unencoded_acceptor_profile.is_predicted_trna:
-                self.predicted_profile = self.encoded_acceptor_profile
-                self.has_encoded_acceptor = True
-                self.predicted_genomic_seq = input_seq[: -3]
-            else:
-                self.predicted_profile = None
-                self.has_encoded_acceptor = None
-                self.predicted_genomic_seq = None
-        else:
-            self.encoded_acceptor_profile = None
-            if self.unencoded_acceptor_profile.is_predicted_trna:
-                self.predicted_profile = self.unencoded_acceptor_profile
-                self.has_encoded_acceptor = False
-                self.predicted_genomic_seq = input_seq
-            else:
-                self.predicted_profile = None
-                self.has_encoded_acceptor = None
-                self.predicted_genomic_seq = None
