@@ -7,7 +7,6 @@ import os
 import sys
 import json
 import copy
-import argparse
 import platform
 
 from tabulate import tabulate
