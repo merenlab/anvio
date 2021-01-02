@@ -2,14 +2,25 @@
 
 set -e
 
+O() {
+    echo -e "\033[1;1m\033[41m:: $1 ...\033[0m"
+}
+
 C() {
-    echo -e "\033[1;30m\033[47m$1\033[0m"
+    echo -e "\033[1;30m\033[47m:: $1 ...\033[0m"
 }
 
 INFO() {
     echo
     echo
-    C ":: $1 ..."
+    C "$1"
+    echo
+}
+
+OUTPUT() {
+    echo
+    echo
+    O "$1"
     echo
 }
 
@@ -53,6 +64,6 @@ SETUP_WITH_OUTPUT_DIR() {
 }
 
 SHOW_FILE() {
-    echo
-    cat $1
+    OUTPUT $1
+    head -n 10 $1 | anvi-script-tabulate
 }
