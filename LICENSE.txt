@@ -618,4 +618,8 @@ an absolute waiver of all civil liability in connection with the
 Program, unless a warranty or assumption of liability accompanies a
 copy of the Program in return for a fee.
 
+<<<<<<< HEAD
                      END OF TERMS AND CONDITIONS
+=======
+                     END OF TERMS AND CONDITIONS
+>>>>>>> 3d7525e12924c118a8bb18e31263817b71bfd613
