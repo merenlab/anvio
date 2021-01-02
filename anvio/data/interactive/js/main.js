@@ -76,6 +76,9 @@ var sequences_available = false;
 var load_full_state = false;
 var bbox;
 
+var max_branch_support_value_seen = null;
+var min_branch_support_value_seen = null;
+
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
 //  Init

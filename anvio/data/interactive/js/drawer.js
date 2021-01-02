@@ -799,9 +799,12 @@ Drawer.prototype.draw_internal_node = function(p) {
 
             drawLine(this.tree_svg_id, p, p0, p1);
 
+            // support value business happens here:
+            min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+            max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+            p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+            p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
             this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
-            // renders support value SVG circle at each tree bifurcation
-            // pass additional arguments to drawSupportValue based on UI
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);
             line.setAttribute('style', 'stroke:rgba(0,0,0,0);stroke-width:16;');
@@ -850,6 +853,13 @@ Drawer.prototype.draw_internal_node = function(p) {
         p1['y'] = pr['y'];
 
         drawLine(this.tree_svg_id, p, p0, p1, true);
+
+        // support value business happens here:
+        min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+        max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+        p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+        p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
         line.setAttribute('style', PADDING_STYLE);
