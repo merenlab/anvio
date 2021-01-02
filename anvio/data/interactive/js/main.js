@@ -321,7 +321,7 @@ function initData() {
     // hide support value params on onready -- there is probably a better place to do this?
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
-    $('#show_invert_symbol').hide()
+    $('#show_symbol_options').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1456,6 +1456,7 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked') 
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val() 
+    state['support-symbol-color'] = $('#support_symbol_color').attr('color')
 
     // sync views object and layers table
     syncViews();

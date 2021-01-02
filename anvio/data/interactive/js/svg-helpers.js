@@ -290,7 +290,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             circle.setAttribute('cy', p0.y)
             circle.setAttribute('r', radius) 
             circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', 'grey' )
+            circle.setAttribute('fill', supportValueData.symbolColor )
             circle.setAttribute('opacity', .6) 
 
             var svg = document.getElementById(svg_id);
