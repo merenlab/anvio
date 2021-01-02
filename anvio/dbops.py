@@ -644,7 +644,7 @@ class ContigsSuperclass(object):
 
             response = contigs_db.db._exec(query).fetchall()
 
-            # the response now contains all matching gene calls found in the contigs database. this may cause an issue
+            # the resopnse now contains all matching gene calls found in the contigs database. this may cause an issue
             # (just like the one reported here: https://github.com/merenlab/anvio/issues/1515) if the user is working
             # with only a subset of splits in the contigs database (for instance through `anvi-refine`). here we will
             # remove gene calls for which we don't have a split name associated:
@@ -1745,7 +1745,7 @@ class PanSuperclass(object):
                              "decide how to punish the unlucky.")
             return
 
-        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        self.progress.new('Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
         for gene_cluster_id in self.gene_clusters_functions_dict:
             self.progress.update(f'{gene_cluster_id} ...', increment=True)
 
