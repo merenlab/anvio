@@ -1147,7 +1147,8 @@ class TRNASeqDataset(object):
 
         # Find modified nucleotides, grouping sequences into modified sequences.
         self.find_substitutions()
-        self.find_deletions()
+        if not self.skip_INDEL_profiling:
+            self.find_deletions()
         for mod_seq in self.mod_trna_seqs:
             mod_seq.init()
 
@@ -1269,7 +1270,8 @@ class TRNASeqDataset(object):
         """Create an empty tRNA-seq database."""
         meta_values = {'sample_id': self.sample_id,
                        'treatment': self.treatment,
-                       'description': self.descrip if self.descrip else '_No description is provided_'}
+                       'description': self.descrip if self.descrip else '_No description is provided_',
+                       'INDELs_profiled': not self.skip_INDEL_profiling}
         dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=False).create(meta_values)
 
 
