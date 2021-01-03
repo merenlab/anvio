@@ -37,6 +37,9 @@ pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
+# these things seem to change between BLAST versions. makeblastdb for BLAST 2.10.1 seems to
+# generate the following ones.
+nucl_database_extensions = ['.ndb', '.nhr', '.nin', '.not', '.nsq', '.ntf', '.nto']
 
 class TRNATaxonomyContext(AccessionIdToTaxonomy):
     """The purpose of this base class is ot define file paths and constants for trna taxonomy ops."""
@@ -148,7 +151,7 @@ class SanityCheck(object):
             # PopulateContigsDatabaseWithTRNATaxonomy
             ###########################################################
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithTRNATaxonomy']:
-                for prefix in ['.nhr', '.nin', '.nsq']:
+                for prefix in nucl_database_extensions:
                     missing_anticodon_databases = [anticodon for anticodon in self.ctx.anticodons if not os.path.exists(self.ctx.anticodons[anticodon]['db'] + '.nhr')]
                     if len(missing_anticodon_databases):
                         raise ConfigError("OK. It is very likley that if you run `anvi-setup-trna-taxonomy` first you will be golden. "
@@ -447,7 +450,7 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
 
         self.progress.new("Creating search databases")
         self.progress.update("Removing any database that still exists in the output directory...")
-        for prefix in ['.nhr', '.nin', '.nsq']:
+        for prefix in nucl_database_extensions:
             [os.remove(database_path) for database_path in [s['db'] + prefix for s in self.ctx.anticodons.values()] if os.path.exists(database_path)]
 
         # compresssing and decompressing FASTA files changes their hash and make them look like
@@ -479,7 +482,7 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
             blast.log_file_path = os.path.join(os.path.dirname(FASTA_file_path_for_anticodon), '%s.log' % anticodon)
             blast.makedb(dbtype='nucl')
 
-            for prefix in ['.nhr', '.nin', '.nsq']:
+            for prefix in nucl_database_extensions:
                 if not os.path.exists(FASTA_file_path_for_anticodon + prefix):
                     raise ConfigError("Something went wrong and BLAST did not create the database file it was supposed to "
                                       "for %s :(" % anticodon)

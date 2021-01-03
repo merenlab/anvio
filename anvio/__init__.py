@@ -15,8 +15,9 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '6.2-master'
-anvio_codename = 'esther'
+anvio_version = '7'
+anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
+                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
 anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
 
@@ -3098,15 +3099,15 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o version", "%s (v%s)" % (__codename__, __version__), mc='green')
-    run.info("Profile DB version", __profile__version__)
-    run.info("Contigs DB version", __contigs__version__)
-    run.info("Pan DB version", __pan__version__)
-    run.info("Genome data storage version", __genomes_storage_version__)
-    run.info("Auxiliary data storage version", __auxiliary_data_version__)
-    run.info("Structure DB version", __structure__version__)
-    run.info("Kegg Modules DB version", __kegg_modules_version__)
-    run.info("tRNA-seq DB version", __trnaseq__version__)
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    run.info("Profile database", __profile__version__)
+    run.info("Contigs database", __contigs__version__)
+    run.info("Pan database", __pan__version__)
+    run.info("Genome data storage", __genomes_storage_version__)
+    run.info("Auxiliary data storage", __auxiliary_data_version__)
+    run.info("Structure database", __structure__version__)
+    run.info("Metabolic modules database", __kegg_modules_version__)
+    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
 
 
 __version__, \

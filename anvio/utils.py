@@ -655,10 +655,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
-        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        tab = '\t'
+        f.write(f"|{header_text.replace(tab, '|')}|\n")
         f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
     else:
-        f.write('%s\n' % header_text)
+        f.write(f"{header_text}\n")
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -4067,10 +4068,11 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
-                          "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environment "
-                          "for anvi'o, and try running the migration program again things should be alright.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
+                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
+                          "anvi'o environment. The reason why the standard anvi'o package does not include "
+                          "this module is both complicated and really unimportant. Re-running the migration "
+                          "after `h5py` is installed will make things go smootly.")
 
 
 def RepresentsInt(s):

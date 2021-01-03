@@ -11,7 +11,7 @@
     "samples_txt": "samples.txt",
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1e6,
+        "--memory": 1000000.0,
         "threads": 11,
         "run": true,
         "--min-count": "",
@@ -52,7 +52,7 @@
         "MERGE_DIR": "06_MERGED_megahit_no_qc",
         "LOGS_DIR": "00_LOGS_megahit_no_qc"
     },
-    "config_version": "1",
+    "config_version": "2",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
