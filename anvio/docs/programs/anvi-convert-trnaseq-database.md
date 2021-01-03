@@ -20,4 +20,4 @@ anvi-convert-trnaseq-database example_untreated_trnaseq_database example_demethy
                               -o example_empty_output_directory_path
                               -n example_project_name
                               --preferred-treatment demethylase
-{{ codestart }}
+{{ codestop }}
