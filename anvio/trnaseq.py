@@ -854,6 +854,7 @@ class TRNASeqDataset(object):
         TrimmedSeq.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         self.min_trna_frag_size = A('min_trna_fragment_size')
         self.agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
+        self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.fiveprimemost_del_start = A('fiveprimemost_deletion_start')
         self.threeprimemost_del_start = A('threeprimemost_deletion_start')
         self.fiveprimemost_del_stop = A('fiveprimemost_deletion_stop')
