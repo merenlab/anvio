@@ -24,7 +24,10 @@ requirements:
     - pysam
     - ete3
     - scipy
-    - scikit-learn
+    # the following prevents an openmp error first reported in
+    # merenlab/anvio#1489 that also occurs during conda bulid:
+    # https://github.com/bioconda/bioconda-recipes/pull/26014#issuecomment-753693842
+    - scikit-learn <0.21
     - django
     - requests
     - psutil ==5.4.3
@@ -45,8 +48,8 @@ requirements:
     - snakemake-minimal ==5.10.0
 test:
   commands:
-    - anvi-self-test --version
-    - anvi-self-test --help
+    - anvi-pan-genome --help
+    - anvi-script-reformat-fasta --help
 
 about:
   home: http://merenlab.org/software/anvio/
@@ -55,3 +58,8 @@ about:
   license_file: LICENSE.txt
   summary: "An interactive analysis and visualization platform for omics data"
   dev_url:  https://github.com/merenlab/anvio
+
+extra:
+  container:
+    # extended-base generates en_US.UTF-8 locale and sets LC_ALL, LANG properly
+    extended-base: True
