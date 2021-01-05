@@ -442,6 +442,16 @@ D = {
                      "desired lengths (although some functionality may become unavailable for the projects that rely on "
                      "a contigs database that is initiated this way)."}
                 ),
+    'db-variant': (
+            ['--db-variant'],
+            {'metavar': 'VARIANT',
+             'required': False,
+             'default': 'unknown',
+             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers "
+                     "Please leave this blank unless you are certain that you need to set a db variant since it may influence "
+                     "downstream processes. In an ideal world a varainat would be a single-word, without any capitalized letters "
+                     "or special characters."}
+                ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],
             {'metavar': 'FASTA',
