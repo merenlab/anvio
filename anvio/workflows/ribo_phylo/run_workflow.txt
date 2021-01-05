@@ -38,4 +38,49 @@ anvi-interactive -p 07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
 anvi-interactive -p Ribosomal_L16_profile.db \
                  -t Ribosomal_L16.treefile \
                  -A Ribosomal_L16_all_misc_data_final.tsv   \
-                 --manual                 
+                 --manual
+
+
+# Mapping
+mkdir profile_SCGs && cd profile_SCGs
+anvi-run-workflow -w metagenomics --get-default-config config.json
+# Checklist for metagenomics config file
+- [ ] turn OFF all annotation steps
+- [ ] turn OFF minoche read filtering
+- [ ] REFERENCES mode
+- [ ] adjust min contig length in profile to really small (default it 1000 nt and some SCGs have less)
+- [ ] 
+
+# samples_txt
+# cp samples_txt to this dir and add relative paths
+cp ../samples.txt .
+
+# fasta_txt
+# located here: 
+echo -e "name\tpath" > fasta.txt
+echo -e "Ribosomal_l16\t../RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_scgs_for_mapping.fna" >> fasta.txt
+
+# Sync with midway
+rsync -av OSD/ mschechter@midway2.rcc.uchicago.edu:/project2/meren/PEOPLE/mschechter/OSD
+
+# run workflow
+si
+
+anvi-run-workflow -w metagenomics -c config.json -A --cores 10
+
+
+anvi-script-add-default-collection -c 03_CONTIGS/Ribosomal_l16-contigs.db \
+                                   -p 05_ANVIO_PROFILE/Ribosomal_l16/ERR771092/PROFILE.db
+
+anvi-summarize -c 03_CONTIGS/Ribosomal_l16-contigs.db \
+               -p 05_ANVIO_PROFILE/Ribosomal_l16/ERR771092/PROFILE.db \
+               -o 07_SUMMARY/Ribosomal_l16 \
+               -C DEFAULT \
+               --init-gene-coverages
+
+rscript add_mapping_data_to_misc.R
+
+anvi-interactive --manual \
+                 -p fake-profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.tree \
+                 -A profile_SCGs/07_SUMMARY/Ribosomal_L16/Ribosomal_L16_all_misc_data_final_coverage.tsv
