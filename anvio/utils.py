@@ -3496,7 +3496,7 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
-def get_db_type(db_path):
+def get_db_type_and_variant(db_path):
     filesnpaths.is_file_exists(db_path)
     database = db.DB(db_path, None, ignore_version=True)
 
@@ -3506,9 +3506,23 @@ def get_db_type(db_path):
         raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
 
     db_type = database.get_meta_value('db_type')
+
+    try:
+        db_variant = database.get_meta_value('db_variant')
+    except:
+        db_variant = None
+
     database.disconnect()
 
-    return db_type
+    return (db_type, db_variant)
+
+
+def get_db_type(db_path):
+    return get_db_type_and_variant(db_path)[0]
+
+
+def get_db_variant(db_path):
+    return get_db_type_and_variant(db_path)[1]
 
 
 def get_required_version_for_db(db_path):
@@ -3622,14 +3636,12 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
 
 
 def is_contigs_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
         raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
     return True
 
 
 def is_trnaseq_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'trnaseq':
         raise ConfigError("'%s' is not an anvi'o trnaseq database." % db_path)
     return True
@@ -3667,7 +3679,6 @@ def is_structure_db(db_path):
 
 
 def is_modules_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'modules':
         raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
     return True
