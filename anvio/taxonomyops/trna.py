@@ -6,6 +6,7 @@ databases with taxon names.
 """
 
 import os
+import glob
 import shutil
 import hashlib
 
@@ -37,9 +38,6 @@ pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
-# these things seem to change between BLAST versions. makeblastdb for BLAST 2.10.1 seems to
-# generate the following ones.
-nucl_database_extensions = ['.ndb', '.nhr', '.nin', '.not', '.nsq', '.ntf', '.nto']
 
 class TRNATaxonomyContext(AccessionIdToTaxonomy):
     """The purpose of this base class is ot define file paths and constants for trna taxonomy ops."""
@@ -151,14 +149,22 @@ class SanityCheck(object):
             # PopulateContigsDatabaseWithTRNATaxonomy
             ###########################################################
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithTRNATaxonomy']:
-                for prefix in nucl_database_extensions:
-                    missing_anticodon_databases = [anticodon for anticodon in self.ctx.anticodons if not os.path.exists(self.ctx.anticodons[anticodon]['db'] + '.nhr')]
-                    if len(missing_anticodon_databases):
-                        raise ConfigError("OK. It is very likley that if you run `anvi-setup-trna-taxonomy` first you will be golden. "
-                                          "Because even though anvi'o found the directory for taxonomy headquarters, "
-                                          "your setup seems to be missing %d of %d databases required for everything to work "
-                                          "with the current genes configuration of this class (sources say this is a record, FYI)." % \
-                                                    (len(missing_anticodon_databases), len(self.ctx.anticodons)))
+                # here we will check whether all databases we expect to see are in place
+                num_files_for_blastdbs_per_anticodon = []
+                for anticodon in self.ctx.anticodons:
+                    blastdb_files_for_anticodon = [f for f in glob.glob(os.path.join(self.ctx.search_databases_dir_path, f'{anticodon}.*')) if not f.endswith('.gz')]
+                    num_files_for_blastdbs_per_anticodon.append(len(blastdb_files_for_anticodon))
+
+                if len(list(set(num_files_for_blastdbs_per_anticodon))) != 1:
+                    raise ConfigError("Something fishy is going on. Not all anticodons have equal number of BLAST database files :/")
+                elif list(set(num_files_for_blastdbs_per_anticodon))[0] == 0:
+                    # we have no blast databases for no one
+                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-trna-taxonomy` first you will be golden. "
+                                      "Because even though anvi'o found the directory for taxonomy headquarters, "
+                                      "your setup seems to be missing BLAST databases required for everything to work")
+                else:
+                    # we're golden?
+                    pass
 
                 if self.fasta_file_path and self.sequence:
                     raise ConfigError("There can only be one: sequence, or FASTA file. This is anvi'o. You can't have "
@@ -450,8 +456,8 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
 
         self.progress.new("Creating search databases")
         self.progress.update("Removing any database that still exists in the output directory...")
-        for prefix in nucl_database_extensions:
-            [os.remove(database_path) for database_path in [s['db'] + prefix for s in self.ctx.anticodons.values()] if os.path.exists(database_path)]
+        for anticodon_base_path in [b['db'] for b in self.ctx.anticodons.values()]:
+            [os.remove(f) for f in glob.glob(anticodon_base_path + '.*') if not f.endswith('.gz')]
 
         # compresssing and decompressing FASTA files changes their hash and make them look like
         # modified in git. to avoid that, we will do the database generation in a temporary directory.
@@ -482,12 +488,16 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
             blast.log_file_path = os.path.join(os.path.dirname(FASTA_file_path_for_anticodon), '%s.log' % anticodon)
             blast.makedb(dbtype='nucl')
 
-            for prefix in nucl_database_extensions:
-                if not os.path.exists(FASTA_file_path_for_anticodon + prefix):
-                    raise ConfigError("Something went wrong and BLAST did not create the database file it was supposed to "
-                                      "for %s :(" % anticodon)
-                else:
-                    shutil.move(FASTA_file_path_for_anticodon + prefix, os.path.dirname(self.ctx.anticodons[anticodon]['db']))
+            files_generated = [f for f in glob.glob(FASTA_file_path_for_anticodon + '.*')]
+            if not len(files_generated):
+                raise ConfigError(f"Even though the process to generate BLAST database files for '{anticodon}' has officially ended, "
+                                  f"anvi'o is unable to find any files generated by BLAST in the temporary directory it was working "
+                                  f"with :( This is as confusing to anvi'o as it probably sounds to you. A likely explanation is that "
+                                  f"something went wrong with the `makeblastdb` step. Please go into the following directory, and run "
+                                  f"`makeblastdb -in AAA -dbtype nucl; ls AAA*` manually to see what happens: '{temp_dir}'.")
+            else:
+                for file_path in files_generated:
+                    shutil.move(file_path, os.path.dirname(self.ctx.anticodons[anticodon]['db']))
 
         shutil.rmtree(temp_dir)
 
