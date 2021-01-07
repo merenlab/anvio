@@ -3912,6 +3912,7 @@ class ContigsDatabase:
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
+        db_variant = A('db_variant') or 'unknown'
         project_name = A('project_name')
         description_file_path = A('description')
         split_length = A('split_length')
@@ -4063,6 +4064,7 @@ class ContigsDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
+        self.db.set_meta_value('db_variant', db_variant)
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 
