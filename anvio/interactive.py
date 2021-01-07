@@ -195,7 +195,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.init_splits_taxonomy(self.taxonomic_level)
 
         if self.contigs_db_path:
-            self.contigs_db_variant = dbops.ContigsDatabase(self.contigs_db_path).meta['db_variant']
+            self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
         else:
