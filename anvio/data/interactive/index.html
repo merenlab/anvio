@@ -57,7 +57,6 @@
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/collapse-node.js"></script>
     <script type="text/javascript" src="js/dialogs/save-tree.js"></script>
-    <script type="text/javascript" src="js/dialogs/bigsi.js"></script>
     <script type="text/javascript" src="js/migrations.js"></script>
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
@@ -136,7 +135,7 @@
                         <ul class="dropdown-menu multi-level" role="menu">
                           <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
                           <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
-                          <li><a href="http:/merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
+                          <li><a href="http://merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
                           <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
                           <li><a href="http://merenlab.org/people/">Contact us</a></li>
                           <li role="separator" class="divider"></li>
@@ -148,7 +147,8 @@
                 </div>
             </div>
 
-            <div id="sidebar">
+            <div id="sidebar" onload="{$('#support_value_params').hide()}">
+                <!-- this hide function needs to happen upon initial render, currently only called onchange -->
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
@@ -214,6 +214,83 @@
                                         <div class="col-md-8">
                                             <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                         </div>
+                                </div>
+
+                            <span class="settings-header" >Branch Support</span>
+                               <div id="max_branch_support_value_seen_is_zero_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                   You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                   tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
+                               </div>
+
+                                <div class="form-group form-margin" >
+                                    <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
+                                    <div class="col-md-8">
+                                        <input type="checkbox"
+                                                onclick="checkMaxSupportValueSeen();"
+                                                onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
+                                                id="support_value_checkbox"
+                                                value="true"
+                                                >
+                                        </input>
+                                    </div>
+                                </div>
+                                <div id="support_value_params">
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to
+                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox"
+                                                   id="support_display_symbol"
+                                                   style="float: left;"
+                                                   name="show-symbol"
+                                                   onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
+                                                   >
+                                        </div>
+                                    </div>
+                                    <div class='form-group form-margin' id='show_symbol_options'>
+                                        <div class="form-group form-margin" id="support_symbol">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                            <div class="col-md-8">
+                                                <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                            <div class="col-md-8">
+                                                <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
+                                            <div class="col-md-8">
+                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox"
+                                                   id="support_display_number"
+                                                   style="float: left;"
+                                                   name="show-number"
+                                                   onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                   >
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id='show_font_size'>
+                                        <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <span class="settings-header">Selections</span>

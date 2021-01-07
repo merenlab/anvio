@@ -220,10 +220,33 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     items = [x[key] for x in d.values()]
 
-    if(set(items) == set([None])):
-        # all items is of type None.
+    if not items:
+        # there is nothing to see here
         return None
 
+    try:
+        if(set(items) == set([None])):
+            # all items is of type None.
+            return None
+    except TypeError:
+        # this means we are working with an unhashable type.
+        # it is either list or dict. we will go through items
+        # and return the type of first item that is not None:
+        for item in items:
+            if item == None:
+                continue
+            else:
+                return type(item)
+
+        # the code should never come to this line since if everything
+        # was None that would have been captured by the try block and the
+        # exception would have never been thrown, but here is a final line
+        # just to be sure we are not moving on with the rest of the code
+        # if we entered into this block:
+        return None
+
+    # if we are here, it means not all items are None, and they are not of
+    # unhashable types (so they must be atomic types such as int, float, or str)
     not_float = False
     for item in items:
         try:
@@ -632,10 +655,11 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
-        f.write(f"|%s|\n" % header_text.replace('\t', '|'))
+        tab = '\t'
+        f.write(f"|{header_text.replace(tab, '|')}|\n")
         f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
     else:
-        f.write('%s\n' % header_text)
+        f.write(f"{header_text}\n")
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -1054,6 +1078,52 @@ def get_required_packages_for_enrichment_test():
                                  "conda install -c conda-forge r-optparse"]
 
     return dict(zip(packages,installation_instructions))
+
+
+def check_R_packages_are_installed(required_package_dict):
+    """Checks if R and the provided R packages are installed on the user's system.
+    If not, raises an error with installation instructions for any missing packages.
+
+    Credits to Ryan Moore (https://github.com/mooreryan) for this solution!
+    (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
+
+    PARAMETERS
+    ==========
+    required_package_dict, dictionary
+        keys should be R package names, values should be the corresponding installation instruction for the package
+        See get_required_packages_for_enrichment_test() for an example
+    """
+
+    is_program_exists('Rscript')
+
+    missing_packages = []
+    log_file = filesnpaths.get_temp_file_path()
+    for lib in required_package_dict:
+        ret_val = run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
+        if ret_val != 0:
+            missing_packages.append(lib)
+
+    if missing_packages:
+        raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                          "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                          "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                          "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                          "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                          "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                          "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                          "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                          "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                          "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                          "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                          "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                          "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                          "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                          "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
+                                                                  {'missing': ', '.join(missing_packages),
+                                                                   'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
+                                                                   'example': missing_packages[0]})
+    else:
+        os.remove(log_file)
 
 
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
@@ -2089,7 +2159,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         model = np.load(default_model_path)
 
     order = len(model.shape)
-    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    null_prob = null_prob if null_prob is not None else np.median(model)
     stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
 
     aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
@@ -3426,7 +3496,7 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
-def get_db_type(db_path):
+def get_db_type_and_variant(db_path):
     filesnpaths.is_file_exists(db_path)
     database = db.DB(db_path, None, ignore_version=True)
 
@@ -3436,9 +3506,23 @@ def get_db_type(db_path):
         raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
 
     db_type = database.get_meta_value('db_type')
+
+    try:
+        db_variant = database.get_meta_value('db_variant')
+    except:
+        db_variant = None
+
     database.disconnect()
 
-    return db_type
+    return (db_type, db_variant)
+
+
+def get_db_type(db_path):
+    return get_db_type_and_variant(db_path)[0]
+
+
+def get_db_variant(db_path):
+    return get_db_type_and_variant(db_path)[1]
 
 
 def get_required_version_for_db(db_path):
@@ -3552,16 +3636,14 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
 
 
 def is_contigs_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
         raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
     return True
 
 
-def is_tRNAseq_db(db_path):
-    filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'tRNAseq':
-        raise ConfigError("'%s' is not an anvi'o tRNAseq database." % db_path)
+def is_trnaseq_db(db_path):
+    if get_db_type(db_path) != 'trnaseq':
+        raise ConfigError("'%s' is not an anvi'o trnaseq database." % db_path)
     return True
 
 
@@ -3597,7 +3679,6 @@ def is_structure_db(db_path):
 
 
 def is_modules_db(db_path):
-    filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'modules':
         raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
     return True
@@ -3762,6 +3843,7 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
     progress.update('...')
 
     downloaded_size = 0
+    counter = 0
     while True:
         buffer = response.read(10000)
 
@@ -3769,12 +3851,15 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
             downloaded_size += len(buffer)
             f.write(buffer)
 
-            if file_size:
-                progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
-            else:
-                progress.update('%s' % human_readable_file_size(downloaded_size))
+            if counter % 500 == 0:
+                if file_size:
+                    progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+                else:
+                    progress.update('%s' % human_readable_file_size(downloaded_size))
         else:
             break
+
+        counter += 1
 
     f.close()
 
@@ -3994,10 +4079,11 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
-                          "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environment "
-                          "for anvi'o, and try running the migration program again things should be alright.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
+                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
+                          "anvi'o environment. The reason why the standard anvi'o package does not include "
+                          "this module is both complicated and really unimportant. Re-running the migration "
+                          "after `h5py` is installed will make things go smootly.")
 
 
 def RepresentsInt(s):

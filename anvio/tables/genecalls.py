@@ -256,7 +256,7 @@ class TablesForGeneCalls(Table):
 
         if predict_frame:
             # Preload the markov model to predict frames and assign null codon and stop codon transition probabilities
-            model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+            model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/MM_GC_0-39.npy')
             if not filesnpaths.is_file_exists(model_path, dont_raise=True):
                 raise ConfigError("The task at hand calls for the use of the anvi'o Markov model to predict proper open reading "
                                   "frames for external gene calls when necessary, but the model does not seem to be in the right "

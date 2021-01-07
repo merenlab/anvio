@@ -35,14 +35,21 @@ def main(args):
         raise ConfigError("This program can't do this yet.")
 
     if args.dna_sequence:
-        # learn about the anticodon
-        import anvio.trnaidentifier as trnaidentifier
+        if args.anticodon_for_metagenome_mode:
+            anticodon = args.anticodon_for_metagenome_mode
+            genomic_sequence = args.dna_sequence
+        else:
+            # learn about the anticodon
+            import anvio.trnaidentifier as trnaidentifier
+            profiler = trnaidentifier.Profiler()
 
-        sequence_profile = trnaidentifier.GeneProfile(args.dna_sequence)
-        if not sequence_profile.predicted_genomic_seq:
-            raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
+            sequence_profile = profiler.profile_gene(args.dna_sequence)
+            if not sequence_profile.predicted_profile:
+                raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
 
-        genomic_sequence = sequence_profile.predicted_genomic_seq
+            # Allow for args.dna_sequence to be a tRNA transcript:
+            # remove the 3'-CCA acceptor regardless of whether it is encoded in the gene or added post-transcriptionally.
+            genomic_sequence = args.dna_sequence[:-3] if sequence_profile.has_encoded_acceptor else args.dna_sequence
         anticodon = sequence_profile.predicted_profile.anticodon_seq
 
         if not anticodon:

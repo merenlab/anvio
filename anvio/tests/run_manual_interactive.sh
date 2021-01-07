@@ -2,34 +2,46 @@
 source 00.sh
 set -e
 
-INFO "Creating the output directory ..."
-# change directory and clean the old mess if it exists
-cd sandbox/files_for_manual_interactive
-rm -rf test-output
-mkdir test-output
+# Setup #############################
+SETUP_WITH_OUTPUT_DIR $1 $2
+#####################################
 
-INFO "Anvi'o version ..."
-anvi-profile --version
+for f in fasta.fa view_data.txt additional_view_data.txt samples-information.txt samples-order.txt
+do
+    cp $files/files_for_manual_interactive/$f $output_dir/
+done
+
 
 INFO "Generating a newick file from the data ..."
-anvi-matrix-to-newick view_data.txt -o test-output/tree.txt
+anvi-matrix-to-newick $output_dir/view_data.txt \
+                      -o $output_dir/tree.txt
 
 INFO "Running a dry run to generate a profile database (to populate it with additional misc data)"
-anvi-interactive -d view_data.txt --manual-mode -p test-output/test.db --dry-run
+anvi-interactive -d $output_dir/view_data.txt \
+                 --manual-mode \
+                 -p $output_dir/test.db \
+                 --dry-run
 
 INFO "Importing items additional data"
-anvi-import-misc-data -p test-output/test.db additional_view_data.txt -t items
+anvi-import-misc-data -p $output_dir/test.db \
+                      $output_dir/additional_view_data.txt \
+                      -t items
 
 INFO "Importing layers additional data"
-anvi-import-misc-data -p test-output/test.db samples-information.txt -t layers
+anvi-import-misc-data -p $output_dir/test.db \
+                      $output_dir/samples-information.txt \
+                      -t layers
 
 INFO "Importing layer order data"
-anvi-import-misc-data -p test-output/test.db samples-order.txt -t layer_orders
+anvi-import-misc-data -p $output_dir/test.db \
+                      $output_dir/samples-order.txt \
+                      -t layer_orders
 
 INFO "Running the interactive interface on files"
-anvi-interactive -f fasta.fa \
-                 -d view_data.txt \
-                 -p test-output/test.db \
-                 -t test-output/tree.txt \
-                 --title 'Interactive Tree For User Provided Files' \
-                 --manual-mode
+anvi-interactive -f $output_dir/fasta.fa \
+                 -d $output_dir/view_data.txt \
+                 -p $output_dir/test.db \
+                 -t $output_dir/tree.txt \
+                 --title "Interactive Interface Without Anvi'o Files"\
+                 --manual-mode \
+                 $dry_run_controller

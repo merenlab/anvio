@@ -318,40 +318,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             Compute functional enrichment.
 
             To learn more refer to the docummentation:
-                anvi-get-enriched-functions-per-pan-group -h
+                anvi-compute-functional-enrichment -h
         '''
-        # Before we do anything let's make sure the user has R installed
-        utils.is_program_exists('Rscript')
-
-        # Let's make sure all the required packages are installed
-        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
-        missing_packages = []
-        log_file = filesnpaths.get_temp_file_path()
+        # Before we do anything let's make sure the user has R and all required packages installed
         package_dict = utils.get_required_packages_for_enrichment_test()
-        for lib in package_dict:
-            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
-            if ret_val != 0:
-                missing_packages.append(lib)
-
-        if missing_packages:
-            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                              "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                      {'missing': ', '.join(missing_packages),
-                                                                       'conda': ', '.join(['"%s"' % package_dict[i] for i in missing_packages]),
-                                                                       'example': missing_packages[0]})
+        utils.check_R_packages_are_installed(package_dict)
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
@@ -369,18 +340,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.args.output_file = tmp_functional_occurrence_file
 
         if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            if not self.just_do_it:
-                raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
+            raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
 
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
 
-        cmd = 'anvi-script-run-functional-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
+        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
                                                                                       output_file_path)
 
         log_file = filesnpaths.get_temp_file_path()
         self.progress.new('Functional enrichment analysis')
-        self.progress.update('Running enrichment analysis')
+        self.progress.update("Running Amy's enrichment")
         utils.run_command(cmd, log_file)
         self.progress.end()
         if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
@@ -394,6 +364,19 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         run.info('Functional enrichment summary log file:', log_file)
         run.info('Functional enrichment summary', output_file_path)
+
+        # if everything went okay, we remove the log file
+        if anvio.DEBUG:
+            self.run.warning("Just so you know, because you ran with --debug, we are keeping some temporary files around "
+                             f"for you to look at - the enrichment script's log file at {log_file} and the functional "
+                             f"occurrence output at {tmp_functional_occurrence_file}. You may want to remove them once you "
+                             "are done with them.", lc='green', header="JUST FYI")
+        else:
+            self.run.warning("The temporary files generated by this program have been removed from your system. If something "
+                             "seems strange and you want to take a look at those, please re-run this program with --debug flag.",
+                             lc='green', header="JUST FYI")
+            os.remove(log_file)
+            os.remove(tmp_functional_occurrence_file)
 
         if not output_file_path:
             # if a programmer called this function then we return a dict
@@ -409,7 +392,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             If self.args.output_file_path exists then an output file is created.
 
-            To learn more about how this works refer to the docummentation:
+            To learn more about how this works refer to the documentation:
                 anvi-get-functional-occurrence-summary-per-pan-group -h
         """
 
@@ -419,7 +402,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
-        exclude_ungrouped = A('exclude_ungrouped')
+        include_ungrouped = A('include_ungrouped')
 
 
         if output_file_path:
@@ -475,7 +458,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
-        self.run.info('Exclude ungrouped', exclude_ungrouped)
+        self.run.info('Include ungrouped', include_ungrouped)
 
         occurrence_frequency_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
@@ -500,7 +483,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # unique names of categories
         categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
-                            (categories_dict[g][category_variable] is not None or not exclude_ungrouped)])
+                            (categories_dict[g][category_variable] is not None or include_ungrouped)])
 
         categories_to_genomes_dict = {}
         for c in categories:
@@ -510,9 +493,21 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
+        categories_few_genomes = []
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
+            if function_occurrence_table[c]['N'] < 8:
+                categories_few_genomes.append(c)
+
+        # warn user if they have a low number of genomes per group
+        if categories_few_genomes:
+            self.progress.reset()
+            categories_string = ", ".join(categories_few_genomes)
+            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+                             f"{categories_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
         for f in functions_names:
@@ -522,7 +517,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             functional_occurrence_summary_dict[f] = {}
             functional_occurrence_summary_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-            functional_occurrence_summary_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            functional_occurrence_summary_dict[f]["accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
@@ -538,7 +533,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids', 'associated_groups']
+            columns = [functional_annotation_source, 'accession', 'gene_clusters_ids', 'associated_groups']
             columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
             functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
@@ -1510,9 +1505,16 @@ class Bin:
             d[gene_callers_id] = {}
             # add sample independent information into `d`;
             for header in headers:
+                if gene_callers_id not in self.summary.genes_in_contigs_dict:
+                    progress.reset()
+                    raise ConfigError("Bad news :( A very very rare error has occurred. A gene caller id found in your splits table "
+                                      "is not occurring in the genes in contigs table of your contigs database. This is due to a "
+                                      "rare migration error we discovered thanks to the following issue Jon Sanders filed: "
+                                      "https://github.com/merenlab/anvio/issues/1596. If you are seeing this error please "
+                                      "get in touch with us so we can help you recover from this.")
+
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
-            self.progress.update('Sorting out functions ...')
             # add functions if there are any:
             if len(self.summary.gene_function_call_sources):
                 for source in self.summary.gene_function_call_sources:
@@ -1570,7 +1572,7 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         if self.summary.reformat_contig_names:
@@ -1740,7 +1742,3 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
-
-
-
-

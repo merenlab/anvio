@@ -499,6 +499,18 @@ class ContigsSuperclass(object):
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
+        """This method initializes a dictionary of function calls.
+
+        It establishes the following attributes:
+            self.gene_function_call_sources     a list of functional annotation sources
+            self.gene_function_calls_dict       a dictionary of structure (accession, function, evalue) = self.gene_function_calls_dict[gene_callers_id][source]
+                                                (the tuple can be None if there is no annotation from that source for the gene call)
+
+        If requested_sources are provided, the dictionary only includes gene calls from those sources.
+        If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
+
+        Afterwards, it sets self.gene_function_calls_initiated to True.
+        """
         if not self.contigs_db_path:
             return
 
@@ -632,6 +644,13 @@ class ContigsSuperclass(object):
 
             response = contigs_db.db._exec(query).fetchall()
 
+            # the resopnse now contains all matching gene calls found in the contigs database. this may cause an issue
+            # (just like the one reported here: https://github.com/merenlab/anvio/issues/1515) if the user is working
+            # with only a subset of splits in the contigs database (for instance through `anvi-refine`). here we will
+            # remove gene calls for which we don't have a split name associated:
+            response = [r for r in response if r[0] in self.gene_callers_id_to_split_name_dict]
+
+            # now we are good to go with extending the report
             full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
@@ -1726,7 +1745,7 @@ class PanSuperclass(object):
                              "decide how to punish the unlucky.")
             return
 
-        self.progress.new(f'Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        self.progress.new('Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
         for gene_cluster_id in self.gene_clusters_functions_dict:
             self.progress.update(f'{gene_cluster_id} ...', increment=True)
 
@@ -1740,6 +1759,16 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters_functions(self):
+        """This function initializes a dictionary of functions for a pangenome.
+
+        It establishes the following attributes:
+            self.gene_clusters_function_sources     a set() of functional annotation sources
+            self.gene_clusters_functions_dict       a 3-level dictionary with the structure
+                                                    "accession|||function" = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id][source]
+
+        Afterwards it sets self.functions_initialized to True.
+        """
+
         if not self.genomes_storage_is_available:
             self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes "
                              "storage available to this run. That's OK. But no gene clusters functions for you "
@@ -2628,7 +2657,7 @@ class ProfileSuperclass(object):
             raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
                                and `collection_name`. You can initialize the ProfileSuper with either of those. As\
                                a programmer if you have no control over incoming `args` and just passing things\
-                               aroung, you might need to implement a workaround to set either of those params to None\
+                               around, you might need to implement a workaround to set either of those params to None\
                                and then reset them back to their original in `args` once you are done with\
                                ProfileSuper.")
 
@@ -2834,9 +2863,9 @@ class ProfileSuperclass(object):
             return
 
         if not self.auxiliary_profile_data_available:
-            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile "
-                              "data does not seem to be available for this project. Yeah. That's what happens if you don't "
-                              "download everything from the server :(")
+            raise ConfigError("Someone is asking gene-level coverage stats to be computed, but then there is no AUXILIARY-DATA.db "
+                              "available for this project. Yeah. That's what happens if you don't download everything from the "
+                              "server :(")
 
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
@@ -3883,6 +3912,7 @@ class ContigsDatabase:
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
+        db_variant = A('db_variant') or 'unknown'
         project_name = A('project_name')
         description_file_path = A('description')
         split_length = A('split_length')
@@ -4034,6 +4064,7 @@ class ContigsDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
+        self.db.set_meta_value('db_variant', db_variant)
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 

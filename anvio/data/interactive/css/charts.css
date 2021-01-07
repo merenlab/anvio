@@ -105,12 +105,17 @@
     margin-top: 12px;
 }
 
-#settings-section-info {
+.settings-section-info {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
     border-radius: 9px;
     font-size: 12px;
+}
+
+#settings-section-info-SNV-warning {
+  display: none;
+  color: red;
 }
 
 #settings-panel code {
@@ -294,14 +299,7 @@ a{
     border-radius: 4px;
 }
 
-.snvs-activated, .indels-activated {
-    color: #3c763d;
-    background-color: #dff0d8;
-    border-color: #d6e9c6;
-    display: none;
-}
-
-.snvs-deactivated, .indels-deactivated, .snvs-disabled, .indels-disabled {
+.snvs-disabled, .indels-disabled {
     color: #a94442;
     background-color: #f2dede;
     border-color: #ebccd1;

@@ -64,29 +64,35 @@ function lineClickHandler(event) {
 
 
 function lineContextMenuHandler(event) {
+
     if (event.preventDefault) {
         event.preventDefault();
     }
     if (event.target.parentNode.id == 'samples_tree') {
         var id = event.target.id.match(/\d+/);
         var p = samples_id_to_node_map[id[0]];
+        let allLeaves = drawer.tree.leaves
+        console.log(allLeaves)
 
         let menu = new ContextMenu({'container': document.body,
                                     'event': event,
                                     'node': p,
                                     'layer': null,
+                                    'all' : allLeaves,
                                     'isSample': true});
 
         menu.Show();
     } else {
         let p = getNodeFromEvent(event);
         let layer_id = event.target.parentNode.id.match(/\d+/);
+        let allLeaves = drawer.tree.leaves
 
         if (p.IsLeaf() || IsCtrlPressed(event)) {
             let menu = new ContextMenu({'container': document.body,
                                         'event': event,
                                         'node': p,
                                         'layer': layer_id,
+                                        'all' : allLeaves,
                                         'isSample': false});
 
             menu.Show();
@@ -158,6 +164,7 @@ function lineMouseLeaveHandler(event) {
 }
 
 function mouseMoveHandler(event) {
+
     if (drawing_zoom)
         return;
 
@@ -179,6 +186,7 @@ function mouseMoveHandler(event) {
 
     if (event.target.parentNode.id == 'samples_tree')
     {
+
         var id = event.target.id.match(/\d+/);
         var node = samples_id_to_node_map[id[0]];
         var _n = new NodeIterator(node);

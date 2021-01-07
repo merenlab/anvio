@@ -241,9 +241,11 @@ class Pangenome(object):
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        self.run.warning("You elected to use NCBI's blastp for amino acid sequence search. Running blastp will "
-                         "be significantly slower than DIAMOND (although, anvi'o developers are convinced that "
-                         "you *are* doing the right thing, so, kudos to you).")
+        self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
+                         "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
+                         "We are unsure about whether the slight increase in sensitivity may justify significant "
+                         "increase in run time, but you are the boss.", lc="cyan")
+
         blast = BLAST(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 

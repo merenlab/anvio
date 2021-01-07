@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 import pandas as pd
+import numpy as np
 import scipy.sparse as sps
 from scipy import stats
 
@@ -28,7 +29,6 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
-from anvio.constants import KEGG_SETUP_INTERVAL
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
@@ -349,6 +349,15 @@ class KeggSetup(KeggContext):
         self.run = run
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
+        self.download_from_kegg = True if args.download_from_kegg else False
+        self.kegg_snapshot = args.kegg_snapshot
+
+        if self.kegg_archive_path and self.download_from_kegg:
+            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
+                              "Please pick either just one or none of these. ")
+        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
+            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
+                              "KEGG archives. Please pick just one setup option and try again.")
 
         # initializing this to None here so that it doesn't break things downstream
         self.pathway_dict = None
@@ -358,26 +367,47 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
+        if '/' not in self.kegg_data_dir:
+            self.kegg_data_dir += '/'
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
         if not args.reset and not anvio.DEBUG and not skip_init:
             self.is_database_exists()
 
-        if not self.kegg_archive_path and not skip_init:
+        if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
             filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
-        # ftp path for HMM profiles and KO list
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+            available_snapshots = sorted(list(self.snapshot_dict.keys()))
+            for snapshot_name in available_snapshots:
+                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                              f"this time pick from the list shown above.")
+
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+
+        # download from KEGG option: ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
             # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         # dictionary mapping downloaded file name to final decompressed file name or folder location
         self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-        # Kegg module text files
+        # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
@@ -862,6 +892,22 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
+
+        # get current version of db
+        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
+        current_db_version = int(db_conn.get_meta_value('version'))
+        db_conn.disconnect()
+
+        # if modules.db is out of date, give warning
+        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        if current_db_version != target_version:
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+
     def setup_from_archive(self):
         """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
 
@@ -894,6 +940,9 @@ class KeggSetup(KeggContext):
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
 
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
+
         else:
             debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
                            "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
@@ -908,7 +957,34 @@ class KeggSetup(KeggContext):
                               "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
-    def setup_profiles(self):
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used and the log file
+        if not anvio.DEBUG:
+            os.remove(self.default_kegg_archive_file)
+        else:
+            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
+                             "has been kept. You may want to remove it later.")
+
+
+    def setup_data(self):
         """This is a driver function which executes the KEGG setup process.
 
         It downloads, decompresses, and hmmpresses the KOfam profiles.
@@ -917,7 +993,8 @@ class KeggSetup(KeggContext):
 
         if self.kegg_archive_path:
             self.setup_from_archive()
-        else:
+        elif self.download_from_kegg:
+            # mostly for developers and the adventurous
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
@@ -925,6 +1002,9 @@ class KeggSetup(KeggContext):
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
+        else:
+            # the default, set up from frozen KEGG release
+            self.setup_kegg_snapshot()
 
 
 class KeggRunHMMs(KeggContext):
@@ -959,7 +1039,7 @@ class KeggRunHMMs(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
                               "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
                               "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_data_dir)
+                              "to fix this problem. :) " % self.hmm_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
@@ -1261,7 +1341,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.name_header = None
         if self.metagenome_mode:
-            self.name_header = 'metagenome_name'
+            self.name_header = 'contig_name'
         elif self.profile_db_path and not self.metagenome_mode:
             self.name_header = 'bin_name'
         elif not self.profile_db_path and not self.metagenome_mode:
@@ -1271,6 +1351,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for m in self.available_modes:
             if m != 'modules_custom' and self.name_header not in self.available_modes[m]['headers']:
                 self.available_modes[m]['headers'].insert(1, self.name_header)
+            if self.metagenome_mode and self.available_modes[m]['headers'] and 'contig' in self.available_modes[m]['headers']:
+                # avoid duplicate columns since contig_name is the name_header in metagenome_mode
+                self.available_modes[m]['headers'].remove('contig')
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
                                         'mode_type' : 'all',
@@ -1355,10 +1438,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         if self.matrix_format:
-            raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
-                             "with. You do know that your matrices would each have only one column, right? Since that doesn't "
-                             "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
-                             "Anyhow, now is your chance to quietly go figure out what you are really doing.")
+            raise ConfigError("You have asked for output in matrix format, but unfortunately this currently only works in "
+                             "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
+                             "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
         if self.matrix_include_metadata and not self.matrix_format:
             raise ConfigError("The option --include-metadata is only relevant for --matrix-format, which in turn is only "
@@ -2423,7 +2505,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
+        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "contig_name", "kegg_module", "db_name",
                                      "kofam_hits_in_module", "gene_caller_ids_in_module"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates"])
@@ -2851,7 +2933,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # set name header
         if self.metagenomes_file:
-            self.name_header = 'metagenome_name'
+            self.name_header = 'contig_name'
         elif self.external_genomes_file:
             self.name_header = 'genome_name'
         elif self.internal_genomes_file:
@@ -2870,6 +2952,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         for mode, mode_meta in self.available_modes.items():
             self.run.info(mode, mode_meta['description'])
+
 
     def update_available_headers_for_multi(self):
         """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
@@ -2891,11 +2974,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                             'mode_type': 'all',
                                             'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
                                             }
-        elif self.name_header == 'metagenome_name':
-            self.available_headers["metagenome_name"] = {
+        elif self.name_header == 'contig_name':
+            self.available_headers["contig_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
+                                            'description': "Name of contig (in a metagenome) in which we find KOfam hits and/or KEGG modules"
                                             }
 
         # here we make sure db_name is always included in the multi-mode output
@@ -3292,15 +3375,6 @@ class KeggModulesDatabase(KeggContext):
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
                 self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
-            days_since_created = self.get_days_since_creation()
-            if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
-                self.run.warning("Just a friendly PSA here: it has been at least %s days since the MODULES.db was created (%s days to be exact). "
-                                 "It is entirely possible that KEGG has been updated since then, so perhaps it is a good idea to re-run "
-                                 "anvi-setup-kegg-kofams to be sure that you are working with the latest KEGG data. No pressure, though. If you do "
-                                 "want to reset your KEGG setup, we STRONGLY encourage saving a copy of your current KEGG data directory, just "
-                                 "in case there was an update that breaks everything and you need to go back to your previous KEGG setup. Don't say we "
-                                 "didn't warn you. And we will even be so nice as to tell you that your current KEGG data directory is %s"
-                                 % (KEGG_SETUP_INTERVAL, days_since_created, self.kegg_data_dir))
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
@@ -4177,5 +4251,303 @@ class KeggModulesTable:
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
+
     def get_total_entries(self):
         return self.total_entries
+
+
+class KeggModuleEnrichment(KeggContext):
+    """This class is a driver for anvi-script-enrichment-stats for modules input.
+
+    It takes in the modules mode output from anvi-estimate-metabolism, formats it for the enrichment script,
+    and runs the script.
+
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-compute-functional-enrichment
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.modules_txt = A('modules_txt')
+        self.groups_txt = A('groups_txt')
+        self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
+        self.module_completion_threshold = A('module_completion_threshold') or 0.75
+        self.output_file_path = A('output_file')
+        self.include_ungrouped = True if A('include_ungrouped') else False
+        self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
+
+        # init the base class
+        KeggContext.__init__(self, self.args)
+
+        # if necessary, assign 0 completion threshold, which evaluates to False above
+        if A('module_completion_threshold') == 0:
+            self.module_completion_threshold = 0.0
+            if not self.quiet:
+                self.run.warning("Your completion threshold is set to 0, which will make the enrichment results MEANINGLESS. Why? Because "
+                                 "with a threshold this low, every module will be considered present in every single sample and therefore will "
+                                 "be equally present in every single group. So you should stop what you are doing RIGHT NOW.")
+            if not self.just_do_it:
+                raise ConfigError("We are stopping you right there because your completion threshold is 0 and that will make the enrichment results "
+                                  "meaningless (see the warnings above, if you haven't suppressed them with --quiet). But if you really really really "
+                                  "want to do it, you can run again with --just-do-it and then we won't stop you. You have the right to be without meaning.")
+
+        # sanity checkses my precious
+        if not self.modules_txt:
+            raise ConfigError("To compute module enrichment, you must provide a modules-txt file (aka modules mode output from "
+                              "`anvi-estimate-metabolism`).")
+        if not self.groups_txt:
+            raise ConfigError("To compute module enrichment, you must provide a groups-txt file mapping each sample to a group.")
+
+        filesnpaths.is_file_exists(self.modules_txt)
+        filesnpaths.is_file_plain_text(self.modules_txt)
+        filesnpaths.is_file_exists(self.groups_txt)
+        filesnpaths.is_file_plain_text(self.groups_txt)
+
+        if filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
+            raise ConfigError(f"Whoops... we almost overwrote the existing output file {self.output_file_path}. But we stopped just in time. "
+                               "If you really want us to replace the contents of that file with new enrichment results, then remove this "
+                               "file before you run this program again.")
+        filesnpaths.is_output_file_writable(self.output_file_path)
+
+        if not self.quiet:
+            self.run.info("modules-txt input file", self.modules_txt)
+            self.run.info("groups-txt input file", self.groups_txt)
+            self.run.info("sample column in modules-txt", self.sample_header_in_modules_txt)
+            self.run.info("module completion threshold", self.module_completion_threshold)
+
+
+    def get_enrichment_input(self, output_file_path):
+        """This function converts modules mode output into input for anvi-script-enrichment-stats
+
+        The input format for anvi-script-enrichment-stats is described in a comment at the top of that script, and here is
+        how we get the values for each column:
+        The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as 'module_name'
+        and 'kegg_module', respectively.
+        The 'N_*' columns are the total number of samples in each group.
+        For each module, this function determines which samples the module is 'present' in according to the specified completion threshold.
+        This determines the list of samples for the 'sample_ids' column as well as the 'p_*' proportions for each group of samples.
+        Finally, the fourth column, 'associated_groups', is computed from the 'p_*' proportions and 'N_*' totals.
+
+        PARAMETERS
+        ==========
+        output_file_path : str
+            a file path where we will store the (temporary) input file for the enrichment script
+        """
+
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        # read the files into dataframes
+        modules_df = pd.read_csv(self.modules_txt, sep='\t')
+
+        # make sure we have all the columns we need in modules mode output, since this output can be customized
+        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name']
+        missing_headers = []
+        for h in required_modules_txt_headers:
+            if h not in modules_df.columns:
+                missing_headers.append(h)
+        if missing_headers:
+            missing_string = ", ".join(missing_headers)
+            self.progress.reset()
+            raise ConfigError("We cannot go on! *dramatic sweep*   We trust that you have provided us with "
+                              "modules mode output, but unfortunately the modules-txt input does not contain "
+                              f"the following required headers: {missing_string}   Please re-generate your "
+                              "modules-txt to include these before trying again.")
+
+        if 'unique_id' in modules_df.columns:
+            modules_df = modules_df.drop(columns=['unique_id'])
+
+        # samples column sanity check - this column will become the index
+        if self.sample_header_in_modules_txt not in modules_df.columns:
+            col_list = ", ".join(modules_df.columns)
+            self.progress.reset()
+            raise ConfigError(f"You have specified that your sample names are in the column with header '{self.sample_header_in_modules_txt}' "
+                               "in the modules-txt file, but that column does not exist. :( Please figure out which column is right and submit "
+                               "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
+                               f"are: {col_list}")
+
+        required_groups_txt_headers = ['sample', 'group']
+        sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
+        samples_to_groups_dict = {samp : sample_groups_dict[samp]['group'] for samp in sample_groups_dict.keys()}
+
+        # make sure the samples all have a group
+        samples_with_none_group = []
+        for s,g in samples_to_groups_dict.items():
+            if not g:
+                samples_with_none_group.append(s)
+                if self.include_ungrouped:
+                    samples_to_groups_dict[s] = 'UNGROUPED'
+
+        if not self.include_ungrouped:
+            for s in samples_with_none_group:
+                samples_to_groups_dict.pop(s)
+
+        if samples_with_none_group:
+            self.progress.reset()
+            none_group_str = ", ".join(samples_with_none_group)
+            if self.include_ungrouped:
+                self.run.warning("Some samples in your groups-txt did not have a group, but since you elected to --include-ungrouped, "
+                                 "we will consider all of those samples to belong to one group called 'UNGROUPED'. Here are those "
+                                 f"UNGROUPED samples: {none_group_str}")
+            else:
+                self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
+                                 "want them to be included in the analysis (but without assigning a group), you can simply re-run "
+                                 "this program with the --include-ungrouped flag. Now. Here are the samples we will be ignoring: "
+                                 f"{none_group_str}")
+
+        # sanity check for mismatch between modules-txt and groups-txt
+        sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
+        sample_names_in_groups_txt = set(sample_groups_dict.keys())
+        samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
+        samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
+        if anvio.DEBUG:
+            self.run.info("Samples in modules-txt", ", ".join(list(sample_names_in_modules_txt)))
+            self.run.info("Samples in groups-txt", ", ".join(list(sample_names_in_groups_txt)))
+            self.run.info("Missing samples from groups-txt", ", ".join(list(samples_missing_in_groups_txt)))
+            self.run.info("Missing samples from modules-txt", ", ".join(list(samples_missing_in_modules_txt)))
+
+        if samples_missing_in_groups_txt:
+            missing_samples_str = ", ".join(samples_missing_in_groups_txt)
+            if not self.include_missing:
+                self.progress.reset()
+                self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
+                                "column). Since you have not elected to --include-samples-missing-from-groups-txt, we are not going to take these samples into consideration at all. "
+                                "Here are the samples that we will be ignoring: "
+                                f"{missing_samples_str}")
+                # drop the samples that are not in groups-txt
+                modules_df = modules_df[~modules_df[self.sample_header_in_modules_txt].isin(list(samples_missing_in_groups_txt))]
+                if anvio.DEBUG:
+                    self.run.info("Samples remaining in modules-txt dataframe after removing ungrouped", ", ".join(modules_df[self.sample_header_in_modules_txt].unique()))
+
+            else:
+                self.progress.reset()
+                self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
+                                "column). Since you have chosen to --include-samples-missing-from-groups-txt, for the purposes of this analysis we will now consider all of "
+                                "these samples to belong to one group called 'UNGROUPED'. If you wish to ignore these samples instead, please run again "
+                                "without the --include-ungrouped parameter. "
+                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                f"{missing_samples_str}")
+                # add those samples to the UNGROUPED group
+                ungrouped_samples = list(samples_missing_in_groups_txt)
+                for s in ungrouped_samples:
+                    samples_to_groups_dict[s] = 'UNGROUPED'
+
+        if samples_missing_in_modules_txt:
+            missing_samples_str = ", ".join(samples_missing_in_modules_txt)
+            if not self.just_do_it:
+                self.progress.reset()
+                raise ConfigError(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
+                                 "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
+                                 "not be included in the enrichment analysis because, well, you don't have any module information for them. "
+                                 "If all of the missing samples belong to groups you don't care about at all, then feel free to ignore this "
+                                 "message and re-run using --just-do-it. But if you do care about those groups, you'd better fix this because "
+                                 "the enrichment results for those groups will be wrong. Here are the samples in question: "
+                                  f"{missing_samples_str}")
+            else:
+                self.progress.reset()
+                self.run.warning(f"Your modules-txt file ({self.sample_header_in_modules_txt} column) does not contain some samples that "
+                                 "are present in your groups-txt. This is not necessarily a huge deal, it's just that those samples will "
+                                 "not be included in the enrichment analysis because, well, you don't have any module information for them. "
+                                 "Since you have used the --just-do-it parameter, we assume you don't care about this and are going to keep "
+                                 "going anyway. We hope you know what you are doing :) Here are the samples in question: "
+                                  f"{missing_samples_str}")
+                # drop the samples that are not in modules-txt
+                for s in list(samples_missing_in_modules_txt):
+                    samples_to_groups_dict.pop(s)
+                if anvio.DEBUG:
+                    self.run.info("Samples remaining in groups-txt dataframe after removing ungrouped", ", ".join(samples_to_groups_dict.keys()))
+
+
+        modules_df.set_index(self.sample_header_in_modules_txt, inplace=True)
+        sample_groups_df = pd.DataFrame.from_dict(samples_to_groups_dict, orient="index", columns=['group'])
+
+        # convert modules mode output to enrichment input
+        N_values = sample_groups_df['group'].value_counts()
+        group_list = N_values.keys()
+        module_list = modules_df['kegg_module'].unique()
+
+        output_dict = {}
+        header_list = ['KEGG_MODULE', 'accession', 'sample_ids', 'associated_groups']
+        for c in group_list:
+            header_list.append(f"p_{c}")
+            header_list.append(f"N_{c}")
+
+        for mod_num in module_list:
+            query_string = f"kegg_module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            samples_with_mod_df = modules_df.query(query_string)
+            if samples_with_mod_df.shape[0] == 0:
+                continue
+            mod_name = samples_with_mod_df['module_name'][0]
+            output_dict[mod_name] = {}
+            output_dict[mod_name]['KEGG_MODULE'] = mod_name
+            output_dict[mod_name]['accession'] = mod_num
+            samples_with_mod_list = list(samples_with_mod_df.index)
+            output_dict[mod_name]['sample_ids'] = ','.join(samples_with_mod_list)
+            sample_group_subset = sample_groups_df.loc[samples_with_mod_list]
+            p_values = sample_group_subset['group'].value_counts()
+
+            # we need the categories p and N values to be in the same order for finding associated groups
+            p_vector = np.array([])
+            N_vector = np.array([])
+            for c in group_list:
+                if c not in p_values.index:
+                    p_values[c] = 0
+                p_vector = np.append(p_vector, p_values[c]/N_values[c])
+                N_vector = np.append(N_vector, N_values[c])
+
+            # compute associated groups for functional enrichment
+            enriched_groups_vector = utils.get_enriched_groups(p_vector, N_vector)
+
+            associated_groups = [c for i,c in enumerate(group_list) if enriched_groups_vector[i]]
+            output_dict[mod_name]['associated_groups'] = ','.join(associated_groups)
+
+            for c in group_list:
+                output_dict[mod_name]["p_%s" % c] = p_values[c]/N_values[c]
+                output_dict[mod_name]["N_%s" % c] = N_values[c]
+
+        utils.store_dict_as_TAB_delimited_file(output_dict, output_file_path, key_header='accession', headers=header_list)
+
+
+    def run_enrichment_stats(self):
+        """This function is the driver for running the enrichment script on the modules data."""
+
+        self.progress.new('Enrichment analysis')
+
+        self.progress.update('Converting modules mode output into input for enrichment script')
+        enrichment_input_path = filesnpaths.get_temp_file_path()
+        if anvio.DEBUG:
+            self.progress.reset()
+            self.run.info("Temporary input file for enrichment script", enrichment_input_path)
+        self.get_enrichment_input(enrichment_input_path)
+
+        cmd = f"anvi-script-enrichment-stats --input {enrichment_input_path} --output {self.output_file_path}"
+        log_file_path = filesnpaths.get_temp_file_path()
+
+        self.progress.update("Running Amy's enrichment")
+        utils.run_command(cmd, log_file_path)
+        self.progress.end()
+        if not filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
+            raise ConfigError("It looks like something went wrong during the enrichment analysis. "
+                              f"We don't know what happened, but this log file could contain some clues: {log_file_path}")
+
+        if filesnpaths.is_file_empty(self.output_file_path):
+            raise ConfigError("It looks like something went wrong during the functional enrichment analysis. "
+                              "An output file was created, but it is empty "
+                              f"We don't know why this happened, but this log file could contain some clues: {log_file_path}")
+
+
+        self.run.info('Enrichment results', self.output_file_path)
+
+        if not anvio.DEBUG:
+            # get rid of the temporary files now that we are done
+            os.remove(enrichment_input_path)
+            os.remove(log_file_path)
+        else:
+            self.run.info('Enrichment log file:', log_file_path)
+            self.run.warning("Because you ran this script with the --debug flag, the temporary files are kept. Please "
+                             "consider cleaning them up when you are done taking a look at them. Here they are: "
+                             f"{enrichment_input_path}, {log_file_path}")

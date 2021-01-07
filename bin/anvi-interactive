@@ -80,6 +80,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
     groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
     groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupE.add_argument(*anvio.A('show-all-layers'), **anvio.K('show-all-layers'))
     groupE.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
     groupE.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
     groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))

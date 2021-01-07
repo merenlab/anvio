@@ -156,7 +156,10 @@ def main(args):
             primer_length = primers_dict[primer_sequence]['primer_length']
             seq_lengths_after_match = [len(s[1][s[0]+primer_length:]) for s in matching_sequence_hits]
 
-            run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / SAM: {min(seq_lengths_after_match)} / LAM: {max(seq_lengths_after_match)} / ALAM: {sum(seq_lengths_after_match) / len(primers_dict[primer_sequence]['matching_sequences']):.2f}")
+            if len(seq_lengths_after_match):
+                run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / SAM: {min(seq_lengths_after_match)} / LAM: {max(seq_lengths_after_match)} / ALAM: {sum(seq_lengths_after_match) / len(primers_dict[primer_sequence]['matching_sequences']):.2f}")
+            else:
+                run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / SAM: -- / LAM: -- / ALAM: --")
 
     if not total_read_counter:
         run.info_single('No hits were found :/', mc='red', nl_before=1)
@@ -192,8 +195,8 @@ def main(args):
             seq_lengths_after_match = [len(s[1][s[0]+primer_length:]) for s in matching_sequence_hits]
 
             with open(trimmed_output_file_path, 'w') as trimmed, open(gapped_output_file_path, 'w') as gapped:
-                max_seq_length = max(seq_lengths_after_match) + primer_length
-                min_seq_length = min(seq_lengths_after_match) + primer_length
+                max_seq_length = (max(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
+                min_seq_length = (min(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
                 counter = 1
                 for hit in matching_sequence_hits:
                     sequence = hit[1][hit[0]:]

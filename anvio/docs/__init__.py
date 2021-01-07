@@ -17,7 +17,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "trnaseq-db": {
-        "name": "CONTIGS",
+        "name": "TRNASEQ",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -38,6 +38,12 @@ ANVIO_ARTIFACTS ={
         "name": "CONTIGS",
         "type": "FASTA",
         "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "trnaseq-fasta": {
+        "name": "TRNASEQ",
+        "type": "FASTA",
+        "provided_by_anvio": False,
         "provided_by_user": True
     },
     "configuration-ini": {
@@ -347,7 +353,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": True
     },
     "functional-enrichment-txt": {
-        "name": "ENRICHED FUNCTIONS",
+        "name": "ENRICHMENT SCORES",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -562,6 +568,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "groups-txt": {
+        "name": "GROUPS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "splits-taxonomy-txt": {
         "name": "SPLITS TAXONOMY",
         "type": "TXT",
@@ -579,6 +591,12 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "clustering-configuration": {
+        "name": "CLUSTERING CONFIG",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "workflow-config": {
         "name": "WORKFLOW CONFIG",

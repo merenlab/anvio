@@ -24,6 +24,22 @@ For the central tree to display correctly, you'll need to have run hierarchical 
 
 If you do not have a %(state)s stored in your profile database named `default`, you will need to click the "Draw" button for anvi'o to provide you with an %(interactive)s display of your data. 
 
+### How to visualize things when you don't have a hierarchical clustering of your contigs?
+
+Typically the %(interactive)s displays that will be initiated with `anvi-interactive` will require an items order to display all your contigs. There are multiple ways for anvi'o to generate dendrograms.
+
+{:.notice}
+Some advanced information you should feel free to skip: anvi'o uses a set of %(clustering-configuration)s files to decide which sources of data to use to cluster items. These recipes are essentially a set of configuration files for anvi'o to learn which information to use from %(contigs-db)s, %(profile-db)s, or %(pan-db)s type databases.
+
+Some of the programs that generate dendrograms include %(anvi-merge)s, %(anvi-profile)s, and %(anvi-experimental-organization)s. But since hierarchical clustering is an extremely demanding process, anvi'o will skip this step during %(anvi-merge)s if there are more than 20,000 splits n the database. This is because the computational complexity of this process will get less and less feasible with increasing number of splits. You can force anvi'o to try to cluster your splits regardless of how many of them there are there by using the flag `--enforce-hierarchical-clustering`. However, we strongly advice against it especially if you have more than 30,000 splits since your process will likely to be killed by the operating system, or take a very very long time to finish (plus, if you have that many splits the performance of the interactive interface will be very low).
+
+What happens if you don't have a hierarchical clustering dendrogram, but you still wish to have an overall understanding of your data, or visualize the coverages of some contigs of interest or any contig at all? There are multiple ways you can do that:
+
+* You can use %(anvi-inspect)s to visualize nucleotide- and gene-level coverages and single-nucleotide variants on individual contigs,
+* You can use %(anvi-cluster-contigs)s to create a collection for your contigs and initiate `anvi-interactive` in collection mode (see the subsection "[visualizing bins instead of contigs](#visualizing-bins-instead-of-contigs)" below.
+* You can import external binning results using %(anvi-import-collection)s, or manually identify contigs of interest, and use %(anvi-import-collection)s to create a collection of a smaller number of contigs. You can then use %(anvi-refine)s to visualize contigs in a single bin, or use %(anvi-split)s to first generate a split profile for your contigs to visualize your smaller dataset using %(anvi-interactive)s.
+
+
 ### Visualizing *bins* instead of contigs
 
 By default, when run on a profile database that resulted from a metagenomic workflow, %(anvi-interactive)s will initiate each contig as a separate item and organize them based on the clustering dendrograms provided to it (either automatically or by the user). But if there is a %(collection)s stored in the profile database, it is also possible to run %(anvi-interactive)s on a specific collection, during which anvi'o will use the underlying contig data to calculate summary statistics for each bin before displaying them. In collection mode, each item of your central plot will not represent a contig, but a bin within your collection. This is how the collection mode can be initialized in comparison to the default mode:
@@ -71,7 +87,7 @@ When doing this kind of run, anvi'o does not expect you to have a profile databa
 
 You can extend any %(anvi-interactive)s display with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.
 
-While the use of %(anvi-import-misc-data)s is the most effective way to improve anvi'o displays, you can also use the parameter `--additional-layers` to provide a TAB-delimited file that contains additional layers of information over your items.
+While the use of %(anvi-import-misc-data)s is the most effective way to improve anvi'o displays, you can also use the parameter `--additional-layers` to provide a TAB-delimited file (%(misc-data-items-txt)s) that contains additional layers of information over your items.
 
 If you want to add an entirely new view to the interface, you can do that too, as long as you provide a file containing all split names and their associated values. For more information, see the parameter `--additional-view`.
 
