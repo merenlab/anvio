@@ -43,7 +43,7 @@ def main(args):
             import anvio.trnaidentifier as trnaidentifier
             profiler = trnaidentifier.Profiler()
 
-            sequence_profile = profiler.GeneProfile(args.dna_sequence)
+            sequence_profile = profiler.profile_gene(args.dna_sequence)
             if not sequence_profile.predicted_profile:
                 raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
 
