@@ -4135,6 +4135,7 @@ class DatabaseConverter(object):
 
         # Meta-values are set like in `dbops.ContigsDatabase.create`.
         contigs_db.db.set_meta_value('db_type', 'contigs')
+        contigs_db.db.set_meta_value('db_variant', 'trnaseq')
         contigs_db.db.set_meta_value('project_name', self.project_name)
         contigs_db.db.set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
         contigs_db.db.set_meta_value('contigs_db_hash', self.contigs_db_hash)
