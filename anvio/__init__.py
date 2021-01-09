@@ -15,11 +15,11 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '7-master'
+anvio_version = '7-dev'
 anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
-anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
+anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
@@ -441,6 +441,16 @@ D = {
                      "mere suggestion. When this flag is used, anvi'o does what the user wants and creates splits at "
                      "desired lengths (although some functionality may become unavailable for the projects that rely on "
                      "a contigs database that is initiated this way)."}
+                ),
+    'db-variant': (
+            ['--db-variant'],
+            {'metavar': 'VARIANT',
+             'required': False,
+             'default': 'unknown',
+             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers "
+                     "Please leave this blank unless you are certain that you need to set a db variant since it may influence "
+                     "downstream processes. In an ideal world a varainat would be a single-word, without any capitalized letters "
+                     "or special characters."}
                 ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],

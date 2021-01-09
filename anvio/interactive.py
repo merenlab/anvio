@@ -191,6 +191,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             progress.end()
 
+        if self.contigs_db_path:
+            self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
+            self.completeness = Completeness(self.contigs_db_path)
+            self.collections.populate_collections_dict(self.contigs_db_path)
+        else:
+            self.contigs_db_variant = None
+            self.completeness = None
+
         # if the mode has not been set from within the arguments, we will set something up here:
         if not self.mode:
             if self.manual_mode:
@@ -201,17 +209,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
+            elif self.contigs_db_variant == 'trnaseq':
+                self.mode = 'trnaseq'
             else:
                 self.mode = 'full'
 
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
-
-        if self.contigs_db_path:
-            self.completeness = Completeness(self.contigs_db_path)
-            self.collections.populate_collections_dict(self.contigs_db_path)
-        else:
-            self.completeness = None
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
@@ -230,6 +234,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif self.mode == 'refine':
             self.load_full_mode()
             self.load_refine_mode()
+        elif self.mode == 'trnaseq':
+            self.load_full_mode()
+            self.load_trnaseq_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
         elif self.mode == 'collection':
@@ -786,6 +793,44 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.title = textwrap.fill('Refining %s%s from "%s"' % (', '.join(bins[0:3]),
                                                       ' (and %d more)' % (len(bins) - 3) if len(bins) > 3 else '',
                                                       self.collection_name))
+
+
+    def load_trnaseq_mode(self):
+        # Item additional data will have already been loaded from table item_additional_data in the
+        # profile databases.
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        trna_taxonomy_table = contigs_db.db.get_table_as_dataframe(t.trna_taxonomy_table_name,
+                                                                   error_if_no_data=False).set_index('gene_callers_id')
+        items_additional_data_dict = self.items_additional_data_dict
+        items_additional_data_keys = self.items_additional_data_keys
+        if len(trna_taxonomy_table):
+            ranks = t.taxon_names_table_structure[1: ]
+            for split_name, gene_callers_id in contigs_db.db.get_table_as_dataframe(t.genes_in_splits_table_name).loc[:, ['split', 'gene_callers_id']].values:
+                try:
+                    # Check that the split is taxonomically annotated.
+                    taxonomy_series = trna_taxonomy_table.loc[gene_callers_id, :]
+                except KeyError:
+                    try:
+                        # Check that the split already has additional data.
+                        # Add placeholder entries for the taxonomic data.
+                        item_dict = items_additional_data_dict[split_name]
+                        for rank in ranks:
+                            item_dict[rank[2: ]] = None
+                    except KeyError:
+                        continue
+                    continue
+
+                try:
+                    # Check that the split already has additional data.
+                    item_dict = items_additional_data_dict[split_name]
+                except KeyError:
+                    items_additional_data_dict[split_name] = item_dict = {}.fromkeys(items_additional_data_keys)
+
+                for rank in ranks:
+                    item_dict[rank[2: ]] = taxonomy_series.loc[rank] # convert "t_domain" to "domain", etc.
+
+            items_additional_data_keys.extend([rank[2:] for rank in ranks])
+
 
     def load_collection_mode(self):
         self.collections.populate_collections_dict(self.profile_db_path)

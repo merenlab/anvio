@@ -11,11 +11,11 @@ anvi-get-short-reads-mapping-to-a-gene -c %(contigs-db)s \
                                        -O GENE_2_MATCHES
 {{ codestop }}
 
-The output of this will be a file named `GENE_2_MATCHES_BAM_FILE_ONE.fasta` (prefix + bam file name), which will contain all short readds that aligned to gene 2 with more than 100 nucleotides.
+The output of this will be a file named `GENE_2_MATCHES_BAM_FILE_ONE.fasta` (prefix + bam file name), which will contain all short reads that aligned to gene 2 with more than 100 nucleotides.
 
 You also have the option to provide multiple bam files; in this case, there will be an output files for each bam file inputted.
 
-Additionally, you can change the number of nucleotides required to map to a short read for it to be reported. For example, to expand your search, you could decrese the required mapping length to 50 nucleotides, as so:
+Additionally, you can change the number of nucleotides required to map to a short read for it to be reported. For example, to expand your search, you could decrease the required mapping length to 50 nucleotides, as so:
 
 {{ codestart }}
 anvi-get-short-reads-mapping-to-a-gene -c %(contigs-db)s \
