@@ -93,7 +93,7 @@ class DatabaseInfo:
                 pass
 
             try:
-                hmmops.SequencesForHMMHits(self.db_path).list_available_hmm_sources()
+                dbops.ContigsDatabase(self.db_path).list_available_hmm_sources()
             except:
                 pass
 
