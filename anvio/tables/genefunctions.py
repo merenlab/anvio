@@ -24,6 +24,7 @@ __status__ = "Development"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 class TableForGeneFunctions(Table):
@@ -49,6 +50,48 @@ class TableForGeneFunctions(Table):
 
         # disconnect like a pro.
         database.disconnect()
+
+
+    def get_function_sources_in_db(self, database):
+        gene_function_sources_in_db = database.get_meta_value('gene_function_sources')
+        return set(gene_function_sources_in_db.split(',') if gene_function_sources_in_db else [])
+
+
+    def drop_functions(self, database, sources_to_drop=[]):
+        if not len(sources_to_drop):
+            self.run.warning("Someone called 'drop functions' function with an empty list of sources. Cray. "
+                             "pretending that it didn't happen, and returning gracefully.")
+            return
+
+        sources_in_db = self.get_function_sources_in_db(database)
+
+        if not len(sources_in_db):
+            self.run.warning(f"Someone called 'drop functions' with {P('source', len(sources_to_drop))} to drop, but then "
+                             f"there is are no such functions in the database ANYWAY. Anvi'o is confused, but will ignore this and "
+                             f"return gracefully. Things may explode downstream yo.")
+            return
+
+        sources_not_known = [s for s in sources_to_drop if s not in sources_in_db]
+        sources_to_remain = [s for s in sources_in_db if s not in sources_to_drop]
+        sources_to_drop = [s for s in sources_to_drop if s in sources_in_db]
+
+        if len(sources_not_known) and len(sources_to_drop):
+            self.run.warning(f"Some sources the 'drop functions' was asked to drop are not in the database ({', '.join(sources_not_known)}). "
+                             f"But others are ({', '.join(sources_to_drop)}). So anvi'o will drop the ones that are actually in the "
+                             f"database, and will take credit also for those that were not in the database in the first place.")
+        elif not len(sources_to_drop):
+            self.run.warning(f"Someone is trying to drop functions ({', '.join(sources_not_known)}) that do not occur in their "
+                             f"contigs database :/ Anvi'o will pretend that this didn't happen.")
+            return
+
+        self.run.warning(f"Dropping {P('functional annotation source', len(sources_to_drop))} yo: {', '.join(sources_to_drop)}.")
+
+        # remove the functions
+        database._exec(f'''DELETE FROM {t.gene_function_calls_table_name} WHERE source IN ({','.join(['"s"' for s in sources_to_drop])})''')
+
+        # update the self table
+        database.remove_meta_key_value_pair('gene_function_sources')
+        database.set_meta_value('gene_function_sources', ','.join(sources_to_remain))
 
 
     def add_new_sources_to_functional_sources(self, gene_function_sources, database, drop_previous_annotations_first=False):
