@@ -137,7 +137,9 @@ class GenomeDescriptions(object):
         # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
         # we could use any of those genomes to learn about the specifics of them. here we take
         # the first one from `self.genomes`
-        hmm_sources_info = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path']).db.get_table_as_dict(t.hmm_hits_info_table_name)
+        contigs_db = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path'])
+        hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        contigs_db.disconnect()
 
         if self.list_hmm_sources or self.list_available_gene_names:
             if not len(hmm_sources_in_all_genomes):

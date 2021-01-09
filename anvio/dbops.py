@@ -988,7 +988,9 @@ class ContigsSuperclass(object):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
         if include_aa_sequences or report_aa_sequences:
-            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+            contigs_db = ContigsDatabase(self.contigs_db_path)
+            aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+            contigs_db.disconnect()
         else:
             aa_sequences_dict = None
 
