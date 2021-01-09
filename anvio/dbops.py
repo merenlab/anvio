@@ -3884,7 +3884,7 @@ class ContigsDatabase:
         gene_function_sources = sorted(self.meta['gene_function_sources']) if self.meta['gene_function_sources'] else []
 
         if not len(gene_function_sources):
-            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
+            self.run.info_single('No functional annotations found in this contigs database :/', nl_after=1, mc='red')
         else:
             for source in gene_function_sources:
                 num_annotations = self.db.get_row_counts_from_table(t.gene_function_calls_table_name, where_clause=f'source="{source}"')
