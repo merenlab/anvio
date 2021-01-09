@@ -191,9 +191,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             progress.end()
 
-        ContigsSuperclass.__init__(self, self.args)
-        self.init_splits_taxonomy(self.taxonomic_level)
-
         if self.contigs_db_path:
             self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
             self.completeness = Completeness(self.contigs_db_path)
@@ -216,6 +213,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'trnaseq'
             else:
                 self.mode = 'full'
+
+        ContigsSuperclass.__init__(self, self.args)
+        self.init_splits_taxonomy(self.taxonomic_level)
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
