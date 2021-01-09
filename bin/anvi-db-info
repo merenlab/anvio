@@ -83,7 +83,16 @@ class DatabaseInfo:
             # broken databases. so if the following code cause issues because the DB is broken
             # this program shouldn't crash.
             try:
+                dbops.ContigsDatabase(self.db_path).list_function_sources()
+            except:
+                pass
+
+            try:
                 dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
+            except:
+                pass
+
+            try:
                 hmmops.SequencesForHMMHits(self.db_path).list_available_hmm_sources()
             except:
                 pass
