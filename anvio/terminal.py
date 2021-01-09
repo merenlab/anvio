@@ -102,10 +102,10 @@ def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None, pre
     """
 
     if number > 1:
-        return f"{number} {word}{suffix_for_plural}"
+        return f"{pretty_print(number)} {word}{suffix_for_plural}"
     else:
         if suffix_for_singular:
-            return f"{number} {word}{suffix_for_singular}"
+            return f"{pretty_print(number)} {word}{suffix_for_singular}"
         else:
             return f"{prefix_for_singular} {word}"
 

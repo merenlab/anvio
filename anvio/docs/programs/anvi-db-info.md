@@ -31,33 +31,34 @@ Here is an example of what you might see for a %(contigs-db)s.
 DB Info (no touch)
 ===============================================
 Database Path ................................: CONTIGS.db
-Description ..................................: [Not found, but it's OK]
+Description ..................................: No description is given
 Type .........................................: contigs
-Version ......................................: 19
+Variant ......................................: None
+Version ......................................: 20
 
 
 DB Info (no touch also)
 ===============================================
-project_name .................................: TEST
-contigs_db_hash ..............................: hashe451b636
+contigs_db_hash ..............................: d51abf0a
 split_length .................................: 20000
 kmer_size ....................................: 4
-num_contigs ..................................: 1
-total_length .................................: 2089645
-num_splits ...................................: 104
-gene_level_taxonomy_source ...................: None
+num_contigs ..................................: 4189
+total_length .................................: 35766167
+num_splits ...................................: 4784
 genes_are_called .............................: 1
 splits_consider_gene_calls ...................: 1
-creation_date ................................: 1584050598.57349
-scg_taxonomy_was_run .........................: 1
+creation_date ................................: 1466453807.46107
+project_name .................................: Infant Gut Contigs from Sharon et al.
+gene_level_taxonomy_source ...................:
+scg_taxonomy_was_run .........................: 0
 external_gene_calls ..........................: 0
 external_gene_amino_acid_seqs ................: 0
 skip_predict_frame ...........................: 0
-scg_taxonomy_database_version ................: v89
+scg_taxonomy_database_version ................: None
 trna_taxonomy_was_run ........................: 0
 trna_taxonomy_database_version ...............: None
 modules_db_hash ..............................: 72700e4db2bc
-gene_function_sources ........................: KEGG_Module,KOfam,Pfam,Transfer_RNAs,KEGG_Class
+gene_function_sources ........................: KEGG_Module,COG14_CATEGORY,COG14_FUNCTION,KEGG_Class,KOfam
 
 * Please remember that it is never a good idea to change these values. But in some
 cases it may be absolutely necessary to update something here, and a programmer
@@ -66,17 +67,25 @@ extremely careful.
 
 AVAILABLE GENE CALLERS
 ===============================================
-* 'prodigal' (1,678 gene calls)
-* 'Ribosomal_RNAs' (10 gene calls)
+* 'prodigal' (32,265 gene calls)
+* 'Ribosomal_RNAs' (9 gene calls)
+
+
+AVAILABLE FUNCTIONAL ANNOTATION SOURCES
+===============================================
+* COG14_CATEGORY (21,121 annotations)
+* COG14_FUNCTION (21,121 annotations)
+* KEGG_Class (2,760 annotations)
+* KEGG_Module (2,760 annotations)
+* KOfam (14,391 annotations)
 
 
 AVAILABLE HMM SOURCES
 ===============================================
-* 'Bacteria_71' (type: singlecopy; num genes: 71)
-* 'Archaea_76' (type: singlecopy; num genes: 76)
-* 'Protista_83' (type: singlecopy; num genes: 83)
-* 'Ribosomal_RNAs' (type: Ribosomal_RNAs; num genes: 12)
-
+* 'Archaea_76' (type 'singlecopy' with 76 models and 404 hits)
+* 'Bacteria_71' (type 'singlecopy' with 71 models and 674 hits)
+* 'Protista_83' (type 'singlecopy' with 83 models and 100 hits)
+* 'Ribosomal_RNAs' (type 'Ribosomal_RNAs' with 12 models and 9 hits)
 ```
 
 Most of this output is self-explanatory. But one thing that may not be quite obvious to some is that in many cases we use `0` to indicate 'False' and `1` to indicate 'True'. So for this example, you will see that SCG taxonomy was run on this database, but tRNA taxonomy was not.
