@@ -83,12 +83,12 @@ class DatabaseInfo:
             # broken databases. so if the following code cause issues because the DB is broken
             # this program shouldn't crash.
             try:
-                dbops.ContigsDatabase(self.db_path).list_function_sources()
+                dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
             except:
                 pass
 
             try:
-                dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
+                dbops.ContigsDatabase(self.db_path).list_function_sources()
             except:
                 pass
 
