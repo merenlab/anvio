@@ -3891,6 +3891,23 @@ class ContigsDatabase:
                 self.run.info_single(f'{source} ({pp(num_annotations)} annotations)', nl_after = 1 if source == gene_function_sources[-1] else 0)
 
 
+    def list_available_hmm_sources(self):
+        self.run.warning(None, header="AVAILABLE HMM SOURCES", lc="green")
+
+        hmm_sources_dict = self.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        hmm_sources = sorted(list(hmm_sources_dict.keys()))
+
+        if not len(hmm_sources_dict):
+            self.run.info_single("This contigs db does not have HMMs :/")
+        else:
+            for source in hmm_sources:
+                source_type = hmm_sources_dict[source]['search_type']
+                num_models = len(hmm_sources_dict[source]['genes'].split(','))
+                num_hits = self.db.get_row_counts_from_table(t.hmm_hits_table_name, where_clause=f'source="{source}"')
+                self.run.info_single(f"'{source}' (type '{source_type}' with {P('model', num_models)} and {P('hit', num_hits)})",
+                                     nl_after = 1 if source == hmm_sources[-1] else 0)
+
+
     def remove_data_from_db(self, tables_dict):
         """This is quite an experimental function to clean up tables in contgis databases. Use with caution.
 
