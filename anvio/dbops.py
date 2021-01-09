@@ -3881,7 +3881,7 @@ class ContigsDatabase:
     def list_function_sources(self):
         self.run.warning(None, header="AVAILABLE FUNCTIONAL ANNOTATION SOURCES", lc="green")
 
-        gene_function_sources = sorted(self.meta['gene_function_sources'])
+        gene_function_sources = sorted(self.meta['gene_function_sources']) if self.meta['gene_function_sources'] else []
 
         if not len(gene_function_sources):
             self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
