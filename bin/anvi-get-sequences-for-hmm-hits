@@ -36,7 +36,6 @@
 
 import os
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -46,7 +45,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
 
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, ContigsDatabase
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -75,6 +75,10 @@ def main(args):
 
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
+
+    if args.list_hmm_sources:
+        ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        sys.exit()
 
     if args.concatenate_genes:
         if not args.return_best_hit:
@@ -125,9 +129,6 @@ def main(args):
             if(missing_hmm_sources):
                 raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database "
                                   "knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
-
-        if args.list_hmm_sources:
-            hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
         if args.list_available_gene_names:
             hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(sources=list(hmm_sources))
