@@ -3498,7 +3498,12 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
 
 def get_db_type_and_variant(db_path):
     filesnpaths.is_file_exists(db_path)
-    database = db.DB(db_path, None, ignore_version=True)
+
+    try:
+        database = db.DB(db_path, None, ignore_version=True)
+    except Exception as e:
+        raise ConfigError(f"Someone downstream doesn't like your so called database, '{db_path}'. They say "
+                          f"\"{e}\". Awkward :(")
 
     tables = database.get_table_names()
     if 'self' not in tables:
