@@ -566,16 +566,7 @@ class ContigsSuperclass(object):
 
 
     def list_function_sources(self):
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
-        gene_function_sources = contigs_db.meta['gene_function_sources']
-        contigs_db.disconnect()
-
-        if not len(gene_function_sources):
-            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
-            for source in gene_function_sources:
-                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
+        ContigsDatabase(self.contigs_db_path).list_function_sources()
 
 
     def check_functional_annotation_sources(self, sources=None, dont_panic=False):
@@ -3880,6 +3871,19 @@ class ContigsDatabase:
             for gene_caller_source, num_genes in gene_caller_sources:
                 self.run.info_single("'%s' (%s gene calls)" % (gene_caller_source, pp(num_genes)),
                                      nl_after = 1 if gene_caller_source == gene_caller_sources[-1][0] else 0)
+
+
+    def list_function_sources(self):
+        run.warning(None, header="AVAILABLE FUNCTIONAL ANNOTATION SOURCES", lc="green")
+
+        gene_function_sources = self.meta['gene_function_sources']
+
+        if not len(gene_function_sources):
+            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            for source in gene_function_sources:
+                num_annotations = self.db.get_row_counts_from_table(t.gene_function_calls_table_name, where_clause=f'source="{source}"')
+                self.run.info_single(f'{source} ({pp(num_annotations)} annotations)', nl_after = 1 if source == gene_function_sources[-1] else 0)
 
 
     def remove_data_from_db(self, tables_dict):
