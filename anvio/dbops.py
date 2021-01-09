@@ -3866,7 +3866,7 @@ class ContigsDatabase:
 
 
     def list_gene_caller_sources(self):
-        run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
+        self.run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
 
         gene_caller_sources = self.meta['gene_callers']
 
@@ -3879,7 +3879,7 @@ class ContigsDatabase:
 
 
     def list_function_sources(self):
-        run.warning(None, header="AVAILABLE FUNCTIONAL ANNOTATION SOURCES", lc="green")
+        self.run.warning(None, header="AVAILABLE FUNCTIONAL ANNOTATION SOURCES", lc="green")
 
         gene_function_sources = self.meta['gene_function_sources']
 
