@@ -3782,6 +3782,11 @@ class ContigsDatabase:
             self.db = None
 
 
+    def __del__(self):
+        if self.db:
+            self.db.disconnect()
+
+
     def get_date(self):
         return time.time()
 
@@ -4289,6 +4294,7 @@ class ContigsDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+        self.db = None
 
 
 class TRNASeqDatabase:
