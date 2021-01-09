@@ -87,7 +87,8 @@ class TableForGeneFunctions(Table):
         self.run.warning(f"Dropping {P('functional annotation source', len(sources_to_drop))} yo: {', '.join(sources_to_drop)}.")
 
         # remove the functions
-        database._exec(f'''DELETE FROM {t.gene_function_calls_table_name} WHERE source IN ({','.join(['"s"' for s in sources_to_drop])})''')
+        sources = ','.join([f'"{s}"' for s in sources_to_drop])
+        database._exec(f'''DELETE FROM {t.gene_function_calls_table_name} WHERE source IN ({sources})''')
 
         # update the self table
         database.remove_meta_key_value_pair('gene_function_sources')
