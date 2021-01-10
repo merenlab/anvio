@@ -34,7 +34,7 @@ rule trnaseq_workflow_target_rule:
 rule make_iu_input:
     """Create an Illumina-utils samples file for each sequence library."""
     version: 1.0
-    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-make_iu_input.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "make_iu_input.log")
     # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
     # paths of the FASTQ files have changed.
     input: ancient(M.get_param_value_from_config(['samples_txt']))
@@ -52,7 +52,7 @@ rule make_iu_input:
 rule iu_gen_configs:
     """Create an Illumina-utils config file from each Illumina-utils samples file representing each sequence library."""
     version: 1.0
-    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-iu_gen_configs.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_gen_configs.log")
     # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
     # paths of the FASTQ files have changed.
     input: ancient(rules.make_iu_input.output)
@@ -140,7 +140,7 @@ def gunzip_fasta(fasta, log):
 rule anvi_reformat_fasta:
     """Reformat the FASTA file with Anvi\'o-compliant deflines."""
     version: 1.0
-    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-reformat_fasta.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "reformat_fasta.log")
     input: M.get_input_for_anvi_reformat_fasta
     output:
         fasta = temp(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}-reformatted.fasta")) if M.gzip_anvi_reformat_fasta_output else os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}-reformatted.fasta"),
@@ -163,7 +163,7 @@ rule anvi_reformat_fasta:
 
 rule anvi_trnaseq:
     version: 1.0
-    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "{sample_name}-anvi_trnaseq.log")
+    log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "anvi_trnaseq.log")
     input: M.get_input_for_anvi_trnaseq
     output: touch(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}.done"))
     threads: M.T('anvi_trnaseq')
