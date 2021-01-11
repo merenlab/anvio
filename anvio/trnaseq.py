@@ -1346,7 +1346,7 @@ class TRNASeqDataset(object):
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
-            f.write(self.get_summary_line("INDELs profiled", self.INDELs_profiled))
+            f.write(self.get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
             f.write(self.get_summary_line("Fiveprime-most deletion start", self.fiveprimemost_del_start))
             f.write(self.get_summary_line("Threeprime-most deletion start", self.threeprimemost_del_start))
             f.write(self.get_summary_line("Fiveprime-most deletion start", self.threeprimemost_del_start))
