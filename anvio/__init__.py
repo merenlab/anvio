@@ -2179,7 +2179,7 @@ D = {
                 ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
-            {'metavar': 'HMM PROFILE NAME'}
+            {'metavar': 'HMM PROFILE NAME(S)'}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
