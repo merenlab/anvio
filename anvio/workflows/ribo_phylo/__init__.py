@@ -132,19 +132,23 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         super().init()
         # WorkflowSuperclass().init()
 
+        # initiating a list to fill with names of contigDBs
+        self.names_list = []
+
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
-        filesnpaths.is_file_exists(self.metagenomes)
-        try:
-            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
-            self.metagenomes_name_list = self.metagenomes_df.name.to_list()
-            self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
-            self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
-            self.name_list = self.metagenomes_name_list
+        if self.metagenomes:
+            filesnpaths.is_file_exists(self.metagenomes)
+            try:
+                self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+                self.metagenomes_name_list = self.metagenomes_df.name.to_list()
+                self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
+                self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
+                self.names_list.extend(self.metagenomes_name_list)
 
-        except IndexError as e:
-            raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
-                              "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+            except IndexError as e:
+                raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
+                                  "This is the error from trying to load it: '%s'" % (self.metagenomes_df, e))
 
         # Load external-genomes.txt
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
@@ -152,15 +156,14 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             filesnpaths.is_file_exists(self.external_genomes)
             try:
                 self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
-                self.external_genomes_name_list = self.external_genomes_df.name.to_list()
+                self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
                 # add names to metagenomes list so they are all processed
-                self.name_list.extend(self.external_genomes_name_list)
-
+                self.names_list.extend(self.external_genomes_names_list)
             except IndexError as e:
                 raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+                                  "This is the error from trying to load it: '%s'" % (self.external_genomes_df, e))
 
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
@@ -193,7 +196,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get SCG taxonomy for each metagenome or external-genome 
-            for external_genome_name in self.external_genomes_name_list:
+            for external_genome_name in self.external_genomes_names_list:
                 tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
                 target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
                 target_files.append(target_file)
