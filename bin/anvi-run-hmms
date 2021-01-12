@@ -89,8 +89,11 @@ def main(args):
 
 
 if __name__ == '__main__':
+    available_hmm_sources_pretty = '; '.join([f"'{s}' (type: {hmm_data.sources[s]['kind']})" for s in available_hmm_sources])
+
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
+
 
     groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -99,13 +102,13 @@ if __name__ == '__main__':
                                                       "default anvi'o HMM profiles rather than running them all, this is "
                                                       "your stop.")
     groupB.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
-    groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
-                                  program without any parameter, it runs all %d HMM profiles installed on your system. If\
-                                  you want only a specific one to run, you can select it by using this parameter. These\
-                                  are the currently available ones: %s." % \
-                                                (len(available_hmm_sources),
-                                                 ', '.join(['"%s" (type: %s)' % (s, hmm_data.sources[s]['kind']) \
-                                                                                    for s in available_hmm_sources]))}))
+    groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile',
+                            {'help': f"When you run this program without any parameter, it will run all {len(available_hmm_sources)} "
+                                     f"HMM profiles installed on your system. Using this parameter, you can instruct anvi'o to run "
+                                     f"only one or more of the specific profiles of you choose. You can provide a comma-separated list "
+                                     f"of names for multiple profiles (but in that case don't put a space between each profile name). "
+                                     f"Here is the list of installed profiles available to you: are the currently available ones: "
+                                     f"{available_hmm_sources_pretty}."}))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))
