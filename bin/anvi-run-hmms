@@ -34,6 +34,7 @@ __resources__ = [("Another description as part of the metagenomic workflow", "ht
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 
 
 @time_program
@@ -58,15 +59,23 @@ def main(args):
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
-        if args.installed_hmm_profile == "Transfer_RNAs":
+        args.installed_hmm_profile = [p.strip() for p in args.installed_hmm_profile.split(',') if p.strip()]
+
+        if "Transfer_RNAs" in args.installed_hmm_profile:
             raise ConfigError("Sorry, it is not you, it is anvi'o :/ Transfer RNAs behave identically to HMMs, but "
                               "to run transfer RNA profiles on a contigs database you must use the program "
-                              "`anvi-scan-trnas`.")
-        if args.installed_hmm_profile not in available_hmm_sources:
-            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are "
-                              "these: %s." % (', '.join(available_hmm_sources)))
+                              "`anvi-scan-trnas` and not provide it as an installed HMM source to `anvi-run-hmms`.")
 
-        sources = {args.installed_hmm_profile: hmm_data.sources[args.installed_hmm_profile]}
+        missing_installed_hmm_profiles = [p for p in args.installed_hmm_profile if p not in available_hmm_sources]
+        if len(missing_installed_hmm_profiles):
+            n = len(missing_installed_hmm_profiles)
+            m = ', '.join([f'"{p}"' for p in missing_installed_hmm_profiles])
+            raise ConfigError(f"You managed to hit {P('profile', n)} that {P('is', n, alt='are')} not actually installed "
+                              f"({m}) :/ Here are the available profiles: {', '.join(available_hmm_sources)}.")
+
+        sources = {}
+        for profile in args.installed_hmm_profile:
+            sources[profile] = hmm_data.sources[profile]
     else:
         # sources will be loaded from defaults.
         pass
