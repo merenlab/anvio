@@ -134,6 +134,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # initiating a list to fill with names of contigDBs
         self.names_list = []
+        self.names_dirs = []
 
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
@@ -143,7 +144,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
-                self.metagenomes_contig_dir = os.path.dirname(self.metagenomes_path_list[0])
+                self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
+                self.names_dirs.extend(self.metagenomes_dirname_list)
                 self.names_list.extend(self.metagenomes_name_list)
 
             except IndexError as e:
@@ -158,13 +160,23 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
-                self.external_genomes_contig_dir = os.path.dirname(self.external_genomes_path_list[0])
-                # add names to metagenomes list so they are all processed
+                self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
+                self.names_dirs.extend(self.external_genomes_dirname_list)
                 self.names_list.extend(self.external_genomes_names_list)
             except IndexError as e:
                 raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.external_genomes_df, e))
 
+        # Make a unique list
+        self.names_dirs = list(set(self.names_dirs))
+
+        # Make variables that tells whether we have metagenomes.txt, external-genomes.txt, or both
+        if self.metagenomes and not self.external_genomes:
+            self.mode = 'metagenomes'
+        if not self.metagenomes and self.external_genomes:
+            self.mode = 'external_genomes'
+        if self.metagenomes and self.external_genomes:
+            self.mode = 'both'
         # Load Ribosomal protein list
         self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
         filesnpaths.is_file_exists(self.Ribosomal_protein_list_path)
@@ -191,15 +203,15 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-            tail_path = "%s_all.fna" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_all.fna" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
 
-            # Get SCG taxonomy for each metagenome or external-genome 
-            for external_genome_name in self.names_list:
-                tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
-                target_files.append(target_file)
+            # # Get SCG taxonomy for each metagenome or external-genome 
+            # for external_genome_name in self.names_list:
+            #     tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
+            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
+            #     target_files.append(target_file)
 
             # Get final misc data for anvi-interactive display of tree
             tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)

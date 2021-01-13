@@ -18,7 +18,7 @@ taxonomy = pd.read_csv(snakemake.input.taxonomy, \
 
 # Clean
 #------
-taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+taxonomy = taxonomy.rename(columns = {'bin_name': 'sequence_name'})
 
 reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
 reformat_report['sequence_name'] = snakemake.wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
