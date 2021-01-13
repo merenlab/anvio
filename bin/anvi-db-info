@@ -9,7 +9,6 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
