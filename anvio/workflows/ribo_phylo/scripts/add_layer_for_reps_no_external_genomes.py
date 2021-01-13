@@ -26,15 +26,7 @@ for seq_record in SeqIO.parse(snakemake.input.final_list_of_sequences_for_tree_c
 cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
 seq_in_tree_list = fasta_df.header.to_list()
 
-sup_list = []
-for seq in seq_in_tree_list:
-  cluster_members_list = cluster_rep_index_dict[seq]
-  for external_genome in snakemake.params.external_genomes:
-    check = any(external_genome in s for s in cluster_members_list)
-    if check is True:
-      sup_list.append(seq)
-
-misc_data['has_genomic_SCG_in_cluster'] = np.where(misc_data['new_header'].isin(sup_list), 'yes', 'no')
+misc_data['has_genomic_SCG_in_cluster'] = 'no'
 
 # Export
 #------------------------------------------------------------------

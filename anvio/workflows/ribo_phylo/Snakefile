@@ -185,21 +185,36 @@ rule simplify_names_from_scg_hits_aa:
                               -o {output.fasta} >> {log} 2>&1"
 
 
-rule join_renamed_fastas_with_taxonomy_data:
-    """Add simplified fasta headers to the misc data file"""
+if M.external_genomes:
+    rule join_renamed_fastas_with_taxonomy_data:
+        """Add simplified fasta headers to the misc data file"""
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
-    input:
-        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
-        report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
-    output:
-        misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
-    params:
-        external_genomes = M.external_genomes_names_list
-    threads: M.T('join_renamed_fasta_with_misc_data')
-    script:
-        "scripts/rename_fasta_headers.py"
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
+        input:
+            taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+            report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
+        output:
+            misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+        params:
+            external_genomes = M.external_genomes_names_list
+        threads: M.T('join_renamed_fasta_with_misc_data')
+        script:
+            "scripts/rename_fasta_headers.py"
+else:
+    rule join_renamed_fastas_with_taxonomy_data:
+        """Add simplified fasta headers to the misc data file"""
+
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
+        input:
+            taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+            report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
+        output:
+            misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+        threads: M.T('join_renamed_fasta_with_misc_data')
+        script:
+            "scripts/rename_fasta_headers_no_external_genomes.py"
 
 
 
@@ -296,6 +311,9 @@ rule join_renamed_fastas_with_taxonomy_data:
 #     shell:
 #         "cat {input} >> {output}"
 
+print("asdf")
+print(M.names_list)
+print(M.Ribosomal_protein_list)
 rule cat_scgs_to_one_fasta_nt:
     """
     Cat all ribosomal sequences from seperate metagenomes into one fasta
@@ -307,7 +325,8 @@ rule cat_scgs_to_one_fasta_nt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: 
-        fasta = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}_hmm_hits_renamed.fna"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
+        fasta = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_hmm_hits_renamed.fna"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
+        # fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{{sample_name}}", "{{sample_name}_{ribosomal_protein_name}_hmm_hits_renamed.fna"),
     output: 
         fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fna"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
@@ -325,7 +344,7 @@ rule cat_scgs_reformat_files_nt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input: 
-        reformat_file = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{ribosomal_protein_names}_reformat_report_nt.txt"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
+        reformat_file = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_reformat_report_nt.txt"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
     output: 
         reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat.txt")
     threads: M.T('cat_ribo_proteins_to_one_fasta')
@@ -839,21 +858,39 @@ rule count_num_sequences_filtered:
         step3=$(grep -c '>' {input.step3})
         echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
-rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
-    """"""
 
-    version: 1.0
-    input:
-        misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
-        final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
-    output:
-        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
-    params:
-        external_genomes = M.external_genomes_names_list,
-        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
-    threads: M.T('join_renamed_fasta_with_misc_data')
-    script:
-        "scripts/add_layer_for_reps.py"
+if M.external_genomes:
+    rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
+        """
+        """
+        version: 1.0
+        input:
+            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+        output:
+            misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
+        params:
+            external_genomes = M.external_genomes_names_list,
+            cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
+        threads: M.T('join_renamed_fasta_with_misc_data')
+        script:
+            "scripts/add_layer_for_reps.py"
+
+else:
+    rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
+        """
+        """
+        version: 1.0
+        input:
+            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+        output:
+            misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
+        params:
+            cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
+        threads: M.T('join_renamed_fasta_with_misc_data')
+        script:
+            "scripts/add_layer_for_reps_no_external_genomes.py"
 
 rule get_headers_for_mapping:
     """

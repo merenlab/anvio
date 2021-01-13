@@ -196,7 +196,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get SCG taxonomy for each metagenome or external-genome 
-            for external_genome_name in self.external_genomes_names_list:
+            for external_genome_name in self.names_list:
                 tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
                 target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
                 target_files.append(target_file)
