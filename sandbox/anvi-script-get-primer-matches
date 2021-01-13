@@ -143,9 +143,9 @@ def main(args):
     progress.end()
 
     run.warning(None, header="HITS PER SAMPLE", lc='yellow')
-    run.info('Summary', f"", nl_after=1)
+    run.info('Summary', "", nl_after=1)
     run.info_single(f"After processing {pp(total_read_counter)} reads in {P('sample', len(samples_dict))}, anvi'o found "
-                    f"{P('hit', total_hit_counter)} for your {P('sequence', len(primers_dict), prefix_for_singular='only')} "
+                    f"{P('hit', total_hit_counter)} for your {P('sequence', len(primers_dict), pfs='only')} "
                     f"in the primer sequences file. What is shown below breaks these numbers down per sample because that's how "
                     f"anvi'o rolls (SAM: Shortest sequence after match; LAM: Longest sequence after match; ALAM: Average length after match).", nl_after=1)
 
