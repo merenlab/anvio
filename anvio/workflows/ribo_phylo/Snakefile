@@ -698,7 +698,7 @@ rule align_muscle:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_{ribosomal_protein_name}.log")
 	input: rules.filter_for_aa_seqs.output.fasta
-	output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
+	output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.faa")
 	threads: M.T('align_muscle')
 	shell:
 		"muscle -in {input} \
@@ -756,8 +756,8 @@ rule trim_alignment:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
+    input: rules.align_muscle.output
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_trimmed.faa")
     params:
         gt=M.get_param_value_from_config(['trim_alignment', '-gt']),
         gappyout=M.get_rule_param('trim_alignment', '-gappyout'),
@@ -773,8 +773,8 @@ rule remove_sequences_with_X_percent_gaps:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
-    input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+    input: rules.trim_alignment.output
+    output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_trimmed_filtered.faa")
     params:
         seq_counts_tsv=os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_gaps_counts_01.tsv"),
         max_percentage_gaps=M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
@@ -875,17 +875,17 @@ rule count_num_sequences_filtered:
         # Headers
         echo -e  "Description\tRule_name\tNum_sequences\n > {output}"
 
-        # How many SCGs do we start with?
+        # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
         step1=$(grep -c '>' {input.step1})
-        echo -e "input\tcat_scgs_to_one_fasta_nt\t$step1\n" >> {output}
+        echo -e "cat_scgs_to_one_fasta_nt\t$step1\n" >> {output}
 
-        # How many seqs are in the NR set?
+        # How many SCGs do we have after we cluster them at the nt level and pick representatives?
         step2=$(grep -c '>' {input.step2})
-        echo -e "NR\tcluster_X_percent_sim_mmseqs\t$step2\n" >> {output}
+        echo -e "cluster_X_percent_sim_mmseqs\t$step2\n" >> {output}
 
         # How many seqs are in the NR set?
         step3=$(grep -c '>' {input.step3})
-        echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
+        echo -e "remove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
 
 
@@ -896,7 +896,7 @@ if M.external_genomes:
         version: 1.0
         input:
             misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
-            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_trimmed_filtered.faa")
         output:
             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
         params:
@@ -913,7 +913,7 @@ else:
         version: 1.0
         input:
             misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
-            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
+            final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_trimmed_filtered.faa")
         output:
             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
         params:
@@ -928,27 +928,27 @@ rule get_headers_for_mapping:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
     input:
-        fasta = rules.cat_scgs_to_one_fasta_nt.output
+        fasta = rules.remove_sequences_with_X_percent_gaps.output
     output:
         headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_headers_for_mapping.txt")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     script: "scripts/get_sequence_headers_for_mapping.py"
 
 rule filter_for_nt_seqs_for_mapping:
-    """"""
+    """
+    """
 
     version: 1.0
     input:
-        rules.cat_scgs_to_one_fasta_nt.output
+        fasta = rules.cat_scgs_to_one_fasta_nt.output,
+        headers = rules.get_headers_for_mapping.output.headers
     output:
         nt_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_scgs_for_mapping.fna")
-    params:
-        rules.get_headers_for_mapping.output.headers
     threads: M.T('join_renamed_fasta_with_misc_data')
     shell:
-        "anvi-script-reformat-fasta {input} \
+        "anvi-script-reformat-fasta {input.fasta} \
                                     -o {output} \
-                                    -I <({params})"
+                                    -I {input.headers}"
 
 rule calculate_tree:
     """Calculate a phylogenetic tree using iqtree"""
