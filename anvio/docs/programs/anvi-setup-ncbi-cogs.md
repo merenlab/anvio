@@ -1,8 +1,5 @@
 This program **downloads and organizes a local copy of the data from NCBI's [COGs database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/) for use in function annotation.** This program generates a %(cogs-data)s artifact, which is required to run the program %(anvi-run-ncbi-cogs)s. 
 
-{:.notice}
-The COGs database is no longer actively added to, so you might also want to consider using a separate database. As of yet, anvi'o does not have a program to accesss the eggNOG database (but instructions to use this database to get and import function information are [here](http://merenlab.org/2016/06/18/importing-functions/#eggnog-database--emapper)), but does have the functionality to use the Pfams database (check out %(anvi-run-pfams)s for more information) and the KOfamKOALA database (see %(anvi-run-kegg-kofams)s). 
-
 ### Set up COGs data
 {{ codestart }}
 anvi-setup-ncbi-cogs --just-do-it
