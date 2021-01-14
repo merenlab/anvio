@@ -856,7 +856,11 @@ rule remove_sequences_with_X_percent_gaps:
 #                 {params.additional_params} 2> {log}'
 
 rule count_num_sequences_filtered:
-    """This rule will count the number of Ribosomal sequences filtered at each step of the workflow"""
+    """
+    This rule will count the number of Ribosomal sequences filtered at each step of the workflow.
+
+    FIXME: for some reason and cannot prepend the file with headers and I have no idea why...
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{ribosomal_protein_name}.log")
@@ -869,12 +873,12 @@ rule count_num_sequences_filtered:
     shell:
         """
         # Headers
-        echo -e "Description\tRule_name\tNum_sequences\n > {output}"
+        echo -e  "Description\tRule_name\tNum_sequences\n > {output}"
 
         # How many SCGs do we start with?
         step1=$(grep -c '>' {input.step1})
         echo -e "input\tcat_scgs_to_one_fasta_nt\t$step1\n" >> {output}
-       
+
         # How many seqs are in the NR set?
         step2=$(grep -c '>' {input.step2})
         echo -e "NR\tcluster_X_percent_sim_mmseqs\t$step2\n" >> {output}
@@ -883,6 +887,7 @@ rule count_num_sequences_filtered:
         step3=$(grep -c '>' {input.step3})
         echo -e "Filtered out for alignment\tremove_sequences_with_X_percent_gaps\t$step3\n" >> {output}
         """
+
 
 if M.external_genomes:
     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
