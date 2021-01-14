@@ -240,37 +240,6 @@ rule join_renamed_fastas_with_taxonomy_data_text:
     threads: M.T('join_renamed_fasta_with_misc_data')
     script:
         "scripts/rename_fasta_headers_no_external_genomes.py"
-# if M.external_genomes:
-#     rule join_renamed_fastas_with_taxonomy_data:
-#         """Add simplified fasta headers to the misc data file"""
-
-#         version: 1.0
-#         log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
-#         input:
-#             taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
-#             report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
-#         output:
-#             misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
-#         params:
-#             external_genomes = M.external_genomes_names_list
-#         threads: M.T('join_renamed_fasta_with_misc_data')
-#         script:
-#             "scripts/rename_fasta_headers.py"
-# else:
-#     rule join_renamed_fastas_with_taxonomy_data_text:
-#         """Add simplified fasta headers to the misc data file"""
-
-#         version: 1.0
-#         log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
-#         input:
-#             taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
-#             report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
-#         output:
-#             misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
-#         threads: M.T('join_renamed_fasta_with_misc_data')
-#         script:
-#             "scripts/rename_fasta_headers_no_external_genomes.py"
-
 
 
 # rule filter_for_scg_sequences_and_metadata:
