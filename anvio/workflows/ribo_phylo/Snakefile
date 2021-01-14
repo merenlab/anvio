@@ -603,6 +603,8 @@ rule filter_for_aa_seqs:
 #                               --report-file {output.report_file} \
 #                               -o {output.fasta} >> {log} 2>&1"
 
+
+
 rule cat_misc_data_to_one_file:
     """
     Cat all sequence misc data from separate samples in one tsv.
@@ -622,30 +624,32 @@ rule cat_misc_data_to_one_file:
     shell:
         "cat {input} >> {output}"
 
-# rule add_header_to_misc_file:
-#     """
-#     CARBON COPY IN CASE I BLOW THIS
-#     Adding header to misc data file.
 
-#     See rule cat_misc_data_to_one_file for why this sucks
+rule add_header_to_misc_file:
+    """
+    CARBON COPY IN CASE I BLOW THIS
+    Adding header to misc data file.
 
-#     FIXME: replace with sed when running on linux
+    See rule cat_misc_data_to_one_file for why this sucks
 
-#     # grep -v "header" {input} | sed -i '1s|^|header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n|' > {output}
+    FIXME: replace with sed when running on linux
 
-#     FIXME: the tmp misc_data files before *_all_misc_data_final.tsv could be removed from the final output
-#     """
+    # grep -v "header" {input} | sed -i '1s|^|header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n|' > {output}
 
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
-#     input: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
-#     output: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
-#     threads: M.T('cat_misc_data_to_one_file')
-#     shell:
-#         """
-#         echo -e "header\tsample_name\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n$(grep -v "header" {input})" > {output}
-#         """
+    FIXME: the tmp misc_data files before *_all_misc_data_final.tsv could be removed from the final output
+    """
 
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+    input: rules.cat_misc_data_to_one_file.output
+    output: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
+    threads: M.T('cat_misc_data_to_one_file')
+    shell:
+        """
+        echo -e "new_header\tsample\tcontig_db_type\tt_domain\tt_phylum\tt_order\tt_family\tt_genus\tt_species" > {output}
+
+        cat {input} >> {output}
+        """
 # rule add_header_to_misc_file:
 #     """
 #     Adding header to misc data file.
@@ -886,7 +890,7 @@ if M.external_genomes:
         """
         version: 1.0
         input:
-            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
             final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
         output:
             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")
@@ -903,7 +907,7 @@ else:
         """
         version: 1.0
         input:
-            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
+            misc_data = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_ed.tsv"),
             final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered.fasta")
         output:
             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data_final.tsv")

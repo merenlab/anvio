@@ -34,4 +34,5 @@ misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="l
 misc_new_headers_df.to_csv(snakemake.output.misc_data_final, \
            sep="\t", \
            index=None, \
-           na_rep="NA")
+           na_rep="NA", \
+           header=False)
