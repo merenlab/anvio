@@ -95,28 +95,32 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     threads: M.T('anvi_estimate_scg_taxonomy_for_ribosomal_proteins')
     message: "I cant put messages... this might be useful!... Launching rule: {rule}"
     run:
-        if M.mode == 'metagenomes':
-            if wildcards.sample_name in M.metagenomes_name_list:
-                shell('anvi-estimate-scg-taxonomy -c {input} \
+        shell('anvi-estimate-scg-taxonomy -c {input} \
                                         --metagenome-mode \
                                         --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
                                         -o {output} 2> {log}')
+        # if M.mode == 'metagenomes':
+        #     if wildcards.sample_name in M.metagenomes_name_list:
+        #         shell('anvi-estimate-scg-taxonomy -c {input} \
+        #                                 --metagenome-mode \
+        #                                 --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
+        #                                 -o {output} 2> {log}')
 
-        if M.mode == 'external_genomes':
-            if wildcards.sample_name in M.external_genomes_names_list:
-                shell('anvi-estimate-scg-taxonomy -c {input} \
-                                        -o {output} 2> {log}')
+        # if M.mode == 'external_genomes':
+        #     if wildcards.sample_name in M.external_genomes_names_list:
+        #         shell('anvi-estimate-scg-taxonomy -c {input} \
+        #                                 -o {output} 2> {log}')
 
-        if M.mode == 'both':
-            if wildcards.sample_name in M.external_genomes_names_list:
-                shell('anvi-estimate-scg-taxonomy -c {input} \
-                                        -o {output} 2> {log}')
+        # if M.mode == 'both':
+        #     if wildcards.sample_name in M.external_genomes_names_list:
+        #         shell('anvi-estimate-scg-taxonomy -c {input} \
+        #                                 -o {output} 2> {log}')
 
-            if wildcards.sample_name in M.metagenomes_name_list:
-                shell('anvi-estimate-scg-taxonomy -c {input} \
-                                        --metagenome-mode \
-                                        --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
-                                        -o {output} 2> {log}')
+        #     if wildcards.sample_name in M.metagenomes_name_list:
+        #         shell('anvi-estimate-scg-taxonomy -c {input} \
+        #                                 --metagenome-mode \
+        #                                 --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
+        #                                 -o {output} 2> {log}')
 # if M.metagenomes:
 #     rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
 #         """Retrieve SCG taxonomy from extracted ribosomal proteins"""
@@ -223,36 +227,49 @@ rule simplify_names_from_scg_hits_aa:
                               -o {output.fasta} >> {log} 2>&1"
 
 
-if M.external_genomes:
-    rule join_renamed_fastas_with_taxonomy_data:
-        """Add simplified fasta headers to the misc data file"""
+rule join_renamed_fastas_with_taxonomy_data_text:
+    """Add simplified fasta headers to the misc data file"""
 
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
-        input:
-            taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
-            report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
-        output:
-            misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
-        params:
-            external_genomes = M.external_genomes_names_list
-        threads: M.T('join_renamed_fasta_with_misc_data')
-        script:
-            "scripts/rename_fasta_headers.py"
-else:
-    rule join_renamed_fastas_with_taxonomy_data_text:
-        """Add simplified fasta headers to the misc data file"""
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
+    input:
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+        report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
+    output:
+        misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    script:
+        "scripts/rename_fasta_headers_no_external_genomes.py"
+# if M.external_genomes:
+#     rule join_renamed_fastas_with_taxonomy_data:
+#         """Add simplified fasta headers to the misc data file"""
 
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
-        input:
-            taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
-            report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
-        output:
-            misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
-        threads: M.T('join_renamed_fasta_with_misc_data')
-        script:
-            "scripts/rename_fasta_headers_no_external_genomes.py"
+#         version: 1.0
+#         log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
+#         input:
+#             taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+#             report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
+#         output:
+#             misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+#         params:
+#             external_genomes = M.external_genomes_names_list
+#         threads: M.T('join_renamed_fasta_with_misc_data')
+#         script:
+#             "scripts/rename_fasta_headers.py"
+# else:
+#     rule join_renamed_fastas_with_taxonomy_data_text:
+#         """Add simplified fasta headers to the misc data file"""
+
+#         version: 1.0
+#         log: os.path.join(dirs_dict['LOGS_DIR'], "join_renamed_fasta_with_misc_data_{sample_name}_{ribosomal_protein_name}.log")
+#         input:
+#             taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv"),
+#             report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
+#         output:
+#             misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+#         threads: M.T('join_renamed_fasta_with_misc_data')
+#         script:
+#             "scripts/rename_fasta_headers_no_external_genomes.py"
 
 
 
