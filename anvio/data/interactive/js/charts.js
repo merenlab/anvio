@@ -50,6 +50,7 @@ var minNucleotidesInWindow = 30;
 var gene_offset_y = 0;
 var select_boxes = {};
 var curr_height;
+var show_cags_in_split = true;
 
 var mcags;
 
@@ -253,8 +254,7 @@ function loadAll() {
                 if(!state.hasOwnProperty('source-colors')) {
                   state['source-colors'] = default_source_colors;
                 }
-                generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes']);
-                toggleUnmarkedGenes();
+                generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes'], show_cags_in_split);
                 mcags = Object.keys(default_source_colors);
                 if(cog_annotated) {
                   $('#gene_color_order').append($('<option>', {
@@ -312,6 +312,28 @@ function loadAll() {
 
                 createCharts(state);
                 $('.loading-screen').hide();
+
+                // on initial load from main interface
+                if(state['state-name'] != current_state_name) {
+                  $.ajax({
+                          type: 'GET',
+                          cache: false,
+                          url: '/state/get/' + state['state-name'],
+                          success: function(response) {
+                              try{
+                                  clusteringData = response[1]['data'];
+                                  loadOrderingAdditionalData(response[1]);
+                                  processState(state['state-name'], response[0]);
+                              }catch(e){
+                                  console.error("Exception thrown", e.stack);
+                                  toastr.error('Failed to parse state data, ' + e);
+                                  defer.reject();
+                                  return;
+                              }
+                              waitingDialog.hide();
+                          }
+                  });
+                }
 
                 $('#brush_start, #brush_end').keydown(function(ev) {
                     if (ev.which == 13) {
@@ -377,6 +399,7 @@ function loadAll() {
                     });
 
                 }).change(function() {
+                    state['gene-fn-db'] = $(this).val();
                     switch($(this).val()) {
                       case "COG":
                         mcags = Object.keys(COG_categories);
@@ -506,9 +529,9 @@ function get_box_id_for_AA(aa, id_start) {
  *   - fn_colors:         a dictionary matching each category to a hex color code
  *   - fn_type:           a string indicating function category type: one of "COG", "KEGG", "Source"
  *   - highlight_genes:   a dictionary matching specific gene caller IDs to hex colors to override other coloring
- *   - subset_categories: an array of categories to filter the color table
+ *   - filter_to_split: if true, filters categories to only those shown in the split
  */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subset_categories=null) {
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
   var db = (function(type){
     switch(type) {
       case "COG":
@@ -526,19 +549,19 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
 
   $('#tbody_function_colors').empty();
 
-  if(subset_categories != null) {
+  if(fn_type != "Source" && filter_to_split) {
     var new_colors = {};
-    subset_categories.forEach(cag => {
-      if(cag in fn_colors) {
-        new_colors[cag] = fn_colors[cag];
+    for(gene of genes) {
+      if(gene.functions && gene.functions[fn_type + "_CATEGORY"]) {
+        new_colors[gene.functions[fn_type + "_CATEGORY"][0][0]] = fn_colors[gene.functions[fn_type + "_CATEGORY"][0][0]]
       }
-    });
+    }
     if(Object.keys(new_colors).length > 0) fn_colors = new_colors;
   }
 
   Object.keys(db).forEach(function(category){
     if(!(category in fn_colors)) {
-      fn_colors[category] = "gray";
+      return;
     }
     var category_name = (fn_type == "Source" ? category : db[category]);
 
@@ -570,33 +593,38 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, subs
   });
 
   if(!isEmpty(highlight_genes)) {
-    Object.keys(highlight_genes).forEach(function(gene_callers_id){
-      var tbody_content =
-       '<tr id="picker_row_' + gene_callers_id + '"> \
-          <td></td> \
-          <td> \
-            <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
-          </td> \
-          <td>Gene ID: ' + gene_callers_id + '</td> \
-        </tr>';
 
-      $('#tbody_function_colors').prepend(tbody_content);
+    for(gene of genes) {
+      var gene_callers_id = "" + gene.gene_callers_id;
+      if(Object.keys(highlight_genes).includes(gene_callers_id)) {
+        var tbody_content =
+         '<tr id="picker_row_' + gene_callers_id + '"> \
+            <td></td> \
+            <td> \
+              <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
+            </td> \
+            <td>Gene ID: ' + gene_callers_id + '</td> \
+          </tr>';
 
-      $('#picker_' + gene_callers_id).colpick({
-          layout: 'hex',
-          submit: 0,
-          colorScheme: 'light',
-          onChange: function(hsb, hex, rgb, el, bySetColor) {
-              $(el).css('background-color', '#' + hex);
-              $(el).attr('color', '#' + hex);
+        $('#tbody_function_colors').prepend(tbody_content);
 
-              state['highlight-genes'][el.id.substring(7)] = '#' + hex;
-              if (!bySetColor) $(el).val(hex);
-          }
-      }).keyup(function() {
-          $(this).colpickSetColor(this.value);
-      });
-    });
+        $('#picker_' + gene_callers_id).colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: function(hsb, hex, rgb, el, bySetColor) {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+
+                state['highlight-genes'][el.id.substring(7)] = '#' + hex;
+                if (!bySetColor) $(el).val(hex);
+            }
+        }).keyup(function() {
+            $(this).colpickSetColor(this.value);
+        });
+      }
+    }
+
   }
 }
 
@@ -731,31 +759,16 @@ function resetFunctionColors(fn_colors=null) {
 
   generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
                              $('#gene_color_order').val(),
-                             state['highlight-genes']);
+                             state['highlight-genes'],
+                             show_cags_in_split);
 }
 
-function toggleUnmarkedGenes() {
-  var db = function(selection){
-    switch(selection.val()) {
-      case "Source":
-        return state['source-colors'];
-      case "COG":
-        return state['cog-colors'];
-      case "KEGG":
-        return state['kegg-colors'];
-    }
-  }($('#gene_color_order'));
-
-  for(var cag in db) {
-    if(cag != "None" && $('#picker_' + cag).attr('color') == "gray") {
-      var row = document.getElementById("picker_row_" + cag);
-      if(row.style.display == "") {
-        row.style.display = "none";
-      } else {
-        row.style.display = "";
-      }
-    }
-  }
+function toggleShowCagsInSplit() {
+  show_cags_in_split = !show_cags_in_split;
+  generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
+                             $('#gene_color_order').val(),
+                             state['highlight-genes'],
+                             show_cags_in_split);
 }
 
 function toggle_nucleotide_display() {
@@ -1360,10 +1373,15 @@ function processState(state_name, state) {
     if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
     if(!state['cog-colors']) state['kegg-colors'] = default_KEGG_colors;
 
-    var curr_db = $('#gene_color_order').val();
-    generateFunctionColorTable(state[curr_db.toLowerCase() + '-colors'], curr_db, highlight_genes=state['highlight-genes']);
-    toggleUnmarkedGenes();
-    mcags = Object.keys(state[curr_db.toLowerCase() + '-colors']);
+    if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
+      state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
+    } else {
+      state['gene-fn-db'] = 'Source';
+    }
+    $('#gene_color_order').val(state['gene-fn-db']);
+
+    generateFunctionColorTable(state[state['gene-fn-db'].toLowerCase() + '-colors'], state['gene-fn-db'], highlight_genes=state['highlight-genes'], show_cags_in_split);
+    mcags = Object.keys(state[state['gene-fn-db'].toLowerCase() + '-colors']);
     this.state = state;
 
     if(!state['highlight-genes']) {
@@ -1394,7 +1412,7 @@ function processState(state_name, state) {
       //$('#minIndelInput').val(0);
     }
 
-    current_state_name = state_name;
+    state['state-name'] = current_state_name = state_name;
 
     toastr.success("State '" + current_state_name + "' successfully loaded.");
 }

@@ -3903,10 +3903,9 @@ class ContigsDatabase:
             self.run.info_single("This contigs db does not have HMMs :/")
         else:
             for source in hmm_sources:
-                source_type = hmm_sources_dict[source]['search_type']
                 num_models = len(hmm_sources_dict[source]['genes'].split(','))
                 num_hits = self.db.get_row_counts_from_table(t.hmm_hits_table_name, where_clause=f'source="{source}"')
-                self.run.info_single(f"'{source}' (type '{source_type}' with {P('model', num_models)} and {P('hit', num_hits)})",
+                self.run.info_single(f"'{source}' ({P('model', num_models)} with {P('hit', num_hits)})",
                                      nl_after = 1 if source == hmm_sources[-1] else 0)
 
 

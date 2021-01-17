@@ -3960,12 +3960,17 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
 
     pdb_list = PDB.PDBList()
 
+    # NOTE This path is determined by Biopython's fn `pdb_list.retive_pdb_file`. If the logic in
+    #      that function that determines the path name is changed, `download_protein_structure` will
+    #      break because `temp_output_path` will be wrong.
+    temp_output_path = os.path.join(output_dir, f"pdb{protein_code.lower()}.ent")
+
     try:
         with SuppressAllOutput():
             # We suppress output that looks like this:
             # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
             # >>> Downloading PDB structure '5w6y'...
-            temp_output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+            pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
     except:
         pass
 

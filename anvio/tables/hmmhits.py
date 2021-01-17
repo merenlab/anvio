@@ -143,6 +143,7 @@ class TablesForHMMHits(Table):
 
         hmmpressed_files = self.hmmpress_sources(sources, tmp_directory_path)
 
+        self.run.info("Contigs DB", self.db_path)
         self.run.info("HMM sources", ', '.join(sources.keys()))
 
         # here we will go through targets and populate target_files_dict based on what we find among them.
