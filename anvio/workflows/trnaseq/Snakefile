@@ -87,12 +87,12 @@ rule iu_merge_pairs:
         if M.gzip_iu_merge_pairs_output:
             out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
             shell("gzip -c {output.merged} > {output.merged}.gzip 2>>{log}")
-            shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
-            shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
+            shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
+            shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
             if params.report_r1_prefix:
-                shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R1_PREFIX"))
+                shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R1_PREFIX"))
             if params.report_r2_prefix:
-                shell("gzip %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R2_PREFIX"))
+                shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_MERGED_R2_PREFIX"))
 
 
 rule gen_qc_report:
