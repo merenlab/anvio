@@ -1070,6 +1070,14 @@ class KeggRunHMMs(KeggContext):
                               "For those who need this information, the Modules DB used to annotate this contigs database previously "
                               "had the following hash: %s" % (self.contigs_db_path, current_module_hash_in_contigs_db))
 
+
+    def set_hash_in_contigs_db(self):
+        """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
         contigs_db.db.set_meta_value('modules_db_hash', self.kegg_modules_db.db.get_meta_value('hash'))
         contigs_db.disconnect()
 
@@ -1216,6 +1224,9 @@ class KeggRunHMMs(KeggContext):
             self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
             anvio.utils.store_dict_as_TAB_delimited_file(bitscore_dict, self.bitscore_log_file, key_header='entry_id')
             self.run.info("Bit score information file: ", self.bitscore_log_file)
+
+        # mark contigs db with hash of modules.db content for version tracking
+        self.set_hash_in_contigs_db()
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
