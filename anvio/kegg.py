@@ -1054,8 +1054,8 @@ class KeggRunHMMs(KeggContext):
                          "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
-    def set_hash_in_contigs_db(self):
-        """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
+    def check_hash_in_contigs_db(self):
+        """Checks the contigs DB self table to make sure it was not already annotated"""
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
@@ -1064,11 +1064,20 @@ class KeggRunHMMs(KeggContext):
         current_module_hash_in_contigs_db = contigs_db.db.get_meta_value('modules_db_hash', return_none_if_not_in_table=True)
 
         if current_module_hash_in_contigs_db and not self.just_do_it:
+            contigs_db.disconnect()
             raise ConfigError("The contigs database (%s) has already been annotated with KOfam hits. If you really want to "
                               "overwrite these annotations with new ones, please re-run the command with the flag --just-do-it. "
                               "For those who need this information, the Modules DB used to annotate this contigs database previously "
                               "had the following hash: %s" % (self.contigs_db_path, current_module_hash_in_contigs_db))
 
+
+    def set_hash_in_contigs_db(self):
+        """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
         contigs_db.db.set_meta_value('modules_db_hash', self.kegg_modules_db.db.get_meta_value('hash'))
         contigs_db.disconnect()
 
@@ -1109,9 +1118,8 @@ class KeggRunHMMs(KeggContext):
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
 
-        # mark contigs db with hash of modules.db content for version tracking
-        # this function also includes a safety check for previous annotations so that people don't overwrite those if they don't want to
-        self.set_hash_in_contigs_db()
+        # safety check for previous annotations so that people don't overwrite those if they don't want to
+        self.check_hash_in_contigs_db()
 
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
@@ -1216,6 +1224,9 @@ class KeggRunHMMs(KeggContext):
             self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
             anvio.utils.store_dict_as_TAB_delimited_file(bitscore_dict, self.bitscore_log_file, key_header='entry_id')
             self.run.info("Bit score information file: ", self.bitscore_log_file)
+
+        # mark contigs db with hash of modules.db content for version tracking
+        self.set_hash_in_contigs_db()
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
