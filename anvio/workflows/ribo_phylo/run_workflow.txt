@@ -23,6 +23,13 @@ anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_pro
                  -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_seqs_filtered.fasta \
                  --manual
 
+
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_seqs_filtered.fasta \
+                 --manual
+
 # Clusterize it
 clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
 
