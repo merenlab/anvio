@@ -336,4 +336,8 @@ As an example, consider module [M00618](https://www.genome.jp/kegg-bin/show_modu
 ```
 M00377 M00579
 ```
-Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55% complete. 
+Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55% complete.
+
+
+**Summary**
+For those who prefer the less long-winded approach: module completeness in a given sample is calculated as the maximum fraction of essential KOs that are annotated in the sample, where the maximum is taken over all possible sets of KOs from the module definition.
