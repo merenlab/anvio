@@ -303,3 +303,9 @@ Okay, hopefully you get the picture by now. The end result is a list of lists, l
 [K12526,K00133,K12525,K02203,K01733]]
 ```
 in which every inner list is one of the alternative paths through the module definition - one of the possible ways to have a complete module.
+
+By the way, here is one alternative path from the module M00011, just so you know what these look like with protein complexes:
+```
+[K00164+K00658+K00382,K01902+K01903,K00234+K00235+K00236+K00237,K01676,K00026]
+```
+
