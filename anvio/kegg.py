@@ -4118,7 +4118,7 @@ class KeggModulesDatabase(KeggContext):
         """This function recursively splits a module definition into its components.
 
         First, the definition is split into its component steps (separated by spaces).
-        Each step is either an atomic step (a single KO, module number '--', or nonessential KO starting with '-'),
+        Each step is either an atomic step (a single KO, module number, '--', or nonessential KO starting with '-'),
         a protein complex, or a compound step.
 
         Atomic steps are used to extend each path that has been found so far. Protein complexes are split into
