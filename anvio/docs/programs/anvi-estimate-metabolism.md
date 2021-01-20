@@ -212,3 +212,33 @@ This means that the MODULES.db used by %(anvi-run-kegg-kofams)s has different co
 1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently set up a new %(anvi-setup-kegg-kofams)s (probably with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, and you have saved your former version of %(kegg-data)s somewhere, then you are in luck - you can simply direct %(anvi-estimate-metabolism)s to use the old version of KEGG with `--kegg-data-dir`. If you didn't save it, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
 2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash (you can use %(anvi-db-info)s on the MODULES.db to find the hash value) as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program.
 3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) has probably set up a non-default version of %(kegg-data)s. If they were using the default snapshot of KEGG data but you are not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
+
+
+## Technical Details
+
+### What data is used for estimation?
+
+Regardless of which input type is provided to this program, the basic requirements for metabolism estimation are 1) a set of metabolic pathway definitions, and 2) a 'pool' of gene annotations.
+
+**Module Definitions**
+Currently, the only option for metabolic pathway definitions that is available to this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). The program %(anvi-setup-kegg-kofams)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
+
+![Module M00018 Definition](../../images/M00018.png)
+
+This biosynthesis pathway has five steps, or chemical reactions. The [first reaction](https://www.genome.jp/dbget-bin/www_bget?R00480) in the pathway requires an aspartate kinase enzyme (also known as a homoserine dehydrogenase), and there are four possible orthologs known to encode this function: K00928, K12524, K12525, or K12526. Only one of these genes is required to be able to carry out this step. In contrast, the [second reaction](https://www.genome.jp/dbget-bin/www_bget?R02291) can be fulfilled by only one known KO, the aspartate-semialdehyde dehydrogenase [K00133](https://www.genome.jp/dbget-bin/www_bget?ko:K00133).
+
+The text-based definition for module M00018 is this:
+
+```
+(K00928,K12524,K12525,K12526) K00133 (K00003,K12524,K12525) (K00872,K02204,K02203) K01733
+```
+
+Hopefully the correspondence between the picture and text is clear - spaces separate distinct steps in the pathway, while commas separate alternatives.
+
+**KOfam annotations**
+For metabolism estimation to work properly, gene identifiers in the pool of annotations must match to the gene identifiers used in the pathway definitions. For KEGG MODULEs, we rely on annotations from the [KEGG KOfam database](https://www.genome.jp/tools/kofamkoala/), which is a set of HMM profiles for KEGG Orthologs (KOs). The program %(anvi-run-kegg-kofams)s can annotate your %(contigs-db)s with hits to the KEGG KOfam database. It adds these annotations under the source name 'KOfam'.
+
+Which of the annotations are considered for metabolism estimation depends on the input context. If you are working with isolate genomes (ie, _not_ metagenome mode or bins), then all of the annotations under source 'KOfam' will be used. If you are working with bins in metagenomes, then for each bin, only the 'KOfam' annotations that are present in that bin will be in the annotation pool. Finally, for metagenome mode, since estimation is done for each contig separately, only the annotations present in each contig will be considered at a time. 
+
+
+### How is the module completeness score calculated?
