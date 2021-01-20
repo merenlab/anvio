@@ -314,11 +314,11 @@ Once we have our list of alternative paths through the module, the next task is 
 
 1. A single KO - this is easy. If we have an annotation for this KO in our pool of 'KOfam' annotations, then the step is complete. (In our current implementation, we don't pay attention to multiple annotations of the same KO - we only care if there is at least one.)
 
-2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential)? Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
+2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential)? Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50%% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
 
 3. Non-essential KOs - some KOs are marked as non-essential even when they are not part of a protein complex. They look like this: '-K12420', with a minus sign in front of the KO identifier (that particular example comes from module [M00778](https://www.genome.jp/kegg-bin/show_module?M00778)). These steps are ignored for the purposes of computing module completeness.
 
-4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string '--' serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete. Modules that have steps like this can therefore never have 100% completeness - it is sad, but what can we do? We warn the user about these instances so that they can check manually for any missing steps.
+4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string '--' serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete. Modules that have steps like this can therefore never have 100%% completeness - it is sad, but what can we do? We warn the user about these instances so that they can check manually for any missing steps.
 
 5. Modules - finally, some modules are defined by other modules. We can't determine if these steps are complete until we've estimated completeness for every module, so we ignore these for now.
 
@@ -336,7 +336,7 @@ As an example, consider module [M00618](https://www.genome.jp/kegg-bin/show_modu
 ```
 M00377 M00579
 ```
-Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55% complete.
+Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55%% complete.
 
 
 **Summary**
