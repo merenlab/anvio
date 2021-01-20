@@ -324,3 +324,7 @@ Once we have our list of alternative paths through the module, the next task is 
 
 We add up the completeness of each essential step and divide by the number of essential steps to get the completeness score for a given path through the module.
 
+**Step 3: Module completeness**
+By this time, we have a completeness score (a fraction between 0 and 1) for every possible path through the module. To get the completeness score for the module overall, we simply take the maximum of all these completeness scores.
+
+We can then check this number against the module completeness threshold (which is 0.75 by default). If the module completeness score is greater than or equal to the threshold, we mark the module as 'complete'. This boolean value is meant only as a way to easily filter through the modules output, and you shouldn't put too much stock in it because it covers up a lot of nuances, as you can tell from the details above :). 
