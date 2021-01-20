@@ -1636,6 +1636,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def init_paths_for_modules(self):
         """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
         all downstream functions to access.
+
+        It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
         """
 
         self.module_paths_dict = {}
@@ -1761,7 +1764,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the completeness of the specified module within the given bin metabolism dictionary.
 
-        To do this, it unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        To do this, it works with the unrolled module definition: a list of all possible paths, where each path is a list of atomic steps.
         Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
         An atomic step (or parts of a protein complex) can be considered 'present' if the corresponding KO(s) has a hit in the bin.
         For each path, the function computes the path completeness as the number of present (essential) steps divided by the number of total steps in the path.
