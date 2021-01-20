@@ -887,8 +887,8 @@ class GenomeDescriptions(object):
                         annot_str = ", ".join(all_annotations)
                         raise ConfigError(f"Somethin' is drastically wrong here. In your genome {g} we found a gene call (id is {gc_id}) "
                                           f"with multiple annotations, but the number of accession numbers is not equal to the number of "
-                                          "functional annotations. Take a look at the list of accessions: {acc_str} and compare to the list of "
-                                          "annotations: {annot_str}. Do you know what is wrong? If not, please contact the developers for assistance.")
+                                          f"functional annotations. Take a look at the list of accessions: {acc_str} and compare to the list of "
+                                          f"annotations: {annot_str}. Do you know what is wrong? If not, please contact the developers for assistance.")
 
                     for accession, func in zip(all_accessions, all_annotations):
                         # by keying with the function name, we can automatically merge some accessions with same functional annotation. yay us.
