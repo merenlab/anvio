@@ -261,6 +261,45 @@ Which of the annotations are considered for metabolism estimation depends on the
 
 ### How is the module completeness score calculated?
 
-As you saw above in the Threonine Biosynthesis module example, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
+For demonstration purposes, let's talk through the estimation of module completeness for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
 
-`anvi-estimate-metabolism` uses a recursive algorithm to "unroll" the module definition string into a list of all possible paths.
+**Step 1: Unrolling module definitions**
+As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
+
+`anvi-estimate-metabolism` uses a recursive algorithm to "unroll" the module definition string into a list of all possible paths. First, the definition string is split into its component steps (which are separated by spaces). Each step is either an atomic step, a protein complex (KO components separated by '+' or '-'), or a compound step (multiple alternatives, separated by commas). Compound steps and protein complexes are recursively broken down until we have only atomic steps. An atomic step can be a single KO, a module number, a nonessential KO starting with '-', or '--' (a string indicating that there is a reaction for which we do not have a KO). We use the atomic steps to build a list of alternative paths through the module definition. Protein complexes are split into their respective components using this strategy to find all possible alternative complexes, and then these complexes (with all their component KOs) are used to build the alternative paths.
+
+Let's see this in action, using the Threonine Biosynthesis module from above as an example. We first split the definition on spaces to get all component steps. Here we show each component step on its own line:
+```
+(K00928,K12524,K12525,K12526)
+K00133
+(K00003,K12524,K12525)
+(K00872,K02204,K02203)
+K01733
+```
+The first step is made up of 4 alternative KOs. We split on the commas to get these, and thus we have the starting KO for 4 possible alternative paths:
+```
+K00928  K12524  K12525  K12526
+  |       |       |       |
+```
+The second step, K00133, is already an atomic step, so we can simply extend each of the paths with this KO:
+```
+K00928  K12524  K12525  K12526
+  |       |       |       |
+K00133  K00133  K00133  K00133
+```
+The third step is another compound step, but this time we can get 3 atomic steps out of it. That means that our 4 possible paths so far each gets 3 alternatives, bringing our total alternative path count up to 12:
+```
+       K00928                K12524                K12525                K12526
+         |                     |                     |                     |
+       K00133                K00133                K00133                K00133
+      /  |   \              /  |   \              /  |   \              /  |   \
+K00003 K12524 K12525  K00003 K12524 K12525  K00003 K12524 K12525  K00003 K12524 K12525
+```
+Okay, hopefully you get the picture by now. The end result is a list of lists, like this:
+```
+[[K00928,K00133,K00003,K00872,K01733],
+[K00928,K00133,K00003,K02204,K01733],
+......
+[K12526,K00133,K12525,K02203,K01733]]
+```
+in which every inner list is one of the alternative paths through the module definition - one of the possible ways to have a complete module.
