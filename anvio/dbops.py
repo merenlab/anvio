@@ -524,23 +524,24 @@ class ContigsSuperclass(object):
 
         gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
+        where_clauses = []
         if requested_sources:
             self.check_functional_annotation_sources(requested_sources, dont_panic=dont_panic)
-
-            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
-                                                                  '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
-                                                                  error_if_no_data=False).values())
             self.gene_function_call_sources = requested_sources
+            where_clauses.append('''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])))
         else:
-            if self.split_names_of_interest:
-                gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
-            else:
-                gene_caller_ids_of_interest = set([])
-
-            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest, error_if_no_data=False)
-            hits = list(functions_dict.values())
-
             self.gene_function_call_sources = gene_function_sources_in_db
+
+        if self.split_names_of_interest:
+            gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
+            where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
+        else:
+            gene_caller_ids_of_interest = set([])
+
+        if len(where_clauses):
+            where_clause = ' AND '.join(where_clauses)
+
+        hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
 
         for hit in hits:
             gene_callers_id = hit['gene_callers_id']
