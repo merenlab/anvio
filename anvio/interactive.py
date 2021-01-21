@@ -77,6 +77,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.genomes_storage_path = A('genomes_storage')
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.function_annotation_source = A('annotation_source')
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
@@ -240,6 +243,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif self.mode == 'trnaseq':
             self.load_full_mode()
             self.load_trnaseq_mode()
+        elif self.mode == 'functional':
+            self.load_functional_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
         elif self.mode == 'collection':
@@ -743,6 +748,231 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "you have provided does not exist. If you don't care and want to start the "
                                   "interactive inteface with a random split from the profile database, please use "
                                   "the flag `--just-do-it`")
+
+
+    def load_functional_mode(self):
+        if not self.function_annotation_source:
+            raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
+                              "an annotation source to be used for aggregating all the information from all "
+                              "the genomes. Someoen didn't specify any function annotation source :/")
+
+        if not self.profile_db_path:
+            raise ConfigError("It is OK if you don't have a profile database, but you still should provide a "
+                              "profile database path so anvi'o can generate a new one for you. The profile "
+                              "database in this mode only used to read or store the 'state' of the display "
+                              "for visualization purposes, or to allow you to create and store collections. "
+                              "Still very useful.")
+
+        if os.path.exists(self.profile_db_path):
+            raise ConfigError(f"So. Everytime you run the anvi'o interactive interface in display functions mode "
+                              f"you must provide a profile database that actually does not exist. Yeah, we know "
+                              f"it doesn't make sense, but actually it does, but really very difficult to "
+                              f"explain. If you really want to re-display your existing profile database with "
+                              f"functions, you should run `anvi-interactive -p {self.profile_db_path} --manual`. "
+                              f"Now, that should work like a charm.")
+
+        # these are all going to be filled later nicely.
+        self.p_meta['item_orders'] = {}
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['default_item_order'] = []
+
+        # these are irrelevant to this mode, but necessary to fill in.
+        self.p_meta['splits_fasta'] = None
+        self.p_meta['output_dir'] = None
+        self.p_meta['views'] = {}
+        self.p_meta['db_type'] = 'profile'
+        self.p_meta['merged'] = True
+        self.p_meta['blank'] = True
+        self.splits_basic_info = {}
+        self.split_sequences = None
+
+        # these are some primary data structures that will be essential to get this done, and the following
+        # steps will fill them in
+        self.accession_to_function_name_dict = {}
+        self.accessions_to_genomes_dict_frequency = {}
+        self.accessions_to_genomes_dict_presence_absence = {}
+        self.genome_names_considered_for_functional_mode = set({})
+
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        def update_accession_dics(genome_name, accession, function):
+            # this nested function will be costly, but wihtout it there is too much redundancy due to the
+            # incompatibility of the function dicts we get from int/external genomes and genome storage
+            # a redesign of the genome storage will likely fix this problem in the future by unifying
+            # how functions are collected from different anvi'o databases.
+
+            if genome_name not in self.genome_names_considered_for_functional_mode:
+                self.genome_names_considered_for_functional_mode.add(genome_name)
+
+            if not accession or not len(accession):
+                raise ConfigError(f"Anvi'o is very sorry to tell you that the function annotation source you "
+                                  f"have chosen for this, '{self.function_annotation_source}', seem to incluce "
+                                  f"functions with no accession IDs. Here is one example function with no "
+                                  f"accession id: '{function}'. You will have to choose another function "
+                                  f"annotation source :(")
+
+            if not function:
+                raise ConfigError(f"It saddens anvi'o to let you know that there are some function names in "
+                                  f"'{self.function_annotation_source}' that clearly are blank. Here is an "
+                                  f"example accession ID that has a blank function name: '{accession}'. You "
+                                  f"will need to choose another function annotation source, or someohow fix "
+                                  f"this by using a combination of `anvi-export-functions` and "
+                                  f"`anvi-import-functions` :(")
+
+            accession = accession.split('!!!')[0]
+            function = function.split('!!!')[0]
+
+            if accession not in self.accessions_to_genomes_dict_frequency:
+                self.accessions_to_genomes_dict_frequency[accession] = Counter({})
+                self.accessions_to_genomes_dict_presence_absence[accession] = Counter({})
+
+
+            self.accessions_to_genomes_dict_frequency[accession][genome_name] += 1
+            self.accessions_to_genomes_dict_presence_absence[accession][genome_name] = 1
+
+            if accession not in self.accession_to_function_name_dict:
+                self.accession_to_function_name_dict[accession] = {self.function_annotation_source: function}
+
+            return
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+
+        # learn functions, generate `self.views`. First start, with internal and
+        # external genomes.
+        if self.external_genomes_path or self.internal_genomes_path:
+
+            from anvio.genomedescriptions import GenomeDescriptions
+            g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
+            g.load_genomes_descriptions()
+            g.init_functions()
+
+            for genome_name in g.genomes:
+                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
+                # reminder, an entry in gene_functions_in_genome_dict looks like this:
+                # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
+                for entry in gene_functions_in_genome_dict.values():
+                    accession, function, e_value = entry[self.function_annotation_source]
+
+                    update_accession_dics(genome_name, accession, function)
+
+            del gene_functions_in_genome_dict, _
+
+        # here we will update the same two dictionaries with the informaiton in the genome
+        # storage
+        if self.genomes_storage_path:
+            # do genomes storage
+            from anvio.genomestorage import GenomeStorage
+            g = GenomeStorage(storage_path=self.genomes_storage_path, function_annotation_sources=[self.function_annotation_source], run=terminal.Run(verbose=False), progress=self.progress, skip_init=True)
+
+            # make sure we are not overwriting existing genome names in int or ext genomes:
+            genome_names_in_storage_db = g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True)
+            already_in_the_dict = [g for g in genome_names_in_storage_db if g in self.genome_names_considered_for_functional_mode]
+            if len(already_in_the_dict):
+                raise ConfigError(f"Anvi'o is not happy because there are some genome names that occur both in the "
+                                  f"genome storage and among those that are specified through internal or external "
+                                  f"genomes files. Here they are: {', '.join(already_in_the_dict)}.")
+
+            gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
+            for entry in gene_functions_in_genomes_dict.values():
+            # an entry in gene_functions_in_genomes_dict looks lke this:
+            # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
+                genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
+
+                update_accession_dics(genome_name, accession, function)
+
+        num_accessions = len(self.accession_to_function_name_dict)
+        num_genomes = len(self.genome_names_considered_for_functional_mode)
+        if num_accessions < 25:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found only {num_accessions} unique "
+                             f"accession ids for {self.function_annotation_source}. This doesn't look very good, but "
+                             f"it is difficult to know whether you find this normal or even pleasing... Things will "
+                             f"continue to work, but we just thought you should know about this.")
+        if num_accessions > 5000 and num_accessions < 20000:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
+                             f"accession ids for {self.function_annotation_source}. It looks like you have quite a lot of "
+                             f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o wiil "
+                             f"do its best, but if things crash downstream, this will likely be the reason.")
+        if num_accessions > 20000:
+            raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
+                    f"accession ids for {self.function_annotation_source} :/ This is just way too much for anvi'o to try to "
+                    f"put together a hierarchical clustering for. If you think this had to work, let us know and we will see  "
+                    f"if we can do something to help you.")
+
+        self.run.info('Num genomes', num_genomes)
+        self.run.info('Function annotation source', self.function_annotation_source)
+        self.run.info('Num accession ids', num_accessions)
+
+        # now we will work on views and clustering our data to get newick trees.
+        self.p_meta['default_view'] = 'presence_absence_view'
+        self.default_view = self.p_meta['default_view']
+
+        # our 'samples' in this context are individual genomes we are about to display
+        self.p_meta['samples'] = list(self.genome_names_considered_for_functional_mode)
+        self.p_meta['sample_id'] = f"{self.function_annotation_source} DISPLAY"
+
+        # setup the views dict
+        self.views = {'frequency_view'       : {'header': list(self.genome_names_considered_for_functional_mode),
+                                                'dict': self.accessions_to_genomes_dict_frequency},
+                      'presence_absence_view': {'header': list(self.genome_names_considered_for_functional_mode),
+                                                'dict': self.accessions_to_genomes_dict_presence_absence}}
+
+        # create a new, empty profile database for manual operations
+        if not os.path.exists(self.profile_db_path):
+            profile_db = ProfileDatabase(self.profile_db_path)
+            profile_db.create({'db_type': 'profile',
+                               'blank': True,
+                               'merged': True,
+                               'db_variant': 'functions-display',
+                               'contigs_db_hash': None,
+                               'items_ordered': False,
+                               'samples': ', '.join(self.p_meta['samples']),
+                               'sample_id': self.p_meta['sample_id']})
+
+        # now we start working on our views and item orders.
+        for view in self.views:
+            # first, generate an items order for a given view:
+            items_order= clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            item_order_name = ':'.join([f"{view[:-5]}", self.distance, self.linkage])
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
+
+            # then add the items order to the database
+            dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
+                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
+                                        check_names_consistency=False)
+
+            # let's get a layer's order, too, and immediately add it to the database:
+            layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{self.function_annotation_source}_{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+            self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+
+            # add vew tables to the database
+            view_table_structure = ['contig'] + sorted(list(self.genome_names_considered_for_functional_mode))
+            view_table_types = ['text'] + ['numeric'] * len(self.genome_names_considered_for_functional_mode)
+            TablesForViews(self.profile_db_path).create_new_view(
+                                            data_dict=self.views[view]['dict'],
+                                            table_name=f"{view}",
+                                            table_structure=view_table_structure,
+                                            table_types=view_table_types,
+                                            view_name=f"{view}")
+
+        # let's do this here as well so our dicts are not pruned.
+        self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
+
+        # here we will both write items additional table into the db, and read it back
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
+        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(self.accession_to_function_name_dict, [self.function_annotation_source], skip_check_names=True)
+        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path)
+
+        # also populate collections, if there are any
+        self.collections.populate_collections_dict(self.profile_db_path)
+
+        # read description from self table, if it is not available get_description function will return placeholder text
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
+
+        self.title = self.args.title or self.p_meta['sample_id']
 
 
     def load_refine_mode(self):
