@@ -310,6 +310,11 @@ class GenomeDescriptions(object):
 
         g = self.genomes[genome_name]
 
+        # FIXME: When this is an internale genome, it still reads all functions in the database :/
+        # contis super shoudl be initialized after learning about the split names of interest first:
+        #
+        #   split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
+        #
         args = argparse.Namespace(contigs_db=g['contigs_db_path'])
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
