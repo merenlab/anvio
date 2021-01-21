@@ -451,12 +451,6 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         """Determine the snakemake target files."""
         target_files = []
 
-        for sample_name in self.sample_names:
-            output_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
-            # If anvi-trnaseq output files were used as targets, they would be deleted upon workflow
-            # failure.
-            target_files.append(os.path.join(output_dir, sample_name + ".done"))
-
         if self.run_iu_merge_pairs:
             # Each library of paired-end reads is run separately through Illumina-utils, as each can
             # have different prefix sequences, and a single run cannot handle multiple prefixes.
@@ -466,6 +460,13 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             for sample_name in self.sample_names:
                 output_dir = os.path.join(self.dirs_dict['QC_DIR'], sample_name)
                 target_files.append(os.path.join(output_dir, sample_name + "-reformat_report.txt"))
+
+        if self.run_anvi_trnaseq:
+            for sample_name in self.sample_names:
+                output_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
+                # If anvi-trnaseq output files such as the tRNA-seq database or analysis summary
+                # were used as targets, they would be deleted upon workflow failure.
+                target_files.append(os.path.join(output_dir, sample_name + ".done"))
 
         if self.run_anvi_convert_trnaseq_database:
             project_name = self.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])
