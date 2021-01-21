@@ -37,7 +37,7 @@ pp = terminal.pretty_print
 
 
 class GenomeStorage(object):
-    def __init__(self, storage_path, storage_hash=None, genome_names_to_focus=None, create_new=False, skip_init_functions=False, run=run, progress=progress):
+    def __init__(self, storage_path, storage_hash=None, genome_names_to_focus=None, create_new=False, skip_init=False, skip_init_functions=False, function_annotation_sources=None, run=run, progress=progress):
         self.db_type = 'genomestorage'
         self.version = anvio.__genomes_storage_version__
         self.run = run
@@ -46,6 +46,13 @@ class GenomeStorage(object):
         self.storage_path = storage_path
         self.genome_names_to_focus = genome_names_to_focus
         self.skip_init_functions = skip_init_functions
+        self.function_annotation_sources = function_annotation_sources
+
+        if not isinstance(self.function_annotation_sources, type(list())):
+            raise ConfigError("The `function_annotation_sources` must be of type `list`.")
+
+        if self.function_annotation_sources and self.skip_init_functions:
+            raise ConfigError("You can't provide a function annotation source and then also ask initializing of functions to be skipped :/")
 
         if create_new:
             self.check_storage_path_for_create_new()
@@ -62,7 +69,10 @@ class GenomeStorage(object):
         if create_new:
             self.create_tables()
         else:
-            self.init()
+            if skip_init:
+                pass
+            else:
+                self.init()
 
 
     def check_storage_path_for_create_new(self):
@@ -88,6 +98,62 @@ class GenomeStorage(object):
                               you can upgrade your genome storage by running 'anvi-migrate %s'." % self.storage_path)
 
         filesnpaths.is_file_exists(self.storage_path)
+
+
+    def get_gene_functions_in_genomes_dict(self):
+        # ------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------
+        # If the user wants functions to be initialized, anvi'o will have to make a very challenging lookup
+        # to fill into self.gene_info dictionary information for each functional source for each gene callers
+        # id in each genome in the pangenome. The following code prepares a dictionary and a lookup table
+        # for fast access in the expense of some memory space. the previous code was making SQL queries for
+        # each gene callers id / genome pair. which is not too bad for small pangenomes with small number of
+        # functional sources. but when the pangenome and the number of functional sources grow, the time
+        # required for each call grows exponentially. just to give an example, the prochlorococcus pangenome
+        # took 34 minutes to initialize functions following the `anvi-display-pan` command. the following code
+        # reduces that 2 seconds.
+        if self.skip_init_functions:
+            return {}, {}
+
+        function_annotation_sources_in_db = self.db.get_single_column_from_table(t.genome_gene_function_calls_table_name, 'source', unique=True)
+
+        self.run.info("Functions found", ', '.join(function_annotation_sources_in_db))
+
+        # if user requested function annotation sources, make sure they're in the db
+        if self.function_annotation_sources:
+            missing_soures = [s for s in self.function_annotation_sources if s not in function_annotation_sources_in_db]
+
+            if len(missing_soures):
+                raise ConfigError(f"The following function annotation sources are not in genomes storage: {', '.join(missing_soures)}")
+            else:
+                self.run.info("User requested annotation sources", ', '.join(self.function_annotation_sources))
+
+        self.progress.new('Functions stuff')
+        if self.function_annotation_sources:
+            self.progress.update("Loading SOME functions into memory")
+            where_clause = """source IN (%s)""" % ",".join('"' + item + '"' for item in self.function_annotation_sources)
+            gene_functions_in_genomes_dict = self.db.get_some_rows_from_table_as_dict(t.genome_gene_function_calls_table_name, where_clause)
+        else:
+            self.progress.update("Loading ALL functions into memory")
+            gene_functions_in_genomes_dict = self.db.get_table_as_dict(t.genome_gene_function_calls_table_name)
+
+        self.progress.update("Preparing the lookup dictionary")
+        # probably the following would have been much more elegant with pandas, but I am not sure
+        # if the lookup performance would be comparable. sorry for not trying first.
+        gene_functions_lookup_dict = {}
+        for entry_id in gene_functions_in_genomes_dict:
+            genome_name, gene_callers_id = gene_functions_in_genomes_dict[entry_id]['genome_name'], gene_functions_in_genomes_dict[entry_id]['gene_callers_id']
+
+            if genome_name not in gene_functions_lookup_dict:
+                gene_functions_lookup_dict[genome_name] = {}
+
+            if gene_callers_id not in gene_functions_lookup_dict[genome_name]:
+                gene_functions_lookup_dict[genome_name][gene_callers_id] = set([])
+
+            gene_functions_lookup_dict[genome_name][gene_callers_id].add(entry_id)
+
+        self.progress.end()
+
+        return (gene_functions_in_genomes_dict, gene_functions_lookup_dict)
 
 
     def init(self):
@@ -132,37 +198,12 @@ class GenomeStorage(object):
 
         self.gene_info = {}
         num_genes = self.db.get_row_counts_from_table(t.gene_info_table_name, where_clause)
-        self.progress.new('Loading gene info', progress_total_items=num_genes)
 
-        # ------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------
-        # If the user wants functions to be initialized, anvi'o will have to make a very challenging lookup
-        # to fill into self.gene_info dictionary information for each functional source for each gene callers
-        # id in each genome in the pangenome. The following code prepares a dictionary and a lookup table
-        # for fast access in the expense of some memory space. the previous code was making SQL queries for
-        # each gene callers id / genome pair. which is not too bad for small pangenomes with small number of
-        # functional sources. but when the pangenome and the number of functional sources grow, the time
-        # required for each call grows exponentially. just to give an example, the prochlorococcus pangenome
-        # took 34 minutes to initialize functions following the `anvi-display-pan` command. the following code
-        # reduces that 2 seconds.
-        if not self.skip_init_functions:
-            self.progress.update("Loading functions table into memory")
-            functions_table = self.db.get_table_as_dict(t.genome_gene_function_calls_table_name)
+        # get functions
+        gene_functions_in_genomes_dict, gene_functions_lookup_dict = self.get_gene_functions_in_genomes_dict()
 
-            self.progress.update("Preparing the lookup dictionary")
-            # probably the following would have been much more elegant with pandas, but I am not sure
-            # if the lookup performance would be comparable. sorry for not trying first.
-            F = {}
-            for entry_id in functions_table:
-                genome_name, gene_callers_id = functions_table[entry_id]['genome_name'], functions_table[entry_id]['gene_callers_id']
-
-                if genome_name not in F:
-                    F[genome_name] = {}
-
-                if gene_callers_id not in F[genome_name]:
-                    F[genome_name][gene_callers_id] = set([])
-
-                F[genome_name][gene_callers_id].add(entry_id)
-        # ------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8
+        self.progress.new('Loading genes info', progress_total_items=num_genes)
+        self.progress.update('...')
 
         # main loop that fills in `self.gene_info` dictionary:
         for gene_num, gene_info_tuple in enumerate(self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause)):
@@ -185,13 +226,15 @@ class GenomeStorage(object):
 
             if not self.skip_init_functions:
                 try:
-                    entry_ids_for_genome_gene = F[genome_name][gene_callers_id]
+                    entry_ids_for_genome_gene = gene_functions_lookup_dict[genome_name][gene_callers_id]
                 except:
                     # probably we are looking one without any functions
                     entry_ids_for_genome_gene = []
 
                 for entry_id in entry_ids_for_genome_gene:
-                    source, accession, function = functions_table[entry_id]['source'], functions_table[entry_id]['accession'], functions_table[entry_id]['function']
+                    source, accession, function = gene_functions_in_genomes_dict[entry_id]['source'], \
+                                                  gene_functions_in_genomes_dict[entry_id]['accession'], \
+                                                  gene_functions_in_genomes_dict[entry_id]['function']
                     self.gene_info[genome_name][gene_callers_id]['functions'][source] = "%s|||%s" % (accession, function)
 
         self.progress.end()
