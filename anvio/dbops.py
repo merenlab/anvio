@@ -101,6 +101,9 @@ class ContigsSuperclass(object):
         if not hasattr(self, 'split_names_of_interest'):
             self.split_names_of_interest = set([])
 
+        if hasattr(self.args, 'split_names_of_interest'):
+            self.split_names_of_interest = set(self.args.split_names_of_interest)
+
         self.a_meta = {}
 
         self.splits_basic_info = {}
