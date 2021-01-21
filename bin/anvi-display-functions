@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A program to display the distribution of functions across genomes."""
+
+import sys
+from anvio.argparse import ArgumentParser
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+from anvio.bottleroutes import BottleApplication
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__requires__ = ['genomes-storage-db', 'internal-genomes', 'external-genomes']
+__provides__ = ['functions', 'interactive']
+__description__ = "Start an anvi'o interactive display to show functions across genomes"
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+if __name__ == '__main__':
+    # setup the command line user interface
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('GENOMES', "Tell anvi'o where your genomes are.")
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+
+    groupB = parser.add_argument_group('FUNCTIONS', "Tell anvi'o which functional annotation source you like above all.")
+    groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
+
+    groupC = parser.add_argument_group('PROFILE DB', "To store visuals state, collections, and such.")
+    groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+
+    groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
+    groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
+    groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
+    groupE.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
+    groupE.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+
+    groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                       nice to have).")
+    groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+    groupF.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupF.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+
+    groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupG.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupG.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
+
+    args = parser.get_args(parser)
+
+    try:
+        args.mode = 'functional'
+        d = interactive.Interactive(args)
+
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+
+    if args.dry_run:
+        run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
+        sys.exit()
+
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
