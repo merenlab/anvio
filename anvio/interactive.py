@@ -805,6 +805,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               f"functions, you should run `anvi-interactive -p {self.profile_db_path} --manual`. "
                               f"Now, that should work like a charm.")
 
+        if self.min_occurrence and not isinstance(self.min_occurrence, int):
+            raise ConfigError(f"Obviously, --min-occurrence must be an integer.")
+
+        if self.min_occurrence < 1:
+            raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
+
         # these are all going to be filled later nicely.
         self.p_meta['item_orders'] = {}
         self.p_meta['available_item_orders'] = []
@@ -911,6 +917,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
 
                 update_accession_dics(genome_name, accession, function)
+
+        if self.min_occurrence:
+            num_occurrence_of_accessions = [(c, sum(self.accessions_to_genomes_dict_presence_absence[c].values())) for c in self.accessions_to_genomes_dict_presence_absence]
+            accessions_to_remove = [accession for (accession, frequency) in num_occurrence_of_accessions if frequency < self.min_occurrence]
+
+            if len(accessions_to_remove):
+                for accession in accessions_to_remove:
+                    self.accession_to_function_name_dict.pop(accession)
+                    self.accessions_to_genomes_dict_frequency.pop(accession)
+                    self.accessions_to_genomes_dict_presence_absence.pop(accession)
+
+                self.run.warning(f"As per your request, anvi'o removed {len(accessions_to_remove)} accession IDs "
+                                 f"of {self.function_annotation_source} from downstream analyses sicne they occurred "
+                                 f"in less than {self.min_occurrence} genomes.")
+
 
         num_accessions = len(self.accession_to_function_name_dict)
         num_genomes = len(self.genome_names_considered_for_functional_mode)
