@@ -39,6 +39,9 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('FUNCTIONS', "Tell anvi'o which functional annotation source you like above all.")
     groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
+    groupB.add_argument('--min-occurrence', metavar="NUM GENOMES", default=1, help=("The minimum number of occurrence of any "
+                                "given function accross genomes. If you set a value, those functions that occur in less number "
+                                "of genomes will be excluded."), type=int)
 
     groupC = parser.add_argument_group('PROFILE DB', "To store visuals state, collections, and such.")
     groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
