@@ -287,7 +287,7 @@ class GenomeDescriptions(object):
         self.sanity_check()
 
 
-    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None):
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None, return_only_functions=False):
         """This function fetches dictionaries of functions, AA sequences, and DNA sequences for a particular genome.
 
         PARAMETERS
@@ -297,6 +297,8 @@ class GenomeDescriptions(object):
         requested_source_list, list
             the functional annotation sources you want data for. If not provided, data will be fetched for all sources in
             self.function_annotation_sources
+        return_only_functions, bool
+            Return only functions, and don't bother with sequences
 
         RETURNS
         =======
@@ -323,6 +325,9 @@ class GenomeDescriptions(object):
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
+
+        if return_only_functions:
+            return (function_calls_dict, None, None)
 
         # get dna sequences
         gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
@@ -399,7 +404,7 @@ class GenomeDescriptions(object):
                 if len(function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
-                                     "function annotation sources that are common to all of your genomes, and they will be used whenever "
+                                     "functional annotation sources that are common to all of your genomes, and they will be used whenever "
                                      "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
