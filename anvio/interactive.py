@@ -916,16 +916,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              f"accession ids for {self.function_annotation_source}. This doesn't look very good, but "
                              f"it is difficult to know whether you find this normal or even pleasing... Things will "
                              f"continue to work, but we just thought you should know about this.")
-        if num_accessions > 5000 and num_accessions < 20000:
+        if num_accessions > 2500 and num_accessions < 10000:
             self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
                              f"accession ids for {self.function_annotation_source}. It looks like you have quite a lot of "
                              f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o wiil "
-                             f"do its best, but if things crash downstream, this will likely be the reason.")
-        if num_accessions > 20000:
+                             f"do her best, but if things crash downstream, this will likely be the reason.")
+        if num_accessions > 10000:
             raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
                     f"accession ids for {self.function_annotation_source} :/ This is just way too much for anvi'o to try to "
-                    f"put together a hierarchical clustering for. If you think this had to work, let us know and we will see  "
-                    f"if we can do something to help you.")
+                    f"put together a hierarchical clustering for and display. If you think this had to work, let us know and "
+                    f"we will see if we can do something to help you.")
 
         self.run.info('Num genomes', num_genomes)
         self.run.info('Function annotation source', self.function_annotation_source)
