@@ -1030,6 +1030,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
         self.title = self.args.title or self.p_meta['sample_id']
+        if self.min_occurrence > 1:
+            self.title += f" (MIN OCCURRENCE: {self.min_occurrence})"
 
 
     def load_refine_mode(self):
