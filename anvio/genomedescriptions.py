@@ -312,12 +312,16 @@ class GenomeDescriptions(object):
 
         g = self.genomes[genome_name]
 
-        # FIXME: When this is an internale genome, it still reads all functions in the database :/
-        # contis super shoudl be initialized after learning about the split names of interest first:
-        #
-        #   split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
-        #
-        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        args = argparse.Namespace()
+        args.contigs_db = g['contigs_db_path']
+
+        # we are about to initialize the contigs super, but before that, we need to make sure that
+        # the class will know about the splits that describe this genome in the contigs database
+        # IF it is an internal genome. otherwise we will end up gathering all the functions in
+        # gontigs database for it.
+        if genome_name in self.internal_genome_names:
+            args.split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(g)
+
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
