@@ -115,7 +115,7 @@ $(document).ready(function() {
         "onclick": null,
         "showDuration": "500",
         "hideDuration": "2000",
-        "timeOut": "6000",
+        "timeOut": "12000",
         "extendedTimeOut": "1000",
         "showEasing": "swing",
         "hideEasing": "linear",
