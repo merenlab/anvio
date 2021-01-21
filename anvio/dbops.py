@@ -135,7 +135,7 @@ class ContigsSuperclass(object):
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
         D = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if D('mode') == 'pan' or D('mode') == 'manual':
+        if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual':
             return
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -593,6 +593,7 @@ class ContigsSuperclass(object):
                 # quietly return matching sources
                 return [s for s in sources if s in gene_function_sources_in_db]
             else:
+                self.progress.reset()
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
                                   "they are (or here it is, whatever): %s." % \
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
