@@ -544,6 +544,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                "database in this mode only used to read or store the 'state' of the display "
                                "for visualization purposes, or to allow you to create and store collections.")
 
+        # we don't expect ad hoc profile databases to have views tables,
+        # but if the profile db has one, we don't want to ignore that either.
+        # we will define this variable here as none, and if there is a profile
+        # db path, we will fill it in if it contains view tables.
+        views_table = None
+
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
         # not be included in manual operations.
@@ -570,6 +576,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
                 elif item_orders_in_db[item_order]['type'] == 'newick':
                     tree_order_found_in_db = item_order
+
+            if t.views_table_name in profile_db.db.get_table_names():
+                # surprise surprise!
+                views_table = profile_db.db.get_table_as_dict(t.views_table_name)
+
+            profile_db.disconnect()
 
 
         if not self.tree and not self.view_data_path and not tree_order_found_in_db:
@@ -613,8 +625,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
         self.p_meta['blank'] = True
-        self.p_meta['default_view'] = 'single'
-        self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
         if not item_orders_in_db:
@@ -633,7 +643,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
 
-        if self.view_data_path:
+
+        if views_table and filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
+            # we have view tables
+            profile_db = ProfileDatabase(self.profile_db_path)
+
+            for view in views_table:
+                table_name = views_table[view]['target_table']
+
+                data = profile_db.db.get_table_as_dict(table_name)
+
+                self.views[view] = {'table_name': table_name,
+                                    'header': profile_db.db.get_table_structure(table_name)[1:],
+                                    'dict': data}
+
+            self.p_meta['default_view'] = sorted(list(self.views.keys()), reverse=True)[0]
+            self.default_view = self.p_meta['default_view']
+            profile_db.disconnect()
+
+        elif self.view_data_path:
             # sanity of the view data
             filesnpaths.is_file_tab_delimited(view_data_path)
             view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
@@ -641,6 +669,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             utils.check_misc_data_keys_for_format(view_data_columns)
 
             # load view data as the default view:
+            self.p_meta['default_view'] = 'single'
+            self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
         else:
@@ -650,6 +680,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for item in self.displayed_item_names_ordered:
                 ad_hoc_dict[item] = {'names': str(item)}
 
+            self.p_meta['default_view'] = 'single'
+            self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
 
