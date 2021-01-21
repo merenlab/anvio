@@ -301,10 +301,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def set_displayed_item_names(self):
-        """Sets the master list of names .. UNLESS we are in manual-mode, in which case names will be\
-           set within the function `load_manual_mode`"""
+        """Sets the master list of names .. UNLESS we are in manual or functional mode, in which case names
+           will be set within corresponding functions"""
 
-        if self.mode == 'manual':
+        if self.mode == 'manual' or self.mode == 'functional':
             return
 
         if not self.p_meta['item_orders']:
