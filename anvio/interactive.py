@@ -712,16 +712,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
-            sample_id = ','.join(self.p_meta['samples'])
-
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
+                               'db_variant': 'ad-hoc-display',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'items_ordered': False,
-                               'samples': sample_id,
-                               'sample_id': sample_id})
+                               'samples': ', '.join(self.p_meta['samples']),
+                               'sample_id': self.p_meta['sample_id']})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
