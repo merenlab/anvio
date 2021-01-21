@@ -976,6 +976,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'blank': True,
                                'merged': True,
                                'db_variant': 'functions-display',
+                               'function_annotation_source': self.function_annotation_source,
+                               'min_occurrence_of_function': self.min_occurrence,
                                'contigs_db_hash': None,
                                'items_ordered': False,
                                'samples': ', '.join(self.p_meta['samples']),
