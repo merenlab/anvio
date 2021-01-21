@@ -48,7 +48,7 @@ class GenomeStorage(object):
         self.skip_init_functions = skip_init_functions
         self.function_annotation_sources = function_annotation_sources
 
-        if not isinstance(self.function_annotation_sources, type(list())):
+        if self.function_annotation_sources and not isinstance(self.function_annotation_sources, type(list())):
             raise ConfigError("The `function_annotation_sources` must be of type `list`.")
 
         if self.function_annotation_sources and self.skip_init_functions:
