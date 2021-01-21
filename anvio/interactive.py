@@ -731,8 +731,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
-        if self.title:
-            self.title = self.title
+        self.title = self.args.title or self.p_meta['sample_id']
 
 
     def cluster_splits_of_interest(self):
