@@ -1198,21 +1198,20 @@ function buildLayersTable(order, settings)
                     // set default categorical layer type to 'text'
                     // if there are more than 11 unique values and leaf count is less than 300
                     // 301 because layerdata has one extra row for the titles
-                    if (layerdata.length <= 301)
+                    console.log(layerdata.length);
+                    var _unique_items = [];
+                    for (var _pos = 1; _pos < layerdata.length; _pos++)
                     {
-                        var _unique_items = [];
-                        for (var _pos = 1; _pos < layerdata.length; _pos++)
-                        {
-                            if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
-                                _unique_items.push(layerdata[_pos][layer_id]);
+                        if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
+                            _unique_items.push(layerdata[_pos][layer_id]);
 
-                            if (_unique_items.length > 11) {
-                                height = '0';
-                                type = 'text';
-                                // we have at least one text layer, we can show max font size input
-                                $('.max-font-size-input').show();
-                                break;
-                            }
+                        if (_unique_items.length > 20) {
+                            toastr.info("Too many categorical values for the layer '" + layer_name + "' to be shown in colors, switching to text.");
+                            height = '0';
+                            type = 'text';
+                            // we have at least one text layer, we can show max font size input
+                            $('.max-font-size-input').show();
+                            break;
                         }
                     }
                 }
