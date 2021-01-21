@@ -77,9 +77,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.genomes_storage_path = A('genomes_storage')
-        self.external_genomes_path = A('external_genomes')
-        self.internal_genomes_path = A('internal_genomes')
-        self.function_annotation_source = A('annotation_source')
         self.collection_name = A('collection_name')
         self.manual_mode = A('manual_mode')
         self.split_hmm_layers = A('split_hmm_layers')
@@ -782,6 +779,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_functional_mode(self):
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.function_annotation_source = A('annotation_source')
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.min_occurrence = A('min_occurrence') or 1
+
         if not self.function_annotation_source:
             raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
                               "an annotation source to be used for aggregating all the information from all "
