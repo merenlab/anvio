@@ -14,6 +14,8 @@ import copy
 import hashlib
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -1040,3 +1042,151 @@ class MetagenomeDescriptions(object):
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
+
+
+class AggregateFunctions:
+    """Get functions from anywhere.
+
+    The purpose of this class is to collect functions from many distinct databases,
+    including external genomes, internal genomes, and genomes storage, and report a
+    single set of disctionaries that give access to the presence/absence and frequency
+    of all functions annotated by a single source.
+    """
+
+    def __init__(self, args, r=run, p=progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.genomes_storage_path = A('genomes_storage')
+        self.function_annotation_source = A('annotation_source')
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.min_occurrence = A('min_occurrence') or 1
+
+        # these are some primary data structures this class reports 
+        self.accession_to_function_name_dict = {}
+        self.accessions_to_genomes_dict_frequency = {}
+        self.accessions_to_genomes_dict_presence_absence = {}
+        self.genome_names_considered_for_functional_mode = set({})
+
+        # some sanity checks
+        if not self.function_annotation_source:
+            raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
+                              "an annotation source to be used for aggregating all the information from all "
+                              "the genomes. Someoen didn't specify any function annotation source :/")
+
+        if self.min_occurrence and not isinstance(self.min_occurrence, int):
+            raise ConfigError(f"Obviously, --min-occurrence must be an integer.")
+
+        if self.min_occurrence < 1:
+            raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
+
+
+    def update_accession_dics(self, genome_name, accession, function):
+        """Modify accession dicts.
+
+        This function is necessary to avoid redundant code to handle function dicts of different kinds
+        we get from int/external genomes and genome storage. a redesign of the genome storage will likely
+        fix this problem in the future by unifying how functions are collected from different anvi'o databases.
+        """
+    
+        if genome_name not in self.genome_names_considered_for_functional_mode:
+            self.genome_names_considered_for_functional_mode.add(genome_name)
+    
+        if not accession or not len(accession):
+            raise ConfigError(f"Anvi'o is very sorry to tell you that the function annotation source you "
+                              f"have chosen for this, '{self.function_annotation_source}', seem to incluce "
+                              f"functions with no accession IDs. Here is one example function with no "
+                              f"accession id: '{function}'. You will have to choose another function "
+                              f"annotation source :(")
+    
+        if not function:
+            raise ConfigError(f"It saddens anvi'o to let you know that there are some function names in "
+                              f"'{self.function_annotation_source}' that clearly are blank. Here is an "
+                              f"example accession ID that has a blank function name: '{accession}'. You "
+                              f"will need to choose another function annotation source, or someohow fix "
+                              f"this by using a combination of `anvi-export-functions` and "
+                              f"`anvi-import-functions` :(")
+    
+        accession = accession.split('!!!')[0]
+        function = function.split('!!!')[0]
+
+        if accession not in self.accessions_to_genomes_dict_frequency:
+            self.accessions_to_genomes_dict_frequency[accession] = Counter({})
+            self.accessions_to_genomes_dict_presence_absence[accession] = Counter({})
+    
+    
+        self.accessions_to_genomes_dict_frequency[accession][genome_name] += 1
+        self.accessions_to_genomes_dict_presence_absence[accession][genome_name] = 1
+    
+        if accession not in self.accession_to_function_name_dict:
+            self.accession_to_function_name_dict[accession] = {self.function_annotation_source: function}
+    
+        return
+
+
+    def _init_functions_from_int_ext_genomes(self):
+        if not self.external_genomes_path and not self.internal_genomes_path:
+            return
+
+        g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
+        g.load_genomes_descriptions()
+        g.init_functions()
+
+        for genome_name in g.genomes:
+            gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
+            # reminder, an entry in gene_functions_in_genome_dict looks like this:
+            # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
+            for entry in gene_functions_in_genome_dict.values():
+                accession, function, e_value = entry[self.function_annotation_source]
+
+                self.update_accession_dics(genome_name, accession, function)
+
+
+    def _init_functions_from_genomes_storage(self):
+        if not self.genomes_storage_path:
+            return
+
+        from anvio.genomestorage import GenomeStorage
+        g = GenomeStorage(storage_path=self.genomes_storage_path, function_annotation_sources=[self.function_annotation_source], run=terminal.Run(verbose=False), progress=self.progress, skip_init=True)
+
+        # make sure we are not overwriting existing genome names in int or ext genomes:
+        genome_names_in_storage_db = g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True)
+        already_in_the_dict = [g for g in genome_names_in_storage_db if g in self.genome_names_considered_for_functional_mode]
+        if len(already_in_the_dict):
+            raise ConfigError(f"Anvi'o is not happy because there are some genome names that occur both in the "
+                              f"genome storage and among those that are specified through internal or external "
+                              f"genomes files. Here they are: {', '.join(already_in_the_dict)}.")
+
+        gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
+        for entry in gene_functions_in_genomes_dict.values():
+            # an entry in gene_functions_in_genomes_dict looks lke this:
+            # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
+            genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
+
+            self.update_accession_dics(genome_name, accession, function)
+
+
+    def init(self):
+        # learn functions, generate `self.views`. First start, with internal and
+        # external genomes.
+        # here we will update the same two dictionaries with the informaiton in the genome
+        # storage
+        self._init_functions_from_int_ext_genomes()
+        self._init_functions_from_genomes_storage()
+
+        if self.min_occurrence:
+            num_occurrence_of_accessions = [(c, sum(self.accessions_to_genomes_dict_presence_absence[c].values())) for c in self.accessions_to_genomes_dict_presence_absence]
+            accessions_to_remove = [accession for (accession, frequency) in num_occurrence_of_accessions if frequency < self.min_occurrence]
+
+            if len(accessions_to_remove):
+                for accession in accessions_to_remove:
+                    self.accession_to_function_name_dict.pop(accession)
+                    self.accessions_to_genomes_dict_frequency.pop(accession)
+                    self.accessions_to_genomes_dict_presence_absence.pop(accession)
+
+                self.run.warning(f"As per your request, anvi'o removed {len(accessions_to_remove)} accession IDs "
+                                 f"of {self.function_annotation_source} from downstream analyses sicne they occurred "
+                                 f"in less than {self.min_occurrence} genomes.")
