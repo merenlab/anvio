@@ -10,8 +10,11 @@ import argparse
 import textwrap
 import pandas as pd
 
+from collections import Counter
+
 import anvio
 import anvio.tables as t
+import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
@@ -23,7 +26,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
-import anvio.kegg as kegg
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -31,6 +33,7 @@ from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError, GenesDBError
+from anvio.tables.views import TablesForViews
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
