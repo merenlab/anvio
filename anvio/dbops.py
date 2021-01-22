@@ -540,8 +540,9 @@ class ContigsSuperclass(object):
 
         if len(where_clauses):
             where_clause = ' AND '.join(where_clauses)
-
-        hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+        else:
+            hits = list(contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name, error_if_no_data=False).values())
 
         for hit in hits:
             gene_callers_id = hit['gene_callers_id']
