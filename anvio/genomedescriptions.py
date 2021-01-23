@@ -1068,10 +1068,16 @@ class AggregateFunctions:
         self.aggregate_using_best_hit = A('aggregate_using_best_hit')
 
         # these are some primary data structures this class reports
-        self.accession_to_function_name_dict = {}
-        self.accessions_to_genomes_dict_frequency = {}
-        self.accessions_to_genomes_dict_presence_absence = {}
-        self.genome_names_considered_for_functional_mode = set({})
+        self.hash_to_key = {}
+        self.key_hash_to_genomes_dict_frequency = {}
+        self.key_hash_to_genomes_dict_presence_absence = {}
+        self.accession_id_to_function_dict = {}
+        self.function_to_accession_ids_dict = {}
+        self.layer_names_considered = set({})
+
+        self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
+        self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
+        self.V = lambda: 'function' if self.aggregate_based_on_accession else 'accession ID'
 
         self.sanity_checked = False
         if not skip_sanity_check:
@@ -1093,7 +1099,7 @@ class AggregateFunctions:
         self.sanity_checked = True
 
 
-    def update_accession_dicts(self, genome_name, accession, function):
+    def update_combined_functions_dicts(self, genome_name, accession, function):
         """Modify accession dicts with new things.
 
         This function is necessary to avoid redundant code to handle function dicts of different kinds
@@ -1101,47 +1107,77 @@ class AggregateFunctions:
         fix this problem in the future by unifying how functions are collected from different anvi'o databases.
         """
 
-        if genome_name not in self.genome_names_considered_for_functional_mode:
-            self.genome_names_considered_for_functional_mode.add(genome_name)
+        if genome_name not in self.layer_names_considered:
+            self.layer_names_considered.add(genome_name)
 
-        if not accession or not len(accession):
-            raise ConfigError(f"Anvi'o is very sorry to tell you that the function annotation source you "
-                              f"have chosen for this, '{self.function_annotation_source}', seem to incluce "
-                              f"functions with no accession IDs. Here is one example function with no "
-                              f"accession id: '{function}'. You will have to choose another function "
-                              f"annotation source :(")
+        key, value = (accession, function) if self.aggregate_based_on_accession else (function, accession)
+
+        if not key or not len(key):
+            raise ConfigError(f"Anvi'o is very sorry to tell you that the annotation source you have chosen "
+                              f"here, '{self.function_annotation_source}', seem to include "
+                              f"{self.V()}s with no {self.K()}s. Here is one example function with no "
+                              f"{self.K()}: '{value}'. You will have to choose another annotation source :(")
 
         if not function:
-            raise ConfigError(f"It saddens anvi'o to let you know that there are some function names in "
+            raise ConfigError(f"It saddens anvi'o to let you know that there are some {self.V}s in "
                               f"'{self.function_annotation_source}' that clearly are blank. Here is an "
-                              f"example accession ID that has a blank function name: '{accession}'. You "
-                              f"will need to choose another function annotation source, or someohow fix "
-                              f"this by using a combination of `anvi-export-functions` and "
-                              f"`anvi-import-functions` :(")
+                              f"example {self.K()} that has a blank {self.V()}: '{key}'. Either you "
+                              f"need to choose another annotation source, or fix this problem with the "
+                              f"existing annotations from {self.function_annotation_source} by using a "
+                              f"combination of `anvi-export-functions` and `anvi-import-functions` (which "
+                              f"is totally doable and you certainly can do it).")
 
         if self.aggregate_using_best_hit:
-            accession = accession.split('!!!')[0]
-            function = function.split('!!!')[0]
+            key = key.split('!!!')[0]
+            value = value.split('!!!')[0]
+
+            # we wish to keep track of actual accessions and functions, too:
+            accession, function = (key, value) if self.aggregate_based_on_accession else (value, key)
         else:
             pass
 
-        if self.aggregate_based_on_accession:
-            pass
+        # from now on we will only work with hashes of our keys, whether the keys here are function names or
+        # accession ids as defined by self.aggregate_based_on_accession boolean. this is a necessary
+        # complexity because function names are free text, can be very long, include weird characters. and
+        # when we cluster data with those keys, some characters will be replaced with others or otherwise
+        # they will break the newick file format and so on. using key hashes will make sure we don't get
+        # screwed by that, and we will always use the lookup dict `self.hash_to_key` to find out what was
+        # our key (and that's exactly what the next few lines of code do here):
+        if key in self.hash_to_key:
+            key_hash = self.hash_to_key[key]
         else:
-            function, accession = accession, function
+            key_hash = self.key_hash_prefix + hashlib.sha224(key.encode('utf-8')).hexdigest()[0:12]
+            self.hash_to_key[key] = key_hash
 
-        if accession not in self.accessions_to_genomes_dict_frequency:
-            self.accessions_to_genomes_dict_frequency[accession] = Counter({})
-            self.accessions_to_genomes_dict_presence_absence[accession] = Counter({})
+        if key_hash not in self.key_hash_to_genomes_dict_frequency:
+            self.key_hash_to_genomes_dict_frequency[key_hash] = Counter({})
+            self.key_hash_to_genomes_dict_presence_absence[key_hash] = Counter({})
 
+        self.key_hash_to_genomes_dict_frequency[key_hash][genome_name] += 1
+        self.key_hash_to_genomes_dict_presence_absence[key_hash][genome_name] = 1
 
-        self.accessions_to_genomes_dict_frequency[accession][genome_name] += 1
-        self.accessions_to_genomes_dict_presence_absence[accession][genome_name] = 1
+        if accession not in self.accession_id_to_function_dict:
+            self.accession_id_to_function_dict[accession] = {self.function_annotation_source: function}
 
-        if accession not in self.accession_to_function_name_dict:
-            self.accession_to_function_name_dict[accession] = {self.function_annotation_source: function}
+        if function not in self.function_to_accession_ids_dict:
+            self.function_to_accession_ids_dict[function] = {self.function_annotation_source: set([accession])}
+        else:
+            self.function_to_accession_ids_dict[function][self.function_annotation_source].add(accession)
 
         return
+
+
+    def check_layer_names(self, layer_names=[]):
+        if not isinstance(layer_names, list):
+            raise ConfigError("`layer_names` must be of type list :/")
+
+        already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
+        if len(already_in_the_dict):
+            raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
+                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+        else:
+            # you good fam
+            pass
 
 
     def _init_functions_from_int_ext_genomes(self):
@@ -1153,13 +1189,15 @@ class AggregateFunctions:
         g.init_functions()
 
         for genome_name in g.genomes:
+            self.check_layer_names([genome_name])
+
             gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
             # reminder, an entry in gene_functions_in_genome_dict looks like this:
             # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
             for entry in gene_functions_in_genome_dict.values():
                 accession, function, e_value = entry[self.function_annotation_source]
 
-                self.update_accession_dicts(genome_name, accession, function)
+                self.update_combined_functions_dicts(genome_name, accession, function)
 
 
     def _init_functions_from_genomes_storage(self):
@@ -1170,12 +1208,9 @@ class AggregateFunctions:
         g = GenomeStorage(storage_path=self.genomes_storage_path, function_annotation_sources=[self.function_annotation_source], run=terminal.Run(verbose=False), progress=self.progress, skip_init=True)
 
         # make sure we are not overwriting existing genome names in int or ext genomes:
-        genome_names_in_storage_db = g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True)
-        already_in_the_dict = [g for g in genome_names_in_storage_db if g in self.genome_names_considered_for_functional_mode]
-        if len(already_in_the_dict):
-            raise ConfigError(f"Anvi'o is not happy because there are some genome names that occur both in the "
-                              f"genome storage and among those that are specified through internal or external "
-                              f"genomes files. Here they are: {', '.join(already_in_the_dict)}.")
+        genome_names_in_storage_db = list(g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True))
+
+        self.check_layer_names(genome_names_in_storage_db)
 
         gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
         for entry in gene_functions_in_genomes_dict.values():
@@ -1183,7 +1218,7 @@ class AggregateFunctions:
             # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
             genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
 
-            self.update_accession_dicts(genome_name, accession, function)
+            self.update_combined_functions_dicts(genome_name, accession, function)
 
 
     def init(self):
@@ -1195,15 +1230,35 @@ class AggregateFunctions:
         self._init_functions_from_genomes_storage()
 
         if self.min_occurrence:
-            num_occurrence_of_accessions = [(c, sum(self.accessions_to_genomes_dict_presence_absence[c].values())) for c in self.accessions_to_genomes_dict_presence_absence]
-            accessions_to_remove = [accession for (accession, frequency) in num_occurrence_of_accessions if frequency < self.min_occurrence]
+            num_occurrence_of_keys = [(c, sum(self.key_hash_to_genomes_dict_presence_absence[c].values())) for c in self.key_hash_to_genomes_dict_presence_absence]
+            keys_to_remove = [key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence]
 
-            if len(accessions_to_remove):
-                for accession in accessions_to_remove:
-                    self.accession_to_function_name_dict.pop(accession)
-                    self.accessions_to_genomes_dict_frequency.pop(accession)
-                    self.accessions_to_genomes_dict_presence_absence.pop(accession)
+            # the following if block takes care of cleaning up both `self.accession_id_to_function_dict` and
+            # `self.function_to_accession_ids_dict` dicts in a mindful fashion in addition to the cleanup of
+            # all other dicts.
+            if len(keys_to_remove):
+                for key in keys_to_remove:
+                    # the following dicts are the obvious ones:
+                    key_hash = self.hash_to_key(key)
+                    self.key_hash_to_genomes_dict_frequency.pop(key_hash)
+                    self.key_hash_to_genomes_dict_presence_absence.pop(key_hash)
+                    self.hash_to_key.pop(key_hash)
 
-                self.run.warning(f"As per your request, anvi'o removed {len(accessions_to_remove)} accession IDs "
-                                 f"of {self.function_annotation_source} from downstream analyses sicne they occurred "
+                    # these are the trick ones since how this step should be handled will depend on
+                    # what is key and what is value in the instance configuration:
+                    if self.aggregate_based_on_accession:
+                        function = self.accession_id_to_function_dict[key]
+                        self.accession_id_to_function_dict.pop(key)
+                        self.function_to_accession_ids_dict[function].pop(key)
+                        if not len(self.function_to_accession_ids_dict[function]):
+                            self.function_to_accession_ids_dict.pop(function)
+                    else:
+                        accessions = self.function_to_accession_ids_dict[key]
+                        self.function_to_accession_ids_dict.pop(key)
+                        for accession in accessions:
+                            self.accession_id_to_function_dict.pop(accession)
+
+
+                self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
+                                 f"{self.function_annotation_source} from downstream analyses since they occurred "
                                  f"in less than {self.min_occurrence} genomes.")
