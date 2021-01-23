@@ -1226,7 +1226,7 @@ class TRNASeqDataset(object):
             raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing: %s. "
                               "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
                               "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`."
-                              % (self.load_checkpoint, ', '.join(self.missing_intermed_files))
+                              % (self.load_checkpoint, ', '.join(self.missing_intermed_files)))
 
         filesnpaths.is_output_dir_writable(self.out_dir)
 
