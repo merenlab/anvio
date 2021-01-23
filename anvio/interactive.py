@@ -810,7 +810,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # initialize all functions from wherever.
         facc = AggregateFunctions(self.args, r=self.run, p=self.progress)
-        facc.init()
 
         num_facc_keys = len(facc.key_hash_to_genomes_dict_frequency)
         num_genomes = len(facc.layer_names_considered)
