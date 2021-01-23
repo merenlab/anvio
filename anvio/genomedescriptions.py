@@ -1065,7 +1065,7 @@ class AggregateFunctions:
         self.internal_genomes_path = A('internal_genomes')
         self.min_occurrence = A('min_occurrence') or 1
 
-        # these are some primary data structures this class reports 
+        # these are some primary data structures this class reports
         self.accession_to_function_name_dict = {}
         self.accessions_to_genomes_dict_frequency = {}
         self.accessions_to_genomes_dict_presence_absence = {}
@@ -1078,7 +1078,7 @@ class AggregateFunctions:
                               "the genomes. Someoen didn't specify any function annotation source :/")
 
         if self.min_occurrence and not isinstance(self.min_occurrence, int):
-            raise ConfigError(f"Obviously, --min-occurrence must be an integer.")
+            raise ConfigError("Obviously, --min-occurrence must be an integer.")
 
         if self.min_occurrence < 1:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
@@ -1091,17 +1091,17 @@ class AggregateFunctions:
         we get from int/external genomes and genome storage. a redesign of the genome storage will likely
         fix this problem in the future by unifying how functions are collected from different anvi'o databases.
         """
-    
+
         if genome_name not in self.genome_names_considered_for_functional_mode:
             self.genome_names_considered_for_functional_mode.add(genome_name)
-    
+
         if not accession or not len(accession):
             raise ConfigError(f"Anvi'o is very sorry to tell you that the function annotation source you "
                               f"have chosen for this, '{self.function_annotation_source}', seem to incluce "
                               f"functions with no accession IDs. Here is one example function with no "
                               f"accession id: '{function}'. You will have to choose another function "
                               f"annotation source :(")
-    
+
         if not function:
             raise ConfigError(f"It saddens anvi'o to let you know that there are some function names in "
                               f"'{self.function_annotation_source}' that clearly are blank. Here is an "
@@ -1109,21 +1109,21 @@ class AggregateFunctions:
                               f"will need to choose another function annotation source, or someohow fix "
                               f"this by using a combination of `anvi-export-functions` and "
                               f"`anvi-import-functions` :(")
-    
+
         accession = accession.split('!!!')[0]
         function = function.split('!!!')[0]
 
         if accession not in self.accessions_to_genomes_dict_frequency:
             self.accessions_to_genomes_dict_frequency[accession] = Counter({})
             self.accessions_to_genomes_dict_presence_absence[accession] = Counter({})
-    
-    
+
+
         self.accessions_to_genomes_dict_frequency[accession][genome_name] += 1
         self.accessions_to_genomes_dict_presence_absence[accession][genome_name] = 1
-    
+
         if accession not in self.accession_to_function_name_dict:
             self.accession_to_function_name_dict[accession] = {self.function_annotation_source: function}
-    
+
         return
 
 
