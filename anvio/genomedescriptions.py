@@ -1060,12 +1060,12 @@ class AggregateFunctions:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.genomes_storage_path = A('genomes_storage')
-        self.function_annotation_source = A('annotation_source')
         self.external_genomes_path = A('external_genomes')
         self.internal_genomes_path = A('internal_genomes')
+        self.function_annotation_source = A('annotation_source')
         self.min_occurrence = A('min_occurrence') or 1
-        self.aggregate_based_on_accession = A('aggregate_based_on_accession')
-        self.aggregate_using_best_hit = A('aggregate_using_best_hit')
+        self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
+        self.aggregate_using_best_hit = A('aggregate_using_best_hit') or False
 
         # these are some primary data structures this class reports
         self.hash_to_key = {}
