@@ -812,41 +812,43 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         facc = AggregateFunctions(self.args, r=self.run, p=self.progress)
         facc.init()
 
-        num_accessions = len(facc.accession_to_function_name_dict)
-        num_genomes = len(facc.genome_names_considered_for_functional_mode)
-        if num_accessions < 25:
-            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found only {num_accessions} unique "
-                             f"accession ids for {facc.function_annotation_source}. This doesn't look very good, but "
+        num_facc_keys = len(facc.key_hash_to_genomes_dict_frequency)
+        num_genomes = len(facc.layer_names_considered)
+        if num_facc_keys < 25:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found only {num_facc_keys} unique "
+                             f"{facc.K()}s for {facc.function_annotation_source}. This doesn't look very good, but "
                              f"it is difficult to know whether you find this normal or even pleasing... Things will "
                              f"continue to work, but we just thought you should know about this.")
-        if num_accessions > 2500 and num_accessions < 10000:
-            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
-                             f"accession ids for {facc.function_annotation_source}. It looks like you have quite a lot of "
+        if num_facc_keys > 2500 and num_facc_keys < 10000:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
+                             f"{facc.K()}s for {facc.function_annotation_source}. It looks like you have quite a lot of "
                              f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o wiil "
                              f"do her best, but if things crash downstream, this will likely be the reason.")
-        if num_accessions > 10000:
-            raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_accessions} unique "
-                    f"accession ids for {facc.function_annotation_source} :/ This is just way too much for anvi'o to try to "
-                    f"put together a hierarchical clustering for and display. If you think this had to work, let us know and "
-                    f"we will see if we can do something to help you.")
+        if num_facc_keys > 10000:
+            raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
+                              f"{facc.K()}s for {facc.function_annotation_source} :/ This is just way too much for anvi'o to try to "
+                              f"put together a hierarchical clustering for and display. If you think this had to work, let us know and "
+                              f"we will see if we can do something to help you.")
 
         self.run.info('Num genomes', num_genomes)
         self.run.info('Function annotation source', facc.function_annotation_source)
-        self.run.info('Num accession ids', num_accessions)
+        self.run.info('Num unique keys', num_facc_keys)
+        self.run.info('Keys correspond to', f"'{facc.K()}s' rather than '{facc.V()}s'")
+        self.run.info('Only the best hits are considered', "True" if facc.aggregate_using_best_hit else "False", nl_after=1)
 
         # now we will work on views and clustering our data to get newick trees.
         self.p_meta['default_view'] = 'presence_absence_view'
         self.default_view = self.p_meta['default_view']
 
         # our 'samples' in this context are individual genomes we are about to display
-        self.p_meta['samples'] = list(facc.genome_names_considered_for_functional_mode)
+        self.p_meta['samples'] = list(facc.layer_names_considered)
         self.p_meta['sample_id'] = f"{facc.function_annotation_source} DISPLAY"
 
         # setup the views dict
-        self.views = {'frequency_view'       : {'header': list(facc.genome_names_considered_for_functional_mode),
-                                                'dict': facc.accessions_to_genomes_dict_frequency},
-                      'presence_absence_view': {'header': list(facc.genome_names_considered_for_functional_mode),
-                                                'dict': facc.accessions_to_genomes_dict_presence_absence}}
+        self.views = {'frequency_view'       : {'header': list(facc.layer_names_considered),
+                                                'dict': facc.key_hash_to_genomes_dict_frequency},
+                      'presence_absence_view': {'header': list(facc.layer_names_considered),
+                                                'dict': facc.key_hash_to_genomes_dict_presence_absence}}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
@@ -857,6 +859,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'db_variant': 'functions-display',
                                'function_annotation_source': facc.function_annotation_source,
                                'min_occurrence_of_function': facc.min_occurrence,
+                               'aggregate_based_on_accession': facc.aggregate_based_on_accession,
+                               'aggregate_using_best_hit': facc.aggregate_using_best_hit,
                                'contigs_db_hash': None,
                                'items_ordered': False,
                                'samples': ', '.join(self.p_meta['samples']),
@@ -882,8 +886,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
-            view_table_structure = ['contig'] + sorted(list(facc.genome_names_considered_for_functional_mode))
-            view_table_types = ['text'] + ['numeric'] * len(facc.genome_names_considered_for_functional_mode)
+            view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
+            view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
                                             data_dict=self.views[view]['dict'],
                                             table_name=f"{view}",
@@ -896,6 +900,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # here we will both write items additional table into the db, and read it back
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
+        # FIXME: the next line will break `anvi-display-functions`, which is OK for now:
         TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.accession_to_function_name_dict, [facc.function_annotation_source], skip_check_names=True)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
