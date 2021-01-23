@@ -1064,6 +1064,8 @@ class AggregateFunctions:
         self.external_genomes_path = A('external_genomes')
         self.internal_genomes_path = A('internal_genomes')
         self.min_occurrence = A('min_occurrence') or 1
+        self.aggregate_based_on_accession = A('aggregate_based_on_accession')
+        self.aggregate_using_best_hit = A('aggregate_using_best_hit')
 
         # these are some primary data structures this class reports
         self.accession_to_function_name_dict = {}
@@ -1092,7 +1094,7 @@ class AggregateFunctions:
 
 
     def update_accession_dicts(self, genome_name, accession, function):
-        """Modify accession dicts.
+        """Modify accession dicts with new things.
 
         This function is necessary to avoid redundant code to handle function dicts of different kinds
         we get from int/external genomes and genome storage. a redesign of the genome storage will likely
@@ -1117,8 +1119,16 @@ class AggregateFunctions:
                               f"this by using a combination of `anvi-export-functions` and "
                               f"`anvi-import-functions` :(")
 
-        accession = accession.split('!!!')[0]
-        function = function.split('!!!')[0]
+        if self.aggregate_using_best_hit:
+            accession = accession.split('!!!')[0]
+            function = function.split('!!!')[0]
+        else:
+            pass
+
+        if self.aggregate_based_on_accession:
+            pass
+        else:
+            function, accession = accession, function
 
         if accession not in self.accessions_to_genomes_dict_frequency:
             self.accessions_to_genomes_dict_frequency[accession] = Counter({})
