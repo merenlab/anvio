@@ -942,7 +942,7 @@ D = {
              'help': "List available functional annotation sources."}
                 ),
     'aggregate-based-on-accession': (
-            ['aggregate-based-on-accession'],
+            ['--aggregate-based-on-accession'],
             {'default': False,
              'action': 'store_true',
              'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
@@ -955,7 +955,7 @@ D = {
                      "instruct anvi'o to listen to you and not to us."}
                 ),
     'aggregate-using-best-hit': (
-            ['aggregate-using-best-hit'],
+            ['--aggregate-using-best-hit'],
             {'default': False,
              'action': 'store_true',
              'help': "In some cases a gene may be annotated with multiple functions. This is a decision often "
