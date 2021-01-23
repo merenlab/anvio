@@ -3185,6 +3185,7 @@ class DatabaseConverter(object):
         self.project_name = A('project_name')
 
         # Argument group B: EXTRAS
+        self.num_threads = A('num_threads')
         self.seed_seq_limit = A('max_reported_trna_seeds')
         self.overwrite_out_dest = A('overwrite_output_destinations')
         self.descrip_path = os.path.abspath(A('description')) if A('description') else None
@@ -3258,9 +3259,7 @@ class DatabaseConverter(object):
         self.sanity_check()
         filesnpaths.gen_output_directory(self.out_dir, delete_if_exists=self.overwrite_out_dest)
 
-        for trnaseq_db_path in self.trnaseq_db_paths:
-            (self.unmod_norm_seq_summaries_dict[trnaseq_db_path],
-             self.mod_seq_summaries_dict[trnaseq_db_path]) = self.load_trnaseq_db_seq_info(trnaseq_db_path)
+        self.load_trnaseq_dbs()
 
         self.form_seeds()
 
@@ -3321,6 +3320,10 @@ class DatabaseConverter(object):
                                                                    ok_if_exists=self.overwrite_out_dest)
         self.specific_profile_db_path = os.path.join(self.specific_out_dir, 'PROFILE.db')
         self.specific_auxiliary_db_path = os.path.join(self.specific_out_dir, 'AUXILIARY-DATA.db')
+
+        if not 1 <= self.num_threads <= mp.cpu_count():
+            raise ConfigError("The number of threads to use must be a positive integer less than or equal to %d. "
+                              "Try again!" % mp.cpu_count())
 
         self.set_treatment_preference()
 
@@ -3415,6 +3418,37 @@ class DatabaseConverter(object):
             self.summed_auxiliary_db_path = os.path.join(self.summed_out_dir, 'AUXILIARY-DATA.db')
 
 
+    def load_trnaseq_dbs(self):
+        loaded_db_count = 0
+        num_trnaseq_db_paths = len(self.trnaseq_db_paths)
+        self.progress.new("Loading sequence information from tRNA-seq databases")
+        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} databases loaded")
+
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        processes = [mp.Process(target=trnaseq_db_loader, args=(input_queue, output_queue, self))
+                     for _ in range(self.num_threads)]
+        for p in processes:
+            p.start()
+
+        for trnaseq_db_path in self.trnaseq_db_paths:
+            input_queue.put(trnaseq_db_path)
+
+        while loaded_db_count < len(self.trnaseq_db_paths):
+            trnaseq_db_path, unmod_norm_seq_summaries, mod_seq_summaries = output_queue.get()
+            self.unmod_norm_seq_summaries_dict[trnaseq_db_path] = unmod_norm_seq_summaries
+            self.mod_seq_summaries_dict[trnaseq_db_path] = mod_seq_summaries
+            loaded_db_count += 1
+            self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} databases loaded")
+
+        for p in processes:
+            p.terminate()
+            p.join()
+
+        self.progress.end()
+
+
     def load_trnaseq_db_seq_info(self, trnaseq_db_path):
         """Load necessary tRNA sequence data from the input tRNA-seq database.
 
@@ -3423,9 +3457,6 @@ class DatabaseConverter(object):
         """
         trnaseq_db_num = list(self.trnaseq_dbs_info_dict.keys()).index(trnaseq_db_path)
         sample_id = self.trnaseq_db_sample_ids[trnaseq_db_num]
-
-        self.progress.new(f"Loading sequence information from the tRNA-seq database: {sample_id}")
-        self.progress.update("...")
 
         trnaseq_db = dbops.TRNASeqDatabase(trnaseq_db_path)
 
@@ -3586,8 +3617,6 @@ class DatabaseConverter(object):
 
         unmod_norm_seq_summaries = [norm_seq for norm_seq in norm_seq_summary_dict.values()
                                     if not norm_seq.mod_seq_summary]
-
-        self.progress.end()
 
         return unmod_norm_seq_summaries, mod_seq_summaries
 
@@ -4883,3 +4912,12 @@ class DatabaseConverter(object):
             table_structure=['contig'] + list(itertools.chain(*[(sample_id + '_specific', sample_id + '_nonspecific') for sample_id in self.trnaseq_db_sample_ids])) + ['__parent__'],
             table_types=['text'] + ['numeric'] * 2 * len(self.trnaseq_db_sample_ids) + ['text'],
             view_name=table_basename)
+
+
+def trnaseq_db_loader(input_queue, output_queue, db_converter):
+    """This client for `DatabaseConverter.load_trnaseq_db_seq_info` is located outside the
+    `DatabaseConverter` class to allow multiprocessing."""
+    while True:
+        trnaseq_db_path = input_queue.get()
+        unmod_norm_seq_summaries, mod_seq_summaries = db_converter.load_trnaseq_db_seq_info(trnaseq_db_path)
+        output_queue.put((trnaseq_db_path, unmod_norm_seq_summaries, mod_seq_summaries))

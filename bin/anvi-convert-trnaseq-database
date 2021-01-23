@@ -36,6 +36,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
 
     groupB = parser.add_argument_group('EXTRAS')
+    groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupB.add_argument(*anvio.A('max-reported-trna-seeds'), **anvio.K('max-reported-trna-seeds'))
     groupB.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
