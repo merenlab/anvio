@@ -1194,31 +1194,39 @@ class TRNASeqDataset(object):
                                       "Use the flag --overwrite-output-destinations to overwrite this directory." % self.out_dir)
 
         # Check that needed intermediate pickle files exist when loading from a checkpoint.
-        missing_intermed_files = False
+        missing_intermed_files = []
         if self.load_checkpoint == 'profile':
-            if (not os.path.exists(self.profile_uniq_trna_seqs_path)
-                or not os.path.exists(self.profile_uniq_trunc_seqs_path)
-                or not os.path.exists(self.profile_uniq_nontrna_seqs_path)
-                or not os.path.exists(self.profile_trimmed_trna_seqs_path)
-                or not os.path.exists(self.profile_trimmed_trunc_seqs_path)
-                or not os.path.exists(self.profile_norm_trna_seqs_path)):
-                missing_intermed_files = True
+            if not os.path.exists(self.profile_uniq_trna_seqs_path):
+                missing_intermed_files.append(self.profile_uniq_trna_seqs_path)
+            if not os.path.exists(self.profile_uniq_trunc_seqs_path):
+                missing_intermed_files.append(self.profile_uniq_trunc_seqs_path)
+            if not os.path.exists(self.profile_uniq_nontrna_seqs_path):
+                missing_intermed_files.append(self.profile_uniq_nontrna_seqs_path)
+            if not os.path.exists(self.profile_trimmed_trna_seqs_path):
+                missing_intermed_files.append(self.profile_trimmed_trna_seqs_path)
+            if not os.path.exists(self.profile_norm_trna_seqs_path):
+                missing_intermed_files.append(self.profile_norm_trna_seqs_path)
         elif self.load_checkpoint == 'fragment_mapping':
-            if (not os.path.exists(self.frag_map_uniq_trna_seqs_path)
-                or not os.path.exists(self.frag_map_uniq_trunc_seqs_path)
-                or not os.path.exists(self.frag_map_uniq_nontrna_seqs_path)
-                or not os.path.exists(self.frag_map_trimmed_trna_seqs_path)
-                or not os.path.exists(self.frag_map_trimmed_trunc_seqs_path)
-                or not os.path.exists(self.frag_map_norm_trna_seqs_path)):
-                missing_intermed_files = True
+            if not os.path.exists(self.frag_map_uniq_trna_seqs_path):
+                missing_intermed_files.append(self.frag_map_uniq_trna_seqs_path)
+            if not os.path.exists(self.frag_map_uniq_trunc_seqs_path):
+                missing_intermed_files.append(self.frag_map_uniq_trunc_seqs_path)
+            if not os.path.exists(self.frag_map_uniq_nontrna_seqs_path):
+                missing_intermed_files.append(self.frag_map_uniq_nontrna_seqs_path)
+            if not os.path.exists(self.frag_map_trimmed_trna_seqs_path):
+                missing_intermed_files.append(self.frag_map_trimmed_trna_seqs_path)
+            if not os.path.exists(self.frag_map_trimmed_trunc_seqs_path):
+                missing_intermed_files.append(self.frag_map_trimmed_trunc_seqs_path)
+            if not os.path.exists(self.frag_map_norm_trna_seqs_path):
+                missing_intermed_files.append(self.frag_map_norm_trna_seqs_path)
         else:
             if not os.path.exists(self.out_dir):
                 os.mkdir(self.out_dir)
         if missing_intermed_files:
-            raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing. "
+            raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing: %s. "
                               "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
-                              "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag "
-                              "`--write-checkpoints`." % self.load_checkpoint)
+                              "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`."
+                              % (self.load_checkpoint, ', '.join(self.missing_intermed_files))
 
         filesnpaths.is_output_dir_writable(self.out_dir)
 
