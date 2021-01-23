@@ -82,7 +82,7 @@ rule iu_merge_pairs:
         shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
         if M.gzip_iu_merge_pairs_output:
             out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
-            shell("gzip -c {output.merged} > {output.merged}.gzip 2>>{log}")
+            shell("gzip -c {output.merged} > {output.merged}.gz 2>>{log}")
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
             if params.report_r1_prefix:
@@ -154,7 +154,7 @@ rule anvi_reformat_fasta:
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
         if M.gzip_anvi_reformat_fasta_output:
-            shell("gzip -c {output.fasta} > {output.fasta}.gzip 2>>{log}")
+            shell("gzip -c {output.fasta} > {output.fasta}.gz 2>>{log}")
 
 
 rule anvi_trnaseq:
