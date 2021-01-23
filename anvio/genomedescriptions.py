@@ -1053,7 +1053,7 @@ class AggregateFunctions:
     of all functions annotated by a single source.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, skip_sanity_check=False, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
@@ -1071,7 +1071,12 @@ class AggregateFunctions:
         self.accessions_to_genomes_dict_presence_absence = {}
         self.genome_names_considered_for_functional_mode = set({})
 
-        # some sanity checks
+        self.sanity_checked = False
+        if not skip_sanity_check:
+            self.sanity_check()
+
+
+    def sanity_check(self):
         if not self.function_annotation_source:
             raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
                               "an annotation source to be used for aggregating all the information from all "
@@ -1082,6 +1087,8 @@ class AggregateFunctions:
 
         if self.min_occurrence < 1:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
+
+        self.sanity_checked = True
 
 
     def update_accession_dicts(self, genome_name, accession, function):
