@@ -1048,8 +1048,8 @@ class AggregateFunctions:
     """Get functions from anywhere.
 
     The purpose of this class is to collect functions from many distinct databases,
-    including external genomes, internal genomes, and genomes storage, and report a
-    single set of disctionaries that give access to the presence/absence and frequency
+    including external genomes, internal genomes, and/or a genomes storage, and report
+    a set of dictionaries that give access to the presence/absence and frequency
     of all functions annotated by a single source.
     """
 
