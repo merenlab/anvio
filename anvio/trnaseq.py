@@ -2058,7 +2058,7 @@ class TRNASeqDataset(object):
             if len(valid_aligned_queries) < 2:
                 continue
 
-            seq_array = np.zeros((len(aligned_ref.alignments) + 1, aligned_ref_length), dtype=int)
+            seq_array = np.zeros((len(valid_aligned_queries) + 1, aligned_ref_length), dtype=int)
             # Rather than using the ASCII representation of each character, which saves some time in
             # converting the sequence string to a numpy array, constrain the integer representation
             # to the smallest possible range of integers to speed up the bincount method used to
@@ -2072,8 +2072,10 @@ class TRNASeqDataset(object):
 
             # Find positions in the alignment with nucleotide variability.
             alignment_pos_uniq_nt_counts = (
-                np.bincount((seq_array + np.arange(aligned_ref_length, dtype=int) * NUM_NT_BINS).ravel(),
-                            minlength=aligned_ref_length * NUM_NT_BINS).reshape(-1, NUM_NT_BINS)[:, 1:] != 0
+                np.bincount(
+                    (seq_array + np.arange(aligned_ref_length, dtype=int) * NUM_NT_BINS).ravel(),
+                    minlength=aligned_ref_length * NUM_NT_BINS
+                ).reshape(-1, NUM_NT_BINS)[:, 1:] != 0
             ).sum(axis=1)
             three_four_nt_alignment_positions = (alignment_pos_uniq_nt_counts > 2).nonzero()[0]
 
@@ -2114,7 +2116,7 @@ class TRNASeqDataset(object):
                         if split_cluster_seq_indices.size > 2:
                             next_clusters.appendleft((seq_array[split_cluster_seq_indices, :],
                                                       norm_seqs[split_cluster_seq_indices],
-                                                      three_four_nt_alignment_positions))
+                                                      three_four_nt_alignment_positions.copy()))
                 if next_clusters:
                     clusters = next_clusters
                 else:
@@ -2139,8 +2141,6 @@ class TRNASeqDataset(object):
                         candidates_to_remove.append(i)
                     elif represented_nts.size == 2:
                         candidates_to_remove.append(i)
-                        split_three_four_nt_alignment_positions = np.delete(three_four_nt_alignment_positions,
-                                                                            candidates_to_remove)
                         for nt in represented_nts:
                             split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
                             # At least 3 normalized sequences are needed to form a modified
@@ -2148,7 +2148,7 @@ class TRNASeqDataset(object):
                             if split_cluster_seq_indices.size > 2:
                                 clusters.appendleft((seq_array[split_cluster_seq_indices, :],
                                                      norm_seqs[split_cluster_seq_indices],
-                                                     split_three_four_nt_alignment_positions))
+                                                     np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
                         # Reevaluate previous alignment positions in the split clusters.
                         break
                 else:
@@ -2158,9 +2158,7 @@ class TRNASeqDataset(object):
                     # through the remaining positions again to find those with fewer than 3
                     # nucleotides.
                     if candidates_to_remove:
-                        next_clusters.appendleft(
-                            (norm_seqs, np.delete(three_four_nt_alignment_positions, candidates_to_remove))
-                        )
+                        next_clusters.appendleft((norm_seqs, np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
                     else:
                         next_clusters.appendleft((norm_seqs, three_four_nt_alignment_positions))
 
