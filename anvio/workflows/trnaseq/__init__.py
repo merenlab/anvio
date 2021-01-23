@@ -213,8 +213,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
 
-        # Load table of sample info from samples_txt (sample names, treatments, paths to r1 and r2,
-        # r1 and r2 prefixes).
+        # Load table of sample info from samples_txt.
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         filesnpaths.is_file_exists(self.samples_txt_file)
         try:
