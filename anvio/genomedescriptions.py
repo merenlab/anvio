@@ -1053,7 +1053,7 @@ class AggregateFunctions:
     of all functions annotated by a single source.
     """
 
-    def __init__(self, args, skip_sanity_check=False, r=run, p=progress):
+    def __init__(self, args, skip_sanity_check=False, skip_init=False, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
@@ -1082,6 +1082,9 @@ class AggregateFunctions:
         self.sanity_checked = False
         if not skip_sanity_check:
             self.sanity_check()
+
+        if not skip_init:
+            self.init()
 
 
     def sanity_check(self):
