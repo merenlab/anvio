@@ -35,9 +35,7 @@ rule make_iu_input:
     """Create an Illumina-utils samples file for each sequence library."""
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "make_iu_input.log")
-    # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
-    # paths of the FASTQ files have changed.
-    input: ancient(M.get_param_value_from_config(['samples_txt']))
+    input: M.get_param_value_from_config(['samples_txt'])
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "iu_samples_input.txt")
     threads: M.T('make_iu_input')
     resources: nodes = M.T('make_iu_input')
@@ -53,9 +51,7 @@ rule iu_gen_configs:
     """Create an Illumina-utils config file from each Illumina-utils samples file representing each sequence library."""
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_gen_configs.log")
-    # The input file is marked "ancient" to prevent Snakemake from rerunning this step when the
-    # paths of the FASTQ files have changed.
-    input: ancient(rules.make_iu_input.output)
+    input: rules.make_iu_input.output
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
     threads: M.T('iu_gen_configs')
     resources: nodes = M.T('iu_gen_configs')
