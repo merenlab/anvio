@@ -1084,7 +1084,7 @@ class AggregateFunctions:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
 
 
-    def update_accession_dics(self, genome_name, accession, function):
+    def update_accession_dicts(self, genome_name, accession, function):
         """Modify accession dicts.
 
         This function is necessary to avoid redundant code to handle function dicts of different kinds
@@ -1142,7 +1142,7 @@ class AggregateFunctions:
             for entry in gene_functions_in_genome_dict.values():
                 accession, function, e_value = entry[self.function_annotation_source]
 
-                self.update_accession_dics(genome_name, accession, function)
+                self.update_accession_dicts(genome_name, accession, function)
 
 
     def _init_functions_from_genomes_storage(self):
@@ -1166,7 +1166,7 @@ class AggregateFunctions:
             # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
             genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
 
-            self.update_accession_dics(genome_name, accession, function)
+            self.update_accession_dicts(genome_name, accession, function)
 
 
     def init(self):
