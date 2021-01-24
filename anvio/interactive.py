@@ -897,10 +897,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
 
-        # here we will both write items additional table into the db, and read it back
+
+        # here we will store a layer for function names in the additional data tables of the profile databse and
+        # read it back (so it is both in there for future `anvi-interactive` ops, and in here in the interactive 
+        # class to visualize the information).
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
-        # FIXME: the next line will break `anvi-display-functions`, which is OK for now:
-        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.accession_to_function_name_dict, [facc.function_annotation_source], skip_check_names=True)
+        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
         # create an instance of states table
