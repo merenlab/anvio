@@ -1067,21 +1067,45 @@ class AggregateFunctions:
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
         self.aggregate_using_best_hit = A('aggregate_using_best_hit') or False
 
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
-        self.hash_to_key = {} # remember, 'key' here can be accession ids, or functio names
-                              # depending on `self.aggregate_based_on_accession`
-        self.hash_to_function_dict = {} # this is to make sure even if functions are aggregated
-                                        # using accession ids, there is a way to resolve function
-                                        # names that correspond to each item.
+        
+        # remember, 'key' here can be accession ids, or functio names
+        # depending on `self.aggregate_based_on_accession`
+        self.hash_to_key = {}
+
+        # this variable makes sure even if functions are aggregated
+        # using accession ids, there is a way to resolve function
+        # names that correspond to each item. This is going to be a
+        # life saver while trying to summarize things
+        self.hash_to_function_dict = {}
+
+        # distribution of 'keys' (i.e., accession ids or functions)
+        # across genomes based on the frequency of observation or
+        # presence absence. Having two disctionaries for this sounds
+        # stupid at first (because it is), since the presence/absence
+        # data can always be recovered from the frequency data. but
+        # the momory fingerprint of these dicts are always going to be
+        # nothing and will save additional steps in places where an
+        # instance is used.
         self.key_hash_to_genomes_dict_frequency = {}
         self.key_hash_to_genomes_dict_presence_absence = {}
+
+        # two additional dicts to alwys be able to convert accession
+        # ids to function names and vice versa. remember, an accession
+        # id will resolve to a single function name (unless the provider
+        # of function names did not screw things up), but a function
+        # name can resolve to multiple accession ids, hence the latter
+        # dict will contain will contain for each of its keys a list.
         self.accession_id_to_function_dict = {}
         self.function_to_accession_ids_dict = {}
-        self.layer_names_considered = set({})
 
+        # to keep track of all layer names and where they are coming from.
+        self.layer_names_considered = set({})
         self.layer_names_from_internal_genomes = []
         self.layer_names_from_external_genomes = []
         self.layer_names_from_genomes_storage = []
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
 
         # this will summarize what happened in a text form.
         self.summary_information = None
