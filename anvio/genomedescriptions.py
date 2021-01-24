@@ -1108,7 +1108,7 @@ class AggregateFunctions:
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
 
         # this will summarize what happened in a text form.
-        self.summary_information = None
+        self.summary_markdown = None
 
         self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
         self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
@@ -1165,7 +1165,7 @@ class AggregateFunctions:
                                  f"{self.function_annotation_source} from downstream analyses since they occurred "
                                  f"in less than {self.min_occurrence} genomes.")
 
-        self.update_summary_information()
+        self.update_summary_markdown()
 
 
     def sanity_check(self):
@@ -1312,16 +1312,15 @@ class AggregateFunctions:
             self.update_combined_functions_dicts(genome_name, accession, function)
 
 
-    def update_summary_information(self):
-        G = lambda x: f" ({', '.join(x)})" if len(x) else ","
+    def update_summary_markdown(self):
+        G = lambda x: '\n'.join(['* %s' % l for l in x]) if len(x) else "*None :/*"
 
-        self.summary_information = (f"### Quick overview\nUsing the function annotation source **'{self.function_annotation_source}'**, anvi'o "
-                                    f"aggregated {len(self.hash_to_key)} unique {self.K()}s that occurred in at least {P('layer', self.min_occurrence)} "
-                                    f"of the total {len(self.layer_names_considered)} *layers*. Here we use the term 'layer' instead of 'genomes', "
-                                    f"since what anvi'o assumes to be a genome might be a metagenome depending on the contigs database you have provided. "
-                                    f"If you know what you have, feel free to replace the term 'layer' with 'genome' in your mind.")
+        self.summary_markdown = (f"### Quick overview\nUsing the function annotation source **'{self.function_annotation_source}'**, anvi'o "
+                                 f"aggregated **{len(self.hash_to_key)} unique {self.K()}s** that occurred in **at least {self.min_occurrence}** "
+                                 f"of the total {len(self.layer_names_considered)} *layers*. Here we use the term 'layer' instead of 'genomes', "
+                                 f"since what anvi'o assumes to be a genome might be a metagenome depending on the contigs database you have provided. "
+                                 f"If you know what you have, feel free to replace the term 'layer' with 'genome' in your mind.")
 
-        self.summary_information += (f"\n### Origins of layers\nOf all layers, "
-                                     f"{P('layer', len(self.layer_names_from_internal_genomes))} originated from **internal genomes**{G(self.layer_names_from_internal_genomes)} "
-                                     f"{P('layer', len(self.layer_names_from_external_genomes))} originated from **external genomes**{G(self.layer_names_from_external_genomes)} "
-                                     f"{P('layer', len(self.layer_names_from_genomes_storage))} originated from a **genomes storage**{G(self.layer_names_from_genomes_storage)} ")
+        self.summary_markdown += (f"\n\n**Internal genomes** ({P('layer', len(self.layer_names_from_internal_genomes))}):\n\n{G(self.layer_names_from_internal_genomes)}"
+                                  f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
+                                  f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
