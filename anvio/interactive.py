@@ -781,7 +781,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # these are all going to be filled later nicely.
         self.p_meta['item_orders'] = {}
         self.p_meta['available_item_orders'] = []
-        self.p_meta['default_item_order'] = []
+        self.p_meta['default_item_order'] = 'presence_absence'
 
         # these are irrelevant to this mode, but necessary to fill in.
         self.p_meta['splits_fasta'] = None
