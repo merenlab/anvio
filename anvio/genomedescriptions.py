@@ -1069,6 +1069,9 @@ class AggregateFunctions:
 
         # these are some primary data structures this class reports
         self.hash_to_key = {}
+        self.hash_to_function_dict = {} # this is to make sure even if functions are aggregated
+                                        # using accession ids, there is a way to resolve function
+                                        # names that correspond to each item.
         self.key_hash_to_genomes_dict_frequency = {}
         self.key_hash_to_genomes_dict_presence_absence = {}
         self.accession_id_to_function_dict = {}
@@ -1151,6 +1154,8 @@ class AggregateFunctions:
         else:
             key_hash = self.key_hash_prefix + hashlib.sha224(key.encode('utf-8')).hexdigest()[0:12]
             self.hash_to_key[key] = key_hash
+            self.hash_to_function_dict[key_hash] = {self.function_annotation_source: function}
+
 
         if key_hash not in self.key_hash_to_genomes_dict_frequency:
             self.key_hash_to_genomes_dict_frequency[key_hash] = Counter({})
