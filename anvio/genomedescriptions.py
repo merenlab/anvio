@@ -1132,32 +1132,33 @@ class AggregateFunctions:
 
         if self.min_occurrence:
             num_occurrence_of_keys = [(c, sum(self.key_hash_to_genomes_dict_presence_absence[c].values())) for c in self.key_hash_to_genomes_dict_presence_absence]
-            keys_to_remove = [key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence]
+            keys_to_remove = set([key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence])
 
             # the following if block takes care of cleaning up both `self.accession_id_to_function_dict` and
             # `self.function_to_accession_ids_dict` dicts in a mindful fashion in addition to the cleanup of
             # all other dicts.
             if len(keys_to_remove):
                 for key in keys_to_remove:
-                    # the following dicts are the obvious ones:
-                    key_hash = self.hash_to_key(key)
-                    self.key_hash_to_genomes_dict_frequency.pop(key_hash)
-                    self.key_hash_to_genomes_dict_presence_absence.pop(key_hash)
-                    self.hash_to_key.pop(key_hash)
+                    self.key_hash_to_genomes_dict_frequency.pop(key)
+                    self.key_hash_to_genomes_dict_presence_absence.pop(key)
+                    self.hash_to_key.pop(key) if key in self.hash_to_key else None
 
                     # these are the trick ones since how this step should be handled will depend on
                     # what is key and what is value in the instance configuration:
                     if self.aggregate_based_on_accession:
-                        function = self.accession_id_to_function_dict[key]
-                        self.accession_id_to_function_dict.pop(key)
-                        self.function_to_accession_ids_dict[function].pop(key)
-                        if not len(self.function_to_accession_ids_dict[function]):
-                            self.function_to_accession_ids_dict.pop(function)
-                    else:
-                        accessions = self.function_to_accession_ids_dict[key]
-                        self.function_to_accession_ids_dict.pop(key)
-                        for accession in accessions:
+                        if key in self.hash_to_key:
+                            accession = self.hash_to_key[key]
+                            function = self.accession_id_to_function_dict[accession]
                             self.accession_id_to_function_dict.pop(accession)
+                            self.function_to_accession_ids_dict[function].pop(accession)
+                            if not len(self.function_to_accession_ids_dict[function]):
+                                self.function_to_accession_ids_dict.pop(function)
+                    else:
+                        if key in self.function_to_accession_ids_dict:
+                            accessions = self.function_to_accession_ids_dict[key]
+                            self.function_to_accession_ids_dict.pop(key)
+                            for accession in accessions:
+                                self.accession_id_to_function_dict.pop(accession)
 
 
                 self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
