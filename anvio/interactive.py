@@ -856,6 +856,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'blank': True,
                                'merged': True,
                                'db_variant': 'functions-display',
+                               'description': facc.summary_information,
                                'function_annotation_source': facc.function_annotation_source,
                                'min_occurrence_of_function': facc.min_occurrence,
                                'aggregate_based_on_accession': facc.aggregate_based_on_accession,
