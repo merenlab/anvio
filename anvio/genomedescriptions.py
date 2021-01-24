@@ -1068,7 +1068,8 @@ class AggregateFunctions:
         self.aggregate_using_best_hit = A('aggregate_using_best_hit') or False
 
         # these are some primary data structures this class reports
-        self.hash_to_key = {}
+        self.hash_to_key = {} # remember, 'key' here can be accession ids, or functio names
+                              # depending on `self.aggregate_based_on_accession`
         self.hash_to_function_dict = {} # this is to make sure even if functions are aggregated
                                         # using accession ids, there is a way to resolve function
                                         # names that correspond to each item.
