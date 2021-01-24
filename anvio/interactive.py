@@ -856,7 +856,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'blank': True,
                                'merged': True,
                                'db_variant': 'functions-display',
-                               'description': facc.summary_information,
+                               'description': facc.summary_markdown,
                                'function_annotation_source': facc.function_annotation_source,
                                'min_occurrence_of_function': facc.min_occurrence,
                                'aggregate_based_on_accession': facc.aggregate_based_on_accession,
@@ -869,8 +869,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # now we start working on our views and item orders.
         for view in self.views:
             # first, generate an items order for a given view:
-            items_order= clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-            item_order_name = ':'.join([f"{view[:-5]}", self.distance, self.linkage])
+            items_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            item_order_name = f"{view[:-5]}"
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
 
