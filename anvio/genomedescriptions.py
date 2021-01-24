@@ -1079,6 +1079,10 @@ class AggregateFunctions:
         self.function_to_accession_ids_dict = {}
         self.layer_names_considered = set({})
 
+        self.layer_names_from_internal_genomes = []
+        self.layer_names_from_external_genomes = []
+        self.layer_names_from_genomes_storage = []
+
         self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
         self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
         self.V = lambda: 'function' if self.aggregate_based_on_accession else 'accession ID'
@@ -1197,6 +1201,9 @@ class AggregateFunctions:
         g.load_genomes_descriptions()
         g.init_functions()
 
+        self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
+        self.layer_names_from_external_genomes = copy.deepcopy(g.external_genome_names)
+
         for genome_name in g.genomes:
             self.check_layer_names([genome_name])
 
@@ -1218,6 +1225,8 @@ class AggregateFunctions:
 
         # make sure we are not overwriting existing genome names in int or ext genomes:
         genome_names_in_storage_db = list(g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True))
+
+        self.layer_names_from_genomes_storage = copy.deepcopy(genome_names_in_storage_db)
 
         self.check_layer_names(genome_names_in_storage_db)
 
