@@ -331,6 +331,12 @@
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
+                                        <Label class="col-md-4 settings-label" for="show_shades_for_bins" data-help="show-shades">Show Shades: </Label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox" id="show_shades_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed')">;
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="begins_from_branch" data-help="begins-from-branch">Begins from branch:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="begins_from_branch" name="checkbox" value="value" onchange="emit('bin-settings-changed')" style="float: left;">
