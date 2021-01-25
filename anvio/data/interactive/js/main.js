@@ -2509,8 +2509,8 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
-    if (state.hasOwnProperty('show-shades-for-bins')) {
-        $('#show_shades_for_bins').prop('checked', state['show-shades-for-bins']).trigger('change'); // TODO remember this is here ;)
+    if (state.hasOwnProperty('show-shade-for-bins')) {
+        $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); // TODO remember this is here ;)
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);

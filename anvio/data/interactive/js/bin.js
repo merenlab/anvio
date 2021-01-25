@@ -856,6 +856,7 @@ Bins.prototype.RedrawBins = function() {
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
+    var show_shade = $('#show_shade_for_bins')[0].checked 
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
