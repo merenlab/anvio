@@ -765,7 +765,8 @@ class AnticodonStemThreeprimeStrand(Sequence):
 
 
 class VLoop(Loop):
-    """The V loop of tRNA: no stem/loop structure and base pairing is considered."""
+    """The V arm of tRNA: no stem/loop structure and base pairing is considered, so call it a
+    loop."""
 
     name = 'V loop'
     canonical_positions = ((44, 45, 46, 47, 48), )
@@ -1740,9 +1741,9 @@ class Profiler(object):
                 if input_lengths != tuple(map(len, threeprime_stem_seq.string_components[::-1])):
                     continue
 
+            if len(unprofiled_seq) < summed_input_length:
             # Determine whether there is enough information in the remaining 5' end of the input sequence
             # to assign it to a feature despite the incompleteness of the feature sequence.
-            if len(unprofiled_seq) < summed_input_length:
 
                 # Features that lack conserved positions
                 # or that do not form base pairs with a previously profiled stem sequence
@@ -1843,7 +1844,7 @@ class Profiler(object):
                         if stem.meets_pair_thresh:
                             if make_arm:
                                 arm = arm_class(stem, loop)
-                                # The are is valid if it doesn't have too many unconserved bases.
+                                # The arm is valid if it doesn't have too many unconserved bases.
                                 if arm.meets_conserved_thresh:
                                     incremental_profile_candidates.append(
                                         (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
