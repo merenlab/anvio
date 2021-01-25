@@ -27,7 +27,7 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 - %(anvi-display-contigs-stats)s shows you various stats about the contigs within a %(contigs-db)s, such as their hmm-hits, lengths, N and L statistics, and so on.
 
-- %(anvi-display-functions)s lets you quickly browse the functinal pool for a given set of genomes or metagenomes.
+- %(anvi-display-functions)s lets you quickly browse the functional pool for a given set of genomes or metagenomes.
 
 - %(anvi-display-metabolism)s is still under development but will allow you to interactively view metabolism estimation data using %(anvi-estimate-metabolism)s under the hood.
 
