@@ -23,7 +23,7 @@ Please note that a %(profile-db)s will be automatically generated for you. Once 
 
 ### Aggregating functions using accession IDs
 
-Once it is run, this program essentially aggregate all function names that occur in one or more genomes in the set of genomes found in input sources. The user can ask the program to use accession IDs to aggregate functions rather than function names:
+Once it is run, this program essentially aggregates all function names that occur in one or more genomes in the set of genomes found in input sources. The user can ask the program to use accession IDs to aggregate functions rather than function names:
 
 {{ codestart }}
 anvi-display-functions -e %(external-genomes)s \
