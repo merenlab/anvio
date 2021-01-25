@@ -17,11 +17,22 @@ anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
  anvi-run-workflow -w ribo_phylo -c config.json -A --cores 15
 
 # checkout tree
+## iq-tree
 anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
                  -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
                  -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
                  -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa \
                  --manual
+
+## fasttree
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.nwk \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa \
+                 --manual
+
+## Check out where all your reads went
+cat RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS/Ribosomal_L16/Ribosomal_L16_stats.tsv
 
 # Clusterize it
 clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
@@ -84,3 +95,8 @@ anvi-interactive --manual \
                  -p fake-profile.db \
                  -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.tree \
                  -A profile_SCGs/07_SUMMARY/Ribosomal_L16/Ribosomal_L16_all_misc_data_final_coverage.tsv
+
+
+
+NOTES
+- https://www.nature.com/articles/s41591-018-0202-8?WT.feed_name=subjects_microbiome
