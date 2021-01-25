@@ -1439,6 +1439,7 @@ function serializeSettings(use_layer_names) {
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
+    state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); // TODO: remember this is here ;)
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
@@ -2507,6 +2508,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+    }
+    if (state.hasOwnProperty('show-shades-for-bins')) {
+        $('#show_shades_for_bins').prop('checked', state['show-shades-for-bins']).trigger('change'); // TODO remember this is here ;)
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
