@@ -1,6 +1,6 @@
 This is an artifact that describes **annotation of genes in your %(contigs-db)s with functions**.
 
-Broadly used across anvi'o, functions are one of the most essential piece of information stored in any %(contigs-db)s. To see what annotation sources for functions are available in a given %(contigs-db)s or %(genomes-storage-db)s, you can use the program %(anvi-db-info)s.
+Broadly used across anvi'o, functions are one of the most essential pieces of information stored in any %(contigs-db)s. To see what annotation sources for functions are available in a given %(contigs-db)s or %(genomes-storage-db)s, you can use the program %(anvi-db-info)s.
 
 To populate a given %(contigs-db)s with functions, anvi'o includes multiple programs that can annotate genes using various sources of annotation. These programs include,
 
