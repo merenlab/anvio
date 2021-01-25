@@ -1440,6 +1440,7 @@ function serializeSettings(use_layer_names) {
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); // TODO: remember this is here ;)
+    state['shade-fill-opacity'] = $('#shade_fill_opacity').val(); // TODO same ^
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
@@ -2511,6 +2512,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('show-shade-for-bins')) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); // TODO remember this is here ;)
+    }
+    if (state.hasOwnProperty('shade-fill-opacity')){
+        $('#shade_fill_opacity').val(state['shade-fill-opacity']) // TODO ^
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);

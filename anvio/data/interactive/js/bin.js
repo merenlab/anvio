@@ -857,6 +857,7 @@ Bins.prototype.RedrawBins = function() {
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var show_shade = $('#show_shade_for_bins')[0].checked 
+    var shade_fill_opacity = $('#shade_fill_opacity').val() // TODO remember i put this here ;)
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
@@ -943,7 +944,7 @@ Bins.prototype.RedrawBins = function() {
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
-                (show_grid) ? 0 : 0.1,
+                (show_grid) ? 0 : shade_fill_opacity, // TODO this is opacity, change to dynamic variable 
                 false);
 
             if (show_grid && !show_shade) {
@@ -956,7 +957,7 @@ Bins.prototype.RedrawBins = function() {
                 pie.setAttribute('stroke-opacity', '1');
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
-                pie.setAttribute('fill-opacity', .1)
+                pie.setAttribute('fill-opacity', shade_fill_opacity)
             } else if(!show_shade && !show_grid){
                 pie.setAttribute('vector-effect', 'non-scaling-stroke');
                 pie.setAttribute('stroke-opacity', '0');

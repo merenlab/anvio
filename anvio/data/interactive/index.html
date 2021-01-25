@@ -331,9 +331,15 @@
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
-                                        <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shades: </Label>
+                                        <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shade: </Label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed')" checked>;
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin">
+                                        <Label class="col-md-4 settings-label" for="shade-fill-opacity" data-help="shade-fill-opacity">Shade opacity: </Label>
+                                        <div class="col-md-8">
+                                            <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="shade_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')" checked>;
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
