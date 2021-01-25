@@ -283,7 +283,7 @@ rule cat_misc_data_to_one_file:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
-    input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{{ribosomal_protein_name}}_estimate_scg_taxonomy_results_ed.tsv"), sample_name = M.names_list, ribosomal_protein_name = M.Ribosomal_protein_list)
+    input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{{ribosomal_protein_name}}_estimate_scg_taxonomy_results_ed.tsv"), sample_name = M.names_list)
     output: os.path.join(dirs_dict['MISC_DATA'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_misc_data.tsv"),
     threads: M.T('cat_misc_data_to_one_file')
     shell:
@@ -418,7 +418,7 @@ rule remove_sequences_with_X_percent_gaps:
 # * calculate the outlier threshold 1.5*IQR
 # * remove sequences greater than that threshold
 
-# STEPS FOR FILTERING OUT SEQUENCING BASED ON PERCENT GAPS 
+# STEPS FOR FILTERING OUT SEQUENCING BASED ON PERCENT GAPS
 # KEEPPPPP MAY WANT TO INCLUDE LATER
 
 # rule get_gap_count_distribution:
@@ -511,7 +511,7 @@ rule count_num_sequences_filtered:
         # How many seqs are in the NR set?
         step3=$(grep -c '>' {input.step3})
         echo -e "remove_sequences_with_X_percent_gaps\t$step3\t{input.step3}\n" >> {output}
-        
+
         # ACTUALLY adding column names here
         echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
         """

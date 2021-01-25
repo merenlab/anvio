@@ -6,11 +6,10 @@ anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config.json
 
 # Test workflow
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --dry-run
+
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json
 
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json -A --until count_num_sequences_filtered
-
-
 
 anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
 
