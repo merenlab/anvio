@@ -1065,7 +1065,7 @@ class AggregateFunctions:
         self.function_annotation_source = A('annotation_source')
         self.min_occurrence = A('min_occurrence') or 1
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
-        self.aggregate_using_best_hit = A('aggregate_using_best_hit') or False
+        self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1211,14 +1211,14 @@ class AggregateFunctions:
                               f"combination of `anvi-export-functions` and `anvi-import-functions` (which "
                               f"is totally doable and you certainly can do it).")
 
-        if self.aggregate_using_best_hit:
+        if self.aggregate_using_all_hits:
+            pass
+        else:
             key = key.split('!!!')[0]
             value = value.split('!!!')[0]
 
             # we wish to keep track of actual accessions and functions, too:
             accession, function = (key, value) if self.aggregate_based_on_accession else (value, key)
-        else:
-            pass
 
         # from now on we will only work with hashes of our keys, whether the keys here are function names or
         # accession ids as defined by self.aggregate_based_on_accession boolean. this is a necessary

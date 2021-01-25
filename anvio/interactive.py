@@ -833,7 +833,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Function annotation source', facc.function_annotation_source)
         self.run.info('Num unique keys', num_facc_keys)
         self.run.info('Keys correspond to', f"'{facc.K()}s' rather than '{facc.V()}s'")
-        self.run.info('Only the best hits are considered', "True" if facc.aggregate_using_best_hit else "False", nl_after=1)
+        self.run.info('Only the best hits are considered', "False" if facc.aggregate_using_all_hits else "True", nl_after=1)
 
         # now we will work on views and clustering our data to get newick trees.
         self.p_meta['default_view'] = 'presence_absence_view'
@@ -860,7 +860,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'function_annotation_source': facc.function_annotation_source,
                                'min_occurrence_of_function': facc.min_occurrence,
                                'aggregate_based_on_accession': facc.aggregate_based_on_accession,
-                               'aggregate_using_best_hit': facc.aggregate_using_best_hit,
+                               'aggregate_using_all_hits': facc.aggregate_using_all_hits,
                                'contigs_db_hash': None,
                                'items_ordered': False,
                                'samples': ', '.join(self.p_meta['samples']),
@@ -900,7 +900,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
         # here we will store a layer for function names in the additional data tables of the profile databse and
-        # read it back (so it is both in there for future `anvi-interactive` ops, and in here in the interactive 
+        # read it back (so it is both in there for future `anvi-interactive` ops, and in here in the interactive
         # class to visualize the information).
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
         TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)

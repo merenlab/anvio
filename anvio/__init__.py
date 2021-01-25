@@ -954,19 +954,20 @@ D = {
                      "functions rather than actual functions? We can't. But we have this flag here so you can "
                      "instruct anvi'o to listen to you and not to us."}
                 ),
-    'aggregate-using-best-hit': (
-            ['--aggregate-using-best-hit'],
+    'aggregate-using-all-hits': (
+            ['--aggregate-using-all-hits'],
             {'default': False,
              'action': 'store_true',
-             'help': "In some cases a gene may be annotated with multiple functions. This is a decision often "
-                     "made at the function annotation tool level. For instance, when you run `anvi-run-ncbi-cogs`, "
+             'help': "This program will aggregate functions based on best hits only, and this flag will change that "
+                     "behavior. In some cases a gene may be annotated with multiple functions. This is a decision often "
+                     "made at the level of function annotation tool. For instance, when you run `anvi-run-ncbi-cogs`, "
                      "you may end up having two COG annotations for a single gene because the gene hit both of them "
-                     "with a singificance score that is above the default cutoff. While this can be useful when one "
-                     "visualizes functions or works with an `anvi-summarize` output where things should be most "
+                     "with significance scores that were above the default noise cutoff. While this can be useful when "
+                     "one visualizes functions or works with an `anvi-summarize` output where things should be most "
                      "comprehensive, having some genes annotated with multiple functions and others with one function "
                      "may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in "
-                     "different bins). By default, when working on functional enrichment analyses or displaying "
-                     "functions, anvi'o will use the best hit for any gene that has multiple hits. But you can turn "
+                     "different bins). Thus, when working on functional enrichment analyses or displaying functions "
+                     "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
                      "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
                 ),
 
