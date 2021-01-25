@@ -225,7 +225,12 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
             #########################
             # The FINAL trees :)
-            tail_path = "%s.iqtree" % (ribosomal_protein_name)
+            # For iq-tree
+            # tail_path = "%s.iqtree" % (ribosomal_protein_name)
+            # target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
+            # target_files.append(target_file)
+            # for fasttree
+            tail_path = "%s.nwk" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
             #########################
