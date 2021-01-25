@@ -770,7 +770,7 @@ class VLoop(Loop):
 
     name = 'V loop'
     canonical_positions = ((44, 45, 46, 47, 48), )
-    allowed_input_lengths = tuple(itertools.product(range(4, 24)))
+    allowed_input_lengths = tuple(itertools.product(range(4, 6))) + tuple(itertools.product(range(12, 24)))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
     conserved_nts = ({}, )
     num_allowed_unconserved = -1
@@ -1742,8 +1742,8 @@ class Profiler(object):
                     continue
 
             if len(unprofiled_seq) < summed_input_length:
-            # Determine whether there is enough information in the remaining 5' end of the input sequence
-            # to assign it to a feature despite the incompleteness of the feature sequence.
+                # Determine whether there is enough information in the remaining 5' end of the input sequence
+                # to assign it to a feature despite the incompleteness of the feature sequence.
 
                 # Features that lack conserved positions
                 # or that do not form base pairs with a previously profiled stem sequence
