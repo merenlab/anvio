@@ -957,6 +957,12 @@ Bins.prototype.RedrawBins = function() {
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
                 pie.setAttribute('fill-opacity', .1)
+            } else if(!show_shade && !show_grid){
+                pie.setAttribute('vector-effect', 'non-scaling-stroke');
+                pie.setAttribute('stroke-opacity', '0');
+                pie.setAttribute('stroke-width', 0);
+                pie.setAttribute('stroke', grid_color);
+                pie.setAttribute('fill-opacity', 0)
             }
 
 
