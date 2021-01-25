@@ -770,7 +770,7 @@ class VLoop(Loop):
 
     name = 'V loop'
     canonical_positions = ((44, 45, 46, 47, 48), )
-    allowed_input_lengths = tuple(itertools.product(range(4, 6))) + tuple(itertools.product(range(12, 24)))
+    allowed_input_lengths = tuple(itertools.product(range(4, 6))) + tuple(itertools.product(range(9, 24)))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
     conserved_nts = ({}, )
     num_allowed_unconserved = -1
