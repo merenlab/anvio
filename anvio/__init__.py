@@ -946,7 +946,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
-                     "or to display them, it uses by default teh 'function text' as keys. This is because "
+                     "or to display them, it uses by default the 'function text' as keys. This is because "
                      "multiple accession IDs in various databases may correspond to the same function, and "
                      "when you are doing a functional enrichment analysis, you most likely would like to "
                      "avoid over-splitting of functions due to this. But then how can we know if you are "
