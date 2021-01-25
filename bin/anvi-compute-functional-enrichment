@@ -23,7 +23,7 @@ __email__ = "iveseli@uchicago.edu"
 __resources__ = [("A description of the enrichment script run by this program can be found in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w"),
                   ("An example of pangenome functional enrichment in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
 __tags__ = ["pangenomics", "functions", "metabolism"]
-__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db', 'external-genomes', 'internal-genomes']
+__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db', 'external-genomes', 'internal-genomes', 'functions']
 __provides__ = ['functional-enrichment-txt',]
 __description__ = ("This is a driver program for `anvi-script-enrichment-stats`, a script that computes enrichment scores "
                    "and group associations for annotated entities (ie, functions, KEGG Modules) across groups of genomes or "
