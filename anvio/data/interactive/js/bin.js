@@ -946,11 +946,17 @@ Bins.prototype.RedrawBins = function() {
                 (show_grid) ? 0 : 0.1,
                 false);
 
-            if (show_grid) {
+            if (show_grid && !show_shade) {
                 pie.setAttribute('vector-effect', 'non-scaling-stroke');
                 pie.setAttribute('stroke-opacity', '1');
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
+            } else if(show_grid && show_shade){
+                pie.setAttribute('vector-effect', 'non-scaling-stroke');
+                pie.setAttribute('stroke-opacity', '1');
+                pie.setAttribute('stroke-width', grid_width);
+                pie.setAttribute('stroke', grid_color);
+                pie.setAttribute('fill-opacity', .1)
             }
 
 
