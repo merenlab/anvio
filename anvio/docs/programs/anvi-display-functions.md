@@ -42,7 +42,7 @@ In some cases a gene may be annotated with multiple functions. This is a decisio
 anvi-display-functions -e %(external-genomes)s \
                        --annotation-source KOfam \
                        --profile-db KOFAM-PROFILE.db \
-                       --aggregate-using-best-hit
+                       --aggregate-using-all-hits
 {{ codestop }}
 
 ---
