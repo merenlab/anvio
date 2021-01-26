@@ -811,7 +811,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # initialize all functions from wherever.
         facc = AggregateFunctions(self.args, r=self.run, p=self.progress)
 
-        num_facc_keys = len(facc.key_hash_to_genomes_dict_frequency)
+        num_facc_keys = len(facc.functions_across_layers_frequency)
         num_genomes = len(facc.layer_names_considered)
         if num_facc_keys < 25:
             self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found only {num_facc_keys} unique "
@@ -845,9 +845,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # setup the views dict
         self.views = {'frequency_view'       : {'header': list(facc.layer_names_considered),
-                                                'dict': facc.key_hash_to_genomes_dict_frequency},
+                                                'dict': facc.functions_across_layers_frequency},
                       'presence_absence_view': {'header': list(facc.layer_names_considered),
-                                                'dict': facc.key_hash_to_genomes_dict_presence_absence}}
+                                                'dict': facc.functions_across_layers_presence_absence}}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):

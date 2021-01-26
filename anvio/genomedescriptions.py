@@ -1088,8 +1088,8 @@ class AggregateFunctions:
         # the momory fingerprint of these dicts are always going to be
         # nothing and will save additional steps in places where an
         # instance is used.
-        self.key_hash_to_genomes_dict_frequency = {}
-        self.key_hash_to_genomes_dict_presence_absence = {}
+        self.functions_across_layers_frequency = {}
+        self.functions_across_layers_presence_absence = {}
 
         # two additional dicts to alwys be able to convert accession
         # ids to function names and vice versa. remember, an accession
@@ -1131,7 +1131,7 @@ class AggregateFunctions:
         self._init_functions_from_genomes_storage()
 
         if self.min_occurrence:
-            num_occurrence_of_keys = [(c, sum(self.key_hash_to_genomes_dict_presence_absence[c].values())) for c in self.key_hash_to_genomes_dict_presence_absence]
+            num_occurrence_of_keys = [(c, sum(self.functions_across_layers_presence_absence[c].values())) for c in self.functions_across_layers_presence_absence]
             keys_to_remove = set([key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence])
 
             # the following if block takes care of cleaning up both `self.accession_id_to_function_dict` and
@@ -1139,8 +1139,8 @@ class AggregateFunctions:
             # all other dicts.
             if len(keys_to_remove):
                 for key in keys_to_remove:
-                    self.key_hash_to_genomes_dict_frequency.pop(key)
-                    self.key_hash_to_genomes_dict_presence_absence.pop(key)
+                    self.functions_across_layers_frequency.pop(key)
+                    self.functions_across_layers_presence_absence.pop(key)
                     self.hash_to_key.pop(key) if key in self.hash_to_key else None
 
                     # these are the trick ones since how this step should be handled will depend on
@@ -1235,12 +1235,12 @@ class AggregateFunctions:
             self.hash_to_function_dict[key_hash] = {self.function_annotation_source: function}
 
 
-        if key_hash not in self.key_hash_to_genomes_dict_frequency:
-            self.key_hash_to_genomes_dict_frequency[key_hash] = Counter({})
-            self.key_hash_to_genomes_dict_presence_absence[key_hash] = Counter({})
+        if key_hash not in self.functions_across_layers_frequency:
+            self.functions_across_layers_frequency[key_hash] = Counter({})
+            self.functions_across_layers_presence_absence[key_hash] = Counter({})
 
-        self.key_hash_to_genomes_dict_frequency[key_hash][genome_name] += 1
-        self.key_hash_to_genomes_dict_presence_absence[key_hash][genome_name] = 1
+        self.functions_across_layers_frequency[key_hash][genome_name] += 1
+        self.functions_across_layers_presence_absence[key_hash][genome_name] = 1
 
         if accession not in self.accession_id_to_function_dict:
             self.accession_id_to_function_dict[accession] = {self.function_annotation_source: function}
