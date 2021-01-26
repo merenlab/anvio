@@ -1069,7 +1069,7 @@ class AggregateFunctions:
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
-        
+
         # remember, 'key' here can be accession ids, or functio names
         # depending on `self.aggregate_based_on_accession`
         self.hash_to_key = {}
