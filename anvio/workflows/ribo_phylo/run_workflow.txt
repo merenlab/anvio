@@ -34,10 +34,17 @@ anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_pro
 cat RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS/Ribosomal_L16/Ribosomal_L16_stats.tsv
 
 ## Quickly check the distribution of SCG read lengths
+### All SCGs
 samtools faidx RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna
 cut -f2 RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
 # OR
 awk '!/^>/{print length}' file.fa | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+
+### input alignment
+samtools faidx RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa
+cut -f2 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+
+
 
 # Clusterize it
 clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
@@ -105,3 +112,23 @@ anvi-interactive --manual \
 
 NOTES
 - https://www.nature.com/articles/s41591-018-0202-8?WT.feed_name=subjects_microbiome
+Looming questions that I should keep in mind when looking at the output of this workflow:
+- Do I consistently ge tthe sam enumber of seuqneces that are metagenome or genome derived?
+- Do the hav_genomic_SCGF_in_cluster categorical variable consistent if the workflow is run twice on the same dataset?
+  + NO because mmseqs more than likely has some stochasisity to when it picks representatives but I need to confirm this
+- 
+
+
+
+Examine potential sequence outliers and their progression through the MSA filtering process:
+```
+seq_header="PSW_125_05M_000000000121"
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed.faa
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa
+```
+
+For when the time comes to unleash the beast, the pachiadaki SAGs are here:
+```
+ls /project2/meren/PEOPLE/ekiefl/JORTATAP/V01/PACHIADAKI_SAGS/02_CONTIGS/*-contigs.db
+```

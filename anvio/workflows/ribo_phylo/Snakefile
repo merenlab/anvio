@@ -171,8 +171,6 @@ rule join_renamed_fastas_with_taxonomy_data_text:
     #     "scripts/rename_fasta_headers.py"
     run:
         if wildcards.sample_name in M.external_genomes_names_list:
-            print(wildcards.sample_name)
-            print('externnnnnal')
 
             from Bio import SeqIO
 
@@ -212,9 +210,6 @@ rule join_renamed_fastas_with_taxonomy_data_text:
                        header=False)
 
         if wildcards.sample_name in M.metagenomes_name_list:
-            print(wildcards.sample_name)
-            print('metaaaaaaaaaaaaaaaaaaaaaaa')
-
 
             from Bio import SeqIO
 
@@ -478,7 +473,7 @@ rule trim_alignment:
                 {params.additional_params} 2> {log}'
 
 rule remove_sequences_with_X_percent_gaps:
-    """Removing sequences that have > 50% gaps"""
+    """Removing sequences that have > X% gaps"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
