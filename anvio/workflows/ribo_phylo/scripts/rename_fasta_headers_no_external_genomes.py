@@ -16,8 +16,6 @@ taxonomy = pd.read_csv(snakemake.input.taxonomy, \
                   sep="\t", \
                   index_col=None)
 
-# print(reformat_report.columns)
-# print(taxonomy.columns)
 # Clean
 #------
 taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})

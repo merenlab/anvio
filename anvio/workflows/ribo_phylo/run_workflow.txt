@@ -27,11 +27,17 @@ anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_pro
 anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
                  -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.nwk \
                  -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
-                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa \
                  --manual
 
 ## Check out where all your reads went
 cat RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS/Ribosomal_L16/Ribosomal_L16_stats.tsv
+
+## Quickly check the distribution of SCG read lengths
+samtools faidx RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna
+cut -f2 RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+# OR
+awk '!/^>/{print length}' file.fa | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
 
 # Clusterize it
 clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"

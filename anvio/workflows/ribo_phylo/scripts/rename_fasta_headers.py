@@ -16,6 +16,7 @@ taxonomy = pd.read_csv(snakemake.input.taxonomy, \
                   sep="\t", \
                   index_col=None)
 
+print(snakemake.params.external_genomes)
 # Clean
 #------
 taxonomy = taxonomy.rename(columns = {'bin_name': 'sequence_name'})

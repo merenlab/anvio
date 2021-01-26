@@ -154,7 +154,6 @@ rule simplify_names_from_scg_hits_aa:
                               --report-file {output.report_file} \
                               -o {output.fasta} >> {log} 2>&1"
 
-
 rule join_renamed_fastas_with_taxonomy_data_text:
     """Add simplified fasta headers to the misc data file"""
 
@@ -165,9 +164,94 @@ rule join_renamed_fastas_with_taxonomy_data_text:
         report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt"),
     output:
         misc_data_final = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results_ed.tsv")
+    params:
+        external_genomes = M.external_genomes
     threads: M.T('join_renamed_fasta_with_misc_data')
-    script:
-        "scripts/rename_fasta_headers_no_external_genomes.py"
+    # script:
+    #     "scripts/rename_fasta_headers.py"
+    run:
+        if wildcards.sample_name in M.external_genomes_names_list:
+            print(wildcards.sample_name)
+            print('externnnnnal')
+
+            from Bio import SeqIO
+
+            import pandas as pd
+            import numpy as np
+            import glob
+            import os.path
+
+            # Import fasta header index
+            #----------------------------
+            reformat_report = pd.read_csv(input.report_file, \
+                              sep="\t", \
+                              index_col=None,
+                              names=['new_header', 'old_header'])
+
+            taxonomy = pd.read_csv(input.taxonomy, \
+                              sep="\t", \
+                              index_col=None)
+
+            # Clean
+            #------
+            taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+
+            reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+            reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+            reformat_report['sample'] = wildcards.sample_name
+            reformat_report['contig_db_type'] = 'genome'
+
+            misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+
+            # Export
+            #------------------------------------------------------------------
+            misc_new_headers_df.to_csv(output.misc_data_final, \
+                       sep="\t", \
+                       index=None, \
+                       na_rep="NA", \
+                       header=False)
+
+        if wildcards.sample_name in M.metagenomes_name_list:
+            print(wildcards.sample_name)
+            print('metaaaaaaaaaaaaaaaaaaaaaaa')
+
+
+            from Bio import SeqIO
+
+            import pandas as pd
+            import numpy as np
+            import glob
+            import os.path
+
+            # Import fasta header index
+            #----------------------------
+            reformat_report = pd.read_csv(input.report_file, \
+                              sep="\t", \
+                              index_col=None,
+                              names=['new_header', 'old_header'])
+
+            taxonomy = pd.read_csv(input.taxonomy, \
+                              sep="\t", \
+                              index_col=None)
+
+            # Clean
+            #------
+            taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+
+            reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+            reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+            reformat_report['sample'] = wildcards.sample_name
+            reformat_report['contig_db_type'] = 'metagenome'
+
+            misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+
+            # Export
+            #------------------------------------------------------------------
+            misc_new_headers_df.to_csv(output.misc_data_final, \
+                       sep="\t", \
+                       index=None, \
+                       na_rep="NA", \
+                       header=False)
 
 
 
