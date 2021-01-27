@@ -9,11 +9,11 @@ import os.path
 #----------------------------
 misc_data = pd.read_csv(snakemake.input.misc_data, \
                   sep="\t", \
-                  index_col=None)
+                  index_col=False)
 
 cluster_rep_index = pd.read_csv(snakemake.params.cluster_rep_index, \
                   sep="\t", \
-                  index_col=None, \
+                  index_col=False, \
                   names=["representative", "cluster_members"])
 
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})

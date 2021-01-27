@@ -9,13 +9,14 @@ import os.path
 #----------------------------
 misc_data = pd.read_csv(snakemake.input.misc_data, \
                   sep="\t", \
-                  index_col=None)
+                  index_col=False)
 
 cluster_rep_index = pd.read_csv(snakemake.params.cluster_rep_index, \
                   sep="\t", \
-                  index_col=None, \
+                  index_col=False, \
                   names=["representative", "cluster_members"])
 
+print(misc_data)
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
 for seq_record in SeqIO.parse(snakemake.input.final_list_of_sequences_for_tree_calculation, "fasta"):
