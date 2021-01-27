@@ -296,7 +296,7 @@ rule join_renamed_fastas_with_taxonomy_data_text:
                 reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
                 reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
                 reformat_report['sample'] = wildcards.sample_name
-                reformat_report['contig_db_type'] = 'genome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
+                reformat_report['contig_db_type'] = 'metagenome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
 
                 misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species']]
 
