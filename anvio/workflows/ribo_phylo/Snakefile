@@ -465,7 +465,8 @@ rule align_muscle:
 	threads: M.T('align_muscle')
 	shell:
 		"muscle -in {input} \
-				-out {output} 2> {log}"
+				-out {output} \
+                -maxiters 2 2> {log}"
 
 
 # FIXME: odseq in R will only accept a MSA object from the package MSA
