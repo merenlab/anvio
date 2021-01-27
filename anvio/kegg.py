@@ -2390,7 +2390,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False):
+    def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
+                            return_subset_for_matrix_format=False):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -2401,13 +2402,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         ==========
         skip_storing_data : boolean
             set to True if we don't want the metabolism data dictionary to be stored as a file (useful when using this function
-            for on-the-fly visualization or for calling estimation from a multi estimator class)
+            for on-the-fly visualization or for generating matrix format output from a multi estimator class)
         output_files_dictionary : dictionary of mode, AppendableFile object pairs
             contains an initialized AppendableFile object to append output to for each output mode
             (used in multi-mode to direct all output from several estimators to the same files)
         return_superdicts : boolean
             set to True if you want the kegg_metabolism_superdict and kofam_hits_superdict to be returned.
             we don't return these by default to save on memory
+        return_subset_for_matrix_format : boolean
+            set to True if you want subsets of the superdicts to be returned: one subdict for module completeness scores, one
+            subdict for module presence/absence, and one subdict for KO hits. Used for matrix format output.
 
         RETURNS
         =======
@@ -2461,7 +2465,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # so we needn't keep it in memory. We don't return it, unless the programmer wants us to.
         if return_superdicts:
             return kegg_metabolism_superdict, kofam_hits_superdict
-
+        # on the other hand, if we are generating matrix output, we need a limited subset of this data downstream
+        # so in this case, we can extract and return smaller dictionaries for module completeness, module presence/absence,
+        # and KO hits.
+        elif return_subset_for_matrix_format:
+            return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict)
+        # otherwise we return nothing at all
         return
 
 
