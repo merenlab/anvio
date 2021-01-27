@@ -2395,7 +2395,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None):
+    def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -2410,13 +2410,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         output_files_dictionary : dictionary of mode, AppendableFile object pairs
             contains an initialized AppendableFile object to append output to for each output mode
             (used in multi-mode to direct all output from several estimators to the same files)
+        return_superdicts : boolean
+            set to True if you want the kegg_metabolism_superdict and kofam_hits_superdict to be returned.
+            we don't return these by default to save on memory
 
         RETURNS
         =======
         kegg_metabolism_superdict : dictionary of dictionaries of dictionaries
             a complex data structure containing the metabolism estimation data for each genome/bin in the contigs DB
+            (only returned if return_superdicts is True)
         kofam_hits_superdict : dictionary of dictionaries of dictionaries
             a complex data structure containing the KOfam hits information for each genome/bin in the contigs DB
+            (only returned if return_superdicts is True)
         """
 
         kegg_metabolism_superdict = {}
@@ -2457,7 +2462,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
 
-        return kegg_metabolism_superdict, kofam_hits_superdict
+        # at this point, if we are generating long-format output, the data has already been appended to files
+        # so we needn't keep it in memory. We don't return it, unless the programmer wants us to.
+        if return_superdicts:
+            return kegg_metabolism_superdict, kofam_hits_superdict
+
+        return
 
 
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
@@ -2880,7 +2890,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # add keys to this list to include the data in the visualization dictionary
         module_data_keys_for_visualization = ['percent_complete']
 
-        metabolism_dict, ko_hit_dict = self.estimate_metabolism(skip_storing_data=True)
+        metabolism_dict, ko_hit_dict = self.estimate_metabolism(skip_storing_data=True, return_superdicts=True)
         data_for_visualization = {}
 
         for bin, mod_dict in metabolism_dict.items():
