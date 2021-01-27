@@ -14,13 +14,11 @@ gene_calls <- read_tsv("profile_SCGs/07_SUMMARY/Ribosomal_l16/bin_by_bin/EVERYTH
 # Make index of names
 index <- mapping_data %>% left_join(gene_calls) %>% left_join(reformat_file) %>% select(gene_callers_id, contig, name)
 
+
 # Make final table
-final <- mapping_data %>% 
-          left_join(index) %>%
-          left_join(misc_data %>% rename(name = new_header)) %>%
-          select(-gene_callers_id, -contig) %>%
-          select(name, sample, contig_db_type, t_domain, t_phylum,t_order    ,    t_family    ,      t_genus ,   t_species , has_genomic_SCG_in_cluster , ERR771092)
-write_tsv(final, "RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final_coverage.tsv")
-
-
-
+misc_data %>%
+  rename(name = new_header) %>%
+  left_join(index) %>%
+  left_join(mapping_data) %>%
+  select(-gene_callers_id, -contig) %>%
+  write_tsv( "RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final_coverage.tsv")

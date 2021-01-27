@@ -45,7 +45,6 @@ samtools faidx RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_alig
 cut -f2 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
 
 
-
 # Clusterize it
 clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
 
@@ -74,7 +73,14 @@ anvi-run-workflow -w metagenomics --get-default-config config.json
 - [ ] adjust min contig length in profile to really small (default it 1000 nt and some SCGs have less)
 - [ ] 
 
+
+# Ok now let's mapp the metagenomes to the reads
+
 # samples_txt
+
+mkdir -p PROFILE_SCGs
+cd PROFILE_SCGs
+
 # cp samples_txt to this dir and add relative paths
 cp ../samples.txt .
 
