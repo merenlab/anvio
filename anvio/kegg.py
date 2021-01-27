@@ -2806,6 +2806,44 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return d
 
 
+    def generate_subsets_for_matrix_format(self, module_superdict, ko_hits_superdict):
+        """Here we extract and return three subsets of data from the superdicts, for matrix formatted output.
+
+        The subsets of data that we need are: module completeness scores, module presence/absence, and KO hit frequency.
+        Each of these is put into a dictionary (one for modules, one for ko hits) and returned.
+        """
+
+        mod_completeness_presence_subdict = {}
+        ko_hits_subdict = {}
+
+        module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
+        ko_metadata_headers = ["ko_definition", "modules_with_ko"]
+
+        for bin, mod_dict in module_superdict.items():
+            mod_completeness_presence_subdict[bin] = {}
+            for mnum, c_dict in mod_dict.items():
+                if mnum == "num_complete_modules":
+                    continue
+
+                mod_completeness_presence_subdict[bin][mnum]['percent_complete'] = c_dict['percent_complete']
+                mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
+
+                if self.matrix_include_metadata:
+                    for key in module_metadata_headers:
+                        mod_completeness_presence_subdict[bin][mnum][key] = c_dict[key]
+
+        for bin, ko_dict in ko_hits_superdict.items():
+            ko_hits_subdict[bin] = {}
+            for knum, k_dict in ko_dict.items():
+                ko_hits_subdict[bin][knum] = len(k_dict['gene_caller_ids']) # number of hits to this KO in the bin
+
+                if self.matrix_include_metadata:
+                    for key in ko_metadata_headers:
+                        ko_hits_subdict[bin][knum][key] = k_dict[key]
+
+        return mod_completeness_presence_subdict, ko_hits_subdict
+
+
     def append_kegg_metabolism_superdicts(self, module_superdict_for_list_of_splits, ko_superdict_for_list_of_splits):
         """This function appends the metabolism superdicts (for a single genome, bin, or contig in metagenome) to existing files
         for each output mode.
