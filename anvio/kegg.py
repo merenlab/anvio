@@ -1288,7 +1288,6 @@ class KeggEstimatorArgs():
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.databases = None
             self.matrix_format = False # we won't be storing data from the single estimator anyway
-            self.matrix_include_metadata = False
 
         # parse requested output modes if necessary
         if isinstance(self.output_modes, str):
