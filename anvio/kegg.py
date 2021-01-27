@@ -3298,47 +3298,72 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
-    def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi, ko_superdict_multi):
+    def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
         Contigs DBs are arranged in columns and KEGG modules/KOs are arranged in rows.
         Each module statistic (ie, completeness, presence/absence) will be in a different file.
+
+        The parameters to this function are superdictionaries where each top-level entry is one
+        of the multi-mode sample inputs (ie a metagenome, internal, or external genome) and its
+        corresponding value comes from running estimate_metabolism() with return_subset_for_matrix_format=True.
+
+        That is:
+         module % completeness = module_superdict_multi[sample][bin][mnum]['percent_complete']
+         module is complete = module_superdict_multi[sample][bin][mnum]['complete']
+         # hits for KO = ko_superdict_multi[sample][bin][knum]
+
+        If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
 
         # we use module output mode because that gets us all the relevant information in the dataframe
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_single_data_frame=True)
-        df.set_index(['db_name', 'kegg_module'], inplace=True)
+        #df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_single_data_frame=True)
+        #df.set_index(['db_name', 'kegg_module'], inplace=True)
 
 
         # module stats that each will be put in separate matrix file
-        # stat is key, corresponding header in df is value
-        module_matrix_stats = {"completeness" : "module_completeness", "presence" : "module_is_complete"}
+        # key is the stat, value is the corresponding header in superdict
+        module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
         # per-module metadata to include, if that option is selected. Must be subset of 'modules' mode output headers
+        # FIXME: MAKE GLOBAL, we use it in generate_subsets_for_matrix_format() too
         module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
 
         for stat, header in module_matrix_stats.items():
-            matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
-
-            if self.matrix_include_metadata:
-                cols = ["module"] + module_metadata_headers + df.index.levels[0].tolist()
-            else:
-                cols = ["module"] + df.index.levels[0].tolist()
-            rows = df.index.levels[1].tolist()
-
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
+            stat_header = module_matrix_stats[stat]
 
-            metadata_df = df[module_metadata_headers].reset_index().drop_duplicates(subset='kegg_module')
-            metadata_df.set_index(['kegg_module'], inplace=True)
+            sample_list = module_superdict_multi.keys()
+            if self.matrix_include_metadata:
+                cols = ["module"] + module_metadata_headers + sample_list
+            else:
+                cols = ["module"] + sample_list
 
+            # every sample/bin has the same set of modules in the dict, so we can arbitrarily look at the
+            # first one to get the module list and metadata
+            first_sample = sample_list[0]
+            first_bin = module_superdict_multi[first_sample].keys()[0]
+            module_list = module_superdict_multi[first_sample][first_bin].keys()
+
+            # we could be fancier with this, but we are not that cool
             with open(output_file_path, 'w') as output:
                 output.write('\t'.join(cols) + '\n')
-                for i in range(0, len(rows)):
+                for m in module_list:
+                    line = [m]
+
                     if self.matrix_include_metadata:
-                        row_index = rows[i]
-                        metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in module_metadata_headers])
-                        output.write('\t'.join([rows[i]] + [metadata_string] + ['%.2f' % c for c in matrix[i]]) + '\n')
-                    else:
-                        output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+                        for h in module_metadata_headers:
+                            line.append(module_superdict_multi[first_sample][first_bin][m][h])
+
+                    for s in sample_list:
+                        bins = module_superdict_multi[s].keys()
+                        if len(bins) > 1:
+                            raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
+                                              "right now baiii #FIXME LOL")
+
+                        first_bin = bins[0]
+                        line.append(module_superdict_multi[s][first_bin][m][stat_header])
+
+                    output.write('\t'.join(line) + '\n')
 
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
