@@ -80,6 +80,9 @@ def main(args):
     output.write('\t'.join(t.gene_function_calls_table_structure) + '\n')
     num_entries_reported = 0
     for entry in list(functions_dict.values()):
+        if entry['e_value'] == None:
+            entry['e_value'] = 0.0
+
         output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure]) + '\n')
         num_entries_reported += 1
     output.close()

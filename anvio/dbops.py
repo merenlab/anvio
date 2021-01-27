@@ -566,16 +566,7 @@ class ContigsSuperclass(object):
 
 
     def list_function_sources(self):
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
-        gene_function_sources = contigs_db.meta['gene_function_sources']
-        contigs_db.disconnect()
-
-        if not len(gene_function_sources):
-            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
-            for source in gene_function_sources:
-                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
+        ContigsDatabase(self.contigs_db_path).list_function_sources()
 
 
     def check_functional_annotation_sources(self, sources=None, dont_panic=False):
@@ -997,7 +988,9 @@ class ContigsSuperclass(object):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
         if include_aa_sequences or report_aa_sequences:
-            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+            contigs_db = ContigsDatabase(self.contigs_db_path)
+            aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+            contigs_db.disconnect()
         else:
             aa_sequences_dict = None
 
@@ -3791,6 +3784,11 @@ class ContigsDatabase:
             self.db = None
 
 
+    def __del__(self):
+        if self.db:
+            self.db.disconnect()
+
+
     def get_date(self):
         return time.time()
 
@@ -3870,7 +3868,7 @@ class ContigsDatabase:
 
 
     def list_gene_caller_sources(self):
-        run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
+        self.run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
 
         gene_caller_sources = self.meta['gene_callers']
 
@@ -3880,6 +3878,35 @@ class ContigsDatabase:
             for gene_caller_source, num_genes in gene_caller_sources:
                 self.run.info_single("'%s' (%s gene calls)" % (gene_caller_source, pp(num_genes)),
                                      nl_after = 1 if gene_caller_source == gene_caller_sources[-1][0] else 0)
+
+
+    def list_function_sources(self):
+        self.run.warning(None, header="AVAILABLE FUNCTIONAL ANNOTATION SOURCES", lc="green")
+
+        gene_function_sources = sorted(self.meta['gene_function_sources']) if self.meta['gene_function_sources'] else []
+
+        if not len(gene_function_sources):
+            self.run.info_single('No functional annotations found in this contigs database :/', nl_after=1, mc='red')
+        else:
+            for source in gene_function_sources:
+                num_annotations = self.db.get_row_counts_from_table(t.gene_function_calls_table_name, where_clause=f'source="{source}"')
+                self.run.info_single(f'{source} ({pp(num_annotations)} annotations)', nl_after = 1 if source == gene_function_sources[-1] else 0)
+
+
+    def list_available_hmm_sources(self):
+        self.run.warning(None, header="AVAILABLE HMM SOURCES", lc="green")
+
+        hmm_sources_dict = self.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        hmm_sources = sorted(list(hmm_sources_dict.keys()))
+
+        if not len(hmm_sources_dict):
+            self.run.info_single("This contigs db does not have HMMs :/")
+        else:
+            for source in hmm_sources:
+                num_models = len(hmm_sources_dict[source]['genes'].split(','))
+                num_hits = self.db.get_row_counts_from_table(t.hmm_hits_table_name, where_clause=f'source="{source}"')
+                self.run.info_single(f"'{source}' ({P('model', num_models)} with {P('hit', num_hits)})",
+                                     nl_after = 1 if source == hmm_sources[-1] else 0)
 
 
     def remove_data_from_db(self, tables_dict):
@@ -4285,6 +4312,7 @@ class ContigsDatabase:
 
     def disconnect(self):
         self.db.disconnect()
+        self.db = None
 
 
 class TRNASeqDatabase:

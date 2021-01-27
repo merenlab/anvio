@@ -65,7 +65,7 @@ def remove_spaces(text):
     return text
 
 
-def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None, prefix_for_singular="a single"):
+def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
     """Pluralize a given word mindfully.
 
     We often run into a situation where the word of choice depends on the number of items
@@ -86,6 +86,11 @@ def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None, pre
 
     >>> f"You have {pluralize('sequence', num_sequences_in_fasta_file)} in your FASTA file."
 
+    Alternatively, you can provide this function an `alt`, in which case it would return `word` for singular
+    and `alt` for plural cases:
+
+    >>> f"{pluralize('these do not', number, alt='this does not')}."
+
     Voila.
 
 
@@ -95,19 +100,37 @@ def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None, pre
         The word to conditionally plurlize
     number: int
         The number of items the word intends to describe
-    suffix_for_plural: str, 's'
-        The character that needs to be added to the end of the `word` if plural.
-    suffix_for_singular: str, None
-        The same for `suffix_for_plural` for singular case.
+    sfp: str, 's'
+        Suffix for plural. The character that needs to be added to the end of the
+        `word` if plural.
+    sfs: str, None
+        Suffix for singular. The same for `sfp` for singular case.
+    pfs: str, None
+        Prefix for singular. `pfs` will replace `1` in the final output (common
+        parameters could be `pfs="a single" or pfs="only one"`).
+    alternative: str, None
+        If you provide an alternative, pluralize will discard every other parameter
+        and will simply return `word` for singular, and `alt` for plural case.
     """
 
-    if number > 1:
-        return f"{number} {word}{suffix_for_plural}"
-    else:
-        if suffix_for_singular:
-            return f"{number} {word}{suffix_for_singular}"
+    plural = number != 1
+
+    if plural:
+        if alt:
+            return alt
         else:
-            return f"{prefix_for_singular} {word}"
+            return f"{pretty_print(number)} {word}{sfp}"
+    else:
+        if alt:
+            return word
+        else:
+            if sfs:
+                return f"{pretty_print(number)} {word}{sfs}"
+            else:
+                if pfs:
+                    return f"{pfs} {word}"
+                else:
+                    return f"{number} {word}"
 
 
 class Progress:

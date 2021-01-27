@@ -189,7 +189,7 @@ class HMMer:
             cores_per_process = self.num_threads_to_use // num_parts
 
             self.run.warning(f"You requested {P('core', self.num_threads_to_use)} but there were only {P('sequence', num_parts)} "
-                             f"in the FASTA file for the target '{target}'. Anvi'o will use {P('process', num_parts, suffix_for_plural='es')} "
+                             f"in the FASTA file for the target '{target}'. Anvi'o will use {P('process', num_parts, sfp='es')} "
                              f"with {P('core', cores_per_process)} instead. And that's that.")
             self.num_threads_to_use = num_parts
 

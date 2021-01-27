@@ -124,6 +124,14 @@ anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_interpro_output.tsv \
                       -p interproscan
 
+INFO "Listing all available function call sources in the contigs database"
+anvi-export-functions -c $output_dir/CONTIGS.db \
+                      --list-annotation-sources
+
+INFO "Deleting gene functions that do not exist along with those that do"
+anvi-delete-functions -c $output_dir/CONTIGS.db \
+                      --annotation-sources PRINTS,XXX,PIRSF,YYY
+
 INFO "Importing gene function calls INCREMENTALLY using a TAB-delimited default input matrix"
 anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_gene_functions_input_matrix.txt
@@ -132,10 +140,6 @@ INFO "REPLACING gene function calls using a TAB-delimited default input matrix"
 anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_gene_functions_input_matrix.txt \
                       --drop-previous-annotations
-
-INFO "Listing all available function call sources in the contigs database"
-anvi-export-functions -c $output_dir/CONTIGS.db \
-                      --list-annotation-sources
 
 INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \

@@ -1413,7 +1413,7 @@ class PDBDatabase(object):
 
 
     def store_buffer(self, structures):
-        pdb_db = self.load_db()
+        pdb_db = self.load_db(write=True)
 
         # Remove any already existing entries
         new_clusters = set([])
@@ -1494,8 +1494,16 @@ class PDBDatabase(object):
         return path.rstrip('.gz')
 
 
-    def load_db(self):
-        return db.DB(self.db_path, '0.1', new_database=False, read_only=True)
+    def load_db(self, write=False):
+        """Load the PDB database
+
+        Parameters
+        ==========
+        write : bool, False
+            Should the database be opened with write permissions enabled?
+        """
+
+        return db.DB(self.db_path, '0.1', new_database=False, read_only=(not write))
 
 
     def check_or_create_db(self):

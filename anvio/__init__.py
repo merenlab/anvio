@@ -19,7 +19,7 @@ anvio_version = '7-dev'
 anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
-anvio_version_for_help_docs = "main" if anvio_version.endswith('master') else anvio_version
+anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
@@ -2179,7 +2179,7 @@ D = {
                 ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
-            {'metavar': 'HMM PROFILE NAME'}
+            {'metavar': 'HMM PROFILE NAME(S)'}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],

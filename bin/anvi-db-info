@@ -9,7 +9,6 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -63,10 +62,11 @@ class DatabaseInfo:
                 else:
                     run.info("Description", desc)
             run.info("Type", self.db_type)
+            run.info("Variant", self.db_variant)
             run.info("Version", self.db_version, nl_after=1)
 
             run.warning(None, "DB Info (no touch also)", lc="green")
-            for key in [k for k in self.db_self if k not in ["version", "db_type", "description"]]:
+            for key in [k for k in self.db_self if k not in ["version", "db_type", "description", "db_variant"]]:
                 if key == self.self_key or (self.self_key == 'sample_id' and key == 'samples'):
                     run.info('%s [JUST SET]' % key, self.db_self[key]["value"], mc='green', lc='green')
                 else:
@@ -84,7 +84,16 @@ class DatabaseInfo:
             # this program shouldn't crash.
             try:
                 dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
-                hmmops.SequencesForHMMHits(self.db_path).list_available_hmm_sources()
+            except:
+                pass
+
+            try:
+                dbops.ContigsDatabase(self.db_path).list_function_sources()
+            except:
+                pass
+
+            try:
+                dbops.ContigsDatabase(self.db_path).list_available_hmm_sources()
             except:
                 pass
 
@@ -101,6 +110,8 @@ class DatabaseInfo:
         except Exception as e:
             raise ConfigError("Anvi'o has some concerns regarding '%s' and thinks it may not be a database file "
                               "since some libraries complained about it downstream. Here is what they said: %s." % (self.db_path, e))
+
+        self.db_variant = utils.get_db_variant(self.db_path)
 
 
     def set_key_value(self):

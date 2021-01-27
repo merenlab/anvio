@@ -20,6 +20,9 @@ __status__ = "Development"
 
 
 def remove_spaces(text):
+    if not text:
+        return ""
+
     while True:
         if text.find("  ") > -1:
             text = text.replace("  ", " ")

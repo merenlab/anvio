@@ -733,7 +733,8 @@ class LocusSplitter:
             self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
-            hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
+            dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
+            sys.exit()
 
         # unless we are in debug mode, let's keep things quiet.
         if anvio.DEBUG:

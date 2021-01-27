@@ -319,7 +319,8 @@ function initData() {
                     }
                  });
             }
-        }
+        }, error:function(response) {console.log(response);}
+
     });
 
     // hide support value params on onready -- there is probably a better place to do this?
@@ -1452,15 +1453,16 @@ function serializeSettings(use_layer_names) {
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
     state['draw-guide-lines'] = $('#draw_guide_lines').val();
+    state['state-name'] = current_state_name;
     //
     // grab support value user input, store in state
     state['show-support-values'] = $('#support_value_checkbox').is(':checked')
     state['support-range-low'] = $('#support_range_low').val()
     state['support-range-high'] = $('#support_range_high').val()
     state['support-display-symbol'] = $('#support_display_symbol').is(':checked')
-    state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked') 
+    state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked')
     state['support-display-number'] = $('#support_display_number').is(':checked')
-    state['support-symbol-size'] = $('#support_symbol_size').val() 
+    state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
 

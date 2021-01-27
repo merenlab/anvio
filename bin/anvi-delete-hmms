@@ -9,6 +9,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.hmmhits import TablesForHMMHits
+from anvio.dbops import ContigsDatabase
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -34,7 +35,8 @@ def main(args):
         sys.exit()
 
     if args.list_hmm_sources:
-        hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
+        ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        sys.exit()
 
     if not args.hmm_source and not args.just_do_it:
         raise ConfigError("But you should give this program an HMM souce to remove from the database :/ If you "

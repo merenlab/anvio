@@ -137,7 +137,9 @@ class GenomeDescriptions(object):
         # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
         # we could use any of those genomes to learn about the specifics of them. here we take
         # the first one from `self.genomes`
-        hmm_sources_info = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path']).db.get_table_as_dict(t.hmm_hits_info_table_name)
+        contigs_db = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path'])
+        hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        contigs_db.disconnect()
 
         if self.list_hmm_sources or self.list_available_gene_names:
             if not len(hmm_sources_in_all_genomes):
@@ -885,8 +887,8 @@ class GenomeDescriptions(object):
                         annot_str = ", ".join(all_annotations)
                         raise ConfigError(f"Somethin' is drastically wrong here. In your genome {g} we found a gene call (id is {gc_id}) "
                                           f"with multiple annotations, but the number of accession numbers is not equal to the number of "
-                                          "functional annotations. Take a look at the list of accessions: {acc_str} and compare to the list of "
-                                          "annotations: {annot_str}. Do you know what is wrong? If not, please contact the developers for assistance.")
+                                          f"functional annotations. Take a look at the list of accessions: {acc_str} and compare to the list of "
+                                          f"annotations: {annot_str}. Do you know what is wrong? If not, please contact the developers for assistance.")
 
                     for accession, func in zip(all_accessions, all_annotations):
                         # by keying with the function name, we can automatically merge some accessions with same functional annotation. yay us.

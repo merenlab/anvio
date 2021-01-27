@@ -111,7 +111,7 @@ class COGs:
             else:
                 raise ConfigError(f"You requested to run the NCBI COGs using the version '{self.COG_version}', but you don't have "
                                   f"the data to be able to run that version of COGs setup on this system yet. Here is the "
-                                  f"{P('version', len(data_available_for_cog_versions), prefix_for_singular='only')} available "
+                                  f"{P('version', len(data_available_for_cog_versions), pfs='only')} available "
                                   f"for COGs on this system: {', '.join(data_available_for_cog_versions)}. You can "
                                   f"either specify which version you wish to use through the parameter `--cog-version`, or you can "
                                   f"run the following command to setup the data files for the version you wish to use: "
