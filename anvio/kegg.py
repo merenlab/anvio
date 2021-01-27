@@ -1453,10 +1453,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
                              "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
-        if self.matrix_include_metadata and not self.matrix_format:
-            raise ConfigError("The option --include-metadata is only relevant for --matrix-format, which in turn is only "
-                              "relevant for analyses involving multiple genomes or samples. Plz try again.")
-
 
         # init the base class
         KeggContext.__init__(self, self.args)
