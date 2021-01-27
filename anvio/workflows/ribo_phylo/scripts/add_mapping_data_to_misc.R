@@ -53,4 +53,5 @@ add_coverage_to_metadata <- function(SCG) {
     write_tsv(outfile_path)
 }
 
-add_coverage_to_metadata(SCG = "Ribosomal_l17")
+add_coverage_to_metadata(SCG = "Ribosomal_L17")
+add_coverage_to_metadata(SCG = "Ribosomal_L16")
