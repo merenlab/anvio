@@ -148,84 +148,165 @@ rule join_renamed_fastas_with_taxonomy_data_text:
     # script:
     #     "scripts/rename_fasta_headers.py"
     run:
-        if wildcards.sample_name in M.external_genomes_names_list:
+        if M.mode == "both":
+            if wildcards.sample_name in M.external_genomes_names_list:
 
-            from Bio import SeqIO
+                from Bio import SeqIO
 
-            import pandas as pd
-            import numpy as np
-            import glob
-            import os.path
+                import pandas as pd
+                import numpy as np
+                import glob
+                import os.path
 
-            # Import fasta header index
-            #----------------------------
-            reformat_report = pd.read_csv(input.report_file, \
-                              sep="\t", \
-                              index_col=None,
-                              names=['new_header', 'old_header'])
+                # Import fasta header index
+                #----------------------------
+                reformat_report = pd.read_csv(input.report_file, \
+                                  sep="\t", \
+                                  index_col=None,
+                                  names=['new_header', 'old_header'])
 
-            taxonomy = pd.read_csv(input.taxonomy, \
-                              sep="\t", \
-                              index_col=None)
+                taxonomy = pd.read_csv(input.taxonomy, \
+                                  sep="\t", \
+                                  index_col=None)
 
-            # Clean
-            #------
-            taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+                # Clean
+                #------
+                taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
 
-            reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
-            reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
-            reformat_report['sample'] = wildcards.sample_name
-            reformat_report['contig_db_type'] = 'genome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
+                reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+                reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+                reformat_report['sample'] = wildcards.sample_name
+                reformat_report['contig_db_type'] = 'genome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
 
-            misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+                misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
 
-            # Export
-            #------------------------------------------------------------------
-            misc_new_headers_df.to_csv(output.misc_data_final, \
-                       sep="\t", \
-                       index=None, \
-                       na_rep="NA", \
-                       header=False)
+                # Export
+                #------------------------------------------------------------------
+                misc_new_headers_df.to_csv(output.misc_data_final, \
+                           sep="\t", \
+                           index=None, \
+                           na_rep="NA", \
+                           header=False)
 
-        if wildcards.sample_name in M.metagenomes_name_list:
+            if wildcards.sample_name in M.metagenomes_name_list:
 
-            from Bio import SeqIO
+                from Bio import SeqIO
 
-            import pandas as pd
-            import numpy as np
-            import glob
-            import os.path
+                import pandas as pd
+                import numpy as np
+                import glob
+                import os.path
 
-            # Import fasta header index
-            #----------------------------
-            reformat_report = pd.read_csv(input.report_file, \
-                              sep="\t", \
-                              index_col=None,
-                              names=['new_header', 'old_header'])
+                # Import fasta header index
+                #----------------------------
+                reformat_report = pd.read_csv(input.report_file, \
+                                  sep="\t", \
+                                  index_col=None,
+                                  names=['new_header', 'old_header'])
 
-            taxonomy = pd.read_csv(input.taxonomy, \
-                              sep="\t", \
-                              index_col=None)
+                taxonomy = pd.read_csv(input.taxonomy, \
+                                  sep="\t", \
+                                  index_col=None)
 
-            # Clean
-            #------
-            taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+                # Clean
+                #------
+                taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
 
-            reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
-            reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
-            reformat_report['sample'] = wildcards.sample_name
-            reformat_report['contig_db_type'] = 'metagenome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
+                reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+                reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+                reformat_report['sample'] = wildcards.sample_name
+                reformat_report['contig_db_type'] = 'metagenome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
 
-            misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+                misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
 
-            # Export
-            #------------------------------------------------------------------
-            misc_new_headers_df.to_csv(output.misc_data_final, \
-                       sep="\t", \
-                       index=None, \
-                       na_rep="NA", \
-                       header=False)
+                # Export
+                #------------------------------------------------------------------
+                misc_new_headers_df.to_csv(output.misc_data_final, \
+                           sep="\t", \
+                           index=None, \
+                           na_rep="NA", \
+                           header=False)
 
+        if M.mode == "external_genomes":
+
+            if wildcards.sample_name in M.external_genomes_names_list:
+
+                from Bio import SeqIO
+
+                import pandas as pd
+                import numpy as np
+                import glob
+                import os.path
+
+                # Import fasta header index
+                #----------------------------
+                reformat_report = pd.read_csv(input.report_file, \
+                                  sep="\t", \
+                                  index_col=None,
+                                  names=['new_header', 'old_header'])
+
+                taxonomy = pd.read_csv(input.taxonomy, \
+                                  sep="\t", \
+                                  index_col=None)
+
+                # Clean
+                #------
+                taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+
+                reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+                reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+                reformat_report['sample'] = wildcards.sample_name
+                reformat_report['contig_db_type'] = 'genome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
+
+                misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+
+                # Export
+                #------------------------------------------------------------------
+                misc_new_headers_df.to_csv(output.misc_data_final, \
+                           sep="\t", \
+                           index=None, \
+                           na_rep="NA", \
+                           header=False)
+
+        if M.mode == "metagenomes":
+            if wildcards.sample_name in M.metagenomes_name_list:
+
+                from Bio import SeqIO
+
+                import pandas as pd
+                import numpy as np
+                import glob
+                import os.path
+
+                # Import fasta header index
+                #----------------------------
+                reformat_report = pd.read_csv(input.report_file, \
+                                  sep="\t", \
+                                  index_col=None,
+                                  names=['new_header', 'old_header'])
+
+                taxonomy = pd.read_csv(input.taxonomy, \
+                                  sep="\t", \
+                                  index_col=None)
+
+                # Clean
+                #------
+                taxonomy = taxonomy.rename(columns = {'scg_name': 'sequence_name'})
+
+                reformat_report['gene_callers_id'] = reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+                reformat_report['sequence_name'] = wildcards.ribosomal_protein_name + '_' + reformat_report['gene_callers_id'].map(str)
+                reformat_report['sample'] = wildcards.sample_name
+                reformat_report['contig_db_type'] = 'genome' # here is where the contig_db_type categorical variable get's set, not very fancy but it works
+
+                misc_new_headers_df = reformat_report.merge(taxonomy, on="sequence_name", how="left")[['new_header', 'sample', 'contig_db_type', 't_domain', 't_phylum', 't_order', 't_family', 't_genus', 't_species']]
+
+                # Export
+                #------------------------------------------------------------------
+                misc_new_headers_df.to_csv(output.misc_data_final, \
+                           sep="\t", \
+                           index=None, \
+                           na_rep="NA", \
+                           header=False)
 
 
 rule cat_scgs_to_one_fasta_nt:
