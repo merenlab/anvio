@@ -52,7 +52,7 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_aa:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}.db"), dataset=M.names_dirs)
+        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
     output: os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.faa")
     params:
         hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source')
@@ -69,7 +69,7 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_nt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}.db"), dataset=M.names_dirs)
+        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
     output:
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.fna")
     params:
@@ -86,7 +86,7 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}.db"), dataset=M.names_dirs)
+        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
     output:
         taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
     params:
