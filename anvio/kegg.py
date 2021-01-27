@@ -3143,7 +3143,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
 
     def get_metabolism_superdict_multi(self):
-        """The function that calls metabolism on each individual contigs db and aggregates the results into one dictionary."""
+        """The function that calls metabolism on each individual contigs db.
+
+         If we need matrix format output, it aggregates the results into one dictionary for modules
+         and one for KOs, and returns these. (Otherwise, empty dictionaries are returned.)
+         """
 
         metabolism_super_dict = {}
         ko_hits_super_dict = {}
@@ -3158,9 +3162,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             args = self.get_args_for_single_estimator(metagenome_name)
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
             if not self.matrix_format:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
+                KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True, return_subset_for_matrix_format=True)
 
             self.progress.increment()
             self.progress.reset()
