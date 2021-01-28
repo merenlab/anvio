@@ -2512,6 +2512,7 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('show-shade-for-bins')) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
+    }
     if (state.hasOwnProperty('shade-fill-opacity')){
         $('#shade_fill_opacity').val(state['shade-fill-opacity']) 
     }
