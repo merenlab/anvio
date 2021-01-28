@@ -1138,6 +1138,8 @@ class AggregateFunctions:
         self.V = lambda: 'function' if self.aggregate_based_on_accession else 'accession ID'
 
         self.sanity_checked = False
+        self.initialized = False
+
         if not skip_sanity_check:
             self.sanity_check()
 
@@ -1150,6 +1152,10 @@ class AggregateFunctions:
         # external genomes.
         # here we will update the same two dictionaries with the informaiton in the genome
         # storage
+        if self.initialized:
+            raise ConfigError("Soemone already called the init function on this instance. You can't do it again. "
+                              "Go get your own instance :(")
+
         self._init_functions_from_int_ext_genomes()
         self._init_functions_from_genomes_storage()
 
@@ -1189,6 +1195,8 @@ class AggregateFunctions:
                                  f"in less than {self.min_occurrence} genomes.")
 
         self.update_summary_markdown()
+
+        self.initialized = True
 
 
     def sanity_check(self):
