@@ -151,6 +151,8 @@ class TrimmedSeq(object):
     __slots__ = (
         'seq_string',
         'uniq_seqs',
+        'feature_start_indices',
+        'feature_stop_indices',
         'has_complete_feature_set',
         'read_count',
         'uniq_with_extra_fiveprime_count',
@@ -173,9 +175,15 @@ class TrimmedSeq(object):
     def __init__(self, seq_string, uniq_seqs, skip_init=False):
         self.seq_string = seq_string
         self.uniq_seqs = uniq_seqs # list of UniqueSeq objects
+        represent_uniq_seq = uniq_seqs[0]
+        # Assume that the feature profile indices of the representative unique sequence are the same
+        # as the other unique sequences. The acceptor is the last feature in the profile and not
+        # part of the trimmed sequence.
+        self.feature_start_indices = represent_uniq_seq.feature_start_indices[:-1] if represent_uniq_seq.feature_start_indices else None
+        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[:-1] if represent_uniq_seq.feature_stop_indices else None
         # Assume that if the representative unique sequence has a complete feature set, then so do
         # the other unique sequences.
-        self.has_complete_feature_set = uniq_seqs[0].has_complete_feature_set
+        self.has_complete_feature_set = represent_uniq_seq.has_complete_feature_set
         self.trunc_profile_recovered_by_derep = None
         self.trunc_profile_recovered_by_del_analysis = None
         self.norm_seq_count = 0
