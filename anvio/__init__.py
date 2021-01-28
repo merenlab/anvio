@@ -2708,8 +2708,8 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
                     "The first column should have the header 'sample' and contain sample names matching "
-                    "to those in the modules-txt file. The second column should have the header 'group' "
-                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+                    "to those are in the other input data. The second column should have the header 'group' "
+                    "and contain the group name for each sample (each sample should be in 1 group only)"}
                 ),
     'sample-header': (
             ['--sample-header'],
