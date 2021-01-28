@@ -1171,6 +1171,11 @@ class AggregateFunctions:
                 for key in keys_to_remove:
                     self.functions_across_layers_frequency.pop(key)
                     self.functions_across_layers_presence_absence.pop(key)
+
+                    if self.layer_groups_defined:
+                        self.functions_across_groups_frequency.pop(key)
+                        self.functions_across_groups_presence_absence.pop(key)
+
                     self.hash_to_key.pop(key) if key in self.hash_to_key else None
 
                     # these are the trick ones since how this step should be handled will depend on
