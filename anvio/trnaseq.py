@@ -1609,6 +1609,16 @@ class TRNASeqDataset(object):
         Normalized tRNA (trimmed tRNA 1): TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         Trimmed tRNA 2                  :                       AATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         Trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
+
+        Check for agreement among the feature profiles of the dereplicated profiled sequences.
+        Longer sequences in the cluster sometimes contain 5' nucleotides that should have been
+        trimmed but were not due to an incorrect feature profile (an error that is sometimes caused
+        by the accommodation of a reverse transcription artifact by an erroneously elongated V arm).
+        Checking that the feature profiles of longer and shorter sequences agree from the 3' end
+        minimizes this error. In case of disagreement, the largest group of sequences with
+        concordant profiles (by read count) forms the normalized sequence, while the sequences with
+        discordant profiles are removed from the list of trimmed tRNA, and their constituent
+        profiled sequences removed from the list of profiled tRNA.
         """
         start_time = time.time()
         self.progress.new("Dereplicating trimmed tRNA sequences from the 3' end")
