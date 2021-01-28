@@ -1214,6 +1214,30 @@ class AggregateFunctions:
         if self.min_occurrence < 1:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
 
+        if self.layer_groups_defined:
+            if not len(self.layer_groups) > 1:
+                raise ConfigError("Layer groups must have two or more groups.")
+
+            for layer_group in self.layer_groups:
+                if not isinstance(self.layer_groups[layer_group], list):
+                    raise ConfigError(f"Each layer group must be composed list of layer names :(")
+
+                if not len(self.layer_groups[layer_group]) > 1:
+                    raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")
+
+                if len(set(self.layer_groups[layer_group])) != len(self.layer_groups[layer_group]):
+                    raise ConfigError("Items in each layer group must be unique :/")
+
+            # sanity check 3000 -- no joker shall pass:
+            list_of_layer_names_lists = list(self.layer_groups.values())
+            for i in range(0, len(list_of_layer_names_lists) - 1):
+                for j in range(i + 1, len(list_of_layer_names_lists)):
+                    co_occurring_names = set(list_of_layer_names_lists[i]).intersection(set(list_of_layer_names_lists[j]))
+                    if len(co_occurring_names):
+                        raise ConfigError(f"Layer names should occur in only one group, but AS YOU CAN GUESS BY NOW, that is not the case "
+                                          f"with your groups :/ At the least, the layer name '{co_occurring_names.pop()}' occurs in more than "
+                                          f"one group.")
+
         self.sanity_checked = True
 
 
