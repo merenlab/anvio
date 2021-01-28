@@ -1096,6 +1096,15 @@ class AggregateFunctions:
         self.functions_across_layers_frequency = {}
         self.functions_across_layers_presence_absence = {}
 
+        # just like the previous two, but rather than genome names as
+        # layers, these dicts will be tracking 'gruops' as defined by
+        # the member variable, `self.layer_groups`. please note that
+        # the presence-absence dictionary will not be composed of
+        # binary variables, but will have the sum of presence absence
+        # of a given function across all layers in a given group
+        self.functions_across_groups_frequency = {}
+        self.functions_across_groups_presence_absence = {}
+
         # two additional dicts to alwys be able to convert accession
         # ids to function names and vice versa. remember, an accession
         # id will resolve to a single function name (unless the provider
@@ -1114,6 +1123,15 @@ class AggregateFunctions:
 
         # this will summarize what happened in a text form.
         self.summary_markdown = None
+
+        # a small helper dictionary we will use if there are gorups defined
+        # by the user:
+        self.layer_name_to_group_name, self.layer_groups_defined = {}, False
+        if self.layer_groups:
+            self.layer_groups_defined = True
+            for group_name in self.layer_groups:
+                for layer_name in self.layer_groups[group_name]:
+                    self.layer_name_to_group_name[layer_name] = group_name
 
         self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
         self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
