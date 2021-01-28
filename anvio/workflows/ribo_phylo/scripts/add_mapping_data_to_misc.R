@@ -6,7 +6,7 @@ suppressMessages(lapply(packages, library, character.only = TRUE))
 add_coverage_to_metadata <- function(SCG) {
   
   #####
-  # SCG = "Ribosomal_l17"
+  # SCG = "Ribosomal_L16"
   ####
   
   # make paths
@@ -35,21 +35,27 @@ add_coverage_to_metadata <- function(SCG) {
   misc_data <- read_tsv(misc_data_path)
   reformat_file <- read_tsv(reformat_file_path, col_names = FALSE) %>% rename(contig = X1, name = X2)
   gene_calls <- read_tsv(gene_calls_path)
+  # FIXME: gene_calls has some duplicates in the contig column IF some of the reference sequences when
+  # being processed into contigDBs split them into two gene calls, you suck Prodigal! I could fix this
+  # by providing an external-gene-calls file with the reference SCGs.
+  gene_calls <- gene_calls[!duplicated(gene_calls$contig), ]
   mapping_data <- read_tsv(mapping_data_path)
   
   # Make index of names
   #--------------------
-  index <- mapping_data %>% 
-    left_join(gene_calls) %>% 
-    left_join(reformat_file) %>% 
+  index <- mapping_data %>%
+    inner_join(gene_calls) %>%
+    left_join(reformat_file) %>%
     select(gene_callers_id, contig, name)
-
+  
   # Make final table
-  misc_data %>%
+  final <- misc_data %>%
     rename(name = new_header) %>%
     left_join(index) %>%
     inner_join(mapping_data) %>%
-    select(-gene_callers_id, -contig) %>%
+    select(-gene_callers_id, -contig)
+  
+  final %>%
     write_tsv(outfile_path)
 }
 
