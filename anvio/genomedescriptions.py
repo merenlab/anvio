@@ -1158,6 +1158,7 @@ class AggregateFunctions:
 
         self._init_functions_from_int_ext_genomes()
         self._init_functions_from_genomes_storage()
+        self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
 
         if self.min_occurrence:
             num_occurrence_of_keys = [(c, sum(self.functions_across_layers_presence_absence[c].values())) for c in self.functions_across_layers_presence_absence]
@@ -1368,6 +1369,23 @@ class AggregateFunctions:
             genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
 
             self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _populate_group_dicts(self):
+        if not self.layer_groups_defined:
+            return
+
+        for key_hash in self.functions_across_layers_frequency:
+            if key_hash not in self.functions_across_groups_frequency:
+                self.functions_across_groups_frequency[key_hash] = Counter({})
+                self.functions_across_groups_presence_absence[key_hash] = Counter({})
+
+            for layer_name in self.layer_names_considered:
+                if layer_name in self.layer_name_to_group_name:
+                    if layer_name in self.functions_across_layers_frequency[key_hash]:
+                        group_name = self.layer_name_to_group_name[layer_name]
+                        self.functions_across_groups_frequency[key_hash][group_name] += self.functions_across_layers_frequency[key_hash][layer_name]
+                        self.functions_across_groups_presence_absence[key_hash][group_name] += 1
 
 
     def update_summary_markdown(self):
