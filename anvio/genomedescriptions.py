@@ -1090,11 +1090,7 @@ class AggregateFunctions:
         self.min_occurrence = A('min_occurrence') or 1
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
         self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
-
-        if layer_groups and not isinstance(layer_groups, dict):
-            raise ConfigError("The variable `layer_groups` is supposed to be of type `dict`.")
-
-        self.layer_groups = layer_groups
+        self.layer_groups_input_file_path = A('groups_txt') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1148,14 +1144,53 @@ class AggregateFunctions:
         # this will summarize what happened in a text form.
         self.summary_markdown = None
 
-        # a small helper dictionary we will use if there are gorups defined
-        # by the user:
-        self.layer_name_to_group_name, self.layer_groups_defined = {}, False
-        if self.layer_groups:
-            self.layer_groups_defined = True
-            for group_name in self.layer_groups:
-                for layer_name in self.layer_groups[group_name]:
-                    self.layer_name_to_group_name[layer_name] = group_name
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        # Here we will quickly deal with layer groups during the initialization of the class
+        # this section of the init will establish a propeer `self.layer_groups` variable for
+        # later use.
+        self.layer_name_to_group_name = {}
+        self.layer_groups_defined = False
+        self.layer_groups = None
+
+        if layer_groups or self.layer_groups_input_file_path:
+            if layer_groups and not isinstance(layer_groups, dict):
+                raise ConfigError("The variable `layer_groups` is supposed to be of type `dict`.")
+
+            if self.layer_groups_input_file_path and layer_groups:
+                raise ConfigError("You can either specify layer groups by passing a dictionary, or "
+                                  "you can use the `layer_groups_input_file_path` argument, but not "
+                                  "both :/")
+
+            if self.layer_groups_input_file_path:
+                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path, expected_number_of_fields=2)
+                self.layer_groups = {}
+
+                if 'group' not in utils.get_columns_of_TAB_delim_file(self.layer_groups_input_file_path):
+                    raise ConfigError("The second column of the groups file must have a header `group`.")
+
+                layer_groups_d = utils.get_TAB_delimited_file_as_dictionary(self.layer_groups_input_file_path)
+
+                for layer_name in layer_groups_d:
+                    group_name = layer_groups_d[layer_name]['group']
+
+                    if not group_name in self.layer_groups:
+                        self.layer_groups[group_name] = []
+
+                    self.layer_groups[group_name].append(layer_name)
+            elif layer_groups:
+                self.layer_groups = layer_groups
+
+            # Finally, last AND least, a small helper dictionary we will use if there are gorups defined
+            # by the user:
+            if self.layer_groups:
+                self.layer_groups_defined = True
+                for group_name in self.layer_groups:
+                    for layer_name in self.layer_groups[group_name]:
+                        self.layer_name_to_group_name[layer_name] = group_name
+
+            group_names = sorted(list(self.layer_groups.keys()))
+            self.run.info('Groups found and parsed', ', '.join(group_names))
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
 
         self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
         self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
