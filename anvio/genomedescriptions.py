@@ -1051,6 +1051,30 @@ class AggregateFunctions:
     including external genomes, internal genomes, and/or a genomes storage, and report
     a set of dictionaries that give access to the presence/absence and frequency
     of all functions annotated by a single source.
+
+    One fancy function in AggregateFunctions is `report_functions_per_group_stats`. For
+    instance, one could initiate the class in the following way to get a functions per
+    group stats output file for functioanl enrichment analysis:
+
+        >>> import argparse
+        >>> import anvio.genomedescriptions as g
+        >>> args = argparse.Namespace(external_genomes=external_genmes_path, annotation_source='KOfam')
+        >>> groups = {'adoles': ['B_adolescentis', 'B_adolescentis_1_11', 'B_adolescentis_22L', 'B_adolescentis_6', 'B_adolescentis_ATCC_15703'],
+                      'lactis': ['B_animalis', 'B_lactis_AD011', 'B_lactis_ATCC_27673', 'B_lactis_B420', 'B_lactis_BB_12', 'B_lactis_BF052'],
+                      'longum': ['B_longum', 'B_longum_AH1206', 'B_longum_BBMN68', 'B_longum_BORI', 'B_longum_CCUG30698', 'B_longum_GT15']}
+        >>> facc = g.AggregateFunctions(args, layer_groups=groups)
+        >>> facc.report_functions_per_group_stats(output_file_path)
+
+    For other uses of this class, see the `functional` mode in the interactive class
+    which is accessed by anvi-display-functions.
+
+    Paremeters
+    ==========
+    args : argparse.Namespace object
+        See the class header for options.
+    layer_groups : dict
+        When provided, the class will recognize that genomes belong to distinct groups
+        and will prepare grouped frequency and presence-absence dicts, as well.
     """
 
     def __init__(self, args, layer_groups=None, skip_sanity_check=False, skip_init=False, r=run, p=progress):
@@ -1148,14 +1172,11 @@ class AggregateFunctions:
 
 
     def init(self):
-        # learn functions, generate `self.views`. First start, with internal and
-        # external genomes.
-        # here we will update the same two dictionaries with the informaiton in the genome
-        # storage
         if self.initialized:
             raise ConfigError("Soemone already called the init function on this instance. You can't do it again. "
                               "Go get your own instance :(")
 
+        # populate main dictionaries
         self._init_functions_from_int_ext_genomes()
         self._init_functions_from_genomes_storage()
         self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
@@ -1298,7 +1319,7 @@ class AggregateFunctions:
             self.hash_to_key[key] = key_hash
             self.hash_to_function_dict[key_hash] = {self.function_annotation_source: function}
 
-
+        # --
         if key_hash not in self.functions_across_layers_frequency:
             self.functions_across_layers_frequency[key_hash] = Counter({})
             self.functions_across_layers_presence_absence[key_hash] = Counter({})
