@@ -857,7 +857,7 @@ Bins.prototype.RedrawBins = function() {
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var show_shade = $('#show_shade_for_bins')[0].checked 
-    var shade_fill_opacity = $('#shade_fill_opacity').val() // TODO remember i put this here ;)
+    var shade_fill_opacity = $('#shade_fill_opacity').val() 
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
@@ -1011,14 +1011,26 @@ Bins.prototype.RedrawBins = function() {
                 height,
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - backgroundStart : total_radius - backgroundStart,
                 color,
-                (show_grid) ? 0 : 0.1,
+                (show_grid) ? 0 : shade_fill_opacity,
                 false);
 
-            if (show_grid) {
+            if (show_grid && !show_shade) {
                 rect.setAttribute('vector-effect', 'non-scaling-stroke');
                 rect.setAttribute('stroke-opacity', '1');
                 rect.setAttribute('stroke-width', grid_width);
                 rect.setAttribute('stroke', grid_color);
+            } else if(show_grid && show_shade){
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+                rect.setAttribute('stroke-width', grid_width);
+                rect.setAttribute('stroke', grid_color);
+                rect.setAttribute('fill-opacity', shade_fill_opacity)
+            } else if(!show_grid && !show_shade){
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+                rect.setAttribute('stroke-width', 0);
+                rect.setAttribute('stroke', grid_color);
+                rect.setAttribute('fill-opacity', 0)
             }
         }
     }
