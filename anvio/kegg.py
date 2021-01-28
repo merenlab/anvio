@@ -4495,6 +4495,11 @@ class KeggModuleEnrichment(KeggContext):
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
+            # if we are working with module data from metagenomes, we may have multiple complete copies of the module in
+            # the same sample. We drop these duplicates before proceeding.
+            duplicates = samples_with_mod_df.index.duplicated()
+            samples_with_mod_df = samples_with_mod_df[~duplicates]
+            
             mod_name = samples_with_mod_df['module_name'][0]
             output_dict[mod_name] = {}
             output_dict[mod_name]['KEGG_MODULE'] = mod_name
