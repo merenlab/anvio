@@ -931,8 +931,8 @@ class TRNASeqDataset(object):
         total_time_start = time.time()
         self.sanity_check()
 
-        # The first checkpoint occurs after tRNA profiling, trimming, and recovering tRNA sequences
-        # with truncated feature profiles.
+        # The first checkpoint occurs after tRNA profiling, tRNA trimming, and the recovery of tRNA
+        # sequences with truncated feature profiles.
         if not self.load_checkpoint:
             self.create_trnaseq_db()
 
