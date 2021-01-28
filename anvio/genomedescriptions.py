@@ -1205,6 +1205,9 @@ class AggregateFunctions:
                               "an annotation source to be used for aggregating all the information from all "
                               "the genomes. Someoen didn't specify any function annotation source :/")
 
+        if not self.external_genomes_path and not self.internal_genomes_path and not self.genomes_storage_path:
+            raise ConfigError("You must provide at least one source of genomes to this class :/")
+
         if self.min_occurrence and not isinstance(self.min_occurrence, int):
             raise ConfigError("Obviously, --min-occurrence must be an integer.")
 
