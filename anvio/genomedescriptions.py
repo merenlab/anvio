@@ -1405,3 +1405,26 @@ class AggregateFunctions:
         self.summary_markdown += (f"\n\n**Internal genomes** ({P('layer', len(self.layer_names_from_internal_genomes))}):\n\n{G(self.layer_names_from_internal_genomes)}"
                                   f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
                                   f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
+
+
+    def report_functions_per_group_stats(self, output_file_path):
+        """A function to summarize functional occurrence for groups of genomes"""
+
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.layer_groups_defined:
+            raise ConfigError("No groups seem to have been defined. This function is useless without :/")
+
+        group_names = sorted(list(self.layer_groups.keys()))
+
+        with open(output_file_path, 'w') as output:
+            output.write('\t'.join(['key', 'accession_ids', 'function'] + group_names) + '\n')
+            for key_hash in self.functions_across_groups_presence_absence:
+                function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
+                accession_ids = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+                line = [key_hash, accession_ids, function] + \
+                       [self.functions_across_groups_presence_absence[key_hash][g] for g in group_names]
+                output.write('\t'.join([str(f) for f in line]) + '\n')
+
+        self.run.info('Groups defined', ', '.join(group_names))
+        self.run.info('Functions per group stats file', output_file_path)
