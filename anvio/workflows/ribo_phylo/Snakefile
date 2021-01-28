@@ -449,7 +449,7 @@ rule add_header_to_misc_file:
     threads: M.T('cat_misc_data_to_one_file')
     shell:
         """
-        echo -e "new_header\tsample\tcontig_db_type\tt_domain\tt_phylum\ttt_class\tt_order\tt_family\tt_genus\tt_species" > {output}
+        echo -e "new_header\tsample\tcontig_db_type\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species" > {output}
 
         cat {input} >> {output}
         """
