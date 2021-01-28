@@ -82,6 +82,8 @@ class UniqueSeq(object):
         'represent_name',
         'read_count',
         'id_method',
+        'feature_start_indices',
+        'feature_stop_indices',
         'acceptor_length',
         'contains_anticodon',
         'has_complete_feature_set',
@@ -97,6 +99,8 @@ class UniqueSeq(object):
         self.represent_name = represent_name
         self.read_count = read_count
         self.id_method = None # If dealing with tRNA, identification method 0 = profiled, 1 = mapped
+        self.feature_start_indices = None
+        self.feature_stop_indices = None
         self.acceptor_length = None
         self.contains_anticodon = None
         self.has_complete_feature_set = None
