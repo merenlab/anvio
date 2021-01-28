@@ -1473,14 +1473,29 @@ class AggregateFunctions:
 
         group_names = sorted(list(self.layer_groups.keys()))
 
-        with open(output_file_path, 'w') as output:
-            output.write('\t'.join(['key', 'accession_ids', 'function'] + group_names) + '\n')
-            for key_hash in self.functions_across_groups_presence_absence:
-                function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
-                accession_ids = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
-                line = [key_hash, accession_ids, function] + \
-                       [self.functions_across_groups_presence_absence[key_hash][g] for g in group_names]
-                output.write('\t'.join([str(f) for f in line]) + '\n')
+        group_counts = dict([(g, len(self.layer_groups[g])) for g in group_names])
 
-        self.run.info('Groups defined', ', '.join(group_names))
+        d = {}
+
+        for key_hash in self.functions_across_groups_presence_absence:
+            d[key_hash] = {}
+            function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
+            d[key_hash]['function'] = function
+            d[key_hash]['accession'] = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+
+            d[key_hash]['associated_groups'] = ','.join([g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]])
+
+            for group_name in group_names:
+                d[key_hash][f"N_{group_name}"] = group_counts[group_name]
+                if group_name in self.functions_across_groups_presence_absence[key_hash]:
+                    d[key_hash][f"p_{group_name}"] = self.functions_across_groups_presence_absence[key_hash][group_name] / group_counts[group_name]
+                else:
+                    d[key_hash][f"p_{group_name}"] = 0
+
+        static_column_names = ['key', 'function', 'accession', 'associated_groups']
+        dynamic_column_names = []
+        [dynamic_column_names.extend([f'p_{g}', f'N_{g}']) for g in group_names]
+
+        utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
+
         self.run.info('Functions per group stats file', output_file_path)
