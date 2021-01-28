@@ -1053,7 +1053,7 @@ class AggregateFunctions:
     of all functions annotated by a single source.
     """
 
-    def __init__(self, args, skip_sanity_check=False, skip_init=False, r=run, p=progress):
+    def __init__(self, args, layer_groups=None, skip_sanity_check=False, skip_init=False, r=run, p=progress):
         self.args = args
         self.run = r
         self.progress = p
@@ -1066,6 +1066,11 @@ class AggregateFunctions:
         self.min_occurrence = A('min_occurrence') or 1
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
         self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
+
+        if layer_groups and not isinstance(layer_groups, dict):
+            raise ConfigError("The variable `layer_groups` is supposed to be of type `dict`.")
+
+        self.layer_groups = layer_groups
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
