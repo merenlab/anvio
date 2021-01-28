@@ -944,7 +944,7 @@ Bins.prototype.RedrawBins = function() {
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
-                (show_grid) ? 0 : shade_fill_opacity, // TODO this is opacity, change to dynamic variable 
+                (show_grid) ? 0 : shade_fill_opacity, 
                 false);
 
             if (show_grid && !show_shade) {
@@ -958,7 +958,7 @@ Bins.prototype.RedrawBins = function() {
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
                 pie.setAttribute('fill-opacity', shade_fill_opacity)
-            } else if(!show_shade && !show_grid){
+            } else if(!show_grid && !show_shade){
                 pie.setAttribute('vector-effect', 'non-scaling-stroke');
                 pie.setAttribute('stroke-opacity', '0');
                 pie.setAttribute('stroke-width', 0);
