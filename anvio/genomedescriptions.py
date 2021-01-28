@@ -1045,7 +1045,7 @@ class MetagenomeDescriptions(object):
 
 
 class AggregateFunctions:
-    """Get functions from anywhere.
+    """Aggregate functions from anywhere.
 
     The purpose of this class is to collect functions from many distinct databases,
     including external genomes, internal genomes, and/or a genomes storage, and report
@@ -1066,7 +1066,9 @@ class AggregateFunctions:
         >>> facc.report_functions_per_group_stats(output_file_path)
 
     For other uses of this class, see the `functional` mode in the interactive class
-    which is accessed by anvi-display-functions.
+    which is accessed by anvi-display-functions, or anvi-script-gen-functions-per-group-stats-output
+    that gives access to `report_functions_per_group_stats` function to generate the
+    functions across groups output.
 
     Paremeters
     ==========
@@ -1074,7 +1076,9 @@ class AggregateFunctions:
         See the class header for options.
     layer_groups : dict
         When provided, the class will recognize that genomes belong to distinct groups
-        and will prepare grouped frequency and presence-absence dicts, as well.
+        and will prepare grouped frequency and presence-absence dicts, as well. This
+        can ALTERNATIVELY be defined through a TAB-delimited input file passed through
+        args.
     """
 
     def __init__(self, args, layer_groups=None, skip_sanity_check=False, skip_init=False, r=run, p=progress):
