@@ -214,6 +214,8 @@ OUTPUT_HEADERS = {'unique_id' : {
                   }
 
 # global metadata header lists for matrix format
+# if you want to add something here, don't forget to add it to the dictionary in the corresponding
+# get_XXX_metadata_dictionary() function
 MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
 KO_METADATA_HEADERS = ["ko_definition", "modules_with_ko"]
 
