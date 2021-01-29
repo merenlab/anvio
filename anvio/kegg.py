@@ -3043,6 +3043,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.matrix_include_metadata and not self.matrix_format:
             raise ConfigError("The option --include-metadata is only available when you also use the flag --matrix-format "
                               "to get matrix output. :) Plz try again.")
+        if self.matrix_format:
+            for stat in ['completeness', 'presence', 'ko_hits']:
+                matrix_output_file = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
+                if filesnpaths.is_file_exists(matrix_output_file, dont_raise=True):
+                    raise ConfigError(f"Uh oh... there is already matrix output (such as {matrix_output_file}) "
+                                      "using this file prefix in the current directory. Please either remove these files "
+                                      "or give us a different prefix (with -O).")
 
         # set name header
         if self.metagenomes_file:
@@ -3370,7 +3377,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat_name)
-        # TODO SANITY CHECK FOR EXISTING FILE (maybe it should happen earlier in the code, before estimation)
 
         sample_list = list(stat_dict.keys())
         if self.matrix_include_metadata:
