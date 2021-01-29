@@ -3177,12 +3177,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.quiet = True
         args.database_name = db_name
         args.multi_mode = True
+        args.include_metadata = self.matrix_include_metadata
 
         self.update_available_headers_for_multi()
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
+            self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
 
         return args
 
