@@ -4019,7 +4019,7 @@ class KeggModulesDatabase(KeggContext):
 
         Note that the modules table will only contain information for KOs that belong to modules, so this
         function returns None for those KOs that are not in modules. If your use case depends on accessing
-        definitions for all modules, you are better off calling KeggContext.setup_ko_dict() and taking the
+        definitions for all KOs, you are better off calling KeggContext.setup_ko_dict() and taking the
         definition from that dictionary.
         """
 
