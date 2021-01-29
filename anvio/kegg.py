@@ -3312,16 +3312,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         That is:
          module % completeness = module_superdict_multi[sample][bin][mnum]['percent_complete']
          module is complete = module_superdict_multi[sample][bin][mnum]['complete']
-         # hits for KO = ko_superdict_multi[sample][bin][knum]
+         # hits for KO = ko_superdict_multi[sample][bin][knum]['num_hits']
 
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
-
-        # we use module output mode because that gets us all the relevant information in the dataframe
-        #df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_single_data_frame=True)
-        #df.set_index(['db_name', 'kegg_module'], inplace=True)
-
-
+        
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
         module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
