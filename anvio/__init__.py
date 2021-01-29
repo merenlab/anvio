@@ -2916,6 +2916,14 @@ D = {
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
+    'profiling-progress-interval': (
+            ['--profiling-progress-interval'],
+            {'default': 100000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress in the tRNA feature profiling of unique input sequences "
+                     "is reported after a certain number of sequences have been processed."}
+                ),
     'alignment-progress-interval': (
             ['--alignment-progress-interval'],
             {'default': 100000,

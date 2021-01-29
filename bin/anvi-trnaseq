@@ -60,18 +60,11 @@ if __name__ == '__main__':
     group1D = parser.add_argument_group('PERFORMANCE')
     group1D.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group1D.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
-    group1D.add_argument(*anvio.A('write-buffer-size'),
-                         **anvio.K('write-buffer-size',
-                                   {'default': 100000,
-                                    'type': int,
-                                    'help': "The number of tRNA feature profiles to be kept in memory before writing to the tRNA-seq database. "
-                                            "The default is 100,000. The larger the buffer size, the less frequently the program will access the disk, "
-                                            "yet the more memory will be consumed, as profiles are cleared from memory once processed. "
-                                            "Keep an eye on python memory usage to make sure it never exceeds the physical memory limit."}))
     group1D.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
     group1D.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
 
     group1E = parser.add_argument_group('PROGRESS')
+    group1E.add_argument(*anvio.A('profiling-progress-interval'), **anvio.K('profiling-progress-interval'))
     group1E.add_argument(*anvio.A('alignment-progress-interval'), **anvio.K('alignment-progress-interval'))
     group1E.add_argument(*anvio.A('agglomeration-progress-interval'), **anvio.K('agglomeration-progress-interval'))
 
