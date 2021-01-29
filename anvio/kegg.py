@@ -3338,7 +3338,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             # first one to get the module list and metadata
             first_sample = sample_list[0]
             first_bin = list(module_superdict_multi[first_sample].keys())[0]
-            module_list = module_superdict_multi[first_sample][first_bin].keys()
+            module_list = list(module_superdict_multi[first_sample][first_bin].keys())
+            module_list.sort()
 
             # we could be fancier with this, but we are not that cool
             with open(output_file_path, 'w') as output:
@@ -3378,7 +3379,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # first one to get the KO list and metadata
         first_sample = sample_list[0]
         first_bin = list(ko_superdict_multi[first_sample].keys())[0]
-        ko_list = ko_superdict_multi[first_sample][first_bin].keys()
+        ko_list = list(ko_superdict_multi[first_sample][first_bin].keys())
+        ko_list.sort()
 
         with open(output_file_path, 'w') as output:
             output.write('\t'.join(cols) + '\n')
