@@ -3328,7 +3328,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         sample_list = list(stat_dict.keys())
         if self.matrix_include_metadata:
-            cols = [stat_header] + module_metadata_headers + sample_list
+            cols = [stat_header] + stat_metadata_headers + sample_list
         else:
             cols = [stat_header] + sample_list
 
