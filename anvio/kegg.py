@@ -2463,7 +2463,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
-        self.kegg_modules_db.disconnect()
         if not self.multi_mode:
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
@@ -2471,13 +2470,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # at this point, if we are generating long-format output, the data has already been appended to files
         # so we needn't keep it in memory. We don't return it, unless the programmer wants us to.
         if return_superdicts:
+            self.kegg_modules_db.disconnect()
             return kegg_metabolism_superdict, kofam_hits_superdict
         # on the other hand, if we are generating matrix output, we need a limited subset of this data downstream
         # so in this case, we can extract and return smaller dictionaries for module completeness, module presence/absence,
         # and KO hits.
         elif return_subset_for_matrix_format:
-            return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict)
+            matrix_subsets = self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict)
+            self.kegg_modules_db.disconnect()
+            return matrix_subsets
         # otherwise we return nothing at all
+        self.kegg_modules_db.disconnect()
         return
 
 
