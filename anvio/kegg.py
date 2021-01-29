@@ -3364,32 +3364,42 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
         # now we make a KO hit count matrix
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_single_data_frame=True)
-        df.set_index(['db_name'], inplace=True)
-        ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
+        ko_metadata_headers = ["ko_definition", "modules_with_ko"]
+        # FIXME make global^^
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
 
-        # if user wants to include metadata, things are not so simple
+        sample_list = ko_superdict_multi.keys()
         if self.matrix_include_metadata:
-            ko_metadata_headers = ["ko_definition", "modules_with_ko"]
-            cols = ["ko"] + ko_metadata_headers + ko_counts.columns.tolist()
-            rows = ko_counts.index.tolist()
-
-            df.reset_index(inplace=True)
-            df.set_index('ko', inplace=True)
-            metadata_df = df[ko_metadata_headers].reset_index().drop_duplicates(subset='ko')
-            metadata_df.set_index(['ko'], inplace=True)
-
-            with open(output_file_path, 'w') as output:
-                output.write("\t".join(cols) + '\n')
-                for i in range(0, len(rows)):
-                    row_index = rows[i]
-                    metadata_string = "\t".join([metadata_df.loc[row_index, metaheader] for metaheader in ko_metadata_headers])
-                    ko_counts_string = "\t".join([str(ko_counts.loc[rows[i], db_name]) for db_name in ko_counts.columns.tolist()])
-                    output.write('\t'.join([rows[i]] + [metadata_string] + [ko_counts_string]) + '\n')
-
+            cols = ["KO"] + module_metadata_headers + sample_list
         else:
-            ko_counts.to_csv(output_file_path, sep='\t')
+            cols = ["KO"] + sample_list
+
+        # every sample/bin has the same set of KOs in the dict, so we can arbitrarily look at the
+        # first one to get the KO list and metadata
+        first_sample = sample_list[0]
+        first_bin = ko_superdict_multi[first_sample].keys()[0]
+        ko_list = ko_superdict_multi[first_sample][first_bin].keys()
+
+        with open(output_file_path, 'w') as output:
+            output.write('\t'.join(cols) + '\n')
+            for k in ko_list:
+                line = [k]
+
+                if self.matrix_include_metadata:
+                    for h in ko_metadata_headers:
+                        line.append(ko_superdict_multi[first_sample][first_bin][k][h])
+
+                for s in sample_list:
+                    bins = ko_superdict_multi[s].keys()
+                    if len(bins) > 1:
+                        raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
+                                          "right now baiii #FIXME LOL")
+
+                    first_bin = bins[0]
+                    line.append(ko_superdict_multi[s][first_bin][k]['num_hits'])
+
+                output.write('\t'.join(line) + '\n')
+
         self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
 
