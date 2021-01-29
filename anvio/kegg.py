@@ -3300,6 +3300,68 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
+    def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, stat_metadata_headers):
+        """A generic function to write a statistic to a matrix file.
+
+        Accesses the provided stat_dict and writes the statistic to a tab-delimited matrix file.
+        Should work for module completeness, module presence/absence, and ko hits.
+
+        PARAMETERS
+        ==========
+        stat_name : str
+            Which statistic we are working on, ie "completeness". Used in output file name.
+        stat_header : str
+            The header for the items reporting this statistic in the matrix output, ie 'module' or 'ko'.
+        stat_key : str
+            The key used to access this statistic in the stat_dict
+        stat_dict : dictionary
+            A multi-level dictionary (a subset of metabolism estimation output) in which the statistic and
+            relevant metadata can be found.
+        stat_metadata_headers : list of str
+            A list of the headers for metadata columns (which must also be keys for this metadata in the stat_dict)
+            that will be included in the matrix output if self.matrix_include_metadata is True
+        """
+
+        output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat_name)
+        # TODO SANITY CHECK FOR EXISTING FILE (maybe it should happen earlier in the code, before estimation)
+
+        sample_list = list(stat_dict.keys())
+        if self.matrix_include_metadata:
+            cols = [stat_header] + module_metadata_headers + sample_list
+        else:
+            cols = [stat_header] + sample_list
+
+        # every sample/bin has the same set of keys in the stat_dict, so we can arbitrarily look at the
+        # first one to get the item list and metadata
+        first_sample = sample_list[0]
+        first_bin = list(stat_dict[first_sample].keys())[0]
+        item_list = list(stat_dict[first_sample][first_bin].keys())
+        item_list.sort()
+
+        # we could be fancier with this, but we are not that cool
+        with open(output_file_path, 'w') as output:
+            output.write('\t'.join(cols) + '\n')
+            for m in item_list:
+                line = [m]
+
+                if self.matrix_include_metadata:
+                    for h in stat_metadata_headers:
+                        line.append(stat_dict[first_sample][first_bin][m][h])
+
+                for s in sample_list:
+                    bins = list(stat_dict[s].keys())
+                    if len(bins) > 1:
+                        raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
+                                          "right now baiii #FIXME LOL")
+
+                    first_bin = bins[0]
+                    line.append(stat_dict[s][first_bin][m][stat_key])
+
+                output.write('\t'.join([str(f) for f in line]) + '\n')
+
+        self.run.info('Output matrix for "%s"' % stat_name, output_file_path)
+
+
     def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
@@ -3325,85 +3387,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # FIXME: MAKE GLOBAL, we use it in generate_subsets_for_matrix_format() too
         module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
 
-        for stat, header in module_matrix_stats.items():
-            output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
-            stat_header = module_matrix_stats[stat]
-
-            sample_list = list(module_superdict_multi.keys())
-            if self.matrix_include_metadata:
-                cols = ["module"] + module_metadata_headers + sample_list
-            else:
-                cols = ["module"] + sample_list
-
-            # every sample/bin has the same set of modules in the dict, so we can arbitrarily look at the
-            # first one to get the module list and metadata
-            first_sample = sample_list[0]
-            first_bin = list(module_superdict_multi[first_sample].keys())[0]
-            module_list = list(module_superdict_multi[first_sample][first_bin].keys())
-            module_list.sort()
-
-            # we could be fancier with this, but we are not that cool
-            with open(output_file_path, 'w') as output:
-                output.write('\t'.join(cols) + '\n')
-                for m in module_list:
-                    line = [m]
-
-                    if self.matrix_include_metadata:
-                        for h in module_metadata_headers:
-                            line.append(module_superdict_multi[first_sample][first_bin][m][h])
-
-                    for s in sample_list:
-                        bins = list(module_superdict_multi[s].keys())
-                        if len(bins) > 1:
-                            raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
-                                              "right now baiii #FIXME LOL")
-
-                        first_bin = bins[0]
-                        line.append(module_superdict_multi[s][first_bin][m][stat_header])
-
-                    output.write('\t'.join([str(f) for f in line]) + '\n')
-
-            self.run.info('Output matrix for "%s"' % stat, output_file_path)
+        for stat, key in module_matrix_stats.items():
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, stat_metadata_headers=module_metadata_headers)
 
         # now we make a KO hit count matrix
         ko_metadata_headers = ["ko_definition", "modules_with_ko"]
         # FIXME make global^^
-        output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
 
-        sample_list = list(ko_superdict_multi.keys())
-        if self.matrix_include_metadata:
-            cols = ["KO"] + module_metadata_headers + sample_list
-        else:
-            cols = ["KO"] + sample_list
-
-        # every sample/bin has the same set of KOs in the dict, so we can arbitrarily look at the
-        # first one to get the KO list and metadata
-        first_sample = sample_list[0]
-        first_bin = list(ko_superdict_multi[first_sample].keys())[0]
-        ko_list = list(ko_superdict_multi[first_sample][first_bin].keys())
-        ko_list.sort()
-
-        with open(output_file_path, 'w') as output:
-            output.write('\t'.join(cols) + '\n')
-            for k in ko_list:
-                line = [k]
-
-                if self.matrix_include_metadata:
-                    for h in ko_metadata_headers:
-                        line.append(ko_superdict_multi[first_sample][first_bin][k][h])
-
-                for s in sample_list:
-                    bins = list(ko_superdict_multi[s].keys())
-                    if len(bins) > 1:
-                        raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
-                                          "right now baiii #FIXME LOL")
-
-                    first_bin = bins[0]
-                    line.append(ko_superdict_multi[s][first_bin][k]['num_hits'])
-
-                output.write('\t'.join([str(f) for f in line]) + '\n')
-
-        self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
+        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, stat_metadata_headers=ko_metadata_headers)
 
 
     def estimate_metabolism(self):
