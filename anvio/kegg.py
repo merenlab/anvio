@@ -1703,7 +1703,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.kegg_modules_db.get_all_modules_as_list()
-        all_kos = self.kegg_modules_db.get_all_knums_as_list()
+        all_kos = [ko for ko in self.ko_dict.keys()]
         for mnum in modules:
             bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
                                            "kofam_hits" : {},
