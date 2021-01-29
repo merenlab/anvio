@@ -2824,7 +2824,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
-                mod_completeness_presence_subdict[mnum] = {}
+                mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]['percent_complete'] = c_dict['percent_complete']
                 mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
 
@@ -3316,7 +3316,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
-        
+
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
         module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
