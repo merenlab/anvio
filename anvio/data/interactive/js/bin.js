@@ -878,23 +878,32 @@ Bins.prototype.RedrawBins = function() {
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
     if(invert_shade){
-        console.log(`going to shade ${nodes_for_inversion.length} inverted items`)
-        var bin_color = 'black'
-
+        let bin_color = 'black'
+        console.log(nodes_for_inversion.length)
+        
         for(let i = 0; i < nodes_for_inversion.length; i++){
+            let start = nodes_for_inversion[i][0]
+            let end = nodes_for_inversion[i + 1][0]
 
-            drawPie(
-                // 'bin', 
-                // 'bin_outer' + 1,
-                // nodes_for_inversion[i].angle - nodes_for_inversion[i].size / 2,
-                // nodes_for_inversion[i].angle - nodes_for_inversion[i].size / 2,
-                // total_radius + outer_ring_margin,
-                // total_radius + outer_ring_margin + outer_ring_size,
-                // 1,
-                // bin_color,
-                // 0,
-                // true
+            let pie = drawPie(
+                'bin', 
+                'bin_outer_' + 1,
+                start.angle - start.size / 2,
+                end.angle - end.size / 2,
+                distance(start.backarc, {
+                    'x': 0,
+                    'y': 0
+                }),
+                total_radius,
+                (end.angle - start.angle + (start.size / 2) + (end.size / 2) > Math.PI) ? 1 : 0,
+                bin_color,
+                0.3,
+                true
             )
+
+            pie.setAttribute('vector-effect', 'non-scaling-stroke');
+            pie.setAttribute('stroke-opacity', '1');
+              
         }
     }
 
