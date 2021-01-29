@@ -3391,6 +3391,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             for m in item_list:
                 line = [m]
 
+                if self.matrix_include_metadata:
+                    for h in stat_metadata_headers:
+                        line.append(stat_dict[first_sample][first_bin][m][h])
+
                 for s in sample_list:
                     bins = list(stat_dict[s].keys())
                     if len(bins) > 1:
@@ -3398,11 +3402,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                           "right now baiii #FIXME LOL")
 
                     first_bin = bins[0]
-
-                    if self.matrix_include_metadata:
-                        for h in stat_metadata_headers:
-                            line.append(stat_dict[s][first_bin][m][h])
-
                     line.append(stat_dict[s][first_bin][m][stat_key])
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
