@@ -3359,7 +3359,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         first_bin = bins[0]
                         line.append(module_superdict_multi[s][first_bin][m][stat_header])
 
-                    output.write('\t'.join(line) + '\n')
+                    output.write('\t'.join([str(f) for f in line]) + '\n')
 
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
@@ -3398,7 +3398,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     first_bin = bins[0]
                     line.append(ko_superdict_multi[s][first_bin][k]['num_hits'])
 
-                output.write('\t'.join(line) + '\n')
+                output.write('\t'.join([str(f) for f in line]) + '\n')
 
         self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
