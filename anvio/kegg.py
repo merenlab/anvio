@@ -3328,7 +3328,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
             stat_header = module_matrix_stats[stat]
 
-            sample_list = module_superdict_multi.keys()
+            sample_list = list(module_superdict_multi.keys())
             if self.matrix_include_metadata:
                 cols = ["module"] + module_metadata_headers + sample_list
             else:
@@ -3337,7 +3337,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             # every sample/bin has the same set of modules in the dict, so we can arbitrarily look at the
             # first one to get the module list and metadata
             first_sample = sample_list[0]
-            first_bin = module_superdict_multi[first_sample].keys()[0]
+            first_bin = list(module_superdict_multi[first_sample].keys())[0]
             module_list = module_superdict_multi[first_sample][first_bin].keys()
 
             # we could be fancier with this, but we are not that cool
@@ -3351,7 +3351,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                             line.append(module_superdict_multi[first_sample][first_bin][m][h])
 
                     for s in sample_list:
-                        bins = module_superdict_multi[s].keys()
+                        bins = list(module_superdict_multi[s].keys())
                         if len(bins) > 1:
                             raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
                                               "right now baiii #FIXME LOL")
@@ -3368,7 +3368,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # FIXME make global^^
         output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
 
-        sample_list = ko_superdict_multi.keys()
+        sample_list = list(ko_superdict_multi.keys())
         if self.matrix_include_metadata:
             cols = ["KO"] + module_metadata_headers + sample_list
         else:
@@ -3377,7 +3377,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # every sample/bin has the same set of KOs in the dict, so we can arbitrarily look at the
         # first one to get the KO list and metadata
         first_sample = sample_list[0]
-        first_bin = ko_superdict_multi[first_sample].keys()[0]
+        first_bin = list(ko_superdict_multi[first_sample].keys())[0]
         ko_list = ko_superdict_multi[first_sample][first_bin].keys()
 
         with open(output_file_path, 'w') as output:
@@ -3390,7 +3390,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         line.append(ko_superdict_multi[first_sample][first_bin][k][h])
 
                 for s in sample_list:
-                    bins = ko_superdict_multi[s].keys()
+                    bins = list(ko_superdict_multi[s].keys())
                     if len(bins) > 1:
                         raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
                                           "right now baiii #FIXME LOL")
