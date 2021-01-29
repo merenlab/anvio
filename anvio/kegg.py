@@ -213,6 +213,10 @@ OUTPUT_HEADERS = {'unique_id' : {
                         },
                   }
 
+# global metadata header lists for matrix format
+MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
+KO_METADATA_HEADERS = ["ko_definition", "modules_with_ko"]
+
 
 
 class KeggContext(object):
@@ -2817,9 +2821,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_completeness_presence_subdict = {}
         ko_hits_subdict = {}
 
-        module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
-        ko_metadata_headers = ["ko_definition", "modules_with_ko"]
-
         for bin, mod_dict in module_superdict.items():
             mod_completeness_presence_subdict[bin] = {}
             for mnum, c_dict in mod_dict.items():
@@ -2830,7 +2831,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
 
                 if self.matrix_include_metadata:
-                    for key in module_metadata_headers:
+                    for key in MODULE_METADATA_HEADERS:
                         mod_completeness_presence_subdict[bin][mnum][key] = c_dict[key]
 
         for bin, ko_dict in ko_hits_superdict.items():
@@ -2840,7 +2841,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 ko_hits_subdict[bin][knum]['num_hits'] = len(k_dict['gene_caller_ids']) # number of hits to this KO in the bin
 
                 if self.matrix_include_metadata:
-                    for key in ko_metadata_headers:
+                    for key in KO_METADATA_HEADERS:
                         ko_hits_subdict[bin][knum][key] = k_dict[key]
 
         return mod_completeness_presence_subdict, ko_hits_subdict
@@ -3383,18 +3384,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
         module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
-        # per-module metadata to include, if that option is selected. Must be subset of 'modules' mode output headers
-        # FIXME: MAKE GLOBAL, we use it in generate_subsets_for_matrix_format() too
-        module_metadata_headers = ["module_name", "module_class", "module_category", "module_subcategory"]
 
         for stat, key in module_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, stat_metadata_headers=module_metadata_headers)
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, stat_metadata_headers=MODULE_METADATA_HEADERS)
 
         # now we make a KO hit count matrix
-        ko_metadata_headers = ["ko_definition", "modules_with_ko"]
-        # FIXME make global^^
-
-        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, stat_metadata_headers=ko_metadata_headers)
+        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, stat_metadata_headers=KO_METADATA_HEADERS)
 
 
     def estimate_metabolism(self):
