@@ -426,6 +426,8 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
         for i in range(len(self.input_file_splits)):
             command = ['prodigal',
+                       '-m', # <- this one is to treat runs of N as masked sequences and not to build genes across them.
+                             #    see a longer discussion here: https://github.com/merenlab/anvio/issues/1641
                        '-i', self.input_file_splits[i],
                        '-o', self.output_file_split_paths['gff_path'][i],
                        '-a', self.output_file_split_paths['peptide_path'][i]]
