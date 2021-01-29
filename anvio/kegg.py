@@ -2834,8 +2834,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
 
                 if self.matrix_include_metadata:
+                    metadata_dict = self.get_module_metadata_dictionary(mnum)
                     for key in MODULE_METADATA_HEADERS:
-                        mod_completeness_presence_subdict[bin][mnum][key] = c_dict[key]
+                        mod_completeness_presence_subdict[bin][mnum][key] = metadata_dict[key]
 
         for bin, ko_dict in ko_hits_superdict.items():
             ko_hits_subdict[bin] = {}
@@ -2844,8 +2845,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 ko_hits_subdict[bin][knum]['num_hits'] = len(k_dict['gene_caller_ids']) # number of hits to this KO in the bin
 
                 if self.matrix_include_metadata:
+                    metadata_dict = self.get_ko_metadata_dictionary(knum, ko_hits_superdict)
                     for key in KO_METADATA_HEADERS:
-                        ko_hits_subdict[bin][knum][key] = k_dict[key]
+                        ko_hits_subdict[bin][knum][key] = metadata_dict[key]
 
         return mod_completeness_presence_subdict, ko_hits_subdict
 
