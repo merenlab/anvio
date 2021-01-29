@@ -1663,14 +1663,14 @@ class TRNASeqDataset(object):
                     [str(start) if type(start) == int else ','.join(map(str, start))
                      for start in uniq_seq.feature_start_indices],
                     # Convert Pythonic stop position to real stop position of feature.
-                    [str(stop - 1) if type(stop) == int else ','.join(map(str, stop))
+                    [str(stop - 1) if type(stop) == int else ','.join(str(i - 1) for i in stop)
                      for stop in uniq_seq.feature_stop_indices])))
                 # The alpha and beta sections of the D loop are "subfeatures," not "features,"
                 # so add them as columns to the table after the features.
                 + (uniq_seq.alpha_start_index,
-                   uniq_seq.alpha_stop_index,
+                   uniq_seq.alpha_stop_index - 1 if uniq_seq.alpha_stop_index else None,
                    uniq_seq.beta_start_index,
-                   uniq_seq.beta_stop_index)
+                   uniq_seq.beta_stop_index - 1 if uniq_seq.beta_stop_index else None)
             )
 
         if feature_table_entries:
