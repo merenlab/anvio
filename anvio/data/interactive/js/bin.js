@@ -843,19 +843,24 @@ Bins.prototype.RedrawBins = function() {
             if (prev_value != -1) {
                 bins_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
             }
-
             prev_start = i;
         }
         prev_value = leaf_list[i];
     }
 
-    nodes_for_inversion = []
-    for(let i = 0; i < leaf_list.length; i++){
-        if(leaf_list[i] === -1){
-            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+    let dont_draw = new Array()
+    for (var i=1; i < leaf_list.length; i++)
+    {
+        if (prev_value != leaf_list[i])
+        {
+            if (prev_value === -1) {
+                dont_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
+            }
+            prev_start = i;
         }
+        prev_value = leaf_list[i];
     }
-    
+
     var bin = document.getElementById('bin');
     while (bin.hasChildNodes()) {
         bin.removeChild(bin.lastChild);
@@ -879,15 +884,23 @@ Bins.prototype.RedrawBins = function() {
 
     if(invert_shade){
         let bin_color = 'black'
-        console.log(nodes_for_inversion.length)
-        
-        for(let i = 0; i < nodes_for_inversion.length; i++){
-            let start = nodes_for_inversion[i][0]
-            let end = nodes_for_inversion[i + 1][0]
+        let nodes_for_inversion = []
+        console.log(dont_draw)
+        console.log(bins_to_draw)
+
+        // for(let i = 0; i < leaf_list.length; i++){
+        //     if(leaf_list[i] === -1){
+        //         nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+        //     }
+        // }
+
+        for(let i=0; i < dont_draw.length; i++){
+            var start = drawer.tree.leaves[dont_draw[i][0]];
+            var end = drawer.tree.leaves[dont_draw[i][1]];
 
             let pie = drawPie(
                 'bin', 
-                'bin_outer_' + 1,
+                'bin_outer_' + i,
                 start.angle - start.size / 2,
                 end.angle - end.size / 2,
                 distance(start.backarc, {
@@ -900,10 +913,8 @@ Bins.prototype.RedrawBins = function() {
                 0.3,
                 true
             )
-
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
             pie.setAttribute('stroke-opacity', '1');
-              
         }
     }
 
