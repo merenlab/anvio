@@ -1456,6 +1456,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # init the base class
         KeggContext.__init__(self, self.args)
 
+        # init the KO dictionary
+        self.setup_ko_dict()
+
         if not self.estimate_from_json:
             utils.is_contigs_db(self.contigs_db_path)
 
@@ -2756,8 +2759,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         d : dictionary of dictionaries
             The output dictionary whose format is compatible for printing to a tab-delimited file
         """
-
-        self.setup_ko_dict()
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
