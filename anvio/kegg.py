@@ -2952,6 +2952,42 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return data_for_visualization
 
 
+    def get_module_metadata_dictionary(self, mnum):
+        """Returns a dictionary of metadata for the given module.
+
+        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+
+        metadata_dict = {}
+        metadata_dict["module_name"] = self.kegg_modules_db.get_module_name(mnum)
+        metadata_dict["module_class"] = mnum_class_dict["class"]
+        metadata_dict["module_category"] = mnum_class_dict["category"]
+        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
+        return metadata_dict
+
+
+    def get_ko_metadata_dictionary(self, knum, ko_superdict):
+        """Returns a dictionary of metadata for the given KO.
+
+        The dictionary must include all the metadata from KO_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        a_bin = list(ko_superdict.keys())[0]
+        if ko_superdict[a_bin][knum]["modules"]:
+            mod_list = ",".join(ko_superdict[a_bin][knum]["modules"])
+        else:
+            mod_list = "None"
+
+        metadata_dict = {}
+        metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
+        metadata_dict["modules_with_ko"] = mod_list
+        return metadata_dict
+
+
 class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     """Class for reconstructing/estimating metabolism for multiple contigs DBs at a time.
 
