@@ -3401,8 +3401,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
                                           "right now baiii #FIXME LOL")
 
-                    first_bin = bins[0]
-                    line.append(stat_dict[s][first_bin][m][stat_key])
+                    bin_one = bins[0]
+                    line.append(stat_dict[s][bin_one][m][stat_key])
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
 
