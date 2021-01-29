@@ -1412,8 +1412,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # output options sanity checks
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
-            run.info("Matrix format", self.matrix_format)
-            run.info("Matrix will include metadata", self.matrix_include_metadata)
             run.info("Module completeness threshold", self.module_completion_threshold)
             run.info("Only complete modules included in output", self.only_complete)
             run.info("Zero-completeness modules excluded from output", self.exclude_zero_modules)
@@ -3019,6 +3017,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
+            self.run.info("Output Modes", ", ".join(self.output_modes))
+            self.run.info("Matrix format", self.matrix_format)
+            self.run.info("Matrix will include metadata", self.matrix_include_metadata)
 
         self.databases = None
 
