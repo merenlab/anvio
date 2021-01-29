@@ -589,7 +589,7 @@ class DLoop(Loop):
             if len(position_21_string) != 1:
                 raise TRNAIdentifierError("Your `position_21_string` was not the required 1 base long: %s" % position_21_string)
 
-        alpha_start_pos = 1
+        alpha_start_pos = 2
         alpha_stop_pos = alpha_start_pos + len(alpha_positions_string)
         self.alpha_seq = Sequence(alpha_positions_string, start_pos=alpha_start_pos, stop_pos=alpha_stop_pos)
         beta_start_pos = alpha_stop_pos + 2
