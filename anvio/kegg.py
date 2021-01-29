@@ -3408,7 +3408,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                           "right now baiii #FIXME LOL")
 
                     bin_one = bins[0]
-                    line.append(stat_dict[s][bin_one][m][stat_key])
+                    value = stat_dict[s][bin_one][m][stat_key]
+                    # handle presence/absence values as integers
+                    if isinstance(value, bool):
+                        line.append(int(value))
+                    else:
+                        line.append(value)
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
 
