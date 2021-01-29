@@ -849,6 +849,13 @@ Bins.prototype.RedrawBins = function() {
         prev_value = leaf_list[i];
     }
 
+    nodes_for_inversion = []
+    for(let i = 0; i < leaf_list.length; i++){
+        if(leaf_list[i] === -1){
+            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+        }
+    }
+    
     var bin = document.getElementById('bin');
     while (bin.hasChildNodes()) {
         bin.removeChild(bin.lastChild);
@@ -857,6 +864,7 @@ Bins.prototype.RedrawBins = function() {
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var show_shade = $('#show_shade_for_bins')[0].checked 
+    var invert_shade = $('#invert_shade_for_bins')[0].checked 
     var shade_fill_opacity = $('#shade_fill_opacity').val() 
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
@@ -868,6 +876,27 @@ Bins.prototype.RedrawBins = function() {
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
+
+    if(invert_shade){
+        console.log(`going to shade ${nodes_for_inversion.length} inverted items`)
+        var bin_color = 'black'
+
+        for(let i = 0; i < nodes_for_inversion.length; i++){
+
+            drawPie(
+                // 'bin', 
+                // 'bin_outer' + 1,
+                // nodes_for_inversion[i].angle - nodes_for_inversion[i].size / 2,
+                // nodes_for_inversion[i].angle - nodes_for_inversion[i].size / 2,
+                // total_radius + outer_ring_margin,
+                // total_radius + outer_ring_margin + outer_ring_size,
+                // 1,
+                // bin_color,
+                // 0,
+                // true
+            )
+        }
+    }
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
