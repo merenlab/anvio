@@ -3374,7 +3374,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             cols = [stat_header] + sample_list
 
         # every sample/bin has the same set of keys in the stat_dict, so we can arbitrarily look at the
-        # first one to get the item list and metadata
+        # first one to get the item list
         first_sample = sample_list[0]
         first_bin = list(stat_dict[first_sample].keys())[0]
         item_list = list(stat_dict[first_sample][first_bin].keys())
