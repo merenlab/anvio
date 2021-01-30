@@ -2438,8 +2438,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
-        It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
-        The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
+        It usually avoids returning the metabolism data to save on memory (as this data is typically appended to
+        files immediately), but this behavior can be changed by setting return_superdicts to True (for the entire
+        modules/ko superdictionaries) or return_subset_for_matrix_format to True (for a subset of these dicts that
+        multi-estimators need for matrix output generation).
 
         PARAMETERS
         ==========
