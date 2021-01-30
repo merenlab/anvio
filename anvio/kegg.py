@@ -3448,6 +3448,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
 
+        # we need this for metadata
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
         module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
@@ -3467,6 +3470,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         ko_list.sort()
         self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                   item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS)
+
+        self.kegg_modules_db.disconnect()
 
 
     def estimate_metabolism(self):
