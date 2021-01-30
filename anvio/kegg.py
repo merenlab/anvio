@@ -3404,10 +3404,19 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 line = [m]
 
                 if self.matrix_include_metadata:
+                    if stat_header == 'module':
+                        metadata_dict = self.get_module_metadata_dictionary(m)
+                    elif stat_header == 'KO':
+                        metadata_dict = self.get_ko_metadata_dictionary(m)
+                    else:
+                        raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
+                                          "statistics but there is no function defined for this.")
+
                     for h in stat_metadata_headers:
-                        first_sample = sample_list[0]
-                        first_bin = sample_bin_list[first_sample][0]
-                        line.append(stat_dict[first_sample][first_bin][m][h])
+                        if h not in metadata_dict.keys():
+                            raise ConfigError(f"We couldn't find the key '{h}' in the metadata dictionary for {stat_header}s. "
+                                              "Please check that your metadata accessor function obtains this data.")
+                        line.append(metadata_dict[h])
 
                 for s in sample_list:
                     bins = sample_bin_list[s]
