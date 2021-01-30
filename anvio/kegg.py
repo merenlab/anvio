@@ -3519,6 +3519,7 @@ class KeggModulesDatabase(KeggContext):
             #     raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
             #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
+######### DB GENERATION FUNCTIONS #########
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
@@ -3865,6 +3866,7 @@ class KeggModulesDatabase(KeggContext):
     def disconnect(self):
         self.db.disconnect()
 
+######### SELF TABLE ACCESS FUNCTIONS #########
 
     def get_days_since_creation(self):
         """Returns the time (in days) since MODULES.db was created.
@@ -3886,9 +3888,8 @@ class KeggModulesDatabase(KeggContext):
         mods_and_orths = "".join(mods_and_orths)
         return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())[0:12]
 
+######### MODULES TABLE ACCESS FUNCTIONS #########
 
-    # KEGG Modules Table functions for data access and parsing start below
-    # ====================================================================
     def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
@@ -4168,6 +4169,7 @@ class KeggModulesDatabase(KeggContext):
 
         return substrate_name_list, intermediate_name_list, product_name_list
 
+######### MODULE DEFINITION UNROLLING FUNCTIONS #########
 
     def unroll_module_definition(self, mnum):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
