@@ -191,6 +191,24 @@ Note also that you can combine this flag with the `--only-complete` flag, like s
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete --include-metadata
 {{ codestop }}
 
+**Including rows of all zeros in the matrix output**
+The `--include-zeros` flag works for matrix output, too. By default, modules that have 0 completeness or KOs that have 0 hits in every input sample will be left out of the matrix files. Using `--include-zeros` results in the inclusion of these items.
+{{ codestart }}
+anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --include-zeros
+{{ codestop }}
+
+**Getting module-specific KO hit matrices**
+The standard KO hit matrix includes all KOfams that were annotated at least once in your input databases (or all KOfams that we know about, if `--include-zeros`). But sometimes you might want to see a matrix with only the KOs from a particular module. To do this, pass a comma-separated list of KEGG module numbers to this flag, and then your matrix output will include KO hit matrices for each module in the list.
+
+For example,
+{{ codestart }}
+anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
+                         --matrix-format \
+                         --module-specific-matrices M00001,M00009 \
+                         -O external_genomes
+{{ codestop }}
+will produce the output files `external_genomes-M00001_ko_hits-MATRIX.txt` and `external_genomes-M00009_ko_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each KO in the module.
+
 
 ## Testing this program
 You can see if this program is working by running the following suite of tests, which will check several common use-cases:
