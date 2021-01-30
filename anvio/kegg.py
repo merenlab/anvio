@@ -3354,7 +3354,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
-    def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, stat_metadata_headers):
+    def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, item_list, stat_metadata_headers):
         """A generic function to write a statistic to a matrix file.
 
         Accesses the provided stat_dict and writes the statistic to a tab-delimited matrix file.
@@ -3371,6 +3371,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         stat_dict : dictionary
             A multi-level dictionary (a subset of metabolism estimation output) in which the statistic and
             relevant metadata can be found.
+        item_list : list of str
+            The row (item) names of the matrix. Ideally would be sorted for consistency in the output.
         stat_metadata_headers : list of str
             A list of the headers for metadata columns (which must also be keys for this metadata in the stat_dict)
             that will be included in the matrix output if self.matrix_include_metadata is True
@@ -3396,13 +3398,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             cols = [stat_header] + stat_metadata_headers + sample_columns
         else:
             cols = [stat_header] + sample_columns
-
-        # every sample/bin has the same set of keys in the stat_dict, so we can arbitrarily look at the
-        # first one to get the item list
-        first_sample = sample_list[0]
-        first_bin = list(stat_dict[first_sample].keys())[0]
-        item_list = list(stat_dict[first_sample][first_bin].keys())
-        item_list.sort()
 
         # we could be fancier with this, but we are not that cool
         with open(output_file_path, 'w') as output:
@@ -3452,12 +3447,22 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
         module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
+        # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
+        first_sample = list(module_superdict_multi.keys())[0]
+        first_bin = list(module_superdict_multi[first_sample].keys())[0]
+        module_list = list(module_superdict_multi[first_sample][first_bin].keys())
+        module_list.sort()
 
         for stat, key in module_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, stat_metadata_headers=MODULE_METADATA_HEADERS)
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
+                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS)
 
         # now we make a KO hit count matrix
-        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, stat_metadata_headers=KO_METADATA_HEADERS)
+        self.setup_ko_dict()
+        ko_list = list(self.ko_dict.keys())
+        ko_list.sort()
+        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
+                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS)
 
 
     def estimate_metabolism(self):
