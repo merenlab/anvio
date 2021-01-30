@@ -2624,11 +2624,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     continue
 
                 # fetch module info from db
-                module_name = self.kegg_modules_db.get_module_name(mnum)
-                mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
-                module_class = mnum_class_dict["class"]
-                module_cat = mnum_class_dict["category"]
-                module_subcat = mnum_class_dict["subcategory"]
+                metadata_dict = self.get_module_metadata_dictionary(mnum)
                 module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
                 module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
@@ -2678,13 +2674,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                                 # module specific info
                                 if "module_name" in headers_to_include:
-                                    d[self.modules_unique_id]["module_name"] = module_name
+                                    d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
                                 if "module_class" in headers_to_include:
-                                    d[self.modules_unique_id]["module_class"] = module_class
+                                    d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
                                 if "module_category" in headers_to_include:
-                                    d[self.modules_unique_id]["module_category"] = module_cat
+                                    d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
                                 if "module_subcategory" in headers_to_include:
-                                    d[self.modules_unique_id]["module_subcategory"] = module_subcat
+                                    d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
                                 if "module_definition" in headers_to_include:
                                     d[self.modules_unique_id]["module_definition"] = module_def
                                 if "module_substrates" in headers_to_include:
@@ -2735,13 +2731,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     # module specific info
                     if "module_name" in headers_to_include:
-                        d[self.modules_unique_id]["module_name"] = module_name
+                        d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
                     if "module_class" in headers_to_include:
-                        d[self.modules_unique_id]["module_class"] = module_class
+                        d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
                     if "module_category" in headers_to_include:
-                        d[self.modules_unique_id]["module_category"] = module_cat
+                        d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
                     if "module_subcategory" in headers_to_include:
-                        d[self.modules_unique_id]["module_subcategory"] = module_subcat
+                        d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
                     if "module_definition" in headers_to_include:
                         d[self.modules_unique_id]["module_definition"] = module_def
                     if "module_substrates" in headers_to_include:
