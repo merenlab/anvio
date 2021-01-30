@@ -3407,6 +3407,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
                 if self.matrix_include_metadata:
                     for h in stat_metadata_headers:
+                        first_sample = sample_list[0]
+                        first_bin = sample_bin_list[first_sample][0]
                         line.append(stat_dict[first_sample][first_bin][m][h])
 
                 for s in sample_list:
