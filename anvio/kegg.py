@@ -4014,6 +4014,12 @@ class KeggModulesDatabase(KeggContext):
             return dict_from_mod_table[0]['data_definition']
 
 
+    def get_kos_in_module(self, mnum):
+        """This function returns a list of KOs in the given module"""
+
+        return self.get_data_value_entries_for_module_by_data_name(mnum, "ORTHOLOGY")
+
+
     def get_kegg_module_compound_lists(self, mnum):
         """This function returns a list of substrates, a list of intermediates, and a list of products for the given module.
 
