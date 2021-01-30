@@ -3431,7 +3431,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
             if skipped_mods:
                 skipped_list = ", ".join(skipped_mods)
-                self.run.warning(f"We couldn't recognize the following module(s) {skipped_list}, so we didn't generate "
+                self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
                                  "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
 
         self.kegg_modules_db.disconnect()
