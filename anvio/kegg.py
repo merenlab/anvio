@@ -3415,7 +3415,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     bins = sample_bin_list[s]
 
                     for b in bins:
-                        value = stat_dict[s][b][m][stat_key]
+                        # if its not in the dict, we know it is zero
+                        if m not in stat_dict[s][b].keys():
+                            value = 0
+                        else:
+                            value = stat_dict[s][b][m][stat_key]
 
                         # handle presence/absence values as integers
                         if isinstance(value, bool):
