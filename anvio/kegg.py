@@ -196,6 +196,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
                                        "in the output file will be a KOfam hit"
                         },
+                  'warnings' : {
+                        'cdict_key': 'warnings',
+                        'mode_type': 'modules',
+                        'description': "If we are missing a KOfam profile for one of the KOs in a module, there will be a note in this column. "
+                        },
                   'ko' : {
                         'cdict_key': None,
                         'mode_type': 'kofams',
@@ -1760,7 +1765,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
                                            "kofam_hits" : {},
                                            "genes_to_contigs" : {},
-                                           "contigs_to_genes" : {}
+                                           "contigs_to_genes" : {},
+                                           "warnings" : []
                                           }
         for knum in all_kos:
             if knum not in self.ko_dict:
@@ -1771,6 +1777,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
                                         "that any modules this KO belongs to can never be fully complete (this includes "
                                         f"{mods_str}). ")
+                    for m in mods_it_is_in:
+                        bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
