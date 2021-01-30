@@ -2665,6 +2665,14 @@ D = {
             'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
                     "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
                 ),
+    'module-specific-matrices': (
+            ['--module-specific-matrices'],
+            {'default': None,
+            'metavar': 'MODULE_LIST',
+            'help': "Provide a comma-separated list of module numbers to this parameter, and then you will get "
+                    "a KO hits matrix for each module in the list."}
+
+                ),
     'modules-txt': (
             ['-M', '--modules-txt'],
             {'default': None,

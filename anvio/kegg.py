@@ -1310,6 +1310,7 @@ class KeggEstimatorArgs():
         self.matrix_include_metadata = True if A('include_metadata') else False
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
+        self.module_specific_matrices = A('module_specific_matrices') or None
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
@@ -1330,6 +1331,7 @@ class KeggEstimatorArgs():
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.databases = None
             self.matrix_format = False # we won't be storing data from the single estimator anyway
+            self.module_specific_matrices = None
 
         # parse requested output modes if necessary
         if isinstance(self.output_modes, str):
@@ -1346,6 +1348,10 @@ class KeggEstimatorArgs():
                 self.custom_output_headers.remove("unique_id")
                 self.custom_output_headers = ["unique_id"] + self.custom_output_headers
             self.available_modes['modules_custom']['headers'] = self.custom_output_headers
+
+        # parse specific matrix modules if necessary
+        if self.module_specific_matrices:
+            self.module_specific_matrices = self.module_specific_matrices.split(",")
 
 
     def setup_output_for_appending(self):
@@ -3017,6 +3023,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Output Modes", ", ".join(self.output_modes))
             self.run.info("Matrix format", self.matrix_format)
             self.run.info("Matrix will include metadata", self.matrix_include_metadata)
+            if self.module_specific_matrices:
+                self.run.info("Matrices for specific modules: ", ", ".join(self.module_specific_matrices))
 
         self.databases = None
 
@@ -3037,6 +3045,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                               "like this, anvi'o is confused. :) ")
         if self.matrix_include_metadata and not self.matrix_format:
             raise ConfigError("The option --include-metadata is only available when you also use the flag --matrix-format "
+                              "to get matrix output. :) Plz try again.")
+        if self.module_specific_matrices and not self.matrix_format:
+            raise ConfigError("The option --module-specific-matrices is only available when you also use the flag --matrix-format "
                               "to get matrix output. :) Plz try again.")
         if self.matrix_format:
             for stat in ['completeness', 'presence', 'ko_hits']:

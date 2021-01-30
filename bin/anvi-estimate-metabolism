@@ -84,6 +84,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('include-metadata'), **anvio.K('include-metadata'))
     groupC.add_argument(*anvio.A('include-zeros'), **anvio.K('include-zeros'))
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
+    groupC.add_argument(*anvio.A('module-specific-matrices'), **anvio.K('module-specific-matrices'))
 
     groupD = parser.add_argument_group('DEBUG', "Parameters to use if you think something fishy is going on or otherwise want to exert more control. Go for it.")
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
