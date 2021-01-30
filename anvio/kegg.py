@@ -64,7 +64,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'data_dict': "modules",
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "kofam_hits_in_module", "gene_caller_ids_in_module"],
+                                "kofam_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
