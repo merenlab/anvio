@@ -3415,6 +3415,25 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
                                   write_rows_with_all_zeros=include_zeros)
 
+        # if necessary, make module specific KO matrices
+        if self.module_specific_matrices:
+            skipped_mods = []
+            for mod in self.module_specific_matrices:
+                if mod not in module_list:
+                    skipped_mods.append(mod)
+                    continue
+
+                kos_in_mod = self.kegg_modules_db.get_kos_in_module(mod)
+                stat = f"{mod}_ko_hits"
+                self.write_stat_to_matrix(stat_name=stat, stat_header="KO", stat_key='num_hits', stat_dict=ko_superdict_multi, \
+                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
+                                          write_rows_with_all_zeros=True)
+
+            if skipped_mods:
+                skipped_list = ", ".join(skipped_mods)
+                self.run.warning(f"We couldn't recognize the following module(s) {skipped_list}, so we didn't generate "
+                                 "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
+
         self.kegg_modules_db.disconnect()
 
 
