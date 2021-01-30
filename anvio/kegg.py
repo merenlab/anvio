@@ -366,6 +366,11 @@ class KeggContext(object):
         else:
             mod_list_str = "None"
 
+        if knum not in self.ko_dict:
+            raise ConfigError("Something is mysteriously wrong. Your contigs database "
+                              f"has an annotation for KO {knum} but this KO is not in "
+                              "the KO dictionary. This should never have happened.")
+
         metadata_dict = {}
         metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
         metadata_dict["modules_with_ko"] = mod_list_str
