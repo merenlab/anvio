@@ -2833,6 +2833,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for KO", ko)
 
+                metadata_dict = self.get_ko_metadata_dictionary(ko)
+
                 for gc_id in k_dict["gene_caller_ids"]:
                     d[self.ko_unique_id] = {}
 
@@ -2847,13 +2849,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if "contig" in headers_to_include:
                         d[self.ko_unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
                     if "modules_with_ko" in headers_to_include:
-                        if k_dict["modules"]:
-                            mod_list = ",".join(k_dict["modules"])
-                        else:
-                            mod_list = "None"
-                        d[self.ko_unique_id]["modules_with_ko"] = mod_list
+                        d[self.ko_unique_id]["modules_with_ko"] = metadata_dict["modules_with_ko"]
                     if "ko_definition" in headers_to_include:
-                        d[self.ko_unique_id]["ko_definition"] = self.ko_dict[ko]['definition']
+                        d[self.ko_unique_id]["ko_definition"] = metadata_dict["ko_definition"]
 
                     self.ko_unique_id += 1
 
