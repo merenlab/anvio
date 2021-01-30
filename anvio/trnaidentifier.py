@@ -1912,16 +1912,30 @@ class Profiler(object):
                                             features=[], # extra 3' nucleotides are not counted as a feature
                                             num_extra_threeprime=num_extra_threeprime + 1)
 
-            return (profiled_seq,
-                    features,
-                    num_conserved,
-                    num_unconserved,
-                    num_paired,
-                    num_unpaired,
-                    num_extra_threeprime,
-                    0, # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
-                    has_complete_feature_set,
-                    0) # input sequence is not longer than full-length tRNA
+            if feature_class == TRNAHisPositionZero:
+                # The extra 5' G added post-transcriptionally to tRNA-His was not found. Therefore,
+                # unprofiled 5' nucleotides are unaccounted for and called extra 5' nucleotides.
+                return (profiled_seq,
+                        features,
+                        num_conserved,
+                        num_unconserved,
+                        num_paired,
+                        num_unpaired,
+                        num_extra_threeprime,
+                        0, # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                        has_complete_feature_set,
+                        len(unprofiled_seq))
+            else:
+                return (profiled_seq,
+                        features,
+                        num_conserved,
+                        num_unconserved,
+                        num_paired,
+                        num_unpaired,
+                        num_extra_threeprime,
+                        0,
+                        has_complete_feature_set,
+                        0) # input sequence is not longer than full-length tRNA
 
 
         # Sort candidates by
