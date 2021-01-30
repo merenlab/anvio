@@ -336,6 +336,40 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
+    def get_module_metadata_dictionary(self, mnum):
+        """Returns a dictionary of metadata for the given module.
+
+        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+
+        metadata_dict = {}
+        metadata_dict["module_name"] = self.kegg_modules_db.get_module_name(mnum)
+        metadata_dict["module_class"] = mnum_class_dict["class"]
+        metadata_dict["module_category"] = mnum_class_dict["category"]
+        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
+        return metadata_dict
+
+
+    def get_ko_metadata_dictionary(self, knum):
+        """Returns a dictionary of metadata for the given KO.
+
+        The dictionary must include all the metadata from KO_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
+        if not mod_list:
+            mod_list = "None"
+
+        metadata_dict = {}
+        metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
+        metadata_dict["modules_with_ko"] = mod_list
+        return metadata_dict
+
+
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
@@ -2955,40 +2989,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         data_for_visualization[bin][mnum][key] = value
 
         return data_for_visualization
-
-
-    def get_module_metadata_dictionary(self, mnum):
-        """Returns a dictionary of metadata for the given module.
-
-        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
-        using those headers as keys.
-        """
-
-        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
-
-        metadata_dict = {}
-        metadata_dict["module_name"] = self.kegg_modules_db.get_module_name(mnum)
-        metadata_dict["module_class"] = mnum_class_dict["class"]
-        metadata_dict["module_category"] = mnum_class_dict["category"]
-        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
-        return metadata_dict
-
-
-    def get_ko_metadata_dictionary(self, knum):
-        """Returns a dictionary of metadata for the given KO.
-
-        The dictionary must include all the metadata from KO_METADATA_HEADERS,
-        using those headers as keys.
-        """
-
-        mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
-        if not mod_list:
-            mod_list = "None"
-
-        metadata_dict = {}
-        metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
-        metadata_dict["modules_with_ko"] = mod_list
-        return metadata_dict
 
 
 class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
