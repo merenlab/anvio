@@ -2974,17 +2974,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return metadata_dict
 
 
-    def get_ko_metadata_dictionary(self, knum, ko_superdict):
+    def get_ko_metadata_dictionary(self, knum):
         """Returns a dictionary of metadata for the given KO.
 
         The dictionary must include all the metadata from KO_METADATA_HEADERS,
         using those headers as keys.
         """
 
-        a_bin = list(ko_superdict.keys())[0]
-        if ko_superdict[a_bin][knum]["modules"]:
-            mod_list = ",".join(ko_superdict[a_bin][knum]["modules"])
-        else:
+        mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
+        if not mod_list:
             mod_list = "None"
 
         metadata_dict = {}
