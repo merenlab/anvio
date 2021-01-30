@@ -2738,7 +2738,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     h_cdict_key = self.available_headers[h]['cdict_key']
                                     if not h_cdict_key:
                                         raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-                                    d[self.modules_unique_id][h] = c_dict[h_cdict_key]
+
+                                    value = c_dict[h_cdict_key]
+                                    if isinstance(value, list):
+                                        if not value:
+                                            value = "None"
+                                        else:
+                                            value = ",".join(value)
+                                    d[self.modules_unique_id][h] = value
 
                                 self.modules_unique_id += 1
                 else:
@@ -2795,7 +2802,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         h_cdict_key = self.available_headers[h]['cdict_key']
                         if not h_cdict_key:
                             raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-                        d[self.modules_unique_id][h] = c_dict[h_cdict_key]
+
+                        value = c_dict[h_cdict_key]
+                        if isinstance(value, list):
+                            if not value:
+                                value = "None"
+                            else:
+                                value = ",".join(value)
+                        d[self.modules_unique_id][h] = value
+
                     self.modules_unique_id += 1
 
         return d
