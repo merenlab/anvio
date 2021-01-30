@@ -3341,7 +3341,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
-    def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, item_list, stat_metadata_headers):
+    def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, item_list, stat_metadata_headers,
+                             write_rows_with_all_zeros=False):
         """A generic function to write a statistic to a matrix file.
 
         Accesses the provided stat_dict and writes the statistic to a tab-delimited matrix file.
@@ -3363,6 +3364,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         stat_metadata_headers : list of str
             A list of the headers for metadata columns (which must also be keys for this metadata in the stat_dict)
             that will be included in the matrix output if self.matrix_include_metadata is True
+        write_rows_with_all_zeros : boolean
+            If true, rows with all zeros are included in the matrix. Otherwise we leave those out.
         """
 
         output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat_name)
@@ -3422,6 +3425,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                             line.append(int(value))
                         else:
                             line.append(value)
+
+                if not write_rows_with_all_zeros:
+                    only_numbers = [n for n in line if isinstance(n, (int, float))]
+                    if sum(only_numbers) == 0:
+                        continue
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
 
