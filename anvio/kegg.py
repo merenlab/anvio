@@ -361,12 +361,14 @@ class KeggContext(object):
         """
 
         mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
-        if not mod_list:
-            mod_list = "None"
+        if mod_list:
+            mod_list_str = ",".join(mod_list)
+        else:
+            mod_list_str = "None"
 
         metadata_dict = {}
         metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
-        metadata_dict["modules_with_ko"] = mod_list
+        metadata_dict["modules_with_ko"] = mod_list_str
         return metadata_dict
 
 
