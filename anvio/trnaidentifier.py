@@ -1559,28 +1559,29 @@ class Profiler(object):
             else:
                 profile.is_predicted_trna = False
 
-            # tRNA profiling is complicated by the presence of chimeras (sequencing artifacts) and
-            # other RNAs with structural features resembling tRNA. The impact of "camouflaged" RNAs
-            # is minimized by stringent limits on unconserved and unpaired bases in the parameter
-            # settings. Chimeras can form between tRNA sequences and other RNA sequences --
-            # especially tRNA and, because of its abundance, rRNA. In `anvi-trnaseq`, chimeras of
-            # abundant tRNA species can recruit large numbers of other sequences during normalized
-            # and modified sequence formation, as chimeras are often among the longest sequences,
-            # which are "favored" in these processes. In turn, chimeric normalized and modified
-            # sequences become tRNA seeds (contigs) in `anvi-convert-trnaseq-database`. Chimeric
-            # sequences containing a full-length tRNA at the 3' end -- which appear to be relatively
-            # rare -- are difficult to distinguish from pre-tRNA, as both have a long 5' extension.
-            # These chimeras do not impact `anvi-trnaseq` analysis, as bases 5' of the full-length
-            # tRNA are trimmed off. Problematic chimeric sequences containing a fragmentary tRNA at
-            # the 3' end are flagged by comparing the number of unprofiled 5' bases to the maximum
-            # length of the next unprofiled feature; when the former is greater than the latter, the
-            # sequence is labeled as not being predicted tRNA, as the remaining 5' bases cannot be
-            # explained as the 3' part of a feature that cannot be identified. For example, take a
-            # sequence of length 85 in which profiling ends at position 27, which happens to be the
-            # 5' end of the D loop, leaving 26 unprofiled bases. The maximum length of the next
-            # unprofiled feature, the 5' strand of the D stem, is 4 (for the sake of simplicity,
-            # this is not changed if the 3' strand of the D stem was found to only have a length of
-            # 3). Therefore, the sequence is predicted to not be tRNA.
+            # tRNA profiling is complicated by the presence of "camouflaged" RNAs with structural
+            # features resembling tRNA and chimeras (sequencing artifacts). The impact of
+            # camouflaged RNAs is minimized by stringent limits on unconserved and unpaired bases in
+            # the parameter settings. Chimeras can form between tRNA sequences and other RNA
+            # sequences -- especially tRNA and, because of its abundance, rRNA. In `anvi-trnaseq`,
+            # chimeras of abundant tRNA species can recruit large numbers of other sequences during
+            # normalized and modified sequence formation, as chimeras are often among the longest
+            # sequences, which are "favored" in these processes. In turn, chimeric normalized and
+            # modified sequences become tRNA seeds (contigs) in `anvi-convert-trnaseq-database`.
+            # Chimeric sequences containing a full-length tRNA at the 3' end -- which appear to be
+            # relatively rare -- are difficult to distinguish from pre-tRNA, as both have a long 5'
+            # extension. These chimeras do not impact `anvi-trnaseq` analysis, as bases 5' of the
+            # full-length tRNA are trimmed off. Problematic chimeric sequences containing a
+            # fragmentary tRNA at the 3' end are flagged by comparing *the number of unprofiled 5'
+            # bases* to *the maximum length of the next unprofiled feature in the incomplete feature
+            # profile*; when the former is greater than the latter, the sequence is labeled as not
+            # being predicted tRNA, as the remaining 5' bases cannot be explained as the 3' part of
+            # a feature that cannot be identified. For example, take a sequence of length 85 in
+            # which profiling ends at position 27, which happens to be the 5' end of the D loop,
+            # leaving 26 unprofiled bases. The maximum length of the next unprofiled feature, the 5'
+            # strand of the D stem, is 4 (for the sake of simplicity, this is not changed if the 3'
+            # strand of the D stem was found to only have a length of 3). Therefore, the sequence is
+            # predicted to not be tRNA.
             if not profile.has_complete_feature_set and profile.is_predicted_trna:
                 for feature_name in profile.feature_names:
                     try:
