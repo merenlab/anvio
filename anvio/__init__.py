@@ -2662,7 +2662,8 @@ D = {
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+            'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
+                    "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
                 ),
     'modules-txt': (
             ['-M', '--modules-txt'],

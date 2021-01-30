@@ -3380,6 +3380,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # we need this for metadata
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        include_zeros = not self.exclude_zero_modules
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
@@ -3392,14 +3393,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         for stat, key in module_matrix_stats.items():
             self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
-                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS)
+                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+                                      write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
         self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
         self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS)
+                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
+                                  write_rows_with_all_zeros=include_zeros)
 
         self.kegg_modules_db.disconnect()
 
