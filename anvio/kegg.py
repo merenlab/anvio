@@ -3379,10 +3379,23 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat_name)
 
         sample_list = list(stat_dict.keys())
+        # here we figure out if there is more than one bin to work with in any given sample
+        sample_columns = []
+        sample_bin_list = {}
+        for s in sample_list:
+            bins = list(stat_dict[s].keys())
+            bins.sort()
+            sample_bin_list[s] = bins
+            if len(bins) > 1:
+                for b in bins:
+                    sample_columns.append(s + "_" + b)
+            else:
+                sample_columns.append(s)
+
         if self.matrix_include_metadata:
-            cols = [stat_header] + stat_metadata_headers + sample_list
+            cols = [stat_header] + stat_metadata_headers + sample_columns
         else:
-            cols = [stat_header] + sample_list
+            cols = [stat_header] + sample_columns
 
         # every sample/bin has the same set of keys in the stat_dict, so we can arbitrarily look at the
         # first one to get the item list
@@ -3402,18 +3415,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         line.append(stat_dict[first_sample][first_bin][m][h])
 
                 for s in sample_list:
-                    bins = list(stat_dict[s].keys())
-                    if len(bins) > 1:
-                        raise ConfigError("Uh oh. We found a sample with more than one bin and we are not prepared to handle "
-                                          "right now baiii #FIXME LOL")
+                    bins = sample_bin_list[s]
 
-                    bin_one = bins[0]
-                    value = stat_dict[s][bin_one][m][stat_key]
-                    # handle presence/absence values as integers
-                    if isinstance(value, bool):
-                        line.append(int(value))
-                    else:
-                        line.append(value)
+                    for b in bins:
+                        value = stat_dict[s][b][m][stat_key]
+
+                        # handle presence/absence values as integers
+                        if isinstance(value, bool):
+                            line.append(int(value))
+                        else:
+                            line.append(value)
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
 
