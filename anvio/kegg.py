@@ -1763,6 +1763,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "contigs_to_genes" : {}
                                           }
         for knum in all_kos:
+            if knum not in self.ko_dict:
+                mods_it_is_in = self.kegg_modules_db.get_modules_for_knum(knum)
+                if mods_it_is_in:
+                    if anvio.DEBUG:
+                        mods_str = ", ".join(mods_it_is_in)
+                        self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
+                                        "that any modules this KO belongs to can never be fully complete (this includes "
+                                        f"{mods_str}). ")
+                continue
+
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
                                      "modules" : None,
                                      "genes_to_contigs" : {},
