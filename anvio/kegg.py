@@ -1945,6 +1945,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
                     # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
                     has_no_ko_step = True
+                    warning_str = "'--' steps are assumed incomplete"
+                    if warning_str not in meta_dict_for_bin[mnum]["warnings"]:
+                        meta_dict_for_bin[mnum]["warnings"].append(warning_str)
                 # 5) Module numbers, ie Mxxxxx
                 elif atomic_step[0] == "M" and len(atomic_step) == 6:
                     """
