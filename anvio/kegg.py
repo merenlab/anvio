@@ -1560,6 +1560,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
             self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
+######### ATOMIC ESTIMATION FUNCTIONS #########
 
     def init_hits_and_splits(self):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
@@ -2016,6 +2017,94 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return now_complete
 
 
+    def estimate_for_list_of_splits(self, metabolism_dict_for_list_of_splits, bin_name=None):
+        """This is the atomic metabolism estimator function, which builds up the metabolism completeness dictionary for an arbitrary list of splits.
+
+        For example, the list of splits may represent a bin, a single isolate genome, or an entire metagenome.
+
+        The function takes in a metabolism completeness dictionary already initialized with the relevant KOfam hits per module, and updates it
+        with the individual steps and completion estimates for each module.
+
+        PARAMETERS
+        ==========
+        metabolism_dict_for_list_of_splits : dictionary of dictionaries
+            the metabolism completeness dictionary of dictionaries for this list of splits. It contains
+            one dictionary of module steps and completion information for each module (keyed by module number),
+            as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
+            Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
+        bin_name : str
+            the name of the bin/genome/metagenome that we are working with
+        """
+
+        metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
+
+        complete_mods = []
+        mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
+        # modules to warn about
+        mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
+        mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
+
+        # estimate completeness of each module
+        for mod in metabolism_dict_for_list_of_splits.keys():
+            if mod == "num_complete_modules":
+                continue
+            mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
+            = self.compute_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+
+            if mod_is_complete:
+                complete_mods.append(mod)
+            if has_nonessential_step:
+                mods_with_nonessential_steps.append(mod)
+            if has_no_ko_step:
+                mods_with_unassociated_ko.append(mod)
+            if defined_by_modules:
+                mods_def_by_modules.append(mod)
+
+        # go back and adjust completeness of modules that are defined by other modules
+        if mods_def_by_modules:
+            for mod in mods_def_by_modules:
+                mod_is_complete = self.adjust_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+
+                if mod_is_complete:
+                    complete_mods.append(mod)
+
+
+        # estimate redundancy of each module
+        for mod in metabolism_dict_for_list_of_splits.keys():
+            if mod == "num_complete_modules":
+                continue
+
+            self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
+
+
+        # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
+        if not self.quiet and self.genome_mode:
+            if mods_with_nonessential_steps:
+                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
+                                 "At this time, we are not counting these steps in our percent completion estimates."
+                                 % (", ".join(mods_with_nonessential_steps)))
+
+            if mods_with_unassociated_ko:
+                self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
+                                 "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
+                                 "associated KO. So we really cannot know just based on KOfam hits whether or not this "
+                                 "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
+                                 "and as a result their modules may be falsely considered incomplete. So it may be in your "
+                                 "interest to go back and take a look at these individual modules to see if you can find the "
+                                 "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
+                                 % (", ".join(mods_with_unassociated_ko)))
+
+        if anvio.DEBUG or self.genome_mode:
+            self.run.info("Bin name", bin_name)
+            self.run.info("Module completion threshold", self.module_completion_threshold)
+            self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
+            if complete_mods:
+                self.run.info("Complete modules", ", ".join(complete_mods))
+
+        return metabolism_dict_for_list_of_splits
+
+######### REDUNDANCY FUNCTIONS (UNUSED) #########
+
     def compute_naive_redundancy_for_path(self, num_ko_hits_in_path_dict):
         """This function computes a naive redundancy measure for a module path, given the number of hits per KO in the path.
 
@@ -2134,93 +2223,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return
 
-
-    def estimate_for_list_of_splits(self, metabolism_dict_for_list_of_splits, bin_name=None):
-        """This is the atomic metabolism estimator function, which builds up the metabolism completeness dictionary for an arbitrary list of splits.
-
-        For example, the list of splits may represent a bin, a single isolate genome, or an entire metagenome.
-
-        The function takes in a metabolism completeness dictionary already initialized with the relevant KOfam hits per module, and updates it
-        with the individual steps and completion estimates for each module.
-
-        PARAMETERS
-        ==========
-        metabolism_dict_for_list_of_splits : dictionary of dictionaries
-            the metabolism completeness dictionary of dictionaries for this list of splits. It contains
-            one dictionary of module steps and completion information for each module (keyed by module number),
-            as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
-            Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
-        bin_name : str
-            the name of the bin/genome/metagenome that we are working with
-        """
-
-        metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
-
-        complete_mods = []
-        mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
-        # modules to warn about
-        mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
-        mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
-
-        # estimate completeness of each module
-        for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
-            mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
-            = self.compute_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
-
-            if mod_is_complete:
-                complete_mods.append(mod)
-            if has_nonessential_step:
-                mods_with_nonessential_steps.append(mod)
-            if has_no_ko_step:
-                mods_with_unassociated_ko.append(mod)
-            if defined_by_modules:
-                mods_def_by_modules.append(mod)
-
-        # go back and adjust completeness of modules that are defined by other modules
-        if mods_def_by_modules:
-            for mod in mods_def_by_modules:
-                mod_is_complete = self.adjust_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
-
-                if mod_is_complete:
-                    complete_mods.append(mod)
-
-
-        # estimate redundancy of each module
-        for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
-
-            self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
-
-
-        # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
-        if not self.quiet and self.genome_mode:
-            if mods_with_nonessential_steps:
-                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
-                                 "At this time, we are not counting these steps in our percent completion estimates."
-                                 % (", ".join(mods_with_nonessential_steps)))
-
-            if mods_with_unassociated_ko:
-                self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
-                                 "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                 "associated KO. So we really cannot know just based on KOfam hits whether or not this "
-                                 "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
-                                 "and as a result their modules may be falsely considered incomplete. So it may be in your "
-                                 "interest to go back and take a look at these individual modules to see if you can find the "
-                                 "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
-                                 % (", ".join(mods_with_unassociated_ko)))
-
-        if anvio.DEBUG or self.genome_mode:
-            self.run.info("Bin name", bin_name)
-            self.run.info("Module completion threshold", self.module_completion_threshold)
-            self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
-            if complete_mods:
-                self.run.info("Complete modules", ", ".join(complete_mods))
-
-        return metabolism_dict_for_list_of_splits
-
+######### ESTIMATION DRIVER FUNCTIONS #########
 
     def estimate_for_genome(self, kofam_gene_split_contig):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
@@ -2518,6 +2521,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # otherwise we return nothing at all
         return
 
+######### OUTPUT DICTIONARY FUNCTIONS #########
 
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
@@ -2876,6 +2880,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return mod_completeness_presence_subdict, ko_hits_subdict
 
+######### OUTPUT GENERATION FUNCTIONS #########
 
     def append_kegg_metabolism_superdicts(self, module_superdict_for_list_of_splits, ko_superdict_for_list_of_splits):
         """This function appends the metabolism superdicts (for a single genome, bin, or contig in metagenome) to existing files
@@ -2953,6 +2958,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         open(file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
         self.run.info("JSON Output", file_path)
 
+######### INTERACTIVE VISUALIZATION FUNCTIONS #########
 
     def get_metabolism_data_for_visualization(self):
         """Returns a dictionary of metabolism data for visualization on the interactive interface.
@@ -3111,6 +3117,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             mode_str = "output modes" if header_meta['mode_type'] == 'all' else "output mode"
             self.run.info(header, f"{desc_str} [{type_str} {mode_str}]")
 
+######### DRIVER ESTIMATION FUNCTIONS -- MULTI #########
 
     def init_metagenomes(self):
         """This function parses the input metagenomes file and adjusts class attributes as needed"""
@@ -3222,6 +3229,41 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         return metabolism_super_dict, ko_hits_super_dict
 
+
+    def estimate_metabolism(self):
+        """A driver function to run metabolism estimation on each provided contigs DB."""
+
+        if not self.databases:
+            self.progress.new("Initializing contigs DBs")
+            self.progress.update("...")
+            if self.metagenomes_file:
+                self.progress.reset()
+                self.run.info("Metagenomes file", self.metagenomes_file)
+                self.init_metagenomes()
+            elif self.external_genomes_file:
+                self.progress.reset()
+                self.run.info("External genomes file", self.external_genomes_file)
+                self.init_external_internal_genomes()
+            elif self.internal_genomes_file:
+                self.progress.reset()
+                self.run.info("Internal genomes file", self.internal_genomes_file)
+                self.init_external_internal_genomes()
+            else:
+                self.progress.reset()
+                raise ConfigError("Whooops. We are not sure how you got to this point without an input file, "
+                                  "but you did, and now we have to crash becasue we cannot estimate metabolism "
+                                  "without inputs. :/")
+            self.progress.end()
+            self.run.info("Num Contigs DBs in file", len(self.database_names))
+            self.run.info('Metagenome Mode', self.metagenome_mode)
+
+        # these will be empty dictionaries unless matrix format
+        kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
+
+        if self.matrix_format:
+            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
+
+######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
 
     def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, item_list, stat_metadata_headers,
                              write_rows_with_all_zeros=False):
@@ -3360,40 +3402,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS)
 
         self.kegg_modules_db.disconnect()
-
-
-    def estimate_metabolism(self):
-        """A driver function to run metabolism estimation on each provided contigs DB."""
-
-        if not self.databases:
-            self.progress.new("Initializing contigs DBs")
-            self.progress.update("...")
-            if self.metagenomes_file:
-                self.progress.reset()
-                self.run.info("Metagenomes file", self.metagenomes_file)
-                self.init_metagenomes()
-            elif self.external_genomes_file:
-                self.progress.reset()
-                self.run.info("External genomes file", self.external_genomes_file)
-                self.init_external_internal_genomes()
-            elif self.internal_genomes_file:
-                self.progress.reset()
-                self.run.info("Internal genomes file", self.internal_genomes_file)
-                self.init_external_internal_genomes()
-            else:
-                self.progress.reset()
-                raise ConfigError("Whooops. We are not sure how you got to this point without an input file, "
-                                  "but you did, and now we have to crash becasue we cannot estimate metabolism "
-                                  "without inputs. :/")
-            self.progress.end()
-            self.run.info("Num Contigs DBs in file", len(self.database_names))
-            self.run.info('Metagenome Mode', self.metagenome_mode)
-
-        # these will be empty dictionaries unless matrix format
-        kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
-
-        if self.matrix_format:
-            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
 
 
 class KeggModulesDatabase(KeggContext):
