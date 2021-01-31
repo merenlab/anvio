@@ -68,9 +68,7 @@ rule iu_merge_pairs:
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_merge_pairs.log")
     input: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
-    output:
-        merged = temp(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_MERGED")) if M.gzip_iu_merge_pairs_output else os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_MERGED"),
-        stats = os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_STATS")
+    output: stats = os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
         max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
@@ -81,8 +79,9 @@ rule iu_merge_pairs:
     run:
         shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
         if M.gzip_iu_merge_pairs_output:
+            merged_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
             out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
-            shell("gzip -c {output.merged} > {output.merged}.gz 2>>{log}")
+            shell("gzip -c %s > %s.gz 2>>{log}" % (merged_fasta, merged_fasta))
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
             if params.report_r1_prefix:
