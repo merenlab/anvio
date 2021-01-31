@@ -223,6 +223,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
+            # Get external-gene-calls file for fasta of nt SCGs for mapping
+            tail_path = "%s_external_gene_calls_all_renamed.tsv" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
             #########################
             # The FINAL trees :)
             # For iq-tree
@@ -235,4 +240,5 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
             #########################
 
+            # print(target_files)
         return target_files

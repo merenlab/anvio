@@ -80,6 +80,52 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_nt:
                                            --gene-name {wildcards.ribosomal_protein_name} \
                                            -o {output} 2> {log}"
 
+rule get_external_gene_calls_file:
+    """
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
+    input:
+        contigDB = expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs),
+    output:
+        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_orfs.fna")),
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
+    threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
+    shell: "anvi-get-sequences-for-gene-calls -c {input.contigDB} \
+                                              --external-gene-calls {output.external_gene_calls} \
+                                              -o {output.fasta} 2> {log}"
+
+rule cat_external_gene_calls_file:
+    """
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
+    input:
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_external_gene_calls.tsv"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
+    output:
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv"),
+    threads: M.T('cat_ribo_proteins_to_one_fasta')
+    shell:
+        "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all}"
+
+rule rename_and_filter_external_gene_calls_file_all:
+    """
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{ribosomal_protein_name}.log")
+    input:
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv"),
+        SCGs_nt = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_scgs_for_mapping.fna"),
+        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt")
+    output:
+        external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.tsv")
+    threads: M.T('rename_external_gene_calls_file')
+    script:
+        "scripts/rename_external_gene_calls_file.py"
+
 rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     """Retrieve SCG taxonomy from extracted ribosomal proteins"""
 
@@ -328,7 +374,7 @@ rule cat_scgs_to_one_fasta_nt:
     shell: 
         "cat {input.fasta} >> {output.fasta_all}"
 
-rule cat_scgs_reformat_files_nt:
+rule cat_reformat_files_nt:
     """
     Cat all ribosomal sequences from seperate metagenomes into one fasta
     
@@ -341,7 +387,7 @@ rule cat_scgs_reformat_files_nt:
     input: 
         reformat_file = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_reformat_report_nt.txt"), sample_names = M.names_list, ribosomal_protein_names = M.Ribosomal_protein_list),
     output: 
-        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat.txt")
+        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt")
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell: 
         "cat {input.reformat_file} >> {output.reformat_file_all}"
