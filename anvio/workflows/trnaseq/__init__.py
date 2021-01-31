@@ -84,9 +84,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--threeprimemost-deletion-stop',
             '--max-distinct-deletions',
             '--skip-fasta-check',
-            '--write-buffer-size',
             '--alignment-target-chunk-size',
             '--fragment-mapping-query-chunk-length',
+            '--profiling-progress-interval',
             '--alignment-progress-interval',
             '--agglomeration-progress-interval'
         ]
@@ -157,9 +157,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--threeprimemost-deletion-stop': anvio.D['threeprimemost-deletion-stop'][1]['default'],
                 '--max-distinct-deletions': anvio.D['max-distinct-deletions'][1]['default'],
                 '--skip-fasta-check': True, # not the default in anvi-trnaseq
-                '--write-buffer-size': 100000, # the default set in anvi-trnaseq (not the anvi'o-wide default)
                 '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 '--fragment-mapping-query-chunk-length': anvio.D['fragment-mapping-query-chunk-length'][1]['default'],
+                '--profiling-progress-interval': anvio.D['profiling-progress-interval'][1]['default'],
                 '--alignment-progress-interval': anvio.D['alignment-progress-interval'][1]['default'],
                 '--agglomeration-progress-interval': anvio.D['agglomeration-progress-interval'][1]['default'],
                 'threads': 1

@@ -174,9 +174,9 @@ rule anvi_trnaseq:
         min_trna_fragment_size = M.get_rule_param('anvi_trnaseq', '--min-trna-fragment-size'),
         agglomeration_max_mismatch_freq = M.get_rule_param('anvi_trnaseq', '--agglomeration-max-mismatch-freq'),
         skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
-        write_buffer_size = M.get_rule_param('anvi_trnaseq', '--write-buffer-size'),
         alignment_target_chunk_size = M.get_rule_param('anvi_trnaseq', '--alignment-target-chunk-size'),
         fragment_mapping_query_chunk_length = M.get_rule_param('anvi_trnaseq', '--fragment-mapping-query-chunk-length'),
+        profiling_progress_interval = M.get_rule_param('anvi_trnaseq', '--profiling-progress-interval'),
         alignment_progress_interval = M.get_rule_param('anvi_trnaseq', '--alignment-progress-interval'),
         agglomeration_progress_interval = M.get_rule_param('anvi_trnaseq', '--agglomeration-progress-interval'),
         skip_INDEL_profiling = M.get_rule_param('anvi_trnaseq', '--skip-INDEL-profiling'),
@@ -193,7 +193,7 @@ rule anvi_trnaseq:
         output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
         treatment = M.treatments[library_num]
-        shell("anvi-trnaseq --trnaseq-fasta %s --sample-name {wildcards.sample_name} --output-dir %s --treatment %s {params.overwrite_output_destinations} {params.description} {params.write_checkpoints} {params.load_checkpoint} {params.feature_param_file} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.skip_INDEL_profiling} {params.fiveprimemost_del_start} {params.threeprimemost_del_start} {params.fiveprimemost_del_stop} {params.threeprimemost_del_stop} {params.skip_fasta_check} {params.write_buffer_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir, treatment))
+        shell("anvi-trnaseq --trnaseq-fasta %s --sample-name {wildcards.sample_name} --output-dir %s --treatment %s {params.overwrite_output_destinations} {params.description} {params.write_checkpoints} {params.load_checkpoint} {params.feature_param_file} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.skip_INDEL_profiling} {params.fiveprimemost_del_start} {params.threeprimemost_del_start} {params.fiveprimemost_del_stop} {params.threeprimemost_del_stop} {params.skip_fasta_check} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.profiling_progress_interval} {params.alignment_progress_interval} {params.agglomeration_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir, treatment))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
