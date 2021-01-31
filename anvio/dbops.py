@@ -1135,7 +1135,7 @@ class ContigsSuperclass(object):
         if output_file_path_external_gene_calls:
             utils.store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
-                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
             self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
