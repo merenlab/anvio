@@ -1449,6 +1449,7 @@ class TRNASeqDataset(object):
 
         fetched_profile_count = 0
         uniq_seqs_dict = {}
+        profiling_progress_interval = self.profiling_progress_interval
         for uniq_read in uniq_reads:
             input_queue.put((uniq_read.seq_string, uniq_read.represent_name))
             uniq_seqs_dict[uniq_read.represent_name] = uniq_read
@@ -1488,7 +1489,7 @@ class TRNASeqDataset(object):
                     else:
                         self.uniq_nontrna_seqs.append(uniq_seq)
 
-                    if fetched_profile_count % self.profiling_progress_interval == 0:
+                    if fetched_profile_count % profiling_progress_interval == 0:
                         self.progress.update("%s of %s unique sequences have been profiled"
                                              % (pp(fetched_profile_count), pp(len(uniq_reads))))
                     continue
@@ -1522,9 +1523,9 @@ class TRNASeqDataset(object):
                 uniq_seq.unconserved_info = trna_profile.unconserved_info
                 self.uniq_trna_seqs.append(uniq_seq)
 
-                if fetched_profile_count % self.profiling_progress_interval == 0:
+                if fetched_profile_count % profiling_progress_interval == 0:
                     self.progress.update("%s of %s unique sequences have been profiled"
-                                        % (pp(fetched_profile_count), pp(len(uniq_reads))))
+                                         % (pp(fetched_profile_count), pp(len(uniq_reads))))
 
         for p in processes:
             p.terminate()
