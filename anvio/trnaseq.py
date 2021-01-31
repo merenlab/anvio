@@ -1487,6 +1487,10 @@ class TRNASeqDataset(object):
                         self.uniq_trunc_seqs.append(uniq_seq)
                     else:
                         self.uniq_nontrna_seqs.append(uniq_seq)
+
+                    if fetched_profile_count % self.profiling_progress_interval == 0:
+                        self.progress.update("%s of %s unique sequences have been profiled"
+                                             % (pp(fetched_profile_count), pp(len(uniq_reads))))
                     continue
 
                 uniq_seq.id_method = 0
