@@ -85,6 +85,7 @@ class UniqueSeq(object):
         'feature_start_indices',
         'feature_stop_indices',
         'has_complete_feature_set',
+        'has_his_g',
         'alpha_start_index',
         'alpha_stop_index',
         'beta_start_index',
@@ -116,6 +117,7 @@ class UniqueSeq(object):
         self.feature_start_indices = None
         self.feature_stop_indices = None
         self.has_complete_feature_set = None
+        self.has_his_g = None
         self.alpha_start_index = None
         self.alpha_stop_index = None
         self.beta_start_index = None
@@ -182,6 +184,7 @@ class TrimmedSeq(object):
         'feature_start_indices',
         'feature_stop_indices',
         'has_complete_feature_set',
+        'has_his_g',
         'read_count',
         'uniq_with_extra_fiveprime_count',
         'read_with_extra_fiveprime_count',
@@ -212,6 +215,7 @@ class TrimmedSeq(object):
         # Assume that if the representative unique sequence has a complete feature set, then so do
         # the other unique sequences.
         self.has_complete_feature_set = represent_uniq_seq.has_complete_feature_set
+        self.has_his_g = represent_uniq_seq.has_his_g
         self.trunc_profile_recovered_by_derep = None
         self.trunc_profile_recovered_by_del_analysis = None
         self.norm_seq_count = 0
@@ -1460,6 +1464,7 @@ class TRNASeqDataset(object):
                         uniq_seq.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
                                                          for feature in trna_profile.features]
                         uniq_seq.has_complete_feature_set = False # trna_profile.has_complete_feature_set should always be False here
+                        uniq_seq.has_his_g = False
                         uniq_seq.alpha_start_index = trna_profile.alpha_start
                         uniq_seq.alpha_stop_index = trna_profile.alpha_stop
                         uniq_seq.beta_start_index = trna_profile.beta_start
@@ -1483,6 +1488,7 @@ class TRNASeqDataset(object):
                 uniq_seq.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
                                                  for feature in trna_profile.features]
                 uniq_seq.has_complete_feature_set = trna_profile.has_complete_feature_set
+                uniq_seq.has_his_g = True if trna_profile.features[0].name == 'tRNA-His position 0' else False
                 uniq_seq.alpha_start_index = trna_profile.alpha_start
                 uniq_seq.alpha_stop_index = trna_profile.alpha_stop
                 uniq_seq.beta_start_index = trna_profile.beta_start
@@ -1599,16 +1605,6 @@ class TRNASeqDataset(object):
         Normalized tRNA (trimmed tRNA 1): TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         Trimmed tRNA 2                  :                       AATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         Trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
-
-        Check for agreement among the feature profiles of the dereplicated profiled sequences.
-        Longer sequences in the cluster sometimes contain 5' nucleotides that should have been
-        trimmed but were not due to an incorrect feature profile (an error that is sometimes caused
-        by the accommodation of a reverse transcription artifact by an erroneously elongated V arm).
-        Checking that the feature profiles of longer and shorter sequences agree from the 3' end
-        minimizes this error. In case of disagreement, the largest group of sequences with
-        concordant profiles (by read count) forms the normalized sequence, while the sequences with
-        discordant profiles are removed from the list of trimmed tRNA, and their constituent
-        profiled sequences removed from the list of profiled tRNA.
         """
         start_time = time.time()
         self.progress.new("Dereplicating trimmed tRNA sequences from the 3' end")
@@ -1622,10 +1618,75 @@ class TRNASeqDataset(object):
                                 extras=self.trimmed_trna_seqs,
                                 progress=self.progress).prefix_dereplicate()
 
-        # Skip initialization of NormalizedSeq objects, as additional TrimmedSeq members are later
-        # added to the objects after dereplicating sequences with truncated tRNA profiles and
-        # mapping unprofiled tRNA fragments.
-        self.norm_trna_seqs = [NormalizedSeq(cluster.member_extras, skip_init=True) for cluster in clusters]
+        # Profiling may have found multiple sequences that would here be 3'-dereplicated as having
+        # complete, but different, feature profiles. This can be caused by the "accommodation" of
+        # extra 5' nucleotides (due to a reverse transcriptase artifact or pre-tRNA leader sequence)
+        # in an erroneous profile with an elongated variable loop. Retain the shortest "completely
+        # profiled" sequence in the cluster, discarding any longer sequences from the list of
+        # trimmed tRNA sequences, and their constituent profiled sequences from the list of unique
+        # tRNA sequences.
+
+        # Similarly, the longest sequence in the cluster may have an erroneous "incomplete profile."
+        # If there is a shorter sequence in the cluster with a complete profile, then any longer
+        # sequences with an incomplete profile can be discarded.
+
+        # We do not check for feature-by-feature agreement among clustered profiles here, as 3' tRNA
+        # fragments often have some incorrect feature positions due to the paucity of sequence
+        # information available in profiling. It is conceivable that the seed sequence of the
+        # cluster is wrongly completely profiled, but all of the shorter sequences in the cluster
+        # are correctly incompletely profiled. It is also possible that the seed sequence is
+        # incompletely profiled, but has the wrong profile, and the shorter sequences are correctly
+        # incompletely profiled.
+
+        # This step, which likely removes a tiny number of trimmed sequences, helps reduce the
+        # number of extra, wrong nucleotides at the 5' end of seed sequences.
+        self.progress.update("Inspecting normalized sequence clusters")
+        norm_trna_seqs = self.norm_trna_seqs
+        trimmed_trna_seq_represent_names = [trimmed_seq.represent_name for trimmed_seq in self.trimmed_trna_seqs]
+        uniq_trna_seq_represent_names = [uniq_seq.represent_name for uniq_seq in self.uniq_trna_seqs]
+        trimmed_seq_indices_to_remove = []
+        uniq_seq_indices_to_remove = []
+        for cluster in clusters:
+            # Skip initialization of NormalizedSeq objects, as additional TrimmedSeq members are
+            # later added to the objects after dereplicating sequences with truncated tRNA profiles
+            # and mapping unprofiled tRNA fragments.
+            if len(cluster.member_extras) == 1:
+                norm_trna_seqs.append(NormalizedSeq(cluster.member_extras, skip_init=True))
+                continue
+
+            # Check that there are no shorter sequences in the cluster with a "complete profile".
+            complete_profile_indices = []
+            for trimmed_seq_index, trimmed_seq in enumerate(cluster.member_extras):
+                if trimmed_seq.has_complete_feature_set:
+                    complete_profile_indices.append(trimmed_seq_index)
+
+            if not complete_profile_indices or complete_profile_indices == [0]:
+                norm_trna_seqs.append(NormalizedSeq(cluster.member_extras, skip_init=True))
+                continue
+
+            # Reaching this point means that there are multiple sequences with "complete
+            # profiles" in the cluster.
+
+            # If the two shortest sequences with complete feature profiles differ by the
+            # post-transcriptionally added 5'-G of tRNA-His, then they should both be allowed.
+            if cluster.member_extras[complete_profile_indices[-2]].has_his_g:
+                if cluster.member_extras[complete_profile_indices[-1]].seq_string == cluster.member_extras[complete_profile_indices[-2]].seq_string[1:]:
+                    norm_trna_seqs.append(NormalizedSeq(cluster.member_extras[complete_profile_indices[-2]:], skip_init=True))
+                    continue
+
+            norm_trna_seqs.append(NormalizedSeq(cluster.member_extras[complete_profile_indices[-1]:], skip_init=True))
+            for trimmed_seq in cluster.member_extras[:complete_profile_indices[-1]]:
+                trimmed_seq_indices_to_remove.append(trimmed_trna_seq_represent_names.index(trimmed_seq.represent_name))
+                for uniq_seq in trimmed_seq.uniq_seqs:
+                    uniq_seq_indices_to_remove.append(uniq_trna_seq_represent_names.index(uniq_seq.represent_name))
+
+        # Trimmed and unique tRNA sequences should already be sorted by representative name.
+        trimmed_seq_indices_to_remove.sort(reverse=True)
+        for trimmed_seq_index in trimmed_seq_indices_to_remove:
+            self.trimmed_trna_seqs.pop(trimmed_seq_index)
+        uniq_seq_indices_to_remove.sort(reverse=True)
+        for uniq_seq_index in uniq_seq_indices_to_remove:
+            self.uniq_trna_seqs.pop(uniq_seq_index)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled sequences",
