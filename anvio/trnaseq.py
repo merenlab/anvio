@@ -346,7 +346,10 @@ class NormalizedSeq(object):
         'trimmed_seqs',
         'represent_name',
         'seq_string',
+        'feature_start_indices',
+        'feature_stop_indices',
         'has_complete_feature_set',
+        'has_his_g',
         'has_trunc_profile',
         'start_positions',
         'stop_positions',
@@ -379,10 +382,14 @@ class NormalizedSeq(object):
         self.trimmed_seqs = trimmed_seqs
         for trimmed_seq in trimmed_seqs:
             trimmed_seq.norm_seq_count += 1
-        self.represent_name = trimmed_seqs[0].represent_name
-        self.seq_string = trimmed_seqs[0].seq_string
-        self.has_complete_feature_set = trimmed_seqs[0].has_complete_feature_set
-        self.has_trunc_profile = trimmed_seqs[0].has_trunc_profile
+        represent_trimmed_seq = trimmed_seqs[0]
+        self.represent_name = represent_trimmed_seq.represent_name
+        self.seq_string = represent_trimmed_seq.seq_string
+        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
+        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
+        self.has_complete_feature_set = represent_trimmed_seq.has_complete_feature_set
+        self.has_his_g = represent_trimmed_seq.has_his_g
+        self.has_trunc_profile = represent_trimmed_seq.has_trunc_profile
 
         if start_positions and stop_positions:
             self.start_positions = start_positions
