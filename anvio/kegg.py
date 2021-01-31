@@ -4495,11 +4495,25 @@ class KeggModuleEnrichment(KeggContext):
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
+            # if we are working with module data from metagenomes, we may have multiple complete copies of the module in
+            # the same sample. We drop these duplicates before proceeding.
+            duplicates = samples_with_mod_df.index.duplicated()
+            samples_with_mod_df = samples_with_mod_df[~duplicates]
+
+            # we need to explicitly ignore samples without a group here, because they were taken out of sample_groups_df
+            # and if only ungrouped samples end up having this module, we will get an index error
+            samples_with_mod_list = list(samples_with_mod_df.index)
+            if not self.include_ungrouped:
+                for s in samples_with_none_group:
+                    if s in samples_with_mod_list:
+                        samples_with_mod_list.remove(s)
+            if len(samples_with_mod_list) == 0:
+                continue
+
             mod_name = samples_with_mod_df['module_name'][0]
             output_dict[mod_name] = {}
             output_dict[mod_name]['KEGG_MODULE'] = mod_name
             output_dict[mod_name]['accession'] = mod_num
-            samples_with_mod_list = list(samples_with_mod_df.index)
             output_dict[mod_name]['sample_ids'] = ','.join(samples_with_mod_list)
             sample_group_subset = sample_groups_df.loc[samples_with_mod_list]
             p_values = sample_group_subset['group'].value_counts()
