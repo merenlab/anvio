@@ -1084,7 +1084,7 @@ class TRNASeqDataset(object):
             self.progress.update("...")
 
             with open(self.analysis_summary_path, 'a') as f:
-                f.write("Analysis restarted from the checkpoint, \"profile\"\n")
+                f.write("\nAnalysis restarted from the checkpoint, \"profile\"\n")
 
             with open(self.profile_uniq_trna_seqs_path, 'rb') as f:
                 self.uniq_trna_seqs = pkl.load(f)
@@ -1109,7 +1109,7 @@ class TRNASeqDataset(object):
             self.progress.update("...")
 
             with open(self.analysis_summary_path, 'a') as f:
-                f.write("Analysis restarted from the checkpoint, \"fragment_mapping\"\n")
+                f.write("\nAnalysis restarted from the checkpoint, \"fragment_mapping\"\n")
 
             with open(self.frag_map_uniq_trna_seqs_path, 'rb') as f:
                 self.uniq_trna_seqs = pkl.load(f)
