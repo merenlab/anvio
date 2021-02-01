@@ -1733,10 +1733,10 @@ class TRNASeqDataset(object):
                 # the start and stop positions of these features also are not found.
                 + tuple([None for _ in range((len(self.TRNA_FEATURE_NAMES) - len(uniq_seq.feature_start_indices)))]) * 2
                 + tuple(itertools.chain(*zip(
-                    [str(start) if type(start) == int else ','.join(map(str, start))
+                    [str(start) if isinstance(start, int) else ','.join(map(str, start))
                      for start in uniq_seq.feature_start_indices],
                     # Convert Pythonic stop position to real stop position of feature.
-                    [str(stop - 1) if type(stop) == int else ','.join(str(i - 1) for i in stop)
+                    [str(stop - 1) if isinstance(stop, int) else ','.join(str(i - 1) for i in stop)
                      for stop in uniq_seq.feature_stop_indices])))
                 # The alpha and beta sections of the D loop are "subfeatures," not "features,"
                 # so add them as columns to the table after the features.
@@ -1837,21 +1837,21 @@ class TRNASeqDataset(object):
         trimmed_trunc_seq_match_dict = {}
         for cluster in clusters:
             if len(cluster.member_names) == 1:
-                if type(cluster.member_extras[0]) is NormalizedSeq:
+                if isinstance(cluster.member_extras[0], NormalizedSeq):
                     continue
 
             norm_trna_seq = None
-            trimmed_trunc_seq_seed = cluster.member_extras[0] if type(cluster.member_extras[0]) is TrimmedSeq else None
+            trimmed_trunc_seq_seed = cluster.member_extras[0] if isinstance(cluster.member_extras[0], TrimmedSeq) else None
             for seq in cluster.member_extras:
                 # Members of each cluster are pre-sorted in descending order of sequence length.
                 # There cannot be a normalized tRNA sequence and a truncated sequence of the same
                 # length (they would be the same sequence).
-                if type(seq) is NormalizedSeq:
+                if isinstance(seq, NormalizedSeq):
                     norm_trna_seq = seq
                     continue
 
                 if norm_trna_seq:
-                    if type(seq) is TrimmedSeq:
+                    if isinstance(seq, TrimmedSeq):
                         try:
                             norm_trna_seq_match_dict[seq.represent_name][1].append(norm_trna_seq)
                         except KeyError:
@@ -3629,7 +3629,7 @@ class DatabaseConverter(object):
         ).set_index('name')
         if 'stem' in self.feature_threshold:
             # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
-            seq_string_and_feature_df[self.feature_threshold + '_start'] = [int(entry.split(',')[0]) if type(entry) is str else entry for entry
+            seq_string_and_feature_df[self.feature_threshold + '_start'] = [int(entry.split(',')[0]) if isinstance(entry, str) else entry for entry
                                                                             in seq_string_and_feature_df[self.feature_threshold + '_start'].fillna(-1).tolist()]
         else:
             seq_string_and_feature_df[self.feature_threshold + '_start'] = seq_string_and_feature_df[self.feature_threshold + '_start'].fillna(-1)
