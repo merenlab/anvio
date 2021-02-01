@@ -804,7 +804,6 @@ Bins.prototype.RedrawLineColors = function() {
     }
 };
 
-
 Bins.prototype.RedrawBins = function() {
     if (!drawer)
         return;
@@ -854,7 +853,6 @@ Bins.prototype.RedrawBins = function() {
     }
 
     let nodes_for_inversion = [] // lets also grab the items that aren't selected above 
-
     for(let i = 0; i < leaf_list.length; i++){
         if(leaf_list[i] === -1){
             nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
@@ -878,13 +876,14 @@ Bins.prototype.RedrawBins = function() {
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
     function drawInvertedNodes(nodesArr, opacity, tree_type){
-        nodesArr.forEach(node => {
+
+        nodesArr.map((node, idx) => {
             let p = node[0]
             let [p1, p2] = p.GetBorderNodes();
 
             let pie = drawPie(
-                'tree_bin',
-                'bin_outer',
+                'bin',
+                'bin_outer_' + idx,
                 p1.angle - p1.size / 2,
                 p2.angle + p2.size / 2,
                 distance(p.backarc, {
@@ -894,16 +893,13 @@ Bins.prototype.RedrawBins = function() {
                 total_radius,
                 (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
                 'black',
-                0.3,
+                opacity,
                 false
             );
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
             pie.setAttribute('stroke-opacity', opacity);
         })
     }
-    
-    invert_shade ? drawInvertedNodes(nodes_for_inversion, 1) : null 
-
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
@@ -1098,6 +1094,14 @@ Bins.prototype.RedrawBins = function() {
                 1,
                 true);
         }
+    }
+
+    if(invert_shade){
+        drawInvertedNodes(nodes_for_inversion, .3)
+        $('#show_shade_for_bins').prop('checked', false); 
+
+    } else {
+        // drawInvertedNodes(nodes_for_inversion, 0)
     }
 }
 
