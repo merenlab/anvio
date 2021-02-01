@@ -3601,9 +3601,30 @@ def get_db_type_and_variant(db_path, include_hash=False, dont_raise=False):
     except:
         db_variant = None
 
-    database.disconnect()
+    if include_hash:
+        if db_type in ['profile', 'contigs']:
+            try:
+                db_hash = database.get_meta_value('contigs_db_hash')
+            except:
+                db_hash = None
+        elif db_type in ['pan']:
+            try:
+                db_hash = database.get_meta_value('genomes_storage_hash')
+            except:
+                db_hash = None
+        elif db_type in ['genomestorage']:
+            try:
+                db_hash = database.get_meta_value('hash')
+            except:
+                db_hash = None
+        else:
+            db_hash = None
 
-    return (db_type, db_variant)
+        database.disconnect()
+
+        return (db_type, db_variant, db_hash)
+    else:
+        return (db_type, db_variant)
 
 
 def get_db_type(db_path):
