@@ -175,7 +175,7 @@ class ArgumentParser(argparse.ArgumentParser):
         return help_text
 
 
-    def get_args(self, parser):
+    def get_args(self, parser, auto_fill_anvio_dbs=False):
         """A helper function to parse args anvi'o way.
 
         This function allows us to make sure some ad hoc parameters, such as `--debug`,
@@ -187,6 +187,9 @@ class ArgumentParser(argparse.ArgumentParser):
         allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
 
         args, unknown = parser.parse_known_args()
+
+        if auto_fill_anvio_dbs:
+            args = PopulateAnvioDBArgs(args).get_updated_args()
 
         # if there are any args in the unknown that we do not expect to find
         # we we will make argparse complain about those.
