@@ -214,6 +214,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             else:
                 self.mode = 'full'
 
+        if self.mode in ['full', 'collection', 'trnaseq', 'gene'] and not self.profile_db_path:
+            raise ConfigError("You must declare a profile database for this to work :(")
+
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
 
