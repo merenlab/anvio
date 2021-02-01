@@ -74,8 +74,8 @@ def main(args):
                 in_gene = True
                 gene_call = input_file.readline().strip().split('\t')
                 gene_calls[gene_num] = {'contig': gene_call[0],
-                                        'start': (int(gene_call[3]) - 1) if gene_call[6] == '+' else int(gene_call[3]),
-                                        'stop': (int(gene_call[4]) - 1) if gene_call[6] == '+' else int(gene_call[4]),
+                                        'start': int(gene_call[3]) - 1,
+                                        'stop': int(gene_call[4]),
                                         'direction': 'f' if gene_call[6] == '+' else 'r',
                                         'partial': 0,
                                         'call_type': 1,
