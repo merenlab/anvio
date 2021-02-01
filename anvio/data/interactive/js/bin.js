@@ -848,19 +848,6 @@ Bins.prototype.RedrawBins = function() {
         prev_value = leaf_list[i];
     }
 
-    let dont_draw = new Array()
-    for (var i=1; i < leaf_list.length; i++)
-    {
-        if (prev_value != leaf_list[i])
-        {
-            if (prev_value === -1) {
-                dont_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
-            }
-            prev_start = i;
-        }
-        prev_value = leaf_list[i];
-    }
-
     var bin = document.getElementById('bin');
     while (bin.hasChildNodes()) {
         bin.removeChild(bin.lastChild);
@@ -883,39 +870,37 @@ Bins.prototype.RedrawBins = function() {
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
     if(invert_shade){
-        let bin_color = 'black'
         let nodes_for_inversion = []
-        console.log(dont_draw)
-        console.log(bins_to_draw)
 
-        // for(let i = 0; i < leaf_list.length; i++){
-        //     if(leaf_list[i] === -1){
-        //         nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
-        //     }
-        // }
+        for(let i = 0; i < leaf_list.length; i++){
+            if(leaf_list[i] === -1){
+                nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+            }
+        }
 
-        for(let i=0; i < dont_draw.length; i++){
-            var start = drawer.tree.leaves[dont_draw[i][0]];
-            var end = drawer.tree.leaves[dont_draw[i][1]];
+        nodes_for_inversion.forEach(node => {
+            let p = node[0]
+            let [p1, p2] = p.GetBorderNodes();
 
             let pie = drawPie(
-                'bin', 
-                'bin_outer_' + i,
-                start.angle - start.size / 2,
-                end.angle - end.size / 2,
-                distance(start.backarc, {
+                'tree_bin',
+                'hover',
+                p1.angle - p1.size / 2,
+                p2.angle + p2.size / 2,
+                distance(p.backarc, {
                     'x': 0,
                     'y': 0
                 }),
                 total_radius,
-                (end.angle - start.angle + (start.size / 2) + (end.size / 2) > Math.PI) ? 1 : 0,
-                bin_color,
+                (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
+                'black',
                 0.3,
-                true
-            )
+                false
+            );
+
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
             pie.setAttribute('stroke-opacity', '1');
-        }
+        })
     }
 
     for (var i=0; i < bins_to_draw.length; i++) {
