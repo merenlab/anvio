@@ -987,7 +987,7 @@ class ContigsSuperclass(object):
         if not len(self.contig_sequences) or not set(gene_caller_ids_list).issubset(self.gene_caller_ids_included_in_contig_sequences_initialized):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
-        if include_aa_sequences or report_aa_sequences:
+        if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
             contigs_db = ContigsDatabase(self.contigs_db_path)
             aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
             contigs_db.disconnect()
@@ -1062,7 +1062,7 @@ class ContigsSuperclass(object):
             gene_call['length'] = gene_call['stop'] - gene_call['start']
             gene_call['rev_compd'] = rev_compd
 
-            if include_aa_sequences or report_aa_sequences:
+            if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
                 if gene_callers_id in aa_sequences_dict:
                     gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
@@ -1135,7 +1135,7 @@ class ContigsSuperclass(object):
         if output_file_path_external_gene_calls:
             utils.store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
-                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
             self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
