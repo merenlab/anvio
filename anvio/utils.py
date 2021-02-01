@@ -3574,14 +3574,20 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
-def get_db_type_and_variant(db_path):
+def get_db_type_and_variant(db_path, include_hash=False, dont_raise=False):
     filesnpaths.is_file_exists(db_path)
 
     try:
         database = db.DB(db_path, None, ignore_version=True)
     except Exception as e:
-        raise ConfigError(f"Someone downstream doesn't like your so called database, '{db_path}'. They say "
-                          f"\"{e}\". Awkward :(")
+        if dont_raise:
+            if include_hash:
+                return (None, None, None)
+            else:
+                return (None, None)
+        else:
+            raise ConfigError(f"Someone downstream doesn't like your so called database, '{db_path}'. They say "
+                              f"\"{e}\". Awkward :(")
 
     tables = database.get_table_names()
     if 'self' not in tables:
