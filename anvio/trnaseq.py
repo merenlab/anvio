@@ -172,10 +172,11 @@ class TrimmedSeq(object):
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTC
 
     Unique MAPPED tRNA fragments, including tRNA reads that only lack 3'-CCA/CC/C, each generate a
-    TrimmedSeq object (in TRNASeqDataset.map_fragments). Mapped fragments with extra 5' nucleotides
-    beyond the acceptor stem are trimmed. The 5' extension may represent all but a small number of
-    nucleotides in the sequence, so it is best not to dereplicate mapped sequences identical in the
-    non-5' section by grouping them as the same trimmed sequence.
+    TrimmedSeq object (in TRNASeqDataset.map_fragments and
+    TRNASeqDataset.threeprime_dereplicate_acceptorless_sequences). Mapped fragments with extra 5'
+    nucleotides beyond the acceptor stem are not trimmed. The 5' extension may represent all but a
+    small number of nucleotides in the sequence, so it is best not to dereplicate mapped sequences
+    identical in the non-5' section by grouping them as the same trimmed sequence.
     """
 
     __slots__ = (
@@ -1011,6 +1012,9 @@ class TRNASeqDataset(object):
             # Recover tRNA sequences with truncated feature profiles by comparing to normalized
             # sequences.
             self.threeprime_dereplicate_truncated_sequences()
+
+            # Recover 3' tRNA sequences lacking an acceptor sequence.
+            self.threeprime_dereplicate_acceptorless_sequences()
 
             if self.write_checkpoints:
                 self.progress.new("Writing intermediate files for the \"profile\" checkpoint")
@@ -1946,6 +1950,110 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)",
                                           time.time() - start_time,
                                           is_time_value=True))
+
+        self.progress.end()
+
+
+    def threeprime_dereplicate_acceptorless_sequences(self):
+        """Find tRNA sequences missing a 3'-acceptor sequence variant that are 3' subsequences of
+        normalized tRNA sequences. Sequences required an acceptor sequence variant to be profiled as
+        tRNA. tRNA sequences salvaged here are therefore counted as `mapped` rather than `profiled`
+        in the `id_method` attribute of their `UniqueSeq` and `TrimmedSeq` objects (these sequences
+        form independent `TrimmedSeq` objects rather than being added to existing ones with an
+        identical sequence)."""
+        start_time = time.time()
+        self.progress.new("Dereplicating acceptorless tRNA sequences")
+        self.progress.update("...")
+
+        represent_names = []
+        reversed_seq_strings = []
+        extras = []
+        for uniq_nontrna_index, uniq_nontrna_seq in enumerate(self.uniq_nontrna_seqs):
+            if len(uniq_nontrna_seq.seq_string) >= self.min_trna_frag_size:
+                represent_names.append(uniq_nontrna_seq.represent_name)
+                reversed_seq_strings.append(uniq_nontrna_seq.seq_string[::-1])
+                extras.append((uniq_nontrna_index, uniq_nontrna_seq))
+        for norm_seq in self.norm_trna_seqs:
+            represent_names.append(norm_seq.represent_name)
+            reversed_seq_strings.append(norm_seq.seq_string[::-1])
+            extras.append(norm_seq)
+        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras, progress=self.progress).prefix_dereplicate()
+
+        uniq_nontrna_seq_indices_to_remove = []
+        uniq_seq_norm_seqs_dict = defaultdict(list)
+        for cluster in clusters:
+            if len(cluster.member_seqs) == 1:
+                continue
+
+            # Check that there is a normalized tRNA sequence in the cluster -- there cannot be more
+            # than one.
+            cluster_norm_seq_index = None
+            norm_seq = None
+            norm_seq_length = None
+            norm_seq_has_complete_feature_set = None
+            for member_index, member_extra in enumerate(cluster.member_extras[0]):
+                if isinstance(member_extra, NormalizedSeq):
+                    cluster_norm_seq_index = member_index
+                    norm_seq = member_extra
+                    norm_seq_length = len(norm_seq.seq_string)
+                    if member_index > 0:
+                        norm_seq_has_complete_feature_set = member_extra.has_complete_feature_set
+                    break
+            else:
+                continue
+
+            for uniq_nontrna_index, uniq_seq in cluster.member_extras[:cluster_norm_seq_index]:
+                # To be longer than a normalized sequence, the sequence must only be found in this
+                # one normalized-sequence-containing cluster, as to be found in multiple of these
+                # clusters would mean that the normalized sequences in those clusters must have
+                # 3'-subsequence relationships, which is impossible by the very existence of the
+                # normalized sequences. If the normalized sequence has a complete feature profile,
+                # than the overhanging 5' bases in the salvaged sequence can be trimmed as "extra"
+                # 5' bases. Otherwise, it is unclear if the overhanging 5' bases are somehow part of
+                # an artifact, so take the conservative option of ignoring the sequence.
+                if not norm_seq_has_complete_feature_set:
+                    break
+
+                uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
+                uniq_seq.id_method = 1 # mapped
+                uniq_seq.has_complete_feature_set = False
+                uniq_seq.acceptor_length = 0
+                uniq_seq.extra_fiveprime_length = len(uniq_seq.seq_string) - norm_seq_length
+
+                trimmed_seq = TrimmedSeq(uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: ], [uniq_seq])
+                self.trimmed_trna_seqs.append(trimmed_seq)
+
+                norm_seq.trimmed_seqs.append(trimmed_seq)
+                trimmed_seq.norm_seq_count += 1
+                norm_seq.start_positions.append(0)
+                norm_seq.stop_positions.append(norm_seq_length)
+
+            for uniq_nontrna_index, _ in cluster.member_extras[cluster_norm_seq_index:]:
+                uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
+                uniq_seq_norm_seqs_dict[uniq_nontrna_index].append(norm_seq)
+
+        for seq_index in sorted(set(uniq_nontrna_seq_indices_to_remove), reverse=True):
+            uniq_seq = self.uniq_nontrna_seq_indices_to_remove.pop(seq_index)
+            if uniq_seq.id_method == 1:
+                # This sequence was already handle above, save removal from the list of non-tRNA.
+                continue
+
+            self.uniq_trna_seqs.append(uniq_seq)
+            uniq_seq.id_method = 1
+            uniq_seq.has_complete_feature_set = False
+            uniq_seq.acceptor_length = 0
+            uniq_seq.extra_fiveprime_length = 0
+
+            trimmed_seq = TrimmedSeq(uniq_seq.seq_string, [uniq_seq])
+            self.trimmed_trna_seqs.append(trimmed_seq)
+
+            uniq_seq_length = len(uniq_seq.seq_string)
+            for norm_seq in uniq_seq_norm_seqs_dict[seq_index]:
+                norm_seq.trimmed_seqs.append(trimmed_seq)
+                trimmed_seq.norm_seq_count += 1
+                norm_seq_length = len(norm_seq.seq_string)
+                norm_seq.start_positions.append(norm_seq_length) - uniq_seq_length)
+                norm_seq.stop_positions.append(norm_seq_length)
 
         self.progress.end()
 
