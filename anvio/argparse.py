@@ -11,8 +11,10 @@ from colored import fg, bg, attr
 
 import anvio
 import anvio.docs as docs
+import anvio.terminal as terminal
 
 from anvio.programs import Program
+from anvio.utils import FindAnvioDBs
 from anvio.utils import is_program_exists as get_program_path
 
 
@@ -25,6 +27,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 atty = sys.stdout.isatty()
+P = terminal.pluralize
 
 
 class ArgumentParser(argparse.ArgumentParser):
