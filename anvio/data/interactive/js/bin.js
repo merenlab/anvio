@@ -853,11 +853,19 @@ Bins.prototype.RedrawBins = function() {
         bin.removeChild(bin.lastChild);
     }
 
+    let nodes_for_inversion = [] // lets also grab the items that aren't selected above 
+
+    for(let i = 0; i < leaf_list.length; i++){
+        if(leaf_list[i] === -1){
+            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+        }
+    }
+
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
-    var show_shade = $('#show_shade_for_bins')[0].checked 
-    var invert_shade = $('#invert_shade_for_bins')[0].checked 
-    var shade_fill_opacity = $('#shade_fill_opacity').val() 
+    var show_shade = $('#show_shade_for_bins')[0].checked; 
+    var invert_shade = $('#invert_shade_for_bins')[0].checked; 
+    var shade_fill_opacity = $('#shade_fill_opacity').val();
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
@@ -869,22 +877,14 @@ Bins.prototype.RedrawBins = function() {
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
-    if(invert_shade){
-        let nodes_for_inversion = []
-
-        for(let i = 0; i < leaf_list.length; i++){
-            if(leaf_list[i] === -1){
-                nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
-            }
-        }
-
-        nodes_for_inversion.forEach(node => {
+    function drawInvertedNodes(nodesArr, opacity, tree_type){
+        nodesArr.forEach(node => {
             let p = node[0]
             let [p1, p2] = p.GetBorderNodes();
 
             let pie = drawPie(
                 'tree_bin',
-                'hover',
+                'bin_outer',
                 p1.angle - p1.size / 2,
                 p2.angle + p2.size / 2,
                 distance(p.backarc, {
@@ -897,11 +897,13 @@ Bins.prototype.RedrawBins = function() {
                 0.3,
                 false
             );
-
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
-            pie.setAttribute('stroke-opacity', '1');
+            pie.setAttribute('stroke-opacity', opacity);
         })
     }
+    
+    invert_shade ? drawInvertedNodes(nodes_for_inversion, 1) : null 
+
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
@@ -999,8 +1001,6 @@ Bins.prototype.RedrawBins = function() {
                 pie.setAttribute('stroke', grid_color);
                 pie.setAttribute('fill-opacity', 0)
             }
-
-
         }
         else
         {
