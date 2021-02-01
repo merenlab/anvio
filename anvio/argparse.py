@@ -196,3 +196,151 @@ class ArgumentParser(argparse.ArgumentParser):
             parser.parse_args()
 
         return args
+
+
+class PopulateAnvioDBArgs(FindAnvioDBs):
+    def __init__(self, args, search_path='.', run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+        self.search_path = search_path
+
+        FindAnvioDBs.__init__(self, self.args, run=self.run, progress=self.progress)
+
+        self.__args_set = []
+        self.__args_failed = []
+
+
+    def set_arg(self, variable, value):
+        self.__args_set.append((variable, value), )
+        self.args.__dict__[variable] = value
+
+
+    def fill_in_contigs_db(self, db_hash=None):
+        if not 'contigs_db' in self.args:
+            return
+
+        if self.args.contigs_db:
+            return
+
+        if 'contigs' not in self.anvio_dbs:
+            return
+
+        if db_hash:
+            matching_contigs_dbs = [c for c in self.anvio_dbs['contigs'] if c['db_hash'] == db_hash]
+        else:
+            matching_contigs_dbs = self.anvio_dbs['contigs']
+
+        if len(matching_contigs_dbs):
+            self.set_arg('contigs_db', matching_contigs_dbs[0]['db_path'])
+        else:
+            self.__args_failed.append(('contigs_db', f'No matching contigs db (for hash "{db_hash}")'), )
+
+
+    def fill_in_genomes_storage_db(self, db_hash=None):
+        if not 'genomes_storage' in self.args:
+            return
+
+        if self.args.genomes_storage:
+            return
+
+        if 'genomestorage' not in self.anvio_dbs:
+            return
+
+        if db_hash:
+            matching_genomes_storage_dbs = [c for c in self.anvio_dbs['genomestorage'] if c['db_hash'] == db_hash]
+        else:
+            matching_genomes_storage_dbs = self.anvio_dbs['genomestorage']
+
+        if len(matching_genomes_storage_dbs):
+            self.set_arg('genomes_storage', matching_genomes_storage_dbs[0]['db_path'])
+        else:
+            self.__args_failed.append(('genomes_storage', f'No genomes storage around (for hash "{db_hash}")'), )
+
+
+    def fill_in_profile_db(self):
+        if 'profile_db' not in self.args:
+            return
+
+        if not 'profile' in self.anvio_dbs:
+            self.__args_failed.append(('profile_db', 'No profile databases around :/'))
+            return
+
+        profile_dbs = self.anvio_dbs['profile']
+
+        if len(profile_dbs):
+            # so we have some profile dbs. we can select the first one, or we can do something
+            # slightly smarter and select the first one affiliated with a contigs database
+            # if there are more than one
+            if len(profile_dbs) > 1:
+                try:
+                    profile_db = [p for p in profile_dbs if p['db_hash']][0]
+                except:
+                    # the exception here will come from the [0] in the previous line and will
+                    # mean that although there we re multiple profile databases, none was
+                    # associated with a contigs db. FINE, we send back the first one of all
+                    # these losers, then:
+                    profile_db = profile_dbs[0]
+            else:
+                # there is only a single one. so it doesn't really matter
+                profile_db = profile_dbs[0]
+        else:
+            # there is no profile db to be found around.
+            self.__args_failed('profile_db', 'None around :/')
+            return
+
+        if not profile_db['db_hash']:
+            # the profile db is not associated with a contigs database
+            # we shall try manual
+            self.set_arg('profile_db', profile_db['db_path'])
+            self.set_arg('manual_mode', True)
+        else:
+            # it is associated with a contigs database. here we will set the 
+            # profile db, and next ask anvi'o to set the contigs db if it can
+            # find one.
+            self.set_arg('profile_db', profile_db['db_path'])
+            self.fill_in_contigs_db(db_hash=profile_db['db_hash'])
+
+
+    def fill_in_pan_db(self):
+        if 'pan_db' not in self.args:
+            return
+
+        if not 'pan' in self.anvio_dbs:
+            return self.__args_failed.append(('pan_db', 'No pan databases around :/'))
+
+        pan_dbs = self.anvio_dbs['pan']
+
+        if len(pan_dbs):
+            self.set_arg('pan_db', pan_dbs[0]['db_path'])
+            self.fill_in_genomes_storage_db(db_hash=pan_dbs[0]['db_hash'])
+        else:
+            # there is no profile db to be found around.
+            return self.__args_failed('pan_db', 'None around :/')
+
+
+    def get_updated_args(self):
+        if anvio.DEBUG:
+            self.run.warning(None, header=f"ANVI'O DBs FOUND", lc="yellow")
+            if len(self.anvio_dbs):
+                anvio.P(self.anvio_dbs, dont_exit=True)
+            else:
+                self.run.info_single('lol no dbs around')
+
+        if 'profile_db' in self.args and not self.args.profile_db:
+            self.fill_in_profile_db()
+        elif 'pan_db' in self.args and not self.args.pan_db:
+            self.fill_in_pan_db()
+
+        if len(self.__args_set):
+            self.run.warning(None, header=f"ANVI'O FILLED IN THE {len(self.__args_set)} {P('ARG', len(self.__args_set), alt='ARGS')} BELOW AUTOMATICALLY", lc='yellow')
+            for variable, value in self.__args_set:
+                self.run.info(variable, value, nl_after= (1 if (variable, value) == self.__args_set[-1] else 0), lc="yellow")
+
+        if len(self.__args_failed):
+            self.run.warning(None, header="ARGS ANVI'O TRIED TO FILL IN BUT FAILED :(", lc='yellow')
+            for variable, reason in self.__args_failed:
+                self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
+
+        return self.args
