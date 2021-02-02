@@ -4301,6 +4301,11 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position] = 8
                 continue
 
+            # if the gene stop is identical to the contig length,
+            # just move on:
+            if stop == contig_length:
+                continue
+
             if gene_call['direction'] == 'f':
                 for nt_position in range(start, stop, 3):
                     nt_position_info_list[nt_position] = 4

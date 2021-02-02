@@ -74,8 +74,8 @@ def main(args):
                 in_gene = True
                 gene_call = input_file.readline().strip().split('\t')
                 gene_calls[gene_num] = {'contig': gene_call[0],
-                                        'start': (int(gene_call[3]) - 1) if gene_call[6] == '+' else int(gene_call[3]),
-                                        'stop': (int(gene_call[4]) - 1) if gene_call[6] == '+' else int(gene_call[4]),
+                                        'start': int(gene_call[3]) - 1,
+                                        'stop': int(gene_call[4]),
                                         'direction': 'f' if gene_call[6] == '+' else 'r',
                                         'partial': 0,
                                         'call_type': 1,
@@ -86,7 +86,7 @@ def main(args):
                 continue
 
             if L('# end gene'):
-                gene_calls[gene_num]['aa_sequence'] = aa_sequence[:-1]
+                gene_calls[gene_num]['aa_sequence'] = aa_sequence
 
                 in_gene = False
                 in_protein = False
@@ -96,12 +96,22 @@ def main(args):
                 continue
 
             if L('# protein sequence'):
-                in_protein = True
-                aa_sequence += line[line.find('[') + 1:].strip()
+                if line.strip().endswith(']'):
+                    aa_sequence += line.strip()[line.find('[') + 1:-1]
+                    in_protein = False
+                else:
+                    aa_sequence += line.strip()[line.find('[') + 1:]
+                    in_protein = True
+
                 continue
 
             if in_gene and in_protein:
-                aa_sequence += line[2:].strip()
+                if line.strip().endswith(']'):
+                    aa_sequence += line.strip()[2:-1]
+                    in_protein = False
+                else:
+                    aa_sequence += line[2:].strip()
+
                 continue
 
     progress.update("Storing the output ...")
