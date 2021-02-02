@@ -863,6 +863,8 @@ Bins.prototype.RedrawBins = function() {
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var show_shade = $('#show_shade_for_bins')[0].checked; 
     var invert_shade = $('#invert_shade_for_bins')[0].checked; 
+    var inverse_fill_opacity = $('#inverse_fill_opacity').val();
+    var inverse_color = document.getElementById('inverse_color').getAttribute('color');
     var shade_fill_opacity = $('#shade_fill_opacity').val();
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
@@ -876,7 +878,6 @@ Bins.prototype.RedrawBins = function() {
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
     function drawInvertedNodes(nodesArr, opacity, tree_type){
-
         nodesArr.map((node, idx) => {
             let p = node[0]
             let [p1, p2] = p.GetBorderNodes();
@@ -892,12 +893,12 @@ Bins.prototype.RedrawBins = function() {
                 }),
                 total_radius,
                 (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
-                'black',
+                inverse_color,
                 opacity,
                 false
             );
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
-            pie.setAttribute('stroke-opacity', opacity);
+            pie.setAttribute('stroke-opacity', inverse_fill_opacity);
         })
     }
 
