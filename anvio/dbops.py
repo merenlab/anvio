@@ -1745,14 +1745,19 @@ class PanSuperclass(object):
             return
 
         self.progress.new('Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+        counter = 0
         for gene_cluster_id in self.gene_clusters_functions_dict:
-            self.progress.update(f'{gene_cluster_id} ...', increment=True)
+            if counter % 100 == 0:
+                self.progress.increment(increment_to=counter)
+                self.progress.update(f'{gene_cluster_id} ...')
 
             self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
 
             for functional_annotation_source in self.gene_clusters_function_sources:
                 accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
                 self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
+
+            counter += 1
 
         self.progress.end()
 
@@ -4300,6 +4305,11 @@ class ContigsDatabase:
             if gene_call['call_type'] != coding:
                 for nt_position in range(start, stop):
                     nt_position_info_list[nt_position] = 8
+                continue
+
+            # if the gene stop is identical to the contig length,
+            # just move on:
+            if stop == contig_length:
                 continue
 
             if gene_call['direction'] == 'f':

@@ -330,10 +330,10 @@ class BottleApplication(Bottle):
             if self.interactive.state_autoload:
                 state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
 
-                if state_dict['current-view'] in self.interactive.views:
+                if 'current-view' in state_dict and state_dict['current-view'] in self.interactive.views:
                     default_view = state_dict['current-view']
 
-                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                if 'order-by' in state_dict and state_dict['order-by'] in self.interactive.p_meta['item_orders']:
                     default_order = state_dict['order-by']
 
                 autodraw = True
