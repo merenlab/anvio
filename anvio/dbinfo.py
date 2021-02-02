@@ -6,7 +6,9 @@ from abc import ABC, abstractmethod
 
 from anvio.db import DB
 from anvio.terminal import Run, Progress
+from anvio.tables import versions_for_db_types
 from anvio.errors import ConfigError
+
 
 
 class DBInfo(ABC):
@@ -23,25 +25,15 @@ class DBInfo(ABC):
             else:
                 raise ConfigError(f"The database '{path}' has no 'db_type' row in 'self'")
 
-        if db_type == 'contigs':
-            return super().__new__(ContigsDBInfo)
-        elif db_type == 'profile':
-            return super().__new__(ProfileDBInfo)
-        elif db_type == 'auxiliary data for coverages':
-            return super().__new__(AuxiliaryDBInfo)
-        elif db_type == 'genes':
-            return super().__new__(GenesDBInfo)
-        elif db_type == 'structure':
-            return super().__new__(StructureDBInfo)
-        elif db_type == 'genomestorage':
-            return super().__new__(GenomeStorageDBInfo)
-        elif db_type == 'pan':
-            return super().__new__(PanDBInfo)
-        elif db_type in ['modules', 'trnaseq']:
-            # FIXME I don't have the expertise for these two
+        if db_type in dbinfo_classes:
+            return super().__new__(dbinfo_classes[db_type]['class'])
+
+        if db_type in ['modules', 'trnaseq']:
+            # FIXME I don't have the expertise for these two but no point crashing everytime
+            # `anvi-interactive` is run without parameters
             return
-        else:
-            raise NotImplementedError(f"db_type {db_type} has not been implemented for DBInfo")
+
+        raise NotImplementedError(f"db_type {db_type} has no entry in dbinfo_classes")
 
 
     def __init__(self, path):
@@ -255,3 +247,26 @@ class FindAnvioDBs(object):
         self.progress.end()
 
 
+dbinfo_classes = {
+    'contigs': {
+        'class': ContigsDBInfo,
+    },
+    'profile': {
+        'class': ProfileDBInfo,
+    },
+    'auxiliary data for coverages': {
+        'class': AuxiliaryDBInfo,
+    },
+    'genes': {
+        'class': GenesDBInfo,
+    },
+    'structure': {
+        'class': StructureDBInfo,
+    },
+    'genomestorage': {
+        'class': GenomeStorageDBInfo,
+    },
+    'pan': {
+        'class': PanDBInfo,
+    },
+}
