@@ -113,6 +113,14 @@ class DB:
                                   "dictionary." % (', '.join(bad_tables)))
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, *args):
+        self.disconnect()
+
+
     def _not_if_read_only(func):
         def inner(self, *args, **kwargs):
             if self.read_only:
