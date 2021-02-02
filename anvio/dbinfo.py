@@ -43,6 +43,10 @@ class DBInfo(ABC):
         self.path = path
 
 
+    def __str__(self):
+        return ' | '.join([f"{attr}: {self.__getattribute__(attr)}" for attr in dir(self) if not callable(getattr(self, attr)) and not attr.startswith("_")])
+
+
     @staticmethod
     def is_db(path, dont_raise=False):
         try:
