@@ -749,6 +749,13 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --gene-mode \
                  --dry-run
 
+INFO "A dry run to fill in anvi'o dbs"
+curdir=`pwd`
+cd $output_dir
+anvi-interactive --dry-run
+anvi-display-pan --dry-run
+cd $curdir
+
 INFO "Firing up the interactive interface to display the contigs db stats"
 anvi-display-contigs-stats $output_dir/CONTIGS.db \
                            $dry_run_controller
