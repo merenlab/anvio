@@ -4173,6 +4173,16 @@ class KeggModulesDatabase(KeggContext):
         return substrate_name_list, intermediate_name_list, product_name_list
 
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
+    def get_top_level_steps_in_module_definition(self, mnum):
+        """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
+
+        A 'top-level' step is one that you get by splitting on spaces (but not spaces in parentheses) just once -
+        ie, the 'first layer' when unrolling the module.
+        """
+
+        def_string = self.get_kegg_module_definition(mnum)
+        return self.split_by_delim_not_within_parens(def_string, " ")
+
 
     def unroll_module_definition(self, mnum):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
