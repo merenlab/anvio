@@ -19,13 +19,29 @@ class DBInfo(ABC):
             return
 
         db_type = cls.get_type(path)
+        if db_type is None:
+            if dont_raise:
+                return
+            else:
+                raise ConfigError(f"The database '{path}' has no 'db_type' row in 'self'")
 
         if db_type == 'contigs':
             return super().__new__(ContigsDBInfo)
         elif db_type == 'profile':
             return super().__new__(ProfileDBInfo)
+        elif db_type == 'auxiliary data for coverages':
+            return super().__new__(AuxiliaryDBInfo)
+        elif db_type == 'genes':
+            return super().__new__(GenesDBInfo)
         elif db_type == 'structure':
             return super().__new__(StructureDBInfo)
+        elif db_type == 'genomestorage':
+            return super().__new__(GenomeStorageDBInfo)
+        elif db_type == 'pan':
+            return super().__new__(PanDBInfo)
+        elif db_type in ['modules', 'trnaseq']:
+            # FIXME I don't have the expertise for these two
+            return
         else:
             raise NotImplementedError(f"db_type {db_type} has not been implemented for DBInfo")
 
@@ -55,7 +71,7 @@ class DBInfo(ABC):
     @staticmethod
     def get_type(path):
         with DB(path, None, ignore_version=True) as database:
-            return database.get_meta_value('db_type')
+            return database.get_meta_value('db_type', return_none_if_not_in_table=True)
 
 
     @abstractmethod
@@ -87,6 +103,42 @@ class ContigsDBInfo(DBInfo):
             return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
+class ProfileDBInfo(DBInfo):
+    db_type = 'profile'
+    def __init__(self, path, dont_raise):
+        DBInfo.__init__(self, path)
+
+
+    @property
+    def hash(self):
+        with self.load_db() as database:
+            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
+
+
+class GenesDBInfo(DBInfo):
+    db_type = 'genes'
+    def __init__(self, path, dont_raise):
+        DBInfo.__init__(self, path)
+
+
+    @property
+    def hash(self):
+        with self.load_db() as database:
+            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
+
+
+class AuxiliaryDBInfo(DBInfo):
+    db_type = 'auxiliary data for coverages'
+    def __init__(self, path, dont_raise):
+        DBInfo.__init__(self, path)
+
+
+    @property
+    def hash(self):
+        with self.load_db() as database:
+            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
+
+
 class StructureDBInfo(DBInfo):
     db_type = 'structure'
     def __init__(self, path, dont_raise):
@@ -98,8 +150,9 @@ class StructureDBInfo(DBInfo):
         with self.load_db() as database:
             return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
-class ProfileDBInfo(DBInfo):
-    db_type = 'profile'
+
+class GenomeStorageDBInfo(DBInfo):
+    db_type = 'genomestorage'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
 
@@ -107,7 +160,19 @@ class ProfileDBInfo(DBInfo):
     @property
     def hash(self):
         with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
+            return database.get_meta_value('hash', return_none_if_not_in_table=True)
+
+
+class PanDBInfo(DBInfo):
+    db_type = 'pan'
+    def __init__(self, path, dont_raise):
+        DBInfo.__init__(self, path)
+
+
+    @property
+    def hash(self):
+        with self.load_db() as database:
+            return database.get_meta_value('genomes_storage_hash', return_none_if_not_in_table=True)
 
 
 class FindAnvioDBs(object):
