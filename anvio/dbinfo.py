@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import os
+import json
 
 from abc import ABC, abstractmethod
 
@@ -47,7 +48,7 @@ class DBInfo(ABC):
 
 
     def __str__(self):
-        return ' | '.join([f"{attr}: {self.__getattribute__(attr)}" for attr in dir(self) if not callable(getattr(self, attr)) and not attr.startswith("_")])
+        return json.dumps([f"{attr}: {self.__getattribute__(attr)}" for attr in dir(self) if not callable(getattr(self, attr)) and not attr.startswith("_")], indent=2)
 
 
     @staticmethod
