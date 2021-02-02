@@ -90,11 +90,10 @@ class FindAnvioDBs(object):
         Stop processing if the number of files and directories processed exceeds
         this.
     """
-    def __init__(self, args, search_path='.', max_files_and_dirs_to_process=50000, run=Run(), progress=Progress()):
+    def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, run=Run(), progress=Progress()):
         self.run = run
         self.progress = progress
 
-        self.args = args
         self.search_path = search_path
         self.max_files_and_dirs_to_process = max_files_and_dirs_to_process
 
@@ -4348,3 +4347,4 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
