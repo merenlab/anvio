@@ -328,9 +328,11 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
 
     def get_updated_args(self):
         if anvio.DEBUG:
-            self.run.warning(None, header=f"ANVI'O DBs FOUND", lc="yellow")
+            self.run.warning(None, header="ANVI'O DBs FOUND", lc="yellow")
             if len(self.anvio_dbs):
-                print(self.anvio_dbs)
+                for db_type in self.anvio_dbs:
+                    for anvio_db in self.anvio_dbs[db_type]:
+                        print(anvio_db)
             else:
                 self.run.info_single('lol no dbs around')
 
