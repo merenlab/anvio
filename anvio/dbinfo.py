@@ -10,9 +10,9 @@ from anvio.tables import versions_for_db_types
 from anvio.errors import ConfigError
 
 
-
 class DBInfo(ABC):
     db_type = None
+    hash_name = None
 
     def __new__(cls, path, dont_raise=False):
         if not cls.is_db(path, dont_raise=dont_raise):
@@ -39,6 +39,8 @@ class DBInfo(ABC):
     def __init__(self, path):
         if self.db_type is None:
             raise NotImplementedError(f"{self.__class__} must set a `db_type` attribute")
+        if self.hash_name is None:
+            raise NotImplementedError(f"{self.__class__} must set a `hash_name` attribute")
 
         self.path = path
 
@@ -68,16 +70,16 @@ class DBInfo(ABC):
             return database.get_meta_value('db_type', return_none_if_not_in_table=True)
 
 
-    @abstractmethod
-    def hash(self):
-        """This must be defined in the Child class. @abstractmethod takes no crap and ensures this happens"""
-        pass
-
-
     @property
     def variant(self):
         with self.load_db() as database:
             return database.get_meta_value('db_variant', return_none_if_not_in_table=True)
+
+
+    @property
+    def hash(self):
+        with self.load_db() as database:
+            return database.get_meta_value(self.hash_name, return_none_if_not_in_table=True)
 
 
     def load_db(self):
@@ -87,86 +89,51 @@ class DBInfo(ABC):
 
 class ContigsDBInfo(DBInfo):
     db_type = 'contigs'
+    hash_name = 'contigs_db_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
 class ProfileDBInfo(DBInfo):
     db_type = 'profile'
+    hash_name = 'contigs_db_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
 class GenesDBInfo(DBInfo):
     db_type = 'genes'
+    hash_name = 'contigs_db_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
 class AuxiliaryDBInfo(DBInfo):
     db_type = 'auxiliary data for coverages'
+    hash_name = 'contigs_db_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
 class StructureDBInfo(DBInfo):
     db_type = 'structure'
+    hash_name = 'contigs_db_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('contigs_db_hash', return_none_if_not_in_table=True)
 
 
 class GenomeStorageDBInfo(DBInfo):
     db_type = 'genomestorage'
+    hash_name = 'hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('hash', return_none_if_not_in_table=True)
 
 
 class PanDBInfo(DBInfo):
     db_type = 'pan'
+    hash_name = 'genomes_storage_hash'
     def __init__(self, path, dont_raise):
         DBInfo.__init__(self, path)
-
-
-    @property
-    def hash(self):
-        with self.load_db() as database:
-            return database.get_meta_value('genomes_storage_hash', return_none_if_not_in_table=True)
 
 
 class FindAnvioDBs(object):
