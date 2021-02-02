@@ -135,7 +135,7 @@ class FindAnvioDBs(object):
         total_file_and_directory_names = 0
 
         if depth and depth == 1:
-            filenames = self.listdir(self.search_path)
+            filenames = list(self.listdir(self.search_path))
 
             total_file_and_directory_names += len(filenames)
             self.progress.update(f"processing {total_file_and_directory_names} ...")
