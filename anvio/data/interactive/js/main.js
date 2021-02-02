@@ -1441,6 +1441,9 @@ function serializeSettings(use_layer_names) {
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); 
     state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
+    state['invert-shade-for-bins'] = $('#invert_shade_for_bins').is(':checked');
+    state['inverse-fill-opacity'] = $('#inverse_fill_opacity').val();
+    state['inverse-color'] = $('#inverse_color').attr('color')
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
@@ -2514,7 +2517,16 @@ function processState(state_name, state) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
     }
     if (state.hasOwnProperty('shade-fill-opacity')){
-        $('#shade_fill_opacity').val(state['shade-fill-opacity']) 
+        $('#shade_fill_opacity').val(state['shade-fill-opacity']); 
+    }
+    if (state.hasOwnProperty('invert-shade-for-bins')){
+        $('#invert_shade_for_bins').prop('checked', state['invert-shade-for-bins']);
+    }
+    if (state.hasOwnProperty('inverse-fill-opacity')){
+        $('#inverse_fill_opacity').val(state['inverse-fill-opacity']);
+    }
+    if (state.hasOwnProperty('inverse-color')){
+        $('#inverse_color').attr('color', state['inverse-color']);
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
