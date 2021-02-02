@@ -15,7 +15,7 @@ class DBInfo(ABC):
     db_type = None
     hash_name = None
 
-    def __new__(cls, path, dont_raise=False, run=Run(), progress=Progress()):
+    def __new__(cls, path, dont_raise=False, expecting=None):
         if not cls.is_db(path, dont_raise=dont_raise):
             return
 
@@ -25,6 +25,24 @@ class DBInfo(ABC):
                 return
             else:
                 raise ConfigError(f"The database '{path}' has no 'db_type' row in 'self'")
+
+        if expecting:
+            if isinstance(expecting, list):
+                pass
+            elif isinstance(expecting, str):
+                expecting = [expecting]
+            else:
+                raise ConfigError("DBInfo :: `expecting` must be of type list or str")
+
+            for e in expecting:
+                if e not in dbinfo_classes:
+                    raise ConfigError(f"You are expecting a DB with db_type '{e}', which is not one of the "
+                                      f"possible db_types: {list(dbinfo_classes.keys())}")
+
+        if expecting is not None and db_type not in expecting:
+            if dont_raise:
+                return
+            raise ConfigError(f"Was expecting any of the db types {expecting}, but '{path}' has type '{db_type}'")
 
         if db_type in dbinfo_classes:
             return super().__new__(dbinfo_classes[db_type]['class'])
@@ -98,49 +116,49 @@ class DBInfo(ABC):
 class ContigsDBInfo(DBInfo):
     db_type = 'contigs'
     hash_name = 'contigs_db_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class ProfileDBInfo(DBInfo):
     db_type = 'profile'
     hash_name = 'contigs_db_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class GenesDBInfo(DBInfo):
     db_type = 'genes'
     hash_name = 'contigs_db_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class AuxiliaryDBInfo(DBInfo):
     db_type = 'auxiliary data for coverages'
     hash_name = 'contigs_db_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class StructureDBInfo(DBInfo):
     db_type = 'structure'
     hash_name = 'contigs_db_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class GenomeStorageDBInfo(DBInfo):
     db_type = 'genomestorage'
     hash_name = 'hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class PanDBInfo(DBInfo):
     db_type = 'pan'
     hash_name = 'genomes_storage_hash'
-    def __init__(self, path, dont_raise):
+    def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
