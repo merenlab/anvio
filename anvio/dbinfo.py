@@ -18,7 +18,11 @@ class DBInfo(ABC):
 
         db_type = cls.get_type(path)
 
-        if db_type in ['contigs', 'profile', 'structure']:
+        if db_type == 'contigs':
+            return super().__new__(ContigsDBInfo)
+        elif db_type == 'profile':
+            return super().__new__(ProfileDBInfo)
+        elif db_type == 'structure':
             return super().__new__(StructureDBInfo)
         else:
             raise NotImplementedError(f"db_type {db_type} has not been implemented for DBInfo")
