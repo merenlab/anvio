@@ -14,10 +14,8 @@ class DBInfo(object):
         self.type, self.hash, self.variant = (None, None, None)
 
         if not self.is_db(dont_raise):
-            self.db = None
             return
 
-        self.db = self.load_db()
         self.type, self.hash, self.variant = self.get_basic_info()
 
 
@@ -41,40 +39,43 @@ class DBInfo(object):
 
 
     def get_type(self):
-        return self.db.get_meta_value('db_type')
+        with self.load_db() as database:
+            return database.get_meta_value('db_type')
 
 
     def get_variant(self):
-        try:
-            db_variant = database.get_meta_value('db_variant')
-        except:
-            db_variant = None
+        with self.load_db() as database:
+            try:
+                db_variant = database.get_meta_value('db_variant')
+            except:
+                db_variant = None
 
-        return db_variant
+            return db_variant
 
 
     def get_hash(self):
-        db_type = self.get_type() if self.type is None else self.type
+        with self.load_db() as database:
+            db_type = self.get_type() if self.type is None else self.type
 
-        if db_type in ['profile', 'contigs', 'structure']:
-            try:
-                db_hash = self.db.get_meta_value('contigs_db_hash')
-            except:
+            if db_type in ['profile', 'contigs', 'structure']:
+                try:
+                    db_hash = database.get_meta_value('contigs_db_hash')
+                except:
+                    db_hash = None
+            elif db_type in ['pan']:
+                try:
+                    db_hash = database.get_meta_value('genomes_storage_hash')
+                except:
+                    db_hash = None
+            elif db_type in ['genomestorage']:
+                try:
+                    db_hash = database.get_meta_value('hash')
+                except:
+                    db_hash = None
+            else:
                 db_hash = None
-        elif db_type in ['pan']:
-            try:
-                db_hash = self.db.get_meta_value('genomes_storage_hash')
-            except:
-                db_hash = None
-        elif db_type in ['genomestorage']:
-            try:
-                db_hash = self.db.get_meta_value('hash')
-            except:
-                db_hash = None
-        else:
-            db_hash = None
 
-        return db_hash
+            return db_hash
 
 
     def get_basic_info(self):
