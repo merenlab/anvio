@@ -3602,7 +3602,7 @@ def get_db_type_and_variant(db_path, include_hash=False, dont_raise=False):
         db_variant = None
 
     if include_hash:
-        if db_type in ['profile', 'contigs']:
+        if db_type in ['profile', 'contigs', 'structure']:
             try:
                 db_hash = database.get_meta_value('contigs_db_hash')
             except:
