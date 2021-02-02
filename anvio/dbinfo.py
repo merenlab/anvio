@@ -1,14 +1,12 @@
 #! /usr/bin/env python
 
-from anvio.db import DB
-import anvio.utils as utils
-import anvio.filesnpaths as filesnpaths
-from anvio.terminal import Run, Progress
-from anvio.errors import ConfigError
-
 import os
 
 from abc import ABC, abstractmethod
+
+from anvio.db import DB
+from anvio.terminal import Run, Progress
+from anvio.errors import ConfigError
 
 
 class DBInfo(ABC):
