@@ -14,7 +14,7 @@ class DBInfo(ABC):
     db_type = None
     hash_name = None
 
-    def __new__(cls, path, dont_raise=False):
+    def __new__(cls, path, dont_raise=False, run=Run(), progress=Progress()):
         if not cls.is_db(path, dont_raise=dont_raise):
             return
 
@@ -43,6 +43,7 @@ class DBInfo(ABC):
             raise NotImplementedError(f"{self.__class__} must set a `hash_name` attribute")
 
         self.path = path
+        self.current_version = versions_for_db_types[self.db_type]
 
 
     def __str__(self):
@@ -80,6 +81,12 @@ class DBInfo(ABC):
     def hash(self):
         with self.load_db() as database:
             return database.get_meta_value(self.hash_name, return_none_if_not_in_table=True)
+
+
+    @property
+    def version(self):
+        with self.load_db() as database:
+            return database.get_meta_value('version', return_none_if_not_in_table=True)
 
 
     def load_db(self):
