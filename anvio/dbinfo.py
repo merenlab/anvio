@@ -12,6 +12,59 @@ from anvio.errors import ConfigError
 
 
 class DBInfo(ABC):
+    """Factory class to instantiate the correct DBInfo class
+
+    Parameters
+    ==========
+    path : str
+        The path of a DB
+
+    dont_raise : bool, default False
+        If `dont_raise`, if (1) `path` doesn't exist, (2) `path` isn't an anvi'o DB, or (3) `path`
+        is an anvi'o DB of the wrong type (specified with `expecting`), then the class instance will be
+        None. Otherwise, an error is raised.
+
+    expecting : str OR iterable, default None
+        If you are expecting `path` to point to a specific DB type, you can specify the expected DB
+        type or types with this parameter. See examples.
+
+    Examples
+    ========
+    Load up any DB like so:
+    >>> from anvio.dbinfo import DBInfo
+    >>> anvio_db = DBInfo('PROFILE.db')
+
+    Probe its attributes:
+    >>> anvio_db.db_type
+    'profile'
+    >>> anvio_db.version
+    '35'
+    >>> print(anvio_db)
+    [
+      "current_version: 35",
+      "db_type: profile",
+      "hash: hashdb41e303",
+      "hash_name: contigs_db_hash",
+      "path: PROFILE.db",
+      "variant: None",
+      "version: 35"
+    ]
+
+    Try and load something that isn't an anvi'o DB:
+    >>> DBInfo('nothing')
+    Config Error: Someone downstream doesn't like your so called database, 'nothing'. They say "
+              File/Path Error: No such file: 'nothing' :/  ". Awkward :(
+    >>> x = DBInfo('nothing', dont_raise=True)
+    >>> print(x)
+    None
+
+    Specify the expected DB type(s)
+    >>> DBInfo('PROFILE.db', expecting='contigs')
+    Config Error: Was expecting any of the db types ['contigs'], but 'HIMB083/PROFILE.db' has type 'profile'
+    >>> DBInfo('PROFILE.db', expecting=['profile', 'pan']).db_type
+    'profile'
+    """
+
     db_type = None
     hash_name = None
 
