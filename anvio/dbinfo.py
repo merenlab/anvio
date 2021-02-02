@@ -93,6 +93,7 @@ class FindAnvioDBs(object):
     search_path : str
         The beginning of the search. The search will be limited to this directory
         and files and directoreies underneath it.
+
     max_files_and_dirs_to_process : int, default 50000
         Stop processing if the number of files and directories processed exceeds
         this.
@@ -114,11 +115,13 @@ class FindAnvioDBs(object):
                 if db_info.type not in self.anvio_dbs:
                     self.anvio_dbs[db_info.type] = []
 
-                self.anvio_dbs[db_info.type].append({'level': level, 'db_info': db_info})
+                # Add a cheeky `level` attribute to db_info for no other reason than to order dbs after the walk
+                db_info.level = level
+                self.anvio_dbs[db_info.type].append(db_info)
 
-        # sort by level, so we know what is closest
-        for db_info.type in self.anvio_dbs:
-            self.anvio_dbs[db_info.type] = sorted(self.anvio_dbs[db_info.type], key=lambda d: d['level'])
+        # sort by level, so we know what is closest to the search_path root directory
+        for db_type in self.anvio_dbs:
+            self.anvio_dbs[db_type] = sorted(self.anvio_dbs[db_type], key=lambda d: d.level)
 
 
     def listdir(self, path):
