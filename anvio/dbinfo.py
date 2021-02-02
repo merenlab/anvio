@@ -9,21 +9,31 @@ import os
 
 
 class DBInfo(object):
-    def __init__(self, path):
+    def __init__(self, path, dont_raise=False):
         self.path = path
         self.type, self.hash, self.variant = (None, None, None)
 
-        self.is_db()
+        if not self.is_db(dont_raise):
+            self.db = None
+            return
+
         self.db = self.load_db()
         self.type, self.hash, self.variant = self.get_basic_info()
 
 
-    def is_db(self):
-        """Raise error if self.path does not point to a legitimate anvi'o db"""
+    def is_db(self, dont_raise=False):
+        try:
+            with self.load_db() as database:
+                if 'self' not in database.get_table_names():
+                    return False
+        except Exception as e:
+            if dont_raise:
+                return False
+            else:
+                raise ConfigError(f"Someone downstream doesn't like your so called database, '{db_path}'. They say "
+                                  f"\"{e}\". Awkward :(")
 
-        with self.load_db() as database:
-            if 'self' not in database.get_table_names():
-                raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
+        return True
 
 
     def load_db(self):
@@ -68,7 +78,7 @@ class DBInfo(object):
 
 
     def get_basic_info(self):
-        return (self.get_type(), self.get_hash(), self.get_variant())
+        return self.get_type(), self.get_hash(), self.get_variant()
 
 
 class FindAnvioDBs(object):
@@ -86,6 +96,7 @@ class FindAnvioDBs(object):
         Stop processing if the number of files and directories processed exceeds
         this.
     """
+
     def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, run=Run(), progress=Progress()):
         self.run = run
         self.progress = progress
@@ -96,12 +107,13 @@ class FindAnvioDBs(object):
         self.anvio_dbs = {}
 
         for db_path, level in self.walk(depth=3):
-            db_info = DBInfo(db_path)
+            db_info = DBInfo(db_path, dont_raise=True)
 
-            if db_info.type not in self.anvio_dbs:
-                self.anvio_dbs[db_info.type] = []
+            if db_info.type is not None:
+                if db_info.type not in self.anvio_dbs:
+                    self.anvio_dbs[db_info.type] = []
 
-            self.anvio_dbs[db_info.type].append({'level': level, 'db_hash': db_info.hash, 'db_variant': db_info.variant, 'db_path': db_info.path})
+                self.anvio_dbs[db_info.type].append({'level': level, 'db_info': db_info})
 
         # sort by level, so we know what is closest
         for db_info.type in self.anvio_dbs:
