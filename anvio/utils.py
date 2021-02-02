@@ -86,11 +86,11 @@ class FindAnvioDBs(object):
     search_path : str
         The beginning of the search. The search will be limited to this directory
         and files and directoreies underneath it.
-    max_files_and_dirs_to_process : int, default 5000
+    max_files_and_dirs_to_process : int, default 50000
         Stop processing if the number of files and directories processed exceeds
         this.
     """
-    def __init__(self, args, search_path='.', max_files_and_dirs_to_process=5000, run=Run(), progress=Progress()):
+    def __init__(self, args, search_path='.', max_files_and_dirs_to_process=50000, run=Run(), progress=Progress()):
         self.run = run
         self.progress = progress
 
