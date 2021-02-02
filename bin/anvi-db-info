@@ -33,7 +33,7 @@ class DatabaseInfo:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.db_path =A("input")
+        self.db_path = A("input")
         self.self_key = A("self_key")
         self.self_value = A("self_value")
         self.just_do_it = A("just_do_it")

@@ -14,7 +14,7 @@ import anvio.docs as docs
 import anvio.terminal as terminal
 
 from anvio.programs import Program
-from anvio.utils import FindAnvioDBs
+from anvio.dbinfo import FindAnvioDBs
 from anvio.utils import is_program_exists as get_program_path
 
 
@@ -212,7 +212,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         self.args = args
         self.search_path = search_path
 
-        FindAnvioDBs.__init__(self, self.args, run=self.run, progress=self.progress)
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress)
 
         self.__args_set = []
         self.__args_failed = []
@@ -284,7 +284,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                     profile_db = [p for p in profile_dbs if p['db_hash']][0]
                 except:
                     # the exception here will come from the [0] in the previous line and will
-                    # mean that although there we re multiple profile databases, none was
+                    # mean that although there were multiple profile databases, none was
                     # associated with a contigs db. FINE, we send back the first one of all
                     # these losers, then:
                     profile_db = profile_dbs[0]
@@ -350,3 +350,5 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                 self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
 
         return self.args
+
+
