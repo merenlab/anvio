@@ -3312,7 +3312,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
 
     def write_stat_to_matrix(self, stat_name, stat_header, stat_key, stat_dict, item_list, stat_metadata_headers,
-                             write_rows_with_all_zeros=False):
+                             write_rows_with_all_zeros=False, comment_dictionary=None):
         """A generic function to write a statistic to a matrix file.
 
         Accesses the provided stat_dict and writes the statistic to a tab-delimited matrix file.
@@ -3336,6 +3336,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             that will be included in the matrix output if self.matrix_include_metadata is True
         write_rows_with_all_zeros : boolean
             If true, rows with all zeros are included in the matrix. Otherwise we leave those out.
+        comment_dictionary : dictionary
+            A dictionary in which the item is a (str) comment and the key is the INDEX of the corresponding item (from item_list)
+            that this comment should be printed before. When we reach this item in the list, the comment str will be
+            printed (after a '#' character) before printing the item's line. Trailing "\n" should not be in the comment
+            str but if this needs to be a multi-line comment internal "\n# " strings should separate each line.
         """
 
         output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat_name)
@@ -3362,7 +3367,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # we could be fancier with this, but we are not that cool
         with open(output_file_path, 'w') as output:
             output.write('\t'.join(cols) + '\n')
+            cur_index = 0
             for m in item_list:
+                # write comment, if necessary
+                if comment_dictionary and cur_index in comment_dictionary:
+                    comment_line = "# " + comment_dictionary[cur_index] + "\n"
+                    output.write(comment_line)
+
                 line = [m]
 
                 if self.matrix_include_metadata:
@@ -3402,6 +3413,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         continue
 
                 output.write('\t'.join([str(f) for f in line]) + '\n')
+                cur_index += 1
 
         self.run.info('Output matrix for "%s"' % stat_name, output_file_path)
 
