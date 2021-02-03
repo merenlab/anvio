@@ -902,6 +902,14 @@ Bins.prototype.RedrawBins = function() {
         })
     }
 
+    // if(invert_shade){
+    //     drawInvertedNodes(nodes_for_inversion, inverse_fill_opacity)
+    //     // $('#show_shade_for_bins').prop('checked', false); 
+
+    // } else {
+    //     // drawInvertedNodes(nodes_for_inversion, 0)
+    // }
+
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
         var end = drawer.tree.leaves[bins_to_draw[i][1]];
@@ -920,7 +928,6 @@ Bins.prototype.RedrawBins = function() {
 
         if (tree_type == 'circlephylogram')
         {
-
             drawPie('bin',
                 'bin_outer_' + i,
                 start.angle - start.size / 2,
@@ -1096,14 +1103,8 @@ Bins.prototype.RedrawBins = function() {
                 true);
         }
     }
+    invert_shade ? drawInvertedNodes(nodes_for_inversion, inverse_fill_opacity) : null 
 
-    if(invert_shade){
-        drawInvertedNodes(nodes_for_inversion, .3)
-        $('#show_shade_for_bins').prop('checked', false); 
-
-    } else {
-        // drawInvertedNodes(nodes_for_inversion, 0)
-    }
 }
 
 Bins.prototype.RebuildIntersections = function() {
