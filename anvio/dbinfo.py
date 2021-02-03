@@ -98,11 +98,14 @@ class DBInfo(ABC):
             raise ConfigError(f"Was expecting any of the db types {expecting}, but '{path}' has type '{db_type}'")
 
         if db_type in dbinfo_classes:
+            # This is the most important line in this method:
+            # Return the respective class that __init__ should be called for
             return super().__new__(dbinfo_classes[db_type]['class'])
 
-        if db_type in ['modules', 'trnaseq']:
-            # FIXME I don't have the expertise for these two but no point crashing everytime
-            # `anvi-interactive` is run without parameters
+        if db_type in ['modules']:
+            # FIXME I don't have the expertise for these two. Please add classes for these to
+            # dbinfo_classes. Once both are added, this conditional statement can simply be
+            # removed
             return
 
         raise NotImplementedError(f"db_type {db_type} has no entry in dbinfo_classes")
@@ -180,6 +183,18 @@ class ProfileDBInfo(DBInfo):
         DBInfo.__init__(self, path)
 
 
+    @property
+    def blank(self):
+        with self.load_db() as database:
+            return True if database.get_meta_value('blank') == 1 else False
+
+
+    @property
+    def merged(self):
+        with self.load_db() as database:
+            return True if database.get_meta_value('merged') == 1 else False
+
+
 class GenesDBInfo(DBInfo):
     db_type = 'genes'
     hash_name = 'contigs_db_hash'
@@ -211,6 +226,20 @@ class GenomeStorageDBInfo(DBInfo):
 class PanDBInfo(DBInfo):
     db_type = 'pan'
     hash_name = 'genomes_storage_hash'
+    def __init__(self, path, *args, **kwargs):
+        DBInfo.__init__(self, path)
+
+
+class TRNADBInfo(DBInfo):
+    db_type = 'trnaseq'
+    hash_name = 'trnaseq_db_hash'
+    def __init__(self, path, *args, **kwargs):
+        DBInfo.__init__(self, path)
+
+
+class ModulesDBInfo(DBInfo):
+    db_type = 'modules'
+    hash_name = 'hash'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
@@ -318,5 +347,11 @@ dbinfo_classes = {
     },
     'pan': {
         'class': PanDBInfo,
+    },
+    'trnaseq': {
+        'class': TRNADBInfo,
+    },
+    'modules': {
+        'class': ModulesDBInfo,
     },
 }
