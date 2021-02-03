@@ -3646,11 +3646,6 @@ def is_structure_db(db_path):
     return True
 
 
-def is_modules_db(db_path):
-    dbi(db_path, expecting='modules')
-    return True
-
-
 def is_blank_profile(db_path):
     database = dbi(db_path, dont_raise=True)
 
