@@ -3485,7 +3485,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         continue
 
                     # figure out where this KO is in the list
-                    first_ko = s[first_k:first_k+7]
+                    first_ko = s[first_k:first_k+6]
                     first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
                     if not first_ko_indices:
                         raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
