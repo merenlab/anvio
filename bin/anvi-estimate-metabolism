@@ -89,8 +89,9 @@ if __name__ == '__main__':
                                                                                    "of one file, use this flag. In each matrix, contigs DBs will be arranged in "
                                                                                    "columns and KEGG modules in rows. This output option is especially "
                                                                                    "appropriate for input option #3."}))
-    groupM.add_argument(*anvio.A('module-specific-matrices'), **anvio.K('module-specific-matrices'))
     groupM.add_argument(*anvio.A('include-metadata'), **anvio.K('include-metadata'))
+    groupM.add_argument(*anvio.A('module-specific-matrices'), **anvio.K('module-specific-matrices'))
+    groupM.add_argument(*anvio.A('no-comments'), **anvio.K('no-comments'))
 
     groupD = parser.add_argument_group('DEBUG', "Parameters to use if you think something fishy is going on or otherwise want to exert more control. Go for it.")
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))

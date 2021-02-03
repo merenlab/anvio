@@ -1321,6 +1321,7 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
+        self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
@@ -3473,35 +3474,38 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 kos_in_mod = self.kegg_modules_db.get_kos_from_module_definition(mod)
                 mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
-                # determine where to place comments containing module steps
-                step_comments = {}
-                lines_with_comment = []
-                for s in mod_big_steps:
-                    # what is the first KO in this step?
-                    first_k = s.find("K")
+                if not self.no_comments:
+                    # determine where to place comments containing module steps
+                    step_comments = {}
+                    lines_with_comment = []
+                    for s in mod_big_steps:
+                        # what is the first KO in this step?
+                        first_k = s.find("K")
 
-                    # we skip making comments on steps without KOs like '--'
-                    if first_k < 0:
-                        continue
+                        # we skip making comments on steps without KOs like '--'
+                        if first_k < 0:
+                            continue
 
-                    # figure out where this KO is in the list
-                    first_ko = s[first_k:first_k+6]
-                    first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
-                    if not first_ko_indices:
-                        raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
-                                          f"matrix for {mod}. We couldn't find the first KO, {first_ko}, in the "
-                                          "KO list for this module.")
+                        # figure out where this KO is in the list
+                        first_ko = s[first_k:first_k+6]
+                        first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
+                        if not first_ko_indices:
+                            raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
+                                              f"matrix for {mod}. We couldn't find the first KO, {first_ko}, in the "
+                                              "KO list for this module.")
 
-                    # where should we put the step comment?
-                    idx = first_ko_indices[0]
-                    if len(first_ko_indices) > 1:
-                        next_index = 0
-                        while idx in lines_with_comment:
-                            next_index += 1
-                            idx = first_ko_indices[next_index]
+                        # where should we put the step comment?
+                        idx = first_ko_indices[0]
+                        if len(first_ko_indices) > 1:
+                            next_index = 0
+                            while idx in lines_with_comment:
+                                next_index += 1
+                                idx = first_ko_indices[next_index]
 
-                    step_comments[idx] = s
-                    lines_with_comment.append(idx)
+                        step_comments[idx] = s
+                        lines_with_comment.append(idx)
+                else:
+                    step_comments = None
 
                 stat = f"{mod}_ko_hits"
                 self.write_stat_to_matrix(stat_name=stat, stat_header="KO", stat_key='num_hits', stat_dict=ko_superdict_multi, \
