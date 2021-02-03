@@ -207,7 +207,39 @@ anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
                          --module-specific-matrices M00001,M00009 \
                          -O external_genomes
 {{ codestop }}
-will produce the output files `external_genomes-M00001_ko_hits-MATRIX.txt` and `external_genomes-M00009_ko_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each KO in the module.
+will produce the output files `external_genomes-M00001_ko_hits-MATRIX.txt` and `external_genomes-M00009_ko_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each KO in the module, in the order it appears in the module definition. It will also include comment lines for each major step (or set of steps) in the module definition, to help with interpreting the output.
+
+Check out this (partial) example for module M00001:
+```
+KO	isolate	E_faecalis_6240	test_2
+# (K00844,K12407,K00845,K00886,K08074,K00918)
+K00844	0	0	0
+K12407	0	0	0
+K00845	0	1	0
+K00886	1	0	1
+K08074	0	0	0
+K00918	0	0	0
+# (K01810,K06859,K13810,K15916)
+K01810	1	1	1
+K06859	0	0	0
+K13810	0	0	0
+K15916	0	0	0
+# (K00850,K16370,K21071,K00918)
+K00850	0	1	0
+K16370	0	0	0
+K21071	0	0	0
+K00918	0	0	0
+[....]
+```
+
+If you don't want those comment lines in there, you can combine this with the `--no-comments` to get a clean matrix. This might be useful if you want to do some downstream processing of the matrices.
+{{ codestart }}
+anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
+                         --matrix-format \
+                         --module-specific-matrices M00001,M00009 \
+                         --no-comments \
+                         -O external_genomes
+{{ codestop }}
 
 
 ## Testing this program
