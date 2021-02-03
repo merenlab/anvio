@@ -168,6 +168,23 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    $('#inverse_color').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            emit('bin-settings-changed');
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
     $("li[role='presentation']").click(function (e) {
         if ($(this).hasClass('disabled')) {
             e.preventDefault();
