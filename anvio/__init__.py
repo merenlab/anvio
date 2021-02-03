@@ -2662,7 +2662,25 @@ D = {
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+            'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
+                    "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
+                ),
+    'module-specific-matrices': (
+            ['--module-specific-matrices'],
+            {'default': None,
+            'metavar': 'MODULE_LIST',
+            'help': "Provide a comma-separated list of module numbers to this parameter, and then you will get "
+                    "a KO hits matrix for each module in the list."}
+
+                ),
+    'no-comments': (
+            ['--no-comments'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you are requesting --module-specific-matrices but you don't want those matrices to include "
+                    "comment lines in them (for example, perhaps you want to use them for clustering), you can use "
+                    "this flag. Otherwise, by default these specific matrices will include comments delineating "
+                    "which KOs are in each step of the module."}
                 ),
     'modules-txt': (
             ['-M', '--modules-txt'],
