@@ -3470,7 +3470,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     skipped_mods.append(mod)
                     continue
 
-                kos_in_mod = self.kegg_modules_db.get_kos_in_module(mod)
+                kos_in_mod = self.kegg_modules_db.get_kos_from_module_definition(mod)
                 mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
                 # determine where to place comments containing module steps
@@ -4114,9 +4114,33 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_kos_in_module(self, mnum):
-        """This function returns a list of KOs in the given module"""
+        """This function returns a list of KOs in the given module.
+
+        It does this by parsing the ORTHOLOGY lines in the modules database. However,
+        please note that these KOs are not always in the same order as the module
+        definition, and may even contain duplicate entries for a KO. A good example
+        of this is http://rest.kegg.jp/get/M00091 (K00551 is in two ORTHOLOGY lines)
+        and http://rest.kegg.jp/get/M00176 (see KOs in the first top-level step). If
+        this will be a problem, you should use the function get_kos_from_module_definition()
+        instead.
+        """
 
         return self.get_data_value_entries_for_module_by_data_name(mnum, "ORTHOLOGY")
+
+
+    def get_kos_from_module_definition(self, mnum):
+        """This function returns a list of KOs in the given module, in order of the DEFINITION.
+
+        An alternative to get_kos_in_module().
+        """
+
+        mod_def = self.get_kegg_module_definition(mnum)
+        ko_list = []
+        k_indices = [x for x, v in enumerate(mod_def) if v == 'K']
+        for idx in k_indices:
+            ko_list.append(mod_def[idx:idx+6])
+
+        return ko_list
 
 
     def get_kegg_module_compound_lists(self, mnum):
