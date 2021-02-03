@@ -3471,10 +3471,42 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     continue
 
                 kos_in_mod = self.kegg_modules_db.get_kos_in_module(mod)
+                mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
+
+                # determine where to place comments containing module steps
+                step_comments = {}
+                lines_with_comment = []
+                for s in mod_big_steps:
+                    # what is the first KO in this step?
+                    first_k = s.find("K")
+
+                    # we skip making comments on steps without KOs like '--'
+                    if first_k < 0:
+                        continue
+
+                    # figure out where this KO is in the list
+                    first_ko = s[first_k:first_k+7]
+                    first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
+                    if not first_ko_indices:
+                        raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
+                                          f"matrix for {mod}. We couldn't find the first KO, {first_ko}, in the "
+                                          "KO list for this module.")
+
+                    # where should we put the step comment?
+                    idx = first_ko_indices[0]
+                    if len(first_ko_indices) > 1:
+                        next_index = 0
+                        while idx in lines_with_comment:
+                            next_index += 1
+                            idx = first_ko_indices[next_index]
+
+                    step_comments[idx] = s
+                    lines_with_comment.append(idx)
+
                 stat = f"{mod}_ko_hits"
                 self.write_stat_to_matrix(stat_name=stat, stat_header="KO", stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                           item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
-                                          write_rows_with_all_zeros=True)
+                                          write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
             if skipped_mods:
                 skipped_list = ", ".join(skipped_mods)
