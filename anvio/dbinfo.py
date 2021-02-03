@@ -102,12 +102,6 @@ class DBInfo(ABC):
             # Return the respective class that __init__ should be called for
             return super().__new__(dbinfo_classes[db_type]['class'])
 
-        if db_type in ['modules']:
-            # FIXME I don't have the expertise for these two. Please add classes for these to
-            # dbinfo_classes. Once both are added, this conditional statement can simply be
-            # removed
-            return
-
         raise NotImplementedError(f"db_type {db_type} has no entry in dbinfo_classes")
 
 
