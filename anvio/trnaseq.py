@@ -1976,7 +1976,7 @@ class TRNASeqDataset(object):
         for norm_seq in self.norm_trna_seqs:
             represent_names.append(norm_seq.represent_name)
             reversed_seq_strings.append(norm_seq.seq_string[::-1])
-            extras.append(norm_seq)
+            extras.append((-1, norm_seq))
         clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras, progress=self.progress).prefix_dereplicate()
 
         uniq_nontrna_seq_indices_to_remove = []
@@ -1991,13 +1991,13 @@ class TRNASeqDataset(object):
             norm_seq = None
             norm_seq_length = None
             norm_seq_has_complete_feature_set = None
-            for member_index, member_extra in enumerate(cluster.member_extras[0]):
-                if isinstance(member_extra, NormalizedSeq):
+            for member_index, member_extra in enumerate(cluster.member_extras):
+                if member_extra[0] == -1:
                     cluster_norm_seq_index = member_index
-                    norm_seq = member_extra
+                    norm_seq = member_extra[1]
                     norm_seq_length = len(norm_seq.seq_string)
                     if member_index > 0:
-                        norm_seq_has_complete_feature_set = member_extra.has_complete_feature_set
+                        norm_seq_has_complete_feature_set = norm_seq.has_complete_feature_set
                     break
             else:
                 continue
@@ -2028,12 +2028,12 @@ class TRNASeqDataset(object):
                 norm_seq.start_positions.append(0)
                 norm_seq.stop_positions.append(norm_seq_length)
 
-            for uniq_nontrna_index, _ in cluster.member_extras[cluster_norm_seq_index:]:
+            for uniq_nontrna_index, _ in cluster.member_extras[cluster_norm_seq_index + 1:]:
                 uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
                 uniq_seq_norm_seqs_dict[uniq_nontrna_index].append(norm_seq)
 
         for seq_index in sorted(set(uniq_nontrna_seq_indices_to_remove), reverse=True):
-            uniq_seq = self.uniq_nontrna_seq_indices_to_remove.pop(seq_index)
+            uniq_seq = self.uniq_nontrna_seqs.pop(seq_index)
             if uniq_seq.id_method == 1:
                 # This sequence was already handle above, save removal from the list of non-tRNA.
                 continue
@@ -2052,7 +2052,7 @@ class TRNASeqDataset(object):
                 norm_seq.trimmed_seqs.append(trimmed_seq)
                 trimmed_seq.norm_seq_count += 1
                 norm_seq_length = len(norm_seq.seq_string)
-                norm_seq.start_positions.append(norm_seq_length) - uniq_seq_length)
+                norm_seq.start_positions.append(norm_seq_length - uniq_seq_length)
                 norm_seq.stop_positions.append(norm_seq_length)
 
         self.progress.end()
