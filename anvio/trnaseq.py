@@ -1013,9 +1013,6 @@ class TRNASeqDataset(object):
             # sequences.
             self.threeprime_dereplicate_truncated_sequences()
 
-            # Recover 3' tRNA sequences lacking an acceptor sequence.
-            self.threeprime_dereplicate_acceptorless_sequences()
-
             if self.write_checkpoints:
                 self.progress.new("Writing intermediate files for the \"profile\" checkpoint")
                 self.progress.update("...")
@@ -1134,6 +1131,9 @@ class TRNASeqDataset(object):
         else:
             # Reach this point either by starting from the beginning of the workflow
             # or loading the 'profile' checkpoint.
+
+            # Recover 3' tRNA sequences lacking an acceptor sequence.
+            self.threeprime_dereplicate_acceptorless_sequences()
 
             # Map fragments derived from the interior and 5' end of tRNA.
             self.map_fragments()
