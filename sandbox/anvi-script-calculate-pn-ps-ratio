@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 """
-Calculates pN/pS, the metagenomic analogy of dN/dS
-Citations: doi:10.1038/nature11711, doi:10.7717/peerj.2959 (and references therein)
+Citations: doi:10.1126/science.aaz9642, doi:10.1038/nature11711
 """
 
 import os
@@ -33,10 +32,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ['pn-ps-data']
 __requires__ = ['contigs-db', 'variability-profile-txt']
-__description__ = ("This program calculates for each gene the ratio of pN/pS (the metagenomic analogy "
-                   "of dN/dS) based on metagenomic read recruitment, however, unlike standard "
-                   "pN/pS calculations, it relies on codons rather than nucleotides for accurate "
-                   "estimations of synonimity")
+__description__ = ("FIXME")
 
 
 progress = terminal.Progress()
@@ -44,42 +40,23 @@ run = terminal.Run()
 
 
 def load_variability(args, contigs_db):
-    progress.new("Loading variability")
-    var_dict = {}
-    columns_to_keep = ['corresponding_gene_call', 'sample_id', 'engine']
-    args.columns_to_load = ['corresponding_gene_call', 'sample_id', 'coverage', 'departure_from_consensus']
-    for engine, table_path in {'AA': args.saav_table, 'CDN': args.scv_table}.items():
-        progress.update("Working on {}".format({'AA':'SAAVs', 'CDN':'SCVs'}[engine]))
+    progress.new('Loading SCVs')
+    progress.update('...')
 
-        # init variability table as VariabilityData class object
-        args.engine = engine
-        args.variability_profile = table_path
-        var = VariabilityData(args)
+    var = VariabilityData(args)
 
-        # filter by departure_from_consensus
-        var.filter_data(criterion='departure_from_consensus', verbose=False)
+    # filter by departure_from_consensus
+    var.filter_data(criterion='departure_from_consensus', verbose=False)
 
-        # filter by departure_from_consensus
-        var.filter_data(criterion='coverage', verbose=False)
-
-        # add label for engine
-        var.data['engine'] = engine
-
-        # optimize speed by subsetting to only necessary columns
-        var.data = var.data[columns_to_keep]
-
-        var_dict[engine] = var
-
-    progress.update('Combining both engine data types')
-    # concat the two engine-specific dataframes into a master dataframe
-    df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
+    # filter by departure_from_consensus
+    var.filter_data(criterion='coverage', verbose=False)
 
     # identify gene calls that are noncoding
-    gene_caller_ids_for_noncoding_gene_calls = [g for g in df['corresponding_gene_call'].unique()
+    gene_caller_ids_for_noncoding_gene_calls = [g for g in var.data['corresponding_gene_call'].unique()
                                                 if contigs_db.genes_in_contigs_dict[g]['call_type'] != constants.gene_call_types['CODING']]
     if gene_caller_ids_for_noncoding_gene_calls:
         # This should never happen with >v6.2
-        df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_noncoding_gene_calls)].index, inplace=True)
+        var.data.drop(var.data[var.data['corresponding_gene_call'].isin(gene_caller_ids_for_noncoding_gene_calls)].index, inplace=True)
 
         progress.reset()
         run.warning("%d of your gene calls were 'noncoding', and were removed from downstream analyses. Here is the complete list of "
@@ -87,7 +64,7 @@ def load_variability(args, contigs_db):
 
     progress.end()
 
-    return df
+    return var.data
 
 
 def load_contigs_db(args):
@@ -97,13 +74,13 @@ def load_contigs_db(args):
     return contigs_db
 
 
-def report(args, pNpS, SAAV, sSCV):
+def report(args, pNpS, pN, pS):
     index_label = "sample_id" if args.no_gene else "gene_callers_id"
 
     # write it to folder
-    pNpS.to_csv(os.path.join(args.output_dir, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = index_label)
-    sSCV.to_csv(os.path.join(args.output_dir, "sSCV_counts.txt"), sep="\t", index = True, index_label = index_label)
-    SAAV.to_csv(os.path.join(args.output_dir, "SAAV_counts.txt"), sep="\t", index = True, index_label = index_label)
+    pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True, index_label = index_label)
+    pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True, index_label = index_label)
+    pS.to_csv(os.path.join(args.output_dir, "pS.txt"), sep="\t", index = True, index_label = index_label)
 
     run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
                     nl_before=1,
@@ -117,33 +94,13 @@ def calculate_pN_pS_ratio(args):
 
     # load contigs db and variability tables
     contigs_db = load_contigs_db(args)
-    var_dataframe = load_variability(args, contigs_db)
+    df = load_variability(args, contigs_db)
 
-    # only genes and samples that are have at least one SCV / SAAV are known to the program
-    gene_caller_ids = var_dataframe['corresponding_gene_call'].unique()
-    samples = var_dataframe['sample_id'].unique()
+    # only genes and samples that are have at least one SCV are known to the program
+    gene_caller_ids = df['corresponding_gene_call'].unique()
+    samples = df['sample_id'].unique()
 
-    # creation of SAAV count table and sSCV count table
-    i = 0
-    SAAV = {sample: [] for sample in samples}
-    sSCV = {sample: [] for sample in samples}
-    progress.new("Calculating SAAV and sSCV counts")
-    for gene_callers_id in gene_caller_ids:
-        temp = var_dataframe[var_dataframe['corresponding_gene_call'] == gene_callers_id]
-        for sample in samples:
-            counts = temp.loc[temp['sample_id'] == sample, 'engine'].value_counts()
-
-            SAAV[sample].append(counts.get('AA', 0))
-            sSCV[sample].append(counts.get('CDN', 0) - counts.get('AA', 0)) # fully synonymous only
-
-        if i % 100 == 0:
-            progress.update('Processed {} of {} genes.'.format(i, len(gene_caller_ids)))
-        i += 1
-    progress.end()
-
-    # make tables dataframes
-    sSCV = pd.DataFrame(sSCV); sSCV.index = gene_caller_ids
-    SAAV = pd.DataFrame(SAAV); SAAV.index = gene_caller_ids
+    # Do the thing here
 
     if args.no_gene:
         # We are going to aggregate all the per-gene results
@@ -154,10 +111,6 @@ def calculate_pN_pS_ratio(args):
 
         syn_potential, non_syn_potential, total_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list, just_do_it=True)
         potential_synonymity_ratio = syn_potential / non_syn_potential
-
-        SAAV = SAAV.sum(axis=0)
-        sSCV = sSCV.sum(axis=0)
-
     else:
         # calc potential synonymity for each gene
         potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
@@ -179,39 +132,30 @@ def calculate_pN_pS_ratio(args):
                     "that were not unambiguous (i.e., 'N's or any other bases than A, T, "
                     "C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
 
-    SAAV_to_sSCV = SAAV / sSCV
-    SAAV_to_sSCV[sSCV < args.minimum_num_variants] = np.nan
+    pNpS = pd.DataFrame({})
+    pN = pd.DataFrame({})
+    pS = pd.DataFrame({})
 
-    # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
-    pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)
-
-    report(args, pNpS, SAAV, sSCV)
+    report(args, pNpS, pN, pS)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    groupV = parser.add_argument_group('VARIABILITY', 'You provide two variability tables generated with anvi-gen-variability-profile:\
-                                        one for SAAVs (generated with --engine AA) and for SCVs (generated with --engine CDN). They \
-                                        must be generated with the same profile and contigs database pair. To be safe, we recommended\
-                                        you use the same settings during both commands except for changing --engine AA to --engine CDN\
-                                        and the output filename.')
-    groupV.add_argument('-a', '--saav-table', help='Filepath to the SAAV table.', metavar='SAAV_FILE')
-    groupV.add_argument('-b', '--scv-table', help='Filepath to the SCV table.', metavar='SCV_FILE')
+    groupV = parser.add_argument_group('VARIABILITY', 'Provide a SCV table that can be generated with anvi-gen-variability-profile.')
+    groupV.add_argument('-V', '--variability-profile', help='Filepath to the SCV table.', metavar='SCV_FILE')
     groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'help':'Filepath to the contigs database used \
-                                                      to generate variability tables.'}))
+                                                      to generate variability table.'}))
 
     groupE = parser.add_argument_group('TUNABLES', "Successfully tune one or more of these parameters to unlock the badge 'Advanced anvian'.")
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.1, 'help': \
-                            'Variants (either SCVs or SAAVs) will be ignored if they have a departure from consensus less than this \
+                            'SCVs will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
                             The default value is %(default).2f.'}))
     groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes with less than this number\
-                            of single codon variants. This avoids being impressed by pN/pS values of infinite, when in reality the gene had\
-                            a single SAAV and no synonymous SCVs. The default is %(default)d to ensure a default value with some level of \
-                            statistical importance.')
+                            of single codon variants. FIXME')
     groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False, help='If the coverage value at a codon is less than \
-                            this amount, any SAAVs or SCVs associated with it will be ignored. The default is %(default)d.')
+                            this amount, any associated SCVs will be ignored. The default is %(default)d.')
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
@@ -219,6 +163,8 @@ if __name__ == '__main__':
                         'So if you have 10 genes and 100 samples, you would get 10*100=1000 separate values. If this flag is provided, '
                         'the output is not subdivided on a per-gene basis, and instead you will get 1 aggregated value for each sample.')
 
+    # init variability table as VariabilityData class object
+    #args.columns_to_load = ['corresponding_gene_call', 'sample_id', ...] # FIXME fill this out accurately for speedups
     args = parser.get_args(parser)
 
     try:
