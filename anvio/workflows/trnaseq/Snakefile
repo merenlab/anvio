@@ -145,10 +145,16 @@ rule anvi_reformat_fasta:
     params:
         simplify_names = M.get_rule_param('anvi_reformat_fasta', '--simplify-names')
     run:
-        if input[0].endswith('.gz'):
-            decompressed_fasta = gunzip_fasta(input[0], log[0])
+        if M.fasta_paths:
+            if input[0].endswith('.gz'):
+                decompressed_fasta = gunzip_fasta(input[0], log[0])
+            else:
+                decompressed_fasta = input[0]
         else:
-            decompressed_fasta = input[0]
+            if M.gzip_iu_merge_pairs_output:
+                decompressed_fasta = gunzip_fasta(os.path.join(os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED.gz"), log[0])
+            else:
+                decompressed_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
         shell("anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} %s >> {log} 2>&1" % decompressed_fasta)
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)

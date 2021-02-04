@@ -482,7 +482,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         merged reads generated from user-supplied FASTQ files."""
         if self.fasta_paths:
             return self.fasta_paths[self.sample_names.index(wildcards.sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
+        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_name), "qc_report.txt")
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
