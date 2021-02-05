@@ -122,7 +122,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to "
-                     "take a look from it), this flag will become very hand. After creating a contigs database for your "
+                     "take a look from it), this flag will become very handy. After creating a contigs database for your "
                      "contigs, you can create a blank anvi'o profile database to use anvi'o interactive "
                      "interface with that contigs database without any mapping data."}
                 ),
