@@ -45,10 +45,9 @@ def load_variability(args, contigs_db):
 
     var = VariabilityData(args)
 
-    # filter by departure_from_consensus
+    # filter based on user parameters
     var.filter_data(criterion='departure_from_consensus', verbose=False)
-
-    # filter by departure_from_consensus
+    var.filter_data(criterion='departure_from_reference', verbose=False)
     var.filter_data(criterion='coverage', verbose=False)
 
     # identify gene calls that are noncoding
@@ -92,7 +91,7 @@ def calculate_pN_pS_ratio(args):
     filesnpaths.check_output_directory(args.output_dir)
     filesnpaths.gen_output_directory(args.output_dir)
 
-    # load contigs db and variability tables
+    # load contigs db and variability table
     contigs_db = load_contigs_db(args)
     df = load_variability(args, contigs_db)
 
@@ -100,41 +99,77 @@ def calculate_pN_pS_ratio(args):
     gene_caller_ids = df['corresponding_gene_call'].unique()
     samples = df['sample_id'].unique()
 
-    # Do the thing here
+    # Track stop coverages so that they can be deducted from the polymorphism coverage
+    stop_codons = set(constants.codons) - set(constants.coding_codons)
+    df['stop_coverage'] = df[list(stop_codons)].sum(axis=1)
 
-    if args.no_gene:
-        # We are going to aggregate all the per-gene results
-        codon_list = []
-        for i, gene_callers_id in enumerate(gene_caller_ids):
-            gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
-            codon_list.extend(utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences))
+    comparison = args.comparison
+    pNs, pSs = [], []
 
-        syn_potential, non_syn_potential, total_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list, just_do_it=True)
-        potential_synonymity_ratio = syn_potential / non_syn_potential
-    else:
-        # calc potential synonymity for each gene
-        potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
-        total_ambiguous_codons = 0
-        for i, gene_callers_id in enumerate(gene_caller_ids):
-            gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
+    progress.new('Calculating pN and pS', progress_total_items=df.shape[0])
 
-            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-            syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+    counter = 0
+    for i, row in df.iterrows():
+        if counter % 1000 == 0:
+            progress.update(f'{counter} codon positions processed')
+            progress.increment(increment_to=counter)
 
-            # we are adding the number of codons in this gene that were not included
-            # in the calculations above as they included ambiguous nucleotides
-            total_ambiguous_codons += num_ambiguous_codons
+        comp = row[comparison] # The codon to be compared against
+        pN, pS = 0, 0
 
-            potential_synonymity_ratio[i] = syn_potential / non_syn_potential
+        if comp not in stop_codons:
+            for codon in constants.coding_codons:
+                if codon == comp:
+                    # Don't compare the reference codon with itself, we care only about codons that
+                    # differ from the reference codon
+                    continue
 
-    if total_ambiguous_codons:
-        run.warning("Please note that %d codons among your %d genes included nucleotides "
-                    "that were not unambiguous (i.e., 'N's or any other bases than A, T, "
-                    "C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
+                if constants.is_synonymous[comp][codon]:
+                    pS += row[codon]
+                else:
+                    pN += row[codon]
 
-    pNpS = pd.DataFrame({})
-    pN = pd.DataFrame({})
-    pS = pd.DataFrame({})
+            s_potential, ns_potential, _ = utils.get_synonymous_and_non_synonymous_potential([comp], just_do_it=True)
+            cov = row['coverage'] - row['stop_coverage'] - row[comp]
+
+            if pN == 0:
+                pNs.append(0)
+            else:
+                pN = pN / cov / ns_potential
+                pNs.append(pN)
+
+            if pS == 0:
+                pSs.append(0)
+            else:
+                pS = pS / cov / s_potential
+                pSs.append(pS)
+        else:
+            # No sense talking about synonymity relative to a stop codon
+            pNs.append(np.nan)
+            pSs.append(np.nan)
+            pass
+
+        counter += 1
+
+    df['pN'] = pNs
+    df['pS'] = pSs
+
+    # Reshape into matrix output
+    pN = df.\
+        groupby(['sample_id', 'corresponding_gene_call'])\
+        ['pN'].\
+        sum().\
+        reset_index().\
+        pivot(columns='sample_id', index='corresponding_gene_call', values='pN')
+
+    pS = df.\
+        groupby(['sample_id', 'corresponding_gene_call'])\
+        ['pS'].\
+        sum().\
+        reset_index().\
+        pivot(columns='sample_id', index='corresponding_gene_call', values='pS')
+
+    pNpS = pN/pS
 
     report(args, pNpS, pN, pS)
 
@@ -152,20 +187,30 @@ if __name__ == '__main__':
                             'SCVs will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
                             The default value is %(default).2f.'}))
+    groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference', {'default': 0.1, 'help': \
+                            'SCVs will be ignored if they have a departure from reference less than this \
+                            value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
+                            The default value is %(default).2f.'}))
     groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes with less than this number\
                             of single codon variants. FIXME')
     groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False, help='If the coverage value at a codon is less than \
                             this amount, any associated SCVs will be ignored. The default is %(default)d.')
+    groupE.add_argument('-x', '--comparison', default='reference', choices=['reference', 'consensus'], help='You can determine synonymity \
+                            relative to either the reference codon, or the consensus codon. The consensus codon is determined on a per-sample \
+                            basis. The default is \'%(default)s.\'')
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
-    groupO.add_argument('--no-gene', action='store_true', help='Normally, a value is provided for each sample-gene combination. '
-                        'So if you have 10 genes and 100 samples, you would get 10*100=1000 separate values. If this flag is provided, '
-                        'the output is not subdivided on a per-gene basis, and instead you will get 1 aggregated value for each sample.')
 
-    # init variability table as VariabilityData class object
-    #args.columns_to_load = ['corresponding_gene_call', 'sample_id', ...] # FIXME fill this out accurately for speedups
     args = parser.get_args(parser)
+    args.columns_to_load = constants.codons + [
+        'corresponding_gene_call',
+        'sample_id',
+        'coverage',
+        'departure_from_consensus',
+        'departure_from_reference',
+        args.comparison
+    ]
 
     try:
         calculate_pN_pS_ratio(args)
