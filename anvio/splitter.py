@@ -200,11 +200,7 @@ class ProfileSplitter:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
 
-            if self.summary.p_meta['blank']:
-                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
-                                 "intention is to split your contigs database only. This warning message is here to make sure "
-                                 "you will not be upset when you realize your split profile missing a profile database :(")
-            else:
+            if not self.summary.p_meta['blank']:
                 b.do_profile_db()
 
                 if self.summary.auxiliary_profile_data_available:
