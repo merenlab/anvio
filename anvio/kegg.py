@@ -2322,7 +2322,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.run.info_single("%s split names associated with %s bins in collection '%s' have been "
                              "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
                                                            pp(num_bins),
-                                                           self.collection_name), nl_before=1)
+                                                           self.collection_name), nl_before=1, nl_after=1)
 
         self.progress.new("Estimating metabolism for each bin", progress_total_items=num_bins)
 
@@ -2331,6 +2331,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
+
+            if not len(ko_in_bin):
+                self.progress.reset()
+                self.run.warning(f"It seems the bin '{bin_name}' contains zero KOfam hits. Just so you know.")
+
             metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
 
             if not self.store_json_without_estimation:
