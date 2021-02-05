@@ -13,7 +13,6 @@ import time
 import hashlib
 import pandas as pd
 import numpy as np
-import scipy.sparse as sps
 from scipy import stats
 
 import anvio
@@ -446,7 +445,7 @@ class KeggSetup(KeggContext):
                 self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
 
             raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                              f"this time pick from the list shown above.")
+                              "this time pick from the list shown above.")
 
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
@@ -1622,6 +1621,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
             if utils.is_blank_profile(self.profile_db_path):
+                self.progress.reset()
                 self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism for you. "
                                  "But we cannot load splits from the profile DB, so instead we are assuming that you are interested in "
                                  "ALL splits and we will load those from the contigs database.")
