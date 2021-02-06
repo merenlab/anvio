@@ -74,7 +74,7 @@ def load_contigs_db(args):
 
 
 def report(args, pNpS, pN, pS):
-    index_label = "sample_id" if args.no_gene else "gene_callers_id"
+    index_label = "gene_callers_id"
 
     # write it to folder
     pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True, index_label = index_label)
@@ -104,52 +104,47 @@ def calculate_pN_pS_ratio(args):
     df['stop_coverage'] = df[list(stop_codons)].sum(axis=1)
 
     comparison = args.comparison
-    pNs, pSs = [], []
 
     progress.new('Calculating pN and pS', progress_total_items=df.shape[0])
 
-    counter = 0
-    for i, row in df.iterrows():
-        if counter % 1000 == 0:
-            progress.update(f'{counter} codon positions processed')
-            progress.increment(increment_to=counter)
+    # Some conversion dictionaries
+    coding_codons = sorted(constants.coding_codons)
+    codon_to_num = {coding_codons[i]: i for i in range(len(coding_codons))}
+    num_to_codon = {v: k for k, v in codon_to_num.items()}
+    codon_nums = np.arange(len(coding_codons))
 
-        comp = row[comparison] # The codon to be compared against
-        pN, pS = 0, 0
+    # We need the comparison column represented as numerical for numba
+    comparison_array = df[comparison].map(codon_to_num).fillna(-1).values.astype(int)
 
-        if comp not in stop_codons:
-            for codon in constants.coding_codons:
-                if codon == comp:
-                    # Don't compare the reference codon with itself, we care only about codons that
-                    # differ from the reference codon
-                    continue
-
-                if constants.is_synonymous[comp][codon]:
-                    pS += row[codon]
-                else:
-                    pN += row[codon]
-
-            s_potential, ns_potential, _ = utils.get_synonymous_and_non_synonymous_potential([comp], just_do_it=True)
-            cov = row['coverage'] - row['stop_coverage'] - row[comp]
-
-            if pN == 0:
-                pNs.append(0)
+    is_synonymous = np.zeros((len(coding_codons), len(coding_codons))).astype(bool)
+    for i, codon1 in enumerate(coding_codons):
+        for j, codon2 in enumerate(coding_codons):
+            if constants.codon_to_AA[codon1] == constants.codon_to_AA[codon2]:
+                is_synonymous[i, j] = True
             else:
-                pN = pN / cov / ns_potential
-                pNs.append(pN)
+                is_synonymous[i, j] = False
 
-            if pS == 0:
-                pSs.append(0)
-            else:
-                pS = pS / cov / s_potential
-                pSs.append(pS)
-        else:
-            # No sense talking about synonymity relative to a stop codon
-            pNs.append(np.nan)
-            pSs.append(np.nan)
-            pass
+    potentials = np.zeros((len(coding_codons), 2))
+    for i, codon in num_to_codon.items():
+        s_pot, ns_pot, _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+        potentials[i, 0] = s_pot
+        potentials[i, 1] = ns_pot
 
-        counter += 1
+    counts_array = df[constants.coding_codons].values
+    coverage = df['coverage'].values
+    stop_coverage = df['stop_coverage'].values
+
+    pNs, pSs = _calculate_pN_pS_ratio(
+        counts_array,
+        comparison_array,
+        coverage,
+        stop_coverage,
+        codon_nums,
+        potentials,
+        is_synonymous,
+    )
+
+    progress.end()
 
     df['pN'] = pNs
     df['pS'] = pSs
@@ -172,6 +167,53 @@ def calculate_pN_pS_ratio(args):
     pNpS = pN/pS
 
     report(args, pNpS, pN, pS)
+
+
+def _calculate_pN_pS_ratio(counts_array, comparison_array, coverage, stop_coverage, codon_nums, potentials, is_synonymous):
+    counter = 0
+    pNs, pSs = [], []
+    for i in range(counts_array.shape[0]):
+        if counter % 1000 == 0:
+            progress.update(f'{counter} codon positions processed')
+            progress.increment(increment_to=counter)
+
+        comp = comparison_array[i] # The codon to be compared against
+        pN, pS = 0, 0
+
+        if comp < 0:
+            # No sense talking about synonymity relative to a stop codon
+            pNs.append(np.nan)
+            pSs.append(np.nan)
+        else:
+            for codon in codon_nums:
+                if codon == comp:
+                    # Don't compare the reference codon with itself, we care only about codons that
+                    # differ from the reference codon
+                    continue
+
+                if is_synonymous[comp, codon]:
+                    pS += counts_array[i, codon]
+                else:
+                    pN += counts_array[i, codon]
+
+            s_potential, ns_potential = potentials[comp, :]
+            cov = coverage[i] - stop_coverage[i] - counts_array[i, comp]
+
+            if pN == 0:
+                pNs.append(0)
+            else:
+                pN = pN / cov / ns_potential
+                pNs.append(pN)
+
+            if pS == 0:
+                pSs.append(0)
+            else:
+                pS = pS / cov / s_potential
+                pSs.append(pS)
+
+        counter += 1
+
+    return pNs, pSs
 
 
 if __name__ == '__main__':
