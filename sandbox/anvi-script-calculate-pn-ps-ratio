@@ -96,10 +96,6 @@ def calculate_pN_pS_ratio(args):
     contigs_db = load_contigs_db(args)
     df = load_variability(args, contigs_db)
 
-    # only genes and samples that are have at least one SCV are known to the program
-    gene_caller_ids = df['corresponding_gene_call'].unique()
-    samples = df['sample_id'].unique()
-
     # Track stop coverages so that they can be deducted from the polymorphism coverage
     stop_codons = set(constants.codons) - set(constants.coding_codons)
     df['stop_coverage'] = df[list(stop_codons)].sum(axis=1)
