@@ -917,6 +917,13 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
         items_in_db = utils.get_all_item_names_from_the_database(self.db_path)
         items_in_data = set(data_dict.keys())
 
+        if not len(items_in_db):
+            raise ConfigError("No item names found in your target database. This is normal if you are working with "
+                              "a blank profile database. But in that case, you need to include `skip_check_names=True` "
+                              "in your `args` instance. This message is meant for a developer since this part of the "
+                              "code only accessible thorugh API calls, if you are a user and seeing this please get in "
+                              "touch with anvi'o developers.")
+
         items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
         if len(items_in_data_but_not_in_db):
             raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which "
