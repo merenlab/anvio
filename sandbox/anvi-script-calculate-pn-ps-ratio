@@ -84,6 +84,9 @@ def report(args, pNpS, pN, pS):
 
 
 def calculate_pN_pS_ratio(args):
+    if args.pivot and len(args.groupby.split(',')) != 2:
+        raise ConfigError("You can't use --pivot unless the number of groupby variables is 2.")
+
     # gen output
     filesnpaths.check_output_directory(args.output_dir)
     filesnpaths.gen_output_directory(args.output_dir)
