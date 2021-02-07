@@ -73,12 +73,10 @@ def load_contigs_db(args):
 
 
 def report(args, pNpS, pN, pS):
-    index_label = "gene_callers_id"
-
     # write it to folder
-    pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True, index_label = index_label)
-    pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True, index_label = index_label)
-    pS.to_csv(os.path.join(args.output_dir, "pS.txt"), sep="\t", index = True, index_label = index_label)
+    pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True)
+    pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True)
+    pS.to_csv(os.path.join(args.output_dir, "pS.txt"), sep="\t", index = True)
 
     run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
                     nl_before=1,
@@ -94,22 +92,31 @@ def calculate_pN_pS_ratio(args):
     var = load_variability(args)
     var.compute_pN_and_pS(comparison=args.comparison)
 
-    # Reshape into matrix output
+    groupby_vars = args.groupby.split(',')
+    pS_name = f'pS_{args.comparison}'
+    pN_name = f'pN_{args.comparison}'
+    pNpS_name = f'pNpS_{args.comparison}'
+
     pN = var.data.\
-        groupby(['sample_id', 'corresponding_gene_call'])\
-        [f'pN_{args.comparison}'].\
-        sum().\
-        reset_index().\
-        pivot(columns='sample_id', index='corresponding_gene_call', values=f'pN_{args.comparison}')
+        groupby(groupby_vars)\
+        [pN_name].\
+        sum()
 
     pS = var.data.\
-        groupby(['sample_id', 'corresponding_gene_call'])\
-        [f'pS_{args.comparison}'].\
-        sum().\
-        reset_index().\
-        pivot(columns='sample_id', index='corresponding_gene_call', values=f'pS_{args.comparison}')
+        groupby(groupby_vars)\
+        [pS_name].\
+        sum()
 
     pNpS = pN/pS
+
+    pN = pN.reset_index().rename(columns={0: pN_name})
+    pS = pS.reset_index().rename(columns={0: pS_name})
+    pNpS = pNpS.reset_index().rename(columns={0: pNpS_name})
+
+    if args.pivot:
+        pN = pN.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pN_name)
+        pS = pS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pS_name)
+        pNpS = pNpS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pNpS_name)
 
     report(args, pNpS, pN, pS)
 
@@ -123,6 +130,10 @@ if __name__ == '__main__':
                                                       to generate variability table.'}))
 
     groupE = parser.add_argument_group('TUNABLES', "Successfully tune one or more of these parameters to unlock the badge 'Advanced anvian'.")
+    groupE.add_argument('-g', '--groupby', default='corresponding_gene_call,sample_id', help="Provide how you would like to group your pN/pS data. A pN/pS value will \
+                            be calculated for each group. For example, if `--groupby corresponding_gene_call,sample_id`, then \
+                            a pN/pS value will be calculated for each corresponding_gene_call and sample id combination. Each \
+                            variable must exist as a column in your provided variability table. Default is '%(default)s'.")
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.1, 'help': \
                             'SCVs will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
@@ -141,9 +152,13 @@ if __name__ == '__main__':
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
+    groupO.add_argument('-p', '--pivot', action='store_true', help = \
+                            'By default the output is in long format, however if the number of groupby variables is 2, you can \
+                             choose the output to be in matrix form with this flag. If you\'re not sure which one is right for you, \
+                             just try one and take a look at the output--there is no cost for making a mistake :)')
 
     args = parser.get_args(parser)
-    args.columns_to_load = constants.codons + [
+    args.columns_to_load = constants.codons + args.groupby.split(',') + [
         'corresponding_gene_call',
         'sample_id',
         'coverage',
