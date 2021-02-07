@@ -2751,8 +2751,18 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
+        if self.columns_to_load is not None:
+            cols = self.get_columns()
+            for col in self.columns_to_load:
+                if col not in cols:
+                    raise ConfigError(f"Hmmm. The column '{col}' isn't in your variability table..."
+                                      f"Here are the columns that do exist: {cols}")
 
         self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def get_columns(self):
+        return set(pd.read_csv(self.variability_table_path, sep="\t", nrows = 0).columns)
 
 
     def process_external_table(self):
