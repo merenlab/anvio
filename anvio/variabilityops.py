@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import operator as op
 
+from numba import jit
 from scipy.stats import entropy
 
 import anvio
@@ -2375,6 +2376,58 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.data["synonymity"] = synonymity
 
 
+    def compute_pN_and_pS(self, comparison='reference'):
+        self.progress.new('Calculating pN and pS')
+
+        # Track stop coverages so that they can be deducted from the polymorphism coverage
+        stop_codons = set(constants.codons) - set(constants.coding_codons)
+        self.data['stop_coverage'] = self.data[list(stop_codons)].sum(axis=1)
+
+        # Some conversion dictionaries
+        coding_codons = sorted(constants.coding_codons)
+        codon_to_num = {coding_codons[i]: i for i in range(len(coding_codons))}
+        num_to_codon = {v: k for k, v in codon_to_num.items()}
+        codon_nums = np.arange(len(coding_codons))
+
+        # We need the comparison column represented as numerical for numba
+        comparison_array = self.data[comparison].map(codon_to_num).fillna(-1).values.astype(int)
+
+        is_synonymous = np.zeros((len(coding_codons), len(coding_codons))).astype(bool)
+        for i, codon1 in enumerate(coding_codons):
+            for j, codon2 in enumerate(coding_codons):
+                if constants.codon_to_AA[codon1] == constants.codon_to_AA[codon2]:
+                    is_synonymous[i, j] = True
+                else:
+                    is_synonymous[i, j] = False
+
+        potentials = np.zeros((len(coding_codons), 2))
+        for i, codon in num_to_codon.items():
+            s_pot, ns_pot, _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+            potentials[i, 0] = s_pot
+            potentials[i, 1] = ns_pot
+
+        counts_array = self.data[constants.coding_codons].values
+        coverage = self.data['coverage'].values
+        stop_coverage = self.data['stop_coverage'].values
+
+        self.progress.update("You're ungrateful if you think this is slow")
+        pNs, pSs = _calculate_pN_pS_ratio(
+            counts_array,
+            comparison_array,
+            coverage,
+            stop_coverage,
+            codon_nums,
+            potentials,
+            is_synonymous,
+        )
+
+        self.data[f'pN_{comparison}'] = pNs
+        self.data[f'pS_{comparison}'] = pSs
+
+        self.progress.end()
+
+
+
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
@@ -2993,6 +3046,47 @@ class VariabilityFixationIndex(object):
 
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
+
+
+@jit(nopython=True)
+def _calculate_pN_pS_ratio(counts_array, comparison_array, coverage, stop_coverage, codon_nums, potentials, is_synonymous):
+    pNs, pSs = [], []
+    for i in range(counts_array.shape[0]):
+        comp = comparison_array[i] # The codon to be compared against
+        pN, pS = 0, 0
+
+        if comp < 0:
+            # No sense talking about synonymity relative to a stop codon
+            pNs.append(np.nan)
+            pSs.append(np.nan)
+        else:
+            for codon in codon_nums:
+                if codon == comp:
+                    # Don't compare the reference codon with itself, we care only about codons that
+                    # differ from the reference codon
+                    continue
+
+                if is_synonymous[comp, codon]:
+                    pS += counts_array[i, codon]
+                else:
+                    pN += counts_array[i, codon]
+
+            s_potential, ns_potential = potentials[comp, :]
+            cov = coverage[i] - stop_coverage[i] - counts_array[i, comp]
+
+            if pN == 0:
+                pNs.append(0)
+            else:
+                pN = pN / cov / ns_potential
+                pNs.append(pN)
+
+            if pS == 0:
+                pSs.append(0)
+            else:
+                pS = pS / cov / s_potential
+                pSs.append(pS)
+
+    return pNs, pSs
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
