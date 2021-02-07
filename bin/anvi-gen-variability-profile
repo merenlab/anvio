@@ -65,7 +65,6 @@ if __name__ == '__main__':
                                                   profile you will get from this program. The engine can focus on\
                                                   nucleotides (NT), codons (CDN), or an amino acids (AA).")
     groupF.add_argument(*anvio.A('engine'), **anvio.K('engine'))
-    groupF.add_argument(*anvio.A('skip-synonymity'), **anvio.K('skip-synonymity'))
 
     groupG = parser.add_argument_group('FILTERS', 'Parameters that will help you to do a very precise analysis.\
                                                   If you declare nothing from this bunch, you will get "everything"\

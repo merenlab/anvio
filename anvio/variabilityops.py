@@ -652,7 +652,10 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('entropy', float),
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
-                ('synonymity', float),
+                ('pN_consensus', float),
+                ('pN_reference', float),
+                ('pS_consensus', float),
+                ('pS_reference', float),
             ],
             'SSMs': [
             ],
@@ -2149,7 +2152,6 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
-
 class QuinceModeWrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
@@ -2335,7 +2337,6 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.engine = 'CDN'
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.skip_synonymity = A('skip_synonymity', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2345,7 +2346,8 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.compute_synonymity))
+        self.process_functions.append(F(self.compute_pN_and_pS, comparison = 'reference'))
+        self.process_functions.append(F(self.compute_pN_and_pS, comparison = 'consensus'))
 
 
     def compute_synonymity(self):
@@ -2406,9 +2408,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             potentials[i, 0] = s_pot
             potentials[i, 1] = ns_pot
 
-        counts_array = self.data[constants.coding_codons].values
-        coverage = self.data['coverage'].values
-        stop_coverage = self.data['stop_coverage'].values
+        counts_array = self.data[constants.coding_codons].values.astype(int)
+        coverage = self.data['coverage'].values.astype(int)
+        stop_coverage = self.data['stop_coverage'].values.astype(int)
 
         self.progress.update("You're ungrateful if you think this is slow")
         pNs, pSs = _calculate_pN_pS_ratio(
@@ -2425,7 +2427,6 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.data[f'pS_{comparison}'] = pSs
 
         self.progress.end()
-
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):

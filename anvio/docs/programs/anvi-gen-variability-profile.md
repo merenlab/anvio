@@ -89,7 +89,7 @@ DAY_22A
 
 Which one you're analyzing depends entirely on the `engine` parameter, which you can set to `NT` (nucleotides), `CDN` (codons), or `AA` (amino acids). The default value is nucleotides. Note that to analyze SCVs or SAAVs, you'll have needed to use the flag `--profile-SCVs` when you ran %(anvi-profile)s.
 
-For example, to analyze SAAVs, run 
+For example, to analyze SAAVs, run
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
@@ -99,15 +99,14 @@ anvi-gen-variability-profile -p %(profile-db)s \
                              --engine AA
 {{ codestop }}
 
-When analyzing single codon variants, you can choose to skip computing synonymity to save on run time, as so: 
+To analyze SCVs, run
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
                              -c %(contigs-db)s \
                              -C %(collection)s \
                              -b %(bin)s \
-                             --engine CDN \
-                             --skip-synonymity
+                             --engine CDN
 {{ codestop }}
 
 ### Filtering the output 
