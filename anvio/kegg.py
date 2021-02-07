@@ -1361,7 +1361,7 @@ class KeggEstimatorArgs():
 
         # parse specific matrix modules if necessary
         if self.module_specific_matrices:
-            self.module_specific_matrices = self.module_specific_matrices.split(",")
+            self.module_specific_matrices = [_m.strip() for _m in self.module_specific_matrices.split(",")]
 
 
     def setup_output_for_appending(self):
