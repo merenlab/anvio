@@ -68,6 +68,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
+        self.skip_check_names = A('skip_check_names')
         self.target_data_group = self.target_data_group_set_by_user or 'default'
 
         if not self.db_path:
@@ -813,7 +814,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                   "and watch anvi'o make an exception just for you and complain about nothin' for this "
                                   "once.")
 
-        if skip_check_names:
+        if skip_check_names or self.skip_check_names:
             self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s "
                              "between your additional data and the %s database you are attempting to update. So be it. "
                              "Anvi'o will not check anything, but if things don't look the way you expected them to look, "
