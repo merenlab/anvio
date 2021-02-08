@@ -1164,6 +1164,24 @@ class KeggRunHMMs(KeggContext):
         return self.ko_dict[knum]['definition']
 
 
+    def store_annotations_in_db(self):
+        """Takes the dictionary of function annotations (already parsed, if necessary) and puts them in the DB.
+
+        Should be called after the function that parses the HMM hits and creates self.functions_dict :)
+        """
+
+        if self.functions_dict:
+            gene_function_calls_table.create(self.functions_dict)
+            if self.kegg_module_names_dict:
+                gene_function_calls_table.create(self.kegg_module_names_dict)
+            if self.kegg_module_classes_dict:
+                gene_function_calls_table.create(self.kegg_module_classes_dict)
+        else:
+            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as "
+                             "a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+
+
     def process_kofam_hmms(self):
         """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB."""
 
@@ -1252,14 +1270,7 @@ class KeggRunHMMs(KeggContext):
 
             counter += 1
 
-        if functions_dict:
-            gene_function_calls_table.create(functions_dict)
-            gene_function_calls_table.create(kegg_module_names_dict)
-            gene_function_calls_table.create(kegg_module_classes_dict)
-        else:
-            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as "
-                             "a functional source.")
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+        self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:
