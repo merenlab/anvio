@@ -72,11 +72,12 @@ def load_contigs_db(args):
     return contigs_db
 
 
-def report(args, pNpS, pN, pS):
+def report(args, pNpS, pN, pS, num_SCVs):
     # write it to folder
     pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True)
     pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True)
     pS.to_csv(os.path.join(args.output_dir, "pS.txt"), sep="\t", index = True)
+    num_SCVs.to_csv(os.path.join(args.output_dir, "num_SCVs.txt"), sep="\t", index = True)
 
     run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
                     nl_before=1,
@@ -112,16 +113,28 @@ def calculate_pN_pS_ratio(args):
 
     pNpS = pN/pS
 
+    SCVs_per_group = var.data.\
+        groupby(groupby_vars)\
+        [args.comparison].\
+        size()
+
+    if args.minimum_num_variants > 1:
+        pN[SCVs_per_group < args.minimum_num_variants] = np.nan
+        pS[SCVs_per_group < args.minimum_num_variants] = np.nan
+        pNpS[SCVs_per_group < args.minimum_num_variants] = np.nan
+
     pN = pN.reset_index().rename(columns={0: pN_name})
     pS = pS.reset_index().rename(columns={0: pS_name})
     pNpS = pNpS.reset_index().rename(columns={0: pNpS_name})
+    SCVs_per_group = SCVs_per_group.reset_index().rename(columns={args.comparison: 'num_SCVs'})
 
     if args.pivot:
         pN = pN.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pN_name)
         pS = pS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pS_name)
         pNpS = pNpS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pNpS_name)
+        SCVs_per_group = SCVs_per_group.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=SCVs_per_group_name)
 
-    report(args, pNpS, pN, pS)
+    report(args, pNpS, pN, pS, SCVs_per_group)
 
 
 if __name__ == '__main__':
@@ -145,8 +158,8 @@ if __name__ == '__main__':
                             'SCVs will be ignored if they have a departure from reference less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
                             The default value is %(default).2f.'}))
-    groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes with less than this number\
-                            of single codon variants. FIXME')
+    groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore groups with less than this number\
+                            of single codon variants. pN, pS, and pN/pS values will be set to NaN for these groups')
     groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False, help='If the coverage value at a codon is less than \
                             this amount, any associated SCVs will be ignored. The default is %(default)d.')
     groupE.add_argument('-x', '--comparison', default='reference', choices=['reference', 'consensus'], help='You can determine synonymity \
