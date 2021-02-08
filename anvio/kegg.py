@@ -1202,17 +1202,7 @@ class KeggRunHMMs(KeggContext):
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-        if self.keep_all_hits:
-            run.info_single("All HMM hits will be kept regardless of score.")
-            if self.log_bitscores:
-                search_results_dict, bitscore_dict = parser.get_search_results(return_bitscore_dict=True)
-            else:
-                search_results_dict = parser.get_search_results()
-        else:
-            if self.log_bitscores:
-                search_results_dict, bitscore_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict, return_bitscore_dict=True)
-            else:
-                search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+        search_results_dict = parser.get_search_results()
 
         # add functions and KEGG modules info to database
         functions_dict = {}
