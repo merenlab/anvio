@@ -656,6 +656,8 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('pN_reference', float),
                 ('pS_consensus', float),
                 ('pS_reference', float),
+                ('pNpS_consensus', float),
+                ('pNpS_reference', float),
             ],
             'SSMs': [
             ],
@@ -2425,6 +2427,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         self.data[f'pN_{comparison}'] = pNs
         self.data[f'pS_{comparison}'] = pSs
+        self.data[f'pNpS_{comparison}'] = self.data[f'pN_{comparison}']/self.data[f'pS_{comparison}']
 
         self.progress.end()
 
