@@ -156,7 +156,7 @@ rule anvi_reformat_fasta:
             else:
                 decompressed_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
         shell("anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} %s >> {log} 2>&1" % decompressed_fasta)
-        if input[0].endswith('.gz'):
+        if (M.fasta_paths and input[0].endswith('.gz')) or (M.run_iu_merge_pairs and M.gzip_iu_merge_pairs_output):
             os.remove(decompressed_fasta)
         if M.gzip_anvi_reformat_fasta_output:
             shell("gzip -c {output.fasta} > {output.fasta}.gz 2>>{log}")
