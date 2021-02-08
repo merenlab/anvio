@@ -26,6 +26,7 @@ import pandas as pd
 import pickle as pkl
 import multiprocessing as mp
 
+from functools import partial
 from itertools import combinations, product
 from collections import OrderedDict, deque, defaultdict
 
@@ -933,27 +934,43 @@ class TRNASeqDataset(object):
 
         self.descrip = None
 
-        self.trnaseq_db_path = os.path.join(self.out_dir, self.sample_id + "-TRNASEQ.db")
+        get_out_dir_path = partial(os.path.join, self.out_dir)
 
-        self.analysis_summary_path = os.path.join(self.out_dir, self.sample_id + "-ANALYSIS_SUMMARY.txt")
+        self.trnaseq_db_path = get_out_dir_path(self.sample_id + "-TRNASEQ.db")
+
+        self.analysis_summary_path = get_out_dir_path(self.sample_id + "-ANALYSIS_SUMMARY.txt")
 
         # Supplementary text file paths
-        self.uniq_nontrna_path = os.path.join(self.out_dir, self.sample_id + "-UNIQUED_NONTRNA.txt")
-        self.trimmed_ends_path = os.path.join(self.out_dir, self.sample_id + "-TRIMMED_ENDS.txt")
+        self.uniq_nontrna_path = get_out_dir_path(self.sample_id + "-UNIQUED_NONTRNA.txt")
+        self.trimmed_ends_path = get_out_dir_path(self.sample_id + "-TRIMMED_ENDS.txt")
 
         # Intermediate pickle file paths
-        self.profile_uniq_trna_seqs_path = os.path.join(self.out_dir, "UNIQUE_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.profile_uniq_trunc_seqs_path = os.path.join(self.out_dir, "UNIQUE_TRUNCATED_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.profile_uniq_nontrna_seqs_path = os.path.join(self.out_dir, "UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.profile_trimmed_trna_seqs_path = os.path.join(self.out_dir, "TRIMMED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.profile_trimmed_trunc_seqs_path = os.path.join(self.out_dir, "TRIMMED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.profile_norm_trna_seqs_path = os.path.join(self.out_dir, "NORMALIZED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
-        self.frag_map_uniq_trna_seqs_path = os.path.join(self.out_dir, "UNIQUE_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
-        self.frag_map_uniq_trunc_seqs_path = os.path.join(self.out_dir, "UNIQUE_TRUNCATED_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
-        self.frag_map_uniq_nontrna_seqs_path = os.path.join(self.out_dir, "UNIQUE_NONTRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
-        self.frag_map_trimmed_trna_seqs_path = os.path.join(self.out_dir, "TRIMMED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
-        self.frag_map_trimmed_trunc_seqs_path = os.path.join(self.out_dir, "TRIMMED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
-        self.frag_map_norm_trna_seqs_path = os.path.join(self.out_dir, "NORMALIZED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
+        self.intermed_file_path_dict = {
+            'profile': {
+                'uniq_trna_seqs': get_out_dir_path("UNIQUE_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'uniq_trunc_seqs': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'uniq_nontrna_seqs': get_out_dir_path("UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'trimmed_trna_seqs': get_out_dir_path("TRIMMED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'trimmed_trunc_seqs': get_out_dir_path("TRIMMED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
+            },
+            'fragment_mapping': {
+                'uniq_trna_seqs': get_out_dir_path("UNIQUE_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'uniq_trunc_seqs': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'uniq_nontrna_seqs': get_out_dir_path("UNIQUE_NONTRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'trimmed_trna_seqs': get_out_dir_path("TRIMMED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'trimmed_trunc_seqs': get_out_dir_path("TRIMMED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
+            }
+        }
+        self.intermed_file_label_dict = {
+            'uniq_trna_seqs': 'unique tRNA',
+            'uniq_trunc_seqs': 'unique sequences with a truncated feature profile',
+            'uniq_nontrna_seqs': 'unique non-tRNA',
+            'trimmed_trna_seqs': 'trimmed tRNA',
+            'trimmed_trunc_seqs': 'trimmed sequences with a truncated feature profile',
+            'norm_trna_seqs': 'normalized tRNA'
+        }
 
         self.uniq_nontrna_seqs = []
         self.uniq_trunc_seqs = []
@@ -1013,120 +1030,16 @@ class TRNASeqDataset(object):
             # sequences.
             self.threeprime_dereplicate_truncated_sequences()
 
-            if self.write_checkpoints:
-                self.progress.new("Writing intermediate files for the \"profile\" checkpoint")
-                self.progress.update("...")
-
-                if os.path.exists(self.profile_uniq_trna_seqs_path):
-                    overwrote_profile_uniq_trna_seqs_path = True
-                else:
-                    overwrote_profile_uniq_trna_seqs_path = False
-                with open(self.profile_uniq_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.profile_uniq_trunc_seqs_path):
-                    overwrote_profile_uniq_trunc_seqs_path = True
-                else:
-                    overwrote_profile_uniq_trunc_seqs_path = False
-                with open(self.profile_uniq_trunc_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_trunc_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.profile_uniq_nontrna_seqs_path):
-                    overwrote_profile_uniq_nontrna_seqs_path = True
-                else:
-                    overwrote_profile_uniq_nontrna_seqs_path = False
-                with open(self.profile_uniq_nontrna_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_nontrna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.profile_trimmed_trna_seqs_path):
-                    overwrote_profile_trimmed_trna_seqs_path = True
-                else:
-                    overwrote_profile_trimmed_trna_seqs_path = False
-                with open(self.profile_trimmed_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.trimmed_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.profile_trimmed_trunc_seqs_path):
-                    overwrote_profile_trimmed_trunc_seqs_path = True
-                else:
-                    overwrote_profile_trimmed_trunc_seqs_path = False
-                with open(self.profile_trimmed_trunc_seqs_path, 'wb') as f:
-                    pkl.dump(self.trimmed_trunc_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.profile_norm_trna_seqs_path):
-                    overwrote_profile_norm_trna_seqs_path = True
-                else:
-                    overwrote_profile_norm_trna_seqs_path = False
-                with open(self.profile_norm_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.norm_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                self.progress.end()
-
-                self.run.info("%s\"profile\" checkpoint intermediate file of unique tRNA"
-                              % ("Overwritten " if overwrote_profile_uniq_trna_seqs_path else ""),
-                              self.profile_uniq_trna_seqs_path)
-                self.run.info("%s\"profile\" checkpoint intermediate file of unique sequences with a truncated feature profile"
-                              % ("Overwritten " if overwrote_profile_uniq_trunc_seqs_path else ""),
-                              self.profile_uniq_trunc_seqs_path)
-                self.run.info("%s\"profile\" checkpoint intermediate file of unique non-tRNA"
-                              % ("Overwritten " if overwrote_profile_uniq_nontrna_seqs_path else ""),
-                              self.profile_uniq_nontrna_seqs_path)
-                self.run.info("%s\"profile\" checkpoint intermediate file of trimmed tRNA"
-                              % ("Overwritten " if overwrote_profile_trimmed_trna_seqs_path else ""),
-                              self.profile_trimmed_trna_seqs_path)
-                self.run.info("%s\"profile\" checkpoint intermediate file of trimmed sequences with a truncated feature profile"
-                              % ("Overwritten " if overwrote_profile_trimmed_trunc_seqs_path else ""),
-                              self.profile_trimmed_trunc_seqs_path)
-                self.run.info("%s\"profile\" checkpoint intermediate file of normalized tRNA"
-                              % ("Overwritten " if overwrote_profile_norm_trna_seqs_path else ""),
-                              self.profile_norm_trna_seqs_path)
+            # Write intermediate files at the "profile" checkpoint
+            self.write_checkpoint_files('profile')
 
         if self.load_checkpoint == 'profile':
-            self.progress.new("Loading intermediate files at the checkpoint, \"profile\"")
-            self.progress.update("...")
-
-            with open(self.analysis_summary_path, 'a') as f:
-                f.write("\nAnalysis restarted from the checkpoint, \"profile\"\n")
-
-            with open(self.profile_uniq_trna_seqs_path, 'rb') as f:
-                self.uniq_trna_seqs = pkl.load(f)
-            with open(self.profile_uniq_trunc_seqs_path, 'rb') as f:
-                self.uniq_trunc_seqs = pkl.load(f)
-            with open(self.profile_uniq_nontrna_seqs_path, 'rb') as f:
-                self.uniq_nontrna_seqs = pkl.load(f)
-            with open(self.profile_trimmed_trna_seqs_path, 'rb') as f:
-                self.trimmed_trna_seqs = pkl.load(f)
-            with open(self.profile_trimmed_trunc_seqs_path, 'rb') as f:
-                self.trimmed_trunc_seqs = pkl.load(f)
-            with open(self.profile_norm_trna_seqs_path, 'rb') as f:
-                self.norm_trna_seqs = pkl.load(f)
-
-            self.progress.end()
-
+            self.load_checkpoint_files('profile')
             self.report_fragment_mapping_params()
             self.report_modification_analysis_params()
 
         if self.load_checkpoint == 'fragment_mapping':
-            self.progress.new("Loading intermediate files at the checkpoint, \"fragment_mapping\"")
-            self.progress.update("...")
-
-            with open(self.analysis_summary_path, 'a') as f:
-                f.write("\nAnalysis restarted from the checkpoint, \"fragment_mapping\"\n")
-
-            with open(self.frag_map_uniq_trna_seqs_path, 'rb') as f:
-                self.uniq_trna_seqs = pkl.load(f)
-            with open(self.frag_map_uniq_trunc_seqs_path, 'rb') as f:
-                self.uniq_trunc_seqs = pkl.load(f)
-            with open(self.frag_map_uniq_nontrna_seqs_path, 'rb') as f:
-                self.uniq_nontrna_seqs = pkl.load(f)
-            with open(self.frag_map_trimmed_trna_seqs_path, 'rb') as f:
-                self.trimmed_trna_seqs = pkl.load(f)
-            with open(self.frag_map_trimmed_trunc_seqs_path, 'rb') as f:
-                self.trimmed_trunc_seqs = pkl.load(f)
-            with open(self.frag_map_norm_trna_seqs_path, 'rb') as f:
-                self.norm_trna_seqs = pkl.load(f)
-
-            self.progress.end()
-
+            self.load_checkpoint_files('fragment_mapping')
             self.report_modification_analysis_params()
         else:
             # Reach this point either by starting from the beginning of the workflow
@@ -1139,71 +1052,7 @@ class TRNASeqDataset(object):
             self.map_fragments()
 
             if self.write_checkpoints:
-                self.progress.new("Writing intermediate files for the \"fragment_mapping\" checkpoint")
-                self.progress.update("...")
-
-                if os.path.exists(self.frag_map_uniq_trna_seqs_path):
-                    overwrote_frag_map_uniq_trna_seqs_path = True
-                else:
-                    overwrote_frag_map_uniq_trna_seqs_path = False
-                with open(self.frag_map_uniq_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.frag_map_uniq_trunc_seqs_path):
-                    overwrote_frag_map_uniq_trunc_seqs_path = True
-                else:
-                    overwrote_frag_map_uniq_trunc_seqs_path = False
-                with open(self.frag_map_uniq_trunc_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_trunc_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.frag_map_uniq_nontrna_seqs_path):
-                    overwrote_frag_map_uniq_nontrna_seqs_path = True
-                else:
-                    overwrote_frag_map_uniq_nontrna_seqs_path = False
-                with open(self.frag_map_uniq_nontrna_seqs_path, 'wb') as f:
-                    pkl.dump(self.uniq_nontrna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.frag_map_trimmed_trna_seqs_path):
-                    overwrote_frag_map_trimmed_trna_seqs_path = True
-                else:
-                    overwrote_frag_map_trimmed_trna_seqs_path = False
-                with open(self.frag_map_trimmed_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.trimmed_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.frag_map_trimmed_trunc_seqs_path):
-                    overwrote_frag_map_trimmed_trunc_seqs_path = True
-                else:
-                    overwrote_frag_map_trimmed_trunc_seqs_path = False
-                with open(self.frag_map_trimmed_trunc_seqs_path, 'wb') as f:
-                    pkl.dump(self.trimmed_trunc_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                if os.path.exists(self.frag_map_norm_trna_seqs_path):
-                    overwrote_frag_map_norm_trna_seqs_path = True
-                else:
-                    overwrote_frag_map_norm_trna_seqs_path = False
-                with open(self.frag_map_norm_trna_seqs_path, 'wb') as f:
-                    pkl.dump(self.norm_trna_seqs, f, protocol=pkl.HIGHEST_PROTOCOL)
-
-                self.progress.end()
-
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of unique tRNA"
-                              % ("Overwritten " if overwrote_frag_map_uniq_trna_seqs_path else ""),
-                              self.frag_map_uniq_trna_seqs_path)
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of unique sequences with a truncated feature profile"
-                              % ("Overwritten " if overwrote_frag_map_uniq_trunc_seqs_path else ""),
-                              self.frag_map_uniq_trunc_seqs_path)
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of unique non-tRNA"
-                              % ("Overwritten " if overwrote_frag_map_uniq_nontrna_seqs_path else ""),
-                              self.frag_map_uniq_nontrna_seqs_path)
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of trimmed tRNA"
-                              % ("Overwritten " if overwrote_frag_map_trimmed_trna_seqs_path else ""),
-                              self.frag_map_trimmed_trna_seqs_path)
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of trimmed sequences with a truncated feature profile"
-                              % ("Overwritten " if overwrote_frag_map_trimmed_trunc_seqs_path else ""),
-                              self.frag_map_trimmed_trunc_seqs_path)
-                self.run.info("%s\"fragment_mapping\" checkpoint intermediate file of normalized tRNA"
-                              % ("Overwritten " if overwrote_frag_map_norm_trna_seqs_path else ""),
-                              self.frag_map_norm_trna_seqs_path)
+                self.write_checkpoint_files('fragment_mapping')
 
         # Find modified nucleotides, grouping sequences into modified sequences.
         self.find_substitutions()
@@ -1253,40 +1102,20 @@ class TRNASeqDataset(object):
                     raise ConfigError("The directory that was specified by --output-dir or -o, %s, already exists. "
                                       "Use the flag --overwrite-output-destinations to overwrite this directory." % self.out_dir)
 
-        # Check that needed intermediate pickle files exist when loading from a checkpoint.
-        missing_intermed_files = []
-        if self.load_checkpoint == 'profile':
-            if not os.path.exists(self.profile_uniq_trna_seqs_path):
-                missing_intermed_files.append(self.profile_uniq_trna_seqs_path)
-            if not os.path.exists(self.profile_uniq_trunc_seqs_path):
-                missing_intermed_files.append(self.profile_uniq_trunc_seqs_path)
-            if not os.path.exists(self.profile_uniq_nontrna_seqs_path):
-                missing_intermed_files.append(self.profile_uniq_nontrna_seqs_path)
-            if not os.path.exists(self.profile_trimmed_trna_seqs_path):
-                missing_intermed_files.append(self.profile_trimmed_trna_seqs_path)
-            if not os.path.exists(self.profile_norm_trna_seqs_path):
-                missing_intermed_files.append(self.profile_norm_trna_seqs_path)
-        elif self.load_checkpoint == 'fragment_mapping':
-            if not os.path.exists(self.frag_map_uniq_trna_seqs_path):
-                missing_intermed_files.append(self.frag_map_uniq_trna_seqs_path)
-            if not os.path.exists(self.frag_map_uniq_trunc_seqs_path):
-                missing_intermed_files.append(self.frag_map_uniq_trunc_seqs_path)
-            if not os.path.exists(self.frag_map_uniq_nontrna_seqs_path):
-                missing_intermed_files.append(self.frag_map_uniq_nontrna_seqs_path)
-            if not os.path.exists(self.frag_map_trimmed_trna_seqs_path):
-                missing_intermed_files.append(self.frag_map_trimmed_trna_seqs_path)
-            if not os.path.exists(self.frag_map_trimmed_trunc_seqs_path):
-                missing_intermed_files.append(self.frag_map_trimmed_trunc_seqs_path)
-            if not os.path.exists(self.frag_map_norm_trna_seqs_path):
-                missing_intermed_files.append(self.frag_map_norm_trna_seqs_path)
+        if self.load_checkpoint:
+            # Check that needed intermediate pickle files exist when loading from a checkpoint.
+            missing_intermed_files = []
+            for intermed_file_path in self.intermed_file_path_dict[self.load_checkpoint].values():
+                if not os.path.exists(intermed_file_path):
+                    missing_intermed_files.append(intermed_file_path)
+            if missing_intermed_files:
+                raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing: %s. "
+                                  "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
+                                  "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`."
+                                  % (self.load_checkpoint, ', '.join(self.missing_intermed_files)))
         else:
             if not os.path.exists(self.out_dir):
                 os.mkdir(self.out_dir)
-        if missing_intermed_files:
-            raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing: %s. "
-                              "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
-                              "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`."
-                              % (self.load_checkpoint, ', '.join(self.missing_intermed_files)))
 
         filesnpaths.is_output_dir_writable(self.out_dir)
 
@@ -1950,6 +1779,46 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)",
                                           time.time() - start_time,
                                           is_time_value=True))
+
+        self.progress.end()
+
+
+    def write_checkpoint_files(self, checkpoint_name):
+        if not self.write_checkpoints:
+            return
+
+        self.progress.new(f"Writing intermediate files for the \"{checkpoint_name}\" checkpoint")
+        self.progress.update("...")
+
+        overwrote_dict = {}
+        for intermed_file_key, intermed_file_path in self.intermed_file_path_dict[checkpoint_name].items():
+            if os.path.exists(intermed_file_path):
+                overwrote_dict[self.intermed_file_label_dict[intermed_file_key]] = intermed_file_path
+            else:
+                overwrote_dict[self.intermed_file_label_dict[intermed_file_key]] = None
+            with open(intermed_file_path, 'wb') as f:
+                # The key, e.g., "uniq_trna_seqs", corresponds to the attribute to be saved to file.
+                pkl.dump(getattr(self, intermed_file_key), f, protocol=pkl.HIGHEST_PROTOCOL)
+
+        self.progress.end()
+
+        for intermed_file_label, intermed_file_path in overwrote_dict.items():
+            # Example: "Overwrote profile checkpoint intermediate file of unique tRNA"
+            self.run.info("%s\"checkpoint_name\" checkpoint intermediate file of %s"
+                          % ("Overwrote " if intermed_file_path else "", intermed_file_label),
+                          intermed_file_path)
+
+
+    def load_checkpoint_files(self, checkpoint_name):
+        self.progress.new(f"Loading intermediate files at the checkpoint, \"{checkpoint_name}\"")
+        self.progress.update("...")
+
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(f"\nAnalysis restarted from the checkpoint, \"{checkpoint_name}\"\n")
+
+        for intermed_file_key, intermed_file_path in self.intermed_file_path_dict[checkpoint_name].items():
+            with open(intermed_file_path, 'rb') as f:
+                setattr(self, intermed_file_key, pkl.load(f))
 
         self.progress.end()
 
