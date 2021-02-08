@@ -132,7 +132,9 @@ def calculate_pN_pS_ratio(args):
         pN = pN.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pN_name)
         pS = pS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pS_name)
         pNpS = pNpS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pNpS_name)
-        SCVs_per_group = SCVs_per_group.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=SCVs_per_group_name)
+        SCVs_per_group = SCVs_per_group.\
+            pivot(index=groupby_vars[0], columns=groupby_vars[1], values='num_SCVs').\
+            fillna(0)
 
     report(args, pNpS, pN, pS, SCVs_per_group)
 
