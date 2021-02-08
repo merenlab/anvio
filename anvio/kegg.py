@@ -1184,8 +1184,9 @@ class KeggRunHMMs(KeggContext):
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
         counter = 0
-        for hmm_hit in search_results_dict.values():
+        for hmm_hit in hits_dict.values():
             knum = hmm_hit['gene_name']
+
             self.functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'KOfam',
