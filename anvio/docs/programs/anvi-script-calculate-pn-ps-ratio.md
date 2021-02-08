@@ -8,31 +8,34 @@ dN/dS, which is the ratio of rates between non-synonymous (dN) and synonymous **
 strains/species. We calculate pN/pS from allele frequency obtained through SCVs and SAAVs (see
 [publication in preparation](FIXME)) for exact implementation details.
 
-### Neat. How do I use this program? 
+### Neat. How do I use this program?
 
-Firstly, you'll need to run %(anvi-gen-variability-profile)s twice with the same parameters on the
-same databases. The first time, use the flag `--engine AA` to get a %(variability-profile-txt)s for
-SAAVs (single amino acid variants), which we'll name the `SAAVs.txt` in this example. The second
-time, use the flag `--engine CDN` to get a %(variability-profile-txt)s for SCVs (single codon
-variants), which we'll name `SCVs.txt` in this example. 
+Firstly, you'll need to run %(anvi-gen-variability-profile)s using the flag `--engine CDN` to get a %(variability-profile-txt)s for SCVs (single codon variants), which we'll name `SCVs.txt` in this example.
 
 Then you can run this program like so:
 
 {{ codestart }}
-anvi-script-calculate-pn-ps-ratio -a SAAVs.txt \
-                                  -b SCVs.txt \ 
+anvi-script-calculate-pn-ps-ratio -V SCVs.txt \
                                   -c %(contigs-db)s \
                                   -o output_dir 
 {{ codestop }}
 
-This will result in a directory called `output_dir` that contains several tables that describe each of your genes. See %(pn-ps-data)s for more information. 
+By default, a pN/pS value is calculated for each (gene, sample) combo. Each unique (gene, sample) combo is considered a "grouping". This corresponds to the parameter choice `--groupby corresponding_gene_call,sample_id`. You can select any arbitrary groupings with the parameter `--groupby`. For example, if `SCVs.txt` corresponds to variants in a single genome, and you would like a genome-wide pN/pS value calculated for each sample, you would want to use the parameter `--groupby sample_id`.
+
+{{ codestart }}
+anvi-script-calculate-pn-ps-ratio -V SCVs.txt \
+                                  -c %(contigs-db)s \
+                                  --groupby sample_id \
+                                  -o output_dir 
+{{ codestop }}
+
+This will result in a directory called `output_dir` that contains several tables that describe each of your genes. See %(pn-ps-data)s for more information.
 
 ### Other parameters
 
-By default, this program ignores some of the genes and variable positions in your variability
-profiles; you can choose to be more sensitive or ignore more positions by changing any of these
-three variables:
+This program has some default filtering choices that you should pay mind to. You can tune these filter options with the following variables:
 
-- The minimum departure from consensus for a variable position (default: 0.10). 
-- The minimum number of SCVs in a gene (default: 4). 
-- The minimum coverage at a variable position (default: 30)
+- The minimum departure from consensus for a variable position (`--min-departure-from-consensus`).
+- The minimum departure from reference for a variable position (`--min-departure-from-reference`).
+- The minimum number of SCVs in a grouping (`--minimum-num-variants`).
+- The minimum coverage at a variable position (`--min-coverage`).
