@@ -4674,6 +4674,15 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
 
+        if not len(names_in_db):
+            raise ConfigError(f"Your {db_type} database does not have any item names stored, but whoever called this "
+                              f"function asked for a check between the item names in the items order and item names in "
+                              f"the database. Well. It will not happen. A proper way to deal with it is to set the "
+                              f"variable `check_names_consistency` to `False` when calling this function. This message "
+                              f"is not to be seen by a user, so if you are a user, it means someone screwed up something "
+                              f"somewhere, and those of us at the anvi'o headquarters for snafu handling sincerely apologize "
+                              f"sincerely on their behalf :(")
+
         names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
         if names_in_db_not_in_data:
             raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
