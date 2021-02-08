@@ -1164,10 +1164,75 @@ class KeggRunHMMs(KeggContext):
         return self.ko_dict[knum]['definition']
 
 
+    def parse_kofam_hits(self, hits_dict):
+        """This function applies bitscore thresholding (if requested) to establish the self.functions_dict
+        which can then be used to store annotations in the contigs DB.
+
+        If self.keep_all_hits is True, all hits will be added to the self.functions_dict regardless of bitscore
+        threshold.
+
+        Note that the input hits_dict contains bitscores, but the self.functions_dict does not (because the DB
+        tables do not have a column for it, at least at the time of writing this).
+
+        PARAMETERS
+        ===========
+        hits_dict : dictionary
+        The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        """
+
+        self.functions_dict = {}
+        self.kegg_module_names_dict = {}
+        self.kegg_module_classes_dict = {}
+        counter = 0
+        for hmm_hit in search_results_dict.values():
+            knum = hmm_hit['gene_name']
+            self.functions_dict[counter] = {
+                'gene_callers_id': hmm_hit['gene_callers_id'],
+                'source': 'KOfam',
+                'accession': knum,
+                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
+                'e_value': hmm_hit['e_value'],
+            }
+
+            # add associated KEGG module information to database
+            mods = self.kegg_modules_db.get_modules_for_knum(knum)
+            names = self.kegg_modules_db.get_module_names_for_knum(knum)
+            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+
+            if mods:
+                mod_annotation = "!!!".join(mods)
+                mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
+                mod_name_annotation = ""
+
+                for mod in mods:
+                    if mod_name_annotation:
+                        mod_name_annotation += "!!!" + names[mod]
+                    else:
+                        mod_name_annotation = names[mod]
+
+                self.kegg_module_names_dict[counter] = {
+                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'source': 'KEGG_Module',
+                    'accession': mod_annotation,
+                    'function': mod_name_annotation,
+                    'e_value': None,
+                }
+                self.kegg_module_classes_dict[counter] = {
+                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'source': 'KEGG_Class',
+                    'accession': mod_annotation,
+                    'function': mod_class_annotation,
+                    'e_value': None,
+                }
+
+            counter += 1
+
+
     def store_annotations_in_db(self):
         """Takes the dictionary of function annotations (already parsed, if necessary) and puts them in the DB.
 
-        Should be called after the function that parses the HMM hits and creates self.functions_dict :)
+        Should be called after the function that parses the HMM hits and creates self.functions_dict :) which is
+        parse_kofam_hits()
         """
 
         if self.functions_dict:
@@ -1223,53 +1288,7 @@ class KeggRunHMMs(KeggContext):
         search_results_dict = parser.get_search_results()
 
         # add functions and KEGG modules info to database
-        functions_dict = {}
-        kegg_module_names_dict = {}
-        kegg_module_classes_dict = {}
-        counter = 0
-        for hmm_hit in search_results_dict.values():
-            knum = hmm_hit['gene_name']
-            functions_dict[counter] = {
-                'gene_callers_id': hmm_hit['gene_callers_id'],
-                'source': 'KOfam',
-                'accession': knum,
-                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
-                'e_value': hmm_hit['e_value'],
-            }
-
-            # add associated KEGG module information to database
-            mods = self.kegg_modules_db.get_modules_for_knum(knum)
-            names = self.kegg_modules_db.get_module_names_for_knum(knum)
-            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
-
-            if mods:
-                mod_annotation = "!!!".join(mods)
-                mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
-                mod_name_annotation = ""
-
-                for mod in mods:
-                    if mod_name_annotation:
-                        mod_name_annotation += "!!!" + names[mod]
-                    else:
-                        mod_name_annotation = names[mod]
-
-                kegg_module_names_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Module',
-                    'accession': mod_annotation,
-                    'function': mod_name_annotation,
-                    'e_value': None,
-                }
-                kegg_module_classes_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Class',
-                    'accession': mod_annotation,
-                    'function': mod_class_annotation,
-                    'e_value': None,
-                }
-
-            counter += 1
-
+        self.parse_kofam_hits(search_results_dict)
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
