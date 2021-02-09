@@ -804,6 +804,47 @@ Bins.prototype.RedrawLineColors = function() {
     }
 };
 
+Bins.prototype.DrawInvertedNodes = function(leaf_list){
+    console.log('hi')
+
+    var inverse_fill_opacity = $('#inverse_fill_opacity').val();
+    var inverse_color = document.getElementById('inverse_color').getAttribute('color');
+    let nodes_for_inversion = [] // lets also grab the items that aren't selected above 
+
+    for (var i=0; i < drawer.tree.leaves.length + 1; i++) {
+        leaf_list.push(-1);
+    }
+
+    for(let i = 0; i < leaf_list.length; i++){
+        if(leaf_list[i] === -1){
+            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+        }
+    }
+
+    nodes_for_inversion.map((node, idx) => {
+        let p = node[0]
+        let [p1, p2] = p.GetBorderNodes();
+
+        let pie = drawPie(
+            'bin',
+            'bin_outer_' + idx,
+            p1.angle - p1.size / 2,
+            p2.angle + p2.size / 2,
+            distance(p.backarc, {
+                'x': 0,
+                'y': 0
+            }),
+            total_radius,
+            (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
+            inverse_color,
+            inverse_fill_opacity,
+            false
+        );
+        pie.setAttribute('vector-effect', 'non-scaling-stroke');
+        pie.setAttribute('stroke-opacity', inverse_fill_opacity);
+    })
+}
+
 Bins.prototype.RedrawBins = function() {
     if (!drawer)
         return;
@@ -852,19 +893,10 @@ Bins.prototype.RedrawBins = function() {
         bin.removeChild(bin.lastChild);
     }
 
-    let nodes_for_inversion = [] // lets also grab the items that aren't selected above 
-    for(let i = 0; i < leaf_list.length; i++){
-        if(leaf_list[i] === -1){
-            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
-        }
-    }
-
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
     var show_shade = $('#show_shade_for_bins')[0].checked; 
     var invert_shade = $('#invert_shade_for_bins')[0].checked; 
-    var inverse_fill_opacity = $('#inverse_fill_opacity').val();
-    var inverse_color = document.getElementById('inverse_color').getAttribute('color');
     var shade_fill_opacity = $('#shade_fill_opacity').val();
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
@@ -876,39 +908,6 @@ Bins.prototype.RedrawBins = function() {
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
-
-    function drawInvertedNodes(nodesArr, opacity, tree_type){
-        nodesArr.map((node, idx) => {
-            let p = node[0]
-            let [p1, p2] = p.GetBorderNodes();
-
-            let pie = drawPie(
-                'bin',
-                'bin_outer_' + idx,
-                p1.angle - p1.size / 2,
-                p2.angle + p2.size / 2,
-                distance(p.backarc, {
-                    'x': 0,
-                    'y': 0
-                }),
-                total_radius,
-                (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
-                inverse_color,
-                opacity,
-                false
-            );
-            pie.setAttribute('vector-effect', 'non-scaling-stroke');
-            pie.setAttribute('stroke-opacity', inverse_fill_opacity);
-        })
-    }
-
-    // if(invert_shade){
-    //     drawInvertedNodes(nodes_for_inversion, inverse_fill_opacity)
-    //     // $('#show_shade_for_bins').prop('checked', false); 
-
-    // } else {
-    //     // drawInvertedNodes(nodes_for_inversion, 0)
-    // }
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
@@ -1103,7 +1102,7 @@ Bins.prototype.RedrawBins = function() {
                 true);
         }
     }
-    invert_shade ? drawInvertedNodes(nodes_for_inversion, inverse_fill_opacity) : null 
+    invert_shade ? this.DrawInvertedNodes(leaf_list) : null 
 
 }
 
