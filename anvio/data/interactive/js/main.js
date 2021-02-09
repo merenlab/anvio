@@ -1626,7 +1626,6 @@ function drawTree() {
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
-
                 bins.RedrawBins();
 
                 $('#btn_draw_tree').prop('disabled', false);

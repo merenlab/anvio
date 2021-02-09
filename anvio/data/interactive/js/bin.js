@@ -817,9 +817,21 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
     }
 
     nodes_for_inversion.map((node, idx) => {
-        let p = node[0]
-        let [p1, p2] = p.GetBorderNodes(); // logs error on 1st + last nodes, as they don't have both borders. renders fine though?
-
+        if(idx == [nodes_for_inversion.length - 1]){
+            return // first node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
+        }
+        let p1; 
+        let p2; 
+        let p = node[0];
+      
+        if (idx == [nodes_for_inversion.length - 1]) { // hardcode final node's border values. 
+            p1 = node[0]
+            p2 = node[9]
+        }
+        else {
+            [p1, p2] = p.GetBorderNodes();
+        }
+        
         if (tree_type == 'circlephylogram'){
             let pie = drawPie(
                 'bin',
