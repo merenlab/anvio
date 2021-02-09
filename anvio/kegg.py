@@ -1255,6 +1255,9 @@ class KeggRunHMMs(KeggContext):
         parse_kofam_hits()
         """
 
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+
         if self.functions_dict:
             gene_function_calls_table.create(self.functions_dict)
             if self.kegg_module_names_dict:
@@ -1262,8 +1265,8 @@ class KeggRunHMMs(KeggContext):
             if self.kegg_module_classes_dict:
                 gene_function_calls_table.create(self.kegg_module_classes_dict)
         else:
-            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as "
-                             "a functional source.")
+            self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
+                             "but still adding KOfam as a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
 
 
@@ -1286,9 +1289,6 @@ class KeggRunHMMs(KeggContext):
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
-        # get an instance of gene functions table
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
                              "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
@@ -1300,6 +1300,7 @@ class KeggRunHMMs(KeggContext):
                 self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary "
                                  "directories located at %s and %s. Please be responsible for cleaning up this directory yourself "
                                  "after you are finished debugging :)" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
