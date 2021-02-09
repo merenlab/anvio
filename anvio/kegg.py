@@ -1184,6 +1184,7 @@ class KeggRunHMMs(KeggContext):
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
         counter = 0
+        num_hits_removed = 0
         for hmm_hit in hits_dict.values():
             knum = hmm_hit['gene_name']
             keep = False
@@ -1246,6 +1247,11 @@ class KeggRunHMMs(KeggContext):
                     }
 
                 counter += 1
+            else:
+                num_hits_removed += 1
+
+        self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
+        self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
 
 
     def store_annotations_in_db(self):
