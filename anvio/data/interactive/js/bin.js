@@ -805,17 +805,12 @@ Bins.prototype.RedrawLineColors = function() {
 };
 
 Bins.prototype.DrawInvertedNodes = function(leaf_list){
-    console.log('hi')
-
+    
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
-    let nodes_for_inversion = [] // lets also grab the items that aren't selected above 
-
-    for (var i=0; i < drawer.tree.leaves.length + 1; i++) {
-        leaf_list.push(-1);
-    }
-
-    for(let i = 0; i < leaf_list.length; i++){
+    let nodes_for_inversion = [] 
+        
+    for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
             nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
         }
@@ -823,25 +818,30 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
 
     nodes_for_inversion.map((node, idx) => {
         let p = node[0]
-        let [p1, p2] = p.GetBorderNodes();
+        let [p1, p2] = p.GetBorderNodes(); // logs error on 1st + last nodes, as they don't have both borders. renders fine though?
 
-        let pie = drawPie(
-            'bin',
-            'bin_outer_' + idx,
-            p1.angle - p1.size / 2,
-            p2.angle + p2.size / 2,
-            distance(p.backarc, {
-                'x': 0,
-                'y': 0
-            }),
-            total_radius,
-            (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
-            inverse_color,
-            inverse_fill_opacity,
-            false
-        );
-        pie.setAttribute('vector-effect', 'non-scaling-stroke');
-        pie.setAttribute('stroke-opacity', inverse_fill_opacity);
+        if (tree_type == 'circlephylogram'){
+            let pie = drawPie(
+                'bin',
+                'bin_outer_' + idx,
+                p1.angle - p1.size / 2,
+                p2.angle + p2.size / 2,
+                distance(p.backarc, {
+                    'x': 0,
+                    'y': 0
+                }),
+                total_radius,
+                (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
+                inverse_color,
+                inverse_fill_opacity,
+                false
+            );
+            pie.setAttribute('vector-effect', 'non-scaling-stroke');
+            pie.setAttribute('stroke-opacity', inverse_fill_opacity);
+        } else {
+            drawPhylogramRectangle() // TODO put this together 
+        }
+
     })
 }
 
