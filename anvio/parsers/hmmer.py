@@ -684,9 +684,10 @@ class HMMERTableOutput(Parser):
                         if hit['dom_bit_score'] < float(threshold):
                             keep = False
                     else:
-                        self.run.warning("Oh dear. The HMM profile %s has a strange score_type value: %s. The only accepted values "
-                                         "for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits "
-                                         "will be kept regardless of bit score. You have been warned." % (hit['gene_name'], score_type))
+                        raise ConfigError(f"Oh dear. The HMM profile {hit['gene_name']} has a strange score_type value: "
+                                          f"'{score_type}'. The only accepted values for this type are 'full' or 'domain', "
+                                          "so anvi'o cannot parse the hits to this profile. Please contact a developer for "
+                                          "help.")
 
                     if keep:
                         entry = {'entry_id': entry_id,
@@ -701,17 +702,10 @@ class HMMERTableOutput(Parser):
 
                 elif noise_cutoff_dict and hit['gene_name'] not in noise_cutoff_dict.keys():
                     # this should never happen, in an ideal world where everything is filled with butterflies and happiness
-                    self.run.warning("Hmm. While parsing your HMM hits, it seems the HMM profile %s was not found in the noise cutoff dictionary. "
-                                     "This should probably not ever happen, and you should contact a developer as soon as possible to figure out what "
-                                     "is going on. But for now, anvi'o is going to keep all hits to this profile. Consider those hits with a grain of salt, "
-                                     "as not all of them may be good." % hit['gene_name'])
-                    entry = {'entry_id': entry_id,
-                             'gene_name': hit['gene_name'],
-                             'gene_hmm_id': hit['gene_hmm_id'],
-                             'gene_callers_id': hit['gene_callers_id'],
-                             'e_value': hit['e_value'],
-                             'bit_score': hit['bit_score'],
-                             'domain_bit_score': hit['dom_bit_score']}
+                    raise ConfigError(f"Hmm. While parsing your HMM hits, it seems the HMM profile {hit['gene_name']} was not "
+                                     "found in the noise cutoff dictionary. This should probably not ever happen, and you should "
+                                     "contact a developer as soon as possible to figure out what is going on. But for now, anvi'o "
+                                     "is going to fail in order to avoid adding many garbage hits to your database.")
 
                 else:
                     entry = {'entry_id': entry_id,
