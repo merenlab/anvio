@@ -38,12 +38,11 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-def load_variability(args):
+def load_variability(args, contigs_db):
     progress.new('Loading SCVs')
     progress.update('...')
 
     var = VariabilityData(args)
-    contigs_db = load_contigs_db(args)
 
     # filter based on user parameters
     var.filter_data(criterion='departure_from_consensus', verbose=False)
@@ -85,21 +84,25 @@ def report(args, pNpS, pN, pS, num_SCVs):
 
 
 def calculate_pN_pS_ratio(args):
-    if args.pivot and len(args.groupby.split(',')) != 2:
-        raise ConfigError("You can't use --pivot unless the number of groupby variables is 2.")
-
     # gen output
     filesnpaths.check_output_directory(args.output_dir)
     filesnpaths.gen_output_directory(args.output_dir)
 
     # load contigs db and variability table
-    var = load_variability(args)
-    var.compute_pN_and_pS(comparison=args.comparison)
+    contigs_db = load_contigs_db(args)
+    var = load_variability(args, contigs_db)
+    var.calc_pN_pS(
+        contigs_db=contigs_db,
+        grouping='gene',
+        comparison=args.comparison,
+        weight_includes_comparison=True,
+    )
 
     groupby_vars = args.groupby.split(',')
-    pS_name = f'pS_{args.comparison}'
-    pN_name = f'pN_{args.comparison}'
-    pNpS_name = f'pNpS_{args.comparison}'
+
+    pS_name = f'pS_gene_{args.comparison}'
+    pN_name = f'pN_gene_{args.comparison}'
+    pNpS_name = f'pNpS_gene_{args.comparison}'
 
     pN = var.data.\
         groupby(groupby_vars)\
@@ -133,7 +136,11 @@ def calculate_pN_pS_ratio(args):
         pS = pS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pS_name)
         pNpS = pNpS.pivot(index=groupby_vars[0], columns=groupby_vars[1], values=pNpS_name)
         SCVs_per_group = SCVs_per_group.\
-            pivot(index=groupby_vars[0], columns=groupby_vars[1], values='num_SCVs').\
+            pivot(
+                index=groupby_vars[0],
+                columns=groupby_vars[1],
+                values='num_SCVs'
+            ).\
             fillna(0)
 
     report(args, pNpS, pN, pS, SCVs_per_group)
@@ -148,10 +155,6 @@ if __name__ == '__main__':
                                                       to generate variability table.'}))
 
     groupE = parser.add_argument_group('TUNABLES', "Successfully tune one or more of these parameters to unlock the badge 'Advanced anvian'.")
-    groupE.add_argument('-g', '--groupby', default='corresponding_gene_call,sample_id', help="Provide how you would like to group your pN/pS data. A pN/pS value will \
-                            be calculated for each group. For example, if `--groupby corresponding_gene_call,sample_id`, then \
-                            a pN/pS value will be calculated for each corresponding_gene_call and sample id combination. Each \
-                            variable must exist as a column in your provided variability table. Default is '%(default)s'.")
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.1, 'help': \
                             'SCVs will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
@@ -164,19 +167,21 @@ if __name__ == '__main__':
                             of single codon variants. pN, pS, and pN/pS values will be set to NaN for these groups')
     groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False, help='If the coverage value at a codon is less than \
                             this amount, any associated SCVs will be ignored. The default is %(default)d.')
-    groupE.add_argument('-x', '--comparison', default='reference', choices=['reference', 'consensus'], help='You can determine synonymity \
+    groupE.add_argument('-x', '--comparison', default='reference', choices=['reference', 'consensus', 'popular_consensus'], help='You can determine synonymity \
                             relative to either the reference codon, or the consensus codon. The consensus codon is determined on a per-sample \
                             basis. The default is \'%(default)s.\'')
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
     groupO.add_argument('-p', '--pivot', action='store_true', help = \
-                            'By default the output is in long format, however if the number of groupby variables is 2, you can \
+                            'By default the output is in long format, however you can \
                              choose the output to be in matrix form with this flag. If you\'re not sure which one is right for you, \
                              just try one and take a look at the output--there is no cost for making a mistake :)')
 
     args = parser.get_args(parser)
-    args.columns_to_load = constants.codons + args.groupby.split(',') + [
+    args.groupby = 'corresponding_gene_call,sample_id'
+    args.columns_to_load = constants.codons + [
+        'unique_pos_identifier',
         'corresponding_gene_call',
         'sample_id',
         'coverage',
@@ -185,6 +190,8 @@ if __name__ == '__main__':
         'reference',
         'consensus',
     ]
+
+    args.columns_to_load = list(set(args.columns_to_load))
 
     try:
         calculate_pN_pS_ratio(args)

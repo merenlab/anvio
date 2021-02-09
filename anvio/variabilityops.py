@@ -652,10 +652,10 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('entropy', float),
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
-                ('pN_consensus', float),
-                ('pS_consensus', float),
-                ('pN_reference', float),
-                ('pS_reference', float),
+                ('pN_site_consensus', float),
+                ('pS_site_consensus', float),
+                ('pN_site_reference', float),
+                ('pS_site_reference', float),
             ],
             'SSMs': [
             ],
@@ -2346,8 +2346,8 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.calc_per_site_pN_pS, comparison = 'reference'))
-        self.process_functions.append(F(self.calc_per_site_pN_pS, comparison = 'consensus'))
+        self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
+        self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
 
 
     def calc_synonymous_fraction(self, comparison='reference', weight_includes_comparison=True):
@@ -2396,7 +2396,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         stop_coverage = self.data['stop_coverage'].values.astype(int)
 
         self.progress.update("You're ungrateful if you think this is slow")
-        frac_nonsyns, frac_syns = _calculate_synonymous_fraction(
+        frac_syns, frac_nonsyns = _calculate_synonymous_fraction(
             counts_array,
             comparison_array,
             coverage,
@@ -2407,7 +2407,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         )
 
         self.progress.end()
-        return np.array(frac_nonsyns), np.array(frac_syns)
+        return np.array(frac_syns), np.array(frac_nonsyns)
 
 
     def _get_per_position_potential(self, comparison):
@@ -2430,14 +2430,41 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_per_site_pN_pS(self, comparison='reference', weight_includes_comparison=True):
-        pN_name, pS_name = f"pN_{comparison}", f"pS_{comparison}"
+    def _get_per_gene_potential(self, contigs_db, comparison):
+        """Returns array of len(self.data) that defines the num of nonsyn and syn on a per-gene basis"""
+        syn_lookup, nonsyn_lookup = {}, {}
+        for corresponding_gene_call in self.data['corresponding_gene_call'].unique():
+            gene_call = contigs_db.genes_in_contigs_dict[corresponding_gene_call]
+            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
 
-        frac_nonsyns, frac_syns = self.calc_synonymous_fraction(comparison=comparison, weight_includes_comparison=weight_includes_comparison)
-        potentials = self._get_per_position_potential(comparison=comparison)
+            syn_lookup[corresponding_gene_call], nonsyn_lookup[corresponding_gene_call], _ = \
+                utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
 
-        self.data[pN_name] = frac_nonsyns/potentials[:, 0]
-        self.data[pS_name] = frac_syns/potentials[:, 1]
+        potentials = np.zeros((len(self.data), 2))
+        for i, corresponding_gene_call in enumerate(self.data['corresponding_gene_call']):
+            potentials[i, 0] = syn_lookup[corresponding_gene_call]
+            potentials[i, 1] = nonsyn_lookup[corresponding_gene_call]
+
+        return potentials
+
+
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', weight_includes_comparison=True):
+        if contigs_db is None:
+            contigs_db = self
+
+        pN_name, pS_name = f"pN_{grouping}_{comparison}", f"pS_{grouping}_{comparison}"
+
+        frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison, weight_includes_comparison=weight_includes_comparison)
+
+        if grouping == 'site':
+            potentials = self._get_per_position_potential(comparison=comparison)
+        elif grouping == 'gene':
+            potentials = self._get_per_gene_potential(contigs_db=contigs_db, comparison=comparison)
+        else:
+            raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
+
+        self.data[pS_name] = frac_syns/potentials[:, 0]
+        self.data[pN_name] = frac_nonsyns/potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
@@ -3111,7 +3138,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, sto
                 num_syn = num_syn / cov
                 num_syns.append(num_syn)
 
-    return num_nonsyns, num_syns
+    return num_syns, num_nonsyns
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
