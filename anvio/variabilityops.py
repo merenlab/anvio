@@ -653,10 +653,10 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
                 ('pN_consensus', float),
-                ('pN_reference', float),
                 ('pS_consensus', float),
-                ('pS_reference', float),
                 ('pNpS_consensus', float),
+                ('pN_reference', float),
+                ('pS_reference', float),
                 ('pNpS_reference', float),
             ],
             'SSMs': [
@@ -2348,53 +2348,23 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.compute_pN_and_pS, comparison = 'reference'))
-        self.process_functions.append(F(self.compute_pN_and_pS, comparison = 'consensus'))
+        self.process_functions.append(F(self.calc_per_site_pN_pS, comparison = 'reference'))
+        self.process_functions.append(F(self.calc_per_site_pN_pS, comparison = 'consensus'))
 
 
-    def compute_synonymity(self):
-        """This method is currently prohibitively slow for large datasets."""
-        if self.skip_synonymity:
-            return
+    def calc_synonymous_fraction(self, comparison='reference', weight_includes_comparison=True):
+        """Compute the fraction of synonymous and non-synonymous substitutions
 
-        coding_codons = constants.coding_codons
+        FIXME
+        """
 
-        number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
-        array = np.zeros((self.data.shape[0], number_of_pairs))
+        self.progress.new('Calculating per-site synonymous fraction')
+        progress.update('...')
 
-        array_index = 0
-        s_or_ns = []
-        for i in coding_codons:
-            for j in coding_codons:
-                if j > i:
-                    break
-                array[:, array_index] = self.data.loc[:, i] * self.data.loc[:, j]
-                array_index += 1
-                s_or_ns.append(constants.is_synonymous[i][j])
-
-        # normalize
-        array = array / np.sum(array, axis=1)[:,np.newaxis]
-
-        # each row sums to 1. Synonymity is the sum of those that are synonymous
-        synonymity = np.sum(array[:, s_or_ns], axis=1)
-        self.data["synonymity"] = synonymity
-
-
-    def compute_pN_and_pS(self, comparison='reference'):
-        self.progress.new('Calculating pN and pS')
-
-        # Track stop coverages so that they can be deducted from the polymorphism coverage
-        stop_codons = set(constants.codons) - set(constants.coding_codons)
-        self.data['stop_coverage'] = self.data[list(stop_codons)].sum(axis=1)
-
-        # Some conversion dictionaries
+        # Some lookups
         coding_codons = sorted(constants.coding_codons)
         codon_to_num = {coding_codons[i]: i for i in range(len(coding_codons))}
-        num_to_codon = {v: k for k, v in codon_to_num.items()}
         codon_nums = np.arange(len(coding_codons))
-
-        # We need the comparison column represented as numerical for numba
-        comparison_array = self.data[comparison].map(codon_to_num).fillna(-1).values.astype(int)
 
         is_synonymous = np.zeros((len(coding_codons), len(coding_codons))).astype(bool)
         for i, codon1 in enumerate(coding_codons):
@@ -2404,32 +2374,73 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                 else:
                     is_synonymous[i, j] = False
 
-        potentials = np.zeros((len(coding_codons), 2))
-        for i, codon in num_to_codon.items():
-            s_pot, ns_pot, _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
-            potentials[i, 0] = s_pot
-            potentials[i, 1] = ns_pot
+        # Populate necessary per-site info
+        progress.update('...')
+        stop_codons = set(constants.codons) - set(constants.coding_codons)
+        self.data['stop_coverage'] = self.data[list(stop_codons)].sum(axis=1)
+
+        if comparison == 'popular_consensus':
+            progress.update('This will take some time--enough time for a quick stretch')
+            self.data['popular_consensus'] = self.data.\
+                groupby('unique_pos_identifier')\
+                ['consensus'].\
+                transform(lambda x: x.value_counts().index[0])
+
+        comparison_array = self.data\
+            [comparison].\
+            map(codon_to_num).\
+            fillna(-1).\
+            values.\
+            astype(int)
 
         counts_array = self.data[constants.coding_codons].values.astype(int)
         coverage = self.data['coverage'].values.astype(int)
         stop_coverage = self.data['stop_coverage'].values.astype(int)
 
         self.progress.update("You're ungrateful if you think this is slow")
-        pNs, pSs = _calculate_pN_pS_ratio(
+        frac_nonsyns, frac_syns = _calculate_synonymous_fraction(
             counts_array,
             comparison_array,
             coverage,
             stop_coverage,
             codon_nums,
-            potentials,
             is_synonymous,
+            weight_includes_comparison=weight_includes_comparison,
         )
 
-        self.data[f'pN_{comparison}'] = pNs
-        self.data[f'pS_{comparison}'] = pSs
-        self.data[f'pNpS_{comparison}'] = self.data[f'pN_{comparison}']/self.data[f'pS_{comparison}']
-
         self.progress.end()
+        return np.array(frac_nonsyns), np.array(frac_syns)
+
+
+    def _get_per_position_potential(self, comparison):
+        """Returns array of len(self.data) that defines the num of nonsyn and syn on a per-site basis"""
+        coding_codons = sorted(constants.coding_codons)
+        stop_codons = list(set(constants.codons) - set(constants.coding_codons))
+
+        syn_lookup, nonsyn_lookup = {}, {}
+        for null_codon in stop_codons + ['X']:
+            syn_lookup[null_codon], nonsyn_lookup[null_codon] = 0, 0
+
+        for codon in coding_codons:
+            syn_lookup[codon], nonsyn_lookup[codon], _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+
+        potentials = np.zeros((len(self.data), 2))
+        for i, comp in enumerate(self.data[comparison]):
+            potentials[i, 0] = syn_lookup[comp]
+            potentials[i, 1] = nonsyn_lookup[comp]
+
+        return potentials
+
+
+    def calc_per_site_pN_pS(self, comparison='reference', weight_includes_comparison=True):
+        pN_name, pS_name, pNpS_name = f"pN_{comparison}", f"pS_{comparison}", f"pNpS_{comparison}"
+
+        frac_nonsyns, frac_syns = self.calc_synonymous_fraction(comparison=comparison, weight_includes_comparison=weight_includes_comparison)
+        potentials = self._get_per_position_potential(comparison=comparison)
+
+        self.data[pN_name] = frac_nonsyns/potentials[:, 0]
+        self.data[pS_name] = frac_syns/potentials[:, 1]
+        self.data[pNpS_name] = self.data[pN_name]/self.data[pS_name]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
@@ -3063,16 +3074,17 @@ class VariabilityFixationIndex(object):
 
 
 @jit(nopython=True)
-def _calculate_pN_pS_ratio(counts_array, comparison_array, coverage, stop_coverage, codon_nums, potentials, is_synonymous):
-    pNs, pSs = [], []
+def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, stop_coverage, codon_nums,
+                                   is_synonymous, weight_includes_comparison=True):
+    num_nonsyns, num_syns = [], []
     for i in range(counts_array.shape[0]):
         comp = comparison_array[i] # The codon to be compared against
-        pN, pS = 0, 0
+        num_nonsyn, num_syn = 0, 0
 
         if comp < 0:
             # No sense talking about synonymity relative to a stop codon
-            pNs.append(np.nan)
-            pSs.append(np.nan)
+            num_nonsyns.append(np.nan)
+            num_syns.append(np.nan)
         else:
             for codon in codon_nums:
                 if codon == comp:
@@ -3081,26 +3093,28 @@ def _calculate_pN_pS_ratio(counts_array, comparison_array, coverage, stop_covera
                     continue
 
                 if is_synonymous[comp, codon]:
-                    pS += counts_array[i, codon]
+                    num_syn += counts_array[i, codon]
                 else:
-                    pN += counts_array[i, codon]
+                    num_nonsyn += counts_array[i, codon]
 
-            s_potential, ns_potential = potentials[comp, :]
-            cov = coverage[i] - stop_coverage[i] - counts_array[i, comp]
-
-            if pN == 0:
-                pNs.append(0)
+            if weight_includes_comparison:
+                cov = coverage[i] - stop_coverage[i] - counts_array[i, comp]
             else:
-                pN = pN / cov / ns_potential
-                pNs.append(pN)
+                cov = coverage[i] - stop_coverage[i]
 
-            if pS == 0:
-                pSs.append(0)
+            if num_nonsyn == 0:
+                num_nonsyns.append(0)
             else:
-                pS = pS / cov / s_potential
-                pSs.append(pS)
+                num_nonsyn = num_nonsyn / cov
+                num_nonsyns.append(num_nonsyn)
 
-    return pNs, pSs
+            if num_syn == 0:
+                num_syns.append(0)
+            else:
+                num_syn = num_syn / cov
+                num_syns.append(num_syn)
+
+    return num_nonsyns, num_syns
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
