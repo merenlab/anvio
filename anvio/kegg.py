@@ -1195,10 +1195,12 @@ class KeggRunHMMs(KeggContext):
                                   "Anvi'o will fail now :( Please contact a developer about this error to "
                                   "get this mess fixed. ")
             # if hit is above the bitscore threshold, we will keep it
-            if self.ko_dict[knum]['score_type'] == 'domain' and hmm_hit['domain_bit_score'] >= self.ko_dict[knum]['threshold']:
-                keep = True
-            elif self.ko_dict[knum]['score_type'] == 'full' and hmm_hit['bit_score'] >= self.ko_dict[knum]['threshold']:
-                keep = True
+            if self.ko_dict[knum]['score_type'] == 'domain':
+                if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                    keep = True
+            elif self.ko_dict[knum]['score_type'] == 'full':
+                if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                    keep = True
             else:
                 raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
                                   f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
