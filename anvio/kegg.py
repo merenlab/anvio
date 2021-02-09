@@ -1186,53 +1186,64 @@ class KeggRunHMMs(KeggContext):
         counter = 0
         for hmm_hit in hits_dict.values():
             knum = hmm_hit['gene_name']
+            keep = False
 
-            self.functions_dict[counter] = {
-                'gene_callers_id': hmm_hit['gene_callers_id'],
-                'source': 'KOfam',
-                'accession': knum,
-                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
-                'e_value': hmm_hit['e_value'],
-            }
-
-            # add associated KEGG module information to database
-            mods = self.kegg_modules_db.get_modules_for_knum(knum)
-            names = self.kegg_modules_db.get_module_names_for_knum(knum)
-            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
-
-            if mods:
-                mod_annotation = "!!!".join(mods)
-                mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
-                mod_name_annotation = ""
-
-                for mod in mods:
-                    if mod_name_annotation:
-                        mod_name_annotation += "!!!" + names[mod]
-                    else:
-                        mod_name_annotation = names[mod]
             if knum not in self.ko_dict:
                 raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
                                   f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
                                   "not know how to distinguish strong hits from weak ones for this KO. "
                                   "Anvi'o will fail now :( Please contact a developer about this error to "
                                   "get this mess fixed. ")
+            # if hit is above the bitscore threshold, we will keep it
+            if self.ko_dict[knum]['score_type'] == 'domain' and hmm_hit['domain_bit_score'] >= self.ko_dict[knum]['threshold']:
+                keep = True
+            elif self.ko_dict[knum]['score_type'] == 'full' and hmm_hit['bit_score'] >= self.ko_dict[knum]['threshold']:
+                keep = True
+            else:
+                raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
+                                  f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
 
-                self.kegg_module_names_dict[counter] = {
+            if keep or self.keep_all_hits:
+                self.functions_dict[counter] = {
                     'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Module',
-                    'accession': mod_annotation,
-                    'function': mod_name_annotation,
-                    'e_value': None,
-                }
-                self.kegg_module_classes_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Class',
-                    'accession': mod_annotation,
-                    'function': mod_class_annotation,
-                    'e_value': None,
+                    'source': 'KOfam',
+                    'accession': knum,
+                    'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
+                    'e_value': hmm_hit['e_value'],
                 }
 
-            counter += 1
+                # add associated KEGG module information to database
+                mods = self.kegg_modules_db.get_modules_for_knum(knum)
+                names = self.kegg_modules_db.get_module_names_for_knum(knum)
+                classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+
+                if mods:
+                    mod_annotation = "!!!".join(mods)
+                    mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
+                    mod_name_annotation = ""
+
+                    for mod in mods:
+                        if mod_name_annotation:
+                            mod_name_annotation += "!!!" + names[mod]
+                        else:
+                            mod_name_annotation = names[mod]
+
+                    self.kegg_module_names_dict[counter] = {
+                        'gene_callers_id': hmm_hit['gene_callers_id'],
+                        'source': 'KEGG_Module',
+                        'accession': mod_annotation,
+                        'function': mod_name_annotation,
+                        'e_value': None,
+                    }
+                    self.kegg_module_classes_dict[counter] = {
+                        'gene_callers_id': hmm_hit['gene_callers_id'],
+                        'source': 'KEGG_Class',
+                        'accession': mod_annotation,
+                        'function': mod_class_annotation,
+                        'e_value': None,
+                    }
+
+                counter += 1
 
 
     def store_annotations_in_db(self):
