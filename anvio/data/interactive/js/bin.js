@@ -809,6 +809,8 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
     let nodes_for_inversion = [] 
+    var outer_ring_size = parseFloat($('#outer-ring-height').val());
+    var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
         
     for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
@@ -851,7 +853,17 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
             pie.setAttribute('stroke-opacity', inverse_fill_opacity);
         } else {
-            drawPhylogramRectangle() // TODO put this together 
+           let rect =  drawPhylogramRectangle('bin',
+                'bin_background_' + idx,
+                total_radius + outer_ring_margin + outer_ring_size,
+                p.xy['y'],
+                p.size,
+                outer_ring_size,
+                inverse_color,
+                inverse_fill_opacity,
+                true);
+            rect.setAttribute('vector-effect', 'non-scaling-stroke');
+            rect.setAttribute('stroke-opacity', inverse_fill_opacity);
         }
 
     })
