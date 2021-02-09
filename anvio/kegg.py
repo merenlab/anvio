@@ -1210,6 +1210,12 @@ class KeggRunHMMs(KeggContext):
                         mod_name_annotation += "!!!" + names[mod]
                     else:
                         mod_name_annotation = names[mod]
+            if knum not in self.ko_dict:
+                raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
+                                  f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
+                                  "not know how to distinguish strong hits from weak ones for this KO. "
+                                  "Anvi'o will fail now :( Please contact a developer about this error to "
+                                  "get this mess fixed. ")
 
                 self.kegg_module_names_dict[counter] = {
                     'gene_callers_id': hmm_hit['gene_callers_id'],
