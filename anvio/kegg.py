@@ -1180,6 +1180,8 @@ class KeggRunHMMs(KeggContext):
         The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
         """
 
+        total_num_hits = len(hits_dict.values())
+        self.progress.new("Parsing KOfam hits", progress_total_items=total_num_hits)
         self.functions_dict = {}
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
@@ -1189,7 +1191,10 @@ class KeggRunHMMs(KeggContext):
             knum = hmm_hit['gene_name']
             keep = False
 
+            self.progress.update("Removing weak hits for %s [%d of %d]" % (knum, self.progress.progress_current_item + 1, total_num_hits))
+
             if knum not in self.ko_dict:
+                self.progress.reset()
                 raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
                                   f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
                                   "not know how to distinguish strong hits from weak ones for this KO. "
@@ -1203,6 +1208,7 @@ class KeggRunHMMs(KeggContext):
                 if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
                     keep = True
             else:
+                self.progress.reset()
                 raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
                                   f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
 
@@ -1250,6 +1256,10 @@ class KeggRunHMMs(KeggContext):
             else:
                 num_hits_removed += 1
 
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
         self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
         self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
 
