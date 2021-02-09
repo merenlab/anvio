@@ -54,21 +54,21 @@ class HMMERStandardOutput(object):
         | ...           ...         ...    ...     ...  ...    ...   ...           ...
         | 2896  Voltage_CLC  PF00654.19    320       1    !  210.9  29.1  1.700000e-66
         | 2897         YkuD  PF03734.13     30       1    !   48.2   0.2  8.400000e-17
-        | 
+        |
         |           i-evalue  hmm_start  hmm_stop hmm_bounds  ali_start  ali_stop  \
         | 0     6.600000e-22          1       237         [.          4       243
         | 1     1.700000e-07          1        95         [.          4        92
         | ...            ...        ...       ...        ...        ...       ...
         | 2896  7.800000e-64          3       352         ..         61       390
         | 2897  3.800000e-14          2       146         .]        327       459
-        | 
+        |
         |      ali_bounds  env_start  env_stop env_bounds  mean_post_prob  \
         | 0            ..          4       254         ..            0.74
         | 1            ..          4       148         ..            0.72
         | ...         ...        ...       ...        ...             ...
         | 2896         ..         59       392         ..            0.94
         | 2897         ..        326       459         ..            0.78
-        | 
+        |
         |       match_state_align              comparison_align             sequence_align
         | 0     vvtGggGFlGrrivkeLlrl...  +v+Gg+G++G++ v +L++ ...  LVLGGAGYIGSHAVDQLISK...
         | 1     vvtGggGFlGrrivkeLlrl...  ++ Gg+GFlG++i k L+++...  IIFGGSGFLGQQIAKILVQR...
