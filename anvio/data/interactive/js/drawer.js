@@ -113,7 +113,6 @@ Drawer.prototype.draw = function() {
     bins.MigrateCollection();
     bins.RebuildIntersections();
     bins.RedrawLineColors();
-    $('#invert_shade_for_bins')[0].checked ? bins.DrawInvertedNodes() : null // TODO make this less wonky 
 
     createBin('tree_bin', 'bin');
 
