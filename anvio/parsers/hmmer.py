@@ -731,7 +731,7 @@ class HMMERTableOutput(Parser):
                 entry_id += 1
                 annotations_dict[entry_id] = entry
 
-        self.run.info("Number of weak hits removed", num_hits_removed)
+        self.run.info("Number of weak hits removed by HMMER parser", num_hits_removed)
         self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
 
 
