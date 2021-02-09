@@ -654,10 +654,8 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('kullback_leibler_divergence_normalized', float),
                 ('pN_consensus', float),
                 ('pS_consensus', float),
-                ('pNpS_consensus', float),
                 ('pN_reference', float),
                 ('pS_reference', float),
-                ('pNpS_reference', float),
             ],
             'SSMs': [
             ],
@@ -2433,14 +2431,13 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def calc_per_site_pN_pS(self, comparison='reference', weight_includes_comparison=True):
-        pN_name, pS_name, pNpS_name = f"pN_{comparison}", f"pS_{comparison}", f"pNpS_{comparison}"
+        pN_name, pS_name = f"pN_{comparison}", f"pS_{comparison}"
 
         frac_nonsyns, frac_syns = self.calc_synonymous_fraction(comparison=comparison, weight_includes_comparison=weight_includes_comparison)
         potentials = self._get_per_position_potential(comparison=comparison)
 
         self.data[pN_name] = frac_nonsyns/potentials[:, 0]
         self.data[pS_name] = frac_syns/potentials[:, 1]
-        self.data[pNpS_name] = self.data[pN_name]/self.data[pS_name]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
