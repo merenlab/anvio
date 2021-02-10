@@ -2347,7 +2347,7 @@ class TRNASeqDataset(object):
         (deletions at the 5' end of the trimmed sequence could be confused with nontemplated
         nucleotides). These nonspecific sequences are also in other normalized sequences, so the
         deletions would be identified in those as well. Since nonspecific sequences tend to be
-        shorter, it may not be possible to confidentally assign deletions in the middle of these
+        shorter, it may not be possible to confidently assign deletions in the middle of these
         sequences."""
         start_time = time.time()
         self.progress.new("Finding sequences with modification-induced deletions")
@@ -2485,6 +2485,9 @@ class TRNASeqDataset(object):
         del_dict = {}
         for seq_string in seq_strings_without_dels:
             del_dict_for_seq = self.introduce_dels(seq_string, sub_positions)
+            # The same sequence with deletions may sometimes be generated from different
+            # template normalized sequences. Favor the more 5' deletion configuration in the
+            # source modified sequence in case of redundancy.
             for seq_string_with_del, del_positions in del_dict_for_seq.items():
                 try:
                     prior_del_pos_sum = sum(del_dict[seq_string_with_del])
@@ -2521,6 +2524,9 @@ class TRNASeqDataset(object):
         # Find all the ways deletions can be introduced into the sequence given the
         # parameterization.
         del_pos_configs = set()
+        # Deletions of different sizes can be situated at each substitution site. Deletions may be
+        # found at one or multiple sites, if multiple substititutions are present. Call each
+        # deletion site a "locus".
         for num_del_sites in range(1, self.max_distinct_dels + 1):
             for del_locus_config in combinations(sub_positions, num_del_sites):
                 for del_range_config in product(*[self.del_ranges for _ in range(num_del_sites)]):
