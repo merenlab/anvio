@@ -2524,6 +2524,7 @@ class TRNASeqDataset(object):
         # Find all the ways deletions can be introduced into the sequence given the
         # parameterization.
         del_pos_configs = set()
+        seq_string_length = len(seq_string)
         # Deletions of different sizes can be situated at each substitution site. Deletions may be
         # found at one or multiple sites, if multiple substititutions are present. Call each
         # deletion site a "locus".
@@ -2535,7 +2536,8 @@ class TRNASeqDataset(object):
                         sub_pos = del_locus_config[i]
                         for del_pos_relative_to_sub in del_range:
                             del_pos = sub_pos + del_pos_relative_to_sub
-                            if del_pos >= 0:
+                            # Deletions positions must be within the template sequence.
+                            if seq_string_length > del_pos >= 0:
                                 del_positions.add(del_pos)
                     if del_positions:
                         del_positions = sorted(del_positions)
