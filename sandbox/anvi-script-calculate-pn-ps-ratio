@@ -166,7 +166,7 @@ def calculate_pN_pS_ratio(args):
             gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
 
             codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-            syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+            syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
 
             # we are adding the number of codons in this gene that were not included
             # in the calculations above as they included ambiguous nucleotides
