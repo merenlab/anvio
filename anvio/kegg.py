@@ -1264,6 +1264,35 @@ class KeggRunHMMs(KeggContext):
         self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
 
 
+    def update_dict_for_genes_with_missing_annotations(self, gcids_list, hits_dict):
+        """This function adds functional annotations for genes with missing hits to the dictionary.
+
+        The reason this is necessary is that the bitscore thresholds can be too stringent, causing
+        us to miss legitimate annotations. To find these annotations, we adopt the following heuristic:
+            For every gene without a KOfam annotation, we examine all the hits with an e-value below X
+            and a bitscore above Y% of the threshold. If those hits are all to a unique KO profile,
+            then we annotate the gene call with that KO.
+
+        For reasons that are hopefully obvious, this function must be called after parse_kofam_hits(),
+        which establishes the self.functions_dict attribute.
+
+        PARAMETERS
+        ===========
+        gcids_list : list
+            The list of gene caller ids in the contigs database. We will use this to figure out which
+            genes have no annotations
+        hits_dict : dictionary
+            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        """
+
+        # for each gene call, check for annotation in self.functions_dict
+        for gcid in gcids_list:
+            pass
+        # if no annotation, get all hits for gene caller id from hits_dict
+        # get set of hits that fit parameters
+        # if unique KO, add annotation with best e-value to self.functions_dict
+
+
     def store_annotations_in_db(self):
         """Takes the dictionary of function annotations (already parsed, if necessary) and puts them in the DB.
 
