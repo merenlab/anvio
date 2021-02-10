@@ -1185,6 +1185,7 @@ class KeggRunHMMs(KeggContext):
         self.functions_dict = {}
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
+        self.gcids_to_hits_dict = {}
         counter = 0
         num_hits_removed = 0
         for hmm_hit in hits_dict.values():
@@ -1213,13 +1214,20 @@ class KeggRunHMMs(KeggContext):
                                   f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
 
             if keep or self.keep_all_hits:
+                gcid = hmm_hit['gene_callers_id']
                 self.functions_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'gene_callers_id': gcid,
                     'source': 'KOfam',
                     'accession': knum,
                     'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
                     'e_value': hmm_hit['e_value'],
                 }
+                # later, we will need to know if a particular gene call has hits or not. So here we are just saving for each
+                # gene caller id the keys for its corresponding hits in the function dictionary.
+                if gcid not in self.gcids_to_hits_dict:
+                    self.gcids_to_hits_dict[gcid] = [counter]
+                else:
+                    self.gcids_to_hits_dict[gcid].append(counter)
 
                 # add associated KEGG module information to database
                 mods = self.kegg_modules_db.get_modules_for_knum(knum)
