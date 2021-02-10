@@ -2351,10 +2351,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def calc_synonymous_fraction(self, comparison='reference', weight_includes_comparison=True):
-        """Compute the fraction of synonymous and non-synonymous substitutions
-
-        FIXME
-        """
+        """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
         self.progress.new('Calculating per-site synonymous fraction')
         progress.update('...')
@@ -2378,7 +2375,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.data['stop_coverage'] = self.data[list(stop_codons)].sum(axis=1)
 
         if comparison == 'popular_consensus':
-            progress.update('This will take some time--enough time for a quick stretch')
+            progress.update('Finding popular consensus; You have time for a quick stretch')
             self.data['popular_consensus'] = self.data.\
                 groupby('unique_pos_identifier')\
                 ['consensus'].\
