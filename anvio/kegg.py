@@ -1189,11 +1189,18 @@ class KeggRunHMMs(KeggContext):
         self.gcids_to_functions_dict = {}
         counter = 0
         num_hits_removed = 0
-        for hmm_hit in hits_dict.values():
+        for hit_key,hmm_hit in hits_dict.items():
             knum = hmm_hit['gene_name']
+            gcid = hmm_hit['gene_callers_id']
             keep = False
 
             self.progress.update("Removing weak hits for %s [%d of %d]" % (knum, self.progress.progress_current_item + 1, total_num_hits))
+
+            # later, we will need to quickly access the hits for each gene call. So we map gcids to the keys in the raw hits dictionary
+            if gcid not in self.gcids_to_hits_dict:
+                self.gcids_to_hits_dict[gcid] = [hit_key]
+            else:
+                self.gcids_to_hits_dict[gcid].append(hit_key)
 
             if knum not in self.ko_dict:
                 self.progress.reset()
@@ -1215,7 +1222,6 @@ class KeggRunHMMs(KeggContext):
                                   f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
 
             if keep or self.keep_all_hits:
-                gcid = hmm_hit['gene_callers_id']
                 self.functions_dict[counter] = {
                     'gene_callers_id': gcid,
                     'source': 'KOfam',
