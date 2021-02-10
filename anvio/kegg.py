@@ -1295,8 +1295,9 @@ class KeggRunHMMs(KeggContext):
 
         # for each gene call, check for annotation in self.functions_dict
         for gcid in gcids_list:
-            pass
-        # if no annotation, get all hits for gene caller id from hits_dict
+            if gcid not in self.gcids_to_hits_dict:
+                # if no annotation, get all hits for gene caller id from hits_dict
+                
         # get set of hits that fit parameters
         # if unique KO, add annotation with best e-value to self.functions_dict
 
