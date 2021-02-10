@@ -95,7 +95,6 @@ def calculate_pN_pS_ratio(args):
         contigs_db=contigs_db,
         grouping='gene',
         comparison=args.comparison,
-        weight_includes_comparison=True,
     )
 
     groupby_vars = args.groupby.split(',')

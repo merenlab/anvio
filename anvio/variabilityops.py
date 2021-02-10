@@ -2350,7 +2350,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
 
 
-    def calc_synonymous_fraction(self, comparison='reference', weight_includes_comparison=True):
+    def calc_synonymous_fraction(self, comparison='reference'):
         """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
         self.progress.new('Calculating per-site synonymous fraction')
@@ -2371,9 +2371,6 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # Populate necessary per-site info
         progress.update('...')
-        stop_codons = set(constants.codons) - set(constants.coding_codons)
-        self.data['stop_coverage'] = self.data[list(stop_codons)].sum(axis=1)
-
         if comparison == 'popular_consensus':
             progress.update('Finding popular consensus; You have time for a quick stretch')
             self.data['popular_consensus'] = self.data.\
@@ -2390,17 +2387,14 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         counts_array = self.data[constants.coding_codons].values.astype(int)
         coverage = self.data['coverage'].values.astype(int)
-        stop_coverage = self.data['stop_coverage'].values.astype(int)
 
         self.progress.update("You're ungrateful if you think this is slow")
         frac_syns, frac_nonsyns = _calculate_synonymous_fraction(
             counts_array,
             comparison_array,
             coverage,
-            stop_coverage,
             codon_nums,
             is_synonymous,
-            weight_includes_comparison=weight_includes_comparison,
         )
 
         self.progress.end()
@@ -2445,13 +2439,13 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', weight_includes_comparison=True):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference'):
         if contigs_db is None:
             contigs_db = self
 
         pN_name, pS_name = f"pN_{grouping}_{comparison}", f"pS_{grouping}_{comparison}"
 
-        frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison, weight_includes_comparison=weight_includes_comparison)
+        frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison)
 
         if grouping == 'site':
             potentials = self._get_per_position_potential(comparison=comparison)
@@ -3095,8 +3089,7 @@ class VariabilityFixationIndex(object):
 
 
 @jit(nopython=True)
-def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, stop_coverage, codon_nums,
-                                   is_synonymous, weight_includes_comparison=True):
+def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, codon_nums, is_synonymous):
     num_nonsyns, num_syns = [], []
     for i in range(counts_array.shape[0]):
         comp = comparison_array[i] # The codon to be compared against
@@ -3118,10 +3111,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, sto
                 else:
                     num_nonsyn += counts_array[i, codon]
 
-            if weight_includes_comparison:
-                cov = coverage[i] - stop_coverage[i] - counts_array[i, comp]
-            else:
-                cov = coverage[i] - stop_coverage[i]
+            cov = coverage[i]
 
             if num_nonsyn == 0:
                 num_nonsyns.append(0)
