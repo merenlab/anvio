@@ -51,6 +51,7 @@ class GenomeDescriptions(object):
         self.genomes = {}
         self.internal_genomes_dict = None
         self.external_genomes_dict = None
+        self.initialized = False
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.just_do_it = A('just_do_it')
@@ -132,6 +133,9 @@ class GenomeDescriptions(object):
 
 
     def list_HMM_info_and_quit(self):
+        if not self.initialized:
+            self.load_genomes_descriptions()
+
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
         # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
@@ -148,14 +152,14 @@ class GenomeDescriptions(object):
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
-            for source in hmm_sources_in_all_genomes:
+            for source in sorted(hmm_sources_in_all_genomes):
                 s = hmm_sources_info[source]
                 self.run.info_single('%s [type: %s] [num genes: %d]' % (source, s['search_type'], len(s['genes'])))
             sys.exit(0)
 
         if self.list_available_gene_names:
             self.run.warning(None, 'GENES IN HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
-            for source in hmm_sources_in_all_genomes:
+            for source in sorted(hmm_sources_in_all_genomes):
                 s = hmm_sources_info[source]
                 gene_names = ', '.join(sorted([g.strip() for g in s['genes'].split(',')]))
                 self.run.info_single('%s [type: %s]: %s' % (source, s['search_type'], gene_names), nl_after = 2)
@@ -282,6 +286,9 @@ class GenomeDescriptions(object):
                 contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
                 for key in contigs_db.meta:
                     g[key] = contigs_db.meta[key]
+
+        # we are done hre.
+        self.initialized = True
 
         # make sure it is OK to go with self.genomes
         self.sanity_check()
@@ -540,11 +547,10 @@ class GenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.genomes is good to go"""
 
-        self.progress.new('Sanity checks')
-
         # depending on whether args requested such behavior.
-        self.progress.update("...")
         self.list_HMM_info_and_quit()
+
+        self.progress.new('Sanity checks')
 
         # make sure genes are called in every contigs db:
         self.progress.update("Checking gene calls ..")
