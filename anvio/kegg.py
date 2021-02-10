@@ -1320,6 +1320,8 @@ class KeggRunHMMs(KeggContext):
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
+        # we will need the gene caller ids later
+        all_gcids_in_contigs_db = contigs_db.genes_in_contigs_dict.keys()
 
         # safety check for previous annotations so that people don't overwrite those if they don't want to
         self.check_hash_in_contigs_db()
@@ -1355,6 +1357,7 @@ class KeggRunHMMs(KeggContext):
 
         # add functions and KEGG modules info to database
         self.parse_kofam_hits(search_results_dict)
+        self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict)
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
