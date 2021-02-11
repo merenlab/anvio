@@ -1390,6 +1390,7 @@ class KeggRunHMMs(KeggContext):
                         num_annotations_added += 1
 
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
+        self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
 
     def store_annotations_in_db(self):
