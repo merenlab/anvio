@@ -30,19 +30,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupR = parser.add_argument_group('REQUIRED INPUT', 'The stuff you need for this to work.')
-    groupO = parser.add_argument_group('OPTIONAL INPUT', "Optional params for a custom experience.")
-
     groupR.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupO.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db',
-                                                    {'help': "If you only want to annotate gene calls in a subset "
-                                                    "of sequences, you can provide a path to a profile database with "
-                                                    "this flag. In this case, you must also provide a collection "
-                                                    "name so that we know which sequenes to focus on.",
-                                                    'required': False}))
-    groupO.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name',
-                                                    {'help': "Name of collection you want to focus on. Provide this "
-                                                    "(along with a profile db) if you only want to annotate gene calls "
-                                                    "in a certain set of bins."}))
+    
+    groupO = parser.add_argument_group('OPTIONAL INPUT', "Optional params for a custom experience.")
     groupO.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupO.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
