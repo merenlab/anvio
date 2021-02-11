@@ -1450,8 +1450,8 @@ class KeggRunHMMs(KeggContext):
         search_results_dict = parser.get_search_results()
 
         # add functions and KEGG modules info to database
-        self.parse_kofam_hits(search_results_dict)
-        self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=counter)
+        next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
+        self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
