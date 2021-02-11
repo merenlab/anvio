@@ -1315,9 +1315,12 @@ class KeggRunHMMs(KeggContext):
         """
 
         num_annotations_added = 0
+        total_num_genes = len(hits_dict.values())
+        self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
 
         # for each gene call, check for annotation in self.functions_dict
         for gcid in gcids_list:
+            self.progress.update("Adding back decent hits for gene %s [%d of %d]" % (gcid, self.progress.progress_current_item + 1, total_num_genes))
             if gcid not in self.gcids_to_functions_dict:
                 decent_hit_kos = set()
                 best_e_value = 100 # just an arbitrary positive value that will be larger than any evalue
@@ -1388,7 +1391,10 @@ class KeggRunHMMs(KeggContext):
 
                         next_key += 1
                         num_annotations_added += 1
-
+            self.progress.increment()
+            self.progress.reset()
+            
+        self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
