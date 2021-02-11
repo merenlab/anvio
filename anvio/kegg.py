@@ -1079,6 +1079,8 @@ class KeggRunHMMs(KeggContext):
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
+        self.heuristic_e_value = A('heuristic_e_value')
+        self.heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1296,6 +1298,8 @@ class KeggRunHMMs(KeggContext):
             and a bitscore above Y% of the threshold. If those hits are all to a unique KO profile,
             then we annotate the gene call with that KO.
 
+            X is self.heuristic_e_value, Y is self.heuristic_bitscore_fraction
+
         For reasons that are hopefully obvious, this function must be called after parse_kofam_hits(),
         which establishes the self.functions_dict attribute.
 
@@ -1330,7 +1334,7 @@ class KeggRunHMMs(KeggContext):
                             hit_bitscore = hits_dict[hit_key]['domain_bit_score']
                         elif self.ko_dict[knum]['score_type'] == 'full':
                             hit_bitscore = hits_dict[hit_key]['bit_score']
-                        if hits_dict[hit_key]['e_value'] <= 1.0e-5 and hit_bitscore > (.50 * ko_threshold):
+                        if hits_dict[hit_key]['e_value'] <= self.heuristic_e_value and hit_bitscore > (self.heuristic_bitscore_fraction * ko_threshold):
                             decent_hit_kos.add(knum)
                             # keep track of hit with lowest e-value we've seen so far
                             if hits_dict[hit_key]['e_value'] <= best_e_value:
