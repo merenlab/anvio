@@ -827,10 +827,6 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
         if(idx == [nodes_for_inversion.length - 1]){
             return // first node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
         }
-        // if (idx == [nodes_for_inversion.length - 1]) { // hardcode final node's border values. 
-        //     p1 = node[0]
-        //     p2 = node[9]
-        // }
         else {
             [p1, p2] = p.GetBorderNodes();
         }
@@ -855,13 +851,12 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
             pie.setAttribute('stroke-opacity', inverse_fill_opacity);
         } else {
             var height = p.xy['y'] + p.size / 2 - p.xy['y'] + p.size / 2;
-            console.log(p.xy.y , p.size)
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
-                total_radius + outer_ring_margin + outer_ring_size,
-                p.xy['y'],
+                p.xy.x, //total_radius + outer_ring_margin + outer_ring_size,
+                p.xy.y,
                 p.size, 
-                outer_ring_size,
+                1300, // outer_ring_size,
                 inverse_color,
                 inverse_fill_opacity,
                 true
