@@ -1177,7 +1177,13 @@ class KeggRunHMMs(KeggContext):
         PARAMETERS
         ===========
         hits_dict : dictionary
-        The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+
+        RETURNS
+        ========
+        counter : int
+            The number of functions added to self.functions_dict. Useful for downstream functions that want to
+            add to this dictionary, since it is the next available integer key.
         """
 
         total_num_hits = len(hits_dict.values())
@@ -1278,6 +1284,7 @@ class KeggRunHMMs(KeggContext):
         self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
         self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
 
+        return counter
 
     def update_dict_for_genes_with_missing_annotations(self, gcids_list, hits_dict):
         """This function adds functional annotations for genes with missing hits to the dictionary.
