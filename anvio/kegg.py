@@ -1226,7 +1226,7 @@ class KeggRunHMMs(KeggContext):
                     'gene_callers_id': gcid,
                     'source': 'KOfam',
                     'accession': knum,
-                    'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
+                    'function': self.get_annotation_from_ko_dict(knum, ok_if_missing_from_dict=True),
                     'e_value': hmm_hit['e_value'],
                 }
                 # later, we will need to know if a particular gene call has hits or not. So here we are just saving for each
@@ -1253,14 +1253,14 @@ class KeggRunHMMs(KeggContext):
                             mod_name_annotation = names[mod]
 
                     self.kegg_module_names_dict[counter] = {
-                        'gene_callers_id': hmm_hit['gene_callers_id'],
+                        'gene_callers_id': gcid,
                         'source': 'KEGG_Module',
                         'accession': mod_annotation,
                         'function': mod_name_annotation,
                         'e_value': None,
                     }
                     self.kegg_module_classes_dict[counter] = {
-                        'gene_callers_id': hmm_hit['gene_callers_id'],
+                        'gene_callers_id': gcid,
                         'source': 'KEGG_Class',
                         'accession': mod_annotation,
                         'function': mod_class_annotation,
