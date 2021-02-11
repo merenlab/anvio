@@ -856,7 +856,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
                 p.xy.x, //total_radius + outer_ring_margin + outer_ring_size,
                 p.xy.y,
                 p.size, 
-                1300, // outer_ring_size,
+                1500, // outer_ring_size,
                 inverse_color,
                 inverse_fill_opacity,
                 true
