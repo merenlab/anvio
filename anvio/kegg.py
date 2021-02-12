@@ -1315,6 +1315,14 @@ class KeggRunHMMs(KeggContext):
             The next integer key that is available for adding functions to self.functions_dict
         """
 
+        self.run.warning("Anvi'o will now re-visit genes without KOfam annotations to see if potentially valid "
+                         "functional annotations were missed. These genes will be annotated with a KO only if "
+                         f"all KOfam hits to this gene with e-value <= {self.heuristic_e_value} and bitscore > "
+                         f"({self.heuristic_bitscore_fraction} * KEGG threshold) are hits to the same KO. Just "
+                         "so you know what is going on here. If this sounds like A Very Bad Idea to you, then please "
+                         "feel free to turn off this behavior with the flag --skip-relaxation-heuristic or to change "
+                         "the e-value/bitscore parameters (see the help page for more info).")
+
         num_annotations_added = 0
         total_num_genes = len(hits_dict.values())
         self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
