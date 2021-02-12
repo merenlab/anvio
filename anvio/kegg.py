@@ -1079,6 +1079,7 @@ class KeggRunHMMs(KeggContext):
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
+        self.skip_relaxation_heuristic = True if A('skip_relaxation_heuristic') else False
         self.heuristic_e_value = A('heuristic_e_value')
         self.heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.ko_dict = None # should be set up by setup_ko_dict()
@@ -1393,7 +1394,7 @@ class KeggRunHMMs(KeggContext):
                         num_annotations_added += 1
             self.progress.increment()
             self.progress.reset()
-            
+
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
@@ -1463,7 +1464,8 @@ class KeggRunHMMs(KeggContext):
 
         # add functions and KEGG modules info to database
         next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
-        self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
+        if not self.skip_relaxation_heuristic:
+            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file

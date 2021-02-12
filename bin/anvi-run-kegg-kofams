@@ -48,6 +48,7 @@ if __name__ == '__main__':
                                                 " > Y * KEGG's threshold (where Y is a float from 0 to 1). If those hits "
                                                 "are all to a unique KO profile, annotate the gene with that KO. Long story "
                                                 "over, you can set X and Y using the parameters below.")
+    groupH.add_argument(*anvio.A('skip-relaxation-heuristic'), **anvio.K('skip-relaxation-heuristic'))
     groupH.add_argument(*anvio.A('heuristic-e-value'), **anvio.K('heuristic-e-value'))
     groupH.add_argument(*anvio.A('heuristic-bitscore-fraction'), **anvio.K('heuristic-bitscore-fraction'))
 
