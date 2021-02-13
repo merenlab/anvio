@@ -54,3 +54,20 @@ Usually, this program parses out weak HMM hits and keeps only those that are abo
 {{ codestart }}
 anvi-run-kegg-kofams -c CONTIGS.db --keep-all-hits
 {{ codestop }}
+
+### Modifying the bitscore relaxation heuristic
+As described above, this program does its best to avoid missing valid annotations by relaxing the bitscore threshold for genes without any annotations. For such a gene, hits with e-value <= X and bitscore > (Y * KEGG threshold) that are all hits to the same KOfam profile are used to annotate the gene with that KO.
+
+**Skip this step entirely**
+If you don't want any previously-eliminated hits to be used for annotation, you can skip this heuristic by using the flag `--skip-relaxation-heuristic`. Then, _only_ hits with bitscores above the KEGG-provided threshold for a given KO will be used for annotation.
+
+{{ codestart }}
+anvi-run-kegg-kofams -c CONTIGS.db --skip-relaxation-heuristic
+{{ codestop }}
+
+**Modify the heuristic parameters**
+If our default values are too stringent or not stringent enough for your tastes, you can change them! The e-value threshold (X, default: 1e-05) can be set using `-E` or `--heuristic-e-value` and the bitscore fraction (Y, default: 0.50) can be set using `-H` or `--heuristic-bitscore-fraction`. Like so:
+
+{{ codestart }}
+anvi-run-kegg-kofams -c CONTIGS.db -E 1e-15 -H 0.90
+{{ codestop }}
