@@ -1059,7 +1059,7 @@ class KeggSetup(KeggContext):
             self.setup_kegg_snapshot()
 
 
-class KeggRunHMMs(KeggContext):
+class RunKOfams(KeggContext):
     """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
     Parameters

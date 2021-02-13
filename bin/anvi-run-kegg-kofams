@@ -21,7 +21,7 @@ __description__ = "Run KOfam HMMs on an anvi'o contigs database"
 
 @time_program
 def main(args):
-    p = kegg.KeggRunHMMs(args)
+    p = kegg.RunKOfams(args)
     p.process_kofam_hmms()
 
 if __name__ == '__main__':
