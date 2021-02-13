@@ -1079,9 +1079,9 @@ class KeggRunHMMs(KeggContext):
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
-        self.skip_relaxation_heuristic = True if A('skip_relaxation_heuristic') else False
-        self.heuristic_e_value = A('heuristic_e_value')
-        self.heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
+        self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
+        self.bitscore_heuristic_e_value = A('heuristic_e_value')
+        self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1299,7 +1299,7 @@ class KeggRunHMMs(KeggContext):
             and a bitscore above Y% of the threshold. If those hits are all to a unique KO profile,
             then we annotate the gene call with that KO.
 
-            X is self.heuristic_e_value, Y is self.heuristic_bitscore_fraction
+            X is self.bitscore_heuristic_e_value, Y is self.bitscore_heuristic_bitscore_fraction
 
         For reasons that are hopefully obvious, this function must be called after parse_kofam_hits(),
         which establishes the self.functions_dict attribute.
@@ -1317,10 +1317,10 @@ class KeggRunHMMs(KeggContext):
 
         self.run.warning("Anvi'o will now re-visit genes without KOfam annotations to see if potentially valid "
                          "functional annotations were missed. These genes will be annotated with a KO only if "
-                         f"all KOfam hits to this gene with e-value <= {self.heuristic_e_value} and bitscore > "
-                         f"({self.heuristic_bitscore_fraction} * KEGG threshold) are hits to the same KO. Just "
+                         f"all KOfam hits to this gene with e-value <= {self.bitscore_heuristic_e_value} and bitscore > "
+                         f"({self.bitscore_heuristic_bitscore_fraction} * KEGG threshold) are hits to the same KO. Just "
                          "so you know what is going on here. If this sounds like A Very Bad Idea to you, then please "
-                         "feel free to turn off this behavior with the flag --skip-relaxation-heuristic or to change "
+                         "feel free to turn off this behavior with the flag --skip-bitscore-heuristic or to change "
                          "the e-value/bitscore parameters (see the help page for more info).")
 
         num_annotations_added = 0
@@ -1346,7 +1346,7 @@ class KeggRunHMMs(KeggContext):
                             hit_bitscore = hits_dict[hit_key]['domain_bit_score']
                         elif self.ko_dict[knum]['score_type'] == 'full':
                             hit_bitscore = hits_dict[hit_key]['bit_score']
-                        if hits_dict[hit_key]['e_value'] <= self.heuristic_e_value and hit_bitscore > (self.heuristic_bitscore_fraction * ko_threshold):
+                        if hits_dict[hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
                             decent_hit_kos.add(knum)
                             # keep track of hit with lowest e-value we've seen so far
                             if hits_dict[hit_key]['e_value'] <= best_e_value:
@@ -1472,7 +1472,7 @@ class KeggRunHMMs(KeggContext):
 
         # add functions and KEGG modules info to database
         next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
-        if not self.skip_relaxation_heuristic:
+        if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
         self.store_annotations_in_db()
 

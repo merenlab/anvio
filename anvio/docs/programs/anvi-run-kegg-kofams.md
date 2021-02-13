@@ -59,10 +59,10 @@ anvi-run-kegg-kofams -c CONTIGS.db --keep-all-hits
 As described above, this program does its best to avoid missing valid annotations by relaxing the bitscore threshold for genes without any annotations. For such a gene, hits with e-value <= X and bitscore > (Y * KEGG threshold) that are all hits to the same KOfam profile are used to annotate the gene with that KO.
 
 **Skip this step entirely**
-If you don't want any previously-eliminated hits to be used for annotation, you can skip this heuristic by using the flag `--skip-relaxation-heuristic`. Then, _only_ hits with bitscores above the KEGG-provided threshold for a given KO will be used for annotation.
+If you don't want any previously-eliminated hits to be used for annotation, you can skip this heuristic by using the flag `--skip-bitscore-heuristic`. Then, _only_ hits with bitscores above the KEGG-provided threshold for a given KO will be used for annotation.
 
 {{ codestart }}
-anvi-run-kegg-kofams -c CONTIGS.db --skip-relaxation-heuristic
+anvi-run-kegg-kofams -c CONTIGS.db --skip-bitscore-heuristic
 {{ codestop }}
 
 **Modify the heuristic parameters**

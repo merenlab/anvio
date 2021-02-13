@@ -2660,8 +2660,8 @@ D = {
                      "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
                      "It should be a fraction between 0 and 1 (inclusive)."}
                 ),
-    'skip-relaxation-heuristic':(
-            ['--skip-relaxation-heuristic'],
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
             {'default': False,
              'action': 'store_true',
              'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
