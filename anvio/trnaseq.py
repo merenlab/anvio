@@ -2469,23 +2469,33 @@ class TRNASeqDataset(object):
             deletions. The second element is a tuple of the indices of these deletions in the input
             sequence.
         """
-        # Make template sequences with different nucleotides at substitution sites. Only consider
-        # the observed substitution configurations.
-        seq_strings_without_dels = set()
         longest_norm_seq_string = mod_seq.norm_seqs_without_dels[0].seq_string
         mod_seq_length = len(longest_norm_seq_string)
         sub_positions = mod_seq.sub_positions
-        for norm_seq in mod_seq.norm_seqs_without_dels:
+        # Record the configurations of nucleotides at the substitution positions found in the
+        # normalized sequences comprising the modified sequence. For normalized sequences shorter
+        # than the modified sequence (shorter than the longest normalized sequence) that are lacking
+        # certain substitution positions nearer the 5' end of the sequence, use the nucleotides at
+        # the missing substitution positions from the representative longest normalized sequence.
+        longest_norm_seq_sub_nts = tuple([longest_norm_seq_string[sub_pos] for sub_pos in sub_positions])
+        sub_nt_config_set = set([longest_norm_seq_sub_nts])
+        for norm_seq in mod_seq.norm_seqs_without_dels[1: ]:
             norm_seq_string = norm_seq.seq_string
             norm_seq_start_in_mod_seq = mod_seq_length - len(norm_seq_string)
-            altered_seq_string = longest_norm_seq_string
-            for sub_pos in sub_positions:
+            norm_seq_sub_nts = []
+            for sub_num, sub_pos in enumerate(sub_positions):
                 if sub_pos < norm_seq_start_in_mod_seq:
-                    # This normalized sequence is shorter, lacking the substitution position.
-                    continue
-                nt = norm_seq.seq_string[sub_pos - norm_seq_start_in_mod_seq]
-                altered_seq_string = altered_seq_string[: sub_pos] + nt + altered_seq_string[sub_pos + 1: ]
-            seq_strings_without_dels.add(altered_seq_string)
+                    norm_seq_sub_nts.append(longest_norm_seq_sub_nts[sub_num])
+                else:
+                    norm_seq_sub_nts.append(norm_seq_string[sub_pos - norm_seq_start_in_mod_seq])
+            sub_nt_config_set.add(tuple(norm_seq_sub_nts))
+        # Make template sequences (without deletions) from the substitution configurations.
+        seq_strings_without_dels = []
+        for sub_nt_config in sub_nt_config_set:
+            altered_seq_string = longest_norm_seq_string
+            for sub_nt, sub_pos in zip(sub_nt_config, sub_positions):
+                altered_seq_string = altered_seq_string[: sub_pos] + sub_nt + altered_seq_string[sub_pos + 1: ]
+            seq_strings_without_dels.append(altered_seq_string)
 
         # Introduce deletions into each template sequence, potentially producing a number of new
         # sequences.
