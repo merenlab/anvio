@@ -1058,7 +1058,7 @@ class KeggSetup(KeggContext):
             self.setup_kegg_snapshot()
 
 
-class KeggRunHMMs(KeggContext):
+class RunKOfams(KeggContext):
     """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
     Parameters
@@ -1078,6 +1078,9 @@ class KeggRunHMMs(KeggContext):
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
+        self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
+        self.bitscore_heuristic_e_value = A('heuristic_e_value')
+        self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1163,11 +1166,276 @@ class KeggRunHMMs(KeggContext):
         return self.ko_dict[knum]['definition']
 
 
+    def parse_kofam_hits(self, hits_dict):
+        """This function applies bitscore thresholding (if requested) to establish the self.functions_dict
+        which can then be used to store annotations in the contigs DB.
+
+        If self.keep_all_hits is True, all hits will be added to the self.functions_dict regardless of bitscore
+        threshold.
+
+        Note that the input hits_dict contains bitscores, but the self.functions_dict does not (because the DB
+        tables do not have a column for it, at least at the time of writing this).
+
+        PARAMETERS
+        ===========
+        hits_dict : dictionary
+            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+
+        RETURNS
+        ========
+        counter : int
+            The number of functions added to self.functions_dict. Useful for downstream functions that want to
+            add to this dictionary, since it is the next available integer key.
+        """
+
+        total_num_hits = len(hits_dict.values())
+        self.progress.new("Parsing KOfam hits", progress_total_items=total_num_hits)
+        self.functions_dict = {}
+        self.kegg_module_names_dict = {}
+        self.kegg_module_classes_dict = {}
+        self.gcids_to_hits_dict = {}
+        self.gcids_to_functions_dict = {}
+        counter = 0
+        num_hits_removed = 0
+        for hit_key,hmm_hit in hits_dict.items():
+            knum = hmm_hit['gene_name']
+            gcid = hmm_hit['gene_callers_id']
+            keep = False
+
+            self.progress.update("Removing weak hits for %s [%d of %d]" % (knum, self.progress.progress_current_item + 1, total_num_hits))
+
+            # later, we will need to quickly access the hits for each gene call. So we map gcids to the keys in the raw hits dictionary
+            if gcid not in self.gcids_to_hits_dict:
+                self.gcids_to_hits_dict[gcid] = [hit_key]
+            else:
+                self.gcids_to_hits_dict[gcid].append(hit_key)
+
+            if knum not in self.ko_dict:
+                self.progress.reset()
+                raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
+                                  f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
+                                  "not know how to distinguish strong hits from weak ones for this KO. "
+                                  "Anvi'o will fail now :( Please contact a developer about this error to "
+                                  "get this mess fixed. ")
+            # if hit is above the bitscore threshold, we will keep it
+            if self.ko_dict[knum]['score_type'] == 'domain':
+                if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                    keep = True
+            elif self.ko_dict[knum]['score_type'] == 'full':
+                if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                    keep = True
+            else:
+                self.progress.reset()
+                raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
+                                  f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
+
+            if keep or self.keep_all_hits:
+                self.functions_dict[counter] = {
+                    'gene_callers_id': gcid,
+                    'source': 'KOfam',
+                    'accession': knum,
+                    'function': self.get_annotation_from_ko_dict(knum, ok_if_missing_from_dict=True),
+                    'e_value': hmm_hit['e_value'],
+                }
+                # later, we will need to know if a particular gene call has hits or not. So here we are just saving for each
+                # gene caller id the keys for its corresponding hits in the function dictionary.
+                if gcid not in self.gcids_to_functions_dict:
+                    self.gcids_to_functions_dict[gcid] = [counter]
+                else:
+                    self.gcids_to_functions_dict[gcid].append(counter)
+
+                # add associated KEGG module information to database
+                mods = self.kegg_modules_db.get_modules_for_knum(knum)
+                names = self.kegg_modules_db.get_module_names_for_knum(knum)
+                classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+
+                if mods:
+                    mod_annotation = "!!!".join(mods)
+                    mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
+                    mod_name_annotation = ""
+
+                    for mod in mods:
+                        if mod_name_annotation:
+                            mod_name_annotation += "!!!" + names[mod]
+                        else:
+                            mod_name_annotation = names[mod]
+
+                    self.kegg_module_names_dict[counter] = {
+                        'gene_callers_id': gcid,
+                        'source': 'KEGG_Module',
+                        'accession': mod_annotation,
+                        'function': mod_name_annotation,
+                        'e_value': None,
+                    }
+                    self.kegg_module_classes_dict[counter] = {
+                        'gene_callers_id': gcid,
+                        'source': 'KEGG_Class',
+                        'accession': mod_annotation,
+                        'function': mod_class_annotation,
+                        'e_value': None,
+                    }
+
+                counter += 1
+            else:
+                num_hits_removed += 1
+
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
+        self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
+        self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
+
+        return counter
+
+
+    def update_dict_for_genes_with_missing_annotations(self, gcids_list, hits_dict, next_key):
+        """This function adds functional annotations for genes with missing hits to the dictionary.
+
+        The reason this is necessary is that the bitscore thresholds can be too stringent, causing
+        us to miss legitimate annotations. To find these annotations, we adopt the following heuristic:
+            For every gene without a KOfam annotation, we examine all the hits with an e-value below X
+            and a bitscore above Y% of the threshold. If those hits are all to a unique KO profile,
+            then we annotate the gene call with that KO.
+
+            X is self.bitscore_heuristic_e_value, Y is self.bitscore_heuristic_bitscore_fraction
+
+        For reasons that are hopefully obvious, this function must be called after parse_kofam_hits(),
+        which establishes the self.functions_dict attribute.
+
+        PARAMETERS
+        ===========
+        gcids_list : list
+            The list of gene caller ids in the contigs database. We will use this to figure out which
+            genes have no annotations
+        hits_dict : dictionary
+            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        next_key : int
+            The next integer key that is available for adding functions to self.functions_dict
+        """
+
+        self.run.warning("Anvi'o will now re-visit genes without KOfam annotations to see if potentially valid "
+                         "functional annotations were missed. These genes will be annotated with a KO only if "
+                         f"all KOfam hits to this gene with e-value <= {self.bitscore_heuristic_e_value} and bitscore > "
+                         f"({self.bitscore_heuristic_bitscore_fraction} * KEGG threshold) are hits to the same KO. Just "
+                         "so you know what is going on here. If this sounds like A Very Bad Idea to you, then please "
+                         "feel free to turn off this behavior with the flag --skip-bitscore-heuristic or to change "
+                         "the e-value/bitscore parameters (see the help page for more info).")
+
+        num_annotations_added = 0
+        total_num_genes = len(hits_dict.values())
+        self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
+
+        # for each gene call, check for annotation in self.functions_dict
+        for gcid in gcids_list:
+            self.progress.update("Adding back decent hits for gene %s [%d of %d]" % (gcid, self.progress.progress_current_item + 1, total_num_genes))
+            if gcid not in self.gcids_to_functions_dict:
+                decent_hit_kos = set()
+                best_e_value = 100 # just an arbitrary positive value that will be larger than any evalue
+                best_hit_key = None
+
+                # if no annotation, get all hits for gene caller id from hits_dict
+                if gcid in self.gcids_to_hits_dict:
+                    for hit_key in self.gcids_to_hits_dict[gcid]:
+                        knum = hits_dict[hit_key]['gene_name']
+                        ko_threshold = float(self.ko_dict[knum]['threshold'])
+
+                        # get set of hits that fit specified heuristic parameters
+                        if self.ko_dict[knum]['score_type'] == 'domain':
+                            hit_bitscore = hits_dict[hit_key]['domain_bit_score']
+                        elif self.ko_dict[knum]['score_type'] == 'full':
+                            hit_bitscore = hits_dict[hit_key]['bit_score']
+                        if hits_dict[hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
+                            decent_hit_kos.add(knum)
+                            # keep track of hit with lowest e-value we've seen so far
+                            if hits_dict[hit_key]['e_value'] <= best_e_value:
+                                best_e_value = hits_dict[hit_key]['e_value']
+                                best_hit_key = hit_key
+
+                    # if unique KO, add annotation with best e-value to self.functions_dict
+                    if len(decent_hit_kos) == 1:
+                        best_knum = hits_dict[best_hit_key]['gene_name']
+                        ## TODO: WE NEED A GENERIC FUNCTION FOR THIS SINCE IT IS SAME AS ABOVE
+                        self.functions_dict[next_key] = {
+                            'gene_callers_id': gcid,
+                            'source': 'KOfam',
+                            'accession': best_knum,
+                            'function': self.get_annotation_from_ko_dict(best_knum, ok_if_missing_from_dict=True),
+                            'e_value': hits_dict[best_hit_key]['e_value'],
+                        }
+                        # we may never access this downstream but let's add to it to be consistent
+                        self.gcids_to_functions_dict[gcid] = [next_key]
+
+                        # add associated KEGG module information to database
+                        mods = self.kegg_modules_db.get_modules_for_knum(best_knum)
+                        names = self.kegg_modules_db.get_module_names_for_knum(best_knum)
+                        classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(best_knum)
+
+                        if mods:
+                            mod_annotation = "!!!".join(mods)
+                            mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
+                            mod_name_annotation = ""
+
+                            for mod in mods:
+                                if mod_name_annotation:
+                                    mod_name_annotation += "!!!" + names[mod]
+                                else:
+                                    mod_name_annotation = names[mod]
+
+                            self.kegg_module_names_dict[next_key] = {
+                                'gene_callers_id': gcid,
+                                'source': 'KEGG_Module',
+                                'accession': mod_annotation,
+                                'function': mod_name_annotation,
+                                'e_value': None,
+                            }
+                            self.kegg_module_classes_dict[next_key] = {
+                                'gene_callers_id': gcid,
+                                'source': 'KEGG_Class',
+                                'accession': mod_annotation,
+                                'function': mod_class_annotation,
+                                'e_value': None,
+                            }
+
+                        next_key += 1
+                        num_annotations_added += 1
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
+        self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
+        self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
+
+
+    def store_annotations_in_db(self):
+        """Takes the dictionary of function annotations (already parsed, if necessary) and puts them in the DB.
+
+        Should be called after the function that parses the HMM hits and creates self.functions_dict :) which is
+        parse_kofam_hits()
+        """
+
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+
+        if self.functions_dict:
+            gene_function_calls_table.create(self.functions_dict)
+            if self.kegg_module_names_dict:
+                gene_function_calls_table.create(self.kegg_module_names_dict)
+            if self.kegg_module_classes_dict:
+                gene_function_calls_table.create(self.kegg_module_classes_dict)
+        else:
+            self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
+                             "but still adding KOfam as a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+
+
     def process_kofam_hmms(self):
         """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB."""
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
+        # we will need the gene caller ids later
+        all_gcids_in_contigs_db = contigs_db.genes_in_contigs_dict.keys()
 
         # safety check for previous annotations so that people don't overwrite those if they don't want to
         self.check_hash_in_contigs_db()
@@ -1182,9 +1450,6 @@ class KeggRunHMMs(KeggContext):
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
-        # get an instance of gene functions table
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
                              "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
@@ -1196,84 +1461,24 @@ class KeggRunHMMs(KeggContext):
                 self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary "
                                  "directories located at %s and %s. Please be responsible for cleaning up this directory yourself "
                                  "after you are finished debugging :)" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-        if self.keep_all_hits:
-            run.info_single("All HMM hits will be kept regardless of score.")
-            if self.log_bitscores:
-                search_results_dict, bitscore_dict = parser.get_search_results(return_bitscore_dict=True)
-            else:
-                search_results_dict = parser.get_search_results()
-        else:
-            if self.log_bitscores:
-                search_results_dict, bitscore_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict, return_bitscore_dict=True)
-            else:
-                search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+        search_results_dict = parser.get_search_results()
 
         # add functions and KEGG modules info to database
-        functions_dict = {}
-        kegg_module_names_dict = {}
-        kegg_module_classes_dict = {}
-        counter = 0
-        for hmm_hit in search_results_dict.values():
-            knum = hmm_hit['gene_name']
-            functions_dict[counter] = {
-                'gene_callers_id': hmm_hit['gene_callers_id'],
-                'source': 'KOfam',
-                'accession': knum,
-                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
-                'e_value': hmm_hit['e_value'],
-            }
-
-            # add associated KEGG module information to database
-            mods = self.kegg_modules_db.get_modules_for_knum(knum)
-            names = self.kegg_modules_db.get_module_names_for_knum(knum)
-            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
-
-            if mods:
-                mod_annotation = "!!!".join(mods)
-                mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
-                mod_name_annotation = ""
-
-                for mod in mods:
-                    if mod_name_annotation:
-                        mod_name_annotation += "!!!" + names[mod]
-                    else:
-                        mod_name_annotation = names[mod]
-
-                kegg_module_names_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Module',
-                    'accession': mod_annotation,
-                    'function': mod_name_annotation,
-                    'e_value': None,
-                }
-                kegg_module_classes_dict[counter] = {
-                    'gene_callers_id': hmm_hit['gene_callers_id'],
-                    'source': 'KEGG_Class',
-                    'accession': mod_annotation,
-                    'function': mod_class_annotation,
-                    'e_value': None,
-                }
-
-            counter += 1
-
-        if functions_dict:
-            gene_function_calls_table.create(functions_dict)
-            gene_function_calls_table.create(kegg_module_names_dict)
-            gene_function_calls_table.create(kegg_module_classes_dict)
-        else:
-            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as "
-                             "a functional source.")
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+        next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
+        if not self.skip_bitscore_heuristic:
+            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
+        self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:
             self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
-            anvio.utils.store_dict_as_TAB_delimited_file(bitscore_dict, self.bitscore_log_file, key_header='entry_id')
+            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, key_header='entry_id')
             self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         # mark contigs db with hash of modules.db content for version tracking

@@ -2643,6 +2643,30 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'heuristic-e-value': (
+            ['-E', '--heuristic-e-value'],
+            {'default': 1.0e-5,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with e-values <= this number. (This is X.)"}
+                ),
+    'heuristic-bitscore-fraction': (
+            ['-H', '--heuristic-bitscore-fraction'],
+            {'default': 0.50,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
+                     "It should be a fraction between 0 and 1 (inclusive)."}
+                ),
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
+                     "threshold, use this flag to skip the mumbo-jumbo we do here to relax those thresholds. "}
+                ),
     'include-metadata': (
             ['--include-metadata'],
             {'default': False,
