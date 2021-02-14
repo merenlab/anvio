@@ -1150,7 +1150,7 @@ class TRNASeqDataset(object):
                     del_ranges.append(range(del_start, del_stop))
         self.del_ranges = tuple(del_ranges)
 
-        self.run.info("Input FASTA file", self.input_fasta_path)
+        self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
 
         if not self.skip_fasta_check and not self.load_checkpoint:
             self.progress.new("Checking input FASTA defline format")
@@ -1160,7 +1160,7 @@ class TRNASeqDataset(object):
 
             self.progress.end()
 
-            self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green')
+            self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green', nl_after=1)
 
 
     def create_trnaseq_db(self):
@@ -1169,7 +1169,8 @@ class TRNASeqDataset(object):
                        'treatment': self.treatment,
                        'description': self.descrip if self.descrip else '_No description is provided_',
                        'INDELs_profiled': not self.skip_INDEL_profiling}
-        dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=False).create(meta_values)
+        dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True).create(meta_values)
+        self.run.info("New tRNA-seq database", self.trnaseq_db_path, nl_after=1)
 
 
     def get_summary_line(self, label, value, is_time_value=False, padding=68):
@@ -1379,7 +1380,7 @@ class TRNASeqDataset(object):
         self.progress.end()
 
         self.run.info("Reads processed", queued_read_count)
-        self.run.info("Unique sequences processed", queued_seq_count)
+        self.run.info("Unique sequences processed", queued_seq_count, nl_after=1)
 
 
     def trim_trna_ends(self):
@@ -1804,9 +1805,15 @@ class TRNASeqDataset(object):
 
         for intermed_file_label, intermed_file_path in overwrote_dict.items():
             # Example: "Overwrote profile checkpoint intermediate file of unique tRNA"
-            self.run.info("%s\"checkpoint_name\" checkpoint intermediate file of %s"
-                          % ("Overwrote " if intermed_file_path else "", intermed_file_label),
-                          intermed_file_path)
+            if intermed_file_path:
+                self.run.info("Overwrote \"%s\" checkpoint intermediate file of %s"
+                              % (checkpoint_name, intermed_file_label),
+                              intermed_file_path)
+            else:
+                self.run.info_single("Wrote \"%s\" checkpoint intermediate file of %s"
+                                     % (checkpoint_name, intermed_file_label),
+                                     mc='green', cut_after=200)
+        print()
 
 
     def load_checkpoint_files(self, checkpoint_name):
@@ -2845,9 +2852,8 @@ class TRNASeqDataset(object):
                                               norm_seqs_with_profile_changed_by_del_analysis))
                 f.write(self.get_summary_line("Normalized tRNA sequences with truncated profile recovered by deletion analysis",
                                               norm_seqs_with_trunc_profile_recovered_by_del_analysis))
-            f.write(self.get_summary_line("Normalized sequences with deletions", norm_seqs_with_dels))
-            f.write(self.get_summary_line("Potentially modified sequences", mod_trna_seqs))
-            f.write(self.get_summary_line("Potentially modified sequences with deletions", mod_seqs_with_dels))
+
+        self.run.info("Summary", self.analysis_summary_path)
 
 
     def write_sequences_table(self):
