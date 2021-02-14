@@ -2360,80 +2360,128 @@ class TRNASeqDataset(object):
         self.progress.new("Finding sequences with modification-induced deletions")
         self.progress.update("...")
 
-        # Since query and target sequences must be the same length, grouping targets by length in
-        # the dictionary speeds lookup.
-        norm_trna_seq_target_dict = defaultdict(dict)
-        for norm_trna_seq in [norm_trna_seq for norm_trna_seq in self.norm_trna_seqs if not norm_trna_seq.mod_seqs]:
-            norm_trna_seq_len = len(norm_trna_seq.seq_string)
-            norm_trna_seq_target_dict[norm_trna_seq_len][norm_trna_seq.seq_string] = norm_trna_seq
-
-        norm_trunc_seq_target_dict = defaultdict(dict)
-        for norm_trunc_seq_index, norm_trunc_seq in enumerate(self.norm_trunc_seqs):
-            norm_trunc_seq_len = len(norm_trunc_seq.seq_string)
-            norm_trunc_seq_target_dict[norm_trunc_seq_len][norm_trunc_seq.seq_string] = (norm_trunc_seq, norm_trunc_seq_index)
-
-        query_dict = defaultdict(list)
+        represent_names = []
+        reversed_seq_strings = []
+        extras = []
         for mod_seq in self.mod_trna_seqs:
+            mod_seq_child_index = 0
             for seq_string_with_del, del_config in self.get_seqs_with_dels(mod_seq):
-                query_dict[seq_string_with_del].append((del_config, mod_seq))
+                represent_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
+                reversed_seq_strings.append(seq_string_with_del[::-1])
+                # Modified sequences with an in silico deletion are distinguished by 0 as the first element of the tuple.
+                extras.append((0, del_config, mod_seq))
+                mod_seq_child_index += 1
+
+        for norm_trunc_seq_index, norm_trunc_seq in enumerate(self.norm_trunc_seqs):
+            represent_names.append(norm_trunc_seq.represent_name)
+            reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
+            # Normalized sequences with a truncated profile are distinguished by 1 as the first element of the tuple.
+            extras.append((1, norm_trunc_seq_index, norm_trunc_seq))
+        for norm_trna_seq_index, norm_trna_seq in enumerate(self.norm_trna_seqs):
+            if not norm_trna_seq.mod_seqs:
+                represent_names.append(norm_trna_seq.represent_name)
+                reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
+                # Normalized tRNA sequences are distinguished by 2 as the first element of the tuple.
+                extras.append((2, norm_trna_seq_index, norm_trna_seq))
+        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras, progress=self.progress).prefix_dereplicate()
+
+        norm_trunc_seq_mod_seqs_dict = defaultdict(list)
+        norm_trna_seq_mod_seqs_dict = defaultdict(list)
+        for cluster in clusters:
+            if len(cluster.member_seqs) == 1:
+                continue
+
+            # It is impossible for there to be multiple normalized tRNA sequences in the cluster. It
+            # is impossible for there to be multiple normalized truncated sequences in the cluster.
+            # It is also impossible for there to be a normalized tRNA sequence and a shorter
+            # truncated sequence in the cluster. These are guaranteed by prior dereplication steps.
+            # There can be a normalized tRNA sequence and a longer truncated sequence in the
+            # cluster. If these are subsequences of a modified sequence with deletions, then they
+            # are both added to the modified sequence. There can be multiple modified sequences with
+            # in silico deletions in the cluster that are subsequences of each other. A normalized
+            # sequence in the cluster must be the same length or shorter than only one modified
+            # sequence with deletions, as we do not currently permit nonspecific assignment of
+            # normalized sequences to multiple modified sequences.
+            norm_trunc_seq_index = None
+            norm_trunc_seq = None
+            norm_trna_seq_index = None
+            norm_trna_seq = None
+            norm_seq_length = None
+            member_index = -1
+            for reversed_seq_string, member_extra in zip(cluster.member_seqs, cluster.member_extras):
+                member_index += 1
+                cluster_mod_seq_indices = []
+                source = member_extra[0]
+                if source == 0:
+                    # Considering a modified sequence with a deletion. If the normalized sequence
+                    # has already been found in the cluster, and it is longer than the present
+                    # sequence, then stop processing the cluster.
+                    if norm_seq_length:
+                        if len(reversed_seq_string) < norm_seq_length:
+                            break
+                    # Considering a modified sequence with a deletion.
+                    cluster_mod_seq_indices.append(member_index)
+                else:
+                    # Considering the normalized sequence in the cluster.
+                    if len(cluster_mod_seq_indices) > 1:
+                        # There are multiple longer or equally long modified sequences with
+                        # deletions in the cluster, so disregard the normalized sequence as
+                        # nonspecific.
+                        break
+                    else:
+                        if source == 1:
+                            norm_trunc_seq_index = member_extra[1]
+                            norm_trunc_seq = member_extra[2]
+                        elif source == 2:
+                            norm_trna_seq_index = member_extra[1]
+                            norm_trna_seq = member_extra[2]
+                        else:
+                            # REMOVE
+                            raise ConfigError()
+                        norm_seq_length = len(reversed_seq_string)
+
+            if not cluster_mod_seq_indices:
+                continue
+            if not norm_trunc_seq and not norm_trna_seq:
+                continue
+
+            _, del_config, mod_seq = cluster.member_extras[cluster_mod_seq_indices[0]]
+            if norm_trunc_seq:
+                norm_trunc_seq_mod_seqs_dict[norm_seq_index].append((del_config, mod_seq))
+            if norm_trna_seq:
+                norm_trna_seq_mod_seqs_dict[norm_seq_index].append((del_config, mod_seq))
 
         norm_trunc_seq_indices_to_remove = []
         trimmed_trunc_seq_represent_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in self.trimmed_trunc_seqs]
         trimmed_trunc_seq_indices_to_remove = []
         uniq_trunc_seq_represent_names = [uniq_trunc_seq.represent_name for uniq_trunc_seq in self.uniq_trunc_seqs]
         uniq_trunc_seq_indices_to_remove = []
-        for query_seq_string, mod_seq_items in query_dict.items():
-            if len(mod_seq_items) > 1:
-                # Ignore sequences that can be produced by introducing deletions in different
-                # modified sequences.
+        for norm_trunc_seq_index, mod_seq_info in norm_trunc_seq_mod_seqs_dict.items():
+            if len(mod_seq_info) > 1:
+                # The normalized truncated sequence is nonspecific to a modified sequence with
+                # deletions.
                 continue
 
-            # Search the normalized tRNA sequence targets.
-            inner_dict = norm_trna_seq_target_dict[len(query_seq_string)]
-            norm_trna_seq = None
-            try:
-                norm_trna_seq = inner_dict[query_seq_string]
-            except KeyError:
-                pass
-            if norm_trna_seq:
-                for del_config, mod_seq in mod_seq_items:
-                    norm_trna_seq.mod_seqs.append(mod_seq)
-                    # The feature profiles of many of the constituent trimmed (and unique) sequences
-                    # are also changed, but since these may be shorter sequences not containing the
-                    # deletion or nonspecific sequences found in other normalized sequences, the
-                    # sequences are not marked as having changed profiles.
-                    norm_trna_seq.profile_changed_by_del_analysis = True
-                    # Normalized sequences with potential modification-induced deletions are added
-                    # to uninitialized modified sequences.
-                    mod_seq.norm_seqs_with_dels.append(norm_trna_seq)
-                    mod_seq.del_configs.append(del_config)
-                continue # The target pools are non-overlapping, so avoid searching the next one
+            norm_trunc_seq = self.norm_trunc_seqs[norm_trunc_seq_index]
+            norm_trunc_seq_indices_to_remove.append(norm_trunc_seq_index)
+            for trimmed_trunc_seq in norm_trunc_seq.trimmed_seqs:
+                trimmed_trunc_seq_indices_to_remove.append(trimmed_trunc_seq_represent_names.index(trimmed_trunc_seq.represent_name))
+                for uniq_trunc_seq in trimmed_trunc_seq.uniq_seqs:
+                    uniq_trunc_seq_indices_to_remove.append(uniq_trunc_seq_represent_names.index(uniq_trunc_seq.represent_name))
 
-            # Search the normalized truncated sequence targets.
-            inner_dict = norm_trunc_seq_target_dict[len(query_seq_string)]
-            norm_trunc_seq = None
-            try:
-                norm_trunc_seq, norm_trunc_seq_index = inner_dict[query_seq_string]
-            except KeyError:
-                pass
-            if norm_trunc_seq:
-                norm_trunc_seq_indices_to_remove.append(norm_trunc_seq_index)
-                for trimmed_trunc_seq in norm_trunc_seq.trimmed_seqs:
-                    trimmed_trunc_seq_indices_to_remove.append(trimmed_trunc_seq_represent_names.index(trimmed_trunc_seq.represent_name))
-                    for uniq_trunc_seq in trimmed_trunc_seq.uniq_seqs:
-                        uniq_trunc_seq_indices_to_remove.append(uniq_trunc_seq_represent_names.index(uniq_trunc_seq.represent_name))
-                for del_config, mod_seq in mod_seq_items:
-                    norm_trunc_seq.trunc_profile_recovered_by_del_analysis = True
-                    norm_trunc_seq.mod_seqs.append(mod_seq)
-                    mod_seq.norm_seqs_with_dels.append(norm_trunc_seq)
-                    mod_seq.del_configs.append(del_config)
+            del_config, mod_seq = mod_seq_info
+            norm_trunc_seq.trunc_profile_recovered_by_del_analysis = True
+            norm_trunc_seq.mod_seqs.append(mod_seq)
+            # Normalized sequences with potential modification-induced deletions are added to
+            # uninitialized modified sequences.
+            mod_seq.norm_seqs_with_dels.append(norm_trunc_seq)
+            mod_seq.del_configs.append(del_config)
 
         for norm_trunc_seq_index in sorted(norm_trunc_seq_indices_to_remove, reverse=True):
             self.norm_trna_seqs.append(self.norm_trunc_seqs.pop(norm_trunc_seq_index))
-        # The recovery of trimmed and unique sequences here is a little confusing, for the reason
-        # mentioned in the docstring. The normalized sequence is identified as having deletions (and
-        # thus being tRNA), but constituent trimmed sequences may be nonspecific, and therefore
-        # found in other normalized sequences that are not recovered by this method.
+        # The normalized sequence is identified as having deletions (and thus being tRNA), but
+        # constituent trimmed sequences may be nonspecific, and therefore found in other normalized
+        # truncated sequences that are not recovered by this method.
         for trimmed_trunc_seq_index in sorted(set(trimmed_trunc_seq_indices_to_remove), reverse=True):
             trimmed_seq = self.trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
             trimmed_seq.trunc_profile_recovered_by_del_analysis = True
@@ -2442,6 +2490,25 @@ class TRNASeqDataset(object):
             uniq_seq = self.uniq_trunc_seqs.pop(uniq_trunc_seq_index)
             uniq_seq.trunc_profile_recovered_by_del_analysis = True
             self.uniq_trna_seqs.append(uniq_seq)
+
+        norm_trna_seq_indices_to_remove = []
+        for norm_seq_index, mod_seq_info in norm_trna_seq_mod_seqs_dict.items():
+            if len(mod_seq_info) > 1:
+                # The normalized tRNA sequence is nonspecific to a modified sequence with deletions.
+                continue
+
+            norm_trna_seq = self.norm_trna_seqs[norm_seq_index]
+            norm_trna_seq_indices_to_remove.append(norm_seq_index)
+
+            del_config, mod_seq = mod_seq_info
+            norm_trna_seq.mod_seqs.append(mod_seq)
+            # The feature profiles of many of the constituent trimmed (and unique) sequences are
+            # also changed, but since these may be shorter sequences not containing the deletion or
+            # nonspecific sequences found in other normalized sequences, the sequences are not
+            # marked as having changed profiles.
+            norm_trna_seq.profile_changed_by_del_analysis = True
+            mod_seq.norm_seqs_with_dels.append(norm_trna_seq)
+            mod_seq.del_configs.append(del_config)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced deletions (min)",
