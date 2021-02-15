@@ -514,11 +514,7 @@ class Dereplicator:
                            for seq_string in self.seq_strings]
 
         if self.extras:
-            for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names,
-                                                                                                    self.seq_strings,
-                                                                                                    self.extras,
-                                                                                                    hashed_prefixes,
-                                                                                                    targets):
+            for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names, self.seq_strings, self.extras, hashed_prefixes, targets):
                 if prefix_hash not in kmer_dict:
                     continue
 
@@ -535,10 +531,7 @@ class Dereplicator:
                     query_as_target.hit_another_target = True
 
             clusters = []
-            for query_name, query_seq_string, query_extra_item, query_as_target in zip(self.names,
-                                                                                       self.seq_strings,
-                                                                                       self.extras,
-                                                                                       targets):
+            for query_name, query_seq_string, query_extra_item, query_as_target in zip(self.names, self.seq_strings, self.extras, targets):
                 if query_as_target.hit_another_target:
                     continue
 
@@ -554,10 +547,7 @@ class Dereplicator:
                         cluster.member_extras.append(item_for_different_query[2])
                 clusters.append(cluster)
         else:
-            for query_name, query_seq_string, prefix_hash, query_as_target in zip(self.names,
-                                                                                  self.seq_strings,
-                                                                                  hashed_prefixes,
-                                                                                  targets):
+            for query_name, query_seq_string, prefix_hash, query_as_target in zip(self.names, self.seq_strings, hashed_prefixes, targets):
                 if prefix_hash not in kmer_dict:
                     continue
 
