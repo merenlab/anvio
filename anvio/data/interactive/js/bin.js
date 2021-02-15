@@ -825,7 +825,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
         let p = node[0];
 
         if(idx == [nodes_for_inversion.length - 1]){
-            return // first node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
+            return // last node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
         }
         else {
             [p1, p2] = p.GetBorderNodes();
