@@ -952,7 +952,8 @@ class TRNASeqDataset(object):
                 'uniq_nontrna_seqs': get_out_dir_path("UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
                 'trimmed_trna_seqs': get_out_dir_path("TRIMMED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
                 'trimmed_trunc_seqs': get_out_dir_path("TRIMMED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl")
+                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
+                'norm_trunc_seqs': get_out_dir_path("NORMALIZED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl")
             },
             'fragment_mapping': {
                 'uniq_trna_seqs': get_out_dir_path("UNIQUE_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
@@ -960,7 +961,8 @@ class TRNASeqDataset(object):
                 'uniq_nontrna_seqs': get_out_dir_path("UNIQUE_NONTRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
                 'trimmed_trna_seqs': get_out_dir_path("TRIMMED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
                 'trimmed_trunc_seqs': get_out_dir_path("TRIMMED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
+                'norm_trna_seqs': get_out_dir_path("NORMALIZED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
+                'norm_trunc_seqs': get_out_dir_path("NORMALIZED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
             }
         }
         self.intermed_file_label_dict = {
@@ -969,7 +971,8 @@ class TRNASeqDataset(object):
             'uniq_nontrna_seqs': 'unique non-tRNA',
             'trimmed_trna_seqs': 'trimmed tRNA',
             'trimmed_trunc_seqs': 'trimmed sequences with a truncated feature profile',
-            'norm_trna_seqs': 'normalized tRNA'
+            'norm_trna_seqs': 'normalized tRNA',
+            'norm_trunc_seqs': 'normalized sequences with a truncated feature profile'
         }
 
         self.uniq_nontrna_seqs = []
