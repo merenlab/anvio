@@ -1197,7 +1197,8 @@ class TRNASeqDataset(object):
         fasta.close()
         self.read_count = read_count
 
-        clusters = Dereplicator(names, seqs, progress=self.progress).full_length_dereplicate()
+        self.progress.update("Dereplicating")
+        clusters = Dereplicator(names, seqs).full_length_dereplicate()
 
         uniq_reads = [UniqueSeq(cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names))
                       for cluster in clusters]
@@ -1398,10 +1399,8 @@ class TRNASeqDataset(object):
             for uniq_seq in self.uniq_trna_seqs
         ]
 
-        clusters = Dereplicator(represent_names,
-                                trimmed_seq_strings,
-                                extras=self.uniq_trna_seqs,
-                                progress=self.progress).full_length_dereplicate()
+        self.progress.update("Dereplicating identical sequences")
+        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=self.uniq_trna_seqs).full_length_dereplicate()
 
         trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
         self.trimmed_trna_seqs.extend(trimmed_seqs)
@@ -1427,10 +1426,7 @@ class TRNASeqDataset(object):
         trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
                                for uniq_seq in self.uniq_trunc_seqs]
 
-        clusters = Dereplicator(represent_names,
-                                trimmed_seq_strings,
-                                extras=self.uniq_trunc_seqs,
-                                progress=self.progress).full_length_dereplicate()
+        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=self.uniq_trunc_seqs).full_length_dereplicate()
 
         trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
         self.trimmed_trunc_seqs.extend(trimmed_seqs)
@@ -1459,10 +1455,7 @@ class TRNASeqDataset(object):
         represent_names = [trimmed_seq.represent_name for trimmed_seq in self.trimmed_trna_seqs]
         # Reverse sequence orientation to dereplicate from the 3' end.
         reversed_seq_strings = [trimmed_seq.seq_string[::-1] for trimmed_seq in self.trimmed_trna_seqs]
-        clusters = Dereplicator(represent_names,
-                                reversed_seq_strings,
-                                extras=self.trimmed_trna_seqs,
-                                progress=self.progress).prefix_dereplicate()
+        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=self.trimmed_trna_seqs).prefix_dereplicate()
 
         # Profiling may have found multiple sequences that would here be 3'-dereplicated as having
         # complete, but different, feature profiles. This can be caused by the "accommodation" of
@@ -1645,8 +1638,7 @@ class TRNASeqDataset(object):
         reversed_norm_trna_seq_strings = [norm_trna_seq.seq_string[::-1] for norm_trna_seq in self.norm_trna_seqs]
         clusters = Dereplicator(trimmed_trunc_seq_represent_names + norm_trna_seq_represent_names,
                                 reversed_trimmed_trunc_seq_strings + reversed_norm_trna_seq_strings,
-                                extras=self.trimmed_trunc_seqs + self.norm_trna_seqs,
-                                progress=self.progress).prefix_dereplicate()
+                                extras=self.trimmed_trunc_seqs + self.norm_trna_seqs).prefix_dereplicate()
 
         # Associate each truncated sequence with any normalized tRNA sequences that contain it as a
         # 3'-subsequence. Do not bother with the complex task of reconstructing a feature profile of
@@ -1853,7 +1845,7 @@ class TRNASeqDataset(object):
             represent_names.append(norm_seq.represent_name)
             reversed_seq_strings.append(norm_seq.seq_string[::-1])
             extras.append((-1, norm_seq))
-        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras, progress=self.progress).prefix_dereplicate()
+        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras).prefix_dereplicate()
 
         uniq_nontrna_seq_indices_to_remove = []
         uniq_seq_norm_seqs_dict = defaultdict(list)

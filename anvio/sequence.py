@@ -426,7 +426,7 @@ class Cluster:
 
 
 class Dereplicator:
-    def __init__(self, names, seq_strings, extras=None, num_threads=1, progress=None):
+    def __init__(self, names, seq_strings, extras=None, num_threads=1):
         """This class has methods to dereplicate input sequences in different ways.
 
         Parameters
@@ -442,8 +442,6 @@ class Dereplicator:
 
         num_threads : int, 1
             Threads available for multithreaded operations
-
-        progress : anvio.terminal.Progress object, None
         """
         if len(names) != len(seq_strings):
             raise ConfigError("Your Dereplicator input lists were not the same length. "
@@ -460,10 +458,6 @@ class Dereplicator:
         self.seq_strings = seq_strings
         self.extras = extras
         self.num_threads = num_threads
-        if not progress:
-            progress = terminal.Progress()
-            progress.new("Dereplicating")
-        self.progress = progress
 
 
     def full_length_dereplicate(self):
@@ -474,8 +468,6 @@ class Dereplicator:
         clusters : list
             List of Cluster objects for each dereplicated sequence
         """
-        self.progress.update("Dereplicating identical sequences")
-
         clusters = []
 
         if self.extras:
@@ -514,8 +506,6 @@ class Dereplicator:
         clusters : list
             List of Cluster objects
         """
-        self.progress.update("Prefix-dereplicating sequences")
-
         kmer_size = min(map(len, self.seq_strings))
 
         kmer_dict, targets = Kmerizer(self.names, self.seq_strings).get_prefix_target_dict(kmer_size)
