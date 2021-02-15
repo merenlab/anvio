@@ -2353,98 +2353,46 @@ class TRNASeqDataset(object):
         sequences."""
         start_time = time.time()
         self.progress.new("Finding sequences with modification-induced deletions")
-        self.progress.update("...")
 
-        represent_names = []
-        reversed_seq_strings = []
-        extras = []
+        self.progress.update("Generating modified sequences with in silico deletions")
+        mod_seq_represent_names = []
+        mod_seq_reversed_seq_strings = []
+        mod_seq_extras = []
         for mod_seq in self.mod_trna_seqs:
+            mod_seq_children_represent_names = []
+            mod_seq_children_reversed_seq_strings = []
+            mod_seq_children_extras = []
             mod_seq_child_index = 0
             for seq_string_with_del, del_config in self.get_seqs_with_dels(mod_seq):
-                represent_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
-                reversed_seq_strings.append(seq_string_with_del[::-1])
+                mod_seq_children_represent_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
+                mod_seq_children_reversed_seq_strings.append(seq_string_with_del[::-1])
                 # Modified sequences with an in silico deletion are distinguished by 0 as the first element of the tuple.
-                extras.append((0, del_config, mod_seq))
+                mod_seq_children_extras.append((0, del_config, mod_seq))
                 mod_seq_child_index += 1
+            mod_seq_represent_names.append(mod_seq_children_represent_names)
+            mod_seq_reversed_seq_strings.append(mod_seq_children_reversed_seq_strings)
+            mod_seq_extras.append(mod_seq_children_extras)
 
+
+        self.progress.update("Gathering normalized sequences with truncated feature profiles")
+        norm_trunc_seq_represent_names = []
+        norm_trunc_seq_reversed_seq_strings = []
+        norm_trunc_seq_extras = []
         for norm_trunc_seq_index, norm_trunc_seq in enumerate(self.norm_trunc_seqs):
-            represent_names.append(norm_trunc_seq.represent_name)
-            reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
-            # Normalized sequences with a truncated profile are distinguished by 1 as the first element of the tuple.
-            extras.append((1, norm_trunc_seq_index, norm_trunc_seq))
-        for norm_trna_seq_index, norm_trna_seq in enumerate(self.norm_trna_seqs):
-            if not norm_trna_seq.mod_seqs:
-                represent_names.append(norm_trna_seq.represent_name)
-                reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
-                # Normalized tRNA sequences are distinguished by 2 as the first element of the tuple.
-                extras.append((2, norm_trna_seq_index, norm_trna_seq))
-        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras, progress=self.progress).prefix_dereplicate()
+            norm_trunc_seq_represent_names.append(norm_trunc_seq.represent_name)
+            norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
+            # Normalized sequences are distinguished by 1 as the first element of the tuple.
+            norm_trunc_seq_extras.append((1, norm_trunc_seq_index, norm_trunc_seq))
 
-        norm_trunc_seq_mod_seqs_dict = defaultdict(list)
-        norm_trna_seq_mod_seqs_dict = defaultdict(list)
-        for cluster in clusters:
-            if len(cluster.member_seqs) == 1:
-                continue
+        self.progress.update("3'-dereplicating sequences")
+        clusters = []
+        for mod_seq_children_represent_names, mod_seq_children_reversed_seq_strings, mod_seq_children_extras in zip(mod_seq_represent_names, mod_seq_reversed_seq_strings, mod_seq_extras):
+            clusters.extend(Dereplicator(mod_seq_children_represent_names + norm_trunc_seq_represent_names,
+                                         mod_seq_children_reversed_seq_strings + norm_trunc_seq_reversed_seq_strings,
+                                         extras=mod_seq_children_extras + norm_trunc_seq_extras).prefix_dereplicate())
 
-            # It is impossible for there to be multiple normalized tRNA sequences in the cluster. It
-            # is impossible for there to be multiple normalized truncated sequences in the cluster.
-            # It is also impossible for there to be a normalized tRNA sequence and a shorter
-            # truncated sequence in the cluster. These are guaranteed by prior dereplication steps.
-            # There can be a normalized tRNA sequence and a longer truncated sequence in the
-            # cluster. If these are subsequences of a modified sequence with deletions, then they
-            # are both added to the modified sequence. There can be multiple modified sequences with
-            # in silico deletions in the cluster that are subsequences of each other. A normalized
-            # sequence in the cluster must be the same length or shorter than only one modified
-            # sequence with deletions, as we do not currently permit nonspecific assignment of
-            # normalized sequences to multiple modified sequences.
-            norm_trunc_seq_index = None
-            norm_trunc_seq = None
-            norm_trna_seq_index = None
-            norm_trna_seq = None
-            norm_seq_length = None
-            member_index = -1
-            for reversed_seq_string, member_extra in zip(cluster.member_seqs, cluster.member_extras):
-                member_index += 1
-                cluster_mod_seq_indices = []
-                source = member_extra[0]
-                if source == 0:
-                    # Considering a modified sequence with a deletion. If the normalized sequence
-                    # has already been found in the cluster, and it is longer than the present
-                    # sequence, then stop processing the cluster.
-                    if norm_seq_length:
-                        if len(reversed_seq_string) < norm_seq_length:
-                            break
-                    # Considering a modified sequence with a deletion.
-                    cluster_mod_seq_indices.append(member_index)
-                else:
-                    # Considering the normalized sequence in the cluster.
-                    if len(cluster_mod_seq_indices) > 1:
-                        # There are multiple longer or equally long modified sequences with
-                        # deletions in the cluster, so disregard the normalized sequence as
-                        # nonspecific.
-                        break
-                    else:
-                        if source == 1:
-                            norm_trunc_seq_index = member_extra[1]
-                            norm_trunc_seq = member_extra[2]
-                        elif source == 2:
-                            norm_trna_seq_index = member_extra[1]
-                            norm_trna_seq = member_extra[2]
-                        else:
-                            # REMOVE
-                            raise ConfigError()
-                        norm_seq_length = len(reversed_seq_string)
-
-            if not cluster_mod_seq_indices:
-                continue
-            if not norm_trunc_seq and not norm_trna_seq:
-                continue
-
-            _, del_config, mod_seq = cluster.member_extras[cluster_mod_seq_indices[0]]
-            if norm_trunc_seq:
-                norm_trunc_seq_mod_seqs_dict[norm_seq_index].append((del_config, mod_seq))
-            if norm_trna_seq:
-                norm_trna_seq_mod_seqs_dict[norm_seq_index].append((del_config, mod_seq))
+        self.progress.update("Searching normalized sequences with truncated feature profiles")
+        norm_trunc_seq_mod_seqs_dict = self.process_del_clusters(clusters)
 
         norm_trunc_seq_indices_to_remove = []
         trimmed_trunc_seq_represent_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in self.trimmed_trunc_seqs]
@@ -2485,6 +2433,28 @@ class TRNASeqDataset(object):
             uniq_seq = self.uniq_trunc_seqs.pop(uniq_trunc_seq_index)
             uniq_seq.trunc_profile_recovered_by_del_analysis = True
             self.uniq_trna_seqs.append(uniq_seq)
+
+
+        self.progress.update("Gathering normalized sequences with full feature profiles")
+        norm_trna_seq_represent_names = []
+        norm_trna_seq_reversed_seq_strings = []
+        norm_trna_seq_extras = []
+        for norm_trna_seq_index, norm_trna_seq in enumerate(self.norm_trna_seqs):
+            if not norm_trna_seq.mod_seqs:
+                norm_trna_seq_represent_names.append(norm_trna_seq.represent_name)
+                norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
+                # Normalized sequences are distinguished by 1 as the first element of the tuple.
+                norm_trna_seq_extras.append((1, norm_trna_seq_index, norm_trna_seq))
+
+        self.progress.update("3'-dereplicating sequences")
+        clusters = []
+        for mod_seq_children_represent_names, mod_seq_children_reversed_seq_strings, mod_seq_children_extras in zip(mod_seq_represent_names, mod_seq_reversed_seq_strings, mod_seq_extras):
+            clusters.extend(Dereplicator(mod_seq_children_represent_names + norm_trunc_seq_represent_names,
+                                         mod_seq_children_reversed_seq_strings + norm_trunc_seq_reversed_seq_strings,
+                                         extras=mod_seq_children_extras + norm_trunc_seq_extras).prefix_dereplicate())
+
+        self.progress.update("Searching normalized sequences with full feature profiles")
+        norm_trna_seq_mod_seqs_dict = self.process_del_clusters(clusters)
 
         norm_trna_seq_indices_to_remove = []
         for norm_seq_index, mod_seq_info in norm_trna_seq_mod_seqs_dict.items():
@@ -2652,6 +2622,51 @@ class TRNASeqDataset(object):
             if sum(del_positions) < prior_del_pos_sum:
                 del_dict[seq_string_with_dels] = del_positions
         return del_dict
+
+
+    def process_del_clusters(self, clusters):
+        norm_seq_mod_seqs_dict = defaultdict(list)
+        for cluster in clusters:
+            if len(cluster.member_seqs) == 1:
+                continue
+
+            norm_seq_index = None
+            norm_seq = None
+            norm_seq_length = None
+            member_index = -1
+            for reversed_seq_string, member_extra in zip(cluster.member_seqs, cluster.member_extras):
+                member_index += 1
+                cluster_mod_seq_indices = []
+                source = member_extra[0]
+                if source == 0:
+                    # Considering a modified sequence with a deletion. If the normalized sequence
+                    # has already been found in the cluster, and it is longer than the present
+                    # sequence, then stop processing the cluster.
+                    if norm_seq_length:
+                        if len(reversed_seq_string) < norm_seq_length:
+                            break
+                    # Considering a modified sequence with a deletion.
+                    cluster_mod_seq_indices.append(member_index)
+                else:
+                    # Considering the normalized sequence in the cluster.
+                    if len(cluster_mod_seq_indices) > 1:
+                        # There are multiple longer or equally long modified sequences with
+                        # deletions in the cluster, so disregard the normalized sequence as
+                        # nonspecific.
+                        break
+                    else:
+                        norm_seq_index = member_extra[1]
+                        norm_seq = member_extra[2]
+                        norm_seq_length = len(reversed_seq_string)
+
+            if not cluster_mod_seq_indices:
+                continue
+            if not norm_seq:
+                continue
+
+            _, del_config, mod_seq = cluster.member_extras[cluster_mod_seq_indices[0]]
+            norm_seq_mod_seqs_dict[norm_seq_index].append((del_config, mod_seq))
+        return norm_seq_mod_seqs_dict
 
 
     def report_stats(self):
