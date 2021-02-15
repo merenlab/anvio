@@ -2424,7 +2424,10 @@ class TRNASeqDataset(object):
             self.norm_trna_seqs.append(self.norm_trunc_seqs.pop(norm_trunc_seq_index))
         # The normalized sequence is identified as having deletions (and thus being tRNA), but
         # constituent trimmed sequences may be nonspecific, and therefore found in other normalized
-        # truncated sequences that are not recovered by this method.
+        # truncated sequences that are not recovered by this method. This complication is not fully
+        # resolved here, as the normalized truncated sequences containing the nonspecific trimmed
+        # truncated sequences that have now been salvaged should be identified and cleansed of the
+        # salvaged sequences, but this does not affect anything downstream.
         for trimmed_trunc_seq_index in sorted(set(trimmed_trunc_seq_indices_to_remove), reverse=True):
             trimmed_seq = self.trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
             trimmed_seq.trunc_profile_recovered_by_del_analysis = True
