@@ -2769,10 +2769,8 @@ D = {
                      "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
                      "in each of the 4 stems; the user could, for instance, "
                      "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
-                     "There are 4 variable-length sections of tRNA. The user could, for whatever strange reason, "
-                     "prevent the program from considering D stems of length 3 as well as 4 "
-                     "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
-                     "(Logically, the allowed length range of both paired positions in the stem, 13 and 22, must be changed here.)"}
+                     "There are 3 variable-length sections of tRNA. The user could, for example, "
+                     "change the allowed lengths of the V loop from a discontinuous range, \"4-5,9-23\", to a continuous range, \"4-23\"."}
                 ),
     'min-length-long-fiveprime': (
             ['--min-length-long-fiveprime'],

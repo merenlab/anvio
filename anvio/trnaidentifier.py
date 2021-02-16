@@ -13,7 +13,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import TRNAIdentifierError
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
-from anvio.constants import WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
+from anvio.constants import WC_BASE_PAIRS, WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -509,44 +509,57 @@ class DArm(Arm):
 
 
 class DStem(Stem):
-    """The D stem of tRNA, which can be 3 (Type I tRNA) or 4 (Type II) nucleotides long."""
+    """The D stem of tRNA. Type II (long V loop) tRNAs often have D stems of length 3 rather than 4,
+    but the nucleotides at canonical positions 13 and 22 are always included in the stem objects
+    rather than D loop object."""
 
     name = 'D stem'
     num_allowed_unconserved = -1
     num_allowed_unpaired = 1
     arm_class = DArm
 
-    def __init__(self, fiveprime_seq, threeprime_seq, cautious=False):
-        super().__init__(fiveprime_seq,
-                         threeprime_seq,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         num_allowed_unpaired=self.num_allowed_unpaired,
-                         cautious=cautious)
+    def __init__(self, fiveprime_seq, threeprime_seq, type_II_trna=False, cautious=False):
+        if type_II_trna and self.num_allowed_unpaired != 4:
+            # Do not penalize type II tRNAs for having unpaired nucleotides at canonical positions
+            # 13 and 22, unless the user changes the parameterization of `num_allowed_unpaired` to
+            # force positions 10-13 to always pair with 25-22. The algorithm is tricked into
+            # thinking that 13 is always paired with 22. No record of the pairing status of the
+            # nucleotides will show up in feature objects, a `Profile` object, or from running
+            # `Profile.get_unpaired_positions`. Since the number of paired and unpaired nucleotides
+            # in the stem is not affected, `Profile.get_profile` does not favor type II profiles
+            # with 4 as opposed to 3 base pairs in a candidate D stem.
+            fiveprime_seq_string = fiveprime_seq.string
+            fiveprime_seq.string = fiveprime_seq_string[: 3] + WC_BASE_PAIRS[threeprime_seq.string[0]]
+            super().__init__(fiveprime_seq,
+                             threeprime_seq,
+                             num_allowed_unconserved=self.num_allowed_unconserved,
+                             num_allowed_unpaired=self.num_allowed_unpaired,
+                             cautious=cautious)
+            fiveprime_seq.string = fiveprime_seq_string
+        else:
+            super().__init__(fiveprime_seq,
+                             threeprime_seq,
+                             num_allowed_unconserved=self.num_allowed_unconserved,
+                             num_allowed_unpaired=self.num_allowed_unpaired,
+                             cautious=cautious)
 
 
 class DStemFiveprimeStrand(Sequence):
-    """The 5' strand of the D stem of tRNA."""
+    """The 5' strand of the D stem of tRNA. Type II (long V loop) tRNAs often have D stems of length
+    3 rather than 4, but the nucleotides at canonical positions 13 and 22 are always included in the
+    stem objects rather than D loop object."""
 
     name = 'D stem 5\' strand'
-    canonical_positions = ((10, 11, 12), (13, ))
-    allowed_section_lengths = ((3, ), (0, 1))
-    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({}, {})
+    canonical_positions = ((10, 11, 12, 13), )
+    allowed_input_lengths = ((4, ), )
+    summed_input_lengths = (4, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     arm_class = DArm
     stem_class = DStem
 
-    def __init__(self, positions_10_to_12_string, position_13_string='', start_pos=None, stop_pos=None, cautious=False):
-        if cautious:
-            if len(positions_10_to_12_string) != 3:
-                raise TRNAIdentifierError("Your `positions_10_to_12_string` was not the required 3 bases long: %s"
-                                          % positions_10_to_12_string)
-            if not 0 <= len(position_13_string) <= 1:
-                raise TRNAIdentifierError("Your `position_13_string` was not the required 0 or 1 bases long: %s"
-                                          % position_13_string)
-
-        super().__init__((positions_10_to_12_string, position_13_string),
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
                          conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
                          start_pos=start_pos,
@@ -556,7 +569,9 @@ class DStemFiveprimeStrand(Sequence):
 
 class DLoop(Loop):
     """The D loop of tRNA, allowing for variable alpha (canonical positions 16, 17, 17a, 17b) and
-    beta (canonical positions 20, 20a, 20b) sections."""
+    beta (canonical positions 20, 20a, 20b) sections. Type II (long V loop) tRNAs often have D stems
+    of length 3 rather than 4, but the nucleotides at canonical positions 13 and 22 are always
+    included in the stem objects rather than D loop object."""
 
     name = 'D loop'
     canonical_positions = ((14, 15), (16, 17), (18, 19), (20, ), (21, ))
@@ -609,26 +624,21 @@ class DLoop(Loop):
 
 
 class DStemThreeprimeStrand(Sequence):
-    """The 3' strand of the D stem of tRNA."""
+    """The 3' strand of the D stem of tRNA. Type II (long V loop) tRNAs often have D stems of length
+    3 rather than 4, but the nucleotides at canonical positions 13 and 22 are always included in the
+    stem objects rather than D loop object."""
 
     name = 'D stem 3\' strand'
-    canonical_positions = ((22, ), (23, 24, 25))
-    allowed_section_lengths = ((0, 1), (3, ))
-    allowed_input_lengths = tuple(itertools.product(*allowed_section_lengths))
-    summed_input_lengths = tuple(map(sum, allowed_input_lengths))
-    conserved_nts = ({}, {})
+    canonical_positions = ((22, 23, 24, 25), )
+    allowed_input_lengths = ((4, ), )
+    summed_input_lengths = (4, )
+    conserved_nts = ({}, )
     num_allowed_unconserved = -1
     arm_class = DArm
     stem_class = DStem
 
-    def __init__(self, position_22_string, positions_23_to_25_string='', start_pos=None, stop_pos=None, cautious=False):
-        if cautious:
-            if not 0 <= len(position_22_string) <= 1:
-                raise TRNAIdentifierError("Your `position_22_string` was not the required 1 base long: %s" % position_22_string)
-            if len(positions_23_to_25_string) != 3:
-                raise TRNAIdentifierError("Your `positions_23_to_25_string` was not the required 1 to 3 bases long: %s" % positions_23_to_25_string)
-
-        super().__init__((position_22_string, positions_23_to_25_string),
+    def __init__(self, substrings, start_pos=None, stop_pos=None, cautious=False):
+        super().__init__(substrings,
                          conserved_nts=self.conserved_nts,
                          num_allowed_unconserved=self.num_allowed_unconserved,
                          start_pos=start_pos,
@@ -960,8 +970,6 @@ class TRNAFeatureParameterizer(object):
             DArm.name: DArm,
             DStem.name: DStem,
             DStemFiveprimeStrand.name: DStemFiveprimeStrand,
-            DStemFiveprimeStrand.name + "/positions 10-12": DStemFiveprimeStrand,
-            DStemFiveprimeStrand.name + "/position 13": DStemFiveprimeStrand,
             DLoop.name: DLoop,
             DLoop.name + "/positions 14-15": DLoop,
             DLoop.name + "/alpha positions": DLoop,
@@ -969,8 +977,6 @@ class TRNAFeatureParameterizer(object):
             DLoop.name + "/beta positions": DLoop,
             DLoop.name + "/position 21": DLoop,
             DStemThreeprimeStrand.name: DStemThreeprimeStrand,
-            DStemThreeprimeStrand.name + "/position 22": DStemThreeprimeStrand,
-            DStemThreeprimeStrand.name + "/positions 23-25": DStemThreeprimeStrand,
             PositionTwentySix.name: PositionTwentySix,
             AnticodonArm.name: AnticodonArm,
             AnticodonStem.name: AnticodonStem,
@@ -990,19 +996,15 @@ class TRNAFeatureParameterizer(object):
 
         self.feature_and_subfeature_names_with_accessible_lengths = [
             VLoop.name,
-            DStemFiveprimeStrand.name + "/position 13",
             DLoop.name + "/alpha positions",
-            DLoop.name + "/beta positions",
-            DStemThreeprimeStrand.name + "/position 22"
+            DLoop.name + "/beta positions"
         ]
 
         self.subfeature_section_dict = {name: 0 for name in self.dict_mapping_feature_or_subfeature_name_to_class}
-        self.subfeature_section_dict[DStemFiveprimeStrand.name + "/position 13"] = 1
         self.subfeature_section_dict[DLoop.name + "/alpha positions"] = 1
         self.subfeature_section_dict[DLoop.name + "/positions 18-19"] = 2
         self.subfeature_section_dict[DLoop.name + "/beta positions"] = 3
         self.subfeature_section_dict[DLoop.name + "/position 21"] = 4
-        self.subfeature_section_dict[DStemThreeprimeStrand.name + "/positions 23-25"] = 1
 
 
     def write_param_file(self, feature_param_path):
@@ -1114,8 +1116,20 @@ class TRNAFeatureParameterizer(object):
                     row.append(str(param_value))
                 elif param_name == 'allowed_input_lengths':
                     if feature_or_subfeature_name == VLoop.name:
-                        # Here is an example to show the format of VLoop.allowed_input_lengths: ((4, ), (5, ), ..., (23, ))
-                        row.append(str(param_value[0][0]) + "-" + str(param_value[-1][0]))
+                        # Here is an example to show the format of VLoop.allowed_input_lengths:
+                        # ((4, ), (5, ), (9, ), (10, ), ..., (23, ))
+                        allowed_lengths_output = ""
+                        prev_allowed_length = None
+                        for allowed_length_tuple in param_value:
+                            for allowed_length in allowed_length_tuple:
+                                if prev_allowed_length:
+                                    if allowed_length - prev_allowed_length > 1:
+                                        allowed_lengths_output += "-" + str(prev_allowed_length) + "," + str(allowed_length)
+                                else:
+                                    allowed_lengths_output += str(allowed_length)
+                                prev_allowed_length = allowed_length
+                        allowed_lengths_output += "-" + str(prev_allowed_length)
+                        row.append(allowed_lengths_output)
                     else:
                         # Sections of the D loop are the only other variable-length "subfeatures".
                         allowed_section_lengths = feature_class.allowed_section_lengths[subfeature_section_dict[feature_or_subfeature_name]]
@@ -1281,31 +1295,32 @@ class TRNAFeatureParameterizer(object):
             The name of a feature or "subfeature" (in the case of a section of the D arm).
 
         param_value : str
-            A string representing the allowed length range, with the format
-            <minimum length>-<maximum length>.
+            A string representing the allowed length range,
+            which can be discontinuous, with the format
+            <minimum length>-<maximum length>,<next minimum length>-<next maximum length>,...
         """
         feature_class = self.dict_mapping_feature_or_subfeature_name_to_class[feature_or_subfeature_name]
-
-        try:
-            min_length, max_length = param_value.split('-')
-            allowed_lengths = tuple(range(int(min_length), int(max_length) + 1))
-        except:
-            raise TRNAIdentifierError("The proper format of the allowed feature length field in a parameter string is "
-                                      "<Minimum length integer>-<Maximum length integer>. "
-                                      "The length range provided was %s" % param_value)
         if feature_or_subfeature_name not in self.feature_and_subfeature_names_with_accessible_lengths:
             raise TRNAIdentifierError("\"%s\" does not support assignment of variable lengths. "
                                       "The length range provided was %s" % (feature_or_subfeature_name, param_value))
+
+        allowed_lengths = tuple()
+        for length_range_input in param_value.split(','):
+            try:
+                min_length, max_length = length_range_input.split('-')
+                allowed_lengths += tuple(range(int(min_length), int(max_length) + 1))
+            except:
+                raise TRNAIdentifierError("The proper format of a parameter value in the allowed feature length field is "
+                                          "<Minimum length integer>-<Maximum length integer>,"
+                                          "<Next minimum length integer>-<Next maximum length integer>,... "
+                                          "The parameter value provided was %s" % param_value)
 
         if feature_or_subfeature_name == VLoop.name:
             feature_class.allowed_input_lengths = tuple(itertools.product(allowed_lengths))
             # Reset the dependent class attribute.
             feature_class.summed_input_lengths = allowed_lengths
         else:
-            # Beside the variable loop, subfeatures of the D arm have variable lengths.
-            # If the possible lengths of position 13 (on the 5' strand of the D stem)
-            # or position 22 (on the 3' of the D stem) are changed
-            # then the other position should be changed accordingly -- this is not enforced.
+            # Beside the variable loop, subfeatures of the D loop have variable lengths.
             section = self.subfeature_section_dict[feature_or_subfeature_name]
             prev_allowed_section_lengths = feature_class.allowed_section_lengths
             feature_class.allowed_section_lengths = (prev_allowed_section_lengths[: section]
@@ -1503,6 +1518,7 @@ class Profiler(object):
             DArm: self.d_loop_pos
         }
         self.anticodon_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop)
+        self.v_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(VLoop)
 
         self.extrapolation_ineligible_features = [
             AcceptorStemThreeprimeStrand,
@@ -1778,7 +1794,10 @@ class Profiler(object):
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
                     if make_stem:
-                        stem = stem_class(feature, threeprime_stem_seq)
+                        if stem_class == DStem:
+                            stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
+                        else:
+                            stem = stem_class(feature, threeprime_stem_seq)
                         # The stem is valid if it doesn't have too many unpaired bases.
                         if stem.meets_pair_thresh:
                             if make_arm:
@@ -1840,7 +1859,10 @@ class Profiler(object):
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
                     if make_stem:
-                        stem = stem_class(feature, threeprime_stem_seq)
+                        if stem_class == DStem:
+                            stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
+                        else:
+                            stem = stem_class(feature, threeprime_stem_seq)
                         # The stem is valid if it doesn't have too many unpaired bases.
                         if stem.meets_pair_thresh:
                             if make_arm:
