@@ -987,7 +987,7 @@ class ContigsSuperclass(object):
         if not len(self.contig_sequences) or not set(gene_caller_ids_list).issubset(self.gene_caller_ids_included_in_contig_sequences_initialized):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
-        if include_aa_sequences or report_aa_sequences:
+        if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
             contigs_db = ContigsDatabase(self.contigs_db_path)
             aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
             contigs_db.disconnect()
@@ -1062,7 +1062,7 @@ class ContigsSuperclass(object):
             gene_call['length'] = gene_call['stop'] - gene_call['start']
             gene_call['rev_compd'] = rev_compd
 
-            if include_aa_sequences or report_aa_sequences:
+            if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
                 if gene_callers_id in aa_sequences_dict:
                     gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
@@ -1135,7 +1135,7 @@ class ContigsSuperclass(object):
         if output_file_path_external_gene_calls:
             utils.store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
-                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
             self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
@@ -4301,6 +4301,11 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position] = 8
                 continue
 
+            # if the gene stop is identical to the contig length,
+            # just move on:
+            if stop == contig_length:
+                continue
+
             if gene_call['direction'] == 'f':
                 for nt_position in range(start, stop, 3):
                     nt_position_info_list[nt_position] = 4
@@ -4668,6 +4673,15 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
             names_in_data = sorted([n.strip() for n in order_data.split(',')])
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+
+        if not len(names_in_db):
+            raise ConfigError(f"Your {db_type} database does not have any item names stored, but whoever called this "
+                              f"function asked for a check between the item names in the items order and item names in "
+                              f"the database. Well. It will not happen. A proper way to deal with it is to set the "
+                              f"variable `check_names_consistency` to `False` when calling this function. This message "
+                              f"is not to be seen by a user, so if you are a user, it means someone screwed up something "
+                              f"somewhere, and those of us at the anvi'o headquarters for snafu handling sincerely apologize "
+                              f"sincerely on their behalf :(")
 
         names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
         if names_in_db_not_in_data:

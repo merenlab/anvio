@@ -122,7 +122,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to "
-                     "take a look from it), this flag will become very hand. After creating a contigs database for your "
+                     "take a look from it), this flag will become very handy. After creating a contigs database for your "
                      "contigs, you can create a blank anvi'o profile database to use anvi'o interactive "
                      "interface with that contigs database without any mapping data."}
                 ),
@@ -2643,6 +2643,30 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'heuristic-e-value': (
+            ['-E', '--heuristic-e-value'],
+            {'default': 1.0e-5,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with e-values <= this number. (This is X.)"}
+                ),
+    'heuristic-bitscore-fraction': (
+            ['-H', '--heuristic-bitscore-fraction'],
+            {'default': 0.50,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
+                     "It should be a fraction between 0 and 1 (inclusive)."}
+                ),
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
+                     "threshold, use this flag to skip the mumbo-jumbo we do here to relax those thresholds. "}
+                ),
     'include-metadata': (
             ['--include-metadata'],
             {'default': False,
@@ -2662,7 +2686,25 @@ D = {
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+            'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
+                    "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
+                ),
+    'module-specific-matrices': (
+            ['--module-specific-matrices'],
+            {'default': None,
+            'metavar': 'MODULE_LIST',
+            'help': "Provide a comma-separated list of module numbers to this parameter, and then you will get "
+                    "a KO hits matrix for each module in the list."}
+
+                ),
+    'no-comments': (
+            ['--no-comments'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you are requesting --module-specific-matrices but you don't want those matrices to include "
+                    "comment lines in them (for example, perhaps you want to use them for clustering), you can use "
+                    "this flag. Otherwise, by default these specific matrices will include comments delineating "
+                    "which KOs are in each step of the module."}
                 ),
     'modules-txt': (
             ['-M', '--modules-txt'],

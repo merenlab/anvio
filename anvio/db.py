@@ -84,6 +84,8 @@ class DB:
 
         self.table_names_in_db = self.get_table_names()
 
+        self.db_connected = True
+
         if new_database:
             self.create_self()
             self.set_version(client_version)
@@ -280,8 +282,13 @@ class DB:
 
 
     def disconnect(self):
-        self.conn.commit()
-        self.conn.close()
+        if self.db_connected:
+            self.conn.commit()
+            self.conn.close()
+            self.db_connected = False
+        else:
+            # it is already disconnected
+            pass
 
 
     def _exec(self, sql_query, value=None):
