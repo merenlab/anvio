@@ -38,11 +38,14 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 
+
 run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
+P = terminal.pluralize
+
 
 """Some critical constants for metabolism estimation output formatting."""
 # dict containing possible output modes
@@ -3395,6 +3398,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
         g.load_genomes_descriptions(skip_functions=True, init=False)
+
+        bad_genomes = [v['name'] for v in g.genomes.values() if not v['gene_function_sources'] or 'KOfam' not in v['gene_function_sources']]
+        if len(bad_genomes):
+            bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
+            raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your {P('genome', len(g.genomes))} "
+                              f"{P('are', len(bad_genomes), alt='is')} lacking any function annotations for "
+                              f"`KOfam`. This means you either need to run the program `anvi-run-kegg-kofams` "
+                              f"on them, or remove them from your internal and/or external genomes files "
+                              f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
+                              f"{', '.join(bad_genomes_txt)}.")
 
         # metagenome mode must be off
         if self.metagenome_mode:
