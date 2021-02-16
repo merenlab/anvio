@@ -850,7 +850,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
         } else {
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
-                p.xy.x, //total_radius + outer_ring_margin + outer_ring_size,
+                p.xy.x, 
                 p.xy.y,
                 p.size, 
                 rect_width,
@@ -1065,15 +1065,14 @@ Bins.prototype.RedrawBins = function() {
 
             width_with_grids = total_radius + outer_ring_margin + outer_ring_size - backgroundStart
             width_no_grids = total_radius - backgroundStart
-            // ^ these variables can be inserted into the function call below, but why mess with success?
-            // they get passed to invert_shade method so we don't have to re-declare a bunch of other stuff. s
+            // ^ these get passed to invert_shade method so we don't have to re-declare a bunch of other stuff. 
 
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
                 backgroundStart,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
-                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - backgroundStart : total_radius - backgroundStart,
+                (show_grid) ? width_with_grids : width_no_grids,
                 color,
                 (show_grid) ? 0 : shade_fill_opacity,
                 false);
