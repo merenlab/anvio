@@ -804,13 +804,11 @@ Bins.prototype.RedrawLineColors = function() {
     }
 };
 
-Bins.prototype.DrawInvertedNodes = function(leaf_list){
+Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
     
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
     let nodes_for_inversion = [] 
-    var outer_ring_size = parseFloat($('#outer-ring-height').val());
-    var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
         
     for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
@@ -850,13 +848,12 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list){
             pie.setAttribute('vector-effect', 'non-scaling-stroke');
             pie.setAttribute('stroke-opacity', inverse_fill_opacity);
         } else {
-            var height = p.xy['y'] + p.size / 2 - p.xy['y'] + p.size / 2;
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
                 p.xy.x, //total_radius + outer_ring_margin + outer_ring_size,
                 p.xy.y,
                 p.size, 
-                1500, // outer_ring_size,
+                rect_width,
                 inverse_color,
                 inverse_fill_opacity,
                 true
@@ -930,6 +927,9 @@ Bins.prototype.RedrawBins = function() {
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
+
+    var width_with_grids;
+    var width_no_grids;
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
@@ -1063,6 +1063,11 @@ Bins.prototype.RedrawBins = function() {
 
             let backgroundStart = (background_starts_from_branch) ? intersection.xy['x'] : beginning_of_layers;
 
+            width_with_grids = total_radius + outer_ring_margin + outer_ring_size - backgroundStart
+            width_no_grids = total_radius - backgroundStart
+            // ^ these variables can be inserted into the function call below, but why mess with success?
+            // they get passed to invert_shade method so we don't have to re-declare a bunch of other stuff. s
+
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
                 backgroundStart,
@@ -1124,7 +1129,7 @@ Bins.prototype.RedrawBins = function() {
                 true);
         }
     }
-    invert_shade ? this.DrawInvertedNodes(leaf_list) : null 
+    invert_shade ? this.DrawInvertedNodes(leaf_list, show_grid ? width_with_grids : width_no_grids) : null 
 
 }
 
