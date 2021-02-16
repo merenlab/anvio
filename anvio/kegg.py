@@ -1200,12 +1200,16 @@ class RunKOfams(KeggContext):
         self.gcids_to_functions_dict = {}
         counter = 0
         num_hits_removed = 0
+        cur_num_hit = 0
         for hit_key,hmm_hit in hits_dict.items():
+            cur_num_hit += 1
             knum = hmm_hit['gene_name']
             gcid = hmm_hit['gene_callers_id']
             keep = False
 
-            self.progress.update("Removing weak hits for %s [%d of %d]" % (knum, self.progress.progress_current_item + 1, total_num_hits))
+            if cur_num_hit % 1000 == 0:
+                self.progress.update("Removing weak hits [%d of %d KOs]" % (cur_num_hit, total_num_hits))
+                self.progress.increment(increment_to=cur_num_hit)
 
             # later, we will need to quickly access the hits for each gene call. So we map gcids to the keys in the raw hits dictionary
             if gcid not in self.gcids_to_hits_dict:
@@ -1282,9 +1286,6 @@ class RunKOfams(KeggContext):
             else:
                 num_hits_removed += 1
 
-            self.progress.increment()
-            self.progress.reset()
-
         self.progress.end()
         self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
         self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
@@ -1326,12 +1327,17 @@ class RunKOfams(KeggContext):
                          "the e-value/bitscore parameters (see the help page for more info).")
 
         num_annotations_added = 0
-        total_num_genes = len(hits_dict.values())
+        total_num_genes = len(gcids_list)
         self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
 
         # for each gene call, check for annotation in self.functions_dict
+        current_gene_num = 0
         for gcid in gcids_list:
-            self.progress.update("Adding back decent hits for gene %s [%d of %d]" % (gcid, self.progress.progress_current_item + 1, total_num_genes))
+            current_gene_num += 1
+            if current_gene_num % 1000 == 0:
+                self.progress.update("Adding back decent hits [%d of %d gene calls]" % (current_gene_num, total_num_genes))
+                self.progress.increment(increment_to=current_gene_num)
+
             if gcid not in self.gcids_to_functions_dict:
                 decent_hit_kos = set()
                 best_e_value = 100 # just an arbitrary positive value that will be larger than any evalue
@@ -1402,8 +1408,6 @@ class RunKOfams(KeggContext):
 
                         next_key += 1
                         num_annotations_added += 1
-            self.progress.increment()
-            self.progress.reset()
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
