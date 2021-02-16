@@ -63,7 +63,6 @@ class TRNAFeature(object):
                  conserved_nts=None,
                  num_allowed_unconserved=-1,
                  cautious=False):
-
         if cautious:
             if type(string_components) != tuple:
                 raise TRNAIdentifierError("`string_components` must be in the form of a tuple, e.g., ('ACTGG', 'CCAGT'). "
@@ -103,7 +102,6 @@ class TRNAFeature(object):
                 3. observed nucleotide in subsequence (char)
                 4. expected canonical nucleotide in subsequence (char)
         """
-
         num_conserved = 0
         num_unconserved = 0 # can include N "padding" in extrapolated 5' feature
         conserved_status = []
@@ -135,7 +133,6 @@ class TRNAFeature(object):
     @staticmethod
     def list_all_tRNA_features():
         """List all tRNA feature classes in order from 5' to 3'."""
-
         return [
             TRNAHisPositionZero,
             AcceptorStem,
@@ -169,7 +166,6 @@ class TRNAFeature(object):
     def list_primary_tRNA_features():
         """List tRNA feature classes not including stems and arms (secondary structures) in order
         from 5' to 3'."""
-
         return [
             TRNAHisPositionZero,
             AcceptorStemFiveprimeStrand,
@@ -205,7 +201,6 @@ class Nucleotide(TRNAFeature):
                  start_pos=None,
                  stop_pos=None,
                  cautious=False):
-
         self.string = string
         self.start_pos = start_pos
         self.stop_pos = stop_pos
@@ -231,7 +226,6 @@ class Sequence(TRNAFeature):
                  start_pos=None,
                  stop_pos=None,
                  cautious=False):
-
         if type(substrings) == str:
             string_components = (substrings, )
         elif all([type(s) == str for s in substrings]):
@@ -262,7 +256,6 @@ class Loop(Sequence):
                  start_pos=None,
                  stop_pos=None,
                  cautious=False):
-
         super().__init__(substrings,
                          conserved_nts=conserved_nts,
                          num_allowed_unconserved=num_allowed_unconserved,
@@ -280,7 +273,6 @@ class Stem(TRNAFeature):
                  num_allowed_unpaired=0,
                  num_allowed_unconserved=-1,
                  cautious=False):
-
         if cautious:
             if type(fiveprime_seq) != Sequence or type(threeprime_seq) != Sequence:
                 raise TRNAIdentifierError("You can only define a Stem from Sequence objects.")
@@ -330,7 +322,6 @@ class Stem(TRNAFeature):
             List of tuples, one tuple for each nucleotide pair in the stem. Each tuple has three
             elements: whether a base pair exists, the 5' nucleotide, and the 3' nucleotide.
         """
-
         num_paired = 0
         num_unpaired = 0 # can include N "padding" in extrapolated 5' feature
         paired_status = []
@@ -362,7 +353,6 @@ class Arm(TRNAFeature):
                  loop, # must be Loop object
                  num_allowed_unconserved=-1,
                  cautious=False):
-
         if cautious:
             if type(stem) != Stem or type(loop) != Loop:
                 raise TRNAIdentifierError("A `Stem` and a `Loop` are required input to create an `Arm`.")
