@@ -66,6 +66,9 @@ class FilterHmmHitsTable(object):
 
     def sanity_checks(self):
 
+        filesnpaths.is_file_exists(self.contigs_db_path)
+        self.run.info("Database Path", self.contigs_db_path)
+
         if not self.hmm_source:
             raise ConfigError("Please provide a hmm-source :)")
 
@@ -88,28 +91,28 @@ class FilterHmmHitsTable(object):
         # hmmsearch results so the queries are the hmm models and the targets are the ORFs
 
         col_info = [
-            ('gene_callers_id', int),   # target name
-            ('target_accession',str),   # target accession
-            ('gene_length',     int),   # tlen
-            ('hmm_name',        str),   # query name
-            ('hmm_id',          str),   # accession
-            ('hmm_length',      int),   # qlen
-            ('evalue',          float), # E-value (full sequence)
-            ('bitscore',        float), # score (full sequence)
-            ('bias',            float), # bias (full sequence)
-            ('match_num',       int),   # # (this domain)
-            ('num_matches',     int),   # of (this domain)
-            ('dom_c_evalue',    float), # c-Evalue (this domain)
-            ('dom_i_evalue',    float), # i-Evalue (this domain)
-            ('dom_bitscore',    str),   # score (this domain)
-            ('dom_bias',        float), # bias (this domain)
-            ('hmm_start',       int),   # from (hmm coord)
-            ('hmm_stop',        int),   # to (hmm coord)
-            ('gene_start',      int),   # from (ali coord)
-            ('gene_stop',       int),   # to (ali coord)
-            ('env_to',               str),   # from (env coord)
-            ('env_from',               str),   # to (env coord)
-            ('mean_post_prob',  float), # acc
+            ('gene_callers_id',  int),   # target name
+            ('target_accession', str),   # target accession
+            ('gene_length',      int),   # tlen
+            ('hmm_name',         str),   # query name
+            ('hmm_id',           str),   # accession
+            ('hmm_length',       int),   # qlen
+            ('evalue',           float), # E-value (full sequence)
+            ('bitscore',         float), # score (full sequence)
+            ('bias',             float), # bias (full sequence)
+            ('match_num',        int),   # # (this domain)
+            ('num_matches',      int),   # of (this domain)
+            ('dom_c_evalue',     float), # c-Evalue (this domain)
+            ('dom_i_evalue',     float), # i-Evalue (this domain)
+            ('dom_bitscore',     str),   # score (this domain)
+            ('dom_bias',         float), # bias (this domain)
+            ('hmm_start',        int),   # from (hmm coord)
+            ('hmm_stop',         int),   # to (hmm coord)
+            ('gene_start',       int),   # from (ali coord)
+            ('gene_stop',        int),   # to (ali coord)
+            ('env_to',           str),   # from (env coord)
+            ('env_from',         str),   # to (env coord)
+            ('mean_post_prob',   float), # acc
         ]
 
         try:
@@ -161,11 +164,7 @@ class FilterHmmHitsTable(object):
         return domtblout_tmp_out
 
 
-    def get_hmm_hit_table(self, run=terminal.Run(), hmmsearch_tbl=None):
-
-        # Sanity check
-        filesnpaths.is_file_exists(self.contigs_db_path)
-        run.info("Database Path", self.contigs_db_path)
+    def get_hmm_hit_table(self, hmmsearch_tbl=None):
 
         # Remove old hmm_hits contigs_db_path
         hmm_tables = TablesForHMMHits(self.contigs_db_path)
