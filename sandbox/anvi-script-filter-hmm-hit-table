@@ -75,21 +75,22 @@ class FilterHmmHitsTable(object):
         info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
 
         if self.hmm_source not in info_table:
-            raise ConfigError("Whoa there, the HMM source "'%s'" is not in your contigsDB: %s "
-                              "Please try re-running anvi-run-hmms and make sure to specify you HMM source of interest." % (self.hmm_source, self.contigs_db_path))
+            raise ConfigError(f"Whoa there, the HMM source "'{self.hmm_source}'" is not in your contigsDB: "
+                              f"{self.contigs_db_path} Please try re-running anvi-run-hmms and make sure to "
+                              "specify you HMM source of interest.")
 
         sources = anvio.data.hmm.sources
         target = sources[self.hmm_source]['target'].split(':')
 
         if target[0] != 'AA':
-            raise ConfigError("The hmm-source %s is not for amino acid sequences. "
-                              "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources from protein sequences."  % (self.hmm_source))
+            raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
+                              "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
+                              "from protein sequences.")
 
 
     def import_domtblout(self):
 
         # hmmsearch results so the queries are the hmm models and the targets are the ORFs
-
         col_info = [
             ('gene_callers_id',  int),   # target name
             ('target_accession', str),   # target accession
