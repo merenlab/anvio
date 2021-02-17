@@ -203,6 +203,11 @@ class HMMer:
             output_file = partial_input_file + '_output'
             table_file = partial_input_file + '_table'
 
+            # ------------------------------------------------------------------------------
+            # FIXME run_all_tests.sh fails because domain_out_fmt stuff does not respect the
+            # original ways in which this driver was used
+            # ------------------------------------------------------------------------------
+
             if domtblout_path:
                 domain_table_file = domtblout_path + '_domtable'
             else:
