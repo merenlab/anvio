@@ -135,7 +135,6 @@ class FilterHmmHitsTable(object):
 
 
     def filter_domtblout(self):
-
         # Filtering conditions
         if self.query_coverage and self.target_coverage:
             df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
@@ -146,15 +145,12 @@ class FilterHmmHitsTable(object):
         else:
             df_filtered = self.df.copy()
 
-        # FIXME: Maybe print to user how many were filtered out?
-        # print(self.df.shape)
-        # print(self.df.head())
-        # print(df_filtered.shape)
-        # print(df_filtered.head())
+        self.run.info("Num hits before filtering", self.df.shape[0])
+        self.run.info("Num hits after filtering", df_filtered.shape[0])
+        self.run.info("Num filtered", self.df.shape[0] - df_filtered.shape[0])
 
         # Reformat domtblout back to original
         df_final = df_filtered.drop(columns=['query_coverage', 'target_coverage'])
-
 
         domtblout_tmp_out = filesnpaths.get_temp_file_path()
         df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
