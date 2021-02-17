@@ -39,11 +39,12 @@ pp = terminal.pretty_print
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False, hmm_program_to_use='hmmscan'):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False, hmm_program_to_use='hmmscan', domtblout_path=None):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
         self.just_do_it = just_do_it
         self.hmm_program = hmm_program_to_use or 'hmmscan'
+        self.domtblout_path = domtblout_path
 
         utils.is_contigs_db(self.db_path)
         filesnpaths.is_program_exists(self.hmm_program)
@@ -221,7 +222,8 @@ class TablesForHMMHits(Table):
                                                       len(all_genes_searched_against),
                                                       hmm_model,
                                                       reference,
-                                                      noise_cutoff_terms)
+                                                      noise_cutoff_terms,
+                                                      domtblout_path=self.domtblout_path)
 
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
