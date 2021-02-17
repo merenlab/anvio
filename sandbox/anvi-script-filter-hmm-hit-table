@@ -137,16 +137,14 @@ class FilterHmmHitsTable(object):
     def filter_domtblout(self):
 
         # Filtering conditions
-        if self.target_coverage:
-            df_filtered = self.df[self.df['target_coverage'] > float(self.target_coverage)]
-
-        if self.query_coverage:
-            df_filtered = self.df[self.df['query_coverage'] > float(self.query_coverage)]
-
         if self.query_coverage and self.target_coverage:
             df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
-
-
+        elif self.target_coverage:
+            df_filtered = self.df[self.df['target_coverage'] > float(self.target_coverage)]
+        elif self.query_coverage:
+            df_filtered = self.df[self.df['query_coverage'] > float(self.query_coverage)]
+        else:
+            df_filtered = self.df.copy()
 
         # FIXME: Maybe print to user how many were filtered out?
         # print(self.df.shape)
