@@ -87,7 +87,7 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
-                  desired_output='table', out_fmt='--tblout'):
+                  desired_output='table', out_fmt='--tblout', domtblout_path=None):
         """Run the program
 
         Parameters
@@ -203,20 +203,29 @@ class HMMer:
             output_file = partial_input_file + '_output'
             table_file = partial_input_file + '_table'
 
+            if domtblout_path:
+                domain_table_file = domtblout_path + '_domtable'
+            else:
+                domain_table_file = partial_input_file + '_domtable'
+
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
+
+            domain_out_fmt = "--domtblout"
 
             if noise_cutoff_terms:
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
                             out_fmt, table_file,
+                            domain_out_fmt, domain_table_file,
                             hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
                             out_fmt, table_file,
+                            domain_out_fmt, domain_table_file,
                             hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
