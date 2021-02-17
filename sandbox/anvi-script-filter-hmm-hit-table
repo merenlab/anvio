@@ -61,7 +61,10 @@ class FilterHmmHitsTable(object):
         self.get_hmm_hit_table(hmmsearch_tbl=x)
 
         # remove the tmp file
-        os.remove(x)
+        if anvio.DEBUG:
+            self.run.info("Filtered domtblout file", x)
+        elif not anvio.DEBUG:
+            os.remove(x)
 
 
     def sanity_checks(self):
@@ -75,9 +78,10 @@ class FilterHmmHitsTable(object):
         info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
 
         if self.hmm_source not in info_table:
-            raise ConfigError(f"Whoa there, the HMM source "'{self.hmm_source}'" is not in your contigsDB: "
-                              f"{self.contigs_db_path} Please try re-running anvi-run-hmms and make sure to "
-                              "specify you HMM source of interest.")
+            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
+                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
+                              "Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
+                              "need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
 
         sources = anvio.data.hmm.sources
         target = sources[self.hmm_source]['target'].split(':')
