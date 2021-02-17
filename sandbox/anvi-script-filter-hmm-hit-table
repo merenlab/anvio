@@ -205,9 +205,11 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
 
-    parser.add_argument('--domtblout')
-    parser.add_argument('--target-coverage')
-    parser.add_argument('--query-coverage')
+    parser.add_argument('--domtblout', help="domain-table-output from hmmsearch in anvi-run-hmms")
+    parser.add_argument('--target-coverage',
+                        help=" (ali_coord_to - ali_coord_from)/target_length")
+    parser.add_argument('--query-coverage',
+                        help=" (hmm_coord_to - hmm_coord_from)/hmm_length")
 
     args, unknown = parser.parse_known_args()
 
