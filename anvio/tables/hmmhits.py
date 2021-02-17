@@ -215,15 +215,15 @@ class TablesForHMMHits(Table):
             noise_cutoff_terms = sources[source]['noise_cutoff_terms']
 
             hmm_scan_hits_txt = commander.run_hmmer(source,
-                                                      alphabet,
-                                                      context,
-                                                      kind_of_search,
-                                                      domain,
-                                                      len(all_genes_searched_against),
-                                                      hmm_model,
-                                                      reference,
-                                                      noise_cutoff_terms,
-                                                      domtblout_path=self.domtblout_path)
+                                                    alphabet,
+                                                    context,
+                                                    kind_of_search,
+                                                    domain,
+                                                    len(all_genes_searched_against),
+                                                    hmm_model,
+                                                    reference,
+                                                    noise_cutoff_terms,
+                                                    domtblout_path=self.domtblout_path)
 
             if not hmm_scan_hits_txt:
                 search_results_dict = {}

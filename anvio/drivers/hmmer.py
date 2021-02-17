@@ -228,14 +228,19 @@ class HMMer:
                             domain_out_fmt, domain_table_file,
                             hmm, partial_input_file]
 
-            t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
-                                                       cmd_line,
-                                                       table_file,
-                                                       output_file,
-                                                       desired_output,
-                                                       log_file,
-                                                       output_queue,
-                                                       ret_value_queue))
+            t = multiprocessing.Process(
+                target = self.hmmer_worker,
+                args = (
+                    partial_input_file,
+                    cmd_line,
+                    table_file,
+                    output_file,
+                    desired_output,
+                    log_file,
+                    output_queue,
+                    ret_value_queue
+                )
+            )
             t.start()
             workers.append(t)
 
