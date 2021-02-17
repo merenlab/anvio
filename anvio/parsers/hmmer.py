@@ -616,17 +616,17 @@ class HMMERTableOutput(Parser):
             ('gene_callers_id', int),   # target name
             ('f',               str),   # accession
             ('gene_length',     int),   # tlen
-            ('hmm_name',        str),   # query name
-            ('hmm_id',          str),   # accession
+            ('gene_name',        str),   # query name
+            ('gene_hmm_id',          str),   # accession
             ('hmm_length',      int),   # qlen
-            ('evalue',          float), # E-value (full sequence)
-            ('bitscore',        float), # score (full sequence)
+            ('e_value',          float), # E-value (full sequence)
+            ('bit_score',        float), # score (full sequence)
             ('bias',            float), # bias (full sequence)
             ('match_num',       int),   # # (this domain)
             ('num_matches',     int),   # of (this domain)
             ('dom_c_evalue',    float), # c-Evalue (this domain)
             ('dom_i_evalue',    float), # i-Evalue (this domain)
-            ('dom_bitscore',    str),   # score (this domain)
+            ('dom_bit_score',    str),   # score (this domain)
             ('dom_bias',        float), # bias (this domain)
             ('hmm_start',       int),   # from (hmm coord)
             ('hmm_stop',        int),   # to (hmm coord)
@@ -669,7 +669,7 @@ class HMMERTableOutput(Parser):
         for hit in list(self.dicts['hits'].values()):
             entry = None
 
-            if self.context == 'GENE':
+            if self.context == 'GENE' or self.context == 'DOMAIN':
                 # Here we only add the hit to the annotations_dict if the appropriate bit score is above the
                 # threshold set in noise_cutoff_dict (which is indexed by profile name (aka gene_name in the hits dict)
                 if noise_cutoff_dict and hit['gene_name'] in noise_cutoff_dict.keys():

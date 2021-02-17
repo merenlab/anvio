@@ -1,0 +1,222 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import os
+import numpy as np
+import pandas as pd
+
+import anvio
+import anvio.data.hmm
+import anvio.db as db
+import anvio.hmmops as hmmops
+import anvio.bamops as bamops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.dbops import ContigsDatabase
+from anvio.parsers import parser_modules
+from anvio.argparse import ArgumentParser
+from anvio.tables.hmmhits import TablesForHMMHits
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Matthew S. Schechter"
+__email__ = "mschechter@uchicago.edu"
+__provides__ = ["contigs-db", "hmm-hits"]
+__requires__ = ["contigs-db","hmm-source", "hmm-hits"]
+__description__ = ("Add or remove entries in a contigDB hmm_hits table.")
+
+pp = terminal.pretty_print
+
+class FilterHmmHitsTable(object):
+    """A class to filter hmm_hits from domtblout from hmmsearch."""
+    def __init__(self, args, quiet=False, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path=A("contigs_db")
+        self.domtblout=A("domtblout")
+        self.hmm_source=A("hmm_source")
+        self.target_coverage=A("target_coverage")
+        self.query_coverage=A("query_coverage")
+        self.list_hmm_sources=A("list_hmm_sources")
+
+        if self.list_hmm_sources:
+            ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
+            sys.exit()
+
+        self.sanity_checks()
+
+        self.import_domtblout()
+
+        x = self.filter_domtblout()
+
+        self.get_hmm_hit_table(hmmsearch_tbl=x)
+
+        # remove the tmp file
+        os.remove(x)
+
+
+    def sanity_checks(self):
+
+        if not self.hmm_source:
+            raise ConfigError("Please provide a hmm-source :)")
+
+        info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
+
+        if self.hmm_source not in info_table:
+            raise ConfigError("Whoa there, the HMM source "'%s'" is not in your contigsDB: %s "
+                              "Please try re-running anvi-run-hmms and make sure to specify you HMM source of interest." % (self.hmm_source, self.contigs_db_path))
+
+        sources = anvio.data.hmm.sources
+        target = sources[self.hmm_source]['target'].split(':')
+
+        if target[0] != 'AA':
+            raise ConfigError("The hmm-source %s is not for amino acid sequences. "
+                              "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources from protein sequences."  % (self.hmm_source))
+
+
+    def import_domtblout(self):
+
+        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
+
+        col_info = [
+            ('gene_callers_id', int),   # target name
+            ('target_accession',str),   # target accession
+            ('gene_length',     int),   # tlen
+            ('hmm_name',        str),   # query name
+            ('hmm_id',          str),   # accession
+            ('hmm_length',      int),   # qlen
+            ('evalue',          float), # E-value (full sequence)
+            ('bitscore',        float), # score (full sequence)
+            ('bias',            float), # bias (full sequence)
+            ('match_num',       int),   # # (this domain)
+            ('num_matches',     int),   # of (this domain)
+            ('dom_c_evalue',    float), # c-Evalue (this domain)
+            ('dom_i_evalue',    float), # i-Evalue (this domain)
+            ('dom_bitscore',    str),   # score (this domain)
+            ('dom_bias',        float), # bias (this domain)
+            ('hmm_start',       int),   # from (hmm coord)
+            ('hmm_stop',        int),   # to (hmm coord)
+            ('gene_start',      int),   # from (ali coord)
+            ('gene_stop',       int),   # to (ali coord)
+            ('env_to',               str),   # from (env coord)
+            ('env_from',               str),   # to (env coord)
+            ('mean_post_prob',  float), # acc
+        ]
+
+        try:
+            colnames_coltypes_list = list(zip(*col_info))
+            colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
+
+            self.df=pd.read_csv(self.domtblout,
+                            delim_whitespace=True,
+                            comment='#',
+                            names=colnames_coltypes_list[0],
+                            dtype=colnames_coltypes_dict,
+                            header=None,
+                            index_col=False)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Doesn't look like a --domtblout")
+
+        self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+
+
+    def filter_domtblout(self):
+
+        # Filtering conditions
+        if self.target_coverage:
+            df_filtered = self.df[self.df['target_coverage'] > float(self.target_coverage)]
+
+        if self.query_coverage:
+            df_filtered = self.df[self.df['query_coverage'] > float(self.query_coverage)]
+
+        if self.query_coverage and self.target_coverage:
+            df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
+
+
+
+        # FIXME: Maybe print to user how many were filtered out?
+        # print(self.df.shape)
+        # print(self.df.head())
+        # print(df_filtered.shape)
+        # print(df_filtered.head())
+
+        # Reformat domtblout back to original
+        df_final = df_filtered.drop(columns=['query_coverage', 'target_coverage'])
+
+
+        domtblout_tmp_out = filesnpaths.get_temp_file_path()
+        df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
+
+        return domtblout_tmp_out
+
+
+    def get_hmm_hit_table(self, run=terminal.Run(), hmmsearch_tbl=None):
+
+        # Sanity check
+        filesnpaths.is_file_exists(self.contigs_db_path)
+        run.info("Database Path", self.contigs_db_path)
+
+        # Remove old hmm_hits contigs_db_path
+        hmm_tables = TablesForHMMHits(self.contigs_db_path)
+        hmm_tables.remove_source(self.hmm_source)
+
+        # Parse domtblout
+        alphabet= 'AA'
+        context= 'DOMAIN'
+        hmm_program = 'hmmsearch'
+
+        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
+        search_results_dict = parser.get_search_results()
+
+        # Re-write hmm_hits table to contigDB
+        sources = anvio.data.hmm.sources
+
+        source = self.hmm_source
+
+        kind_of_search = sources[source]['kind']
+        domain = sources[source]['domain']
+        all_genes_searched_against = sources[source]['genes']
+        reference = sources[source]['ref']
+
+        hmm_tables.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+
+
+@terminal.time_program
+def main(args):
+    FilterHmmHitsTable(args)
+
+if __name__ == '__main__':
+
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
+    parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+
+    parser.add_argument('--domtblout')
+    parser.add_argument('--target-coverage')
+    parser.add_argument('--query-coverage')
+
+    args, unknown = parser.parse_known_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
