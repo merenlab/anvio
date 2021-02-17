@@ -91,7 +91,6 @@ class FilterHmmHitsTable(object):
     def import_domtblout(self):
 
         # hmmsearch results so the queries are the hmm models and the targets are the ORFs
-
         col_info = [
             ('gene_callers_id',  int),   # target name
             ('target_accession', str),   # target accession
@@ -148,8 +147,6 @@ class FilterHmmHitsTable(object):
         if self.query_coverage and self.target_coverage:
             df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
 
-
-
         # FIXME: Maybe print to user how many were filtered out?
         # print(self.df.shape)
         # print(self.df.head())
@@ -158,7 +155,6 @@ class FilterHmmHitsTable(object):
 
         # Reformat domtblout back to original
         df_final = df_filtered.drop(columns=['query_coverage', 'target_coverage'])
-
 
         domtblout_tmp_out = filesnpaths.get_temp_file_path()
         df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
