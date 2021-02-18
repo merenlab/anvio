@@ -2180,6 +2180,7 @@ D = {
     'domtblout': (
             ['-F', '--domtblout'],
             {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
              'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."}
                 ),
     'installed-hmm-profile': (

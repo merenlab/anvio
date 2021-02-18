@@ -209,29 +209,41 @@ class HMMer:
             # ------------------------------------------------------------------------------
 
             if domtblout_path:
+                domain_out_fmt = "--domtblout"
                 domain_table_file = domtblout_path + '_domtable'
+                if noise_cutoff_terms:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                out_fmt, table_file,
+                                domain_out_fmt, domain_table_file,
+                                hmm, partial_input_file]
+                else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                out_fmt, table_file,
+                                domain_out_fmt, domain_table_file,
+                                hmm, partial_input_file]
             else:
-                domain_table_file = partial_input_file + '_domtable'
+                if noise_cutoff_terms:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                out_fmt, table_file,
+                                hmm, partial_input_file]
+                else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                out_fmt, table_file,
+                                hmm, partial_input_file]
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
 
-            domain_out_fmt = "--domtblout"
-
-            if noise_cutoff_terms:
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file, *noise_cutoff_terms.split(),
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            domain_out_fmt, domain_table_file,
-                            hmm, partial_input_file]
-            else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file,
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            domain_out_fmt, domain_table_file,
-                            hmm, partial_input_file]
+            # FIXME: when multi-threading is initiated, only the last threads domain_table_file is provided when
+            # when all domain_table_file's should be appended to eachother
 
             t = multiprocessing.Process(
                 target = self.hmmer_worker,
