@@ -1544,24 +1544,24 @@ class Profiler(object):
             else:
                 profile.acceptor_variant_string = profile.features[-1].string
 
-            # Explicitly record the start and stop positions within the input seq
-            # of the variable-length alpha and beta regions of the D loop.
-            if self.d_loop_pos < len(profile.features):
-                D_loop = profile.features[-self.d_loop_pos - 1]
-                alpha_seq = D_loop.alpha_seq
-                beta_seq = D_loop.beta_seq
-                profile.alpha_start = D_loop.start_pos + alpha_seq.start_pos
-                profile.alpha_stop = D_loop.start_pos + alpha_seq.stop_pos
-                profile.beta_start = D_loop.start_pos + beta_seq.start_pos
-                profile.beta_stop = D_loop.start_pos + beta_seq.stop_pos
-
-            if self.anticodon_loop_pos < len(profile.features):
-                anticodon = profile.features[-self.anticodon_loop_pos - 1].anticodon
-                profile.anticodon_seq = anticodon.string
-                profile.anticodon_aa = anticodon.aa_string
-
             if len(profile.features) > self.t_arm_pos:
                 profile.is_predicted_trna = True # Liable to change below...
+
+                if self.anticodon_loop_pos < len(profile.features):
+                    anticodon = profile.features[-self.anticodon_loop_pos - 1].anticodon
+                    profile.anticodon_seq = anticodon.string
+                    profile.anticodon_aa = anticodon.aa_string
+
+                    # Explicitly record the start and stop positions within the input seq
+                    # of the variable-length alpha and beta regions of the D loop.
+                    if self.d_loop_pos < len(profile.features):
+                        D_loop = profile.features[-self.d_loop_pos - 1]
+                        alpha_seq = D_loop.alpha_seq
+                        beta_seq = D_loop.beta_seq
+                        profile.alpha_start = D_loop.start_pos + alpha_seq.start_pos
+                        profile.alpha_stop = D_loop.start_pos + alpha_seq.stop_pos
+                        profile.beta_start = D_loop.start_pos + beta_seq.start_pos
+                        profile.beta_stop = D_loop.start_pos + beta_seq.stop_pos
             else:
                 profile.is_predicted_trna = False
 
