@@ -1322,7 +1322,7 @@ class TRNAFeatureParameterizer(object):
 
 
 class Profile(object):
-    """A profile the tRNA features in a sequence. The function, `Profiler.profile`, creates these
+    """A profile of the tRNA features in a sequence. The function, `Profiler.profile`, creates these
     objects."""
 
     __slots__ = (
