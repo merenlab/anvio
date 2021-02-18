@@ -52,20 +52,6 @@ class FilterHmmHitsTable(object):
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
             sys.exit()
 
-        self.sanity_checks()
-
-        self.import_domtblout()
-
-        x = self.filter_domtblout()
-
-        self.get_hmm_hit_table(hmmsearch_tbl=x)
-
-        # remove the tmp file
-        if anvio.DEBUG:
-            self.run.info("Filtered domtblout file", x)
-        elif not anvio.DEBUG:
-            os.remove(x)
-
 
     def sanity_checks(self):
 
@@ -90,6 +76,23 @@ class FilterHmmHitsTable(object):
             raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
                               "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
                               "from protein sequences.")
+
+
+    def process(self):
+
+        self.sanity_checks()
+
+        self.import_domtblout()
+
+        x = self.filter_domtblout()
+
+        self.get_hmm_hit_table(hmmsearch_tbl=x)
+
+        # remove the tmp file
+        if anvio.DEBUG:
+            self.run.info("Filtered domtblout file", x)
+        elif not anvio.DEBUG:
+            os.remove(x)
 
 
     def import_domtblout(self):
@@ -192,7 +195,8 @@ class FilterHmmHitsTable(object):
 
 @terminal.time_program
 def main(args):
-    FilterHmmHitsTable(args)
+    p = FilterHmmHitsTable(args)
+    p.process()
 
 if __name__ == '__main__':
 
