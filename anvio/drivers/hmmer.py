@@ -210,7 +210,7 @@ class HMMer:
 
             if domtblout_path:
                 domain_out_fmt = "--domtblout"
-                domain_table_file = domtblout_path + '_domtable'
+                domain_table_file = domtblout_path + '_domtable.txt'
                 if noise_cutoff_terms:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                                 '-o', output_file, *noise_cutoff_terms.split(),
