@@ -45,8 +45,8 @@ def main(args):
         raise ConfigError("Well, in order to run this program, you need %s to be installed on your system." %\
                                                                                      (', and '.join(missing_programs)))
 
-    if args.hmm_domain_tblout_path and not args.hmmer_program == "hmmsearch":
-      raise ConfigError("--hmm-domain-tblout-path can only work with the program hmmsearch. "
+    if args.domtblout and not args.hmmer_program == "hmmsearch":
+      raise ConfigError("--domtblout can only work with the program hmmsearch. "
                         "Please specify this with --hmmer-program ")
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
@@ -84,7 +84,7 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it, hmm_program_to_use=args.hmmer_program, domtblout_path=args.hmm_domain_tblout_path)
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it, hmm_program_to_use=args.hmmer_program, domtblout_path=args.domtblout)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
@@ -113,7 +113,7 @@ if __name__ == '__main__':
                                      f"of names for multiple profiles (but in that case don't put a space between each profile name). "
                                      f"Here is the list of installed profiles available to you: are the currently available ones: "
                                      f"{available_hmm_sources_pretty}."}))
-    groupB.add_argument(*anvio.A("hmm-domain-tblout-path"), **anvio.K('hmm-domain-tblout-path'))
+    groupB.add_argument(*anvio.A("domtblout"), **anvio.K('domtblout'))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))

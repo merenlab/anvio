@@ -2177,12 +2177,10 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
-    'hmm-domain-tblout-path': (
-            ['-F', '--hmm-domain-tblout-path'],
+    'domtblout': (
+            ['-F', '--domtblout'],
             {'metavar': 'HMM OUTPUT FORMAT',
-             'help': "HMMER has a few output formats for including --tblout and --domtblout"
-                     "depending on the alphabet of your alignment. By default anvi'o will provide"
-                     "--tblout but if you are doing a protein search you can change to --domtblout."}
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."}
                 ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
