@@ -58,6 +58,9 @@ class FilterHmmHitsTable(object):
         filesnpaths.is_file_exists(self.contigs_db_path)
         self.run.info("Database Path", self.contigs_db_path)
 
+        filesnpaths.is_file_exists(self.domtblout)
+        self.run.info("Domtblout Path", self.domtblout)
+
         if not self.hmm_source:
             raise ConfigError("Please provide a hmm-source :)")
 
