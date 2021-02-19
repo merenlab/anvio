@@ -75,7 +75,7 @@ This will only work with HMM profiles made for amino acid sequences, such as Bac
 
 ### Other things anvi-run-hmms can do
 
-- Add the tag `--also-scan-trnas` to basically run %(anvi-scan-trnas)s for you at the same time. It's very convenient.
+- Add the tag `--also-scan-trnas` to basically run %(anvi-scan-trnas)s for you at the same time. It's very convenient. (But it only works if you are not using the `-I` or `-H` flags at the same time because reasons.)
 - Add the tag `--just-do-it` to hide all warnings and questions in case you don't want to deal with those.
 -  There are also parameters that can help speed up the runtime of this program. However, be aware of the limits of your system, especially if running on a SGE.  For example, you can increase the number of threads or switch to hmmsearch if you are scanning  a large umber of HMMs. For more information on that, check out [here](http://merenlab.org/software/anvio/vignette/#anvi-run-hmms).
 
