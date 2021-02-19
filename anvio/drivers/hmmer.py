@@ -214,6 +214,7 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
+
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
@@ -223,42 +224,6 @@ class HMMer:
                 domtable_file = partial_input_file + '_domtable'
             else:
                 domtable_file = None
-
-            # ------------------------------------------------------------------------------
-            # FIXME run_all_tests.sh fails because domain_out_fmt stuff does not respect the
-            # original ways in which this driver was used
-            # ------------------------------------------------------------------------------
-
-            if domtblout_path:
-                domain_out_fmt = "--domtblout"
-                domain_table_file = domtblout_path + '_domtable.txt'
-                if noise_cutoff_terms:
-                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                                '-o', output_file, *noise_cutoff_terms.split(),
-                                '--cpu', cores_per_process,
-                                out_fmt, table_file,
-                                domain_out_fmt, domain_table_file,
-                                hmm, partial_input_file]
-                else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                                '-o', output_file,
-                                '--cpu', cores_per_process,
-                                out_fmt, table_file,
-                                domain_out_fmt, domain_table_file,
-                                hmm, partial_input_file]
-            else:
-                if noise_cutoff_terms:
-                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                                '-o', output_file, *noise_cutoff_terms.split(),
-                                '--cpu', cores_per_process,
-                                out_fmt, table_file,
-                                hmm, partial_input_file]
-                else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                                '-o', output_file,
-                                '--cpu', cores_per_process,
-                                out_fmt, table_file,
-                                hmm, partial_input_file]
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
