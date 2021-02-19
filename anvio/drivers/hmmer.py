@@ -293,6 +293,8 @@ class HMMer:
                         append_function = self.append_to_main_table_file
                     elif file_type == 'standard':
                         append_function = self.append_to_main_standard_file
+                    elif file_type == 'domtable':
+                        append_function = self.append_to_main_table_file
 
                     append_function(main_file_buffer, worker_file, main_file_lock)
 
