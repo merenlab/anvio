@@ -87,7 +87,7 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
-                  desired_output='table', out_fmt='--tblout', hmmer_output_dir=None):
+                  desired_output='table', hmmer_output_dir=None):
         """Run the program
 
         Parameters
@@ -122,13 +122,10 @@ class HMMer:
 
         desired_output : str OR list, 'table'
             HMMER programs have a couple of outputs. For the standard output (specified by the hmmer
-            program flag `-o`), pass 'standard'. For the tabular output (specified by the hmmer
-            program flag `--tblout` or `--domtblout`), pass 'table'. If you want to use both, pass
+            program flag `-o`), pass 'standard'. For the regular tabular output (specified by the hmmer
+            program flag `--tblout`), pass 'table'. For the domain tabular output (specified by the hmmer
+            program flag `--domtblout`), pass 'domtable'. If you want to use multiple, pass a tuple like
             ('standard', 'table')
-
-        out_fmt : str, '--tblout'
-            HMMer programs have different table output formats. For example, choose from --tblout or
-            --domtblout.
 
         hmmer_output_dir : str
             The path at which to store the HMMER output files, if desired. After all HMMER workers are
@@ -151,11 +148,8 @@ class HMMer:
             desired_output = (desired_output, )
 
         for output in desired_output:
-            if output not in ['standard', 'table']:
+            if output not in ['standard', 'table', 'domtable']:
                 raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % output)
-
-        if out_fmt not in ['--tblout', '--domtblout']:
-            raise ConfigError("HMMer.run_hmmer :: Unknown out_fmt, '%s'" % out_fmt)
 
         if hmmer_output_dir:
             if not os.path.exists(hmmer_output_dir):
@@ -220,22 +214,42 @@ class HMMer:
             log_file = partial_input_file + '_log'
             output_file = partial_input_file + '_output'
             table_file = partial_input_file + '_table'
+            if 'domtable' in desired_output:
+                domtable_file = partial_input_file + '_domtable'
+            else:
+                domtable_file = None
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
 
             if noise_cutoff_terms:
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file, *noise_cutoff_terms.split(),
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            hmm, partial_input_file]
+                if 'domtable' in desired_output:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                '--domtblout', domtable_file,
+                                hmm, partial_input_file]
+                else:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file,
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            hmm, partial_input_file]
+                if 'domtable' in desired_output:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                '--domtblout', domtable_file,
+                                hmm, partial_input_file]
+                else:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
                                                        cmd_line,
@@ -244,7 +258,8 @@ class HMMer:
                                                        desired_output,
                                                        log_file,
                                                        output_queue,
-                                                       ret_value_queue))
+                                                       ret_value_queue,
+                                                       domtable_output_file=domtable_file))
             t.start()
             workers.append(t)
 
