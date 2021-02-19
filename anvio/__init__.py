@@ -2188,6 +2188,15 @@ D = {
                      "in this directory. Please note that this will only work if you are running on only one "
                      "profile using the -I flag."}
                 ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (ie, the file specified by the --domtblout flag). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only."}
+                ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',

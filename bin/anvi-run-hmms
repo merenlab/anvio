@@ -88,7 +88,8 @@ def main(args):
                           "want to keep the HMMER output.")
 
     search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
-                                     hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir)
+                                     hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
+                                     get_domain_table_output=args.get_domtable_output)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
@@ -118,6 +119,7 @@ if __name__ == '__main__':
                                      f"Here is the list of installed profiles available to you: are the currently available ones: "
                                      f"{available_hmm_sources_pretty}."}))
     groupB.add_argument(*anvio.A('hmmer-output-dir'), **anvio.K('hmmer-output-dir'))
+    groupB.add_argument(*anvio.A('get-domtable-output'), **anvio.K('get-domtable-output'))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))
