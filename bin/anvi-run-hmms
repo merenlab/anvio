@@ -80,7 +80,15 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it, hmm_program_to_use=args.hmmer_program)
+    # storing hmmer output only works one profile at a time since the output will be overwritten with each profile
+    if args.hmmer_output_dir and not len(sources.keys()) == 1:
+        raise ConfigError("You requested to save the HMMER output files in a directory, but this will not work with "
+                          "more than one HMM source because the output files would be overwritten with each new source. "
+                          "We are sorry for this, but we humbly request that you run on each source one at a time if you "
+                          "want to keep the HMMER output.")
+
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
+                                     hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
