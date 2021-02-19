@@ -40,12 +40,13 @@ pp = terminal.pretty_print
 
 class TablesForHMMHits(Table):
     def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False,
-                 hmm_program_to_use='hmmscan', hmmer_output_directory=None):
+                 hmm_program_to_use='hmmscan', hmmer_output_directory=None, get_domain_table_output=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
         self.just_do_it = just_do_it
         self.hmm_program = hmm_program_to_use or 'hmmscan'
         self.hmmer_output_dir = hmmer_output_directory
+        self.hmmer_desired_output = ('table', 'domtable') if get_domain_table_output else 'table'
 
         utils.is_contigs_db(self.db_path)
         filesnpaths.is_program_exists(self.hmm_program)
@@ -215,16 +216,22 @@ class TablesForHMMHits(Table):
             reference = sources[source]['ref']
             noise_cutoff_terms = sources[source]['noise_cutoff_terms']
 
-            hmm_scan_hits_txt = commander.run_hmmer(source,
-                                                      alphabet,
-                                                      context,
-                                                      kind_of_search,
-                                                      domain,
-                                                      len(all_genes_searched_against),
-                                                      hmm_model,
-                                                      reference,
-                                                      noise_cutoff_terms,
-                                                      hmmer_output_dir=self.hmmer_output_dir)
+            hmmer_output = commander.run_hmmer(source,
+                                              alphabet,
+                                              context,
+                                              kind_of_search,
+                                              domain,
+                                              len(all_genes_searched_against),
+                                              hmm_model,
+                                              reference,
+                                              noise_cutoff_terms,
+                                              desired_output=self.hmmer_desired_output,
+                                              hmmer_output_dir=self.hmmer_output_dir)
+            
+            if not isinstance(hmmer_output, tuple):
+                hmm_scan_hits_txt = hmmer_output
+            else:
+                hmm_scan_hits_txt,domain_hits_txt = hmmer_output
 
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
