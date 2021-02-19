@@ -157,6 +157,19 @@ class HMMer:
         if out_fmt not in ['--tblout', '--domtblout']:
             raise ConfigError("HMMer.run_hmmer :: Unknown out_fmt, '%s'" % out_fmt)
 
+        if hmmer_output_dir:
+            if not os.path.exists(hmmer_output_dir):
+                filesnpaths.gen_output_directory(hmmer_output_dir)
+            else:
+                filesnpaths.is_output_dir_writable(hmmer_output_dir)
+                for output in desired_output:
+                    file_path = os.path.join(hmmer_output_dir, f"hmm.{output}")
+                    if filesnpaths.is_file_exists(file_path, dont_raise=True):
+                        raise ConfigError(f"The file {file_path} already exists, and anvi'o does not like to "
+                                          "to overwrite things. Please either remove the file or rename your "
+                                          "desired output.")
+
+
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')
