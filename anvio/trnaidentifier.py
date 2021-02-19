@@ -509,29 +509,52 @@ class DStem(Stem):
     arm_class = DArm
 
     def __init__(self, fiveprime_seq, threeprime_seq, type_II_trna=False, cautious=False):
-        if type_II_trna and self.num_allowed_unpaired != 4:
+        self.type_II_trna = type_II_trna
+        super().__init__(fiveprime_seq,
+                         threeprime_seq,
+                         num_allowed_unconserved=self.num_allowed_unconserved,
+                         num_allowed_unpaired=self.num_allowed_unpaired,
+                         cautious=cautious)
+
+
+    def check_pairs(self):
+        """This method overrides the one with the same name in the Stem superclass."""
+        self.paired_positions_13_22_in_type_II = False
+        self.unpaired_positions_13_22_in_type_II = False
+        if self.type_II_trna and self.num_allowed_unpaired != 4:
             # Do not penalize type II tRNAs for having unpaired nucleotides at canonical positions
             # 13 and 22, unless the user changes the parameterization of `num_allowed_unpaired` to
-            # force positions 10-13 to always pair with 25-22. The algorithm is tricked into
-            # thinking that 13 is always paired with 22. No record of the pairing status of the
-            # nucleotides will show up in feature objects, a `Profile` object, or from running
-            # `Profile.get_unpaired_positions`. Since the number of paired and unpaired nucleotides
-            # in the stem is not affected, `Profile.get_profile` does not favor type II profiles
-            # with 4 as opposed to 3 base pairs in a candidate D stem.
-            fiveprime_seq_string = fiveprime_seq.string
-            fiveprime_seq.string = fiveprime_seq_string[: 3] + WC_BASE_PAIRS[threeprime_seq.string[0]]
-            super().__init__(fiveprime_seq,
-                             threeprime_seq,
-                             num_allowed_unconserved=self.num_allowed_unconserved,
-                             num_allowed_unpaired=self.num_allowed_unpaired,
-                             cautious=cautious)
-            fiveprime_seq.string = fiveprime_seq_string
+            # force positions 10-13 to always pair with 25-22.
+            num_paired = 0
+            num_unpaired = 0 # can include N "padding" in extrapolated 5' feature
+            paired_status = []
+            for fiveprime_nt, threeprime_nt in zip(self.fiveprime_seq.string[: -1], self.threeprime_seq.string[::-1]):
+                if fiveprime_nt in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nt]:
+                    num_paired += 1
+                    paired_status.append((True, fiveprime_nt, threeprime_nt))
+                else:
+                    num_unpaired += 1
+                    paired_status.append((False, fiveprime_nt, threeprime_nt))
+
+            if num_unpaired > self.num_allowed_unpaired:
+                meets_pair_thresh = False
+            else:
+                meets_pair_thresh = True
+
+            fiveprime_nt = self.fiveprime_seq.string[-1]
+            threeprime_nt = self.threeprime_seq.string[0]
+            if fiveprime_nt in WC_PLUS_WOBBLE_BASE_PAIRS[threeprime_nt]:
+                num_paired += 1
+                paired_status.append((True, fiveprime_nt, threeprime_nt))
+                self.paired_positions_13_22_in_type_II = True
+            else:
+                num_unpaired += 1
+                paired_status.append((False, fiveprime_nt, threeprime_nt))
+                self.unpaired_positions_13_22_in_type_II = True
         else:
-            super().__init__(fiveprime_seq,
-                             threeprime_seq,
-                             num_allowed_unconserved=self.num_allowed_unconserved,
-                             num_allowed_unpaired=self.num_allowed_unpaired,
-                             cautious=cautious)
+            meets_pair_thresh, num_paired, num_unpaired, paired_status = super().check_pairs()
+
+        return meets_pair_thresh, num_paired, num_unpaired, paired_status
 
 
 class DStemFiveprimeStrand(Sequence):
@@ -1494,6 +1517,10 @@ class Profiler(object):
             DStem
         ]
 
+        self.d_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(DLoop)
+        self.d_stem_pos = self.threeprime_to_fiveprime_feature_classes.index(DStem)
+        self.anticodon_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop)
+        self.v_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(VLoop)
         self.t_arm_pos = self.threeprime_to_fiveprime_feature_classes.index(TArm)
         self.threeprime_stem_seq_positions = {
             TStem: self.threeprime_to_fiveprime_feature_classes.index(TStemThreeprimeStrand),
@@ -1501,14 +1528,11 @@ class Profiler(object):
             DStem: self.threeprime_to_fiveprime_feature_classes.index(DStemThreeprimeStrand),
             AcceptorStem: self.threeprime_to_fiveprime_feature_classes.index(AcceptorStemThreeprimeStrand)
         }
-        self.d_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(DLoop)
         self.arm_loop_pos_dict = {
             TArm: self.threeprime_to_fiveprime_feature_classes.index(TLoop),
             AnticodonArm: self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop),
             DArm: self.d_loop_pos
         }
-        self.anticodon_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(AnticodonLoop)
-        self.v_loop_pos = self.threeprime_to_fiveprime_feature_classes.index(VLoop)
 
         self.extrapolation_ineligible_features = [
             AcceptorStemThreeprimeStrand,
@@ -1552,9 +1576,9 @@ class Profiler(object):
                     profile.anticodon_seq = anticodon.string
                     profile.anticodon_aa = anticodon.aa_string
 
-                    # Explicitly record the start and stop positions within the input seq
-                    # of the variable-length alpha and beta regions of the D loop.
                     if self.d_loop_pos < len(profile.features):
+                        # Explicitly record the start and stop positions within the input seq
+                        # of the variable-length alpha and beta regions of the D loop.
                         D_loop = profile.features[-self.d_loop_pos - 1]
                         alpha_seq = D_loop.alpha_seq
                         beta_seq = D_loop.beta_seq
@@ -2014,12 +2038,35 @@ class Profiler(object):
                                      num_extra_threeprime=num_extra_threeprime + 1)
                 )
 
-        # Do not add 5' features to profiled 3' features if the additional features
-        # have no grounding in conserved nucleotides or paired nucleotides in stems.
-        profile_candidates = [p for p in profile_candidates if p[2] + p[4] > num_conserved + num_paired]
-        if profile_candidates:
-            profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[7]))
-            return profile_candidates[0]
+        # Do not add 5' features to profiled 3' features if the additional features have no
+        # grounding in conserved nucleotides or paired nucleotides in stems.
+        supported_profile_candidates = []
+        is_D_stem_in_profile = self.d_stem_pos < len(features)
+        has_profile_with_type_II_D_arm = False
+        for p in profile_candidates:
+            if is_D_stem_in_profile:
+                # Do not favor type II tRNA profiles with paired D stem positions 13 and 22 over
+                # profiles with those positions unpaired.
+                if features[-self.d_stem_pos - 1].paired_positions_13_22_in_type_II:
+                    if p[2] + p[4] - 1 > num_conserved + num_paired:
+                        supported_profile_candidates.append(p)
+                        has_profile_with_type_II_D_arm = True
+                        continue
+            if p[2] + p[4] > num_conserved + num_paired:
+                supported_profile_candidates.append(p)
+
+        if supported_profile_candidates:
+            if has_profile_with_type_II_D_arm:
+                # Do not favor type II tRNA profiles with paired D stem positions 13 and 22 over
+                # profiles with those positions unpaired.
+                unpaired_positions_13_22_in_type_II_profiles = [
+                    1 if p.features[-self.d_stem_pos - 1].unpaired_positions_13_22_in_type_II else 0
+                    for p in supported_profile_candidates
+                ]
+                return sorted(zip(supported_profile_candidates, unpaired_positions_13_22_in_type_II_profiles),
+                              key=lambda t: (-len(t[0][1]), t[0][3] + t[0][5] - t[1], t[0][7]))[0][0]
+            else:
+                return sorted(supported_profile_candidates, key=lambda p: (-len(p[1]), p[3] + p[5], p[7]))[0]
         else:
             return (profiled_seq,
                     features,
