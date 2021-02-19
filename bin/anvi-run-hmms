@@ -45,9 +45,9 @@ def main(args):
         raise ConfigError("Well, in order to run this program, you need %s to be installed on your system." %\
                                                                                      (', and '.join(missing_programs)))
 
-    if args.domtblout and not args.hmmer_program == "hmmsearch":
-      raise ConfigError("--domtblout can only work with the program hmmsearch. "
-                        "Please specify this with --hmmer-program ")
+    # if args.domtblout and not args.hmmer_program == "hmmsearch":
+    #   raise ConfigError("--domtblout can only work with the program hmmsearch. "
+    #                     "Please specify this with --hmmer-program ")
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
