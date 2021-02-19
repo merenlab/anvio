@@ -2060,7 +2060,7 @@ class Profiler(object):
                 # Do not favor type II tRNA profiles with paired D stem positions 13 and 22 over
                 # profiles with those positions unpaired.
                 unpaired_positions_13_22_in_type_II_profiles = [
-                    1 if p.features[-self.d_stem_pos - 1].unpaired_positions_13_22_in_type_II else 0
+                    1 if p[1][-self.d_stem_pos - 1].unpaired_positions_13_22_in_type_II else 0
                     for p in supported_profile_candidates
                 ]
                 return sorted(zip(supported_profile_candidates, unpaired_positions_13_22_in_type_II_profiles),
