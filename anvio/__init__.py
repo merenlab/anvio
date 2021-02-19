@@ -2181,6 +2181,13 @@ D = {
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
                 ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',
