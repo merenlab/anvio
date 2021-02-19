@@ -259,7 +259,7 @@ class HMMer:
                                                        log_file,
                                                        output_queue,
                                                        ret_value_queue,
-                                                       domtable_output_file=domtable_file))
+                                                       domtable_file))
             t.start()
             workers.append(t)
 
