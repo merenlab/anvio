@@ -87,7 +87,7 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
-                  desired_output='table', out_fmt='--tblout'):
+                  desired_output='table', out_fmt='--tblout', hmmer_output_dir=None):
         """Run the program
 
         Parameters
@@ -129,6 +129,11 @@ class HMMer:
         out_fmt : str, '--tblout'
             HMMer programs have different table output formats. For example, choose from --tblout or
             --domtblout.
+
+        hmmer_output_dir : str
+            The path at which to store the HMMER output files, if desired. After all HMMER workers are
+            done and their partial output files have been combined into one (for each type), those combined
+            output files will be moved to this location.
         """
 
         target = ':'.join([alphabet, context])
@@ -280,7 +285,10 @@ class HMMer:
 
         output_file_paths = []
         for output in desired_output:
-            output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
+            if hmmer_output_dir:
+                output_file_path = os.path.join(hmmer_output_dir, f"hmm.{output}")
+            else:
+                output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
 
             with open(output_file_path, 'w') as out:
                 merged_files_dict[output]['buffer'].seek(0)
