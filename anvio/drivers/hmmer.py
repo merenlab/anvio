@@ -340,13 +340,14 @@ class HMMer:
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     output_queue, ret_value_queue):
+                     output_queue, ret_value_queue, domtable_output_file=None):
 
         try:
             # First we run the command
             utils.run_command(cmd_line, log_file)
 
-            if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file):
+            if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file) or \
+                                 (domtable_output_file and not os.path.exists(domtable_output_file)):
                 self.progress.end()
                 raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
                                   "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
@@ -359,6 +360,8 @@ class HMMer:
                     output_dict['table'] = table_output_file
                 elif output == 'standard':
                     output_dict['standard'] = standard_output_file
+                elif output == 'domtable':
+                    output_dict['domtable'] = domtable_output_file
             output_queue.put(output_dict)
 
             # return value of 0 to indicate success
