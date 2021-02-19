@@ -209,6 +209,12 @@ class TablesForHMMHits(Table):
         for source in sources:
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
 
+            if alphabet in ['DNA', 'RNA'] and 'domtable' in self.hmmer_desired_output:
+                raise ConfigError("Domain table output was requested (probably with the --get-domtable-output flag, "
+                                  "does that look familiar?) but unfortunately this option is incompatible with the "
+                                  f"current source of HMM profiles, {source}, because this source uses a nucleotide "
+                                  "alphabet.")
+
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
             all_genes_searched_against = sources[source]['genes']

@@ -176,6 +176,11 @@ class HMMer:
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
         if alphabet in ['DNA', 'RNA']:
             self.run.info('HMMer program used for search', 'nhmmscan')
+            if 'domtable' in desired_output:
+                raise ConfigError("Oh, dear. Someone (probably a programmer) has requested domain table output from "
+                                  f"the run_hmmer() function when the alphabet is {alphabet}. Sadly, this will not "
+                                  "work because that alphabet requires the use of `nhmmscan`, which does not have "
+                                  "the --domtblout parameter.") 
         else:
             self.run.info('HMMer program used for search', self.program_to_use)
 
