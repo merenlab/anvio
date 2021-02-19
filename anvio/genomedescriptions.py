@@ -14,6 +14,8 @@ import copy
 import hashlib
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -40,7 +42,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
+P = terminal.pluralize
 
 class GenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress):
@@ -294,7 +296,7 @@ class GenomeDescriptions(object):
         self.sanity_check()
 
 
-    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None):
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None, return_only_functions=False):
         """This function fetches dictionaries of functions, AA sequences, and DNA sequences for a particular genome.
 
         PARAMETERS
@@ -304,6 +306,8 @@ class GenomeDescriptions(object):
         requested_source_list, list
             the functional annotation sources you want data for. If not provided, data will be fetched for all sources in
             self.function_annotation_sources
+        return_only_functions, bool
+            Return only functions, and don't bother with sequences
 
         RETURNS
         =======
@@ -317,7 +321,16 @@ class GenomeDescriptions(object):
 
         g = self.genomes[genome_name]
 
-        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        args = argparse.Namespace()
+        args.contigs_db = g['contigs_db_path']
+
+        # we are about to initialize the contigs super, but before that, we need to make sure that
+        # the class will know about the splits that describe this genome in the contigs database
+        # IF it is an internal genome. otherwise we will end up gathering all the functions in
+        # gontigs database for it.
+        if genome_name in self.internal_genome_names:
+            args.split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(g)
+
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
@@ -325,6 +338,9 @@ class GenomeDescriptions(object):
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
+
+        if return_only_functions:
+            return (function_calls_dict, None, None)
 
         # get dna sequences
         gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
@@ -401,7 +417,7 @@ class GenomeDescriptions(object):
                 if len(function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
-                                     "function annotation sources that are common to all of your genomes, and they will be used whenever "
+                                     "functional annotation sources that are common to all of your genomes, and they will be used whenever "
                                      "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
@@ -1032,3 +1048,464 @@ class MetagenomeDescriptions(object):
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
+
+
+class AggregateFunctions:
+    """Aggregate functions from anywhere.
+
+    The purpose of this class is to collect functions from many distinct databases,
+    including external genomes, internal genomes, and/or a genomes storage, and report
+    a set of dictionaries that give access to the presence/absence and frequency
+    of all functions annotated by a single source.
+
+    One fancy function in AggregateFunctions is `report_functions_per_group_stats`. For
+    instance, one could initiate the class in the following way to get a functions per
+    group stats output file for functioanl enrichment analysis:
+
+        >>> import argparse
+        >>> import anvio.genomedescriptions as g
+        >>> args = argparse.Namespace(external_genomes=external_genmes_path, annotation_source='KOfam')
+        >>> groups = {'adoles': ['B_adolescentis', 'B_adolescentis_1_11', 'B_adolescentis_22L', 'B_adolescentis_6', 'B_adolescentis_ATCC_15703'],
+                      'lactis': ['B_animalis', 'B_lactis_AD011', 'B_lactis_ATCC_27673', 'B_lactis_B420', 'B_lactis_BB_12', 'B_lactis_BF052'],
+                      'longum': ['B_longum', 'B_longum_AH1206', 'B_longum_BBMN68', 'B_longum_BORI', 'B_longum_CCUG30698', 'B_longum_GT15']}
+        >>> facc = g.AggregateFunctions(args, layer_groups=groups)
+        >>> facc.report_functions_per_group_stats(output_file_path)
+
+    For other uses of this class, see the `functional` mode in the interactive class
+    which is accessed by anvi-display-functions, or anvi-script-gen-functions-per-group-stats-output
+    that gives access to `report_functions_per_group_stats` function to generate the
+    functions across groups output.
+
+    Paremeters
+    ==========
+    args : argparse.Namespace object
+        See the class header for options.
+    layer_groups : dict
+        When provided, the class will recognize that genomes belong to distinct groups
+        and will prepare grouped frequency and presence-absence dicts, as well. This
+        can ALTERNATIVELY be defined through a TAB-delimited input file passed through
+        args.
+    """
+
+    def __init__(self, args, layer_groups=None, skip_sanity_check=False, skip_init=False, r=run, p=progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.genomes_storage_path = A('genomes_storage')
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.function_annotation_source = A('annotation_source')
+        self.min_occurrence = A('min_occurrence') or 1
+        self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
+        self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
+        self.layer_groups_input_file_path = A('groups_txt') or False
+
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        # these are some primary data structures this class reports
+
+        # remember, 'key' here can be accession ids, or functio names
+        # depending on `self.aggregate_based_on_accession`
+        self.hash_to_key = {}
+
+        # this variable makes sure even if functions are aggregated
+        # using accession ids, there is a way to resolve function
+        # names that correspond to each item. This is going to be a
+        # life saver while trying to summarize things
+        self.hash_to_function_dict = {}
+
+        # distribution of 'keys' (i.e., accession ids or functions)
+        # across genomes based on the frequency of observation or
+        # presence absence. Having two disctionaries for this sounds
+        # stupid at first (because it is), since the presence/absence
+        # data can always be recovered from the frequency data. but
+        # the momory fingerprint of these dicts are always going to be
+        # nothing and will save additional steps in places where an
+        # instance is used.
+        self.functions_across_layers_frequency = {}
+        self.functions_across_layers_presence_absence = {}
+
+        # just like the previous two, but rather than genome names as
+        # layers, these dicts will be tracking 'gruops' as defined by
+        # the member variable, `self.layer_groups`. please note that
+        # the presence-absence dictionary will not be composed of
+        # binary variables, but will have the sum of presence absence
+        # of a given function across all layers in a given group
+        self.functions_across_groups_frequency = {}
+        self.functions_across_groups_presence_absence = {}
+
+        # two additional dicts to alwys be able to convert accession
+        # ids to function names and vice versa. remember, an accession
+        # id will resolve to a single function name (unless the provider
+        # of function names did not screw things up), but a function
+        # name can resolve to multiple accession ids, hence the latter
+        # dict will contain will contain for each of its keys a list.
+        self.accession_id_to_function_dict = {}
+        self.function_to_accession_ids_dict = {}
+
+        # to keep track of all layer names and where they are coming from.
+        self.layer_names_considered = set({})
+        self.layer_names_from_internal_genomes = []
+        self.layer_names_from_external_genomes = []
+        self.layer_names_from_genomes_storage = []
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+
+        # this will summarize what happened in a text form.
+        self.summary_markdown = None
+
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        # Here we will quickly deal with layer groups during the initialization of the class
+        # this section of the init will establish a propeer `self.layer_groups` variable for
+        # later use.
+        self.layer_name_to_group_name = {}
+        self.layer_groups_defined = False
+        self.layer_groups = None
+
+        if layer_groups or self.layer_groups_input_file_path:
+            if layer_groups and not isinstance(layer_groups, dict):
+                raise ConfigError("The variable `layer_groups` is supposed to be of type `dict`.")
+
+            if self.layer_groups_input_file_path and layer_groups:
+                raise ConfigError("You can either specify layer groups by passing a dictionary, or "
+                                  "you can use the `layer_groups_input_file_path` argument, but not "
+                                  "both :/")
+
+            if self.layer_groups_input_file_path:
+                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path, expected_number_of_fields=2)
+                self.layer_groups = {}
+
+                if 'group' not in utils.get_columns_of_TAB_delim_file(self.layer_groups_input_file_path):
+                    raise ConfigError("The second column of the groups file must have a header `group`.")
+
+                layer_groups_d = utils.get_TAB_delimited_file_as_dictionary(self.layer_groups_input_file_path)
+
+                for layer_name in layer_groups_d:
+                    group_name = layer_groups_d[layer_name]['group']
+
+                    if not group_name in self.layer_groups:
+                        self.layer_groups[group_name] = []
+
+                    self.layer_groups[group_name].append(layer_name)
+            elif layer_groups:
+                self.layer_groups = layer_groups
+
+            # Finally, last AND least, a small helper dictionary we will use if there are gorups defined
+            # by the user:
+            if self.layer_groups:
+                self.layer_groups_defined = True
+                for group_name in self.layer_groups:
+                    for layer_name in self.layer_groups[group_name]:
+                        self.layer_name_to_group_name[layer_name] = group_name
+
+            group_names = sorted(list(self.layer_groups.keys()))
+            self.run.info('Groups found and parsed', ', '.join(group_names))
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+
+        self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
+        self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
+        self.V = lambda: 'function' if self.aggregate_based_on_accession else 'accession ID'
+
+        self.sanity_checked = False
+        self.initialized = False
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+        if not skip_init:
+            self.init()
+
+
+    def init(self):
+        if self.initialized:
+            raise ConfigError("Soemone already called the init function on this instance. You can't do it again. "
+                              "Go get your own instance :(")
+
+        # populate main dictionaries
+        self._init_functions_from_int_ext_genomes()
+        self._init_functions_from_genomes_storage()
+        self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
+
+        if self.min_occurrence:
+            num_occurrence_of_keys = [(c, sum(self.functions_across_layers_presence_absence[c].values())) for c in self.functions_across_layers_presence_absence]
+            keys_to_remove = set([key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence])
+
+            # the following if block takes care of cleaning up both `self.accession_id_to_function_dict` and
+            # `self.function_to_accession_ids_dict` dicts in a mindful fashion in addition to the cleanup of
+            # all other dicts.
+            if len(keys_to_remove):
+                for key in keys_to_remove:
+                    self.functions_across_layers_frequency.pop(key)
+                    self.functions_across_layers_presence_absence.pop(key)
+
+                    if self.layer_groups_defined:
+                        self.functions_across_groups_frequency.pop(key)
+                        self.functions_across_groups_presence_absence.pop(key)
+
+                    self.hash_to_key.pop(key) if key in self.hash_to_key else None
+
+                    # these are the trick ones since how this step should be handled will depend on
+                    # what is key and what is value in the instance configuration:
+                    if self.aggregate_based_on_accession:
+                        if key in self.hash_to_key:
+                            accession = self.hash_to_key[key]
+                            function = self.accession_id_to_function_dict[accession]
+                            self.accession_id_to_function_dict.pop(accession)
+                            self.function_to_accession_ids_dict[function].pop(accession)
+                            if not len(self.function_to_accession_ids_dict[function]):
+                                self.function_to_accession_ids_dict.pop(function)
+                    else:
+                        if key in self.function_to_accession_ids_dict:
+                            accessions = self.function_to_accession_ids_dict[key]
+                            self.function_to_accession_ids_dict.pop(key)
+                            for accession in accessions:
+                                self.accession_id_to_function_dict.pop(accession)
+
+
+                self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
+                                 f"{self.function_annotation_source} from downstream analyses since they occurred "
+                                 f"in less than {self.min_occurrence} genomes.")
+
+        self.update_summary_markdown()
+
+        self.initialized = True
+
+
+    def sanity_check(self):
+        if not self.function_annotation_source:
+            raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
+                              "an annotation source to be used for aggregating all the information from all "
+                              "the genomes. Someoen didn't specify any function annotation source :/")
+
+        if not self.external_genomes_path and not self.internal_genomes_path and not self.genomes_storage_path:
+            raise ConfigError("You must provide at least one source of genomes to this class :/")
+
+        if self.min_occurrence and not isinstance(self.min_occurrence, int):
+            raise ConfigError("Obviously, --min-occurrence must be an integer.")
+
+        if self.min_occurrence < 1:
+            raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
+
+        if self.layer_groups_defined:
+            if not len(self.layer_groups) > 1:
+                raise ConfigError("Layer groups must have two or more groups.")
+
+            for layer_group in self.layer_groups:
+                if not isinstance(self.layer_groups[layer_group], list):
+                    raise ConfigError(f"Each layer group must be composed list of layer names :(")
+
+                if not len(self.layer_groups[layer_group]) > 1:
+                    raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")
+
+                if len(set(self.layer_groups[layer_group])) != len(self.layer_groups[layer_group]):
+                    raise ConfigError("Items in each layer group must be unique :/")
+
+            # sanity check 3000 -- no joker shall pass:
+            list_of_layer_names_lists = list(self.layer_groups.values())
+            for i in range(0, len(list_of_layer_names_lists) - 1):
+                for j in range(i + 1, len(list_of_layer_names_lists)):
+                    co_occurring_names = set(list_of_layer_names_lists[i]).intersection(set(list_of_layer_names_lists[j]))
+                    if len(co_occurring_names):
+                        raise ConfigError(f"Layer names should occur in only one group, but AS YOU CAN GUESS BY NOW, that is not the case "
+                                          f"with your groups :/ At the least, the layer name '{co_occurring_names.pop()}' occurs in more than "
+                                          f"one group.")
+
+        self.sanity_checked = True
+
+
+    def update_combined_functions_dicts(self, genome_name, accession, function):
+        """Modify accession dicts with new things.
+
+        This function is necessary to avoid redundant code to handle function dicts of different kinds
+        we get from int/external genomes and genome storage. a redesign of the genome storage will likely
+        fix this problem in the future by unifying how functions are collected from different anvi'o databases.
+        """
+
+        if genome_name not in self.layer_names_considered:
+            self.layer_names_considered.add(genome_name)
+
+        key, value = (accession, function) if self.aggregate_based_on_accession else (function, accession)
+
+        if not key or not len(key):
+            raise ConfigError(f"Anvi'o is very sorry to tell you that the annotation source you have chosen "
+                              f"here, '{self.function_annotation_source}', seem to include "
+                              f"{self.V()}s with no {self.K()}s. Here is one example function with no "
+                              f"{self.K()}: '{value}'. You will have to choose another annotation source :(")
+
+        if not function:
+            raise ConfigError(f"It saddens anvi'o to let you know that there are some {self.V}s in "
+                              f"'{self.function_annotation_source}' that clearly are blank. Here is an "
+                              f"example {self.K()} that has a blank {self.V()}: '{key}'. Either you "
+                              f"need to choose another annotation source, or fix this problem with the "
+                              f"existing annotations from {self.function_annotation_source} by using a "
+                              f"combination of `anvi-export-functions` and `anvi-import-functions` (which "
+                              f"is totally doable and you certainly can do it).")
+
+        if self.aggregate_using_all_hits:
+            pass
+        else:
+            key = key.split('!!!')[0]
+            value = value.split('!!!')[0]
+
+            # we wish to keep track of actual accessions and functions, too:
+            accession, function = (key, value) if self.aggregate_based_on_accession else (value, key)
+
+        # from now on we will only work with hashes of our keys, whether the keys here are function names or
+        # accession ids as defined by self.aggregate_based_on_accession boolean. this is a necessary
+        # complexity because function names are free text, can be very long, include weird characters. and
+        # when we cluster data with those keys, some characters will be replaced with others or otherwise
+        # they will break the newick file format and so on. using key hashes will make sure we don't get
+        # screwed by that, and we will always use the lookup dict `self.hash_to_key` to find out what was
+        # our key (and that's exactly what the next few lines of code do here):
+        if key in self.hash_to_key:
+            key_hash = self.hash_to_key[key]
+        else:
+            key_hash = self.key_hash_prefix + hashlib.sha224(key.encode('utf-8')).hexdigest()[0:12]
+            self.hash_to_key[key] = key_hash
+            self.hash_to_function_dict[key_hash] = {self.function_annotation_source: function}
+
+        # --
+        if key_hash not in self.functions_across_layers_frequency:
+            self.functions_across_layers_frequency[key_hash] = Counter({})
+            self.functions_across_layers_presence_absence[key_hash] = Counter({})
+
+        self.functions_across_layers_frequency[key_hash][genome_name] += 1
+        self.functions_across_layers_presence_absence[key_hash][genome_name] = 1
+
+        if accession not in self.accession_id_to_function_dict:
+            self.accession_id_to_function_dict[accession] = {self.function_annotation_source: function}
+
+        if function not in self.function_to_accession_ids_dict:
+            self.function_to_accession_ids_dict[function] = {self.function_annotation_source: set([accession])}
+        else:
+            self.function_to_accession_ids_dict[function][self.function_annotation_source].add(accession)
+
+        return
+
+
+    def check_layer_names(self, layer_names=[]):
+        if not isinstance(layer_names, list):
+            raise ConfigError("`layer_names` must be of type list :/")
+
+        already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
+        if len(already_in_the_dict):
+            raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
+                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+        else:
+            # you good fam
+            pass
+
+
+    def _init_functions_from_int_ext_genomes(self):
+        if not self.external_genomes_path and not self.internal_genomes_path:
+            return
+
+        g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
+        g.load_genomes_descriptions()
+        g.init_functions()
+
+        self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
+        self.layer_names_from_external_genomes = copy.deepcopy(g.external_genome_names)
+
+        for genome_name in g.genomes:
+            self.check_layer_names([genome_name])
+
+            gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
+            # reminder, an entry in gene_functions_in_genome_dict looks like this:
+            # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
+            for entry in gene_functions_in_genome_dict.values():
+                accession, function, e_value = entry[self.function_annotation_source]
+
+                self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _init_functions_from_genomes_storage(self):
+        if not self.genomes_storage_path:
+            return
+
+        from anvio.genomestorage import GenomeStorage
+        g = GenomeStorage(storage_path=self.genomes_storage_path, function_annotation_sources=[self.function_annotation_source], run=terminal.Run(verbose=False), progress=self.progress, skip_init=True)
+
+        # make sure we are not overwriting existing genome names in int or ext genomes:
+        genome_names_in_storage_db = list(g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True))
+
+        self.layer_names_from_genomes_storage = copy.deepcopy(genome_names_in_storage_db)
+
+        self.check_layer_names(genome_names_in_storage_db)
+
+        gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
+        for entry in gene_functions_in_genomes_dict.values():
+            # an entry in gene_functions_in_genomes_dict looks lke this:
+            # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
+            genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
+
+            self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _populate_group_dicts(self):
+        if not self.layer_groups_defined:
+            return
+
+        for key_hash in self.functions_across_layers_frequency:
+            if key_hash not in self.functions_across_groups_frequency:
+                self.functions_across_groups_frequency[key_hash] = Counter({})
+                self.functions_across_groups_presence_absence[key_hash] = Counter({})
+
+            for layer_name in self.layer_names_considered:
+                if layer_name in self.layer_name_to_group_name:
+                    if layer_name in self.functions_across_layers_frequency[key_hash]:
+                        group_name = self.layer_name_to_group_name[layer_name]
+                        self.functions_across_groups_frequency[key_hash][group_name] += self.functions_across_layers_frequency[key_hash][layer_name]
+                        self.functions_across_groups_presence_absence[key_hash][group_name] += 1
+
+
+    def update_summary_markdown(self):
+        G = lambda x: '\n'.join(['* %s' % l for l in x]) if len(x) else "*None :/*"
+
+        self.summary_markdown = (f"### Quick overview\nUsing the function annotation source **'{self.function_annotation_source}'**, anvi'o "
+                                 f"aggregated **{len(self.hash_to_key)} unique {self.K()}s** that occurred in **at least {self.min_occurrence}** "
+                                 f"of the total {len(self.layer_names_considered)} *layers*. Here we use the term 'layer' instead of 'genomes', "
+                                 f"since what anvi'o assumes to be a genome might be a metagenome depending on the contigs database you have provided. "
+                                 f"If you know what you have, feel free to replace the term 'layer' with 'genome' in your mind.")
+
+        self.summary_markdown += (f"\n\n**Internal genomes** ({P('layer', len(self.layer_names_from_internal_genomes))}):\n\n{G(self.layer_names_from_internal_genomes)}"
+                                  f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
+                                  f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
+
+
+    def report_functions_per_group_stats(self, output_file_path):
+        """A function to summarize functional occurrence for groups of genomes"""
+
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.layer_groups_defined:
+            raise ConfigError("No groups seem to have been defined. This function is useless without :/")
+
+        group_names = sorted(list(self.layer_groups.keys()))
+
+        group_counts = dict([(g, len(self.layer_groups[g])) for g in group_names])
+
+        d = {}
+
+        for key_hash in self.functions_across_groups_presence_absence:
+            d[key_hash] = {}
+            function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
+            d[key_hash]['function'] = function
+            d[key_hash]['accession'] = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+
+            d[key_hash]['associated_groups'] = ','.join([g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]])
+
+            for group_name in group_names:
+                d[key_hash][f"N_{group_name}"] = group_counts[group_name]
+                if group_name in self.functions_across_groups_presence_absence[key_hash]:
+                    d[key_hash][f"p_{group_name}"] = self.functions_across_groups_presence_absence[key_hash][group_name] / group_counts[group_name]
+                else:
+                    d[key_hash][f"p_{group_name}"] = 0
+
+        static_column_names = ['key', 'function', 'accession', 'associated_groups']
+        dynamic_column_names = []
+        [dynamic_column_names.extend([f'p_{g}', f'N_{g}']) for g in group_names]
+
+        utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
+
+        self.run.info('Functions per group stats file', output_file_path)

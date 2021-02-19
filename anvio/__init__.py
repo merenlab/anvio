@@ -941,6 +941,36 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'aggregate-based-on-accession': (
+            ['--aggregate-based-on-accession'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
+                     "or to display them, it uses by default the 'function text' as keys. This is because "
+                     "multiple accession IDs in various databases may correspond to the same function, and "
+                     "when you are doing a functional enrichment analysis, you most likely would like to "
+                     "avoid over-splitting of functions due to this. But then how can we know if you are "
+                     "doing something that requires things to be aggregated based on accession ids for "
+                     "functions rather than actual functions? We can't. But we have this flag here so you can "
+                     "instruct anvi'o to listen to you and not to us."}
+                ),
+    'aggregate-using-all-hits': (
+            ['--aggregate-using-all-hits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This program will aggregate functions based on best hits only, and this flag will change that "
+                     "behavior. In some cases a gene may be annotated with multiple functions. This is a decision often "
+                     "made at the level of function annotation tool. For instance, when you run `anvi-run-ncbi-cogs`, "
+                     "you may end up having two COG annotations for a single gene because the gene hit both of them "
+                     "with significance scores that were above the default noise cutoff. While this can be useful when "
+                     "one visualizes functions or works with an `anvi-summarize` output where things should be most "
+                     "comprehensive, having some genes annotated with multiple functions and others with one function "
+                     "may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in "
+                     "different bins). Thus, when working on functional enrichment analyses or displaying functions "
+                     "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
+                     "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
+                ),
+
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
             {'default': False,
@@ -2720,8 +2750,8 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
                     "The first column should have the header 'sample' and contain sample names matching "
-                    "to those in the modules-txt file. The second column should have the header 'group' "
-                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+                    "to those are in the other input data. The second column should have the header 'group' "
+                    "and contain the group name for each sample (each sample should be in 1 group only)"}
                 ),
     'sample-header': (
             ['--sample-header'],
