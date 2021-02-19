@@ -168,6 +168,23 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    $('#inverse_color').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            emit('bin-settings-changed');
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
     $("li[role='presentation']").click(function (e) {
         if ($(this).hasClass('disabled')) {
             e.preventDefault();
@@ -1439,6 +1456,11 @@ function serializeSettings(use_layer_names) {
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
+    state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); 
+    state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
+    state['invert-shade-for-bins'] = $('#invert_shade_for_bins').is(':checked');
+    state['inverse-fill-opacity'] = $('#inverse_fill_opacity').val();
+    state['inverse-color'] = $('#inverse_color').attr('color')
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
@@ -1604,7 +1626,6 @@ function drawTree() {
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
-
                 bins.RedrawBins();
 
                 $('#btn_draw_tree').prop('disabled', false);
@@ -2507,6 +2528,21 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+    }
+    if (state.hasOwnProperty('show-shade-for-bins')) {
+        $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
+    }
+    if (state.hasOwnProperty('shade-fill-opacity')){
+        $('#shade_fill_opacity').val(state['shade-fill-opacity']); 
+    }
+    if (state.hasOwnProperty('invert-shade-for-bins')){
+        $('#invert_shade_for_bins').prop('checked', state['invert-shade-for-bins']);
+    }
+    if (state.hasOwnProperty('inverse-fill-opacity')){
+        $('#inverse_fill_opacity').val(state['inverse-fill-opacity']);
+    }
+    if (state.hasOwnProperty('inverse-color')){
+        $('#inverse_color').attr('color', state['inverse-color']);
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
