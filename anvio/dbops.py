@@ -1053,15 +1053,17 @@ class ContigsSuperclass(object):
             #
             ###################################################################################
 
-            # time to update the information on the gene call in sequences dict. we first
-            # update start / stop positions of the gene GIVEN the sequence we are reporting
-            # since they are currently showing start/stop positions GIVEN the contig
-            # they were on.
-            original_gene_call_start = gene_call['start']
-            original_gene_call_stop = gene_call['stop']
-            sequence_with_flank_start = start
-            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
-            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+            # if the user asked for flanking sequences, in the next conditional WE WILL UPDATE
+            # GENE START/STOP POSITIONS this is a special case of reporting for specific applications.
+            if flank_length:
+                # update start / stop positions of the gene GIVEN the sequence we are reporting
+                # since they are currently showing start/stop positions GIVEN the contig
+                # they were on.
+                original_gene_call_start = gene_call['start']
+                original_gene_call_stop = gene_call['stop']
+                sequence_with_flank_start = start
+                gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+                gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
 
             # update the sequence
             gene_call['sequence'] = sequence
