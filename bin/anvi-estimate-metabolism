@@ -82,6 +82,7 @@ if __name__ == '__main__':
     groupL.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
     groupL.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
     groupL.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
+    groupL.add_argument(*anvio.A('add-coverage'), **anvio.K('add-coverage'))
 
     groupM = parser.add_argument_group('OUTPUT - MATRIX OPTIONS', "Parameters for controlling matrix output. Use --matrix-format to request this "
                                                     "type of output.")

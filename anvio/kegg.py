@@ -1531,6 +1531,7 @@ class KeggEstimatorArgs():
         self.matrix_include_metadata = True if A('include_metadata') else False
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
+        self.add_coverage = True if A('add_coverage') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
