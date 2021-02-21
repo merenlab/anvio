@@ -1676,6 +1676,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.add_coverage and not self.profile_db_path:
             raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
+            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                              "values, so the --add-coverage flag will not work.")
 
         # output options sanity checks
         if anvio.DEBUG:
