@@ -1674,6 +1674,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
+        if self.add_coverage and not self.profile_db_path:
+            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+
         # output options sanity checks
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
