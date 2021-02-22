@@ -309,6 +309,73 @@ class EggNOGMapper:
             self.add_entry(gene_callers_id, 'EGGNOG_BiGG_REACTIONS', fields[1], ', '.join(fields[16].split(',')), fields[2])
 
 
+    def __parser_4(self, defline):
+        """parses this:
+
+           0             1                         2                       3                     4                                                                                             5                                6              7                                  8                                 9              10                                 11                12                             13          14           15                                  16             17              18                 19                                                 20         21      22                                                         23
+           query_name    seed_eggNOG_ortholog      seed_ortholog_evalue    seed_ortholog_score   eggNOG OGs                                                                                    narr_og_name                     narr_og_cat    narr_og_desc                       best_og_name                      best_og_cat    best_og_desc                       Preferred_name    GOs                            EC          KEGG_ko      KEGG_Pathway                        KEGG_Module    KEGG_Reaction   KEGG_rclass        BRITE                                              KEGG_TC    CAZy    BiGG_Reaction                                              PFAMs
+           g84988        573.JG24_24155            1.1e-178                632.5                 COG0463@1|root,COG0463@2|Bacteria,1MWE5@1224|Proteobacteria,1RPCE@1236|Gammaproteobacteria    1RPCE@1236|Gammaproteobacteria   M              Catalyzes the transfer of (...)    1RPCE@1236|Gammaproteobacteria    M              Catalyzes the transfer of (...)    arnC              GO:0003674,GO:0003824,(...)    2.4.2.53    ko:K10012    ko00520,ko01503,map00520,map01503   M00721,M00761  R07661          RC00005,RC02954    ko00000,ko00001,ko00002,ko01000,ko01005,ko02000    4.D.2.1.8  GT2     iAPECO1_1312.APECO1_4307,iE2348C_1286.E2348C_2398,(...)    Glyco_tranf_2_2,Glyco_tranf_2_3,Glycos_transf_2
+        """
+
+        fields = defline.strip('\n').split('\t')
+
+        if len(fields) != 24:
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the "
+                               "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 24))
+
+        gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
+
+        #
+        F = lambda x: fields[x] and fields[x] != '-'
+
+        if (F(21) and not fields[21].startswith('Protein of unknown function')) or F(10):
+            if F(11):
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[11], fields[10]), fields[2])
+            else:
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[10], fields[2])
+
+        if F(4):
+            try:
+                # because there is crap like this where the delimiter (',') is used in text fields ....
+                #
+                #    "4QF6A@10239|Viruses,4QV1N@35237|dsDNA viruses, no RNA stage,4QRT3@28883|Caudovirales"
+                #
+                tax = ' / '.join([x.split('|')[1] for x in fields[4].split(',')])
+                self.add_entry(gene_callers_id, 'EGGNOG_BEST_TAX', fields[1], tax, fields[2])
+            except:
+                pass
+
+        if F(11):
+            self.add_entry(gene_callers_id, 'EGGNOG_GENE_FUNCTION_NAME', fields[1], ', '.join(fields[5].split(',')), fields[2])
+
+        if F(12):
+            self.add_entry(gene_callers_id, 'EGGNOG_GO_TERMS', fields[1], ', '.join(fields[12].split(',')), fields[2])
+
+        if F(13):
+            self.add_entry(gene_callers_id, 'EGGNOG_EC_NUMBER', fields[1], ', '.join(fields[13].split(',')), fields[2])
+
+        if F(14):
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_KO', fields[1], ', '.join(fields[14].split(',')), fields[2])
+
+        if F(15):
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_PATHWAYS', fields[1], ', '.join(fields[15].split(',')), fields[2])
+
+        if F(16):
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_MODULE', fields[1], ', '.join(fields[16].split(',')), fields[2])
+
+        if F(19):
+            self.add_entry(gene_callers_id, 'EGGNOG_BRITE', fields[1], ', '.join(fields[19].split(',')), fields[2])
+
+        if F(20):
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_TC', fields[1], ', '.join(fields[20].split(',')), fields[2])
+
+        if F(21):
+            self.add_entry(gene_callers_id, 'EGGNOG_CAZy', fields[1], ', '.join(fields[21].split(',')), fields[2])
+
+        if F(22):
+            self.add_entry(gene_callers_id, 'EGGNOG_BiGG_REACTIONS', fields[1], ', '.join(fields[22].split(',')), fields[2])
+
+
     def store_annotations_in_db(self, drop_previous_annotations=False):
         if not self.contigs_db_path:
             raise ConfigError("EggNOGMapper::store_annotations_in_db() is speaking: you can't really call this function if you inherited "
