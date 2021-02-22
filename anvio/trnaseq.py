@@ -2762,10 +2762,21 @@ class TRNASeqDataset(object):
                     trunc_profile_recovered_by_derep = norm_seq.trimmed_seqs[0].trunc_profile_recovered_by_derep
                     for trimmed_seq_index in obsolete_trimmed_seq_indices:
                         norm_seq.trimmed_seqs.pop(trimmed_seq_index)
+                        norm_seq.start_positions.pop(trimmed_seq_index)
+                        norm_seq.stop_positions.pop(trimmed_seq_index)
                     new_trimmed_seq = TrimmedSeq(trimmed_seq_string, collected_uniq_seqs)
                     norm_seq.trimmed_seqs.insert(0, new_trimmed_seq)
                     norm_seq.seq_string = trimmed_seq_string
                     norm_seq.represent_name = new_trimmed_seq.represent_name
+                    # Seed the new positions of the trimmed sequences in the normalized sequence
+                    # with the positions of the new, longest trimmed sequence.
+                    corrected_start_positions = [0]
+                    corrected_stop_positions = [len(trimmed_seq_string)]
+                    for trimmed_seq, start_pos, stop_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
+                        corrected_start_positions = start_pos - extra_fiveprime_length
+                        corrected_stop_positions = stop_pos - extra_fiveprime_length
+                    norm_seq.start_positions = corrected_start_positions
+                    norm_seq.stop_positions = corrected_stop_positions
                     new_trimmed_seq_start_positions.insert(0, 0)
                     new_trimmed_seq_stop_positions.insert(0, len(trimmed_seq_string))
                     new_trimmed_seq.norm_seq_count += 1
