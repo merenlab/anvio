@@ -10,6 +10,51 @@ information-rich anvi'o tRNA-seq database. DatabaseConverter finds reference see
 set of tRNA-seq databases, storing seeds in an anvi'o contigs database and coverage patterns for
 each dataset in anvi'o profile and auxiliary databases. Contigs and profile databases interface with
 a range of other tools in the anvi'o platform.
+
+
+GLOSSARY of essential terms
+===========================
+Feature: Canonical feature or structural element of tRNA (e.g., 3'-CCA acceptor, anticodon stem)
+
+Read: Synonymous with merged paired-end tRNA-seq read oriented 5'->3'
+
+Feature profile: 5'->3' features identified de novo from the 3' end in a merged tRNA-seq read
+
+Profiled sequence: Sequence with an assigned feature profile, which may or may not span the whole
+    length of the sequence, but which at minimum includes the T arm
+
+tRNA profile: Profile that spans the full length of the sequence
+
+Truncated profile: Profile that does not span the full length of the sequence (e.g., a sequence is
+    a chimera of two 3' tRNA fragments and the profile covers the 3' fragment but not the unexpected
+    5' fragment)
+
+Modification-induced substitution: Detected as 3-4 different nucleotides at a tRNA position, the
+    effect of semi-random nucleotide addition during reverse transcription at the site of a modified
+    nucleotide
+
+Modification-induced deletion: Detected as a missing nucleotide in the proximity of a detected
+    substitution site, the effect of reverse transcription skipping nucleotides around the site of a
+    modified nucleotide (deletions are rarer than substitutions and more common than insertions,
+    which are not sought)
+
+Unique sequence: Set of dereplicated merged tRNA-seq paired-end reads
+
+Trimmed sequence: Set of unique sequences that are identical after trimming sequence extensions 5'
+    and 3' of the acceptor stem (e.g., nontemplated 5' nucleotides, 3'-CCA acceptor)
+
+Normalized sequence: The longest sequence of a set of trimmed sequences, with shorter sequences
+    being tRNA fragment subsequences
+
+Nonspecific sequence: In contrast to a specific sequence, a trimmed sequence (or its component
+    unique sequences and reads) that occurs in multiple normalized sequences (cannot be resolved to
+    a single normalized sequence) due to it being a tRNA fragment
+
+Mapped fragment: Sequence without a feature profile that maps to a normalized sequence and may
+    include extra nucleotides beyond the trimmed 5' end of the normalized sequence but not
+    nucleotides in the trimmed 3' end (acceptor) of the normalized sequence
+
+Modified sequence: Set of normalized sequences differing by potential modification-induced mutations
 """
 
 import gc
