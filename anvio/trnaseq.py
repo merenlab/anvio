@@ -1393,23 +1393,12 @@ class TRNASeqDataset(object):
     def trim_trna_ends(self):
         """Trim any nucleotides 5' of the acceptor stem and 3' of the discriminator from profiled
         tRNA. Appends TrimmedSeq objects formed from input UniqueSeq objects to
-        `self.trimmed_trna_seqs`.
-        """
+        `self.trimmed_trna_seqs`."""
         start_time = time.time()
         self.progress.new("Trimming the 3' and 5' ends of tRNA")
         self.progress.update("...")
 
-        represent_names = [uniq_seq.represent_name for uniq_seq in self.uniq_trna_seqs]
-        trimmed_seq_strings = [
-            uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
-            for uniq_seq in self.uniq_trna_seqs
-        ]
-
-        self.progress.update("Dereplicating identical sequences")
-        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=self.uniq_trna_seqs).full_length_dereplicate()
-
-        trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
-        self.trimmed_trna_seqs.extend(trimmed_seqs)
+        self.trimmed_trna_seqs.extend(self.get_trimmed_seqs(self.uniq_trna_seqs))
         self.trimmed_trna_seqs.sort(key=lambda trimmed_seq: trimmed_seq.represent_name)
 
         with open(self.analysis_summary_path, 'a') as f:
@@ -1420,6 +1409,19 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
+    def get_trimmed_seqs(self, uniq_seqs):
+        represent_names = [uniq_seq.represent_name for uniq_seq in uniq_seqs]
+        trimmed_seq_strings = [
+            uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
+            for uniq_seq in uniq_seqs
+        ]
+
+        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=uniq_seqs).full_length_dereplicate()
+
+        trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
+        return trimmed_seqs
+
+
     def trim_truncated_profile_ends(self):
         """Trim any nucleotides 3' of the discriminator from sequences with a truncated tRNA
         profile. Appends TrimmedSeq objects formed from input UniqueSeq objects to
@@ -1428,14 +1430,7 @@ class TRNASeqDataset(object):
         self.progress.new("Trimming the 3' ends of sequences with truncated tRNA profiles")
         self.progress.update("...")
 
-        represent_names = [uniq_seq.represent_name for uniq_seq in self.uniq_trunc_seqs]
-        trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
-                               for uniq_seq in self.uniq_trunc_seqs]
-
-        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=self.uniq_trunc_seqs).full_length_dereplicate()
-
-        trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
-        self.trimmed_trunc_seqs.extend(trimmed_seqs)
+        self.trimmed_trunc_seqs.extend(self.get_trimmed_seqs(self.uniq_trunc_seqs))
         self.trimmed_trunc_seqs.sort(key=lambda trimmed_seq: trimmed_seq.represent_name)
 
         with open(self.analysis_summary_path, 'a') as f:
