@@ -99,10 +99,9 @@ class EggNOGMapper:
         # them as numerical data and then converted them to float, and then storing them as 1.0, 2.0, etc).
         self.gene_caller_id_prefix = 'g'
 
-        self.available_parsers = {'0.12.6': self.__parser_1,
-                                  '1.0.3': self.__parser_2,
-                                  '2.0.0': self.__parser_3,
-                                  '2.0.1': self.__parser_3}
+        self.available_parsers = {'2.0.0': self.__parser_3,
+                                  '2.0.1': self.__parser_3,
+                                  '2.0.5': self.__parser_4}
 
         self.check_version()
 
