@@ -1163,9 +1163,8 @@ class ContigsSuperclass(object):
             output.write('##gff-version 3\n')
             for gene_callers_id in gene_caller_ids_list:
                 entry = sequences_dict[gene_callers_id]
-                output.write('{contig}\t{source}\t{type}\t{start}\t{stop}\t.\t{strand}\t.\tID={id}'.format(
-                    contig=entry['contig'], source='.', type='CDS', start=entry['start']+1, stop=entry['stop'],
-                    strand=entry['direction'].replace('f','+').replace('r','-'), id=gene_callers_id))
+                strand=entry['direction'].replace('f','+').replace('r','-')
+                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\tID={gene_callers_id}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
