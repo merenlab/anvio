@@ -360,6 +360,8 @@ requires_unique_entry_id = {
     'mean_coverage_Q1Q3_contigs': False,
     'portion_covered_contigs': False,
     'portion_covered_splits': False,
+    'frequency_view': False,
+    'presence_absence_view': False,
     pan_gene_clusters_table_name: True,
     genes_in_splits_table_name: True,
     gene_function_calls_table_name: True,
