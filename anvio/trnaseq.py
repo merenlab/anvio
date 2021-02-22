@@ -2084,7 +2084,7 @@ class TRNASeqDataset(object):
                         uniq_mapped_seq.has_complete_feature_set = False
 
                         # Assume that 5' extensions are the same for the query regardless of the reference.
-                        # This could be false in the unlikely cases of
+                        # This could be false in the cases of
                         # 1. tRNA profiling erroneously identifying the end of the acceptor stem
                         # or 2. the query mapping to different places at the end of the acceptor stem in different tRNAs.
                         if ref_fiveprime_length - ref_alignment_start > 0:
