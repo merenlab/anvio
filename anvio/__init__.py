@@ -122,7 +122,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to "
-                     "take a look from it), this flag will become very hand. After creating a contigs database for your "
+                     "take a look from it), this flag will become very handy. After creating a contigs database for your "
                      "contigs, you can create a blank anvi'o profile database to use anvi'o interactive "
                      "interface with that contigs database without any mapping data."}
                 ),
@@ -941,6 +941,36 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'aggregate-based-on-accession': (
+            ['--aggregate-based-on-accession'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
+                     "or to display them, it uses by default the 'function text' as keys. This is because "
+                     "multiple accession IDs in various databases may correspond to the same function, and "
+                     "when you are doing a functional enrichment analysis, you most likely would like to "
+                     "avoid over-splitting of functions due to this. But then how can we know if you are "
+                     "doing something that requires things to be aggregated based on accession ids for "
+                     "functions rather than actual functions? We can't. But we have this flag here so you can "
+                     "instruct anvi'o to listen to you and not to us."}
+                ),
+    'aggregate-using-all-hits': (
+            ['--aggregate-using-all-hits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This program will aggregate functions based on best hits only, and this flag will change that "
+                     "behavior. In some cases a gene may be annotated with multiple functions. This is a decision often "
+                     "made at the level of function annotation tool. For instance, when you run `anvi-run-ncbi-cogs`, "
+                     "you may end up having two COG annotations for a single gene because the gene hit both of them "
+                     "with significance scores that were above the default noise cutoff. While this can be useful when "
+                     "one visualizes functions or works with an `anvi-summarize` output where things should be most "
+                     "comprehensive, having some genes annotated with multiple functions and others with one function "
+                     "may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in "
+                     "different bins). Thus, when working on functional enrichment analyses or displaying functions "
+                     "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
+                     "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
+                ),
+
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
             {'default': False,
@@ -2177,9 +2207,33 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'domtblout': (
+            ['-F', '--domtblout'],
+            {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
+                     "The output file will contain the suffix '_domtable.txt'."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (ie, the file specified by the --domtblout flag). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
+                     "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -2643,6 +2697,30 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'heuristic-e-value': (
+            ['-E', '--heuristic-e-value'],
+            {'default': 1.0e-5,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with e-values <= this number. (This is X.)"}
+                ),
+    'heuristic-bitscore-fraction': (
+            ['-H', '--heuristic-bitscore-fraction'],
+            {'default': 0.50,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
+                     "It should be a fraction between 0 and 1 (inclusive)."}
+                ),
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
+                     "threshold, use this flag to skip the mumbo-jumbo we do here to relax those thresholds. "}
+                ),
     'include-metadata': (
             ['--include-metadata'],
             {'default': False,
@@ -2662,7 +2740,25 @@ D = {
             ['--include-zeros'],
             {'default': False,
             'action': 'store_true',
-            'help': "If you use this flag, long-format output files will include modules with 0 percent completeness score."}
+            'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
+                    "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
+                ),
+    'module-specific-matrices': (
+            ['--module-specific-matrices'],
+            {'default': None,
+            'metavar': 'MODULE_LIST',
+            'help': "Provide a comma-separated list of module numbers to this parameter, and then you will get "
+                    "a KO hits matrix for each module in the list."}
+
+                ),
+    'no-comments': (
+            ['--no-comments'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you are requesting --module-specific-matrices but you don't want those matrices to include "
+                    "comment lines in them (for example, perhaps you want to use them for clustering), you can use "
+                    "this flag. Otherwise, by default these specific matrices will include comments delineating "
+                    "which KOs are in each step of the module."}
                 ),
     'modules-txt': (
             ['-M', '--modules-txt'],
@@ -2678,8 +2774,8 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
                     "The first column should have the header 'sample' and contain sample names matching "
-                    "to those in the modules-txt file. The second column should have the header 'group' "
-                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+                    "to those are in the other input data. The second column should have the header 'group' "
+                    "and contain the group name for each sample (each sample should be in 1 group only)"}
                 ),
     'sample-header': (
             ['--sample-header'],

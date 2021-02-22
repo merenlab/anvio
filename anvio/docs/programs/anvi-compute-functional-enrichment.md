@@ -47,22 +47,22 @@ By default, gene clusters with the same functional annotation will be merged. Bu
 
 {{ codestart }}
 anvi-compute-functional-enrichment -p %(pan-db)s\
-                               -g %(genomes-storage-db)s \
-                               -o %(functional-enrichment-txt)s \
-                               --category-variable CATEGORY \
-                               --annotation-source IDENTITY \
-                               --include-gc-identity-as-function
+                                   -g %(genomes-storage-db)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --category-variable CATEGORY \
+                                   --annotation-source IDENTITY \
+                                   --include-gc-identity-as-function
 {{ codestop }}
 
 To output a functional occurrence table, which describes the number of times each of your functional associations occurs in each genome you're looking at, use the `--functional-occurrence-table-output` parameter, like so:
 
 {{ codestart }}
 anvi-compute-functional-enrichment -p %(pan-db)s\
-                               -g %(genomes-storage-db)s \
-                               -o %(functional-enrichment-txt)s \
-                               --category-variable CATEGORY \
-                               --annotation-source FUNCTION_SOURCE \
-                               --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
+                                   -g %(genomes-storage-db)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --category-variable CATEGORY \
+                                   --annotation-source FUNCTION_SOURCE \
+                                   --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
 {{ codestop }}
 
 You can interact more with this data file by using %(anvi-matrix-to-newick)s. Find more information about this output option [here](http://merenlab.org/2016/11/08/pangenomics-v2/#creating-a-quick-pangenome-with-functions).
@@ -82,8 +82,8 @@ See %(kegg-metabolism)s for more information on the "modules" mode output format
 
 {{ codestart }}
 anvi-compute-functional-enrichment -M MODULES.TXT \
-                               -G %(groups-txt)s \
-                               -o %(functional-enrichment-txt)s
+                                   -G %(groups-txt)s \
+                                   -o %(functional-enrichment-txt)s
 {{ codestop }}
 
 ### Additional parameters
@@ -92,27 +92,27 @@ The default completeness threshold for a module to be considered 'present' in a 
 
 {{ codestart }}
 anvi-compute-functional-enrichment -M MODULES.TXT \
-                               -G %(groups-txt)s \
-                               -o %(functional-enrichment-txt)s \
-                               --module-completion-threshold 0.9
+                                   -G %(groups-txt)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --module-completion-threshold 0.9
 {{ codestop }}
 
 By default, the column containing sample names in your MODULES.TXT file will have the header `db_name`, but there are certain cases in which you might have them in a different column - for example, if you did not run %(anvi-estimate-metabolism)s in multi-mode. In those cases, you can specify that a different column contains the sample names by providing its header with `--sample-header`. For example, if you sample names were in the `metagenome_name` column, you would do the following:
 
 {{ codestart }}
 anvi-compute-functional-enrichment -M MODULES.TXT \
-                               -G %(groups-txt)s \
-                               -o %(functional-enrichment-txt)s \
-                               --sample-header metagenome_name
+                                   -G %(groups-txt)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --sample-header metagenome_name
 {{ codestop }}
 
 If you ran %(anvi-estimate-metabolism)s on a bunch of extra samples but only want to include a subset of those samples in the %(groups-txt)s, that is fine - by default any samples from the MODULES.TXT file that are missing from the %(groups-txt)s will be ignored. However, there is also an option to include those missing samples in the analysis, as one big group called 'UNGROUPED'. To do this, you can use the --include-samples-missing-from-groups-txt parameter. Just be careful that if you are also using the --include-ungrouped flag (see below), any samples without a specified group in the %(groups-txt)s will also be included in the 'UNGROUPED' group.
 
 {{ codestart }}
 anvi-compute-functional-enrichment -M MODULES.TXT \
-                               -G %(groups-txt)s \
-                               -o %(functional-enrichment-txt)s \
-                               --include-samples-missing-from-groups-txt
+                                   -G %(groups-txt)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --include-samples-missing-from-groups-txt
 {{ codestop }}
 
 
@@ -133,9 +133,9 @@ You can provide either an %(external-genomes)s file or an %(internal-genomes)s f
 
 {{ codestart }}
 anvi-compute-functional-enrichment -i %(internal-genomes)s\
-                               -e %(external-genomes)s \
-                               -o %(functional-enrichment-txt)s \
-                               --annotation-source FUNCTION_SOURCE
+                                   -e %(external-genomes)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --annotation-source FUNCTION_SOURCE
 {{ codestop }}
 
 ### Additional Parameters
@@ -144,10 +144,10 @@ Also similar to option 1, you can get a tab-delimited matrix describing the occu
 
 {{ codestart }}
 anvi-compute-functional-enrichment -i %(internal-genomes)s\
-                               -e %(external-genomes)s \
-                               -o %(functional-enrichment-txt)s \
-                               --annotation-source FUNCTION_SOURCE
-                               --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
+                                   -e %(external-genomes)s \
+                                   -o %(functional-enrichment-txt)s \
+                                   --annotation-source FUNCTION_SOURCE
+                                   --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
 {{ codestop }}
 
 
@@ -156,6 +156,6 @@ anvi-compute-functional-enrichment -i %(internal-genomes)s\
 If you provide the `--include-ungrouped` parameter, then genomes (or samples) without a group will be included from the analysis. (By default, these genomes/samples are ignored.) For the pangenome case, these genomes are those without a category in the provided `--category-variable`. For metabolic modules or the genomes in groups case, these samples/genomes are those with an empty value in the 'group' column (of either the %(groups-txt)s or the %(external-genomes)s/%(internal-genomes)s files).
 
 
-## More information on `anvi-script-enrichment-stats`
+## More information on anvi-script-enrichment-stats
 
 This program serves as the interface to `anvi-script-enrichment-stats`, an R script which performs an enrichment test on your input. You will find a brief description of how this script works in Alon's "Behind the Scenes" note in [the pangenomics tutorial](https://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome). Better yet, check out the methods section of Alon's paper, published in Genome Biology [here](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w).

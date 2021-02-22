@@ -101,6 +101,9 @@ class ContigsSuperclass(object):
         if not hasattr(self, 'split_names_of_interest'):
             self.split_names_of_interest = set([])
 
+        if hasattr(self.args, 'split_names_of_interest'):
+            self.split_names_of_interest = set(self.args.split_names_of_interest)
+
         self.a_meta = {}
 
         self.splits_basic_info = {}
@@ -135,7 +138,7 @@ class ContigsSuperclass(object):
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
         D = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if D('mode') == 'pan' or D('mode') == 'manual':
+        if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual':
             return
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -521,23 +524,25 @@ class ContigsSuperclass(object):
 
         gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
+        where_clauses = []
         if requested_sources:
             self.check_functional_annotation_sources(requested_sources, dont_panic=dont_panic)
-
-            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
-                                                                  '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
-                                                                  error_if_no_data=False).values())
             self.gene_function_call_sources = requested_sources
+            where_clauses.append('''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])))
         else:
-            if self.split_names_of_interest:
-                gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
-            else:
-                gene_caller_ids_of_interest = set([])
-
-            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest, error_if_no_data=False)
-            hits = list(functions_dict.values())
-
             self.gene_function_call_sources = gene_function_sources_in_db
+
+        if self.split_names_of_interest:
+            gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
+            where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
+        else:
+            gene_caller_ids_of_interest = set([])
+
+        if len(where_clauses):
+            where_clause = ' AND '.join(where_clauses)
+            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+        else:
+            hits = list(contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name, error_if_no_data=False).values())
 
         for hit in hits:
             gene_callers_id = hit['gene_callers_id']
@@ -593,6 +598,7 @@ class ContigsSuperclass(object):
                 # quietly return matching sources
                 return [s for s in sources if s in gene_function_sources_in_db]
             else:
+                self.progress.reset()
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
                                   "they are (or here it is, whatever): %s." % \
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
@@ -1047,15 +1053,17 @@ class ContigsSuperclass(object):
             #
             ###################################################################################
 
-            # time to update the information on the gene call in sequences dict. we first
-            # update start / stop positions of the gene GIVEN the sequence we are reporting
-            # since they are currently showing start/stop positions GIVEN the contig
-            # they were on.
-            original_gene_call_start = gene_call['start']
-            original_gene_call_stop = gene_call['stop']
-            sequence_with_flank_start = start
-            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
-            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+            # if the user asked for flanking sequences, in the next conditional WE WILL UPDATE
+            # GENE START/STOP POSITIONS this is a special case of reporting for specific applications.
+            if flank_length:
+                # update start / stop positions of the gene GIVEN the sequence we are reporting
+                # since they are currently showing start/stop positions GIVEN the contig
+                # they were on.
+                original_gene_call_start = gene_call['start']
+                original_gene_call_stop = gene_call['stop']
+                sequence_with_flank_start = start
+                gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+                gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
 
             # update the sequence
             gene_call['sequence'] = sequence
@@ -4673,6 +4681,15 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
             names_in_data = sorted([n.strip() for n in order_data.split(',')])
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+
+        if not len(names_in_db):
+            raise ConfigError(f"Your {db_type} database does not have any item names stored, but whoever called this "
+                              f"function asked for a check between the item names in the items order and item names in "
+                              f"the database. Well. It will not happen. A proper way to deal with it is to set the "
+                              f"variable `check_names_consistency` to `False` when calling this function. This message "
+                              f"is not to be seen by a user, so if you are a user, it means someone screwed up something "
+                              f"somewhere, and those of us at the anvi'o headquarters for snafu handling sincerely apologize "
+                              f"sincerely on their behalf :(")
 
         names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
         if names_in_db_not_in_data:
