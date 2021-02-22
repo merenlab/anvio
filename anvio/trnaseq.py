@@ -2591,7 +2591,7 @@ class TRNASeqDataset(object):
         deconstructed to trim the 5' end, which also requires changing the component trimmed
         sequences and the trimmed sequences' component unique sequences. When this type of
         normalized sequence is present in the cluster, the modified sequences with deletions will be
-        shorter. For the extra 5' nucleotide to be detected, it must be confirmed that the longest
+        shorter. For the extra 5' nucleotides to be detected, it must be confirmed that the longest
         modified sequence is a full-length tRNA.
 
         Normalized sequences can also be tRNA fragments containing deletions. In a cluster, such a
@@ -2688,28 +2688,29 @@ class TRNASeqDataset(object):
                 # nucleotides. Shorter trimmed sequences may have fewer extra nucleotides. The extra
                 # nucleotides should also be identified in the unique sequences comprising these
                 # trimmed sequences. These trimmed sequences are now known to have the same sequence
-                # string, so they must be collapsed into a single trimmed sequence containing all of
-                # their unique sequences. A new trimmed sequence is created and added as the first
-                # trimmed sequence of the normalized sequence. This may include an existing trimmed
-                # sequence with zero extra nucleotides. The old trimmed sequences are removed from
-                # the normalized sequence, and from the master list of (truncated or tRNA) trimmed
-                # sequences. The new trimmed sequence is not initialized yet, as more unique
-                # sequences may be added, as explained below. There may also be mapped fragments
-                # that overlap the extra nucleotides. If specific to the normalized sequence, these
-                # are changed individually, along with their corresponding unique sequence.
-                # Otherwise, nonspecific mapped fragments are removed from the normalized sequence,
-                # as they may not have the same number of extra nucleotides in their other
-                # normalized sequences. The start and stop positions must also be adjusted for all
+                # string minus the extra nucleotides, so they must be collapsed into a single
+                # trimmed sequence containing the union of their unique sequences. A new trimmed
+                # sequence, which may include an existing trimmed sequence with zero extra
+                # nucleotides, is created and added as the first trimmed sequence of the normalized
+                # sequence. The old trimmed sequences are removed from the normalized sequence, and
+                # purged from the master list of (truncated or tRNA) trimmed sequences. The new
+                # trimmed sequence is not initialized yet, as more unique sequences may be added, as
+                # explained below. There may also be mapped fragments that overlap the extra
+                # nucleotides. If specific to the normalized sequence, these are changed
+                # individually, along with their corresponding unique sequence. Otherwise,
+                # nonspecific mapped fragments are removed from the normalized sequence, as they may
+                # not have the same number of extra nucleotides in the other normalized sequences in
+                # which they are found. The start and stop positions must also be adjusted for all
                 # of the normalized sequence's other trimmed sequences without extra 5' nucleotides,
                 # as there are now fewer nucleotides at the 5' end of the normalized sequence. The
                 # normalized sequence is later reinitialized after all unique sequences are added to
                 # its trimmed sequences.
-                #
+
                 # Multiple normalized sequences may be found to reduce to the same sequence after
                 # trimming different 5' extensions, and are therefore merged, removing the
-                # normalized sequence encountered second from the master list. The unique sequences
-                # from the trimmed sequences with a 5' extension are added to the longest trimmed
-                # sequence in the existing normalized sequence. The trimmed sequences with a 5'
+                # normalized sequences encountered after the first from the master list. Unique
+                # sequences from the trimmed sequences with a 5' extension are added to the longest
+                # trimmed sequence in the existing normalized sequence. Trimmed sequences with a 5'
                 # extension are removed from the master list. After the rigamarole of consolidating
                 # normalized sequences, the changed normalized sequences and new trimmed sequences
                 # are initialized.
