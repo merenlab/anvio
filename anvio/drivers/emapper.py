@@ -146,7 +146,7 @@ class EggNOGMapper:
                                    "%s. For your reference, these are the versions anvi'o knows what to do with: %s" % \
                                                         (version_to_use, ', '.join(list(self.available_parsers.keys()))))
 
-        self.version_to_use = version_to_use 
+        self.version_to_use = version_to_use
         self.parser = self.available_parsers[version_to_use]
 
 
@@ -178,9 +178,9 @@ class EggNOGMapper:
 
     def __parser_3(self, defline):
         """parses this:
-        0           1                           2                     3                    4                          5                       6                    7          8        9                10           11             12           13     14       15    16             17               18              19              20                      21
-        query_name  seed_eggNOG_ortholog        seed_ortholog_evalue  seed_ortholog_score  best_tax_level             Preferred_name          GOs                  EC         KEGG_ko  KEGG_Pathway     KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE  KEGG_TC  CAZy  BiGG_Reaction  taxonomic scope  eggNOG OGs      best eggNOG OG  COG Functional cat.     eggNOG free text desc.
-        g51	    562982.HMPREF0432_01129	1.4e-63	              248.8	           Bacillales incertae sedis  rpsK	              GO:00028,GO:00462    X          ko:K048  ko03010,map03010	M00178,M0017 X              X       	 br01610,ko00000,ko00001,ko00002,ko03011				Bacteria	1V3IK@1239,3WESA@539002,4HH2T@91061,COG0100@1,COG0100@2	NA|NA|NA	J	Located on the platform of the 30S subunit, it bridges several disparate RNA helices of the 16S rRNA. Forms part of the Shine-Dalgarno cleft in the 70S ribosome
+        0           1                           2                     3                    4                          5                       6                    7          8        9                 10           11             12           13      14                                15    16             17               18                                                         19              20                      21
+        query_name  seed_eggNOG_ortholog        seed_ortholog_evalue  seed_ortholog_score  best_tax_level             Preferred_name          GOs                  EC         KEGG_ko  KEGG_Pathway      KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE   KEGG_TC                           CAZy  BiGG_Reaction  taxonomic scope  eggNOG OGs                                                 best eggNOG OG  COG Functional cat.     eggNOG free text desc.
+        g51         562982.HMPREF0432_01129     1.4e-63               248.8                Bacillales incertae sedis  rpsK                    GO:00028,GO:00462    X          ko:K048  ko03010,map03010  M00178,M0017 X              X            br01610 ko00000,ko00001,ko00002,ko03011                        Bacteria         1V3IK@1239,3WESA@539002,4HH2T@91061,COG0100@1,COG0100@2    NA|NA|NA        J                       Located on the platform of the 30S subunit, it bridges several disparate RNA helices of the 16S rRNA. Forms part of the Shine-Dalgarno cleft in the 70S ribosome
         """
 
         fields = defline.strip('\n').split('\t')
@@ -190,7 +190,7 @@ class EggNOGMapper:
                                "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 22))
 
         gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
-        
+
         if (fields[21] and fields[21] != 'NA' and not fields[21].startswith('Protein of unknown function')) or fields[5]:
             if fields[5]:
                 self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[5], fields[21]), fields[2])
@@ -213,7 +213,7 @@ class EggNOGMapper:
             self.add_entry(gene_callers_id, 'EGGNOG_KEGG_KO', fields[1], ', '.join(fields[8].split(',')), fields[2])
 
         if fields[9]:
-            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_PATHWAYS', fields[1], ', '.join(fields[9].split(',')), fields[2]) 
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_PATHWAYS', fields[1], ', '.join(fields[9].split(',')), fields[2])
 
         if fields[10]:
             self.add_entry(gene_callers_id, 'EGGNOG_KEGG_MODULE', fields[1], ', '.join(fields[10].split(',')), fields[2])
