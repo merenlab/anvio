@@ -1288,6 +1288,9 @@ class TRNASeqDataset(object):
         fetched_profile_count = 0
         uniq_seqs_dict = {}
         profiling_progress_interval = self.profiling_progress_interval
+        uniq_trna_seqs = self.uniq_trna_seqs
+        uniq_trunc_seqs = self.uniq_trunc_seqs
+        uniq_nontrna_seqs = self.uniq_nontrna_seqs
         for uniq_read in uniq_reads:
             input_queue.put((uniq_read.seq_string, uniq_read.represent_name))
             uniq_seqs_dict[uniq_read.represent_name] = uniq_read
@@ -1323,9 +1326,9 @@ class TRNASeqDataset(object):
                         uniq_seq.extra_threeprime_length = trna_profile.num_extra_threeprime
                         uniq_seq.profiled_seq_length = len(trna_profile.profiled_seq)
                         uniq_seq.trunc_profile_index = trna_profile.trunc_profile_index
-                        self.uniq_trunc_seqs.append(uniq_seq)
+                        uniq_trunc_seqs.append(uniq_seq)
                     else:
-                        self.uniq_nontrna_seqs.append(uniq_seq)
+                        uniq_nontrna_seqs.append(uniq_seq)
 
                     if fetched_profile_count % profiling_progress_interval == 0:
                         self.progress.update("%s of %s unique sequences have been profiled"
@@ -1359,7 +1362,7 @@ class TRNASeqDataset(object):
                 # expected nucleotide or type of nucleotide or by not base pairing in a stem.
                 uniq_seq.unpaired_info = trna_profile.unpaired_info
                 uniq_seq.unconserved_info = trna_profile.unconserved_info
-                self.uniq_trna_seqs.append(uniq_seq)
+                uniq_trna_seqs.append(uniq_seq)
 
                 if fetched_profile_count % profiling_progress_interval == 0:
                     self.progress.update("%s of %s unique sequences have been profiled"
@@ -1370,9 +1373,9 @@ class TRNASeqDataset(object):
             p.join()
 
         # Profiled seqs were added to the output queue as they were processed, so sort by name.
-        self.uniq_trna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
-        self.uniq_trunc_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
-        self.uniq_nontrna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
+        uniq_trna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
+        uniq_trunc_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
+        uniq_nontrna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed profiling tRNA (min)",
@@ -1524,11 +1527,13 @@ class TRNASeqDataset(object):
 
         # Trimmed and unique tRNA sequences should already be sorted by representative name.
         trimmed_seq_indices_to_remove.sort(reverse=True)
+        trimmed_trna_seqs = self.trimmed_trna_seqs
         for trimmed_seq_index in trimmed_seq_indices_to_remove:
-            self.trimmed_trna_seqs.pop(trimmed_seq_index)
+            trimmed_trna_seqs.pop(trimmed_seq_index)
         uniq_seq_indices_to_remove.sort(reverse=True)
+        uniq_trna_seqs = self.uniq_trna_seqs
         for uniq_seq_index in uniq_seq_indices_to_remove:
-            self.uniq_trna_seqs.pop(uniq_seq_index)
+            uniq_trna_seqs.pop(uniq_seq_index)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled sequences",
@@ -1756,15 +1761,19 @@ class TRNASeqDataset(object):
 
         # Transfer recovered truncated sequences into the tRNA lists.
         trimmed_trunc_seq_indices_to_remove.sort(reverse=True)
+        trimmed_trunc_seqs = self.trimmed_trunc_seqs
+        trimmed_trna_seqs = self.trimmed_trna_seqs
         for trimmed_trunc_seq_index in trimmed_trunc_seq_indices_to_remove:
-            trimmed_trunc_seq = self.trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
+            trimmed_trunc_seq = trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
             trimmed_trunc_seq.trunc_profile_recovered_by_derep = True
-            self.trimmed_trna_seqs.append(trimmed_trunc_seq)
+            trimmed_trna_seqs.append(trimmed_trunc_seq)
         uniq_trunc_seq_indices_to_remove.sort(reverse=True)
+        uniq_trunc_seqs =  self.uniq_trunc_seqs
+        uniq_trna_seqs = self.uniq_trna_seqs
         for uniq_trunc_seq_index in uniq_trunc_seq_indices_to_remove:
-            uniq_trunc_seq = self.uniq_trunc_seqs.pop(uniq_trunc_seq_index)
+            uniq_trunc_seq = uniq_trunc_seqs.pop(uniq_trunc_seq_index)
             uniq_trunc_seq.trunc_profile_recovered_by_derep = True
-            self.uniq_trna_seqs.append(uniq_trunc_seq)
+            uniq_trna_seqs.append(uniq_trunc_seq)
 
         # All trimmed sequences have now been added to normalized truncated sequences, so they can
         # be initialized.
@@ -1852,6 +1861,7 @@ class TRNASeqDataset(object):
 
         uniq_nontrna_seq_indices_to_remove = []
         uniq_seq_norm_seqs_dict = defaultdict(list)
+        trimmed_trna_seqs = self.trimmed_trna_seqs
         for cluster in clusters:
             if len(cluster.member_seqs) == 1:
                 continue
@@ -1892,7 +1902,7 @@ class TRNASeqDataset(object):
                 uniq_seq.extra_fiveprime_length = len(uniq_seq.seq_string) - norm_seq_length
 
                 trimmed_seq = TrimmedSeq(uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: ], [uniq_seq])
-                self.trimmed_trna_seqs.append(trimmed_seq)
+                trimmed_trna_seqs.append(trimmed_seq)
 
                 norm_seq.trimmed_seqs.append(trimmed_seq)
                 trimmed_seq.norm_seq_count += 1
@@ -1903,20 +1913,21 @@ class TRNASeqDataset(object):
                 uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
                 uniq_seq_norm_seqs_dict[uniq_nontrna_index].append(norm_seq)
 
+        uniq_trna_seqs = self.uniq_trna_seqs
         for seq_index in sorted(set(uniq_nontrna_seq_indices_to_remove), reverse=True):
             uniq_seq = self.uniq_nontrna_seqs.pop(seq_index)
             if uniq_seq.id_method == 1:
                 # This sequence was already handle above, save removal from the list of non-tRNA.
                 continue
 
-            self.uniq_trna_seqs.append(uniq_seq)
+            uniq_trna_seqs.append(uniq_seq)
             uniq_seq.id_method = 1
             uniq_seq.has_complete_feature_set = False
             uniq_seq.acceptor_length = 0
             uniq_seq.extra_fiveprime_length = 0
 
             trimmed_seq = TrimmedSeq(uniq_seq.seq_string, [uniq_seq])
-            self.trimmed_trna_seqs.append(trimmed_seq)
+            trimmed_trna_seqs.append(trimmed_seq)
 
             uniq_seq_length = len(uniq_seq.seq_string)
             for norm_seq in uniq_seq_norm_seqs_dict[seq_index]:
@@ -2023,6 +2034,7 @@ class TRNASeqDataset(object):
 
         interval_index = 0
         nontrna_indices = []
+        trimmed_trna_seqs = self.trimmed_trna_seqs
         for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
             self.progress.new("Mapping %s unprofiled reads of length %d-%d to profiled tRNA"
                               % (pp(len(query_names)),
@@ -2095,7 +2107,7 @@ class TRNASeqDataset(object):
                         # from profiled tRNA that are grouped into the same normalized sequence.
                         trimmed_seq = TrimmedSeq(uniq_mapped_seq.seq_string[uniq_mapped_seq.extra_fiveprime_length: ],
                                                  [uniq_mapped_seq])
-                        self.trimmed_trna_seqs.append(trimmed_seq)
+                        trimmed_trna_seqs.append(trimmed_seq)
 
                         norm_seq.trimmed_seqs.append(trimmed_seq)
                         trimmed_seq.norm_seq_count += 1
@@ -2128,8 +2140,10 @@ class TRNASeqDataset(object):
         for norm_seq in self.norm_trna_seqs:
             norm_seq.init()
 
+        uniq_trna_seqs = self.uniq_trna_seqs
+        uniq_nontrna_seqs = self.uniq_nontrna_seqs
         for nontrna_index in sorted(nontrna_indices, reverse=True):
-            self.uniq_trna_seqs.append(self.uniq_nontrna_seqs.pop(nontrna_index))
+            uniq_trna_seqs.append(uniq_nontrna_seqs.pop(nontrna_index))
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)",
@@ -2311,7 +2325,7 @@ class TRNASeqDataset(object):
 
             while clusters:
                 norm_seqs, mod_positions = clusters.pop()
-                norm_seqs = sorted(norm_seqs, key=lambda seq: (-len(seq.seq_string), seq.represent_name)) # Turn the `norm_seqs` array into a list.
+                norm_seqs = sorted(norm_seqs, key=lambda seq: (-len(seq.seq_string),  seq.represent_name)) # Turn the `norm_seqs` array into a list.
                 represent_norm_seq_start_in_array = aligned_ref_length - len(norm_seqs[0].seq_string)
                 mod_positions -= represent_norm_seq_start_in_array
                 mod_seq = ModifiedSeq(norm_seqs, mod_positions.tolist())
