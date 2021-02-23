@@ -1618,6 +1618,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.database_name = A('database_name')
         self.multi_mode = True if A('multi_mode') else False
 
+        # This can be initialized later if necessary using init_gene_coverage()
+        self.profile_db = None
+
         KeggEstimatorArgs.__init__(self, self.args)
 
         self.name_header = None
