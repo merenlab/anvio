@@ -1925,6 +1925,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
 
 
+    def init_gene_coverage(self, gcids_for_kofam_hits):
+        """This function opens the provided profile DB and initialized gene coverage/detection.
+
+        PARAMETERS
+        ==========
+        gcids_for_kofam_hits : set
+            The gene caller ids for all genes with KOfam hits in the contigs DB
+        """
+
+        self.profile_db = ProfileSuperclass(self.args)
+        self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
+
+
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates two bin-level dictionaries of dictionaries to store metabolism data.
 
