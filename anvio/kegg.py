@@ -1936,7 +1936,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             The gene caller ids for all genes with KOfam hits in the contigs DB
         """
 
-        self.profile_db = ProfileSuperclass(self.args)
+        if not self.profile_db:
+            self.profile_db = ProfileSuperclass(self.args)
         self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
 
 
@@ -1947,8 +1948,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
-            raise ConfigError("The add_gene_coverage_to_headers_list() function cannot work without a properly initialized "
-                              "profile database.")
+            self.profile_db = ProfileSuperclass(self.args)
 
         # first we get lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
