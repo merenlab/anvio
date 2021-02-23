@@ -3091,8 +3091,27 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         gcids_in_mod = c_dict['genes_to_contigs'].keys()
-                        gcids_in_mod = [str(x) for x in gcids_in_mod]
-                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+                        gcids_in_mod_str = [str(x) for x in gcids_in_mod]
+                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod_str)
+
+                    # add coverage if requested
+                    if self.add_coverage:
+                        for s in self.profile_db.p_meta['samples']:
+                            sample_cov_header = s + "_gene_coverages"
+                            sample_det_header = s + "_gene_detection"
+                            sample_avg_cov_header = s + "_avg_coverage"
+                            sample_avg_det_header = s + "_avg_detection"
+
+                            gene_coverages_in_mod = []
+                            gene_detection_in_mod = []
+                            for gc in gcids_in_mod:
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc])
+
+                            d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
+                            d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
+                            d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
+                            d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
 
                     # everything else at c_dict level
                     for h in remaining_headers:
