@@ -1164,7 +1164,8 @@ class ContigsSuperclass(object):
             for gene_callers_id in gene_caller_ids_list:
                 entry = sequences_dict[gene_callers_id]
                 strand=entry['direction'].replace('f','+').replace('r','-')
-                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\tID={gene_callers_id}")
+                entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
+                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\tID={entry_id}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
