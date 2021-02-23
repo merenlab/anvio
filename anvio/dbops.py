@@ -3782,6 +3782,12 @@ class ContigsDatabase:
             self.meta['gene_callers'] = self.db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')[::-1]
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
+            # set a project name for the contigs database without any funny
+            # characters to make sure it can be used programmatically later.
+            project_name_str = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
+            self.meta['project_name_str'] =  '___'.join([project_name_str, self.meta['contigs_db_hash']]) \
+                                    if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
+
             if 'creation_date' not in self.meta:
                 raise ConfigError("The contigs database ('%s') seems to be corrupted :/ This happens if the process that "
                                    "that generates the database ends prematurely. Most probably, you will need to generate "
@@ -3990,6 +3996,7 @@ class ContigsDatabase:
 
         if not project_name:
             project_name = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
+            project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
 
             if project_name:
                 self.run.warning("You are generating a new anvi'o contigs database, but you are not specifying a "
