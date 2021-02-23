@@ -2977,6 +2977,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "contig" in headers_to_include:
                                     d[self.modules_unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
 
+                                # add gene coverage if requested
+                                if self.add_coverage:
+                                    for s in self.profile_db.p_meta['samples']:
+                                        sample_cov_header = s + "_coverage"
+                                        d[self.modules_unique_id][sample_cov_header] = c_dict["genes_to_coverage"][s][gc_id]
+                                        sample_det_header = s + "_detection"
+                                        d[self.modules_unique_id][sample_det_header] = c_dict["genes_to_detection"][s][gc_id]
+
                                 # repeated information for each hit
                                 # path specific info
                                 if "path_id" in headers_to_include:
