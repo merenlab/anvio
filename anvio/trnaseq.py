@@ -2446,6 +2446,7 @@ class TRNASeqDataset(object):
 
         self.progress.update("Searching normalized sequences with truncated feature profiles")
         self.process_del_clusters(clusters, 'trunc')
+        raise Exception
 
 
         self.progress.update("Gathering normalized sequences with full feature profiles")
@@ -2697,7 +2698,7 @@ class TRNASeqDataset(object):
 
         # Process the matches between Nt or Nf and one or more M'. Winnow the matches down to
         # one-to-one matches between a normalized sequence and modified sequence. These are stored,
-        # along with the deletion configuration that produced the match, in the following dict.
+        # along with the deletion configuration that produced the match, in the following list.
         final_matches = []
         # Track which normalized sequences are changed as a result of the identification of extra 5'
         # nucleotides.
