@@ -2285,6 +2285,55 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return now_complete
 
 
+    def add_module_coverage(self, mod, meta_dict_for_bin):
+        """This function updates the metabolism dictionary with coverage values for the given module.
+
+        It must be called after self.init_gene_coverage() so that the self.profile_db attribute is
+        established.
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "genes_to_coverage"             dictionary of mean coverage in each sample for each gene
+                                        coverage = meta_dict_for_bin[module]["genes_to_coverage"][sample][gcid]
+        "genes_to_detection"            dictionary of detection in each sample for each gene
+                                        detection = meta_dict_for_bin[module]["genes_to_detection"][sample][gcid]
+        "average_coverage_per_sample"   dictionary of average mean coverage of all genes in module, per sample
+                                        avg_coverage = meta_dict_for_bin[module]["average_coverage_per_sample"][sample]
+        "average_detection_per_sample"  dictionary of average detection of all genes in module, per sample
+                                        avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
+        """
+
+        if not self.profile_db:
+            raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
+                              "profile database.")
+
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+
+        num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
+        for s in self.profile_db.p_meta['samples']:
+            meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
+            meta_dict_for_bin[mod]["genes_to_detection"][s] = {}
+            coverage_sum = 0
+            detection_sum = 0
+            for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
+                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                coverage_sum += cov
+                detection_sum += det
+                meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
+                meta_dict_for_bin[mod]["genes_to_detection"][s][g] = det
+
+            if num_genes == 0:
+                meta_dict_for_bin[mod]["average_coverage_per_sample"][s] = 0
+                meta_dict_for_bin[mod]["average_detection_per_sample"][s] = 0
+            else:
+                meta_dict_for_bin[mod]["average_coverage_per_sample"][s] = coverage_sum / num_genes
+                meta_dict_for_bin[mod]["average_detection_per_sample"][s] = detection_sum / num_genes
+
+
     def estimate_for_list_of_splits(self, metabolism_dict_for_list_of_splits, bin_name=None):
         """This is the atomic metabolism estimator function, which builds up the metabolism completeness dictionary for an arbitrary list of splits.
 
