@@ -2377,6 +2377,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if defined_by_modules:
                 mods_def_by_modules.append(mod)
 
+            if self.add_coverage:
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
+
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
