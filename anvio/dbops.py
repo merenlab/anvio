@@ -155,9 +155,10 @@ class ContigsSuperclass(object):
         filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
+        self.progress.update('...')
+
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
-        self.progress.update('Setting contigs self data dict')
         self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
@@ -4000,13 +4001,13 @@ class ContigsDatabase:
             project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
 
             if project_name:
-                self.run.warning("You are generating a new anvi'o contigs database, but you are not specifying a "
-                                 "project name for it. FINE. Anvi'o, in desperation, will use the input file name "
-                                 "to set the project name for this contigs database (which is '%s'). If you are not "
-                                 "happy with that, feel free to kill and restart this process. If you are not happy "
-                                 "with this name, but you don't like killing things either, maybe next time you "
-                                 "should either name your FASTA files better, or use the `--project-name` parameter "
-                                 "to set your desired name." % project_name, "Anvi'o made things up for you")
+                self.run.warning(f"You are generating a new anvi'o contigs database, but you are not specifying a "
+                                 f"project name for it. FINE. Anvi'o, in desperation, will use the input file name "
+                                 f"to set the project name for this contigs database (i.e., '{project_name}'). If you are not "
+                                 f"happy with that, feel free to kill and restart this process. If you are not happy "
+                                 f"with this name, but you don't like killing things either, maybe next time you "
+                                 f"should either name your FASTA files better, or use the `--project-name` parameter "
+                                 f"to set your desired name.", "Anvi'o made things up for you", lc="green")
             else:
                 raise ConfigError("Sorry, you must provide a project name for your contigs database :/ Anvi'o tried "
                                   "to make up one, but failed.")
