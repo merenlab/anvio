@@ -2692,8 +2692,8 @@ class TRNASeqDataset(object):
                         continue
                     for mod_seq, del_config in zip(mod_seqs, del_configs):
                         norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, 0))
-                        mod_seqs = []
-                        del_configs = []
+                    mod_seqs = []
+                    del_configs = []
 
         # Process the matches between Nt or Nf and one or more M'. Winnow the matches down to
         # one-to-one matches between a normalized sequence and modified sequence. These are stored,
