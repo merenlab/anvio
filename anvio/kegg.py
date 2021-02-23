@@ -2950,11 +2950,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "contig_name", "kegg_module", "db_name",
-                                     "kofam_hits_in_module", "gene_caller_ids_in_module"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
         remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
