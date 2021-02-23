@@ -2666,7 +2666,10 @@ class TRNASeqDataset(object):
                         length_diff = norm_seq_length + len(del_config) - len(mod_seq.norm_seqs_without_dels[0].seq_string)
                         if length_diff == 0:
                             # The normalized sequence is equal in length to the longest M' in the
-                            # cluster, and happened to come before it in the cluster.
+                            # cluster, and happened to come before it in the cluster. It seems that
+                            # this does not actually happen when this method is called from
+                            # self.find_deletions due to the order in which sequences are processed
+                            # during clustering.
                             for mod_seq, del_config in zip(mod_seqs, del_configs):
                                 norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, 0))
                             mod_seqs = []
@@ -2718,6 +2721,8 @@ class TRNASeqDataset(object):
                 for norm_seq, mod_seq, del_config, extra_fiveprime_length in match_info:
                     if mod_seq.represent_name in uniq_mod_seq_info_dict:
                         if len(del_config) < len(uniq_mod_seq_info_dict[mod_seq.represent_name]):
+                            # Favor the most parsimonious configuration of deletions in the modified
+                            # sequence concordant with the normalized sequence.
                             uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
                     else:
                         uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
