@@ -1682,6 +1682,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
             raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
                               "values, so the --add-coverage flag will not work.")
+        elif self.add_coverage:
+            self.add_gene_coverage_to_headers_list()
 
         # output options sanity checks
         if anvio.DEBUG:
@@ -2857,7 +2859,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             if self.add_coverage:
                 self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
-                self.add_gene_coverage_to_headers_list()
 
             if self.profile_db_path and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
