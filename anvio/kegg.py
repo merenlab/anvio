@@ -1938,6 +1938,45 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
 
 
+    def add_gene_coverage_to_headers_list(self):
+        """Updates the headers lists for relevant output modes with coverage and detection column headers.
+
+        Must be called after init_gene_coverage() so that self.profile_db is available.
+        """
+
+        if not self.profile_db:
+            raise ConfigError("The add_gene_coverage_to_headers_list() function cannot work without a properly initialized "
+                              "profile database.")
+
+        # first we get lists of all the headers we will need to add.
+        # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
+        kofam_hits_coverage_headers = []
+        kofam_hits_detection_headers = []
+        modules_coverage_headers = []
+        modules_detection_headers = []
+
+        samples_in_profile_db = self.profile_db.p_meta['samples']
+        for s in samples_in_profile_db:
+            kofam_hits_coverage_headers.append(s + "_coverage")
+            kofam_hits_detection_headers.append(s + "_detection")
+            modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
+            modules_detection_headers.extend([s + "_gene_detection", s + "_avg_detection"])
+
+        # we update the header list for the affected modes
+        self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
+        if self.available_modes["modules_custom"]["headers"]:
+            self.available_modes["modules_custom"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
+
+        # finally, we update the available header list so that these additional headers pass the sanity checks
+        all_new_headers = kofam_hits_coverage_headers + kofam_hits_detection_headers + modules_coverage_headers + modules_detection_headers
+        for h in all_new_headers:
+            self.available_headers[h] = {'cdict_key': None,
+                                         'mode_type': 'modules',
+                                         'description': "A coverage column requested by --add-coverage"
+                                         }
+
+
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates two bin-level dictionaries of dictionaries to store metabolism data.
 
@@ -2818,6 +2857,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             if self.add_coverage:
                 self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+                self.add_gene_coverage_to_headers_list()
 
             if self.profile_db_path and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
