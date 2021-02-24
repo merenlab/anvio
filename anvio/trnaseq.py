@@ -2572,6 +2572,7 @@ class TRNASeqDataset(object):
         # parameterization.
         del_pos_configs = set()
         seq_string_length = len(seq_string)
+        min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
         # Deletions of different sizes can be situated at each substitution site. Deletions may be
         # found at one or multiple sites, if multiple substititutions are present. Call each
         # deletion site a "locus".
@@ -2583,8 +2584,17 @@ class TRNASeqDataset(object):
                         sub_pos = del_locus_config[i]
                         for del_pos_relative_to_sub in del_range:
                             del_pos = sub_pos + del_pos_relative_to_sub
-                            # Deletion positions must be within the template sequence.
-                            if seq_string_length > del_pos >= 0:
+                            # Deletion positions must be within the template sequence. There must be
+                            # sufficient sequence length on the 5' end to confirm the deletion. This
+                            # is related to the issue of nontemplated nucleotides. For example,
+                            # there may be a biological 3' tRNA fragment that ends at a modification
+                            # site, but a nontemplated nucleotide is added to the 5' end of the read
+                            # and is the same as the nucleotide that occurs 3 nucleotides 5' of the
+                            # modification site, so without an "anchoring" sequence required on the
+                            # 5' end, a deletion of length 2 could be mistakenly identified between
+                            # the modification and the nontemplated nucleotide. In silico deletions
+                            # are therefore selected when they occur a distance from the 5' end.
+                            if seq_string_length > del_pos >= min_fiveprime_del_pos:
                                 del_positions.add(del_pos)
                     if del_positions:
                         del_positions = sorted(del_positions)
@@ -2646,6 +2656,7 @@ class TRNASeqDataset(object):
         sequence is a 3'-subsequence of one or more M'.
         """
         norm_seq_mod_seqs_dict = defaultdict(list)
+        min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
         for cluster in clusters:
             if len(cluster.member_seqs) == 1:
                 continue
@@ -2694,6 +2705,10 @@ class TRNASeqDataset(object):
                     if not mod_seqs:
                         continue
                     for mod_seq, del_config in zip(mod_seqs, del_configs):
+                        if del_config[0] - len(mod_seq.norm_seqs_without_dels[0].seq_string) + norm_seq_length + len(del_config) < min_fiveprime_del_pos:
+                            # There must be sufficient sequence length on the 5' end of the
+                            # normalized sequence to confirm the 5'-most deletion.
+                            continue
                         norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, 0))
                     mod_seqs = []
                     del_configs = []
