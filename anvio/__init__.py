@@ -2683,7 +2683,7 @@ D = {
                 ),
     'heuristic-bitscore-fraction': (
             ['-H', '--heuristic-bitscore-fraction'],
-            {'default': 0.50,
+            {'default': 0.75,
              'metavar': 'FLOAT',
              'type': float,
              'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
