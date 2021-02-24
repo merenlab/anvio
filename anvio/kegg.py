@@ -1664,8 +1664,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
 
-        if not self.metagenome_mode and self.profile_db_path and not self.collection_name:
-            raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
+        if self.profile_db_path and not (self.collection_name or self.add_coverage or self.metagenome_mode):
+            raise ConfigError("If you provide a profile DB, you should also provide either a collection name (to estimate metabolism "
+                              "on a collection of bins) or use the --add-coverage flag (so that coverage info goes into the output "
+                              "files), or both. Otherwise the profile DB is useless.")
 
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
