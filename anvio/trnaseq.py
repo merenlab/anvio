@@ -2451,7 +2451,6 @@ class TRNASeqDataset(object):
 
         self.progress.update("Searching normalized sequences with truncated feature profiles")
         self.process_del_clusters(clusters, 'trunc')
-        raise Exception
 
 
         self.progress.update("Gathering normalized sequences with full feature profiles")
