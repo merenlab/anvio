@@ -2875,7 +2875,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if self.add_coverage:
                 self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
 
-            if self.profile_db_path and not self.metagenome_mode:
+            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
             elif not self.profile_db_path and not self.metagenome_mode:
                 self.genome_mode = True
