@@ -960,6 +960,7 @@ class TRNASeqDataset(object):
         self.fiveprimemost_del_stop = A('fiveprimemost_deletion_stop')
         self.threeprimemost_del_stop = A('threeprimemost_deletion_stop')
         self.max_distinct_dels = A('max_distinct_deletions')
+        self.min_dist_between_dels = A('min_distance_between_deletions')
 
         # Argument group 1D: PERFORMANCE
         self.num_threads = A('num_threads')
@@ -1291,6 +1292,7 @@ class TRNASeqDataset(object):
         trnaseq_db.db.set_meta_value('fiveprimemost_deletion_stop', self.fiveprimemost_del_stop)
         trnaseq_db.db.set_meta_value('threeprimemost_deletion_stop', self.threeprimemost_del_stop)
         trnaseq_db.db.set_meta_value('max_distinct_deletions', self.max_distinct_dels)
+        trnaseq_db.db.set_meta_value('min_distance_between_deletions', self.min_dist_between_dels)
         trnaseq_db.disconnect()
 
         with open(self.analysis_summary_path, 'a') as f:
@@ -1301,6 +1303,7 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Fiveprime-most deletion start", self.threeprimemost_del_start))
             f.write(self.get_summary_line("Threeprime-most deletion stop", self.threeprimemost_del_start))
             f.write(self.get_summary_line("Max distinct deletions", self.max_distinct_dels))
+            f.write(self.get_summary_line("Min distance between deletions", self.min_dist_between_dels))
 
 
     def profile_trna(self, uniq_reads):
@@ -2573,15 +2576,17 @@ class TRNASeqDataset(object):
         del_pos_configs = set()
         seq_string_length = len(seq_string)
         min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
+        min_dist_between_dels = self.min_dist_between_dels
         # Deletions of different sizes can be situated at each substitution site. Deletions may be
         # found at one or multiple sites, if multiple substititutions are present. Call each
         # deletion site a "locus".
         for num_del_sites in range(1, self.max_distinct_dels + 1):
             for del_locus_config in combinations(sub_positions, num_del_sites):
                 for del_range_config in product(*[self.del_ranges for _ in range(num_del_sites)]):
-                    del_positions = set()
+                    all_del_positions = []
                     for i, del_range in enumerate(del_range_config):
                         sub_pos = del_locus_config[i]
+                        locus_del_positions = []
                         for del_pos_relative_to_sub in del_range:
                             del_pos = sub_pos + del_pos_relative_to_sub
                             # Deletion positions must be within the template sequence. There must be
@@ -2594,10 +2599,16 @@ class TRNASeqDataset(object):
                             # 5' end, a deletion of length 2 could be mistakenly identified between
                             # the modification and the nontemplated nucleotide. In silico deletions
                             # are therefore selected when they occur a distance from the 5' end.
-                            if seq_string_length > del_pos >= min_fiveprime_del_pos:
-                                del_positions.add(del_pos)
-                    if del_positions:
-                        del_positions = sorted(del_positions)
+                            if not seq_string_length > del_pos >= min_fiveprime_del_pos:
+                                continue
+                            if not locus_del_positions:
+                                if all_del_positions:
+                                    if del_pos - all_del_positions[-1] < min_dist_between_dels:
+                                        continue
+                            locus_del_positions.append(del_pos)
+                        all_del_positions.extend(locus_del_positions)
+                    if all_del_positions:
+                        del_positions = sorted(set(all_del_positions))
 
                         # Remove any nominal deletions at the 5' end, as these could rightly be
                         # interpreted as unseen nucleotides preceding a fragment.

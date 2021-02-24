@@ -2876,6 +2876,20 @@ D = {
                      "others will be produced containing deletions at the first and second positions; "
                      "the first and third positions; the second position; the second and third; and the third."}
                 ),
+    'min-distance-between-deletions': (
+            ['--min-distance-between-deletions'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The minimum number of nucleotides that must exist between distinct deletions "
+                     "introduced around potential modifications in the search for deletions. "
+                     "In some sequences, there are long strings of potential modification sites "
+                     "due to a \"smear\" of associated substitutions around the main substitution site at the modified nucleotide. "
+                     "In silico deletions introduced at multiple nearby substitution sites can produce strange and ambiguous deletion patterns, "
+                     "so this parameter is used to separate deletions from each other. "
+                     "The default value was determined by the inspection of deletions predicted from large datasets. "
+                     "It is hard to envision a case where the user would adjust this parameter downward."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,
