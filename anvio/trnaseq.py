@@ -40,6 +40,8 @@ Modification-induced deletion: Detected as a missing nucleotide in the proximity
 
 Unique sequence: Set of dereplicated merged tRNA-seq paired-end reads
 
+Nontemplated nucleotide: Artifact typically added to the 5' end of a read in reverse transcription
+
 Trimmed sequence: Set of unique sequences that are identical after trimming sequence extensions 5'
     and 3' of the acceptor stem (e.g., nontemplated 5' nucleotides, 3'-CCA acceptor)
 
