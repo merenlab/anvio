@@ -1992,8 +1992,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # we update the header list for the affected modes
         self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
-        if self.available_modes["modules_custom"]["headers"]:
-            self.available_modes["modules_custom"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
