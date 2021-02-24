@@ -2852,8 +2852,8 @@ class TRNASeqDataset(object):
                     corrected_start_positions = [0]
                     corrected_stop_positions = [len(trimmed_seq_string)]
                     for trimmed_seq, start_pos, stop_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                        corrected_start_positions = start_pos - extra_fiveprime_length
-                        corrected_stop_positions = stop_pos - extra_fiveprime_length
+                        corrected_start_positions.append(start_pos - extra_fiveprime_length)
+                        corrected_stop_positions.append(stop_pos - extra_fiveprime_length)
                     norm_seq.start_positions = corrected_start_positions
                     norm_seq.stop_positions = corrected_stop_positions
                     new_trimmed_seq_start_positions.insert(0, 0)
