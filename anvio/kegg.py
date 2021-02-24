@@ -1959,24 +1959,41 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         samples_in_profile_db = self.profile_db.p_meta['samples']
         for s in samples_in_profile_db:
+            # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
+            self.available_headers[s + "_coverage"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': f"Mean coverage of gene with KOfam hit in sample {s} (kofam_hits_in_modules output)"
+                                                       }
             kofam_hits_detection_headers.append(s + "_detection")
+            self.available_headers[s + "_detection"] = {'cdict_key': None,
+                                                        'mode_type': 'modules',
+                                                        'description': f"Detection of gene with KOfam hit in sample {s} (kofam_hits_in_modules output)"
+                                                        }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
+            self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
+                                                             'mode_type': 'modules',
+                                                             'description': f"Comma-separated coverage values for each gene in module in sample {s} (modules output)"
+                                                             }
+            self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
+                                                           'mode_type': 'modules',
+                                                           'description': f"Average coverage of all genes in module in sample {s} (modules output)"
+                                                           }
             modules_detection_headers.extend([s + "_gene_detection", s + "_avg_detection"])
+            self.available_headers[s + "_gene_detection"] = {'cdict_key': None,
+                                                             'mode_type': 'modules',
+                                                             'description': f"Comma-separated detection values for each gene in module in sample {s} (modules output)"
+                                                             }
+            self.available_headers[s + "_avg_detection"] = {'cdict_key': None,
+                                                            'mode_type': 'modules',
+                                                            'description': f"Average detection of all genes in module in sample {s} (modules output)"
+                                                            }
 
         # we update the header list for the affected modes
         self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
         if self.available_modes["modules_custom"]["headers"]:
             self.available_modes["modules_custom"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
-
-        # finally, we update the available header list so that these additional headers pass the sanity checks
-        all_new_headers = kofam_hits_coverage_headers + kofam_hits_detection_headers + modules_coverage_headers + modules_detection_headers
-        for h in all_new_headers:
-            self.available_headers[h] = {'cdict_key': None,
-                                         'mode_type': 'modules',
-                                         'description': "A coverage column requested by --add-coverage"
-                                         }
 
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
