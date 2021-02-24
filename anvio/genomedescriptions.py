@@ -1293,7 +1293,7 @@ class AggregateFunctions:
 
             for layer_group in self.layer_groups:
                 if not isinstance(self.layer_groups[layer_group], list):
-                    raise ConfigError(f"Each layer group must be composed list of layer names :(")
+                    raise ConfigError("Each layer group must be composed list of layer names :(")
 
                 if not len(self.layer_groups[layer_group]) > 1:
                     raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")
