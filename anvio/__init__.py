@@ -2362,8 +2362,8 @@ D = {
             ['--add-coverage'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag to request that coverage values be added as columns in long-format output files. You must "
-                     "provide the profile database corresonding to your contigs db for this to work."}
+             'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
+                     "output files. You must provide the profile database corresonding to your contigs db for this to work."}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
