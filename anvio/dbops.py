@@ -155,9 +155,10 @@ class ContigsSuperclass(object):
         filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
+        self.progress.update('...')
+
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
-        self.progress.update('Setting contigs self data dict')
         self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
@@ -1053,15 +1054,17 @@ class ContigsSuperclass(object):
             #
             ###################################################################################
 
-            # time to update the information on the gene call in sequences dict. we first
-            # update start / stop positions of the gene GIVEN the sequence we are reporting
-            # since they are currently showing start/stop positions GIVEN the contig
-            # they were on.
-            original_gene_call_start = gene_call['start']
-            original_gene_call_stop = gene_call['stop']
-            sequence_with_flank_start = start
-            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
-            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+            # if the user asked for flanking sequences, in the next conditional WE WILL UPDATE
+            # GENE START/STOP POSITIONS this is a special case of reporting for specific applications.
+            if flank_length:
+                # update start / stop positions of the gene GIVEN the sequence we are reporting
+                # since they are currently showing start/stop positions GIVEN the contig
+                # they were on.
+                original_gene_call_start = gene_call['start']
+                original_gene_call_stop = gene_call['stop']
+                sequence_with_flank_start = start
+                gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+                gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
 
             # update the sequence
             gene_call['sequence'] = sequence
@@ -1161,9 +1164,9 @@ class ContigsSuperclass(object):
             output.write('##gff-version 3\n')
             for gene_callers_id in gene_caller_ids_list:
                 entry = sequences_dict[gene_callers_id]
-                output.write('{contig}\t{source}\t{type}\t{start}\t{stop}\t.\t{strand}\t.\tID={id}'.format(
-                    contig=entry['contig'], source='.', type='CDS', start=entry['start']+1, stop=entry['stop'],
-                    strand=entry['direction'].replace('f','+').replace('r','-'), id=gene_callers_id))
+                strand=entry['direction'].replace('f','+').replace('r','-')
+                entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
+                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\tID={entry_id}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
@@ -3781,6 +3784,12 @@ class ContigsDatabase:
             self.meta['gene_callers'] = self.db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')[::-1]
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
+            # set a project name for the contigs database without any funny
+            # characters to make sure it can be used programmatically later.
+            project_name_str = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
+            self.meta['project_name_str'] =  '___'.join([project_name_str, self.meta['contigs_db_hash']]) \
+                                    if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
+
             if 'creation_date' not in self.meta:
                 raise ConfigError("The contigs database ('%s') seems to be corrupted :/ This happens if the process that "
                                    "that generates the database ends prematurely. Most probably, you will need to generate "
@@ -3989,15 +3998,16 @@ class ContigsDatabase:
 
         if not project_name:
             project_name = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
+            project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
 
             if project_name:
-                self.run.warning("You are generating a new anvi'o contigs database, but you are not specifying a "
-                                 "project name for it. FINE. Anvi'o, in desperation, will use the input file name "
-                                 "to set the project name for this contigs database (which is '%s'). If you are not "
-                                 "happy with that, feel free to kill and restart this process. If you are not happy "
-                                 "with this name, but you don't like killing things either, maybe next time you "
-                                 "should either name your FASTA files better, or use the `--project-name` parameter "
-                                 "to set your desired name." % project_name, "Anvi'o made things up for you")
+                self.run.warning(f"You are generating a new anvi'o contigs database, but you are not specifying a "
+                                 f"project name for it. FINE. Anvi'o, in desperation, will use the input file name "
+                                 f"to set the project name for this contigs database (i.e., '{project_name}'). If you are not "
+                                 f"happy with that, feel free to kill and restart this process. If you are not happy "
+                                 f"with this name, but you don't like killing things either, maybe next time you "
+                                 f"should either name your FASTA files better, or use the `--project-name` parameter "
+                                 f"to set your desired name.", "Anvi'o made things up for you", lc="green")
             else:
                 raise ConfigError("Sorry, you must provide a project name for your contigs database :/ Anvi'o tried "
                                   "to make up one, but failed.")

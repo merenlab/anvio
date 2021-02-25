@@ -199,7 +199,7 @@ class GenomeDescriptions(object):
         return hmm_sources_in_all_genomes
 
 
-    def load_genomes_descriptions(self, skip_functions=False, init=True):
+    def load_genomes_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load genome descriptions from int/ext genome dictionaries"""
 
         # start with a sanity check to make sure name are distinct
@@ -293,7 +293,8 @@ class GenomeDescriptions(object):
         self.initialized = True
 
         # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None, return_only_functions=False):
@@ -974,7 +975,7 @@ class MetagenomeDescriptions(object):
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
-    def load_metagenome_descriptions(self, skip_functions=False, init=True):
+    def load_metagenome_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load metagenome descriptions"""
 
         # start with a sanity check to make sure name are distinct
@@ -1013,8 +1014,8 @@ class MetagenomeDescriptions(object):
             for key in contigs_db.meta:
                 g[key] = contigs_db.meta[key]
 
-        # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def get_metagenome_hash(self, entry):
@@ -1292,7 +1293,7 @@ class AggregateFunctions:
 
             for layer_group in self.layer_groups:
                 if not isinstance(self.layer_groups[layer_group], list):
-                    raise ConfigError(f"Each layer group must be composed list of layer names :(")
+                    raise ConfigError("Each layer group must be composed list of layer names :(")
 
                 if not len(self.layer_groups[layer_group]) > 1:
                     raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")

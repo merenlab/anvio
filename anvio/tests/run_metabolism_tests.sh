@@ -11,14 +11,7 @@ cp $files/data/genomes/bacteria/*.db                    $output_dir/metabolism_t
 cp $files/data/genomes/archaea/*.db                     $output_dir/metabolism_test
 cp $files/data/metagenomes/human_gut/IGD_SUBSET/*.db    $output_dir/metabolism_test
 cp $files/data/input_files/*.txt                        $output_dir/metabolism_test
-LOCAL_MOD_DB_HASH=$(sqlite3 $files/../../data/misc/KEGG/MODULES.db "select value from self where key='hash'")
 cd $output_dir/metabolism_test
-
-INFO "Changing modules DB hash ($LOCAL_MOD_DB_HASH) in test databases to avoid version errors"
-sqlite3 B_thetaiotamicron_VPI-5482.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 P_marinus_CCMP1375.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 S_islandicus_LS215.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 CONTIGS.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
 
 INFO "Estimating metabolism on a single contigs database"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db -O single_contigs_db
