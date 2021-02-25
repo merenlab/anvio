@@ -309,13 +309,6 @@ class TrimmedSeq(object):
         self.contains_anticodon = self.uniq_seqs[0].contains_anticodon
         self.has_extrapolated_fiveprime_nts = True if self.uniq_seqs[0].num_extrapolated_fiveprime_nts else False
 
-        uniq_seq_trunc_profile_statuses = list(set([0 if uniq_seq.trunc_profile_index is None else 1 for uniq_seq in self.uniq_seqs]))
-        if len(uniq_seq_trunc_profile_statuses) == 1:
-            self.has_trunc_profile = True if uniq_seq_trunc_profile_statuses[0] else False
-        else:
-            raise ConfigError("A TrimmedSeq should not be made from some UniqueSeq objects "
-                              "with a truncated feature profile and some without.")
-
 
     def get_represent_name(self):
         """The representative name of the trimmed sequence is chosen as follows:
