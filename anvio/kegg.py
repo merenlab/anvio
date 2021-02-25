@@ -1940,6 +1940,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if not self.profile_db:
             self.profile_db = ProfileSuperclass(self.args)
+        self.run.info_single("Since the --add-coverage flag was provided, we are now loading the relevant "
+                             "coverage information from the provided profile database.")
         self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
 
 
