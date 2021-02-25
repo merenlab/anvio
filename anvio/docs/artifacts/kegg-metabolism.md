@@ -35,7 +35,7 @@ to get the following path of KOs (which happens to be the path shown in the outp
 
 K00844 K01810 K00850 K01623 K01803 K00134 K00927 K01834 K01689 K00873
 
-For every KO in the path above that has a hit in the %(contigs-db)s, there will be a corresponding line in the 'kofam_hits' output file. The same will occur for every possible path in every single KEGG module, resulting in a lot of lines and extremely repetitive but nicely parseable information.
+For every KO in the path above that has a hit in the %(contigs-db)s, there will be a corresponding line in the 'kofam_hits_in_modules' output file. The same will occur for every possible path in every single KEGG module, resulting in a lot of lines and extremely repetitive but nicely parseable information.
 
 Without further ado, here is an example of this output mode (also from the Infant Gut dataset):
 
