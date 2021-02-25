@@ -19,6 +19,15 @@ The 'modules' output file will have the suffix `modules.txt`. Each line in the f
 | 1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | M00002 | Glycolysis, core module involving three-carbon compounds | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | """K01803 ((K00134,K00150) K00927,K11389) (K01834,K15633,K15634,K15635) K01689 (K00873,K12406)""" | K01834,K00134,K00873,K01689,K01803,K00927 | 2342,2646,1044,642,226,1041,1042,1043 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
+**Adding coverage and detection values to output**
+If you use the flag `--add-coverage` and provide a profile database, additional columns containing coverage and detection data will be added for each sample in the profile database. Here is an mock example of the additional columns you will see (for a generic sample called 'SAMPLE_1'):
+
+| SAMPLE_1_gene_coverages | SAMPLE_1_avg_coverage | SAMPLE_1_gene_detection | SAMPLE_1_avg_detection |
+|:--|:--|:--|:--|
+| 3.0,5.0,10.0,2.0 | 5.0 | 1.0,1.0,1.0,1.0 | 1.0 |
+
+In this mock example, the module in this row has four gene calls in it. The `SAMPLE_1_gene_coverages` column lists the mean coverage of each of those genes in SAMPLE_1 (in the same order as the gene calls are listed in the `gene_caller_ids_in_module` column), and the `SAMPLE_1_avg_coverage` column holds the average of these values. As you probably expected, the `detection` columns are similarly defined, except that they contain detection values instead of coverage.
+
 ### 'KOfam Hits in Modules' Mode
 
 The 'kofam_hits_in_modules' output file will have the suffix `kofam_hits_in_modules.txt`. Each line in the file will represent information about one KOfam hit in a given genome, metagenome, or bin - but ONLY KOs that are a part of at least one KEGG Module are included in this output. Hits are organized according to the KEGG module that they belong to, and more specifically the path through the KEGG module in which the KO appears.
@@ -44,6 +53,15 @@ Without further ado, here is an example of this output mode (also from the Infan
 | 0 | E_faecalis_6240 | K01834 | 2342 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
 | 1 | E_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+
+**Adding coverage and detection values to output**
+The flag `--add-coverage` can also be used for this output mode, but in this case, the columns that are added (for each sample in the profile database) are slightly different. Here is a mock example:
+
+| SAMPLE_1_coverage | SAMPLE_1_detection |
+|:--|:--|
+| 3.0 | 1.0 |
+
+Since each row is a single gene in this output mode, these columns will contain the coverage/detection values for that gene only.
 
 ### 'KOfam Hits' Mode
 
