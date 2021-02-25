@@ -155,7 +155,7 @@ anvi-estimate-metabolism -c CONTIGS.db --list-available-output-headers
 Here is an example of defining the modules output to contain columns with the module number, the module name, and the completeness score.
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes custom --custom-output-headers kegg_module,module_name,module_is_complete
+anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules_custom --custom-output-headers kegg_module,module_name,module_is_complete
 {{ codestop }}
 
 **Including modules with 0%% completeness in long-format output**
