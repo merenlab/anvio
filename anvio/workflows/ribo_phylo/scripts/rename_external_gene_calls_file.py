@@ -16,6 +16,13 @@ external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls_all, \
                   sep="\t", \
                   index_col=False)
 
+
+headers = pd.read_csv(snakemake.input.headers, \
+                  sep="\t", \
+                  index_col=False,
+                  names=["contig"])
+# print(headers)
+
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
 for seq_record in SeqIO.parse(snakemake.input.SCGs_nt, "fasta"):
@@ -30,10 +37,10 @@ reformat_report = reformat_report.drop(columns=['gene_callers_id'])
 
 # Join
 external_gene_calls_filtered = reformat_report.merge(external_gene_calls, on="contig", how="inner").drop(columns=['header', 'sample', 'contig']).rename(columns={'new_header': 'contig'})
-external_gene_calls_filtered = external_gene_calls_filtered[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"]]
+external_gene_calls_filtered_ed = external_gene_calls_filtered.merge(headers, on="contig", how="inner")
+external_gene_calls_filtered_final = external_gene_calls_filtered_ed[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]]
 
-
-external_gene_calls_filtered.to_csv(snakemake.output.external_gene_calls_renamed, \
+external_gene_calls_filtered_final.to_csv(snakemake.output.external_gene_calls_renamed, \
            sep="\t", \
            index=False, \
            header=True, \
