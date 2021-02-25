@@ -1939,6 +1939,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
+            self.run.info_single("Since the --add-coverage flag was provided, we are now initializing a profile database "
+                                 "to obtain the relevant coverage information.")
             self.profile_db = ProfileSuperclass(self.args)
         self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
 
@@ -1950,6 +1952,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
+            self.run.info_single("Since the --add-coverage flag was provided, we are now initializing a profile database "
+                                 "to obtain the relevant coverage information.")
             self.profile_db = ProfileSuperclass(self.args)
 
         # first we get lists of all the headers we will need to add.
