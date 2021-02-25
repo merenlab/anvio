@@ -2880,7 +2880,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             if self.profile_db_path and self.collection_name and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-            elif not self.profile_db_path and not self.metagenome_mode:
+            elif not self.collection_name and not self.metagenome_mode:
                 self.genome_mode = True
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
             elif self.metagenome_mode:
