@@ -119,7 +119,8 @@ rule rename_and_filter_external_gene_calls_file_all:
     input:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv"),
         SCGs_nt = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_scgs_for_mapping.fna"),
-        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt")
+        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt"),
+        headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_headers_for_mapping.txt")
     output:
         external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.tsv")
     threads: M.T('rename_external_gene_calls_file')
@@ -763,6 +764,8 @@ rule filter_for_nt_seqs_for_mapping:
                                     -o {output} \
                                     -I {input.headers}"
 
+
+
 # rule calculate_tree:
 #     """Calculate a phylogenetic tree using iqtree"""
 
@@ -796,3 +799,12 @@ rule calculate_tree_fast:
     threads: M.T('calculate_tree')
     shell:
         "FastTree -fastest {input} > {output}"
+
+
+
+
+# FIXME: Need to concatenate all the SCG reps together into one reference file for mapping,
+# this should be faster than re-mapping all metagenomes to every SCG that is being used. I 
+# will then need to be able to parse out that data back to the misc data for each SCG experiment.
+# To do this, I will have to add the SCG name to the simplified names of each SCG experiment so 
+# there is a unique element to each and I will be able to parse it out.             
