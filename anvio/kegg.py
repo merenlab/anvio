@@ -1946,10 +1946,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def add_gene_coverage_to_headers_list(self):
-        """Updates the headers lists for relevant output modes with coverage and detection column headers.
-
-        Must be called after init_gene_coverage() so that self.profile_db is available.
-        """
+        """Updates the headers lists for relevant output modes with coverage and detection column headers."""
 
         if not self.profile_db:
             self.run.info_single("Since the --add-coverage flag was provided, we are now initializing a profile database "
@@ -2350,8 +2347,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def add_module_coverage(self, mod, meta_dict_for_bin):
         """This function updates the metabolism dictionary with coverage values for the given module.
 
-        It must be called after self.init_gene_coverage() so that the self.profile_db attribute is
-        established.
+        It must be called after init_gene_coverage() or add_gene_coverage_to_headers_list() so that
+        the self.profile_db attribute is established.
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
