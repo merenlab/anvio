@@ -1766,7 +1766,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if not self.quiet:
             self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "Kanehisa et al (doi:10.1093/nar/gkr988). When you publish your findings, "
                              "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
