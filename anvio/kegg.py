@@ -1626,9 +1626,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.name_header = None
         if self.metagenome_mode:
             self.name_header = 'contig_name'
-        elif self.profile_db_path and not self.metagenome_mode:
+        elif self.profile_db_path and self.collection_name and not self.metagenome_mode:
             self.name_header = 'bin_name'
-        elif not self.profile_db_path and not self.metagenome_mode:
+        else:
             self.name_header = 'genome_name'
 
         # update available modes and headers with appropriate genome/bin/metagenome identifier
