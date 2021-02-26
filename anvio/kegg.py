@@ -1961,7 +1961,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
-            self.args.skip_create_gene_dbs = True 
+            self.args.skip_consider_gene_dbs = True 
             self.profile_db = ProfileSuperclass(self.args)
 
         # first we get lists of all the headers we will need to add.
