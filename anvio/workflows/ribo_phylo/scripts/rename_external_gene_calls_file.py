@@ -39,6 +39,7 @@ reformat_report = reformat_report.drop(columns=['gene_callers_id'])
 external_gene_calls_filtered = reformat_report.merge(external_gene_calls, on="contig", how="inner").drop(columns=['header', 'sample', 'contig']).rename(columns={'new_header': 'contig'})
 external_gene_calls_filtered_ed = external_gene_calls_filtered.merge(headers, on="contig", how="inner")
 external_gene_calls_filtered_final = external_gene_calls_filtered_ed[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]]
+external_gene_calls_filtered_final['gene_callers_id'] = external_gene_calls_filtered_ed.index
 
 external_gene_calls_filtered_final.to_csv(snakemake.output.external_gene_calls_renamed, \
            sep="\t", \
