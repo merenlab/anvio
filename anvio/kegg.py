@@ -1930,7 +1930,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def init_gene_coverage(self, gcids_for_kofam_hits):
-        """This function opens the provided profile DB and initialized gene coverage/detection.
+        """This function initializes gene coverage/detection values from the provided profile DB.
+
+        The profile DB should be already initialized for this to work (currently add_gene_coverage_to_headers_list()
+        handles this). The reason we split the initalization of the profile db from the initialization of gene
+        coverage/detection values is so that we only work on the set of gene calls with KOfam hits rather than all
+        genes in the contigs DB.
 
         PARAMETERS
         ==========
@@ -1949,7 +1954,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def add_gene_coverage_to_headers_list(self):
-        """Updates the headers lists for relevant output modes with coverage and detection column headers."""
+        """Updates the headers lists for relevant output modes with coverage and detection column headers.
+
+        The profile DB is initialized in this function in order to get access to the sample names that will
+        be part of the available coverage/detection headers.
+        """
 
         if not self.profile_db:
             self.profile_db = ProfileSuperclass(self.args)
