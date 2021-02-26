@@ -1939,7 +1939,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
-            self.profile_db = ProfileSuperclass(self.args)
+            raise ConfigError("A profile DB has not yet been initialized, so init_gene_coverage() will not work. "
+                              "If you are a programmer, you should probably either 1) call this function after "
+                              "add_gene_coverage_to_headers_list() or 2) extend this function so that it initializes "
+                              "the profile db. If you are not a programmer, you should probably find one :) ")
         self.run.info_single("Since the --add-coverage flag was provided, we are now loading the relevant "
                              "coverage information from the provided profile database.")
         self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
