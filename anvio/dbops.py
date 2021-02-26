@@ -2620,6 +2620,7 @@ class ProfileSuperclass(object):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         init_gene_coverages = A('init_gene_coverages')
+        skip_create_gene_dbs = A('skip_create_gene_dbs')
         init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
@@ -2762,7 +2763,7 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
                                                                                          self.p_meta['contigs_db_hash'])
 
-        if self.collection_name and self.bin_names and len(self.bin_names) == 1:
+        if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_create_gene_dbs:
             self.progress.update('Accessing the genes database')
             self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
                                                                        self.collection_name,
