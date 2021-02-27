@@ -1987,20 +1987,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
                                                              'mode_type': 'modules',
-                                                             'description': f"Comma-separated coverage values for each gene in module in sample {s} (modules output)"
+                                                             'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
                                                            'mode_type': 'modules',
-                                                           'description': f"Average coverage of all genes in module in sample {s} (modules output)"
+                                                           'description': f"Average coverage of all genes in module in sample {s}"
                                                            }
             modules_detection_headers.extend([s + "_gene_detection", s + "_avg_detection"])
             self.available_headers[s + "_gene_detection"] = {'cdict_key': None,
                                                              'mode_type': 'modules',
-                                                             'description': f"Comma-separated detection values for each gene in module in sample {s} (modules output)"
+                                                             'description': f"Comma-separated detection values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_detection"] = {'cdict_key': None,
                                                             'mode_type': 'modules',
-                                                            'description': f"Average detection of all genes in module in sample {s} (modules output)"
+                                                            'description': f"Average detection of all genes in module in sample {s}"
                                                             }
 
         # we update the header list for the affected modes
