@@ -1961,7 +1961,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         if not self.profile_db:
-            self.args.skip_consider_gene_dbs = True 
+            self.args.skip_consider_gene_dbs = True
             self.profile_db = ProfileSuperclass(self.args)
 
         # first we get lists of all the headers we will need to add.
@@ -2377,13 +2377,31 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
+        if self.custom_output_headers:
+            # determine the specific set of samples we are interested in so we don't make the dictionary huge
+            sample_set = set()
+            for h in self.custom_output_headers:
+                if 'coverage' in h or 'detection' in h:
+                    if '_gene_coverages' in h:
+                        sample = h.replace('_gene_coverages', '')
+                    elif '_avg_coverage' in h:
+                        sample = h.replace('_avg_coverage', '')
+                    elif '_gene_detection' in h:
+                        sample = h.replace('_gene_detection', '')
+                    elif '_avg_detection' in h:
+                        sample = h.replace('_avg_detection', '')
+                    sample_set.add(sample)
+            self.coverage_sample_list = list(sample_set)
+        else:
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
+
         meta_dict_for_bin[mod]["genes_to_coverage"] = {}
         meta_dict_for_bin[mod]["genes_to_detection"] = {}
         meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
         meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
-        for s in self.profile_db.p_meta['samples']:
+        for s in self.coverage_sample_list:
             meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
             meta_dict_for_bin[mod]["genes_to_detection"][s] = {}
             coverage_sum = 0
@@ -3048,7 +3066,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                                 # add gene coverage if requested
                                 if self.add_coverage:
-                                    for s in self.profile_db.p_meta['samples']:
+                                    for s in self.coverage_sample_list:
                                         sample_cov_header = s + "_coverage"
                                         d[self.modules_unique_id][sample_cov_header] = c_dict["genes_to_coverage"][s][gc_id]
                                         sample_det_header = s + "_detection"
@@ -3173,7 +3191,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     # add coverage if requested
                     if self.add_coverage:
-                        for s in self.profile_db.p_meta['samples']:
+                        for s in self.coverage_sample_list:
                             sample_cov_header = s + "_gene_coverages"
                             sample_det_header = s + "_gene_detection"
                             sample_avg_cov_header = s + "_avg_coverage"
