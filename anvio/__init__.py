@@ -2358,6 +2358,13 @@ D = {
              'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this "
                      "flag if you want to perform oligotyping-like analyses on matching reads."}
                 ),
+    'add-coverage': (
+            ['--add-coverage'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
+                     "output files. You must provide the profile database corresonding to your contigs db for this to work."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
