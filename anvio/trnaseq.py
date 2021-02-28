@@ -785,7 +785,10 @@ class ModifiedSeq(object):
             norm_seqs_with_dels, del_configs, nt_positions_covered_by_norm_seqs_with_dels):
             norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string) - len(del_config)
             # Normalized sequences with deletions can be found in multiple modified sequences,
-            # unlike normalized sequences without deletions.
+            # unlike normalized sequences without deletions. Though the infrastructure to handle
+            # this is provided, at the moment, only normalized sequences with deletions that are
+            # specific to a single modified sequence are produced, as anvi-convert-trnaseq-database
+            # cannot currently handle nonspecific normalized sequences with deletions.
             num_mod_seqs_containing_norm_seq = len(norm_seq.mod_seqs)
 
             for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(
