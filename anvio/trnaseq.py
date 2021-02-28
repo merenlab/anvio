@@ -2525,30 +2525,35 @@ class TRNASeqDataset(object):
                 altered_seq_string = altered_seq_string[: sub_pos] + sub_nt + altered_seq_string[sub_pos + 1: ]
             seq_strings_without_dels.append(altered_seq_string)
 
-        # Introduce deletions into each template sequence, potentially producing a number of new
-        # sequences.
-        del_dict = {}
-        for seq_string in seq_strings_without_dels:
-            del_dict_for_seq = self.introduce_dels(seq_string, sub_positions)
-            # The same sequence with deletions may sometimes be generated from different
-            # template normalized sequences. Favor the more 5' deletion configuration in the
-            # source modified sequence in case of redundancy.
-            for seq_string_with_del, del_positions in del_dict_for_seq.items():
-                try:
-                    prior_del_pos_sum = sum(del_dict[seq_string_with_del])
-                except KeyError:
-                    del_dict[seq_string_with_del] = del_positions
-                    continue
-                if sum(del_positions) < prior_del_pos_sum:
-                    del_dict[seq_string_with_del] = del_positions
-        # Nota bene: Generated sequences may be 3' subsequences of each other. These are
-        # 3'-dereplicated in self.find_deletions, which calls the present method.
-        del_set = set([(seq_string_with_del, del_positions)
-                       for seq_string_with_del, del_positions in del_dict.items()])
+        del_set = set()
+        for max_distinct_dels in range(self.max_distinct_dels, 0, -1):
+            # Introduce deletions into each template sequence, potentially producing a number of new
+            # sequences.
+            del_dict = {}
+            for seq_string in seq_strings_without_dels:
+                del_dict_for_seq = self.introduce_dels(seq_string, sub_positions, max_distinct_dels=max_distinct_dels)
+                # The same sequence with deletions may sometimes be generated from different
+                # template normalized sequences. In case of redundancy, favor the deletion
+                # configuration closest to the substitution site around which deletions were
+                # introduced, with equally close configurations resolved by favoring more 5' over
+                # more 3' configurations.
+                for seq_string_with_del, del_pos_info in del_dict_for_seq.items():
+                    if seq_string_with_del in del_dict:
+                        if del_pos_info[1] >= del_dict[seq_string_with_del][1]:
+                            continue
+                    del_dict[seq_string_with_del] = del_pos_info
+            # Nota bene: Generated sequences may be 3' subsequences of each other. These are
+            # 3'-dereplicated in self.find_deletions, which calls the present method.
+            del_set = set([(seq_string_with_del, del_pos_info[0]) for seq_string_with_del, del_pos_info in del_dict.items()])
+            if len(del_set) <= self.max_del_configs:
+                # Too many sequences were generated to process in a reasonable amount of time, so
+                # decrement the number of distinct sites at which deletions can be introduced in a
+                # single template sequence.
+                break
         return del_set
 
 
-    def introduce_dels(self, seq_string, sub_positions):
+    def introduce_dels(self, seq_string, sub_positions, max_distinct_dels):
         """Generate in silico sequences with deletions at and/or around substitution sites in the
         input sequence. This method is called by self.get_seqs_with_dels.
 
@@ -2563,25 +2568,30 @@ class TRNASeqDataset(object):
         Returns
         =======
         del_dict : dict
-            Each dict key is a sequence string containing deletions. Each dict value is
-            a tuple of the indices of these deletions in the input sequence.
+            Each dict key is a sequence string containing deletions. Each dict value is a tuple of
+            length-two tuples, with the first element being the index of the deletion in the input
+            sequence and the second being a position score used to measure distance of the deleted
+            nucleotides from the substitution loci.
         """
-        # Find all the ways deletions can be introduced into the sequence given the
-        # parameterization.
-        del_pos_configs = set()
-        seq_string_length = len(seq_string)
+        del_ranges = self.del_ranges
         min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
         min_dist_between_dels = self.min_dist_between_dels
+        # Find all the ways deletions can be introduced into the sequence given the
+        # parameterization.
+        del_pos_configs = []
+        seq_string_length = len(seq_string)
         # Deletions of different sizes can be situated at each substitution site. Deletions may be
         # found at one or multiple sites, if multiple substititutions are present. Call each
         # deletion site a "locus".
-        for num_del_sites in range(1, self.max_distinct_dels + 1):
+        for num_del_sites in range(1, max_distinct_dels + 1):
             for del_locus_config in combinations(sub_positions, num_del_sites):
-                for del_range_config in product(*[self.del_ranges for _ in range(num_del_sites)]):
+                for del_range_config in product(*[del_ranges for _ in range(num_del_sites)]):
                     all_del_positions = []
+                    all_del_pos_scores = []
                     for i, del_range in enumerate(del_range_config):
                         sub_pos = del_locus_config[i]
                         locus_del_positions = []
+                        locus_del_pos_scores = []
                         for del_pos_relative_to_sub in del_range:
                             del_pos = sub_pos + del_pos_relative_to_sub
                             # Deletion positions must be within the template sequence. There must be
@@ -2601,40 +2611,44 @@ class TRNASeqDataset(object):
                                     if del_pos - all_del_positions[-1] < min_dist_between_dels:
                                         continue
                             locus_del_positions.append(del_pos)
-                        all_del_positions.extend(locus_del_positions)
-                    if all_del_positions:
-                        del_positions = sorted(set(all_del_positions))
-
-                        # Remove any nominal deletions at the 5' end, as these could rightly be
-                        # interpreted as unseen nucleotides preceding a fragment.
-                        fiveprime_del_pos = -1
-                        unsupported_del_positions = []
-                        for d in del_positions:
-                            if d == fiveprime_del_pos + 1:
-                                unsupported_del_positions.append(d)
-                                fiveprime_del_pos += 1
+                            # Lower deletion position scores are better. Distinguish 3' and 5'
+                            # deletions that are the same distance from the substitution locus by
+                            # adding 0.5 to the magnitude of the 3' distance.
+                            if del_pos_relative_to_sub <= 0:
+                                locus_del_pos_scores.append(abs(del_pos_relative_to_sub))
                             else:
-                                break
-                        for d in unsupported_del_positions[::-1]:
-                            del_positions.pop(d)
-
-                        del_pos_configs.add(tuple(del_positions))
-
+                                locus_del_pos_scores.append(abs(del_pos_relative_to_sub) + 0.5)
+                        all_del_positions.extend(locus_del_positions)
+                        all_del_pos_scores.extend(locus_del_pos_scores)
+                    if all_del_positions:
+                        # It is possible that in silico deletions originating from one substitution
+                        # locus may coincide with those originating from another, so these
+                        # redundancies must be resolved.
+                        del_pos_config = []
+                        prev_del_pos = -1
+                        for del_pos_info in sorted(zip(all_del_positions, all_del_pos_scores), key=lambda del_pos_info: (del_pos_info[0], del_pos_info[1])):
+                            if del_pos_info[0] > prev_del_pos:
+                                del_pos_config.append(del_pos_info)
+                        del_pos_configs.append(tuple(del_pos_config))
         # It is possible to generate the same sequence with deletions given different deletion
-        # sites. For example, ACCG can become ACG by deleting either C. We resolve this complication
-        # by choosing the most 5' deletion indices.
+        # sites. For example, ACCG can become ACG by deleting either C. If the second C is the sole
+        # substitution locus in the sequence, then only record the in silico deletion as occurring
+        # at that nucleotide rather one nucleotide 5' of it. This is resolved by choosing the lower
+        # deletion position score, which is 0 for the former and 1 for the latter.
         del_dict = {}
-        for del_positions in del_pos_configs:
+        for del_pos_config in del_pos_configs:
             seq_string_with_dels = seq_string
-            for del_pos in del_positions[::-1]:
+            del_positions = []
+            total_del_pos_score = 0
+            for del_pos, del_pos_score in del_pos_config[::-1]:
                 seq_string_with_dels = seq_string_with_dels[: del_pos] + seq_string_with_dels[del_pos + 1: ]
-            try:
-                prior_del_pos_sum = sum(del_dict[seq_string_with_dels])
-            except KeyError:
-                del_dict[seq_string_with_dels] = del_positions
-                continue
-            if sum(del_positions) < prior_del_pos_sum:
-                del_dict[seq_string_with_dels] = del_positions
+                del_positions.append(del_pos)
+                total_del_pos_score += del_pos_score
+
+            if seq_string_with_dels in del_dict:
+                if total_del_pos_score >= del_dict[seq_string_with_dels][1]:
+                    continue
+            del_dict[seq_string_with_dels] = (tuple(sorted(del_positions)), total_del_pos_score)
         return del_dict
 
 
