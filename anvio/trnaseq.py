@@ -2938,14 +2938,14 @@ class TRNASeqDataset(object):
                     collected_uniq_seqs = []
                     trimmed_seq_index = 0
                     for trimmed_seq, start_pos, stop_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                        if trimmed_seq.id_method == 0:
+                        if trimmed_seq.id_method == 0: # profiled
                             if start_pos <= extra_fiveprime_length:
                                 obsolete_trimmed_seq_indices.append(trimmed_seq_index)
                                 trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
                                 for uniq_seq in trimmed_seq.uniq_seqs:
                                     uniq_seq.extra_fiveprime_length += extra_fiveprime_length - start_pos
                                     collected_uniq_seqs.append(uniq_seq)
-                        elif trimmed_seq.id_method == 1:
+                        elif trimmed_seq.id_method == 1: # mapped
                             if start_pos < extra_fiveprime_length:
                                 if trimmed_seq.norm_seq_count == 1:
                                     trimmed_seq.uniq_seqs[0].extra_fiveprime_length += extra_fiveprime_length - start_pos
