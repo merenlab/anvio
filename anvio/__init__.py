@@ -2883,11 +2883,11 @@ D = {
              'type': int,
              'help': "The minimum number of nucleotides that must exist between distinct deletions "
                      "introduced around potential modifications in the search for deletions. "
-                     "In some sequences, there are long strings of potential modification sites "
-                     "due to a \"smear\" of associated substitutions around the main substitution site at the modified nucleotide. "
-                     "In silico deletions introduced at multiple nearby substitution sites can produce strange and ambiguous deletion patterns, "
-                     "so this parameter is used to separate deletions from each other. "
-                     "The default value was determined by the inspection of deletions predicted from large datasets. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "In silico deletions introduced around nearby substitutions in this smear "
+                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
+                     "Separation of in silico deletions using this parameter quashes this problem. "
+                     "The default value was determined by inspection of deletions predicted from large datasets. "
                      "It is hard to envision a case where the user would adjust this parameter downward."}
                 ),
     'skip-fasta-check': (
