@@ -513,9 +513,6 @@ class Dereplicator:
 
         if self.extras:
             for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names, self.seq_strings, self.extras, hashed_prefixes, targets):
-                if prefix_hash not in kmer_dict:
-                    continue
-
                 # Record which target sequences contain the query sequence as a prefix subsequence.
                 hit_found = False
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
@@ -544,9 +541,6 @@ class Dereplicator:
                 clusters.append(cluster)
         else:
             for query_name, query_seq_string, prefix_hash, query_as_target in zip(self.names, self.seq_strings, hashed_prefixes, targets):
-                if prefix_hash not in kmer_dict:
-                    continue
-
                 # Record which target sequences contain the query sequence as a prefix subsequence.
                 hit_found = False
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
