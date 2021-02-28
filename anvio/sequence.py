@@ -521,9 +521,7 @@ class Dereplicator:
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
                     if query_seq_string == candidate_target.seq_string[: len(query_seq_string)]:
                         if len(query_seq_string) != len(candidate_target.seq_string):
-                            candidate_target.alignments.append(
-                                (query_name, query_seq_string, query_extra_item)
-                            )
+                            candidate_target.alignments.append((query_name, query_seq_string, query_extra_item))
                             hit_found = True
                 if hit_found:
                     query_as_target.hit_another_target = True
@@ -554,9 +552,7 @@ class Dereplicator:
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
                     if query_seq_string == candidate_target.seq_string[: len(query_seq_string)]:
                         if len(query_seq_string) != len(candidate_target.seq_string):
-                            candidate_target.alignments.append(
-                                (query_name, query_seq_string)
-                            )
+                            candidate_target.alignments.append((query_name, query_seq_string))
                             hit_found = True
                 if hit_found:
                     query_as_target.hit_another_target = True
