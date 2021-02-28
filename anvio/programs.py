@@ -462,6 +462,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
 
+        self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
         self.base_url = os.path.join("/software/anvio/help", anvio.anvio_version_for_help_docs)
         self.anvio_markdown_variables_conversion_dict = {}
 
@@ -600,7 +601,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d = {'artifact': ANVIO_ARTIFACTS[artifact],
                  'meta': {'summary_type': 'artifact',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date()}
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
                 }
 
             d['artifact']['name'] = artifact
@@ -629,7 +631,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d = {'program': {},
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date()}
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
                 }
 
             d['program']['name'] = program_name
