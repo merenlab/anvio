@@ -12,6 +12,7 @@ import multiprocessing as mp
 from hashlib import sha1
 from itertools import groupby
 from operator import itemgetter
+from collections import defaultdict
 
 import anvio
 import anvio.terminal as terminal
@@ -212,7 +213,7 @@ class Kmerizer:
 
 
     def get_prefix_target_dict(self, kmer_size):
-        kmer_dict = {}
+        kmer_dict = defaultdict(dict)
         targets = []
         for name, seq_string in zip(self.names, self.seqs):
             if kmer_size > len(seq_string):
@@ -222,10 +223,7 @@ class Kmerizer:
             targets.append(target)
 
             hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-            if hashed_kmer in kmer_dict:
-                kmer_dict[hashed_kmer][name] = target
-            else:
-                kmer_dict[hashed_kmer] = {name: target}
+            kmer_dict[hashed_kmer][name] = target
         return kmer_dict, targets
 
 
