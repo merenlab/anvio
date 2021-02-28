@@ -155,7 +155,7 @@ anvi-estimate-metabolism -c CONTIGS.db --list-available-output-headers
 Here is an example of defining the modules output to contain columns with the module number, the module name, and the completeness score.
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes custom --custom-output-headers kegg_module,module_name,module_is_complete
+anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules_custom --custom-output-headers kegg_module,module_name,module_is_complete
 {{ codestop }}
 
 **Including modules with 0%% completeness in long-format output**
@@ -166,6 +166,21 @@ By default, modules with a completeness score of 0 are left out of the output fi
 anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules --include-zeros
 {{ codestop }}
 
+**Including coverage and detection in long-format output**
+
+If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag.
+{{ codestart }}
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db --kegg-output-modes modules,kofam_hits_in_modules --add-coverage
+{{ codestop }}
+
+For `kofam_hits_in_modules` mode output files, in which each row contains one KOfam hit, the output will contain two additional columns (per sample in the profile database), one of which contains the mean coverage of that particular gene call by reads from that sample and the other which contains the detection of that gene in the sample.
+
+For `modules` mode output files, in which each row contains a KEGG module, the output will contain _four_ additional columns (per sample in the profile database). One column will contain comma-separated mean coverage values for each gene call in the module, in the same order as the corresponding gene calls in the `gene_caller_ids_in_module` column. Another column will contain the average of these gene coverage values, which represents the average coverage of the entire module. Likewise, the third and fourth columns will contain comma-separated detection values for each gene call and the average detection, respectively.
+
+Note that you can customize which coverage/detection columns are in the output files if you use `custom` modules mode. Use the following command to find out which coverage/detection headers are available:
+{{ codestart }}
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db --add-coverage --list-available-output-headers
+{{ codestop }}
 
 ### Matrix Output
 Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. Rows will describe modules or KOs, columns will describe your input samples (ie genomes, metagenomes, bins), and each cell of the matrix will be the corresponding statistic for a module in a sample. You can see examples of this output format by viewing %(kegg-metabolism)s.
@@ -189,6 +204,56 @@ Note that this flag only works for matrix output because, well, the long-format 
 Note also that you can combine this flag with the `--only-complete` flag, like so:
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete --include-metadata
+{{ codestop }}
+
+**Including rows of all zeros in the matrix output**
+The `--include-zeros` flag works for matrix output, too. By default, modules that have 0 completeness or KOs that have 0 hits in every input sample will be left out of the matrix files. Using `--include-zeros` results in the inclusion of these items.
+{{ codestart }}
+anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --include-zeros
+{{ codestop }}
+
+**Getting module-specific KO hit matrices**
+The standard KO hit matrix includes all KOfams that were annotated at least once in your input databases (or all KOfams that we know about, if `--include-zeros`). But sometimes you might want to see a matrix with only the KOs from a particular module. To do this, pass a comma-separated list of KEGG module numbers to this flag, and then your matrix output will include KO hit matrices for each module in the list.
+
+For example,
+{{ codestart }}
+anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
+                         --matrix-format \
+                         --module-specific-matrices M00001,M00009 \
+                         -O external_genomes
+{{ codestop }}
+will produce the output files `external_genomes-M00001_ko_hits-MATRIX.txt` and `external_genomes-M00009_ko_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each KO in the module, in the order it appears in the module definition. It will also include comment lines for each major step (or set of steps) in the module definition, to help with interpreting the output.
+
+Check out this (partial) example for module M00001:
+```
+KO	isolate	E_faecalis_6240	test_2
+# (K00844,K12407,K00845,K00886,K08074,K00918)
+K00844	0	0	0
+K12407	0	0	0
+K00845	0	1	0
+K00886	1	0	1
+K08074	0	0	0
+K00918	0	0	0
+# (K01810,K06859,K13810,K15916)
+K01810	1	1	1
+K06859	0	0	0
+K13810	0	0	0
+K15916	0	0	0
+# (K00850,K16370,K21071,K00918)
+K00850	0	1	0
+K16370	0	0	0
+K21071	0	0	0
+K00918	0	0	0
+[....]
+```
+
+If you don't want those comment lines in there, you can combine this with the `--no-comments` to get a clean matrix. This might be useful if you want to do some downstream processing of the matrices.
+{{ codestart }}
+anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
+                         --matrix-format \
+                         --module-specific-matrices M00001,M00009 \
+                         --no-comments \
+                         -O external_genomes
 {{ codestop }}
 
 

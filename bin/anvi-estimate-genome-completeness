@@ -99,11 +99,11 @@ def print_improper(args, collection, completeness, run, progress):
         run.info('Results also stored in an output file', output_file_path, nl_after=1, nl_before=2)
 
 
-def print_for_external_genomes(external_genomes_file_path):
+def print_for_internal_or_external_genomes():
     run = terminal.Run(verbose=False if args.concise else True)
 
     g = genomedescriptions.GenomeDescriptions(args, run=terminal.Run(verbose=False))
-    g.load_genomes_descriptions()
+    g.load_genomes_descriptions(skip_sanity_check=True)
     genomes = g.genomes
 
     missing_hmms = [genome_name for genome_name in genomes if not genomes[genome_name]['hmms_for_scgs_were_run']]
@@ -210,10 +210,11 @@ def main(args):
     collection_name = A('collection_name')
     list_collections = A('list_collections')
     output_file_path = A('output_file')
-    external_genomes_file_path = A('external_genomes')
+    external_genomes = A('external_genomes')
+    internal_genomes = A('internal_genomes')
 
     if contigs_db_path:
-        if external_genomes_file_path:
+        if external_genomes or internal_genomes:
             raise ConfigError("You can't work with a single contigs database and a set of external genomes "
                               "at the same time.")
 
@@ -224,7 +225,7 @@ def main(args):
         if profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
-    if external_genomes_file_path:
+    if external_genomes or internal_genomes:
         if profile_db_path:
             raise ConfigError("If you want to work with a set of external genomes, there is no use of "
                               "declaring a profile database :/")
@@ -241,8 +242,8 @@ def main(args):
 
     if contigs_db_path:
         print_for_a_single_contigs_db(contigs_db_path, profile_db_path, collection_name, list_collections)
-    elif external_genomes_file_path:
-        print_for_external_genomes(external_genomes_file_path)
+    elif internal_genomes or external_genomes:
+        print_for_internal_or_external_genomes()
     else:
         raise ConfigError("We're lost :(")
 
@@ -259,6 +260,7 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('MANDATORY INPUT OPTION #2', "Or you can initiate this with an external genomes file.")
     groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
     groupC = parser.add_argument_group('ADDITIONAL INPUT (OPTIONAL)', "You can also give this program an anvi'o profile database along\
                                                          with a collection name. In which case anvi'o will estimate the completion and\

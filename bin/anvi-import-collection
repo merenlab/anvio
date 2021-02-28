@@ -88,15 +88,27 @@ def main(args):
     # is no contigs database is associated with the profile database, so if there is none,
     # we cheat :
     if args.pan_or_profile_db:
-        if utils.is_blank_profile(args.pan_or_profile_db):
-            db_names = input_names
+        if utils.get_db_type(args.pan_or_profile_db) == 'profile':
+            associated_with_a_contigs_db = dbops.ProfileDatabase(args.pan_or_profile_db).meta['contigs_db_hash']
+        else:
+            associated_with_a_contigs_db = None
 
-            run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item "
-                        "names in your collections file matches to the item names in other databases of yours. It is all "
-                        "fine for now, but this requires you to be even extra careful with your downstream analyses in "
-                        "case stuff hits the fan later.")
+        if utils.is_blank_profile(args.pan_or_profile_db):
+            if associated_with_a_contigs_db:
+                db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
+            else:
+                db_names = input_names
+
+                run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item "
+                            "names in your collections file matches to the item names in other databases of yours. It is all "
+                            "fine for now, but this requires you to be even extra careful with your downstream analyses in "
+                            "case stuff hits the fan later.")
         else:
             db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
+
+            if not len(db_names):
+                raise ConfigError("Anvi'o got an empty list of names for `items` from this databaes. But it is impossible :/")
+
         run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
     elif we_have_a_contigs_db:
         db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
@@ -181,9 +193,10 @@ def sanity_check(args):
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:
-            raise ConfigError("The profile database you provided is associated with an anvi'o contigs database (i.e.,\
-                                it is not 'blank' or an ad hoc profile database). In this case, you must provide a path\
-                                for the contigs database. Sorry :/")
+            raise ConfigError("The profile database you provided is associated with an anvi'o contigs database (i.e., "
+                              "it is not an ad hoc profile database but a part of the cool dbs club). Which means, you "
+                              "must provide a path for the contigs database, so anvi'o can double check your item names "
+                              "in your collection. Sorry :/")
 
     if not args.collection_name:
         raise ConfigError("You must give a name for this collection.")

@@ -59,19 +59,28 @@ def main(args):
         order_data_type_newick = False
         order_data = ','.join(order_data)
 
+    db_type = utils.get_db_type(db_path)
+
     run.info("Target database", db_path)
-    run.info("Database type", utils.get_db_type(db_path), nl_after=1)
+    run.info("Database type", db_type, nl_after=1)
     run.info("Order file path", input_file_path)
     run.info("Order data type", 'newick' if order_data_type_newick else 'basic')
     run.info("Order name", order_name, mc='red', nl_after=1)
 
+    # for blank profile databases, we don't ask for for the consistency of names
+    # to be checked.
+    if db_type == 'profile' and utils.is_blank_profile(db_path):
+        check_names_consistency = False
+    else:
+        check_names_consistency = True
+
     if order_data_type_newick:
         dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick,
                                     distance='NA', linkage='NA', dont_overwrite=True, make_default=make_default,
-                                    check_names_consistency=True)
+                                    check_names_consistency=check_names_consistency)
     else:
         dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick,
-                                    dont_overwrite=True, make_default=make_default, check_names_consistency=True)
+                                    dont_overwrite=True, make_default=make_default, check_names_consistency=check_names_consistency)
 
 
 if __name__ == '__main__':
