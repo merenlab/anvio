@@ -2890,6 +2890,22 @@ D = {
                      "The default value was determined by inspection of deletions predicted from large datasets. "
                      "It is hard to envision a case where the user would adjust this parameter downward."}
                 ),
+    'max-deletion-configurations': (
+            ['--max-deletion-configurations'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
+                     "that can be generated from a single sequence with potential modifications. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
+                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
+                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
+                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
+                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
+                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
+                     "is decremented for the sequence and in silico deletions are again introduced."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,

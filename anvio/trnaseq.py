@@ -954,6 +954,7 @@ class TRNASeqDataset(object):
         self.threeprimemost_del_stop = A('threeprimemost_deletion_stop')
         self.max_distinct_dels = A('max_distinct_deletions')
         self.min_dist_between_dels = A('min_distance_between_deletions')
+        self.max_del_configs = A('max_deletion_configurations')
 
         # Argument group 1D: PERFORMANCE
         self.num_threads = A('num_threads')
@@ -1286,6 +1287,7 @@ class TRNASeqDataset(object):
         trnaseq_db.db.set_meta_value('threeprimemost_deletion_stop', self.threeprimemost_del_stop)
         trnaseq_db.db.set_meta_value('max_distinct_deletions', self.max_distinct_dels)
         trnaseq_db.db.set_meta_value('min_distance_between_deletions', self.min_dist_between_dels)
+        trnaseq_db.db.set_meta_value('max_deletion_configurations', self.max_del_configs)
         trnaseq_db.disconnect()
 
         with open(self.analysis_summary_path, 'a') as f:
@@ -1297,6 +1299,7 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Threeprime-most deletion stop", self.threeprimemost_del_start))
             f.write(self.get_summary_line("Max distinct deletions", self.max_distinct_dels))
             f.write(self.get_summary_line("Min distance between deletions", self.min_dist_between_dels))
+            f.write(self.get_summary_line("Max deletion configurations", self.max_del_configs))
 
 
     def profile_trna(self, uniq_reads):
