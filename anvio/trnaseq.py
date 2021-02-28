@@ -2940,6 +2940,15 @@ class TRNASeqDataset(object):
                                 else:
                                     trimmed_seq.norm_seq_count -= 1
                 else:
+                    # Prevent re-trimmed sequences thought to contain deletions from actually being
+                    # 3'-subsequences of the modified sequence that are deletion-free.
+                    unsupported_dels = False
+                    for norm_seq_without_dels in mod_seq.norm_seqs_without_dels:
+                        if trimmed_seq_string == norm_seq_without_dels.seq_string[len(del_config): ]:
+                            unsupported_dels = True
+                    if unsupported_dels:
+                        continue
+
                     changed_norm_seq_dict[trimmed_seq_string] = norm_seq
                     new_trimmed_seq_start_positions = []
                     new_trimmed_seq_stop_positions = []
