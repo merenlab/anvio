@@ -1187,11 +1187,11 @@ class TRNASeqDataset(object):
                               f"a 5'-most deletion stop of {self.fiveprimemost_del_stop}, and "
                               f"a 3'-most deletion stop of {self.threeprimemost_del_stop}.")
         self.possible_del_starts = tuple(range(self.fiveprimemost_del_start, self.threeprimemost_del_start + 1))
-        self.possible_del_stops = tuple(range(self.fiveprimemost_del_stop, self.threeprimemost_del_stop + 1))
+        self.possible_pythonic_del_stops = tuple(range(self.fiveprimemost_del_stop + 1, self.threeprimemost_del_stop + 2))
         # Determine the spectrum of different deletion sizes/positions relative to a substitution.
         del_ranges = []
         for del_start in self.possible_del_starts:
-            for del_stop in self.possible_del_stops:
+            for del_stop in self.possible_pythonic_del_stops:
                 if del_start < del_stop:
                     del_ranges.append(range(del_start, del_stop))
         self.del_ranges = tuple(del_ranges)
