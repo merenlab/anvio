@@ -310,6 +310,15 @@ class TrimmedSeq(object):
         self.contains_anticodon = self.uniq_seqs[0].contains_anticodon
         self.has_extrapolated_fiveprime_nts = True if self.uniq_seqs[0].num_extrapolated_fiveprime_nts else False
 
+        # Typically all of the unique sequences will either have a truncated or a full profile.
+        # However, in the recovery of sequences with deletions, some truncated trimmed sequences are
+        # found to have extra 5' nucleotides. After these are re-trimmed, these trimmed sequences
+        # may be identical to a fully profiled trimmed tRNA sequence, so the sequences are merged.
+        # However, the feature profiles are not changed, so some of the unique sequences will have a
+        # truncated profile while others will have a full profile.
+        uniq_seq_trunc_profile_statuses = [0 if uniq_seq.trunc_profile_index is None else 1 for uniq_seq in self.uniq_seqs]
+        self.has_trunc_profile = True if uniq_seq_trunc_profile_statuses[0] else False
+
 
     def get_represent_name(self):
         """The representative name of the trimmed sequence is chosen as follows:
