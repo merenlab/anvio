@@ -1752,7 +1752,7 @@ class TRNASeqDataset(object):
                 try:
                     trimmed_trunc_seq_match_dict[trimmed_trunc_seq_seed.represent_name][1].append(seq)
                 except KeyError:
-                    trimmed_trunc_seq_match_dict[trimmed_trunc_seq_seed.represent_name] = (trimmed_trunc_seq_seed, [seq])
+                    trimmed_trunc_seq_match_dict[trimmed_trunc_seq_seed.represent_name] = (trimmed_trunc_seq_seed, [])
 
         # Add truncated sequences to matching normalized tRNA sequences.
 
