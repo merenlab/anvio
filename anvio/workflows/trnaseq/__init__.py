@@ -188,8 +188,8 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             'anvi_run_trna_taxonomy': {
                 'run': True,
                 '--trna-taxonomy-data-dir': "",
-                '--min-percent-identity': anvio.D['min-percent-identity'][1]['default'],
-                '--max-num-target-sequences': anvio.D['max-num-target-sequences'][1]['default'],
+                '--min-percent-identity': 90, # default in anvi-run-trna-taxonomy
+                '--max-num-target-sequences': 100, # default in anvi-run-trna-taxonomy
                 '--num-parallel-processes': anvio.D['num-parallel-processes'][1]['default'],
                 '--write-buffer-size': anvio.D['write-buffer-size'][1]['default'],
                 'threads': 1
