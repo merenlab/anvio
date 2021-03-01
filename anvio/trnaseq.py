@@ -4116,6 +4116,7 @@ class DatabaseConverter(object):
             trnaseq_db.db.get_some_columns_from_table('feature', ', '.join(self.FEATURE_TABLE_COLS_OF_INTEREST + [self.feature_threshold + '_start'])),
             columns=self.FEATURE_TABLE_COLS_OF_INTEREST + [self.feature_threshold + '_start']
         ).set_index('name')
+
         if 'stem' in self.feature_threshold:
             # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
             seq_string_and_feature_df[self.feature_threshold + '_start'] = [int(entry.split(',')[0]) if isinstance(entry, str) else entry for entry
@@ -4123,6 +4124,7 @@ class DatabaseConverter(object):
         else:
             seq_string_and_feature_df[self.feature_threshold + '_start'] = seq_string_and_feature_df[self.feature_threshold + '_start'].fillna(-1)
         seq_string_and_feature_df['anticodon_sequence'] = seq_string_and_feature_df['anticodon_sequence'].fillna('')
+
         seq_string_and_feature_df = pd.merge(
             pd.DataFrame(
                 trnaseq_db.db.get_some_columns_from_table('trimmed', ', '.join(self.TRIMMED_TABLE_COLS_OF_INTEREST)),
