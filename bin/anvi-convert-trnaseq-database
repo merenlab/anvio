@@ -47,7 +47,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('nonspecific-output'), **anvio.K('nonspecific-output'))
     groupC.add_argument(*anvio.A('min-variation'), **anvio.K('min-variation'))
     groupC.add_argument(*anvio.A('min-third-fourth-nt'), **anvio.K('min-third-fourth-nt'))
-    groupC.add_argument(*anvio.A('min-del-fraction'), **anvio.K('min-del-fraction'))
+    groupC.add_argument(*anvio.A('min-deletion-fraction'), **anvio.K('min-deletion-fraction'))
     groupC.add_argument(*anvio.A('distance'), **anvio.K('distance'))
     groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 

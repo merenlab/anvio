@@ -3845,7 +3845,7 @@ class DatabaseConverter(object):
         self.nonspecific_output = A('nonspecific_output')
         self.min_variation = A('min_variation')
         self.min_third_fourth_nt = A('min_third_fourth_nt')
-        self.min_del_fraction = A('min_del_fraction')
+        self.min_del_fraction = A('min_deletion_fraction')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
 

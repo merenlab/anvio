@@ -3161,9 +3161,9 @@ D = {
                      "to inspect seeds for undisplayed variants (possible SNVs) "
                      "with a low level of third and fourth nucleotides."}
                 ),
-    'min-del-fraction': (
-            ['--min-del-fraction'],
-            {'default': 0.01,
+    'min-deletion-fraction': (
+            ['--min-deletion-fraction'],
+            {'default': 0.002,
              'metavar': 'FLOAT',
              'type': float,
              'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "

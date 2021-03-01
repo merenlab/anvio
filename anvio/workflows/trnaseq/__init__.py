@@ -103,6 +103,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--nonspecific-output',
             '--min-variation',
             '--min-third-fourth-nt',
+            '--min-deletion-fraction',
             '--distance',
             '--linkage'
         ]
@@ -179,6 +180,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--nonspecific-output': anvio.D['nonspecific-output'][1]['default'],
                 '--min-variation': anvio.D['min-variation'][1]['default'],
                 '--min-third-fourth-nt': anvio.D['min-third-fourth-nt'][1]['default'],
+                '--min-deletion-fraction': anvio.D['min-deletion-fraction'][1]['default'],
                 '--distance': anvio.D['distance'][1]['default'],
                 '--linkage': anvio.D['linkage'][1]['default'],
                 'threads': 1
