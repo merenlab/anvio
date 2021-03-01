@@ -3796,7 +3796,9 @@ class DatabaseConverter(object):
         'name',
         'mean_specific_coverage',
         'specific_coverages',
-        'nonspecific_coverages'
+        'nonspecific_coverages',
+        'profile_changed_by_del_analysis',
+        'truncated_profile_recovered_by_del_analysis'
     ]
     MOD_TABLE_COLS_OF_INTEREST = [
         'name',
@@ -4134,7 +4136,16 @@ class DatabaseConverter(object):
             (name,
              mean_specific_cov,
              specific_covs_string,
-             nonspecific_covs_string) = norm_seq_info
+             nonspecific_covs_string,
+             profile_changed_by_del_analysis,
+             trunc_profile_recovered_by_del_analysis) = norm_seq_info
+
+            if profile_changed_by_del_analysis or trunc_profile_recovered_by_del_analysis:
+                # Ignore normalized sequences with deletions. The coverage of deletions themselves
+                # is recorded in the parent modified sequence, but the contribution of these
+                # sequences to nucleotide coverage is ignored. Inclusion of these sequences would
+                # produce numerous complications (e.g., they don't have feature profiles).
+                continue
 
             norm_seq_summary = NormalizedSeqSummary()
             norm_seq_summary.name = name
@@ -4143,15 +4154,9 @@ class DatabaseConverter(object):
             # There is always a trailing comma in the coverage strings.
             norm_seq_summary.specific_covs = np.fromiter(map(int, specific_covs_string.split(',')[: -1]), int)
             norm_seq_summary.nonspecific_covs = np.fromiter(map(int, nonspecific_covs_string.split(',')[: -1]), int)
-            try:
-                (norm_seq_summary.seq_string,
-                 norm_seq_summary.anticodon_seq_string,
-                 norm_seq_summary.feature_threshold_start) = seq_string_and_feature_df.loc[norm_seq_summary.name, ['sequence', 'anticodon_sequence', self.feature_threshold + '_start']]
-            except KeyError:
-                # Normalized sequences with truncated profiles that were discovered and recovered
-                # through anvi-trnaseq deletion analysis do not have entries in the Feature table,
-                # and so are ignored.
-                continue
+            (norm_seq_summary.seq_string,
+             norm_seq_summary.anticodon_seq_string,
+             norm_seq_summary.feature_threshold_start) = seq_string_and_feature_df.loc[norm_seq_summary.name, ['sequence', 'anticodon_sequence', self.feature_threshold + '_start']]
 
             norm_seq_summary_dict[norm_seq_summary.name] = norm_seq_summary
 
