@@ -4235,7 +4235,7 @@ class DatabaseConverter(object):
             if del_positions != ',':
                 for (del_pos,
                      specific_del_cov,
-                     nonspecific_del_cov) in zip(map(int, del_positions.replace(';', ',').split(',')[: -1]),
+                     nonspecific_del_cov) in zip(sorted(set(map(int, del_positions.replace(';', ',').split(',')[: -1]))),
                                                  map(int, del_specific_covs.split(',')[: -1]),
                                                  map(int, del_nonspecific_covs.split(',')[: -1])):
                     specific_del_covs[del_pos] = specific_del_cov
