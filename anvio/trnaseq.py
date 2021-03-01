@@ -2923,6 +2923,7 @@ class TRNASeqDataset(object):
                 # are initialized.
                 trimmed_seq_string = norm_seq.seq_string[extra_fiveprime_length: ]
                 if trimmed_seq_string in changed_norm_seq_dict:
+                    norm_seq_names_to_remove.append(norm_seq.represent_name)
                     other_norm_seq = changed_norm_seq_dict[trimmed_seq_string]
                     other_trimmed_seq = other_norm_seq.trimmed_seqs[0]
                     for trimmed_seq, start_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions):
@@ -3015,6 +3016,11 @@ class TRNASeqDataset(object):
             norm_seqs = self.norm_trna_seqs
             trimmed_seqs = self.trimmed_trna_seqs
             uniq_seqs = self.uniq_trna_seqs
+        norm_seq_names = [norm_seq.represent_name for norm_seq in norm_seqs]
+        norm_seq_indices_to_remove = [norm_seq_names.index(norm_seq_name) for norm_seq_name in norm_seq_names_to_remove]
+        norm_seq_indices_to_remove.sort(reverse=True)
+        for norm_seq_index in norm_seq_indices_to_remove:
+            norm_seqs.pop(norm_seq_index)
         trimmed_seq_names = [trimmed_seq.represent_name for trimmed_seq in trimmed_seqs]
         trimmed_seq_indices_to_remove = [trimmed_seq_names.index(trimmed_seq_name) for trimmed_seq_name in trimmed_seq_names_to_remove]
         trimmed_seq_indices_to_remove.sort(reverse=True)
