@@ -4243,17 +4243,9 @@ class DatabaseConverter(object):
             mod_seq_summary.specific_del_covs = specific_del_covs
             mod_seq_summary.nonspecific_del_covs = nonspecific_del_covs
 
-            norm_seq_names = names_of_norm_seqs_without_dels.split(',')
-            if names_of_norm_seqs_with_dels:
-                norm_seq_names.extend(names_of_norm_seqs_with_dels.split(','))
             mod_seq_summary.norm_seq_summaries = []
-            for norm_seq_name in norm_seq_names:
-                try:
-                    norm_seq_summary = norm_seq_summary_dict[norm_seq_name]
-                except KeyError:
-                    # Normalized sequences with truncated profiles that were discovered and recovered
-                    # through anvi-trnaseq deletion analysis are ignored.
-                    continue
+            for norm_seq_name in names_of_norm_seqs_without_dels.split(','):
+                norm_seq_summary = norm_seq_summary_dict[norm_seq_name]
 
                 # Cross-reference the modified sequence summary and constituent modified normalized
                 # sequence summary objects.
