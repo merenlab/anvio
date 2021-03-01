@@ -2400,7 +2400,7 @@ class TRNASeqDataset(object):
         introduced at and around substitution sites in sequences with potential modification-induced
         substitutions. Notate such modified sequences with in silico deletions as *M'*. M' are
         searched against two pools of sequence targets: 1. normalized tRNA sequences not assigned to
-        modified sequences, notated *Nf*, for normalized sequence with full feature profile, and 2.
+        modified sequences, notated *Nf*, for normalized sequences with full feature profile, and 2.
         normalized "non-tRNA" sequences with truncated tRNA profiles, notated *Nt*. Why are these
         two pools used? 1. Why are Nf considered at all, when they have been successfully profiled,
         and therefore, presumably, do not have deletions interrupting the profile? Deletions can be
@@ -2416,8 +2416,8 @@ class TRNASeqDataset(object):
         speed. Ideally, normalized sequences found to have deletions would be further processed,
         finding which of their constituent trimmed sequences actually contain the deletions.
         However, nonspecific trimmed sequences are also in other normalized sequences, creating the
-        ambiguity that in one normalized sequence the trimmed sequence would have a deletion while
-        in another normalized sequence it would not."""
+        possible ambiguity that in one normalized sequence the trimmed sequence would have a
+        deletion while in another normalized sequence it would not."""
         start_time = time.time()
         self.progress.new("Finding sequences with modification-induced deletions")
 
