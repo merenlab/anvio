@@ -2708,14 +2708,16 @@ class TRNASeqDataset(object):
         # children.
         num_mod_seq_matches = 0
         for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_prefix_hash, mod_seq_child_target in zip(mod_seq_child_names, mod_seq_child_reversed_seq_strings, mod_seq_child_extras, mod_seq_child_hashed_prefixes, mod_seq_child_targets):
-            f = False
+            match_found = False
             if mod_seq_child_prefix_hash in norm_seq_kmer_dict:
                 for norm_seq_name, candidate_norm_seq_target in norm_seq_kmer_dict[mod_seq_child_prefix_hash].items():
                     if mod_seq_child_reversed_seq_string == candidate_norm_seq_target.seq_string[: len(mod_seq_child_reversed_seq_string)]:
                         if len(mod_seq_child_reversed_seq_string) != len(candidate_norm_seq_target.seq_string):
+                            # Equal length matches were already covered in the prior search for
+                            # normalized sequences within modified sequence children.
                             candidate_norm_seq_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-                            f = True
-            if f:
+                            match_found = True
+            if match_found:
                 num_mod_seq_matches += 1
 
             for other_mod_seq_child_name, candidate_other_mod_seq_child_target in mod_seq_child_kmer_dict[mod_seq_child_prefix_hash].items():
