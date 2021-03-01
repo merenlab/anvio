@@ -1065,7 +1065,7 @@ class TRNASeqDataset(object):
 
             # Profile each read for tRNA features.
             if self.feature_param_path:
-                trnaidentifier.TRNAFeature.set_params_from_file(self.feature_param_path)
+                trnaidentifier.TRNAFeatureParameterizer().set_params_from_file(self.feature_param_path)
             self.report_profiling_params()
             self.report_fragment_mapping_params()
             self.report_modification_analysis_params()
