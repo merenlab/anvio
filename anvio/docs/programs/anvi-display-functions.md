@@ -4,7 +4,7 @@ It is a powerful way to analyze differentially occurring functions for any sourc
 
 Currently, %(anvi-display-functions)s can work with any combination of genomes from %(external-genomes)s, %(internal-genomes)s, and %(genomes-storage-db)s.
 
-### Basic Run 
+### Quick & Simple Run
 
 The simplest way to run this program is as follows:
 
@@ -14,16 +14,14 @@ anvi-display-functions -e %(external-genomes)s \
                        --profile-db KOFAM-PROFILE.db
 {{ codestop }}
 
-
-You can replace the annotation source based on what is available across your genomes. You can use the program %(anvi-db-info)s to see all available function annotation sources in a given %(contigs-db)s or %(genomes-storage-db)s. Please see %(functions)s for more information on functions and how to obtain them.
-
+You can replace the annotation source based on what is available across your genomes. You can use the program %(anvi-db-info)s to see all available function annotation sources in a given %(contigs-db)s or %(genomes-storage-db)s. You can also use the program %(anvi-import-functions)s to import ANY kind of functional grouping of your genes and use those ad hoc functional sources to display their distribution across genomes. Please see %(functions)s for more information on functions and how to obtain them.
 
 {:.notice}
 Please note that a %(profile-db)s will be automatically generated for you. Once it is generated, the same profile database can be visualized over and over again using %(anvi-interactive)s in manual mode, without having to retain any other files.
 
 ### Aggregating functions using accession IDs
 
-Once it is run, this program essentially aggregates all function names that occur in one or more genomes in the set of genomes found in input sources. The user can ask the program to use accession IDs to aggregate functions rather than function names:
+Once it is run, this program essentially aggregates all function names that occur in one or more genomes among the set of genomes found in input sources. The user can ask the program to use accession IDs to aggregate functions rather than function names:
 
 {{ codestart }}
 anvi-display-functions -e %(external-genomes)s \
@@ -32,11 +30,11 @@ anvi-display-functions -e %(external-genomes)s \
                        --aggregate-based-on-accession
 {{ codestop }}
 
-While the default setting which is to use function names will be appropriate for most applications, using accession IDs instead of function names may be important for specific applications. There may be an actual difference between using functions or accession to aggregate data since multiple accession IDs in various databases may correspond to the same function. This may lead to misleading enrichment analyses downstream as identical function annotations may be over-split into multiple groups. Thus, the default aggregation method uses function names.
+While the default setting, which is to use function names, will be appropriate for most applications, using accession IDs instead of function names may be important for specific purposes. There may be an actual difference between using functions or accession to aggregate data since multiple accession IDs in various databases may correspond to the same function. This may lead to misleading enrichment analyses downstream as identical function annotations may be over-split into multiple groups. Thus, the default aggregation method uses function names.
 
-### Aggregating functions using accession IDs
+### Aggregating functions using all function hits
 
-In some cases a gene may be annotated with multiple functions. This is a decision often made at the function annotation tool level. For instance %(anvi-run-ncbi-cogs)s may yield two COG annotations for a single gene because the significance score for both hits may exceed the default cutoff. While this can be useful in %(anvi-summarize)s output where things should be most comprehensive, having some genes annotated with multiple functions and others with one function may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in different bins). Thus, %(anvi-display-functions)s will will use the best hit for any gene that has multiple hits. But this behavior can be turned off the following way:
+This is a bit confusing, but actually it is not. In some cases a gene may be annotated with more than one function names. This is a decision often made at the function annotation tool level. For instance %(anvi-run-ncbi-cogs)s may yield two COG annotations for a single gene because the significance score for both hits may exceed the default cutoff. While this can be useful in %(anvi-summarize)s output where things should be most comprehensive, having some genes annotated with multiple functions and others with one function may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in different bins). Thus, %(anvi-display-functions)s will will use the best hit for any gene that has multiple hits. But this behavior can be turned off the following way:
 
 {{ codestart }}
 anvi-display-functions -e %(external-genomes)s \
@@ -45,9 +43,9 @@ anvi-display-functions -e %(external-genomes)s \
                        --aggregate-using-all-hits
 {{ codestop }}
 
----
+### The min-occurrence limit
 
-The user also can keep only functions that occur in more than a minimum number of genomes:
+You can choose to limit the number of functions to be considered to those that occur in more than a minimum number of genomes:
 
 {{ codestart }}
 anvi-display-functions -e %(external-genomes)s \
@@ -55,6 +53,8 @@ anvi-display-functions -e %(external-genomes)s \
                        --profile-db KOFAM-PROFILE.db \
                        --min-occurrence 5
 {{ codestop }}
+
+Here the `--min-occurrence 5` parameter will exclude any function that appears to occur in less than 5 genomes in your collection.
 
 ### Combining genomes from multiple sources
 
@@ -88,7 +88,7 @@ The outermost layer shows the function names:
 
 [![Example output](../../images/anvi-display-functions-02.png){:.center-img .width-50}](../../images/anvi-display-functions-02.png)
 
-After a quick prettification through the %(interactive)s interface, leads to a cleaner display of three distinct species in this group, and functions that are uniquely enriched in either of them: 
+After a quick prettification through the %(interactive)s interface, leads to a cleaner display of three distinct species in this group, and functions that are uniquely enriched in either of them:
 
 [![Example output](../../images/anvi-display-functions-03.png){:.center-img .width-80}](../../images/anvi-display-functions-03.png)
 
