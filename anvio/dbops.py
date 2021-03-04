@@ -1158,15 +1158,41 @@ class ContigsSuperclass(object):
 
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
+        # let's see if there are functions
+        gene_functions_found = False
+        if 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
+            self.init_functions(requested_sources=["COG20_FUNCTION"])
+            gene_functions_found = True
+            self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
+                             "and will include that information in the output GFF file (anvi'o also admits that "
+                             "it is looking for `COG20_FUNCTION` instead of an annotation source of your choice due to "
+                             "the laziness of its developers. If you would like to be able to choose a different "
+                             "annotation source, please let the developers know and they will parameterize this option).",
+                             header="FUNCTIONS FOUND 🎊", lc="green")
+        else:
+            self.run.warning("Just so you know: anvi'o wanted to include functions for your genes into the GFF file "
+                             "but your contigs database does not seem to include annotations from `COG20_FUNCTION`. "
+                             "You can ignore this message if you don't care. But if you would like your GFF file to "
+                             "include functions for your genes, you can run `anvi-run-ncbi-cogs` on your contigs db "
+                             "and re-run this command to have an output file with functions :)")
+
         self.progress.new('Storing sequences')
         self.progress.update('...')
         with open(output_file_path, 'wt') as output:
             output.write('##gff-version 3\n')
             for gene_callers_id in gene_caller_ids_list:
                 entry = sequences_dict[gene_callers_id]
-                strand=entry['direction'].replace('f','+').replace('r','-')
+                strand = entry['direction'].replace('f','+').replace('r','-')
+
                 entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
-                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\tID={entry_id}")
+                attributes = f"ID={entry_id}"
+                if gene_functions_found:
+                    if gene_callers_id in self.gene_function_calls_dict:
+                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id]['COG20_FUNCTION']
+                        accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+                        attributes += f";Name={accession};db_xref=COG20:{accession};product={function}"
+
+                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
