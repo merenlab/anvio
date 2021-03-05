@@ -2207,9 +2207,33 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'domtblout': (
+            ['-F', '--domtblout'],
+            {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
+                     "The output file will contain the suffix '_domtable.txt'."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (ie, the file specified by the --domtblout flag). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
+                     "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
