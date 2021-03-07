@@ -1067,6 +1067,75 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
+def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None, run=run, progress=progress):
+    """This function runs the enrichment analysis implemented by Amy Willis.
+
+    Since the enrichment analysis is an R script, we interface with that program by
+    producing a compatible input file first, and then calling this function from various
+    places in the anvi'o code.
+
+    Parameters
+    ==========
+    functional_occurrence_stats_input_file_path, str file path
+        This is the primary input file for the R script, `anvi-script-enrichment-stats`.
+        For the most up-do-date file header, please see the header section of the R
+        script.
+    enrichment_output_file_path, str file path
+        An optional output file path for the enrichment analysis.
+
+    Returns
+    =======
+    enrichment_output: dict
+        The enrichment analysis results
+    """
+
+    # sanity check for R packages
+    package_dict = get_required_packages_for_enrichment_test()
+    check_R_packages_are_installed(package_dict)
+
+    # make sure the input file path is a TAB delmited file that exists.
+    filesnpaths.is_file_tab_delimited(functional_occurrence_stats_input_file_path)
+
+    if not enrichment_output_file_path:
+        enrichment_output_file_path = filesnpaths.get_temp_file_path()
+    elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
+                           "Please either delete the existing file, or provide another file path before re-running this "
+                           "program again.")
+
+    log_file_path = filesnpaths.get_temp_file_path()
+
+    run.warning(None, header="FUNCTIONAL ENRICHMENT ANALYSIS", lc="cyan")
+    run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
+    run.info("Functional enrichment output file path: ", enrichment_output_file_path)
+    run.info("Temporary log file (use `--debug` to keep): ", log_file_path)
+
+    # run enrichment script
+    progress.new('Functional enrichment analysis')
+    progress.update("Running Amy's enrichment")
+    run_command(['anvi-script-enrichment-stats',
+                 '--input', f'{functional_occurrence_stats_input_file_path}',
+                 '--output', f'{enrichment_output_file_path}'], log_file_path)
+    progress.end()
+
+    if not filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( We don't "
+                          f"know what happened, but this log file could contain some clues: {log_file_path}")
+
+    if filesnpaths.is_file_empty(enrichment_output_file_path):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( "
+                          f"An output file was created, but it was empty... We hope that this "
+                          f"log file offers some clues: {log_file_path}")
+
+    # if everything went okay, we remove the log file
+    if anvio.DEBUG:
+        run.warning(f"Due to the `--debug` flag, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
+    else:
+        os.remove(log_file_path)
+
+    return get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
+
+
 def get_required_packages_for_enrichment_test():
     ''' Return a dict with the packages as keys and installation instrucstions as values'''
     packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
@@ -1087,7 +1156,7 @@ def check_R_packages_are_installed(required_package_dict):
     Credits to Ryan Moore (https://github.com/mooreryan) for this solution!
     (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
 
-    PARAMETERS
+    Parameters
     ==========
     required_package_dict, dictionary
         keys should be R package names, values should be the corresponding installation instruction for the package
