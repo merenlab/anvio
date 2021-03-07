@@ -489,7 +489,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         sample_name = wildcards.sample_name
         if self.fasta_paths:
             return self.fasta_paths[self.sample_names.index(sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), sample_name + "_MERGED")
+        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "MERGE.done")
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
@@ -499,4 +499,4 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         sample_name = wildcards.sample_name
         if self.fasta_paths:
             return self.fasta_paths[self.sample_names.index(sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), sample_name + "-reformatted.fasta")
+        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "REFORMAT.done")
