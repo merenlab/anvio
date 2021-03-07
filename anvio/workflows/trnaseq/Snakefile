@@ -68,7 +68,7 @@ rule iu_merge_pairs:
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_merge_pairs.log")
     input: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
-    output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done")
+    output: touch(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done"))
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
         max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
