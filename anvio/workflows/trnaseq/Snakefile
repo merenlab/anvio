@@ -158,7 +158,7 @@ rule anvi_reformat_fasta:
         else:
             # User provided FASTQ inputs that were merged by iu-merge-pairs.
             if M.gzip_iu_merge_pairs_output:
-                merged_fasta = os.path.join(os.path.join(out_dir, sample_name), sample_name + "_MERGED.gz")
+                merged_fasta = os.path.join(out_dir, sample_name + "_MERGED.gz")
                 if not os.path.exists(merged_fasta):
                     raise ConfigError("The workflow config file indicated that the output of the rule, `iu_merge_pairs`, should be gzipped, "
                                       "so the rule, `anvi_reformat_fasta`, looked for the nonexistent file, %s. "
@@ -167,7 +167,7 @@ rule anvi_reformat_fasta:
                                       "or a separate FASTA file should be supplied instead in `samples.txt`." % merged_fasta)
                 decompressed_fasta = gunzip_fasta(merged_fasta, log[0])
             else:
-                decompressed_fasta = os.path.join(os.path.join(out_dir, sample_name), sample_name + "_MERGED")
+                decompressed_fasta = os.path.join(out_dir, sample_name + "_MERGED")
         shell("anvi-script-reformat-fasta -o %s {params.simplify_names} --report-file %s %s >> {log} 2>&1" % (fasta, report, decompressed_fasta))
         if (M.fasta_paths and input[0].endswith('.gz')) or M.gzip_iu_merge_pairs_output:
             os.remove(decompressed_fasta)
