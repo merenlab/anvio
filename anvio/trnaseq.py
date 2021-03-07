@@ -2962,7 +2962,10 @@ class TRNASeqDataset(object):
                         if trimmed_seq.id_method == 0: # profiled
                             if start_pos <= extra_fiveprime_length:
                                 obsolete_trimmed_seq_indices.append(trimmed_seq_index)
-                                trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
+                                if trimmed_seq.norm_seq_count == 1:
+                                    # Only remove trimmed sequences specific to the normalized
+                                    # sequence.
+                                    trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
                                 for uniq_seq in trimmed_seq.uniq_seqs:
                                     uniq_seq.extra_fiveprime_length += extra_fiveprime_length - start_pos
                                     collected_uniq_seqs.append(uniq_seq)
@@ -3038,9 +3041,9 @@ class TRNASeqDataset(object):
             trimmed_trunc_seqs = trimmed_seqs
             uniq_trunc_seqs = uniq_seqs
             # Nt are moved to the master list of normalized tRNA sequences.
-            norm_trunc_seq_names = [norm_seq.represent_name for norm_seq in norm_trunc_seqs]
+            norm_trunc_seq_names = [norm_trunc_seq.represent_name for norm_trunc_seq in norm_trunc_seqs]
             recovered_norm_trunc_seq_indices = []
-            trimmed_trunc_seq_names = [trimmed_seq.represent_name for trimmed_seq in trimmed_trunc_seqs]
+            trimmed_trunc_seq_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in trimmed_trunc_seqs]
             recovered_trimmed_trunc_seq_indices = []
             uniq_trunc_seq_names = [uniq_trunc_seq.represent_name for uniq_trunc_seq in uniq_trunc_seqs]
             recovered_uniq_trunc_seq_indices = []
