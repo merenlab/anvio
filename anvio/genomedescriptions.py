@@ -1061,11 +1061,11 @@ class AggregateFunctions:
 
     One fancy function in AggregateFunctions is `report_functions_per_group_stats`. For
     instance, one could initiate the class in the following way to get a functions per
-    group stats output file for functioanl enrichment analysis:
+    group stats output file for functional enrichment analysis:
 
         >>> import argparse
         >>> import anvio.genomedescriptions as g
-        >>> args = argparse.Namespace(external_genomes=external_genmes_path, annotation_source='KOfam')
+        >>> args = argparse.Namespace(external_genomes=external_genomes_path, annotation_source='KOfam')
         >>> groups = {'adoles': ['B_adolescentis', 'B_adolescentis_1_11', 'B_adolescentis_22L', 'B_adolescentis_6', 'B_adolescentis_ATCC_15703'],
                       'lactis': ['B_animalis', 'B_lactis_AD011', 'B_lactis_ATCC_27673', 'B_lactis_B420', 'B_lactis_BB_12', 'B_lactis_BF052'],
                       'longum': ['B_longum', 'B_longum_AH1206', 'B_longum_BBMN68', 'B_longum_BORI', 'B_longum_CCUG30698', 'B_longum_GT15']}
