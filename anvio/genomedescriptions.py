@@ -796,10 +796,9 @@ class GenomeDescriptions(object):
             groups_to_genomes_dict[grp] = set([genome for genome in genomes_to_groups_dict.keys() if str(genomes_to_groups_dict[genome]) == grp])
 
         # give the user some info before we continue
-        if not anvio.QUIET:
-            self.run.info('Functional annotation source', functional_annotation_source)
-            self.run.info('Groups', ', '.join(groups))
-            self.run.info('Include ungrouped', include_ungrouped)
+        self.run.info('Functional annotation source', functional_annotation_source)
+        self.run.info('Groups', ', '.join(groups))
+        self.run.info('Include ungrouped', include_ungrouped)
 
         self.progress.new('Functional occurrence analysis')
         self.progress.update('Getting functions from database')
