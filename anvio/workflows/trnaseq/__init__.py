@@ -276,7 +276,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         if missing_columns:
             raise ConfigError("The samples_txt file, '%s', is not properly formatted, "
                               "as the following columns are missing: '%s'."
-                              % (self.sample_info, ', '.join(missing_columns)))
+                              % (self.samples_txt_file, ', '.join(missing_columns)))
 
 
     def check_sample_names(self):
