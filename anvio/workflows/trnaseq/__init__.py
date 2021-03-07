@@ -214,7 +214,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
         self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
-        self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
+        self.gzip_anvi_reformat_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
         self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
         self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
@@ -463,22 +463,22 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
         if self.run_anvi_reformat_fasta:
             for sample_name in self.sample_names:
-                output_dir = os.path.join(self.dirs_dict['QC_DIR'], sample_name)
-                target_files.append(os.path.join(output_dir, sample_name + "-reformat_report.txt"))
+                out_dir = os.path.join(self.dirs_dict['QC_DIR'], sample_name)
+                target_files.append(os.path.join(out_dir, "REFORMAT.done"))
 
         if self.run_anvi_trnaseq:
             for sample_name in self.sample_names:
-                output_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
+                out_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
                 # If anvi-trnaseq output files such as the tRNA-seq database or analysis summary
                 # were used as targets, they would be deleted upon workflow failure.
-                target_files.append(os.path.join(output_dir, sample_name + ".done"))
+                target_files.append(os.path.join(out_dir, "IDENT.done"))
 
         if self.run_anvi_convert_trnaseq_database:
             project_name = self.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])
-            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], 'CONVERT.done'))
+            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "CONVERT.done"))
 
         if self.run_anvi_run_trna_taxonomy:
-            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], 'TAXONOMY.done'))
+            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
 
         return target_files
 
@@ -486,15 +486,17 @@ class TRNASeqWorkflow(WorkflowSuperClass):
     def get_input_for_anvi_reformat_fasta(self, wildcards):
         """Input can come from two possible sources: a user-supplied FASTA file or the FASTA file of
         merged reads generated from user-supplied FASTQ files."""
+        sample_name = wildcards.sample_name
         if self.fasta_paths:
-            return self.fasta_paths[self.sample_names.index(wildcards.sample_name)]
-        return os.path.join(self.dirs_dict['QC_DIR'], "qc_report.txt")
+            return self.fasta_paths[self.sample_names.index(sample_name)]
+        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), sample_name + "_MERGED")
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
         """Input can come from two possible sources: a FASTA file with Anvi'o-compliant deflines
         supplied by the user or the reformatted FASTA file produced by the rule,
         anvi_reformat_fasta."""
-        if self.run_anvi_reformat_fasta:
-            return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "-reformatted.fasta")
-        return self.fasta_paths[self.sample_names.index(wildcards.sample_name)]
+        sample_name = wildcards.sample_name
+        if self.fasta_paths:
+            return self.fasta_paths[self.sample_names.index(sample_name)]
+        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), sample_name + "-reformatted.fasta")
