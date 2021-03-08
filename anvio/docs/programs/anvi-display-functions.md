@@ -19,6 +19,48 @@ You can replace the annotation source based on what is available across your gen
 {:.notice}
 Please note that a %(profile-db)s will be automatically generated for you. Once it is generated, the same profile database can be visualized over and over again using %(anvi-interactive)s in manual mode, without having to retain any other files.
 
+
+### Combining genomes from multiple sources
+
+You can run this program by combining genomes from multiple sources:
+
+{{ codestart }}
+anvi-display-functions -e %(external-genomes)s \
+                       -i %(internal-genomes)s \
+                       -g %(genomes-storage-db)s \
+                       --annotation-source KOfam \
+                       --profile-db KOFAM-PROFILE.db
+
+{{ codestop }}
+
+This way, you can bring together functions in your metagenome-assembled genomes, the isolates you have acquired from external sources, and even genomes in an anvi'o pangenome into a single framework in a disturbingly easy fashion.
+
+### Performing functional enrichment analysis for free
+
+This is an optional step, but may be very useful for some investigations. If your genomes are divided into meaningful groups, you can also perform a functional enrichment analysis while running this program. All you need to do for this to be included in your analysis is to provide a %(groups-txt)s file that describes which genome belongs to which group:
+
+{{ codestart }}
+anvi-display-functions -e %(external-genomes)s \
+                       --groups-txt %(groups-txt)s
+                       --annotation-source KOfam \
+                       --profile-db KOFAM-PROFILE.db
+{{ codestop }}
+
+If you are using multiple sources for your genomes, you may not immediately know which genomes to list in your %(groups-txt)s file. In that case, you can first run the program with this additional parameter,
+
+{{ codestart }}
+anvi-display-functions -e %(external-genomes)s \
+                       -i %(internal-genomes)s \
+                       -g %(genomes-storage-db)s \
+                       --annotation-source COG20_FUNCTION \
+                       --profile-db COGS-PROFILE.db \
+                       --print-genome-names-and-quit
+{{ codestop }}
+
+In which case anvi'o would report all the functions once it recovers everything from all sources, and print them out for you to create a groups file before re-running the program with it.
+
+This analysis will add the following additional layers in your %(interactive)s display: 'enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'. See %(functional-enrichment-txt)s to learn more about these columns.
+
 ### Aggregating functions using accession IDs
 
 Once it is run, this program essentially aggregates all function names that occur in one or more genomes among the set of genomes found in input sources. The user can ask the program to use accession IDs to aggregate functions rather than function names:
@@ -56,18 +98,6 @@ anvi-display-functions -e %(external-genomes)s \
 
 Here the `--min-occurrence 5` parameter will exclude any function that appears to occur in less than 5 genomes in your collection.
 
-### Combining genomes from multiple sources
-
-Alternatively, you can run the program by combining genomes from multiple sources:
-
-{{ codestart }}
-anvi-display-functions -e %(external-genomes)s \
-                       -i %(internal-genomes)s \
-                       -g %(genomes-storage-db)s \
-                       --annotation-source KOfam \
-                       --profile-db KOFAM-PROFILE.db
-
-{{ codestop }}
 
 ### A real-world example
 
