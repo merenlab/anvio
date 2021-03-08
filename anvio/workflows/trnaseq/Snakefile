@@ -81,7 +81,10 @@ rule iu_merge_pairs:
         if M.gzip_iu_merge_pairs_output:
             merged_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
             out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
-            shell("gzip -c %s > %s.gz 2>>{log}" % (merged_fasta, merged_fasta))
+            if M.run_anvi_reformat_fasta:
+                shell("gzip -c %s > %s.gz 2>>{log}" % (merged_fasta, merged_fasta))
+            else:
+                shell("gzip -f %s >> {log} 2>&1" % merged_fasta)
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED"))
             shell("gzip -f %s >> {log} 2>&1" % os.path.join(out_dir, wildcards.sample_name + "_FAILED_WITH_Ns"))
             if params.report_r1_prefix:
@@ -172,8 +175,11 @@ rule anvi_reformat_fasta:
         if (M.fasta_paths and input[0].endswith('.gz')) or M.gzip_iu_merge_pairs_output:
             os.remove(decompressed_fasta)
         if M.gzip_anvi_reformat_output:
-            shell("gzip -c %s > %s.gz 2>>{log}" % (fasta, fasta))
-            shell("gzip -c %s > %s.gz 2>>{log}" % (report, report))
+            if M.run_anvi_trnaseq:
+                shell("gzip -c %s > %s.gz 2>>{log}" % (fasta, fasta))
+            else:
+                shell("gzip -f %s >> {log} 2>&1" % fasta)
+            shell("gzip -f %s >> {log} 2>&1" % report)
 
 
 rule anvi_trnaseq:
