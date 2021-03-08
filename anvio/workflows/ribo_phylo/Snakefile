@@ -89,12 +89,13 @@ rule get_external_gene_calls_file:
     input:
         contigDB = expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs),
     output:
-        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_orfs.fna")),
         external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
+    params:
+        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_orfs.fna")),
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
     shell: "anvi-get-sequences-for-gene-calls -c {input.contigDB} \
                                               --external-gene-calls {output.external_gene_calls} \
-                                              -o {output.fasta} 2> {log}"
+                                              -o {params.fasta} 2> {log}"
 
 rule cat_external_gene_calls_file:
     """
