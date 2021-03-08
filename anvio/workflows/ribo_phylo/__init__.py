@@ -53,7 +53,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'trim_alignment_2',
                            'calculate_tree',
                            'anvi_get_sequences_for_gene_calls',
-                           'cluster_90_mmseqs'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -74,7 +73,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                                                                                      '--min-len',
                                                                                      "--prefix"]
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
-        rule_acceptable_params_dict['cluster_90_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['trim_alignment_2'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
@@ -98,7 +96,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5, '--hmm-source': 'Bacteria_71'},
             'join_renamed_fasta_with_misc_data': {'threads': 5},
             'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
-            'cluster_90_mmseqs': {'threads': 5, '--min-seq-id': 0.9},
             'align_muscle': {'threads': 5},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'get_gap_count_distribution': {'threads': 5},
