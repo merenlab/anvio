@@ -1110,6 +1110,12 @@ class AggregateFunctions:
         self.layer_names_from_internal_genomes = []
         self.layer_names_from_external_genomes = []
         self.layer_names_from_genomes_storage = []
+
+        # if there are 'groups' defined through the `layer_groups` variable
+        # or through a `self.layer_groups_input_file_path`, this class will
+        # automatically perform a functional enrichment analysis and will report
+        # its output in the following dictionary.
+        self.functional_enrichment_stats_dict = None
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
 
         # this will summarize what happened in a text form.
@@ -1231,6 +1237,9 @@ class AggregateFunctions:
                 self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
                                  f"{self.function_annotation_source} from downstream analyses since they occurred "
                                  f"in less than {self.min_occurrence} genomes.")
+
+        if self.layer_groups:
+            self.do_functional_enrichment_analysis()
 
         self.update_summary_markdown()
 
