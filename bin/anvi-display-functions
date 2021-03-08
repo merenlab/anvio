@@ -37,6 +37,16 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
+    groupB = parser.add_argument_group('GROUPS', "If you want, you can also tell anvi'o how to group your genomes "
+                                "so it can also compute functional enrichment between them.")
+    groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
+    groupB.add_argument('--print-genome-names-and-quit', default=False, action='store_true', help="Sometimes, "
+                                "especially when you are interested in creating a groups file for your genomes you "
+                                "gather from multiple different sources, it may be difficult to know every single "
+                                "genome name that will go into your analysis. If you declare this flag, after "
+                                "initializing everyghing, anvi'o will print out every genome name it found and quit, "
+                                "so you can actually put together a groups file for them.")
+
     groupC = parser.add_argument_group('FUNCTIONS', "Tell anvi'o which functional annotation source you like above all, and other "
                                 "important details you like about your analysis.")
     groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
