@@ -37,40 +37,40 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
-    groupB = parser.add_argument_group('FUNCTIONS', "Tell anvi'o which functional annotation source you like above all, and other "
+    groupC = parser.add_argument_group('FUNCTIONS', "Tell anvi'o which functional annotation source you like above all, and other "
                                 "important details you like about your analysis.")
-    groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
-    groupB.add_argument(*anvio.A('aggregate-based-on-accession'), **anvio.K('aggregate-based-on-accession'))
-    groupB.add_argument(*anvio.A('aggregate-using-all-hits'), **anvio.K('aggregate-using-all-hits'))
-    groupB.add_argument('--min-occurrence', metavar="NUM GENOMES", default=1, help=("The minimum number of occurrence of any "
+    groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
+    groupC.add_argument(*anvio.A('aggregate-based-on-accession'), **anvio.K('aggregate-based-on-accession'))
+    groupC.add_argument(*anvio.A('aggregate-using-all-hits'), **anvio.K('aggregate-using-all-hits'))
+    groupC.add_argument('--min-occurrence', metavar="NUM GENOMES", default=1, help=("The minimum number of occurrence of any "
                                 "given function accross genomes. If you set a value, those functions that occur in less number "
                                 "of genomes will be excluded."), type=int)
 
-    groupC = parser.add_argument_group('PROFILE DB', "To store visuals state, collections, and such. It will be AUTOMATICALLY "
+    groupD = parser.add_argument_group('PROFILE DB', "To store visuals state, collections, and such. It will be AUTOMATICALLY "
                                 "generated for you, and you can't use an existing profile for this. But then once it is generated "
                                 "you can use that profile with `anvi-interactive`. It is actually objectively very cool.")
-    groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
 
-    groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+    groupF = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                            the interface.")
-    groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
-    groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
-    groupE.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
-    groupE.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+    groupF.add_argument(*anvio.A('title'), **anvio.K('title'))
+    groupF.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
+    groupF.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
+    groupF.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
-    groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+    groupG = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
                                                                        nice to have).")
-    groupF.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-    groupF.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+    groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupG.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
 
-    groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-    groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupG.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-    groupG.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
-    groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-    groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
-    groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
+    groupH = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupH.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupH.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupH.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupH.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupH.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupH.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupH.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
     args = parser.get_args(parser)
 
