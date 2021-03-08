@@ -21,8 +21,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes']
-__provides__ = ['interactive']
+__requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external-genomes', 'groups-txt']
+__provides__ = ['interactive', 'functional-enrichment-txt']
 __description__ = "Start an anvi'o interactive display to see functions across genomes"
 
 run = terminal.Run()
