@@ -1105,10 +1105,10 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
 
     log_file_path = filesnpaths.get_temp_file_path()
 
-    run.warning(None, header="AMY's ENRICHMENT ANALYSIS", lc="cyan")
+    run.warning(None, header="AMY's ENRICHMENT ANALYSIS 🚀", lc="green")
     run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
     run.info("Functional enrichment output file path: ", enrichment_output_file_path)
-    run.info("Temporary log file (use `--debug` to keep): ", log_file_path)
+    run.info("Temporary log file (use `--debug` to keep): ", log_file_path, nl_after=2)
 
     # run enrichment script
     progress.new('Functional enrichment analysis')
