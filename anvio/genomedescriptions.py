@@ -1255,10 +1255,17 @@ class AggregateFunctions:
                     raise ConfigError("Each layer group must be composed list of layer names :(")
 
                 if not len(self.layer_groups[layer_group]) > 1:
-                    raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")
+                    groups_with_single_layers.add(layer_group)
 
                 if len(set(self.layer_groups[layer_group])) != len(self.layer_groups[layer_group]):
                     raise ConfigError("Items in each layer group must be unique :/")
+
+            if len(groups_with_single_layers):
+                self.run.warning(f"In an ideal world, each group would describe at least two layer names. It is not "
+                                 f"the case for {P('this group', len(groups_with_single_layers), alt='these groups')}: "
+                                 f"{', '.join(groups_with_single_layers)}. That is OK and anvi'o will continue with this "
+                                 f"analysis, but if something goes wrong with your stats or whatever, you will remember "
+                                 f"this moment and go like, \"Hmm. That's why my adjusted q-values are like one point zero 🤔\".")
 
             # sanity check 3000 -- no joker shall pass:
             list_of_layer_names_lists = list(self.layer_groups.values())
