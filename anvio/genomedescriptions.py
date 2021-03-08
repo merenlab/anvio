@@ -1132,11 +1132,11 @@ class AggregateFunctions:
                                   "both :/")
 
             if self.layer_groups_input_file_path:
-                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path, expected_number_of_fields=2)
+                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path)
                 self.layer_groups = {}
 
                 if 'group' not in utils.get_columns_of_TAB_delim_file(self.layer_groups_input_file_path):
-                    raise ConfigError("The second column of the groups file must have a header `group`.")
+                    raise ConfigError("The groups file must contain `group` column.")
 
                 layer_groups_d = utils.get_TAB_delimited_file_as_dictionary(self.layer_groups_input_file_path)
 
