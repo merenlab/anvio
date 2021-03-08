@@ -1061,6 +1061,7 @@ class AggregateFunctions:
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
         self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
         self.layer_groups_input_file_path = A('groups_txt') or False
+        self.print_genome_names_and_quit = A('print_genome_names_and_quit') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1184,6 +1185,12 @@ class AggregateFunctions:
         # populate main dictionaries
         self._init_functions_from_int_ext_genomes()
         self._init_functions_from_genomes_storage()
+
+        # show the user what genome names are being consdiered for this analysis
+        if self.print_genome_names_and_quit:
+            self.run.info(f"Genome names found (n={len(self.layer_names_considered)})", ' '.join(self.layer_names_considered))
+            sys.exit()
+
         self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
 
         if self.min_occurrence:
@@ -1221,7 +1228,6 @@ class AggregateFunctions:
                             for accession in accessions:
                                 self.accession_id_to_function_dict.pop(accession)
 
-
                 self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
                                  f"{self.function_annotation_source} from downstream analyses since they occurred "
                                  f"in less than {self.min_occurrence} genomes.")
@@ -1247,6 +1253,8 @@ class AggregateFunctions:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
 
         if self.layer_groups_defined:
+            groups_with_single_layers = set([])
+
             if not len(self.layer_groups) > 1:
                 raise ConfigError("Layer groups must have two or more groups.")
 
