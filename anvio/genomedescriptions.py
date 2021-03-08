@@ -419,7 +419,7 @@ class GenomeDescriptions(object):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
                                      "functional annotation sources that are common to all of your genomes, and they will be used whenever "
-                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
+                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
                                             (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
@@ -722,14 +722,14 @@ class GenomeDescriptions(object):
             sys.exit()
 
         if not functional_annotation_source:
-            raise ConfigError("You haven't provided a functional annotation source to make sense of functional "
-                              "occurrence stats in your genomes. These are the available annotation sources "
+            raise ConfigError(f"You haven't provided a functional annotation source to make sense of functional "
+                              f"occurrence stats in your genomes. These are the available annotation sources "
                               f"that are common to all genomes, so pick one: {self.function_annotation_sources}.")
 
         if functional_annotation_source not in self.function_annotation_sources:
             sources_string = ", ".join(self.function_annotation_sources)
             raise ConfigError(f"Your favorite functional annotation source '{functional_annotation_source}' does not seem to be "
-                              "among one of the sources that are available to you. Here are the ones you should choose from: "
+                              f"among one of the sources that are available to you. Here are the ones you should choose from: "
                               f"{sources_string}.")
 
         # get the groups
@@ -792,9 +792,9 @@ class GenomeDescriptions(object):
         if groups_few_genomes:
             self.progress.reset()
             groups_string = ", ".join(groups_few_genomes)
-            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
-                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
-                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+            self.run.warning(f"Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             f"The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             f"but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
                              f"{groups_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
@@ -838,13 +838,13 @@ class GenomeDescriptions(object):
     def get_occurrence_of_functions_in_genomes(self, genome_to_func_summary_dict):
         """Here we convert a dictionary of function annotations in each genome to a dictionary of counts per function.
 
-        PARAMETERS
+        Parameters
         ==========
         genome_to_func_summary_dict : multi-level dict
             The format of this dictionary is
             (accession, annotation, e_value) = genome_to_func_summary_dict[genome_name][gene_caller_id][annotation_source]
 
-        RETURNS
+        Returns
         =======
         func_occurrence_dict :
             dictionary of function annotation counts in each genome. Its format is
@@ -1433,7 +1433,7 @@ class AggregateFunctions:
                                   f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
 
 
-    def report_functions_per_group_stats(self, output_file_path):
+    def report_functions_per_group_stats(self, output_file_path, quiet=False):
         """A function to summarize functional occurrence for groups of genomes"""
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -1468,4 +1468,5 @@ class AggregateFunctions:
 
         utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
 
-        self.run.info('Functions per group stats file', output_file_path)
+        if not quiet:
+            self.run.info('Functions per group stats file', output_file_path)
