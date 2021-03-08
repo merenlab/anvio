@@ -1133,7 +1133,26 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     else:
         os.remove(log_file_path)
 
-    return get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
+    enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
+
+    # here we will naively try to cast every column that matches `p_*` to float, and every
+    # column that matches `N_*` to int.
+    column_names = list(enrichment_stats.values())[0].keys()
+    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'adjusted_q_value', 'enrichment_score']] + \
+                           [(c, float) for c in column_names if c.startswith('p_')] + \
+                           [(c, int) for c in column_names if c.startswith('N_')]
+    for entry in enrichment_stats:
+        for column_name, to_cast in column_names_to_cast:
+            try:
+                enrichment_stats[entry][column_name] = to_cast(enrichment_stats[entry][column_name])
+            except:
+                raise ConfigError(f"Something sad happened :( Anvi'o expects the functional enrichment output to contain "
+                                  f"values for the column name `{column_name}` that can be represented as `{to_cast}`. Yet, the "
+                                  f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
+                                  f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
+                                  f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
+
+    return enrichment_stats
 
 
 def get_required_packages_for_enrichment_test():
