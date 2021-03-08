@@ -2932,7 +2932,10 @@ class TRNASeqDataset(object):
                                 for uniq_seq in trimmed_seq.uniq_seqs:
                                     uniq_seq.extra_fiveprime_length += extra_fiveprime_length - start_pos
                                     other_trimmed_seq.uniq_seqs.append(uniq_seq)
-                                trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
+                                if trimmed_seq.norm_seq_count == 1:
+                                    # Only remove trimmed sequences specific to the normalized
+                                    # sequence.
+                                    trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
                         elif trimmed_seq.id_method == 1:
                             if start_pos < extra_fiveprime_length:
                                 if trimmed_seq.norm_seq_count == 1:
