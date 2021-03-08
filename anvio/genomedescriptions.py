@@ -1456,6 +1456,16 @@ class AggregateFunctions:
                                   f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
                                   f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
 
+        if self.layer_groups:
+            self.summary_markdown += (f"\n\n### Functional enrichment analysis\nAnvi'o also performed a functional enrichment analysis based on {len(self.layer_groups)} "
+                                      f"groups defined by the user. The results of this analysis is shown in your view with the these additional layers: "
+                                      f"'enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'. You can learn more about the "
+                                      f"details of the meaning of these columns [here](https://merenlab.org/software/anvio/help/main/artifacts/functional-enrichment-txt/). "
+                                      f"Here is how those gropus were defined:")
+            for group_name in self.layer_groups:
+                self.summary_markdown += (f"\n\n**Group '{group_name}'** ({P('layer', len(self.layer_groups[group_name]))}):\n\n{G(self.layer_groups[group_name])}")
+
+
     def do_functional_enrichment_analysis(self):
         """Performs functional enrichment analysis if user defined layer groups.
 
