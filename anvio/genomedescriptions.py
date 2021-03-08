@@ -1439,6 +1439,31 @@ class AggregateFunctions:
                                   f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
                                   f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
 
+    def do_functional_enrichment_analysis(self):
+        """Performs functional enrichment analysis if user defined layer groups.
+
+        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        the downstream analyses can use it to do fancy things.
+        """
+
+        if not self.layer_groups:
+            raise ConfigError("Functional enrichment analysis requires the `self.layer_groups` to be "
+                              "initialized. But someone called this function without first intializing "
+                              "groups :/ ")
+
+        output_directory = filesnpaths.get_temp_directory_path()
+        functional_occurrence_stats_file_path = os.path.join(output_directory, 'FUNC_OCCURENCE_STATS.txt')
+        output_file_path = os.path.join(output_directory, 'FUNC_ENRICHMENT_OUTPUT.txt')
+
+        # get functions per group stats file
+        self.report_functions_per_group_stats(functional_occurrence_stats_file_path, quiet=True)
+
+        # run the enrichment analysis 
+        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_file_path,
+                                                                                      output_file_path,
+                                                                                      run=self.run,
+                                                                                      progress=self.progress)
+
 
     def report_functions_per_group_stats(self, output_file_path, quiet=False):
         """A function to summarize functional occurrence for groups of genomes"""
