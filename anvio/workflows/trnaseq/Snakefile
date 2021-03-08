@@ -208,12 +208,7 @@ rule anvi_trnaseq:
         max_del_configs = M.get_rule_param('anvi_trnaseq', '--max-deletion-configurations')
     run:
         sample_name = wildcards.sample_name
-        if M.fasta_paths:
-            if input[0].endswith('.gz'):
-                decompressed_fasta = gunzip_fasta(input[0], log[0])
-            else:
-                decompressed_fasta = input[0]
-        else:
+        if M.run_anvi_reformat_fasta:
             if M.gzip_anvi_reformat_output:
                 reformatted_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], sample_name), sample_name + "-reformatted.fasta.gz")
                 if not os.path.exists(reformatted_fasta):
@@ -225,6 +220,11 @@ rule anvi_trnaseq:
                 decompressed_fasta = gunzip_fasta(reformatted_fasta, log[0])
             else:
                 decompressed_fasta = os.path.join(os.path.join(dirs_dict['QC_DIR'], sample_name), sample_name + "-reformatted.fasta")
+        else:
+            if input[0].endswith('.gz'):
+                decompressed_fasta = gunzip_fasta(input[0], log[0])
+            else:
+                decompressed_fasta = input[0]
         out_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
         treatment = M.treatments[library_num]

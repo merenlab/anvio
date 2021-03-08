@@ -497,6 +497,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         supplied by the user or the reformatted FASTA file produced by the rule,
         anvi_reformat_fasta."""
         sample_name = wildcards.sample_name
-        if self.fasta_paths:
+        if self.run_anvi_reformat_fasta:
+            return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "REFORMAT.done")
+        elif self.fasta_paths:
             return self.fasta_paths[self.sample_names.index(sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "REFORMAT.done")
+        else:
+            raise ConfigError("The rule, `anvi_reformat_fasta`, should be run after the rule, `iu_merge_pairs`, "
+                              "to produce an anvi'o-compliant FASTA file. "
+                              "The `run` parameter for `anvi_reformat_fasta` should be set to `True` in the workflow config file.")
