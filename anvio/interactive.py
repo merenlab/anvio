@@ -829,6 +829,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               f"put together a hierarchical clustering for and display. If you think this had to work, let us know and "
                               f"we will see if we can do something to help you.")
 
+        run.warning(None, header="SUMMARY OF WHAT IS GOING ON", lc="green")
         self.run.info('Num genomes', num_genomes)
         self.run.info('Function annotation source', facc.function_annotation_source)
         self.run.info('Num unique keys', num_facc_keys)
@@ -898,12 +899,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
 
-
         # here we will store a layer for function names in the additional data tables of the profile databse and
-        # read it back (so it is both in there for future `anvi-interactive` ops, and in here in the interactive
-        # class to visualize the information).
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
         TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
+
+        # if we have functional enrichment analysis results for these genomes, let's add that into
+        # the database as well!
+        if facc.functional_enrichment_stats_dict:
+            TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
+
+        # here we will read the items additional data back so it is both in there for future `anvi-interactive` ops,
+        # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
         # create an instance of states table
