@@ -2405,7 +2405,7 @@ function processState(state_name, state) {
             }
         }
 
-    } else {
+    } else { // generate layer order if not in state 
         layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
     }
 
@@ -2427,6 +2427,102 @@ function processState(state_name, state) {
                 }
             }
         }
+    } else {
+        // let defaultViews = {
+        //     "mean_coverage": {
+        //         "length": {
+        //             "normalization": "none",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "6267",
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "gc_content": {
+        //             "normalization": "none",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "0.648471615720524",
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "SAMPLE_01": {
+        //             "normalization": "log",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "2.0218065950416015",
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "SAMPLE_02": {
+        //             "normalization": "log",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "1.5942290376606973",
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "SAMPLE_03": {
+        //             "normalization": "log",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "2.2831750895147276",
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "__parent__": {
+        //             "min": {
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "disabled": false
+        //             }
+        //         },
+        //         "hmms_external_hmm_genes": {
+        //             "normalization": "sqrt",
+        //             "min": {
+        //                 "value": "0",
+        //                 "disabled": false
+        //             },
+        //             "max": {
+        //                 "value": "1.4142135623730951",
+        //                 "disabled": false
+        //             }
+        //         }
+        //     }
+        // }
+        // views = {};
+        // for (let view_key in defaultViews)
+        // {
+        //     views[view_key] = {};
+        //     for (let key in defaultViews[view_key])
+        //     {
+        //         if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1) {
+        //             continue;
+        //         }
+
+        //         let layer_id = getLayerId(key);
+        //         if (layer_id != -1)
+        //         {
+        //             views[view_key][layer_id] = defaultViews[view_key][key];
+        //         }
+        //     }
+        // }
     }
 
     if (state.hasOwnProperty('layers')) {
@@ -2440,6 +2536,67 @@ function processState(state_name, state) {
                 layers[layer_id] = state['layers'][key];
             }
         }
+    } else {
+        // let defaultLayers = {
+        //     "layers": {
+        //         "length": {
+        //             "color": "#414141",
+        //             "height": "80",
+        //             "margin": "15",
+        //             "type": "bar",
+        //             "color-start": "#FFFFFF"
+        //         },
+        //         "gc_content": {
+        //             "color": "#005203",
+        //             "height": "180",
+        //             "margin": "15",
+        //             "type": "intensity",
+        //             "color-start": "#e8e8e8"
+        //         },
+        //         "SAMPLE_01": {
+        //             "color": "#000000",
+        //             "height": "300",
+        //             "margin": "30",
+        //             "type": "bar",
+        //             "color-start": "#FFFFFF"
+        //         },
+        //         "SAMPLE_02": {
+        //             "color": "#000000",
+        //             "height": "300",
+        //             "margin": "15",
+        //             "type": "bar",
+        //             "color-start": "#FFFFFF"
+        //         },
+        //         "SAMPLE_03": {
+        //             "color": "#000000",
+        //             "height": "300",
+        //             "margin": "15",
+        //             "type": "bar",
+        //             "color-start": "#FFFFFF"
+        //         },
+        //         "__parent__": {
+        //             "height": "50",
+        //             "margin": "15"
+        //         },
+        //         "hmms_external_hmm_genes": {
+        //             "color": "#3b003b",
+        //             "height": "150",
+        //             "margin": "15",
+        //             "type": "intensity",
+        //             "color-start": "#f5e1f5"
+        //         }
+        //     }
+        // }
+        // layers = {};
+        // for (let key in defaultLayers)
+        // {
+
+        //     let layer_id = getLayerId(key);
+        //     if (layer_id != -1)
+        //     {
+        //         layers[layer_id] = defaultLayers[key];
+        //     }
+        // }
     }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
@@ -2451,6 +2608,16 @@ function processState(state_name, state) {
                 categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
             }
         }
+    } else {
+        // let defaultCatDataColors = {}
+        // for (let key in defaultCatDataColors)
+        // {
+        //     let layer_id = getLayerId(key);
+        //     if (layer_id != -1)
+        //     {
+        //         categorical_data_colors[layer_id] = defaultCatDataColors[key];
+        //     }
+        // }
     }
 
     if (state.hasOwnProperty('stack_bar_colors')) {
@@ -2462,71 +2629,141 @@ function processState(state_name, state) {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
             }
         }
+    } else {
+        // let defaultStackBarColors = {}
+        // for (let key in defaultStackBarColors)
+        // {
+        //     let layer_id = getLayerId(key);
+        //     if (layer_id != -1)
+        //     {
+        //         stack_bar_colors[layer_id] = defaultStackBarColors[key];
+        //     }
+        // }
     }
 
-    if (state.hasOwnProperty('tree-type'))
+    if (state.hasOwnProperty('tree-type')){
         $('#tree_type').val(state['tree-type']).trigger('change');
-    if (state.hasOwnProperty('angle-min'))
+    } else{
+        $('#tree_type').val('circlephylogram').trigger('change');
+    }
+    if (state.hasOwnProperty('angle-min')){
         $('#angle-min').val(state['angle-min']);
-    if (state.hasOwnProperty('tree-height'))
+    } else {
+        $('#angle-min').val('0');
+    }
+    if (state.hasOwnProperty('tree-height')){
         $('#tree_height').val(state['tree-height']);
-    if (state.hasOwnProperty('tree-width'))
+    } else {
+        $('#tree_height').val('0');
+    }
+    if (state.hasOwnProperty('tree-width')){
         $('#tree_width').val(state['tree-width']);
-    if (state.hasOwnProperty('angle-max'))
+    } else {
+        $('#tree_width').val('0');
+    }
+    if (state.hasOwnProperty('angle-max')){
         $('#angle-max').val(state['angle-max']);
+    } else {
+        $('#angle-max').val('180');
+    }
     if (state.hasOwnProperty('tree-radius')) {
         $('#tree-radius-container').show();
         $('#tree-radius').val(state['tree-radius']);
+    } else {
+        $('#tree-radius-container').show();
+        $('#tree-radius').val('2000');
     }
     if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
         $('#trees_container').val(state['order-by']);
+    } else {
+        $('#trees_container').val('tnf-cov:euclidean:ward');
     }
     if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
         $('#views_container').val(state['current-view']);
+    } else {
+        $('#views_container').val('mean_coverage');
     }
     if (state.hasOwnProperty('max-font-size')) {
         $('#max_font_size').val(state['max-font-size']);
+    } else {
+        $('#max_font_size').val('60');
     }
     if (state.hasOwnProperty('max-font-size-label')) {
         $('#max_font_size_label').val(state['max-font-size-label']);
+    } else {
+        $('#max_font_size_label').val('90');
     }
-    if (state.hasOwnProperty('layer-margin'))
+    if (state.hasOwnProperty('layer-margin')){
         $('#layer-margin').val(state['layer-margin']);
-    if (state.hasOwnProperty('outer-ring-height'))
+    } else {
+        $('#layer-margin').val('15');
+    }
+    if (state.hasOwnProperty('outer-ring-height')){
         $('#outer-ring-height').val(state['outer-ring-height']);
-    if (state.hasOwnProperty('outer-ring-margin'))
+    } else {
+        $('#outer-ring-height').val('60');
+    }
+    if (state.hasOwnProperty('outer-ring-margin')){
         $('#outer-ring-margin').val(state['outer-ring-margin']);
-    if (state.hasOwnProperty('edge-normalization'))
+    } else {
+        $('#outer-ring-margin').val('30');
+    }
+    if (state.hasOwnProperty('edge-normalization')){
         $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-    if (state.hasOwnProperty('optimize-speed'))
+    } else {
+        $('#edge_length_normalization').prop('checked', false);
+    }
+    if (state.hasOwnProperty('optimize-speed')){
         $('#optimize_speed').prop('checked', state['optimize-speed']);
-    if (state.hasOwnProperty('custom-layer-margin')) {
+    } else {
+        $('#optimize_speed').prop('checked', true);
+    }
+    if (state.hasOwnProperty('custom-layer-margin')){
         $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+    } else {
+        $('#custom_layer_margin').prop('checked', true).trigger('change');
     }
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
+    } else {
+        $('#grid_color').attr('color', '#FFFFFF');
+        $('#grid_color').css('background-color', '#FFFFFF');
     }
     if (state.hasOwnProperty('grid-width')) {
         $('#grid_width').val(state['grid-width']);
+    } else {
+        $('#grid_width').val('1');
     }
     if (state.hasOwnProperty('bin-labels-font-size')) {
         $('#bin_labels_font_size').val(state['bin-labels-font-size']);
+    } else {
+        $('#bin_labels_font_size').val('128');
     }
     if (state.hasOwnProperty('bin-labels-angle')) {
         $('#bin_labels_angle').val(state['bin-labels-angle']);
+    } else {
+        $('#bin_labels_angle').val('0');
     }
     if (state.hasOwnProperty('show-bin-labels')) {
         $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
+    } else {
+        $('#show_bin_labels').prop('checked', true).trigger('change');
     }
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
+    } else {
+        $('#autorotate_bin_labels').prop('checked', true).trigger('change');
     }
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    } else {
+        $('#estimate_taxonomy').prop('checked', false).trigger('change');
     }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+    } else {
+        $('#show_grid_for_bins').prop('checked', false).trigger('change');
     }
     if (state.hasOwnProperty('show-shade-for-bins')) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
@@ -2545,21 +2782,33 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
+    } else {
+        $('#samples_edge_length_normalization').prop('checked', true);
     }
     if (state.hasOwnProperty('samples-ignore-branch-length')) {
         $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
+    } else {
+        $('#samples_ignore_branch_length').prop('checked', false);
     }
     if (state.hasOwnProperty('samples-tree-height')) {
         $('#samples_tree_height').val(state['samples-tree-height']);
+    } else {
+        $('#samples_tree_height').val('400');
     }
     if (state.hasOwnProperty('background-opacity')) {
         $('#background_opacity').val(state['background-opacity']);
+    } else {
+        $('#background_opacity').val('0.15');
     }
     if (state.hasOwnProperty('draw-guide-lines')) {
         $('#draw_guide_lines').val(state['draw-guide-lines'])
+    } else {
+        $('#draw_guide_lines').val('no') // no?? not false ? 0_0
     }
     if (state.hasOwnProperty('begins-from-branch')) {
         $('#begins_from_branch').val(state['begins-from-branch'])
+    } else {
+        $('#begins_from_branch').val(false)
     }
 
     // bootstrap values
@@ -2611,6 +2860,22 @@ function processState(state_name, state) {
                 samples_categorical_colors[key] = state['samples-categorical-colors'][key];
             }
         }
+    } else {
+    //    let defaultCatColors = {
+    //     "samples-categorical-colors": {
+    //         "default": {
+    //             "visits": {
+    //                 "even": "#a0d8e5",
+    //                 "odd": "#4a9dc9"
+    //             }
+    //         }
+    //     }
+    //    } 
+    //    for (let key in defaultCatColors) {
+    //     if (key in samples_categorical_colors) {
+    //         samples_categorical_colors[key] = defaultCatColors[key];
+    //     }
+    //    }
     }
     if (state.hasOwnProperty('samples-stack-bar-colors')) {
         for (let key in state['samples-stack-bar-colors']) {
@@ -2618,10 +2883,210 @@ function processState(state_name, state) {
                 samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
             }
         }
+    } else {
+        // let defaultSampleStackBarColors = {
+        //     "samples-stack-bar-colors": {
+        //         "default": {
+        //             "bars!bar1;bar2;bar3": {
+        //                 "bar1": "#a9f9dd",
+        //                 "bar2": "#9c6cd4",
+        //                 "bar3": "#f7d571"
+        //             }
+        //         }
+        //     },
+        // }
+        // for (let key in defaultSampleStackBarColors) {
+        //     if (key in samples_stack_bar_colors) {
+        //         samples_stack_bar_colors[key] = defaultSampleStackBarColors[key];
+        //     }
+        // }
     }
 
     buildLayersTable(layer_order, views[current_view]);
-    buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+    if(state['samples-layer-order'] && state['samples-layers']){
+        buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+    } else {
+        // let defaultSamplesLayerOrder = [
+        //         {
+        //             "layer_name": "total_reads_mapped",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "num_SNVs_reported",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "percent_mapped_reads",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "visits",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "num_INDELs_reported",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "num_SCVs_reported",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "total_reads_kept",
+        //             "group": "default"
+        //         },
+        //         {
+        //             "layer_name": "bars!bar1;bar2;bar3",
+        //             "group": "default"
+        //         }
+        // ]
+
+        // let defaultSamplesLayers = {
+        //         "default": {
+        //             "total_reads_mapped": {
+        //                 "data-type": "numeric",
+        //                 "height": 300,
+        //                 "margin": 15,
+        //                 "normalization": "none",
+        //                 "color": "#004c59",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 24870,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "num_SNVs_reported": {
+        //                 "data-type": "numeric",
+        //                 "height": 300,
+        //                 "margin": 15,
+        //                 "normalization": "none",
+        //                 "color": "#96004b",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 34,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "percent_mapped_reads": {
+        //                 "data-type": "numeric",
+        //                 "height": 300,
+        //                 "margin": 15,
+        //                 "normalization": "none",
+        //                 "color": "#540054",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 95,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "visits": {
+        //                 "data-type": "categorical",
+        //                 "height": 50,
+        //                 "margin": 60,
+        //                 "min": {
+        //                     "value": null,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": null,
+        //                     "disabled": false
+        //                 }
+        //             },
+        //             "num_INDELs_reported": {
+        //                 "data-type": "numeric",
+        //                 "height": 200,
+        //                 "margin": 60,
+        //                 "normalization": "none",
+        //                 "color": "#919191",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 2,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "num_SCVs_reported": {
+        //                 "data-type": "numeric",
+        //                 "height": 200,
+        //                 "margin": 15,
+        //                 "normalization": "none",
+        //                 "color": "#919191",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 32,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "total_reads_kept": {
+        //                 "data-type": "numeric",
+        //                 "height": 200,
+        //                 "margin": 15,
+        //                 "normalization": "none",
+        //                 "color": "#919191",
+        //                 "min": {
+        //                     "value": 0,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": 24870,
+        //                     "disabled": false
+        //                 },
+        //                 "type": "bar",
+        //                 "color-start": "#EFEFEF"
+        //             },
+        //             "bars!bar1;bar2;bar3": {
+        //                 "data-type": "stack-bar",
+        //                 "height": 600,
+        //                 "margin": 60,
+        //                 "normalization": "none",
+        //                 "min": {
+        //                     "value": null,
+        //                     "disabled": false
+        //                 },
+        //                 "max": {
+        //                     "value": null,
+        //                     "disabled": false
+        //                 }
+        //             }
+        //     }
+        // }
+
+        // let testSamplesLayerOrder = [
+        //     {
+        //         "layer_name": "percent_mapped_reads",
+        //         "group": "default"
+        //     }
+        // ]
+        
+        // buildSamplesTable(defaultSamplesLayerOrder, defaultSamplesLayers)
+        toastr.error('we need more stuff')
+        
+    }
 
     if (state.hasOwnProperty('samples-groups')) {
         for (let group_name in state['samples-groups']) {
