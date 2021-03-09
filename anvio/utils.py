@@ -3157,11 +3157,19 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
     for item in groups_txt:
         group_name = groups_txt[item]['group']
 
+        if item in item_to_group_dict:
+            raise ConfigError(f"Uh oh. The item {item} occurs more than once in your groups-txt file. This could explode things "
+                              f"downstream, so we will stop you right there. Please remove all duplicate items from this file. :)")
         item_to_group_dict[item] = group_name
 
         if not group_name in group_to_item_dict:
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
+
+    if len(group_to_item_dict.keys()) < 2:
+        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+                          "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
+                          "working in should allow for only one group in this file, please feel free to let us know.")
 
     return item_to_group_dict, group_to_item_dict
 
