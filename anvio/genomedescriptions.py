@@ -1461,7 +1461,7 @@ class AggregateFunctions:
                                       f"groups defined by the user. The results of this analysis is shown in your view with the these additional layers: "
                                       f"'enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'. You can learn more about the "
                                       f"details of the meaning of these columns [here](https://merenlab.org/software/anvio/help/main/artifacts/functional-enrichment-txt/). "
-                                      f"Here is how those gropus were defined:")
+                                      f"Here is how those groups were defined:")
             for group_name in self.layer_groups:
                 self.summary_markdown += (f"\n\n**Group '{group_name}'** ({P('layer', len(self.layer_groups[group_name]))}):\n\n{G(self.layer_groups[group_name])}")
 
