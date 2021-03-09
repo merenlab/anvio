@@ -3120,6 +3120,52 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     return samples_txt
 
 
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+    """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
+
+    Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
+    header - let's call these the items) and the 'group' column of the file. Then it will return the following:
+
+    Returns
+    =======
+    item_to_group_dict : dict
+        Dictionary in which keys are items and values are groups
+    group_to_item_dict : dict
+        Dictionary in which keys are groups and values are lists of items in that group
+    """
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if 'group' not in columns_found:
+        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+
+    if len(columns_found) < 2:
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+
+    item_column = columns_found[0]
+    if item_column == 'group':
+        raise ConfigError("The first column in your groups-txt file appears to be called 'group'. Sadly, anvi'o rather rigidly "
+                          "expects the first column to have item names, not group names, so you will have to re-format it. Sorry "
+                          "for any inconvenience.")
+
+    groups_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    group_to_item_dict = {}
+    item_to_group_dict = {}
+    for item in groups_txt:
+        group_name = groups_txt[item]['group']
+
+        item_to_group_dict[item] = group_name
+
+        if not group_name in group_to_item_dict:
+            group_to_item_dict[group_name] = []
+        group_to_item_dict[group_name].append(item)
+
+    return item_to_group_dict, group_to_item_dict
+
+
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
