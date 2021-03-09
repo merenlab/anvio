@@ -1139,31 +1139,19 @@ class AggregateFunctions:
                                   "both :/")
 
             if self.layer_groups_input_file_path:
-                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path)
-                self.layer_groups = {}
-
-                if 'group' not in utils.get_columns_of_TAB_delim_file(self.layer_groups_input_file_path):
-                    raise ConfigError("The groups file must contain `group` column.")
-
-                layer_groups_d = utils.get_TAB_delimited_file_as_dictionary(self.layer_groups_input_file_path)
-
-                for layer_name in layer_groups_d:
-                    group_name = layer_groups_d[layer_name]['group']
-
-                    if not group_name in self.layer_groups:
-                        self.layer_groups[group_name] = []
-
-                    self.layer_groups[group_name].append(layer_name)
+                self.layer_name_to_group_name, self.layer_groups = utils.get_groups_txt_file_as_dict(self.layer_groups_input_file_path)
             elif layer_groups:
                 self.layer_groups = layer_groups
 
-            # Finally, last AND least, a small helper dictionary we will use if there are gorups defined
-            # by the user:
+                # Finally, last AND least, a small helper dictionary we will use if there are groups defined
+                # by the user:
+                if self.layer_groups:
+                    for group_name in self.layer_groups:
+                        for layer_name in self.layer_groups[group_name]:
+                            self.layer_name_to_group_name[layer_name] = group_name
+
             if self.layer_groups:
                 self.layer_groups_defined = True
-                for group_name in self.layer_groups:
-                    for layer_name in self.layer_groups[group_name]:
-                        self.layer_name_to_group_name[layer_name] = group_name
 
             group_names = sorted(list(self.layer_groups.keys()))
             self.run.info('Groups found and parsed', ', '.join(group_names))
@@ -1485,7 +1473,7 @@ class AggregateFunctions:
         # get functions per group stats file
         self.report_functions_per_group_stats(functional_occurrence_stats_file_path, quiet=True)
 
-        # run the enrichment analysis 
+        # run the enrichment analysis
         self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_file_path,
                                                                                       output_file_path,
                                                                                       run=self.run,
