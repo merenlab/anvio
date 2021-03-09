@@ -5017,8 +5017,7 @@ class KeggModuleEnrichment(KeggContext):
                                f"are: {col_list}")
 
         required_groups_txt_headers = ['sample', 'group']
-        sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
-        samples_to_groups_dict = {samp : sample_groups_dict[samp]['group'] for samp in sample_groups_dict.keys()}
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
 
         # make sure the samples all have a group
         samples_with_none_group = []
@@ -5047,7 +5046,7 @@ class KeggModuleEnrichment(KeggContext):
 
         # sanity check for mismatch between modules-txt and groups-txt
         sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
-        sample_names_in_groups_txt = set(sample_groups_dict.keys())
+        sample_names_in_groups_txt = set(samples_to_groups_dict.keys())
         samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
         samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
         if anvio.DEBUG:
