@@ -25,7 +25,7 @@ __license__ = "GPL 3.0"
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __provides__ = ["external-genomes", "internal-genomes"]
-__requires__ = ["contigs-db", "profile_db", "collection"]
+__requires__ = ["contigs-db", "profile-db", "collection"]
 __description__ = "Generate an external genomes or internal genomes file"
 
 
