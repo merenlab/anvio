@@ -2907,185 +2907,26 @@ function processState(state_name, state) {
     if(state['samples-layer-order'] && state['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else {
-        // let defaultSamplesLayerOrder = [
-        //         {
-        //             "layer_name": "total_reads_mapped",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "num_SNVs_reported",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "percent_mapped_reads",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "visits",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "num_INDELs_reported",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "num_SCVs_reported",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "total_reads_kept",
-        //             "group": "default"
-        //         },
-        //         {
-        //             "layer_name": "bars!bar1;bar2;bar3",
-        //             "group": "default"
-        //         }
-        // ]
-
-        // let defaultSamplesLayers = {
-        //         "default": {
-        //             "total_reads_mapped": {
-        //                 "data-type": "numeric",
-        //                 "height": 300,
-        //                 "margin": 15,
-        //                 "normalization": "none",
-        //                 "color": "#004c59",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 24870,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "num_SNVs_reported": {
-        //                 "data-type": "numeric",
-        //                 "height": 300,
-        //                 "margin": 15,
-        //                 "normalization": "none",
-        //                 "color": "#96004b",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 34,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "percent_mapped_reads": {
-        //                 "data-type": "numeric",
-        //                 "height": 300,
-        //                 "margin": 15,
-        //                 "normalization": "none",
-        //                 "color": "#540054",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 95,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "visits": {
-        //                 "data-type": "categorical",
-        //                 "height": 50,
-        //                 "margin": 60,
-        //                 "min": {
-        //                     "value": null,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": null,
-        //                     "disabled": false
-        //                 }
-        //             },
-        //             "num_INDELs_reported": {
-        //                 "data-type": "numeric",
-        //                 "height": 200,
-        //                 "margin": 60,
-        //                 "normalization": "none",
-        //                 "color": "#919191",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 2,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "num_SCVs_reported": {
-        //                 "data-type": "numeric",
-        //                 "height": 200,
-        //                 "margin": 15,
-        //                 "normalization": "none",
-        //                 "color": "#919191",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 32,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "total_reads_kept": {
-        //                 "data-type": "numeric",
-        //                 "height": 200,
-        //                 "margin": 15,
-        //                 "normalization": "none",
-        //                 "color": "#919191",
-        //                 "min": {
-        //                     "value": 0,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": 24870,
-        //                     "disabled": false
-        //                 },
-        //                 "type": "bar",
-        //                 "color-start": "#EFEFEF"
-        //             },
-        //             "bars!bar1;bar2;bar3": {
-        //                 "data-type": "stack-bar",
-        //                 "height": 600,
-        //                 "margin": 60,
-        //                 "normalization": "none",
-        //                 "min": {
-        //                     "value": null,
-        //                     "disabled": false
-        //                 },
-        //                 "max": {
-        //                     "value": null,
-        //                     "disabled": false
-        //                 }
-        //             }
-        //     }
-        // }
-
-        // let testSamplesLayerOrder = [
-        //     {
-        //         "layer_name": "percent_mapped_reads",
-        //         "group": "default"
-        //     }
-        // ]
+        if(!state['samples-layers']){
+            toastr.error("Your state file doesn't appear to include any samples layer data :/")
+            return 
+        } else {
+            let generatedSamplesLayersOrder = []
         
-        // buildSamplesTable(defaultSamplesLayerOrder, defaultSamplesLayers)
-        toastr.error('we need more stuff')
-        
+            Object.entries(state['samples-layers']).forEach(layer => {
+                let orderObj = {
+                    'layer_name' : Object.keys(layer[1])[0], 
+                    'group' : layer[0],
+                }
+                generatedSamplesLayersOrder.push(orderObj)
+            })
+            let sloObj = {
+                'samples-layer-order' : generatedSamplesLayersOrder
+            }
+            buildSamplesTable(sloObj, state['samples-layers'])
+            toastr.warning(`Your state file doesn't appear to include any samples layers order data. Anvi'o
+             attempted to create one for you. How nice!`)
+        }        
     }
 
     if (state.hasOwnProperty('samples-groups')) {

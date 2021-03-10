@@ -240,6 +240,8 @@ function update_samples_layer_min_max(select) {
 function buildSamplesTable(samples_layer_order, samples_layers) {
     var all_information_layers = samples_layer_order;
 
+    console.log(all_information_layers)
+
     for (let group in samples_information_dict) {
         let first_sample = Object.keys(samples_information_dict[group])[0];
         for (let layer_name in samples_information_dict[group][first_sample]) {
