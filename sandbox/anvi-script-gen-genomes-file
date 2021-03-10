@@ -44,6 +44,8 @@ def main(args):
 
         utils.is_pan_or_profile_db(args.profile_db)
 
+        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+
         progress.new('Accessing to the collections table')
         progress.update('...')
         collections = ccollections.Collections()
