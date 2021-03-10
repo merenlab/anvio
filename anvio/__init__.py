@@ -37,7 +37,11 @@ if '--tmp-dir' in sys.argv:
         TMP_DIR = os.path.abspath(sys.argv[idx+1])
 
         if not os.path.exists(TMP_DIR):
-            os.makedirs(TMP_DIR)
+            parent_dir = os.path.dirname(TMP_DIR)
+            if os.access(parent_dir, os.W_OK):
+                os.makedirs(TMP_DIR)
+            else:
+                raise OSError(f"You do not have permission to generate a directory in '{parent_dir}'")
         if not os.path.isdir(TMP_DIR):
             raise OSError(f"The path provided to --tmp-dir, {TMP_DIR}, is not a directory...")
         if not os.access(TMP_DIR, os.W_OK):
