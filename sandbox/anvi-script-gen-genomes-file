@@ -5,6 +5,8 @@
 
 import anvio
 import anvio.utils
+import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 
 run = terminal.Run()
 
