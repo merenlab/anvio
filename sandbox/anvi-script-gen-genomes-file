@@ -55,8 +55,8 @@ def main(args):
         if not collections.collections_dict:
             raise ConfigError("There are no collections in this profile database, so no internal genomes file. "
                               "Consider making some in interactive mode, or importing a collection with "
-                              "`anvi-import-collection` (a tutorial on importing collections here: "
-                              "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection)")
+                              "`anvi-import-collection` (run `anvi-import-collection --help` for links to helpful "
+                              "resources).")
 
         if args.collection_name not in collections.collections_dict:
             raise ConfigError(f"The collection you requested, {args.collection_name}, does not appear to be a "
