@@ -1,0 +1,44 @@
+!/usr/bin/env python
+# -*- coding: utf-8
+
+"""A program to generate external or internal genomes files"""
+
+import anvio
+import anvio.utils
+
+run = terminal.Run()
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__provides__ = ["external-genomes", "internal-genomes"]
+__requires__ = ["contigs-db", "collection-txt"]
+__description__ = "Generate an external genomes or internal genomes file"
+
+
+def main(args):
+    pass
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupI = parser.add_argument_group("INTERNAL GENOMES FILE", "Provide a contigs db, profile db, and collection name and anvi'o "
+                                                                "will bestow upon you an internal genomes file for that collection.")
+    groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupI.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupI.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupI.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes', {'help': "The desired output file path for "
+                                                                "the internal genomes file."}))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
