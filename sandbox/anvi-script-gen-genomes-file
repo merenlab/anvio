@@ -66,12 +66,12 @@ def main(args):
         profile_db_path = os.path.abspath(args.profile_db)
 
         int_genomes_dict = {}
-        for bin in sorted(collections.collections_dict[args.collection_name]['bin_names'].split(',')):
-            int_genomes_dict[bin] = {}
-            int_genomes_dict[bin]['bin_id'] = bin
-            int_genomes_dict[bin]['collection_id'] = args.collection_name
-            int_genomes_dict[bin]['profile_db_path'] = profile_db_path
-            int_genomes_dict[bin]['contigs_db_path'] = contig_db_path
+        for bin_name in sorted(collections.collections_dict[args.collection_name]['bin_names'].split(',')):
+            int_genomes_dict[bin_name] = {}
+            int_genomes_dict[bin_name]['bin_id'] = bin_name
+            int_genomes_dict[bin_name]['collection_id'] = args.collection_name
+            int_genomes_dict[bin_name]['profile_db_path'] = profile_db_path
+            int_genomes_dict[bin_name]['contigs_db_path'] = contig_db_path
 
         utils.store_dict_as_TAB_delimited_file(int_genomes_dict, args.internal_genomes, key_header='name')
 
