@@ -3782,9 +3782,12 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
                           "anvi-gen-variability-profile." % table_path)
 
 
-def is_contigs_db(db_path):
+def is_contigs_db(db_path, dont_raise=False):
     if get_db_type(db_path) != 'contigs':
-        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+        if dont_raise:
+            return False
+        else:
+            raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
     return True
 
 
