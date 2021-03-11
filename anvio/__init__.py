@@ -2779,10 +2779,14 @@ D = {
             ['-G', '--groups-txt'],
             {'default': None,
             'metavar': 'TEXT_FILE',
-            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
-                    "The first column should have the header 'sample' and contain sample names matching "
-                    "to those are in the other input data. The second column should have the header 'group' "
-                    "and contain the group name for each sample (each sample should be in 1 group only)"}
+            'help': "A tab-delimited text file specifying which group each item belongs to. "
+                    "Depending on the context, items here may be individual samples or genomes. "
+                    "The first column must contain item names matching to those that are in your "
+                    "input data. A different column should have the header 'group' and contain the "
+                    "group name for each item. Each item should be associated with a single "
+                    "group. It is always a good idea to define groups using single words without any fancy "
+                    "characters. For instance, `HIGH_TEMPERATURE` or `LOW_FITNESS` are good group names. "
+                    "`my group #1` or `IS-THIS-OK?`, are not good group names."}
                 ),
     'sample-header': (
             ['--sample-header'],

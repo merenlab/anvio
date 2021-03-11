@@ -1067,6 +1067,94 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
+def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None, run=run, progress=progress):
+    """This function runs the enrichment analysis implemented by Amy Willis.
+
+    Since the enrichment analysis is an R script, we interface with that program by
+    producing a compatible input file first, and then calling this function from various
+    places in the anvi'o code.
+
+    Parameters
+    ==========
+    functional_occurrence_stats_input_file_path, str file path
+        This is the primary input file for the R script, `anvi-script-enrichment-stats`.
+        For the most up-do-date file header, please see the header section of the R
+        script.
+    enrichment_output_file_path, str file path
+        An optional output file path for the enrichment analysis.
+
+    Returns
+    =======
+    enrichment_output: dict
+        The enrichment analysis results
+    """
+
+    # sanity check for R packages
+    package_dict = get_required_packages_for_enrichment_test()
+    check_R_packages_are_installed(package_dict)
+
+    # make sure the input file path is a TAB delmited file that exists.
+    filesnpaths.is_file_tab_delimited(functional_occurrence_stats_input_file_path)
+
+    if not enrichment_output_file_path:
+        enrichment_output_file_path = filesnpaths.get_temp_file_path()
+    elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
+                           "Please either delete the existing file, or provide another file path before re-running this "
+                           "program again.")
+
+    log_file_path = filesnpaths.get_temp_file_path()
+
+    run.warning(None, header="AMY's ENRICHMENT ANALYSIS 🚀", lc="green")
+    run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
+    run.info("Functional enrichment output file path: ", enrichment_output_file_path)
+    run.info("Temporary log file (use `--debug` to keep): ", log_file_path, nl_after=2)
+
+    # run enrichment script
+    progress.new('Functional enrichment analysis')
+    progress.update("Running Amy's enrichment")
+    run_command(['anvi-script-enrichment-stats',
+                 '--input', f'{functional_occurrence_stats_input_file_path}',
+                 '--output', f'{enrichment_output_file_path}'], log_file_path)
+    progress.end()
+
+    if not filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( We don't "
+                          f"know what happened, but this log file could contain some clues: {log_file_path}")
+
+    if filesnpaths.is_file_empty(enrichment_output_file_path):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( "
+                          f"An output file was created, but it was empty... We hope that this "
+                          f"log file offers some clues: {log_file_path}")
+
+    # if everything went okay, we remove the log file
+    if anvio.DEBUG:
+        run.warning(f"Due to the `--debug` flag, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
+    else:
+        os.remove(log_file_path)
+
+    enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
+
+    # here we will naively try to cast every column that matches `p_*` to float, and every
+    # column that matches `N_*` to int.
+    column_names = list(enrichment_stats.values())[0].keys()
+    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'adjusted_q_value', 'enrichment_score']] + \
+                           [(c, float) for c in column_names if c.startswith('p_')] + \
+                           [(c, int) for c in column_names if c.startswith('N_')]
+    for entry in enrichment_stats:
+        for column_name, to_cast in column_names_to_cast:
+            try:
+                enrichment_stats[entry][column_name] = to_cast(enrichment_stats[entry][column_name])
+            except:
+                raise ConfigError(f"Something sad happened :( Anvi'o expects the functional enrichment output to contain "
+                                  f"values for the column name `{column_name}` that can be represented as `{to_cast}`. Yet, the "
+                                  f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
+                                  f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
+                                  f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
+
+    return enrichment_stats
+
+
 def get_required_packages_for_enrichment_test():
     ''' Return a dict with the packages as keys and installation instrucstions as values'''
     packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
@@ -1087,7 +1175,7 @@ def check_R_packages_are_installed(required_package_dict):
     Credits to Ryan Moore (https://github.com/mooreryan) for this solution!
     (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
 
-    PARAMETERS
+    Parameters
     ==========
     required_package_dict, dictionary
         keys should be R package names, values should be the corresponding installation instruction for the package
@@ -3030,6 +3118,60 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
 
     return samples_txt
+
+
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+    """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
+
+    Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
+    header - let's call these the items) and the 'group' column of the file. Then it will return the following:
+
+    Returns
+    =======
+    item_to_group_dict : dict
+        Dictionary in which keys are items and values are groups
+    group_to_item_dict : dict
+        Dictionary in which keys are groups and values are lists of items in that group
+    """
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if 'group' not in columns_found:
+        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+
+    if len(columns_found) < 2:
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+
+    item_column = columns_found[0]
+    if item_column == 'group':
+        raise ConfigError("The first column in your groups-txt file appears to be called 'group'. Sadly, anvi'o rather rigidly "
+                          "expects the first column to have item names, not group names, so you will have to re-format it. Sorry "
+                          "for any inconvenience.")
+
+    groups_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    group_to_item_dict = {}
+    item_to_group_dict = {}
+    for item in groups_txt:
+        group_name = groups_txt[item]['group']
+
+        if item in item_to_group_dict:
+            raise ConfigError(f"Uh oh. The item {item} occurs more than once in your groups-txt file. This could explode things "
+                              f"downstream, so we will stop you right there. Please remove all duplicate items from this file. :)")
+        item_to_group_dict[item] = group_name
+
+        if not group_name in group_to_item_dict:
+            group_to_item_dict[group_name] = []
+        group_to_item_dict[group_name].append(item)
+
+    if len(group_to_item_dict.keys()) < 2:
+        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+                          "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
+                          "working in should allow for only one group in this file, please feel free to let us know.")
+
+    return item_to_group_dict, group_to_item_dict
 
 
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
