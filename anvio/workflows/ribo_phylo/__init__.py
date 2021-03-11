@@ -55,7 +55,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['Ribosomal_protein_list']) # user must input which Ribosomal proteins will be used for workflow
+        self.general_params.extend(['Ribosoma_protein_list']) # user must input which Ribosomal proteins will be used for workflow
         self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the SCG MSA
 
 
@@ -79,7 +79,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'anvi_script_reformat_fasta': {'threads': 5},
-            'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
+            'SCG_protein_list': 'SCG_protein_list.txt',
             'MSA_gap_threshold': '',
             'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
@@ -164,11 +164,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
         # Load Ribosomal protein list
-        self.Ribosomal_protein_list_path = self.get_param_value_from_config(['Ribosomal_protein_list'])
-        filesnpaths.is_file_exists(self.Ribosomal_protein_list_path)
+        self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
+        filesnpaths.is_file_exists(self.SCG_protein_list_path)
         try:
-            self.Ribosomal_protein_df = pd.read_csv(self.Ribosomal_protein_list_path, sep='\t', index_col=False)
-            self.Ribosomal_protein_list = self.Ribosomal_protein_df['Ribosomal_protein'].to_list()
+            self.SCG_protein_df = pd.read_csv(self.SCG_protein_list_path, sep='\t', index_col=False)
+            self.SCG_protein_list = self.SCG_protein_df['Ribosomal_protein'].to_list()
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
@@ -181,7 +181,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # FIXME: need to add target files for metagenomics workflow here!
         # target_files.extend(list(self.profile_databases.values()))
 
-        for ribosomal_protein_name in self.Ribosomal_protein_list:
+        for ribosomal_protein_name in self.SCG_protein_list:
 
 
             # Count num sequences removed per step
