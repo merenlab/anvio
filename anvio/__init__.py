@@ -28,6 +28,29 @@ NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
+TMP_DIR = None
+
+# if the user wants to use a non-default tmp directory, we set it here
+if '--tmp-dir' in sys.argv:
+    try:
+        idx = sys.argv.index('--tmp-dir')
+        TMP_DIR = os.path.abspath(sys.argv[idx+1])
+
+        if not os.path.exists(TMP_DIR):
+            parent_dir = os.path.dirname(TMP_DIR)
+            if os.access(parent_dir, os.W_OK):
+                os.makedirs(TMP_DIR)
+            else:
+                raise OSError(f"You do not have permission to generate a directory in '{parent_dir}'")
+        if not os.path.isdir(TMP_DIR):
+            raise OSError(f"The path provided to --tmp-dir, {TMP_DIR}, is not a directory...")
+        if not os.access(TMP_DIR, os.W_OK):
+            raise OSError(f"You do not have permission to generate files in '{TMP_DIR}'")
+
+        os.environ['TMPDIR'] = TMP_DIR
+    except Exception as e:
+        print("OSError: ", e)
+        sys.exit()
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
