@@ -1765,7 +1765,7 @@ D = {
                      "anymore, and you would have to leave anvi'o right now."}
                 ),
     'input-dir': (
-            ['-i', '--input-dir'],
+            ['--input-dir'],
             {'metavar': 'DIR_PATH',
              'type': str,
              'help': "Directory path for input files"}
