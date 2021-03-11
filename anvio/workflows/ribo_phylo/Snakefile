@@ -145,6 +145,7 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
         shell('anvi-estimate-scg-taxonomy -c {input} \
                                           --metagenome-mode \
                                           --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
+                                          -T {threads} \
                                           -o {output} 2> {log}')
 
 rule simplify_names_from_scg_hits_nt:
@@ -427,6 +428,7 @@ rule cluster_X_percent_sim_mmseqs:
         "mmseqs easy-cluster {input} \
                              {params.output_prefix} \
                              {params.mmseqs_tmp} \
+                             --threads {threads} \
                              --min-seq-id {params.min_seq_id} >> {log} 2>&1"
 
 rule get_headers:
@@ -514,8 +516,9 @@ rule align_muscle:
 	threads: M.T('align_muscle')
 	shell:
 		"muscle -in {input} \
-				-out {output} \
-                -maxiters 2 2> {log}"
+				    -out {output} \
+            -maxiters 2 \
+            -verbose 2> {log}"
 
 
 # FIXME: odseq in R will only accept a MSA object from the package MSA
@@ -639,34 +642,6 @@ rule remove_sequences_with_X_percent_gaps:
 #     script:
 #         "scripts/filter_gap_count_outlier_sequence.py"
 
-# rule align_muscle_2:
-#     """This rule will..."""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "align_muscle_2_{ribosomal_protein_name}.log")
-#     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_seqs_filtered_final.fasta")
-#     output: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-#     threads: M.T('align_muscle_2')
-#     shell:
-#         "muscle -in {input} \
-#                 -out {output} 2> {log}"
-
-# rule trim_alignment_2:
-#     """This rule will..."""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_2_{ribosomal_protein_name}.log")
-#     input: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-#     output: os.path.join(dirs_dict['MSA'], "MSA_2/{ribosomal_protein_name}/{ribosomal_protein_name}_trimmed.fasta")
-#     params:
-#         gt=M.get_param_value_from_config(['trim_alignment', '-gt']),
-#         gappyout=M.get_rule_param('trim_alignment', '-gappyout'),
-#         additional_params = M.get_param_value_from_config(['calculate_tree', 'additional_params'])
-#     shell:
-#         'trimal -in {input} \
-#                 -out {output} \
-#                 {params.gappyout} \
-#                 {params.additional_params} 2> {log}'
 
 rule count_num_sequences_filtered:
     """
@@ -785,6 +760,7 @@ rule filter_for_nt_seqs_for_mapping:
 #                 -nt AUTO \
 #                 -m {params.model} \
 #                 -pre {params.outfile} \
+#                 -T AUTO \
 #                 {params.additional_params} >> {log} 2>&1"
 
 rule calculate_tree_fast:
