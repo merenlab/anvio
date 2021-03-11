@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     groupE = parser.add_argument_group("EXTERNAL GENOMES FILE", "Provide a directory, and anvi'o will provide an external genomes "
                                                                 "file containing all contigs dbs in that directory.")
-    groupE.add_argument(*anvio.A('input-dir') **anvio.K('input-dir'))
+    groupE.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir'))
     groupE.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'help': "The desired output file path for "
                                                                 "the external genomes file."}))
 
