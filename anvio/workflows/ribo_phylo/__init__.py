@@ -118,6 +118,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         super().init()
         # WorkflowSuperclass().init()
 
+        self.dirs_dict.update({"LOGS_DIR": "RIBO_PHYLO_WORKFLOW/00_LOGS"})
+        os.rmdir("00_LOGS")
+
+
         # initiating a list to fill with names of contigDBs
         self.names_list = []
         self.names_dirs = []
@@ -131,6 +135,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
+                self.input_dirs_dict = dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list))
                 self.names_dirs.extend(self.metagenomes_dirname_list)
                 self.names_list.extend(self.metagenomes_name_list)
 
@@ -147,6 +152,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
+                self.input_dirs_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_dirname_list)))
                 self.names_dirs.extend(self.external_genomes_dirname_list)
                 self.names_list.extend(self.external_genomes_names_list)
             except IndexError as e:

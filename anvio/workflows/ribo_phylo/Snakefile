@@ -52,17 +52,18 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_aa:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        # expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.faa")
     params:
         hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_ribosomal_proteins', '--hmm-source')
     threads: M.T('anvi_get_sequences_for_hmm_hits_ribosomal_proteins')
-	shell: "anvi-get-sequences-for-hmm-hits -c {input} \
-                                            {params.hmm_source} \
-                                           --get-aa-sequences \
-                                           --gene-name {wildcards.ribosomal_protein_name} \
-                                           -o {output} 2> {log}"
+  	shell: "anvi-get-sequences-for-hmm-hits -c {input} \
+                                              {params.hmm_source} \
+                                             --get-aa-sequences \
+                                             --gene-name {wildcards.ribosomal_protein_name} \
+                                             -o {output} 2> {log}"
 
 rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_nt:
     """Extract all ribosomal proteins listed in SCG_protein_list.txt from metagenomes and genomes in samples.txt."""
@@ -70,7 +71,8 @@ rule anvi_get_sequences_for_hmm_hits_ribosomal_proteins_nt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        # expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.fna")
     params:
@@ -88,7 +90,8 @@ rule get_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        contigDB = expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs),
+        # contigDB = expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs),
+        contigDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
     params:
@@ -135,7 +138,8 @@ rule anvi_estimate_scg_taxonomy_for_ribosomal_proteins:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_ribosomal_proteins_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        # expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
+        lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
     params:
