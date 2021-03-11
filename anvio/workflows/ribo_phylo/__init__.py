@@ -55,7 +55,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['Ribosoma_protein_list']) # user must input which Ribosomal proteins will be used for workflow
+        self.general_params.extend(['SCG_protein_list']) # user must input which Ribosomal proteins will be used for workflow
         self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the SCG MSA
 
 
