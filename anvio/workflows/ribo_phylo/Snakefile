@@ -155,7 +155,7 @@ rule simplify_names_from_scg_hits_nt:
     output:
         fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_renamed.fna"),
         report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_nt.txt")
-    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
+    threads: M.T('anvi_script_reformat_fasta')
     shell:
         "anvi-script-reformat-fasta {input} \
                               --simplify-names \
@@ -172,7 +172,7 @@ rule simplify_names_from_scg_hits_aa:
     output:
         fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits_renamed.faa"),
         report_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_reformat_report_aa.txt")
-    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
+    threads: M.T('anvi_script_reformat_fasta')
     shell:
         "anvi-script-reformat-fasta {input} \
                               --simplify-names \
@@ -450,7 +450,7 @@ rule filter_for_aa_seqs:
         headers = rules.get_headers.output.headers
     output:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all_filtered.faa")
-    threads: M.T('anvi_reformat_fasta_ribosomal_protein_file')
+    threads: M.T('anvi_script_reformat_fasta')
     shell:
         "anvi-script-reformat-fasta {input.faa} \
                               -I {input.headers} \

@@ -40,7 +40,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
                            'filter_for_scg_sequences_and_metadata',
                            'cat_ribo_proteins_to_one_fasta',
-                           'anvi_reformat_fasta_ribosomal_protein_file',
+                           'anvi_script_reformat_fasta',
                            'cat_misc_data_to_one_file',
                            'join_renamed_fasta_with_misc_data',
                            'remove_redundant_sequences_mmseqs',
@@ -49,8 +49,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'remove_sequences_with_X_percent_gaps',
                            'get_gap_count_distribution',
                            'filter_out_outlier_sequences',
-                           'align_muscle_2',
-                           'trim_alignment_2',
                            'calculate_tree',
                            'anvi_get_sequences_for_gene_calls',
                            ])
@@ -66,15 +64,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_ribosomal_proteins'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_ribosomal_proteins'] = ['--metagenome-mode']
-        rule_acceptable_params_dict['anvi_reformat_fasta_ribosomal_protein_file'] = ['--gzip-output',
-                                                                                     '--simplify-names',
-                                                                                     '--keep-ids',
-                                                                                     '--exclude-ids',
-                                                                                     '--min-len',
-                                                                                     "--prefix"]
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
-        rule_acceptable_params_dict['trim_alignment_2'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['calculate_tree'] = ['run',
@@ -87,7 +78,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.default_config.update({
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
-            'anvi_reformat_fasta_ribosomal_protein_file': {'--simplify-names': True, 'threads': 5},
+            'anvi_script_reformat_fasta': {'threads': 5},
             'Ribosomal_protein_list': 'Ribosomal_protein_list.txt',
             'MSA_gap_threshold': '',
             'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
@@ -100,9 +91,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'get_gap_count_distribution': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
-            'align_muscle_2': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gappyout': True},
-            'trim_alignment_2': {'threads': 5, '-gappyout': True},
             'calculate_tree': {'run': True, 'threads': 5,'-m': "MFP"}
             })
 
