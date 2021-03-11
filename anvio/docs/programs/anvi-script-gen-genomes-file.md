@@ -4,7 +4,7 @@ This script can automatically generate an external or internal genomes file.
 If you provide an input directory and a name for the output file, then every %(contigs-db)s in that directory will get a line in the resulting %(external-genomes)s file:
 
 ```
-anvi-script-gen-genomes-file -I path/to/dir -e external_genomes.txt
+anvi-script-gen-genomes-file --input-dir path/to/dir -e external_genomes.txt
 ```
 
 The name of each database will be whatever string is in front of the `*.db` extension, and the `contigs_db_path` column will contain absolute paths.
