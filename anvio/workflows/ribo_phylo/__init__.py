@@ -49,8 +49,9 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                            'remove_sequences_with_X_percent_gaps',
                            'get_gap_count_distribution',
                            'filter_out_outlier_sequences',
-                           'calculate_tree',
                            'anvi_get_sequences_for_gene_calls',
+                           'fasttree',
+                           'iqtree'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -68,9 +69,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
-        rule_acceptable_params_dict['calculate_tree'] = ['run',
-                                                         '-m',
-                                                         'additional_params']
+        rule_acceptable_params_dict['fasttree'] = ['run']
+        rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -92,7 +92,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'get_gap_count_distribution': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gappyout': True},
-            'calculate_tree': {'run': True, 'threads': 5,'-m': "MFP"}
+            'fasttree': {'run': True, 'threads': 5},
+            'iqtree': {'threads': 5,'-m': "MFP"}
             })
 
         # Workflow directory structure
@@ -179,6 +180,12 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
+        self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
+        self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
+
+        if not self.run_iqtree and not self.run_fasttree:
+            raise ConfigError("Please choose either iqtree or fasttree in your config file to run your phylogenetic tree.")
+
         self.target_files = self.get_target_files()
 
     def get_target_files(self):
@@ -220,16 +227,19 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
+
             #########################
             # The FINAL trees :)
             # For iq-tree
-            # tail_path = "%s.iqtree" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
+            if self.run_iqtree == True:
+                tail_path = "%s.iqtree" % (ribosomal_protein_name)
+                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
+                target_files.append(target_file)
             # for fasttree
-            tail_path = "%s.nwk" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
+            elif self.run_fasttree == True:
+                tail_path = "%s.nwk" % (ribosomal_protein_name)
+                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
+                target_files.append(target_file)
             #########################
 
             # print(target_files)
