@@ -22,6 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
+__requires__ = ["phylogeny"]
+__provides__ = ["interactive"]
 __description__ = ("A helper script to convert CheckM trees into anvio interactive with taxonomy information")
 
 

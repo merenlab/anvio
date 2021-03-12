@@ -1,4 +1,4 @@
-A helper script to process CheckM tree output to generate files compatible with %(anvi-interacitve)s.
+A helper script to process CheckM tree output to generate files compatible with %(anvi-interactive)s.
 
 An example use:
 
