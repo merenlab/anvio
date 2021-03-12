@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+"""
+This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
+ it done using query and target coverage
+"""
+
 import sys
 import os
 import numpy as np
@@ -41,12 +46,12 @@ class FilterHmmHitsTable(object):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.contigs_db_path=A("contigs_db")
-        self.domtblout=A("domtblout")
-        self.hmm_source=A("hmm_source")
-        self.target_coverage=A("target_coverage")
-        self.query_coverage=A("query_coverage")
-        self.list_hmm_sources=A("list_hmm_sources")
+        self.contigs_db_path = A("contigs_db")
+        self.domtblout = A("domtblout")
+        self.hmm_source = A("hmm_source")
+        self.target_coverage = A("target_coverage")
+        self.query_coverage = A("query_coverage")
+        self.list_hmm_sources = A("list_hmm_sources")
 
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
@@ -54,6 +59,7 @@ class FilterHmmHitsTable(object):
 
 
     def sanity_checks(self):
+        """Sanity checks for program inputs."""
 
         filesnpaths.is_file_exists(self.contigs_db_path)
         self.run.info("Database Path", self.contigs_db_path)
@@ -69,37 +75,41 @@ class FilterHmmHitsTable(object):
         if self.hmm_source not in info_table:
             raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
                               f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
-                              "Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
-                              "need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
+                              f"Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
+                              f"need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
 
         sources = anvio.data.hmm.sources
         target = sources[self.hmm_source]['target'].split(':')
 
         if target[0] != 'AA':
             raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
-                              "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
-                              "from protein sequences.")
+                              f"anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
+                              f"from protein sequences.")
 
 
     def process(self):
+        """Method to run the functions of this program"""
 
         self.sanity_checks()
 
         self.import_domtblout()
 
-        x = self.filter_domtblout()
+        # file_path_csv
+        filtered_domtblout_path = self.filter_domtblout()
 
-        self.get_hmm_hit_table(hmmsearch_tbl=x)
+        search_results_dict = self.parse_domtblout(filtered_domtblout_path)
+
+        self.append_search_results_dict_to_hmm_tables(search_results_dict = search_results_dict)
 
         # remove the tmp file
         if anvio.DEBUG:
-            self.run.info("Filtered domtblout file", x)
+            self.run.info("Filtered domtblout file", filtered_domtblout_path)
         elif not anvio.DEBUG:
-            os.remove(x)
+            os.remove(filtered_domtblout_path)
 
 
     def import_domtblout(self):
-
+        """Import the domtblout file from hmmsearch then calculate query and target coverage"""
         # hmmsearch results so the queries are the hmm models and the targets are the ORFs
         col_info = [
             ('gene_callers_id',  int),   # target name
@@ -139,13 +149,17 @@ class FilterHmmHitsTable(object):
                             index_col=False)
         except Exception as e:
             print(e)
-            raise ConfigError("Doesn't look like a --domtblout")
+            raise ConfigError(f"Doesn't look like a --domtblout... anvi'o can't even... "
+                              f"Please look at this error message to find out what happened: "
+                              f"{e}")
 
         self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
         self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
 
     def filter_domtblout(self):
+        """Filter the hmm_hits table based on query and/or target coverage"""
+
         # Filtering conditions
         if self.query_coverage and self.target_coverage:
             df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
@@ -169,11 +183,8 @@ class FilterHmmHitsTable(object):
         return domtblout_tmp_out
 
 
-    def get_hmm_hit_table(self, hmmsearch_tbl=None):
-
-        # Remove old hmm_hits contigs_db_path
-        hmm_tables = TablesForHMMHits(self.contigs_db_path)
-        hmm_tables.remove_source(self.hmm_source)
+    def parse_domtblout(self, hmmsearch_tbl=None):
+        """Parse the new, filtered domtblout file"""
 
         # Parse domtblout
         alphabet= 'AA'
@@ -183,11 +194,19 @@ class FilterHmmHitsTable(object):
         parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
         search_results_dict = parser.get_search_results()
 
+        return search_results_dict
+
+
+    def append_search_results_dict_to_hmm_tables(self, search_results_dict=None):
+        """Put in the new filtered hmm_hits table to the contigsDB"""
+
+        # Remove old hmm_hits contigs_db_path
+        hmm_tables = TablesForHMMHits(self.contigs_db_path)
+        hmm_tables.remove_source(self.hmm_source)
+
         # Re-write hmm_hits table to contigDB
         sources = anvio.data.hmm.sources
-
         source = self.hmm_source
-
         kind_of_search = sources[source]['kind']
         domain = sources[source]['domain']
         all_genes_searched_against = sources[source]['genes']
