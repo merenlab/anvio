@@ -44,6 +44,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
+import anvio.genomedescriptions as genomedescriptions
 
 from anvio.dbops import ContigsSuperclass, ContigsDatabase
 from anvio.argparse import ArgumentParser
@@ -77,7 +78,11 @@ def main(args):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
     if args.list_hmm_sources:
-        ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        if args.contigs_db:
+            ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        elif args.external_genomes or args.internal_genomes:
+            genomedescriptions.GenomeDescriptions(args).list_HMM_info_and_quit()
+
         sys.exit()
 
     if args.concatenate_genes:

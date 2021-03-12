@@ -45,6 +45,10 @@ def main(args):
         raise ConfigError("Well, in order to run this program, you need %s to be installed on your system." %\
                                                                                      (', and '.join(missing_programs)))
 
+    # if args.domtblout and not args.hmmer_program == "hmmsearch":
+    #   raise ConfigError("--domtblout can only work with the program hmmsearch. "
+    #                     "Please specify this with --hmmer-program ")
+
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir and args.installed_hmm_profile:
@@ -80,7 +84,21 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it, hmm_program_to_use=args.hmmer_program)
+    # storing hmmer output only works one profile at a time since the output will be overwritten with each profile
+    if args.hmmer_output_dir and not len(sources.keys()) == 1:
+        raise ConfigError("You requested to save the HMMER output files in a directory, but this will not work with "
+                          "more than one HMM source because the output files would be overwritten with each new source. "
+                          "We are sorry for this, but we humbly request that you run on each source one at a time if you "
+                          "want to keep the HMMER output.")
+
+    if args.get_domtable_output and not args.hmmer_output_dir:
+        raise ConfigError("We can see that you have requested --get-domtable-output but you haven't asked us to store "
+                          "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
+                          "if you are never going to see it, so we figured we'd stop you right there. :)")
+
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
+                                     hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
+                                     get_domain_table_output=args.get_domtable_output)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
@@ -109,6 +127,8 @@ if __name__ == '__main__':
                                      f"of names for multiple profiles (but in that case don't put a space between each profile name). "
                                      f"Here is the list of installed profiles available to you: are the currently available ones: "
                                      f"{available_hmm_sources_pretty}."}))
+    groupB.add_argument(*anvio.A('hmmer-output-dir'), **anvio.K('hmmer-output-dir'))
+    groupB.add_argument(*anvio.A('get-domtable-output'), **anvio.K('get-domtable-output'))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))

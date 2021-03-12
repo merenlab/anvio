@@ -187,7 +187,7 @@ class ArgumentParser(argparse.ArgumentParser):
         to see can still be sorted out.
         """
 
-        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown']
+        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown', '--tmp-dir']
 
         args, unknown = parser.parse_known_args()
 
@@ -198,7 +198,11 @@ class ArgumentParser(argparse.ArgumentParser):
         # we we will make argparse complain about those.
         if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
             for f in allowed_ad_hoc_flags:
-                parser.add_argument(f, action='store_true')
+                # handle non-boolean flags
+                if f in ['--tmp-dir']:
+                    parser.add_argument(f)
+                else:
+                    parser.add_argument(f, action='store_true')
             parser.parse_args()
 
         return args

@@ -11,14 +11,7 @@ cp $files/data/genomes/bacteria/*.db                    $output_dir/metabolism_t
 cp $files/data/genomes/archaea/*.db                     $output_dir/metabolism_test
 cp $files/data/metagenomes/human_gut/IGD_SUBSET/*.db    $output_dir/metabolism_test
 cp $files/data/input_files/*.txt                        $output_dir/metabolism_test
-LOCAL_MOD_DB_HASH=$(sqlite3 $files/../../data/misc/KEGG/MODULES.db "select value from self where key='hash'")
 cd $output_dir/metabolism_test
-
-INFO "Changing modules DB hash ($LOCAL_MOD_DB_HASH) in test databases to avoid version errors"
-sqlite3 B_thetaiotamicron_VPI-5482.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 P_marinus_CCMP1375.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 S_islandicus_LS215.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
-sqlite3 CONTIGS.db "update self set value='$LOCAL_MOD_DB_HASH' where key='modules_db_hash'"
 
 INFO "Estimating metabolism on a single contigs database"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db -O single_contigs_db
@@ -82,3 +75,19 @@ anvi-estimate-metabolism -c S_islandicus_LS215.db --get-raw-data-as-json estimat
 
 INFO "Estimating from JSON output (debug option)"
 anvi-estimate-metabolism --estimate-from-json estimation_data.json -O from_json
+
+INFO "Testing --add-coverage for genome mode"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -O genome_coverage --add-coverage --kegg-output-modes modules,kofam_hits_in_modules
+
+INFO "Testing --add-coverage flag for a collection"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C bins_for_testing -O collection_coverage --add-coverage --kegg-output-modes modules,kofam_hits_in_modules
+
+INFO "Testing --add-coverage for metagenome mode"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db --metagenome-mode -O metagenome_coverage --add-coverage --kegg-output-modes modules,kofam_hits_in_modules
+
+INFO "Listing custom output headers with --add-coverage enabled"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db --add-coverage --list-available-output-headers
+
+INFO "Generating custom output with --add-coverage enabled"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db --add-coverage --kegg-output-modes modules_custom -O modules_custom_coverage \
+    --custom-output-headers kegg_module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection

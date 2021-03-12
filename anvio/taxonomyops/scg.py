@@ -380,7 +380,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         self.progress.new("Initializing contigs DBs")
         self.progress.update("...")
         g = MetagenomeDescriptions(self.args, run=run_quiet, progress=self.progress)
-        g.load_metagenome_descriptions()
+        g.load_metagenome_descriptions(skip_sanity_check=True)
 
         # NOTE some enforced flags here.
         self.compute_scg_coverages = g.profile_dbs_available

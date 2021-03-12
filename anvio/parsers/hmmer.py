@@ -54,21 +54,21 @@ class HMMERStandardOutput(object):
         | ...           ...         ...    ...     ...  ...    ...   ...           ...
         | 2896  Voltage_CLC  PF00654.19    320       1    !  210.9  29.1  1.700000e-66
         | 2897         YkuD  PF03734.13     30       1    !   48.2   0.2  8.400000e-17
-        | 
+        |
         |           i-evalue  hmm_start  hmm_stop hmm_bounds  ali_start  ali_stop  \
         | 0     6.600000e-22          1       237         [.          4       243
         | 1     1.700000e-07          1        95         [.          4        92
         | ...            ...        ...       ...        ...        ...       ...
         | 2896  7.800000e-64          3       352         ..         61       390
         | 2897  3.800000e-14          2       146         .]        327       459
-        | 
+        |
         |      ali_bounds  env_start  env_stop env_bounds  mean_post_prob  \
         | 0            ..          4       254         ..            0.74
         | 1            ..          4       148         ..            0.72
         | ...         ...        ...       ...        ...             ...
         | 2896         ..         59       392         ..            0.94
         | 2897         ..        326       459         ..            0.78
-        | 
+        |
         |       match_state_align              comparison_align             sequence_align
         | 0     vvtGggGFlGrrivkeLlrl...  +v+Gg+G++G++ v +L++ ...  LVLGGAGYIGSHAVDQLISK...
         | 1     vvtGggGFlGrrivkeLlrl...  ++ Gg+GFlG++i k L+++...  IIFGGSGFLGQQIAKILVQR...
@@ -616,17 +616,17 @@ class HMMERTableOutput(Parser):
             ('gene_callers_id', int),   # target name
             ('f',               str),   # accession
             ('gene_length',     int),   # tlen
-            ('hmm_name',        str),   # query name
-            ('hmm_id',          str),   # accession
+            ('gene_name',        str),   # query name
+            ('gene_hmm_id',          str),   # accession
             ('hmm_length',      int),   # qlen
-            ('evalue',          float), # E-value (full sequence)
-            ('bitscore',        float), # score (full sequence)
+            ('e_value',          float), # E-value (full sequence)
+            ('bit_score',        float), # score (full sequence)
             ('bias',            float), # bias (full sequence)
             ('match_num',       int),   # # (this domain)
             ('num_matches',     int),   # of (this domain)
             ('dom_c_evalue',    float), # c-Evalue (this domain)
             ('dom_i_evalue',    float), # i-Evalue (this domain)
-            ('dom_bitscore',    str),   # score (this domain)
+            ('dom_bit_score',    str),   # score (this domain)
             ('dom_bias',        float), # bias (this domain)
             ('hmm_start',       int),   # from (hmm coord)
             ('hmm_stop',        int),   # to (hmm coord)
@@ -640,7 +640,7 @@ class HMMERTableOutput(Parser):
         return list(zip(*col_info))
 
 
-    def get_search_results(self, noise_cutoff_dict=None, return_bitscore_dict=False):
+    def get_search_results(self, noise_cutoff_dict=None):
         """Goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
         This function makes sure only hits with a high enough bit score make it into the annotation dictionary.
@@ -650,33 +650,26 @@ class HMMERTableOutput(Parser):
         noise_cutoff_dict : dictionary
             dictionary of noise cutoff terms; see setup_ko_dict in kofam.py for an example
 
-        return_bitscore_dict : boolean
-            if True, this function will also return a dictionary of bitscores for each hit
-
         Returns
         =======
         annotations_dict : dictionary
-            dictionary of annotations, one annotation per HMM hit
-        bitscore_dict : dictionary
-            dictionary of bitscore information, one entry per HMM hit, including full and domain-level bitscore.
-            only returned if return_bitscore_dict is True, and only applies to GENE context.
+            dictionary of annotations, one annotation per HMM hit. Includes full and domain-level bitscore
+            for GENE context.
         """
 
         annotations_dict = {}
-        bit_score_info_dict = {}
-
 
         # this is the stuff we are going to try to fill with this:
         # search_table_structure = ['entry_id', 'source', 'alphabet', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
+        # plus we also add bitscore values for GENE context
 
         entry_id = 0
         num_hits_removed = 0 # a counter for the number of hits we don't add to the annotation dictionary
 
         for hit in list(self.dicts['hits'].values()):
             entry = None
-            bit_score_info_dict_entry = None
 
-            if self.context == 'GENE':
+            if self.context == 'GENE' or self.context == 'DOMAIN':
                 # Here we only add the hit to the annotations_dict if the appropriate bit score is above the
                 # threshold set in noise_cutoff_dict (which is indexed by profile name (aka gene_name in the hits dict)
                 if noise_cutoff_dict and hit['gene_name'] in noise_cutoff_dict.keys():
@@ -691,61 +684,38 @@ class HMMERTableOutput(Parser):
                         if hit['dom_bit_score'] < float(threshold):
                             keep = False
                     else:
-                        self.run.warning("Oh dear. The HMM profile %s has a strange score_type value: %s. The only accepted values "
-                                         "for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits "
-                                         "will be kept regardless of bit score. You have been warned." % (hit['gene_name'], score_type))
+                        raise ConfigError(f"Oh dear. The HMM profile {hit['gene_name']} has a strange score_type value: "
+                                          f"'{score_type}'. The only accepted values for this type are 'full' or 'domain', "
+                                          "so anvi'o cannot parse the hits to this profile. Please contact a developer for "
+                                          "help.")
 
                     if keep:
                         entry = {'entry_id': entry_id,
                                  'gene_name': hit['gene_name'],
                                  'gene_hmm_id': hit['gene_hmm_id'],
                                  'gene_callers_id': hit['gene_callers_id'],
-                                 'e_value': hit['e_value']}
-                        if return_bitscore_dict:
-                            bit_score_info_dict_entry = {'entry_id': entry_id,
-                                     'gene_name': hit['gene_name'],
-                                     'gene_hmm_id': hit['gene_hmm_id'],
-                                     'gene_callers_id': hit['gene_callers_id'],
-                                     'e_value': hit['e_value'],
-                                     'bit_score': hit['bit_score'],
-                                     'domain_bit_score': hit['dom_bit_score']}
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score']}
                     else:
                         num_hits_removed += 1
 
                 elif noise_cutoff_dict and hit['gene_name'] not in noise_cutoff_dict.keys():
                     # this should never happen, in an ideal world where everything is filled with butterflies and happiness
-                    self.run.warning("Hmm. While parsing your HMM hits, it seems the HMM profile %s was not found in the noise cutoff dictionary. "
-                                     "This should probably not ever happen, and you should contact a developer as soon as possible to figure out what "
-                                     "is going on. But for now, anvi'o is going to keep all hits to this profile. Consider those hits with a grain of salt, "
-                                     "as not all of them may be good." % hit['gene_name'])
-                    entry = {'entry_id': entry_id,
-                             'gene_name': hit['gene_name'],
-                             'gene_hmm_id': hit['gene_hmm_id'],
-                             'gene_callers_id': hit['gene_callers_id'],
-                             'e_value': hit['e_value']}
-                    if return_bitscore_dict:
-                        bit_score_info_dict_entry = {'entry_id': entry_id,
-                                 'gene_name': hit['gene_name'],
-                                 'gene_hmm_id': hit['gene_hmm_id'],
-                                 'gene_callers_id': hit['gene_callers_id'],
-                                 'e_value': hit['e_value'],
-                                 'bit_score': hit['bit_score'],
-                                 'domain_bit_score': hit['dom_bit_score']}
+                    raise ConfigError(f"Hmm. While parsing your HMM hits, it seems the HMM profile {hit['gene_name']} was not "
+                                     "found in the noise cutoff dictionary. This should probably not ever happen, and you should "
+                                     "contact a developer as soon as possible to figure out what is going on. But for now, anvi'o "
+                                     "is going to fail in order to avoid adding many garbage hits to your database.")
 
                 else:
                     entry = {'entry_id': entry_id,
                              'gene_name': hit['gene_name'],
                              'gene_hmm_id': hit['gene_hmm_id'],
                              'gene_callers_id': hit['gene_callers_id'],
-                             'e_value': hit['e_value']}
-                    if return_bitscore_dict:
-                        bit_score_info_dict_entry = {'entry_id': entry_id,
-                                 'gene_name': hit['gene_name'],
-                                 'gene_hmm_id': hit['gene_hmm_id'],
-                                 'gene_callers_id': hit['gene_callers_id'],
-                                 'e_value': hit['e_value'],
-                                 'bit_score': hit['bit_score'],
-                                 'domain_bit_score': hit['dom_bit_score']}
+                             'e_value': hit['e_value'],
+                             'bit_score': hit['bit_score'],
+                             'domain_bit_score': hit['dom_bit_score']}
+
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,
                          'gene_name': hit['gene_name'],
@@ -760,14 +730,9 @@ class HMMERTableOutput(Parser):
             if entry:
                 entry_id += 1
                 annotations_dict[entry_id] = entry
-                if return_bitscore_dict and bit_score_info_dict_entry:
-                    bit_score_info_dict[entry_id] = bit_score_info_dict_entry
 
-        self.run.info("Number of weak hits removed", num_hits_removed)
+        self.run.info("Number of weak hits removed by HMMER parser", num_hits_removed)
         self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
 
-        if return_bitscore_dict:
-            return annotations_dict, bit_score_info_dict
 
         return annotations_dict
-

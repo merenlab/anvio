@@ -188,23 +188,24 @@ class ProfileSplitter:
 
         filesnpaths.gen_output_directory(self.output_directory)
 
-        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This "
-                         "is quite a tricky operation, and even if it finishes successfully, you must double check everyting "
-                         "in the resulting profiles to make sure things worked as expected. Although we are doing our best to "
-                         "test all these, variation between projects make it impossible to be 100% sure.")
+        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. As of "
+                         "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
+                         "still quite a tricky operation and you must double-check things once your split data is ready.",
+                         header="ANVI'O TRICKY OPERATIONS DEPARTMENT", lc="green")
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
+
+        if self.summary.p_meta['blank']:
+            self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
+                             "intention is to split your contigs database only. This warning message is here to make sure "
+                             "you will not be upset when you realize your split profile missing a profile database :(", lc="yellow")
 
         for bin_name in self.bin_names_of_interest:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
 
-            if self.summary.p_meta['blank']:
-                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
-                                 "intention is to split your contigs database only. This warning message is here to make sure "
-                                 "you will not be upset when you realize your split profile missing a profile database :(")
-            else:
+            if not self.summary.p_meta['blank']:
                 b.do_profile_db()
 
                 if self.summary.auxiliary_profile_data_available:

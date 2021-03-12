@@ -92,6 +92,19 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Ribosomal_RNA_16S \
               --just-do-it
 
+INFO "Rerunning HMMs with hmmsearch"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -I Bacteria_71 \
+              --hmmer-program hmmsearch \
+              --domtblout $output_dir/hmmsearch_domtblout \
+              --just-do-it
+
+INFO "Filtering hmm_hits using target coverage"
+anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
+                                  --domtblout $output_dir/hmmsearch_domtblout_domtable.txt \
+                                  --hmm-source Bacteria_71 \
+                                  --target-coverage 0.9
+
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
                  --list

@@ -101,6 +101,9 @@ class ContigsSuperclass(object):
         if not hasattr(self, 'split_names_of_interest'):
             self.split_names_of_interest = set([])
 
+        if hasattr(self.args, 'split_names_of_interest'):
+            self.split_names_of_interest = set(self.args.split_names_of_interest)
+
         self.a_meta = {}
 
         self.splits_basic_info = {}
@@ -135,7 +138,7 @@ class ContigsSuperclass(object):
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
         D = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if D('mode') == 'pan' or D('mode') == 'manual':
+        if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual':
             return
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -152,9 +155,10 @@ class ContigsSuperclass(object):
         filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
+        self.progress.update('...')
+
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
-        self.progress.update('Setting contigs self data dict')
         self.a_meta = contigs_db.meta
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
@@ -521,23 +525,25 @@ class ContigsSuperclass(object):
 
         gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
+        where_clauses = []
         if requested_sources:
             self.check_functional_annotation_sources(requested_sources, dont_panic=dont_panic)
-
-            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
-                                                                  '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
-                                                                  error_if_no_data=False).values())
             self.gene_function_call_sources = requested_sources
+            where_clauses.append('''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])))
         else:
-            if self.split_names_of_interest:
-                gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
-            else:
-                gene_caller_ids_of_interest = set([])
-
-            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest, error_if_no_data=False)
-            hits = list(functions_dict.values())
-
             self.gene_function_call_sources = gene_function_sources_in_db
+
+        if self.split_names_of_interest:
+            gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
+            where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
+        else:
+            gene_caller_ids_of_interest = set([])
+
+        if len(where_clauses):
+            where_clause = ' AND '.join(where_clauses)
+            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+        else:
+            hits = list(contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name, error_if_no_data=False).values())
 
         for hit in hits:
             gene_callers_id = hit['gene_callers_id']
@@ -593,6 +599,7 @@ class ContigsSuperclass(object):
                 # quietly return matching sources
                 return [s for s in sources if s in gene_function_sources_in_db]
             else:
+                self.progress.reset()
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
                                   "they are (or here it is, whatever): %s." % \
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
@@ -987,7 +994,7 @@ class ContigsSuperclass(object):
         if not len(self.contig_sequences) or not set(gene_caller_ids_list).issubset(self.gene_caller_ids_included_in_contig_sequences_initialized):
             self.init_contig_sequences(gene_caller_ids_of_interest=set(gene_caller_ids_list))
 
-        if include_aa_sequences or report_aa_sequences:
+        if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
             contigs_db = ContigsDatabase(self.contigs_db_path)
             aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
             contigs_db.disconnect()
@@ -1047,22 +1054,24 @@ class ContigsSuperclass(object):
             #
             ###################################################################################
 
-            # time to update the information on the gene call in sequences dict. we first
-            # update start / stop positions of the gene GIVEN the sequence we are reporting
-            # since they are currently showing start/stop positions GIVEN the contig
-            # they were on.
-            original_gene_call_start = gene_call['start']
-            original_gene_call_stop = gene_call['stop']
-            sequence_with_flank_start = start
-            gene_call['start'] = original_gene_call_start - sequence_with_flank_start
-            gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
+            # if the user asked for flanking sequences, in the next conditional WE WILL UPDATE
+            # GENE START/STOP POSITIONS this is a special case of reporting for specific applications.
+            if flank_length:
+                # update start / stop positions of the gene GIVEN the sequence we are reporting
+                # since they are currently showing start/stop positions GIVEN the contig
+                # they were on.
+                original_gene_call_start = gene_call['start']
+                original_gene_call_stop = gene_call['stop']
+                sequence_with_flank_start = start
+                gene_call['start'] = original_gene_call_start - sequence_with_flank_start
+                gene_call['stop'] = original_gene_call_stop - original_gene_call_start + gene_call['start']
 
             # update the sequence
             gene_call['sequence'] = sequence
             gene_call['length'] = gene_call['stop'] - gene_call['start']
             gene_call['rev_compd'] = rev_compd
 
-            if include_aa_sequences or report_aa_sequences:
+            if include_aa_sequences or report_aa_sequences or output_file_path_external_gene_calls:
                 if gene_callers_id in aa_sequences_dict:
                     gene_call['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
@@ -1135,7 +1144,7 @@ class ContigsSuperclass(object):
         if output_file_path_external_gene_calls:
             utils.store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
-                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version'])
+                                                   headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
             self.run.info('Output external gene calls', output_file_path_external_gene_calls)
 
         if len(skipped_gene_calls):
@@ -1149,15 +1158,41 @@ class ContigsSuperclass(object):
 
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
+        # let's see if there are functions
+        gene_functions_found = False
+        if 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
+            self.init_functions(requested_sources=["COG20_FUNCTION"])
+            gene_functions_found = True
+            self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
+                             "and will include that information in the output GFF file (anvi'o also admits that "
+                             "it is looking for `COG20_FUNCTION` instead of an annotation source of your choice due to "
+                             "the laziness of its developers. If you would like to be able to choose a different "
+                             "annotation source, please let the developers know and they will parameterize this option).",
+                             header="FUNCTIONS FOUND 🎊", lc="green")
+        else:
+            self.run.warning("Just so you know: anvi'o wanted to include functions for your genes into the GFF file "
+                             "but your contigs database does not seem to include annotations from `COG20_FUNCTION`. "
+                             "You can ignore this message if you don't care. But if you would like your GFF file to "
+                             "include functions for your genes, you can run `anvi-run-ncbi-cogs` on your contigs db "
+                             "and re-run this command to have an output file with functions :)")
+
         self.progress.new('Storing sequences')
         self.progress.update('...')
         with open(output_file_path, 'wt') as output:
             output.write('##gff-version 3\n')
             for gene_callers_id in gene_caller_ids_list:
                 entry = sequences_dict[gene_callers_id]
-                output.write('{contig}\t{source}\t{type}\t{start}\t{stop}\t.\t{strand}\t.\tID={id}'.format(
-                    contig=entry['contig'], source='.', type='CDS', start=entry['start']+1, stop=entry['stop'],
-                    strand=entry['direction'].replace('f','+').replace('r','-'), id=gene_callers_id))
+                strand = entry['direction'].replace('f','+').replace('r','-')
+
+                entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
+                attributes = f"ID={entry_id}"
+                if gene_functions_found:
+                    if gene_callers_id in self.gene_function_calls_dict:
+                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id]['COG20_FUNCTION']
+                        accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+                        attributes += f";Name={accession};db_xref=COG20:{accession};product={function}"
+
+                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
@@ -2611,6 +2646,7 @@ class ProfileSuperclass(object):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         init_gene_coverages = A('init_gene_coverages')
+        skip_consider_gene_dbs = A('skip_consider_gene_dbs')
         init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
@@ -2753,7 +2789,7 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
                                                                                          self.p_meta['contigs_db_hash'])
 
-        if self.collection_name and self.bin_names and len(self.bin_names) == 1:
+        if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
             self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
                                                                        self.collection_name,
@@ -3775,6 +3811,11 @@ class ContigsDatabase:
             self.meta['gene_callers'] = self.db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')[::-1]
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
+            # set a project name for the contigs database without any funny
+            # characters to make sure it can be used programmatically later.
+            self.meta['project_name_str'] = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_') \
+                                    if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
+
             if 'creation_date' not in self.meta:
                 raise ConfigError("The contigs database ('%s') seems to be corrupted :/ This happens if the process that "
                                    "that generates the database ends prematurely. Most probably, you will need to generate "
@@ -3983,15 +4024,16 @@ class ContigsDatabase:
 
         if not project_name:
             project_name = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
+            project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
 
             if project_name:
-                self.run.warning("You are generating a new anvi'o contigs database, but you are not specifying a "
-                                 "project name for it. FINE. Anvi'o, in desperation, will use the input file name "
-                                 "to set the project name for this contigs database (which is '%s'). If you are not "
-                                 "happy with that, feel free to kill and restart this process. If you are not happy "
-                                 "with this name, but you don't like killing things either, maybe next time you "
-                                 "should either name your FASTA files better, or use the `--project-name` parameter "
-                                 "to set your desired name." % project_name, "Anvi'o made things up for you")
+                self.run.warning(f"You are generating a new anvi'o contigs database, but you are not specifying a "
+                                 f"project name for it. FINE. Anvi'o, in desperation, will use the input file name "
+                                 f"to set the project name for this contigs database (i.e., '{project_name}'). If you are not "
+                                 f"happy with that, feel free to kill and restart this process. If you are not happy "
+                                 f"with this name, but you don't like killing things either, maybe next time you "
+                                 f"should either name your FASTA files better, or use the `--project-name` parameter "
+                                 f"to set your desired name.", "Anvi'o made things up for you", lc="green")
             else:
                 raise ConfigError("Sorry, you must provide a project name for your contigs database :/ Anvi'o tried "
                                   "to make up one, but failed.")
@@ -4673,6 +4715,15 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
             names_in_data = sorted([n.strip() for n in order_data.split(',')])
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+
+        if not len(names_in_db):
+            raise ConfigError(f"Your {db_type} database does not have any item names stored, but whoever called this "
+                              f"function asked for a check between the item names in the items order and item names in "
+                              f"the database. Well. It will not happen. A proper way to deal with it is to set the "
+                              f"variable `check_names_consistency` to `False` when calling this function. This message "
+                              f"is not to be seen by a user, so if you are a user, it means someone screwed up something "
+                              f"somewhere, and those of us at the anvi'o headquarters for snafu handling sincerely apologize "
+                              f"sincerely on their behalf :(")
 
         names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
         if names_in_db_not_in_data:

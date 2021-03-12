@@ -14,6 +14,8 @@ import copy
 import hashlib
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -40,7 +42,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
+P = terminal.pluralize
 
 class GenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress):
@@ -51,6 +53,7 @@ class GenomeDescriptions(object):
         self.genomes = {}
         self.internal_genomes_dict = None
         self.external_genomes_dict = None
+        self.initialized = False
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.just_do_it = A('just_do_it')
@@ -132,6 +135,9 @@ class GenomeDescriptions(object):
 
 
     def list_HMM_info_and_quit(self):
+        if not self.initialized:
+            self.load_genomes_descriptions()
+
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
         # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
@@ -148,14 +154,14 @@ class GenomeDescriptions(object):
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
-            for source in hmm_sources_in_all_genomes:
+            for source in sorted(hmm_sources_in_all_genomes):
                 s = hmm_sources_info[source]
                 self.run.info_single('%s [type: %s] [num genes: %d]' % (source, s['search_type'], len(s['genes'])))
             sys.exit(0)
 
         if self.list_available_gene_names:
             self.run.warning(None, 'GENES IN HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
-            for source in hmm_sources_in_all_genomes:
+            for source in sorted(hmm_sources_in_all_genomes):
                 s = hmm_sources_info[source]
                 gene_names = ', '.join(sorted([g.strip() for g in s['genes'].split(',')]))
                 self.run.info_single('%s [type: %s]: %s' % (source, s['search_type'], gene_names), nl_after = 2)
@@ -193,7 +199,7 @@ class GenomeDescriptions(object):
         return hmm_sources_in_all_genomes
 
 
-    def load_genomes_descriptions(self, skip_functions=False, init=True):
+    def load_genomes_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load genome descriptions from int/ext genome dictionaries"""
 
         # start with a sanity check to make sure name are distinct
@@ -283,11 +289,15 @@ class GenomeDescriptions(object):
                 for key in contigs_db.meta:
                     g[key] = contigs_db.meta[key]
 
+        # we are done hre.
+        self.initialized = True
+
         # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
-    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None):
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None, return_only_functions=False):
         """This function fetches dictionaries of functions, AA sequences, and DNA sequences for a particular genome.
 
         PARAMETERS
@@ -297,6 +307,8 @@ class GenomeDescriptions(object):
         requested_source_list, list
             the functional annotation sources you want data for. If not provided, data will be fetched for all sources in
             self.function_annotation_sources
+        return_only_functions, bool
+            Return only functions, and don't bother with sequences
 
         RETURNS
         =======
@@ -310,7 +322,16 @@ class GenomeDescriptions(object):
 
         g = self.genomes[genome_name]
 
-        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        args = argparse.Namespace()
+        args.contigs_db = g['contigs_db_path']
+
+        # we are about to initialize the contigs super, but before that, we need to make sure that
+        # the class will know about the splits that describe this genome in the contigs database
+        # IF it is an internal genome. otherwise we will end up gathering all the functions in
+        # gontigs database for it.
+        if genome_name in self.internal_genome_names:
+            args.split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(g)
+
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
@@ -318,6 +339,9 @@ class GenomeDescriptions(object):
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
+
+        if return_only_functions:
+            return (function_calls_dict, None, None)
 
         # get dna sequences
         gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
@@ -394,8 +418,8 @@ class GenomeDescriptions(object):
                 if len(function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
-                                     "function annotation sources that are common to all of your genomes, and they will be used whenever "
-                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
+                                     "functional annotation sources that are common to all of your genomes, and they will be used whenever "
+                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
                                             (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
@@ -540,11 +564,10 @@ class GenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.genomes is good to go"""
 
-        self.progress.new('Sanity checks')
-
         # depending on whether args requested such behavior.
-        self.progress.update("...")
         self.list_HMM_info_and_quit()
+
+        self.progress.new('Sanity checks')
 
         # make sure genes are called in every contigs db:
         self.progress.update("Checking gene calls ..")
@@ -644,10 +667,6 @@ class GenomeDescriptions(object):
         Based on similar function for pangenomes in summarizer.py - Credits to Alon
         """
 
-        # sanity check for R packages
-        package_dict = utils.get_required_packages_for_enrichment_test()
-        utils.check_R_packages_are_installed(package_dict)
-
         # output wrangling
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
@@ -658,54 +677,18 @@ class GenomeDescriptions(object):
             # if no output was requested it means a programmer is calling this function
             # in that case, we will use a tmp file for the enrichment output
             enrichment_file_path = filesnpaths.get_temp_file_path()
-        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError(f"The file {enrichment_file_path} already exists and anvi'o doesn't want to overwrite it "
-                               "without express permission. If you think overwriting it is okay, then please `rm` the "
-                               "existing file before you run this program again.")
 
         # this is a hack (credits to Alon) which will make the functional occurrence method print to the tmp file
         # (we need this because the functional occurrence method prints to the args.output_file)
         self.args.output_file = tmp_functional_occurrence_file
-        self.run.info("Temporary functional occurrence file: ", tmp_functional_occurrence_file)
 
         # get functional occurrence input file
         self.functional_occurrence_stats()
 
         # run enrichment script
-        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
-                                                                                      output_file_path)
-        log_file = filesnpaths.get_temp_file_path()
-        self.run.info("Enrichment script log file", log_file)
-        self.progress.new('Functional enrichment analysis')
-        self.progress.update("Running Amy's enrichment")
-        utils.run_command(cmd, log_file)
-        self.progress.end()
+        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
 
-        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError("Something went wrong during the functional enrichment analysis. "
-                              f"We don't know what happened, but this log file could contain some clues: {log_file}")
-
-        if filesnpaths.is_file_empty(enrichment_file_path):
-            raise ConfigError("Something went wrong during the functional enrichment analysis. "
-                              "An output file was created, but it is empty... We don't know why this happened, "
-                              f"but this log file could contain some clues: {log_file}")
-
-        # if everything went okay, we remove the log file
-        if anvio.DEBUG:
-            self.run.warning("Just so you know, because you ran with --debug, we are keeping some temporary files around "
-                             f"for you to look at - the enrichment script's log file at {log_file} and the functional "
-                             f"occurrence output at {tmp_functional_occurrence_file}. You may want to remove them once you "
-                             "are done with them.", lc='green', header="JUST FYI")
-        else:
-            self.run.warning("The temporary files generated by this program have been removed from your system. If something "
-                             "seems strange and you want to take a look at those, please re-run this program with --debug flag.",
-                             lc='green', header="JUST FYI")
-            os.remove(log_file)
-            os.remove(tmp_functional_occurrence_file)
-
-        if not output_file_path:
-            # if a programmer called this function then we return a dict
-            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
+        return enrichment_stats
 
 
     def functional_occurrence_stats(self):
@@ -739,14 +722,14 @@ class GenomeDescriptions(object):
             sys.exit()
 
         if not functional_annotation_source:
-            raise ConfigError("You haven't provided a functional annotation source to make sense of functional "
-                              "occurrence stats in your genomes. These are the available annotation sources "
+            raise ConfigError(f"You haven't provided a functional annotation source to make sense of functional "
+                              f"occurrence stats in your genomes. These are the available annotation sources "
                               f"that are common to all genomes, so pick one: {self.function_annotation_sources}.")
 
         if functional_annotation_source not in self.function_annotation_sources:
             sources_string = ", ".join(self.function_annotation_sources)
             raise ConfigError(f"Your favorite functional annotation source '{functional_annotation_source}' does not seem to be "
-                              "among one of the sources that are available to you. Here are the ones you should choose from: "
+                              f"among one of the sources that are available to you. Here are the ones you should choose from: "
                               f"{sources_string}.")
 
         # get the groups
@@ -773,10 +756,9 @@ class GenomeDescriptions(object):
             groups_to_genomes_dict[grp] = set([genome for genome in genomes_to_groups_dict.keys() if str(genomes_to_groups_dict[genome]) == grp])
 
         # give the user some info before we continue
-        if not anvio.QUIET:
-            self.run.info('Functional annotation source', functional_annotation_source)
-            self.run.info('Groups', ', '.join(groups))
-            self.run.info('Include ungrouped', include_ungrouped)
+        self.run.info('Functional annotation source', functional_annotation_source)
+        self.run.info('Groups', ', '.join(groups))
+        self.run.info('Include ungrouped', include_ungrouped)
 
         self.progress.new('Functional occurrence analysis')
         self.progress.update('Getting functions from database')
@@ -810,9 +792,9 @@ class GenomeDescriptions(object):
         if groups_few_genomes:
             self.progress.reset()
             groups_string = ", ".join(groups_few_genomes)
-            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
-                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
-                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+            self.run.warning(f"Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             f"The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             f"but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
                              f"{groups_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
@@ -856,13 +838,13 @@ class GenomeDescriptions(object):
     def get_occurrence_of_functions_in_genomes(self, genome_to_func_summary_dict):
         """Here we convert a dictionary of function annotations in each genome to a dictionary of counts per function.
 
-        PARAMETERS
+        Parameters
         ==========
         genome_to_func_summary_dict : multi-level dict
             The format of this dictionary is
             (accession, annotation, e_value) = genome_to_func_summary_dict[genome_name][gene_caller_id][annotation_source]
 
-        RETURNS
+        Returns
         =======
         func_occurrence_dict :
             dictionary of function annotation counts in each genome. Its format is
@@ -952,7 +934,7 @@ class MetagenomeDescriptions(object):
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
-    def load_metagenome_descriptions(self, skip_functions=False, init=True):
+    def load_metagenome_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load metagenome descriptions"""
 
         # start with a sanity check to make sure name are distinct
@@ -991,8 +973,8 @@ class MetagenomeDescriptions(object):
             for key in contigs_db.meta:
                 g[key] = contigs_db.meta[key]
 
-        # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def get_metagenome_hash(self, entry):
@@ -1026,3 +1008,512 @@ class MetagenomeDescriptions(object):
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
+
+
+class AggregateFunctions:
+    """Aggregate functions from anywhere.
+
+    The purpose of this class is to collect functions from many distinct databases,
+    including external genomes, internal genomes, and/or a genomes storage, and report
+    a set of dictionaries that give access to the presence/absence and frequency
+    of all functions annotated by a single source.
+
+    One fancy function in AggregateFunctions is `report_functions_per_group_stats`. For
+    instance, one could initiate the class in the following way to get a functions per
+    group stats output file for functional enrichment analysis:
+
+        >>> import argparse
+        >>> import anvio.genomedescriptions as g
+        >>> args = argparse.Namespace(external_genomes=external_genomes_path, annotation_source='KOfam')
+        >>> groups = {'adoles': ['B_adolescentis', 'B_adolescentis_1_11', 'B_adolescentis_22L', 'B_adolescentis_6', 'B_adolescentis_ATCC_15703'],
+                      'lactis': ['B_animalis', 'B_lactis_AD011', 'B_lactis_ATCC_27673', 'B_lactis_B420', 'B_lactis_BB_12', 'B_lactis_BF052'],
+                      'longum': ['B_longum', 'B_longum_AH1206', 'B_longum_BBMN68', 'B_longum_BORI', 'B_longum_CCUG30698', 'B_longum_GT15']}
+        >>> facc = g.AggregateFunctions(args, layer_groups=groups)
+        >>> facc.report_functions_per_group_stats(output_file_path)
+
+    For other uses of this class, see the `functional` mode in the interactive class
+    which is accessed by anvi-display-functions, or anvi-script-gen-functions-per-group-stats-output
+    that gives access to `report_functions_per_group_stats` function to generate the
+    functions across groups output.
+
+    Paremeters
+    ==========
+    args : argparse.Namespace object
+        See the class header for options.
+    layer_groups : dict
+        When provided, the class will recognize that genomes belong to distinct groups
+        and will prepare grouped frequency and presence-absence dicts, as well. This
+        can ALTERNATIVELY be defined through a TAB-delimited input file passed through
+        args.
+    """
+
+    def __init__(self, args, layer_groups=None, skip_sanity_check=False, skip_init=False, r=run, p=progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.genomes_storage_path = A('genomes_storage')
+        self.external_genomes_path = A('external_genomes')
+        self.internal_genomes_path = A('internal_genomes')
+        self.function_annotation_source = A('annotation_source')
+        self.min_occurrence = A('min_occurrence') or 1
+        self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
+        self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
+        self.layer_groups_input_file_path = A('groups_txt') or False
+        self.print_genome_names_and_quit = A('print_genome_names_and_quit') or False
+
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        # these are some primary data structures this class reports
+
+        # remember, 'key' here can be accession ids, or functio names
+        # depending on `self.aggregate_based_on_accession`
+        self.hash_to_key = {}
+
+        # this variable makes sure even if functions are aggregated
+        # using accession ids, there is a way to resolve function
+        # names that correspond to each item. This is going to be a
+        # life saver while trying to summarize things
+        self.hash_to_function_dict = {}
+
+        # distribution of 'keys' (i.e., accession ids or functions)
+        # across genomes based on the frequency of observation or
+        # presence absence. Having two disctionaries for this sounds
+        # stupid at first (because it is), since the presence/absence
+        # data can always be recovered from the frequency data. but
+        # the momory fingerprint of these dicts are always going to be
+        # nothing and will save additional steps in places where an
+        # instance is used.
+        self.functions_across_layers_frequency = {}
+        self.functions_across_layers_presence_absence = {}
+
+        # just like the previous two, but rather than genome names as
+        # layers, these dicts will be tracking 'gruops' as defined by
+        # the member variable, `self.layer_groups`. please note that
+        # the presence-absence dictionary will not be composed of
+        # binary variables, but will have the sum of presence absence
+        # of a given function across all layers in a given group
+        self.functions_across_groups_frequency = {}
+        self.functions_across_groups_presence_absence = {}
+
+        # two additional dicts to alwys be able to convert accession
+        # ids to function names and vice versa. remember, an accession
+        # id will resolve to a single function name (unless the provider
+        # of function names did not screw things up), but a function
+        # name can resolve to multiple accession ids, hence the latter
+        # dict will contain will contain for each of its keys a list.
+        self.accession_id_to_function_dict = {}
+        self.function_to_accession_ids_dict = {}
+
+        # to keep track of all layer names and where they are coming from.
+        self.layer_names_considered = set({})
+        self.layer_names_from_internal_genomes = []
+        self.layer_names_from_external_genomes = []
+        self.layer_names_from_genomes_storage = []
+
+        # if there are 'groups' defined through the `layer_groups` variable
+        # or through a `self.layer_groups_input_file_path`, this class will
+        # automatically perform a functional enrichment analysis and will report
+        # its output in the following dictionary.
+        self.functional_enrichment_stats_dict = None
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+
+        # this will summarize what happened in a text form.
+        self.summary_markdown = None
+
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        # Here we will quickly deal with layer groups during the initialization of the class
+        # this section of the init will establish a propeer `self.layer_groups` variable for
+        # later use.
+        self.layer_name_to_group_name = {}
+        self.layer_groups_defined = False
+        self.layer_groups = None
+
+        if layer_groups or self.layer_groups_input_file_path:
+            if layer_groups and not isinstance(layer_groups, dict):
+                raise ConfigError("The variable `layer_groups` is supposed to be of type `dict`.")
+
+            if self.layer_groups_input_file_path and layer_groups:
+                raise ConfigError("You can either specify layer groups by passing a dictionary, or "
+                                  "you can use the `layer_groups_input_file_path` argument, but not "
+                                  "both :/")
+
+            if self.layer_groups_input_file_path:
+                self.layer_name_to_group_name, self.layer_groups = utils.get_groups_txt_file_as_dict(self.layer_groups_input_file_path)
+            elif layer_groups:
+                self.layer_groups = layer_groups
+
+                # Finally, last AND least, a small helper dictionary we will use if there are groups defined
+                # by the user:
+                if self.layer_groups:
+                    for group_name in self.layer_groups:
+                        for layer_name in self.layer_groups[group_name]:
+                            self.layer_name_to_group_name[layer_name] = group_name
+
+            if self.layer_groups:
+                self.layer_groups_defined = True
+
+            group_names = sorted(list(self.layer_groups.keys()))
+            self.run.info('Groups found and parsed', ', '.join(group_names))
+        # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+
+        self.key_hash_prefix = f"{'acc_' if self.aggregate_based_on_accession else 'func_'}"
+        self.K = lambda: 'accession ID' if self.aggregate_based_on_accession else 'function'
+        self.V = lambda: 'function' if self.aggregate_based_on_accession else 'accession ID'
+
+        self.sanity_checked = False
+        self.initialized = False
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+        if not skip_init:
+            self.init()
+
+
+    def init(self):
+        if self.initialized:
+            raise ConfigError("Soemone already called the init function on this instance. You can't do it again. "
+                              "Go get your own instance :(")
+
+        # populate main dictionaries
+        self._init_functions_from_int_ext_genomes()
+        self._init_functions_from_genomes_storage()
+
+        # show the user what genome names are being consdiered for this analysis
+        if self.print_genome_names_and_quit:
+            self.run.info(f"Genome names found (n={len(self.layer_names_considered)})", ' '.join(self.layer_names_considered))
+            sys.exit()
+
+        self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
+
+        if self.min_occurrence:
+            num_occurrence_of_keys = [(c, sum(self.functions_across_layers_presence_absence[c].values())) for c in self.functions_across_layers_presence_absence]
+            keys_to_remove = set([key for (key, frequency) in num_occurrence_of_keys if frequency < self.min_occurrence])
+
+            # the following if block takes care of cleaning up both `self.accession_id_to_function_dict` and
+            # `self.function_to_accession_ids_dict` dicts in a mindful fashion in addition to the cleanup of
+            # all other dicts.
+            if len(keys_to_remove):
+                for key in keys_to_remove:
+                    self.functions_across_layers_frequency.pop(key)
+                    self.functions_across_layers_presence_absence.pop(key)
+
+                    if self.layer_groups_defined:
+                        self.functions_across_groups_frequency.pop(key)
+                        self.functions_across_groups_presence_absence.pop(key)
+
+                    self.hash_to_key.pop(key) if key in self.hash_to_key else None
+
+                    # these are the trick ones since how this step should be handled will depend on
+                    # what is key and what is value in the instance configuration:
+                    if self.aggregate_based_on_accession:
+                        if key in self.hash_to_key:
+                            accession = self.hash_to_key[key]
+                            function = self.accession_id_to_function_dict[accession]
+                            self.accession_id_to_function_dict.pop(accession)
+                            self.function_to_accession_ids_dict[function].pop(accession)
+                            if not len(self.function_to_accession_ids_dict[function]):
+                                self.function_to_accession_ids_dict.pop(function)
+                    else:
+                        if key in self.function_to_accession_ids_dict:
+                            accessions = self.function_to_accession_ids_dict[key]
+                            self.function_to_accession_ids_dict.pop(key)
+                            for accession in accessions:
+                                self.accession_id_to_function_dict.pop(accession)
+
+                self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
+                                 f"{self.function_annotation_source} from downstream analyses since they occurred "
+                                 f"in less than {self.min_occurrence} genomes.")
+
+        if self.layer_groups:
+            self.do_functional_enrichment_analysis()
+
+        self.update_summary_markdown()
+
+        self.initialized = True
+
+
+    def sanity_check(self):
+        if not self.function_annotation_source:
+            raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
+                              "an annotation source to be used for aggregating all the information from all "
+                              "the genomes. Someoen didn't specify any function annotation source :/")
+
+        if not self.external_genomes_path and not self.internal_genomes_path and not self.genomes_storage_path:
+            raise ConfigError("You must provide at least one source of genomes to this class :/")
+
+        if self.min_occurrence and not isinstance(self.min_occurrence, int):
+            raise ConfigError("Obviously, --min-occurrence must be an integer.")
+
+        if self.min_occurrence < 1:
+            raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
+
+        if self.layer_groups_defined:
+            groups_with_single_layers = set([])
+
+            if not len(self.layer_groups) > 1:
+                raise ConfigError("Layer groups must have two or more groups.")
+
+            for layer_group in self.layer_groups:
+                if not isinstance(self.layer_groups[layer_group], list):
+                    raise ConfigError("Each layer group must be composed list of layer names :(")
+
+                if not len(self.layer_groups[layer_group]) > 1:
+                    groups_with_single_layers.add(layer_group)
+
+                if len(set(self.layer_groups[layer_group])) != len(self.layer_groups[layer_group]):
+                    raise ConfigError("Items in each layer group must be unique :/")
+
+            if len(groups_with_single_layers):
+                self.run.warning(f"In an ideal world, each group would describe at least two layer names. It is not "
+                                 f"the case for {P('this group', len(groups_with_single_layers), alt='these groups')}: "
+                                 f"{', '.join(groups_with_single_layers)}. That is OK and anvi'o will continue with this "
+                                 f"analysis, but if something goes wrong with your stats or whatever, you will remember "
+                                 f"this moment and go like, \"Hmm. That's why my adjusted q-values are like one point zero 🤔\".")
+
+            # sanity check 3000 -- no joker shall pass:
+            list_of_layer_names_lists = list(self.layer_groups.values())
+            for i in range(0, len(list_of_layer_names_lists) - 1):
+                for j in range(i + 1, len(list_of_layer_names_lists)):
+                    co_occurring_names = set(list_of_layer_names_lists[i]).intersection(set(list_of_layer_names_lists[j]))
+                    if len(co_occurring_names):
+                        raise ConfigError(f"Layer names should occur in only one group, but AS YOU CAN GUESS BY NOW, that is not the case "
+                                          f"with your groups :/ At the least, the layer name '{co_occurring_names.pop()}' occurs in more than "
+                                          f"one group.")
+
+        self.sanity_checked = True
+
+
+    def update_combined_functions_dicts(self, genome_name, accession, function):
+        """Modify accession dicts with new things.
+
+        This function is necessary to avoid redundant code to handle function dicts of different kinds
+        we get from int/external genomes and genome storage. a redesign of the genome storage will likely
+        fix this problem in the future by unifying how functions are collected from different anvi'o databases.
+        """
+
+        if genome_name not in self.layer_names_considered:
+            self.layer_names_considered.add(genome_name)
+
+        key, value = (accession, function) if self.aggregate_based_on_accession else (function, accession)
+
+        if not key or not len(key):
+            raise ConfigError(f"Anvi'o is very sorry to tell you that the annotation source you have chosen "
+                              f"here, '{self.function_annotation_source}', seem to include "
+                              f"{self.V()}s with no {self.K()}s. Here is one example function with no "
+                              f"{self.K()}: '{value}'. You will have to choose another annotation source :(")
+
+        if not function:
+            raise ConfigError(f"It saddens anvi'o to let you know that there are some {self.V}s in "
+                              f"'{self.function_annotation_source}' that clearly are blank. Here is an "
+                              f"example {self.K()} that has a blank {self.V()}: '{key}'. Either you "
+                              f"need to choose another annotation source, or fix this problem with the "
+                              f"existing annotations from {self.function_annotation_source} by using a "
+                              f"combination of `anvi-export-functions` and `anvi-import-functions` (which "
+                              f"is totally doable and you certainly can do it).")
+
+        if self.aggregate_using_all_hits:
+            pass
+        else:
+            key = key.split('!!!')[0]
+            value = value.split('!!!')[0]
+
+            # we wish to keep track of actual accessions and functions, too:
+            accession, function = (key, value) if self.aggregate_based_on_accession else (value, key)
+
+        # from now on we will only work with hashes of our keys, whether the keys here are function names or
+        # accession ids as defined by self.aggregate_based_on_accession boolean. this is a necessary
+        # complexity because function names are free text, can be very long, include weird characters. and
+        # when we cluster data with those keys, some characters will be replaced with others or otherwise
+        # they will break the newick file format and so on. using key hashes will make sure we don't get
+        # screwed by that, and we will always use the lookup dict `self.hash_to_key` to find out what was
+        # our key (and that's exactly what the next few lines of code do here):
+        if key in self.hash_to_key:
+            key_hash = self.hash_to_key[key]
+        else:
+            key_hash = self.key_hash_prefix + hashlib.sha224(key.encode('utf-8')).hexdigest()[0:12]
+            self.hash_to_key[key] = key_hash
+            self.hash_to_function_dict[key_hash] = {self.function_annotation_source: function}
+
+        # --
+        if key_hash not in self.functions_across_layers_frequency:
+            self.functions_across_layers_frequency[key_hash] = Counter({})
+            self.functions_across_layers_presence_absence[key_hash] = Counter({})
+
+        self.functions_across_layers_frequency[key_hash][genome_name] += 1
+        self.functions_across_layers_presence_absence[key_hash][genome_name] = 1
+
+        if accession not in self.accession_id_to_function_dict:
+            self.accession_id_to_function_dict[accession] = {self.function_annotation_source: function}
+
+        if function not in self.function_to_accession_ids_dict:
+            self.function_to_accession_ids_dict[function] = {self.function_annotation_source: set([accession])}
+        else:
+            self.function_to_accession_ids_dict[function][self.function_annotation_source].add(accession)
+
+        return
+
+
+    def check_layer_names(self, layer_names=[]):
+        if not isinstance(layer_names, list):
+            raise ConfigError("`layer_names` must be of type list :/")
+
+        already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
+        if len(already_in_the_dict):
+            raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
+                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+        else:
+            # you good fam
+            pass
+
+
+    def _init_functions_from_int_ext_genomes(self):
+        if not self.external_genomes_path and not self.internal_genomes_path:
+            return
+
+        g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
+        g.load_genomes_descriptions()
+        g.init_functions()
+
+        self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
+        self.layer_names_from_external_genomes = copy.deepcopy(g.external_genome_names)
+
+        for genome_name in g.genomes:
+            self.check_layer_names([genome_name])
+
+            gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=[self.function_annotation_source], return_only_functions=True)
+            # reminder, an entry in gene_functions_in_genome_dict looks like this:
+            # 2985: {'COG20_PATHWAY': ('COG0073!!!COG0143', 'Aminoacyl-tRNA synthetases', 0)}
+            for entry in gene_functions_in_genome_dict.values():
+                accession, function, e_value = entry[self.function_annotation_source]
+
+                self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _init_functions_from_genomes_storage(self):
+        if not self.genomes_storage_path:
+            return
+
+        from anvio.genomestorage import GenomeStorage
+        g = GenomeStorage(storage_path=self.genomes_storage_path, function_annotation_sources=[self.function_annotation_source], run=terminal.Run(verbose=False), progress=self.progress, skip_init=True)
+
+        # make sure we are not overwriting existing genome names in int or ext genomes:
+        genome_names_in_storage_db = list(g.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name', unique=True))
+
+        self.layer_names_from_genomes_storage = copy.deepcopy(genome_names_in_storage_db)
+
+        self.check_layer_names(genome_names_in_storage_db)
+
+        gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
+        for entry in gene_functions_in_genomes_dict.values():
+            # an entry in gene_functions_in_genomes_dict looks lke this:
+            # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
+            genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
+
+            self.update_combined_functions_dicts(genome_name, accession, function)
+
+
+    def _populate_group_dicts(self):
+        if not self.layer_groups_defined:
+            return
+
+        for key_hash in self.functions_across_layers_frequency:
+            if key_hash not in self.functions_across_groups_frequency:
+                self.functions_across_groups_frequency[key_hash] = Counter({})
+                self.functions_across_groups_presence_absence[key_hash] = Counter({})
+
+            for layer_name in self.layer_names_considered:
+                if layer_name in self.layer_name_to_group_name:
+                    if layer_name in self.functions_across_layers_frequency[key_hash]:
+                        group_name = self.layer_name_to_group_name[layer_name]
+                        self.functions_across_groups_frequency[key_hash][group_name] += self.functions_across_layers_frequency[key_hash][layer_name]
+                        self.functions_across_groups_presence_absence[key_hash][group_name] += 1
+
+
+    def update_summary_markdown(self):
+        G = lambda x: '\n'.join(['* %s' % l for l in x]) if len(x) else "*None :/*"
+
+        self.summary_markdown = (f"### Quick overview\nUsing the function annotation source **'{self.function_annotation_source}'**, anvi'o "
+                                 f"aggregated **{len(self.hash_to_key)} unique {self.K()}s** that occurred in **at least {self.min_occurrence}** "
+                                 f"of the total {len(self.layer_names_considered)} *layers*. Here we use the term 'layer' instead of 'genomes', "
+                                 f"since what anvi'o assumes to be a genome might be a metagenome depending on the contigs database you have provided. "
+                                 f"If you know what you have, feel free to replace the term 'layer' with 'genome' in your mind.")
+
+        self.summary_markdown += (f"\n\n**Internal genomes** ({P('layer', len(self.layer_names_from_internal_genomes))}):\n\n{G(self.layer_names_from_internal_genomes)}"
+                                  f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
+                                  f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
+
+        if self.layer_groups:
+            self.summary_markdown += (f"\n\n### Functional enrichment analysis\nAnvi'o also performed a functional enrichment analysis based on {len(self.layer_groups)} "
+                                      f"groups defined by the user. The results of this analysis is shown in your view with the these additional layers: "
+                                      f"'enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'. You can learn more about the "
+                                      f"details of the meaning of these columns [here](https://merenlab.org/software/anvio/help/main/artifacts/functional-enrichment-txt/). "
+                                      f"Here is how those groups were defined:")
+            for group_name in self.layer_groups:
+                self.summary_markdown += (f"\n\n**Group '{group_name}'** ({P('layer', len(self.layer_groups[group_name]))}):\n\n{G(self.layer_groups[group_name])}")
+
+
+    def do_functional_enrichment_analysis(self):
+        """Performs functional enrichment analysis if user defined layer groups.
+
+        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        the downstream analyses can use it to do fancy things.
+        """
+
+        if not self.layer_groups:
+            raise ConfigError("Functional enrichment analysis requires the `self.layer_groups` to be "
+                              "initialized. But someone called this function without first intializing "
+                              "groups :/ ")
+
+        output_directory = filesnpaths.get_temp_directory_path()
+        functional_occurrence_stats_file_path = os.path.join(output_directory, 'FUNC_OCCURENCE_STATS.txt')
+        output_file_path = os.path.join(output_directory, 'FUNC_ENRICHMENT_OUTPUT.txt')
+
+        # get functions per group stats file
+        self.report_functions_per_group_stats(functional_occurrence_stats_file_path, quiet=True)
+
+        # run the enrichment analysis
+        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_file_path,
+                                                                                      output_file_path,
+                                                                                      run=self.run,
+                                                                                      progress=self.progress)
+
+
+    def report_functions_per_group_stats(self, output_file_path, quiet=False):
+        """A function to summarize functional occurrence for groups of genomes"""
+
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.layer_groups_defined:
+            raise ConfigError("No groups seem to have been defined. This function is useless without :/")
+
+        group_names = sorted(list(self.layer_groups.keys()))
+
+        group_counts = dict([(g, len(self.layer_groups[g])) for g in group_names])
+
+        d = {}
+
+        for key_hash in self.functions_across_groups_presence_absence:
+            d[key_hash] = {}
+            function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
+            d[key_hash]['function'] = function
+            d[key_hash]['accession'] = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+
+            d[key_hash]['associated_groups'] = ','.join([g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]])
+
+            for group_name in group_names:
+                d[key_hash][f"N_{group_name}"] = group_counts[group_name]
+                if group_name in self.functions_across_groups_presence_absence[key_hash]:
+                    d[key_hash][f"p_{group_name}"] = self.functions_across_groups_presence_absence[key_hash][group_name] / group_counts[group_name]
+                else:
+                    d[key_hash][f"p_{group_name}"] = 0
+
+        static_column_names = ['key', 'function', 'accession', 'associated_groups']
+        dynamic_column_names = []
+        [dynamic_column_names.extend([f'p_{g}', f'N_{g}']) for g in group_names]
+
+        utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
+
+        if not quiet:
+            self.run.info('Functions per group stats file', output_file_path)

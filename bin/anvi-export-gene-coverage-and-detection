@@ -76,8 +76,8 @@ def main(args):
             [splits_of_interest.remove(s) for s in splits_only_in_contigs_db]
 
         if not len(splits_of_interest):
-            raise ConfigError(f"No split names were left to work with :( Genes you are interested in are not occurring on any contig that "
-                              f"survived the `anvi-profile` step :/ Sorry!")
+            raise ConfigError("No split names were left to work with :( Genes you are interested in are not occurring on any contig that "
+                              "survived the `anvi-profile` step :/ Sorry!")
 
         args.split_names_of_interest = splits_of_interest
 

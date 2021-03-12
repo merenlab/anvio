@@ -12,6 +12,7 @@ import pandas as pd
 
 import anvio
 import anvio.tables as t
+import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
@@ -23,16 +24,17 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
-import anvio.kegg as kegg
 
-from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-from anvio.dbops import get_description_in_db
-from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
-from anvio.errors import ConfigError, RefineError, GenesDBError
+from anvio.dbops import get_description_in_db
+from anvio.tables.views import TablesForViews
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
+from anvio.dbops import get_default_item_order_name
+from anvio.genomedescriptions import AggregateFunctions
+from anvio.errors import ConfigError, RefineError, GenesDBError
+from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
 
 from anvio.tables.miscdata import (
     TableForItemAdditionalData,
@@ -240,6 +242,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif self.mode == 'trnaseq':
             self.load_full_mode()
             self.load_trnaseq_mode()
+        elif self.mode == 'functional':
+            self.load_functional_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
         elif self.mode == 'collection':
@@ -296,10 +300,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def set_displayed_item_names(self):
-        """Sets the master list of names .. UNLESS we are in manual-mode, in which case names will be\
-           set within the function `load_manual_mode`"""
+        """Sets the master list of names .. UNLESS we are in manual or functional mode, in which case names
+           will be set within corresponding functions"""
 
-        if self.mode == 'manual':
+        if self.mode == 'manual' or self.mode == 'functional':
             return
 
         if not self.p_meta['item_orders']:
@@ -539,6 +543,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                "database in this mode only used to read or store the 'state' of the display "
                                "for visualization purposes, or to allow you to create and store collections.")
 
+        # we don't expect ad hoc profile databases to have views tables,
+        # but if the profile db has one, we don't want to ignore that either.
+        # we will define this variable here as none, and if there is a profile
+        # db path, we will fill it in if it contains view tables.
+        views_table = None
+
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
         # not be included in manual operations.
@@ -565,6 +575,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
                 elif item_orders_in_db[item_order]['type'] == 'newick':
                     tree_order_found_in_db = item_order
+
+            if t.views_table_name in profile_db.db.get_table_names():
+                # surprise surprise!
+                views_table = profile_db.db.get_table_as_dict(t.views_table_name)
+
+            profile_db.disconnect()
 
 
         if not self.tree and not self.view_data_path and not tree_order_found_in_db:
@@ -608,8 +624,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
         self.p_meta['blank'] = True
-        self.p_meta['default_view'] = 'single'
-        self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
         if not item_orders_in_db:
@@ -628,7 +642,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
 
-        if self.view_data_path:
+
+        if views_table and filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
+            # we have view tables
+            profile_db = ProfileDatabase(self.profile_db_path)
+
+            for view in views_table:
+                table_name = views_table[view]['target_table']
+
+                data = profile_db.db.get_table_as_dict(table_name)
+
+                self.views[view] = {'table_name': table_name,
+                                    'header': profile_db.db.get_table_structure(table_name)[1:],
+                                    'dict': data}
+
+            self.p_meta['default_view'] = sorted(list(self.views.keys()), reverse=True)[0]
+            self.default_view = self.p_meta['default_view']
+            profile_db.disconnect()
+
+        elif self.view_data_path:
             # sanity of the view data
             filesnpaths.is_file_tab_delimited(view_data_path)
             view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
@@ -636,6 +668,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             utils.check_misc_data_keys_for_format(view_data_columns)
 
             # load view data as the default view:
+            self.p_meta['default_view'] = 'single'
+            self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
         else:
@@ -645,12 +679,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for item in self.displayed_item_names_ordered:
                 ad_hoc_dict[item] = {'names': str(item)}
 
+            self.p_meta['default_view'] = 'single'
+            self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         sample_names = [self.title.replace(' ', '_')] if self.title else self.views[self.default_view]['header']
-        self.p_meta['samples'] = self.p_meta['sample_id'] = sample_names
+        self.p_meta['samples'] = sample_names
+        self.p_meta['sample_id'] = 'AD HOC DISPLAY'
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
@@ -674,16 +711,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
-            sample_id = ','.join(self.p_meta['samples'])
-
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
+                               'db_variant': 'ad-hoc-display',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'items_ordered': False,
-                               'samples': sample_id,
-                               'sample_id': sample_id})
+                               'samples': ', '.join(self.p_meta['samples']),
+                               'sample_id': self.p_meta['sample_id']})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
@@ -694,8 +730,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
-        if self.title:
-            self.title = self.title
+        self.title = self.args.title or self.p_meta['sample_id']
 
 
     def cluster_splits_of_interest(self):
@@ -743,6 +778,155 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "you have provided does not exist. If you don't care and want to start the "
                                   "interactive inteface with a random split from the profile database, please use "
                                   "the flag `--just-do-it`")
+
+
+    def load_functional_mode(self):
+        # these are all going to be filled later nicely.
+        self.p_meta['item_orders'] = {}
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['default_item_order'] = 'presence_absence'
+
+        # these are irrelevant to this mode, but necessary to fill in.
+        self.p_meta['splits_fasta'] = None
+        self.p_meta['output_dir'] = None
+        self.p_meta['views'] = {}
+        self.p_meta['db_type'] = 'profile'
+        self.p_meta['merged'] = True
+        self.p_meta['blank'] = True
+        self.splits_basic_info = {}
+        self.split_sequences = None
+
+        if not self.profile_db_path:
+            raise ConfigError("It is OK if you don't have a profile database, but you still should provide a "
+                              "profile database path so anvi'o can generate a new one for you. The profile "
+                              "database in this mode only used to read or store the 'state' of the display "
+                              "for visualization purposes, or to allow you to create and store collections. "
+                              "Still very useful.")
+
+        if os.path.exists(self.profile_db_path):
+            raise ConfigError(f"So. Everytime you run the anvi'o interactive interface in display functions mode "
+                              f"you must provide a profile database that actually does not exist. Yeah, we know "
+                              f"it doesn't make sense, but actually it does, but really very difficult to "
+                              f"explain. If you really want to re-display your existing profile database with "
+                              f"functions, you should run `anvi-interactive -p {self.profile_db_path} --manual`. "
+                              f"Now, that should work like a charm.")
+
+        # initialize all functions from wherever.
+        facc = AggregateFunctions(self.args, r=self.run, p=self.progress)
+
+        num_facc_keys = len(facc.functions_across_layers_frequency)
+        num_genomes = len(facc.layer_names_considered)
+        if num_facc_keys < 25:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found only {num_facc_keys} unique "
+                             f"{facc.K()}s for {facc.function_annotation_source}. This doesn't look very good, but "
+                             f"it is difficult to know whether you find this normal or even pleasing... Things will "
+                             f"continue to work, but we just thought you should know about this.")
+        if num_facc_keys > 2500 and num_facc_keys < 10000:
+            self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
+                             f"{facc.K()}s for {facc.function_annotation_source}. It looks like you have quite a lot of "
+                             f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o wiil "
+                             f"do her best, but if things crash downstream, this will likely be the reason.")
+        if num_facc_keys > 10000:
+            raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
+                              f"{facc.K()}s for {facc.function_annotation_source} :/ This is just way too much for anvi'o to try to "
+                              f"put together a hierarchical clustering for and display. If you think this had to work, let us know and "
+                              f"we will see if we can do something to help you.")
+
+        run.warning(None, header="SUMMARY OF WHAT IS GOING ON", lc="green")
+        self.run.info('Num genomes', num_genomes)
+        self.run.info('Function annotation source', facc.function_annotation_source)
+        self.run.info('Num unique keys', num_facc_keys)
+        self.run.info('Keys correspond to', f"'{facc.K()}s' rather than '{facc.V()}s'")
+        self.run.info('Only the best hits are considered', "False" if facc.aggregate_using_all_hits else "True", nl_after=1)
+
+        # now we will work on views and clustering our data to get newick trees.
+        self.p_meta['default_view'] = 'presence_absence_view'
+        self.default_view = self.p_meta['default_view']
+
+        # our 'samples' in this context are individual genomes we are about to display
+        self.p_meta['samples'] = list(facc.layer_names_considered)
+        self.p_meta['sample_id'] = f"{facc.function_annotation_source} DISPLAY"
+
+        # setup the views dict
+        self.views = {'frequency_view'       : {'header': list(facc.layer_names_considered),
+                                                'dict': facc.functions_across_layers_frequency},
+                      'presence_absence_view': {'header': list(facc.layer_names_considered),
+                                                'dict': facc.functions_across_layers_presence_absence}}
+
+        # create a new, empty profile database for manual operations
+        if not os.path.exists(self.profile_db_path):
+            profile_db = ProfileDatabase(self.profile_db_path)
+            profile_db.create({'db_type': 'profile',
+                               'blank': True,
+                               'merged': True,
+                               'db_variant': 'functions-display',
+                               'description': facc.summary_markdown,
+                               'function_annotation_source': facc.function_annotation_source,
+                               'min_occurrence_of_function': facc.min_occurrence,
+                               'aggregate_based_on_accession': facc.aggregate_based_on_accession,
+                               'aggregate_using_all_hits': facc.aggregate_using_all_hits,
+                               'contigs_db_hash': None,
+                               'items_ordered': False,
+                               'samples': ', '.join(self.p_meta['samples']),
+                               'sample_id': self.p_meta['sample_id']})
+
+        # now we start working on our views and item orders.
+        for view in self.views:
+            # first, generate an items order for a given view:
+            items_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            item_order_name = f"{view[:-5]}"
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
+
+            # then add the items order to the database
+            dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
+                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
+                                        check_names_consistency=False)
+
+            # let's get a layer's order, too, and immediately add it to the database:
+            layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{facc.function_annotation_source}_{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+            self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+
+            # add vew tables to the database
+            view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
+            view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
+            TablesForViews(self.profile_db_path).create_new_view(
+                                            data_dict=self.views[view]['dict'],
+                                            table_name=f"{view}",
+                                            table_structure=view_table_structure,
+                                            table_types=view_table_types,
+                                            view_name=f"{view}")
+
+        # let's do this here as well so our dicts are not pruned.
+        self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
+
+        # here we will store a layer for function names in the additional data tables of the profile databse and
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
+        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
+
+        # if we have functional enrichment analysis results for these genomes, let's add that into
+        # the database as well!
+        if facc.functional_enrichment_stats_dict:
+            TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
+
+        # here we will read the items additional data back so it is both in there for future `anvi-interactive` ops,
+        # AND in here in the interactive class to visualize the information.
+        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path)
+
+        # also populate collections, if there are any
+        self.collections.populate_collections_dict(self.profile_db_path)
+
+        # read description from self table, if it is not available get_description function will return placeholder text
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
+
+        self.title = self.args.title or self.p_meta['sample_id']
+        if facc.min_occurrence > 1:
+            self.title += f" (MIN OCCURRENCE: {facc.min_occurrence})"
 
 
     def load_refine_mode(self):
