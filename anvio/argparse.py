@@ -209,6 +209,20 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
 class PopulateAnvioDBArgs(FindAnvioDBs):
+    """A class to add missing anvi'o database arguments in an args instance
+
+    This class does this by finding all anvi'o databases via `FindAnvioDBs`,
+    and then reasoning with the information it generated.
+
+    Parameters
+    ==========
+    args : Namespace instance
+        Variable names matching to anvi'o databases defined below will be populated
+        with paths in-place.
+    search_path : str, default '.'
+        The starting directory to search for all anvi'o databases underneath
+    """
+
     def __init__(self, args, search_path='.', run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress

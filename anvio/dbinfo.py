@@ -1,14 +1,28 @@
 #! /usr/bin/env python
+# -*- coding: utf-8
+"""A module of classes to keep track of anvi'o databases
+
+The module includes to major classes: DBInfo, and FindAnvioDBs.
+
+DBInfo class enables seamless access to databae properties for any given
+database file. FindAnvioDBs finds databases that are linked to each
+other to initiate interactive jobs automatically, even when no db
+parameters are provided by the user.
+"""
 
 import os
 import json
 
-from abc import ABC, abstractmethod
+from abc import ABC
+
+import anvio
 
 from anvio.db import DB
+from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress
 from anvio.tables import versions_for_db_types
-from anvio.errors import ConfigError
+
+
 
 
 class DBInfo(ABC):
@@ -241,8 +255,11 @@ class ModulesDBInfo(DBInfo):
 class FindAnvioDBs(object):
     """A helper class to traverse a directory to find anvi'o databases.
 
-    The promary data structure in this class is `self.anvio_dbs` and is initiated
+    The primary data structure in this class is `self.anvio_dbs` and is initiated
     upon creating an instance from it.
+
+    As of 2021, the primary sole client of htis class is `PopulateAnvioDBArgs` in the
+    anvio.argsparse module to fill in missing databases into the args object.
 
     Parameters
     ==========
