@@ -142,6 +142,9 @@ class DBInfo(ABC):
 
     @staticmethod
     def is_db(path, dont_raise=False):
+        if not os.path.exists(path):
+            raise ConfigError(f"There is nothing at '{path}' :/")
+
         try:
             with DB(path, None, ignore_version=True) as database:
                 if 'self' not in database.get_table_names():
