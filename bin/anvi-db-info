@@ -114,27 +114,18 @@ class DatabaseInfo:
 
     def set_key_value(self):
         filesnpaths.is_output_file_writable(self.db_path)
-        try:
-            database = db.DB(self.db_path, None, ignore_version=True)
-            db_type = database.get_meta_value("db_type")
-            db_self = database.get_table_as_dict("self")
-            database.disconnect()
-        except:
-            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably "
-                              "it is not at all :(" % self.db_path)
-
 
         if self.self_key in ["version", "db_type", "description", "samples"]:
-            raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so "
-                              "you can't change them with this program. That said, you are an adult and "
-                              "anvi'o can't tell you what to do. If you want to be a rebel, feel free to "
-                              "use the sqlite from the command line to create your own Frankenstein." % self.self_key)
+            raise ConfigError(f"Well. This is awkward. The key {self.self_key} is one of the 'no touch keys', so "
+                              f"you can't change them with this program. That said, you are an adult and "
+                              f"anvi'o can't tell you what to do. If you want to be a rebel, feel free to "
+                              f"use the sqlite from the command line to create your own Frankenstein.")
 
         # make sure we did everything we can to avoid user error
         self.self_key = self.self_key.replace(' ', '_').strip()
 
-        if self.self_key in db_self and self.self_key == 'sample_id':
-            if db_self['db_type']!= 'profile' or int(db_self['blank']) or int(db_self['merged']):
+        if self.self_key in self.db_self and self.self_key == 'sample_id':
+            if self.db_type != 'profile' or int(self.db_self['blank']) or int(self.db_self['merged']):
                 raise ConfigError("You can change the self-key `sample_id` only in single and non-blank anvi'o "
                                   "profile databases :/")
 
@@ -151,18 +142,15 @@ class DatabaseInfo:
                               both in other tables in this profile database, and in the auxiliary database\
                               associated with it.")
 
-        if self.self_key in db_self:
-            self.run.warning("The content of the key '%s' in the self table of your %s database,\
-                              which currently has a value of '%s', will be replaced with '%s'." % \
-                                    (self.self_key, db_type, db_self[self.self_key], self.self_value))
+        if self.self_key in self.db_self:
+            self.run.warning(f"The content of the key '{self.self_key}' in the self table of your {self.db_type}database, "
+                             f"which currently has a value of '{self.db_self[self.self_key]}', will be replaced with '{self.self_value}'.")
         else:
-            self.run.warning("You are about to set a new key, '%s', in the self table of your %s "
-                             "database which will hold the value '%s'." % \
-                                    (self.self_key, db_type, self.self_value))
+            self.run.warning(f"You are about to set a new key, '{self.self_key}', in the self table of your {self.db_type} "
+                             f"database which will hold the value '{self.self_value}'.")
 
         if not self.just_do_it:
-            self.run.info_single('If you like what you see up there, please use the `--just-do-it` '
-                                 'flag to make it happen.')
+            self.run.info_single('If you like what you see up there, please use the `--just-do-it` flag to make it happen.')
             sys.exit(0)
 
         database = db.DB(self.db_path, None, ignore_version=True)
