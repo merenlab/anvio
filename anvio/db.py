@@ -113,6 +113,14 @@ class DB:
                                   "dictionary." % (', '.join(bad_tables)))
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, *args):
+        self.disconnect()
+
+
     def _not_if_read_only(func):
         def inner(self, *args, **kwargs):
             if self.read_only:
@@ -418,7 +426,7 @@ class DB:
 
     def is_table_exists(self, table_name):
         if table_name not in self.table_names_in_db:
-            raise ConfigError(f"The database at {self.db_path} does seem to have a table `{table_name}` :/ "
+            raise ConfigError(f"The database at {self.db_path} does not seem to have a table named `{table_name}` :/ "
                               f"Here is a list of table names this database knows: {', '.join(self.table_names_in_db)}")
 
 

@@ -7,6 +7,7 @@ from anvio.argparse import ArgumentParser
 import anvio
 import anvio.db as db
 import anvio.tables as t
+import anvio.dbinfo as dbi
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -25,6 +26,11 @@ __requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db", "str
 __description__ = "Access self tables, display values, or set new ones totally on your own risk"
 
 
+# FIXME: The functionality of this class has a lot of overlaps with the newer `DBInfo` class
+#        defined in `anvio/dbinfo.py`. Printing out database information, for instance, should
+#        be carried over there, and the modification of self key/value pairs should be carried
+#        into another class ALSO in `anvio/dbinfo.py`.
+
 class DatabaseInfo:
     """A class to get information about an anvi'o database, and edit some of them"""
     def __init__(self, args, quiet=False, run=terminal.Run(), progress=terminal.Progress()):
@@ -33,7 +39,7 @@ class DatabaseInfo:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.db_path =A("input")
+        self.db_path = A("input")
         self.self_key = A("self_key")
         self.self_value = A("self_value")
         self.just_do_it = A("just_do_it")
@@ -54,28 +60,27 @@ class DatabaseInfo:
             run.warning(None, "DB Info (no touch)", lc="green")
             run.info("Database Path", self.db_path)
             if "description" in self.db_self:
-                desc = self.db_self["description"]["value"]
+                desc = self.db_self["description"]
                 if len(desc) > 30:
-                    run.info("Description", "[Found, and it is %d characters long]" % len(desc))
+                    run.info("description", "[Found, and it is %d characters long]" % len(desc))
                 elif not desc:
-                    run.info("Description", "[Not found, but it's OK]", mc="red")
+                    run.info("description", "[Not found, but it's OK]", mc="red")
                 else:
                     run.info("Description", desc)
-            run.info("Type", self.db_type)
-            run.info("Variant", self.db_variant)
-            run.info("Version", self.db_version, nl_after=1)
+            run.info("db_type", f"{self.db_type} (variant: {self.db_variant})")
+            run.info("version", self.db_version, nl_after=1)
 
             run.warning(None, "DB Info (no touch also)", lc="green")
             for key in [k for k in self.db_self if k not in ["version", "db_type", "description", "db_variant"]]:
                 if key == self.self_key or (self.self_key == 'sample_id' and key == 'samples'):
-                    run.info('%s [JUST SET]' % key, self.db_self[key]["value"], mc='green', lc='green')
+                    run.info('%s [JUST SET]' % key, self.db_self[key], mc='green', lc='green')
                 else:
-                    run.info(key, self.db_self[key]["value"])
+                    run.info(key, self.db_self[key])
 
             run.info_single("Please remember that it is never a good idea to change these values. But in "
                             "some cases it may be absolutely necessary to update something here, and a "
                             "programmer may ask you to run this program and do it. But even then, you "
-                            "should be extremely careful.", mc='red', nl_before=1)
+                            "should be extremely careful.", mc='red', nl_before=1, nl_after=1)
 
         # It wouldn't hurt to print out some DB specific information?
         if self.db_type == 'contigs':
@@ -99,44 +104,28 @@ class DatabaseInfo:
 
 
     def get_db_self(self):
-        try:
-            database = db.DB(self.db_path, None, ignore_version=True)
+        database = dbi.DBInfo(self.db_path)
 
-            self.db_type = database.get_meta_value("db_type")
-            self.db_version = int(database.get_meta_value("version"))
-            self.db_self = database.get_table_as_dict("self")
-
-            database.disconnect()
-        except Exception as e:
-            raise ConfigError("Anvi'o has some concerns regarding '%s' and thinks it may not be a database file "
-                              "since some libraries complained about it downstream. Here is what they said: %s." % (self.db_path, e))
-
-        self.db_variant = utils.get_db_variant(self.db_path)
+        self.db_type = database.db_type
+        self.db_self = database.get_self_table()
+        self.db_version = database.version
+        self.db_variant = database.variant
 
 
     def set_key_value(self):
         filesnpaths.is_output_file_writable(self.db_path)
-        try:
-            database = db.DB(self.db_path, None, ignore_version=True)
-            db_type = database.get_meta_value("db_type")
-            db_self = database.get_table_as_dict("self")
-            database.disconnect()
-        except:
-            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably "
-                              "it is not at all :(" % self.db_path)
-
 
         if self.self_key in ["version", "db_type", "description", "samples"]:
-            raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so "
-                              "you can't change them with this program. That said, you are an adult and "
-                              "anvi'o can't tell you what to do. If you want to be a rebel, feel free to "
-                              "use the sqlite from the command line to create your own Frankenstein." % self.self_key)
+            raise ConfigError(f"Well. This is awkward. The key {self.self_key} is one of the 'no touch keys', so "
+                              f"you can't change them with this program. That said, you are an adult and "
+                              f"anvi'o can't tell you what to do. If you want to be a rebel, feel free to "
+                              f"use the sqlite from the command line to create your own Frankenstein.")
 
         # make sure we did everything we can to avoid user error
         self.self_key = self.self_key.replace(' ', '_').strip()
 
-        if self.self_key in db_self and self.self_key == 'sample_id':
-            if db_self['db_type']['value'] != 'profile' or int(db_self['blank']['value']) or int(db_self['merged']['value']):
+        if self.self_key in self.db_self and self.self_key == 'sample_id':
+            if self.db_type != 'profile' or int(self.db_self['blank']) or int(self.db_self['merged']):
                 raise ConfigError("You can change the self-key `sample_id` only in single and non-blank anvi'o "
                                   "profile databases :/")
 
@@ -153,18 +142,15 @@ class DatabaseInfo:
                               both in other tables in this profile database, and in the auxiliary database\
                               associated with it.")
 
-        if self.self_key in db_self:
-            self.run.warning("The content of the key '%s' in the self table of your %s database,\
-                              which currently has a value of '%s', will be replaced with '%s'." % \
-                                    (self.self_key, db_type, db_self[self.self_key]['value'], self.self_value))
+        if self.self_key in self.db_self:
+            self.run.warning(f"The content of the key '{self.self_key}' in the self table of your {self.db_type}database, "
+                             f"which currently has a value of '{self.db_self[self.self_key]}', will be replaced with '{self.self_value}'.")
         else:
-            self.run.warning("You are about to set a new key, '%s', in the self table of your %s "
-                             "database which will hold the value '%s'." % \
-                                    (self.self_key, db_type, self.self_value))
+            self.run.warning(f"You are about to set a new key, '{self.self_key}', in the self table of your {self.db_type} "
+                             f"database which will hold the value '{self.self_value}'.")
 
         if not self.just_do_it:
-            self.run.info_single('If you like what you see up there, please use the `--just-do-it` '
-                                 'flag to make it happen.')
+            self.run.info_single('If you like what you see up there, please use the `--just-do-it` flag to make it happen.')
             sys.exit(0)
 
         database = db.DB(self.db_path, None, ignore_version=True)
