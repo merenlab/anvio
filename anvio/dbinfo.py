@@ -121,7 +121,7 @@ class DBInfo(ABC):
         if db_type in dbinfo_classes:
             # This is the most important line in this method:
             # Return the respective class that __init__ should be called for
-            return super().__new__(dbinfo_classes[db_type]['class'])
+            return super().__new__(dbinfo_classes[db_type])
 
         raise NotImplementedError(f"db_type {db_type} has no entry in dbinfo_classes")
 
@@ -353,31 +353,13 @@ class FindAnvioDBs(object):
 
 
 dbinfo_classes = {
-    'contigs': {
-        'class': ContigsDBInfo,
-    },
-    'profile': {
-        'class': ProfileDBInfo,
-    },
-    'auxiliary data for coverages': {
-        'class': AuxiliaryDBInfo,
-    },
-    'genes': {
-        'class': GenesDBInfo,
-    },
-    'structure': {
-        'class': StructureDBInfo,
-    },
-    'genomestorage': {
-        'class': GenomeStorageDBInfo,
-    },
-    'pan': {
-        'class': PanDBInfo,
-    },
-    'trnaseq': {
-        'class': TRNADBInfo,
-    },
-    'modules': {
-        'class': ModulesDBInfo,
-    },
+    'contigs': ContigsDBInfo,
+    'profile': ProfileDBInfo,
+    'auxiliary data for coverages': AuxiliaryDBInfo,
+    'genes': GenesDBInfo,
+    'structure': StructureDBInfo,
+    'genomestorage': GenomeStorageDBInfo,
+    'pan': PanDBInfo,
+    'trnaseq': TRNADBInfo,
+    'modules': ModulesDBInfo,
 }
