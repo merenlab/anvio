@@ -6,12 +6,9 @@ import argparse
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.dbinfo import DBInfo as dbi
 from anvio.errors import ConfigError, FilesNPathsError
