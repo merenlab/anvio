@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+from anvio.argparse import ArgumentParser
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.utils as utils
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.dbinfo import DBInfo as dbi
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import TableForItemAdditionalData
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2021, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__requires__ = ["profile-db", "contigs-db", "genes-db"]
+__provides__ = ['misc-data-items', 'misc-data-layers']
+__description__ = "A program to find one or more sequence motifs in contig or gene sequences, and store their frequencies"
+
+
+class SequenceMotifs:
+    """A class to work with sequence motifs"""
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A("contigs_db")
+        self.profile_db_path = A("profile_db")
+        self.genes_db_path = A("genes_db")
+        self.motifs = set([s.strip().upper() for s in A("motifs").split(',') if len(s.strip())]) if A("motifs") else set([])
+
+        dbi(self.contigs_db_path, expecting='contigs')
+        dbi(self.profile_db_path, expecting='profile') if self.profile_db_path else None
+        dbi(self.genes_db_path, expecting='genes') if self.genes_db_path else None
+
+        if self.profile_db_path and self.genes_db_path:
+            raise ConfigError("You can use this program with either a profile database, or a genes database, and not both :/")
+
+        self.run.info('Contigs database', self.contigs_db_path)
+        self.run.info('Profile database', self.profile_db_path)
+        self.run.info('Genes database', self.genes_db_path)
+        self.run.info(f'Motifs ({len(self.motifs)} found)', ', '.join(self.motifs), mc='green')
+
+
+    def process(self):
+        """Initiate the default workflow of this class"""
+
+        if self.profile_db_path:
+            motif_frequencies = self.store_motifs_in_splits()
+        elif self.genes_db_path:
+            motif_frequencies = self.store_motifs_in_genes()
+
+        self.run.warning(None, header="MOTIF FREQUENCIES", lc='green')
+        for motif in self.motifs:
+            self.run.info(motif, sum([v[motif] for v in motif_frequencies.values()]))
+
+        self.run.info_single('Motif frequencies are stored in the database', nl_before=1, nl_after=1)
+
+
+    def store_motifs_in_splits(self):
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+        split_names_in_profile_db = utils.get_all_item_names_from_the_database(self.profile_db_path, run=self.run)
+
+        contigs_db = dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
+        contigs_db.init_split_sequences(split_names_of_interest=split_names_in_profile_db)
+
+        d = {}
+        for motif in self.motifs:
+            for split_name in contigs_db.split_sequences:
+                if split_name not in d:
+                    d[split_name] = {}
+
+                d[split_name][motif] = contigs_db.split_sequences[split_name].count(motif) + \
+                                       contigs_db.split_sequences[split_name].count(utils.rev_comp(motif))
+
+        TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, list(self.motifs))
+
+        return d
+
+
+    def store_motifs_in_genes(self):
+        gene_caller_ids = utils.get_all_item_names_from_the_database(self.genes_db_path)
+
+        contigs_db = dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
+        gene_caller_ids_list, sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(gene_caller_ids))
+
+        d = {}
+        for motif in self.motifs:
+            for gene_callers_id in gene_caller_ids_list:
+                if gene_callers_id not in d:
+                    d[gene_callers_id] = {}
+
+                d[gene_callers_id][motif] = sequences_dict[gene_callers_id]['sequence'].count(motif) + \
+                                            sequences_dict[gene_callers_id]['sequence'].count(utils.rev_comp(motif))
+
+        args = argparse.Namespace(genes_db=self.genes_db_path)
+        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(d, list(self.motifs))
+
+        return d
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('SEQUENCES', "A contigs database, essentially, to search for motifs.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupB = parser.add_argument_group('PROFILE or GENES db?', "This program can store the frequencies of your motifs into profile "
+                                        "or gene databases. See the online documentation at the end of the help menu for details.")
+    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('genes-db'), **anvio.K('genes-db', {'required': False}))
+
+    groupC = parser.add_argument_group('MOTIFS', "Sequences to search for..")
+    groupC.add_argument('--motifs', required=True, help="The motif sequence. You can search for more than one, in which case"
+                                        "you should use comma (',') to separate them from each other.")
+
+    args, unknown = parser.parse_known_args()
+
+    try:
+        m = SequenceMotifs(args)
+        m.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
