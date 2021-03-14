@@ -401,9 +401,9 @@ class ContigsSuperclass(object):
                 continue
 
             if self.contigs_basic_info[split['parent']]['num_splits'] == 1:
-                self.split_sequences[split_name] = self.contig_sequences[split['parent']]['sequence']
+                self.split_sequences[split_name] = {'sequence': self.contig_sequences[split['parent']]['sequence']}
             else:
-                self.split_sequences[split_name] = self.contig_sequences[split['parent']]['sequence'][split['start']:split['end']]
+                self.split_sequences[split_name] = {'sequence': self.contig_sequences[split['parent']]['sequence'][split['start']:split['end']]}
 
         self.progress.end()
 
