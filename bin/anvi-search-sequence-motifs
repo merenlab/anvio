@@ -100,7 +100,7 @@ class SequenceMotifSearch:
                 raise ConfigError(f"Ehem. Anvi'o doesn't like your motif sequence {bad_motifs_str}.")
             else:
                 raise ConfigError(f"Well well well. Anvi'o found {P('motif', len(bad_motifs))} among your "
-                               f"sequences that didn't look quite good: {bad_motifs_str}.")
+                                  f"sequences that didn't look quite good: {bad_motifs_str}.")
 
 
     def search_motifs(self):
