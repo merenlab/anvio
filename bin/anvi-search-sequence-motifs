@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import re
 import sys
 import argparse
 from anvio.argparse import ArgumentParser
@@ -25,6 +26,9 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["profile-db", "contigs-db", "genes-db"]
 __provides__ = ['misc-data-items', 'misc-data-layers']
 __description__ = "A program to find one or more sequence motifs in contig or gene sequences, and store their frequencies"
+
+
+P = terminal.pluralize
 
 
 class SequenceMotifSearch:
@@ -84,6 +88,19 @@ class SequenceMotifSearch:
 
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+        # let's make sure motif sequences are actual DNA/RNA sequences
+        character_regex = re.compile(r'^[ACGTNUactgnu]+$')
+        bad_motifs = [m for m in self.motifs if not bool(character_regex.search(m))]
+        if len(bad_motifs):
+            bad_motifs_str = ', '.join([f"'{m}'" for m in bad_motifs])
+            bad_motifs_str += (". Please make sure your motif sequences are like normal people motif sequences "
+                               "where they are a combination of the following characters: A, C, G, T, N and/or U")
+            if len(self.motifs) == 1:
+                raise ConfigError(f"Ehem. Anvi'o doesn't like your motif sequence {bad_motifs_str}.")
+            else:
+                raise ConfigError(f"Well well well. Anvi'o found {P('motif', len(bad_motifs))} among your "
+                               f"sequences that didn't look quite good: {bad_motifs_str}.")
 
 
     def search_motifs(self):
