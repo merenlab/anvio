@@ -315,6 +315,8 @@ class FindAnvioDBs(object):
         for db_type in self.anvio_dbs:
             self.anvio_dbs[db_type] = sorted(self.anvio_dbs[db_type], key=lambda d: d.level)
 
+        self.anvio_dbs_found = True
+
 
     def listdir(self, path):
         for filename in os.listdir(path):
