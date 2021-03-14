@@ -176,14 +176,18 @@ class SequenceMotifSearch:
                     for motif in self.motifs:
                         M[item_name][f"motif_{motif}"] = self.motif_frequencies[item_name][motif]
 
+                args.skip_check_names = True
+                args.just_do_it = True
                 TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(M, [f'motif_{m}' for m in list(self.motifs)])
-                self.run.info("Motif frequencies stored in db", "True", mc='green')
+                self.run.info("Motif frequencies stored in db", "YES", mc='green', nl_before=1)
             else:
-                self.run.info("Motif frequencies stored in db", "False (but could've been with `--store-in-db`")
+                self.run.info("Motif frequencies stored in db", "No (but could've been with `--store-in-db`)", nl_before=1)
 
         if self.output_file_path:
             utils.store_dict_as_TAB_delimited_file(self.motif_frequencies, self.output_file_path, headers=[header_item_name] + sorted(list(self.motifs)))
-            self.run.info("Motif frequencies output file", self.output_file_path, mc='green')
+            self.run.info("Motif frequencies stored in output file", self.output_file_path, mc='green')
+        else:
+            self.run.info("Motif frequencies stored in output file", "No (but could've been with `--output-file`)")
 
 
     def search_motifs_in_contig_sequences(self):
