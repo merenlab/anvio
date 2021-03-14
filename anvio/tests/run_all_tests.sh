@@ -62,6 +62,12 @@ anvi-export-contigs -c $output_dir/CONTIGS.db \
                     -o $output_dir/exported_split_sequences.fa \
                     --splits-mode
 
+INFO "Searching for sequence motifs in the contigs database"
+anvi-search-sequence-motifs -c $output_dir/CONTIGS.db \
+                            --motifs ATCG,TAAAT \
+                            --output-file $output_dir/sequence-motifs-in-contigs.txt
+SHOW_FILE $output_dir/sequence-motifs-in-contigs.txt
+
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db \
                                -p centrifuge \
@@ -255,7 +261,7 @@ anvi-import-collection -c $output_dir/CONTIGS.db \
 
 INFO "Update the description in the merged profile"
 anvi-update-db-description $output_dir/SAMPLES-MERGED/PROFILE.db \
-                            --description $files/example_description.md
+                           --description $files/example_description.md
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db \
@@ -453,6 +459,13 @@ anvi-gen-gene-level-stats-databases -c $output_dir/CONTIGS.db \
                                     -C DEFAULT \
                                     -b EVERYTHING \
                                     --inseq-stats
+
+INFO "Searching for sequence motifs in the profile database"
+anvi-search-sequence-motifs -c $output_dir/CONTIGS.db \
+                            -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                            --motifs ATCG,TAAAT \
+                            --output-file $output_dir/sequence-motifs-in-profile.txt
+SHOW_FILE $output_dir/sequence-motifs-in-profile.txt
 
 INFO "Generating normalized codon frequencies for all genes in the contigs database"
 anvi-get-codon-frequencies -c $output_dir/CONTIGS.db \
