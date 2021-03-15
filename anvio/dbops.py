@@ -3701,7 +3701,7 @@ class PanDatabase:
 
 
     def init(self):
-        if os.path.exists(self.db_path):
+        if not os.path.exists(self.db_path):
             return
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
