@@ -2251,9 +2251,9 @@ D = {
     'get-domtable-output': (
             ['--get-domtable-output'],
             {'default': False,
-             'action': 'store_true',
+             'type': str,
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
-                     "from HMMER (ie, the file specified by the --domtblout flag). Otherwise, only the regular "
+                     "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
                      "--tblout file will be stored in the specified directory. Please note that even if you use "
                      "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
                      "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}

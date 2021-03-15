@@ -96,12 +96,13 @@ INFO "Rerunning HMMs with hmmsearch"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Bacteria_71 \
               --hmmer-program hmmsearch \
-              --domtblout $output_dir/hmmsearch_domtblout \
+              --hmmer-output-dir $output_dir \
+              --get-domtable-output $output_dir \
               --just-do-it
 
 INFO "Filtering hmm_hits using target coverage"
 anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
-                                  --domtblout $output_dir/hmmsearch_domtblout_domtable.txt \
+                                  --domtblout $output_dir/hmm.domtable \
                                   --hmm-source Bacteria_71 \
                                   --target-coverage 0.9
 
