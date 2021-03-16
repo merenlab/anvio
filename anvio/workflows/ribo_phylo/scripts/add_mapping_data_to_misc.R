@@ -1,6 +1,6 @@
 # Load libraries
 #---------------
-packages <- c("tidyverse", "fs", "optparse")
+packages <- c("tidyverse", "fs", "optparse", "ape")
 suppressMessages(lapply(packages, library, character.only = TRUE))
 
 option_list = list(
@@ -24,6 +24,7 @@ opt <- parse_args(OptionParser(option_list=option_list))
 opt$SCG <- "Ribosomal_S2"
 opt$ribophylopath <- "RIBO_PHYLO_WORKFLOW_94"
 opt$profilepath <- "PROFILE_SCGs_94"
+
 #----------------
 
 
@@ -48,6 +49,8 @@ add_coverage_to_metadata <- function(SCG) {
   gene_calls_path <- path(opt$profilepath, "07_SUMMARY", opt$SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_calls.txt")
   
   # need to up load the tree toooooo
+  tree_path_suffix <- stringr::str_c(opt$SCG, "_renamed.nwk")
+  tree_path <- path(opt$ribophylopath, "06_TREES/", opt$SCG, tree_path_suffix)
   
   # Mapping data
   mapping_data_path <- path(opt$profilepath, "07_SUMMARY/", opt$SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_coverages.txt")
@@ -62,6 +65,7 @@ add_coverage_to_metadata <- function(SCG) {
   misc_data <- read_tsv(misc_data_path)
   reformat_file <- read_tsv(reformat_file_path, col_names = FALSE) %>% rename(contig = X1, name = X2)
   gene_calls <- read_tsv(gene_calls_path)
+  tree <- read.tree(tree_path)
   # FIXME: gene_calls has some duplicates in the contig column IF some of the reference sequences when
   # being processed into contigDBs split them into two gene calls, you suck Prodigal! I could fix this
   # by providing an external-gene-calls file with the reference SCGs.
@@ -70,10 +74,15 @@ add_coverage_to_metadata <- function(SCG) {
   
   # Make index of names
   #--------------------
+  tree$tip.label
+  
+  # convert
   index <- mapping_data %>%
     inner_join(gene_calls) %>%
     left_join(reformat_file) %>%
     select(gene_callers_id, contig, name)
+  index$contig_new <- paste(index$contig, "_split_00001", sep="")
+  
   
   # Make final table
   final <- misc_data %>%
@@ -81,7 +90,7 @@ add_coverage_to_metadata <- function(SCG) {
     left_join(index) %>%
     # inner_join(mapping_data) %>%
     select(-gene_callers_id) %>%
-    rename(orig_name = name, name = contig) %>%
+    rename(orig_name = name, name = contig_new) %>%
     relocate(name) %>%
     filter(!is.na(name))
   
