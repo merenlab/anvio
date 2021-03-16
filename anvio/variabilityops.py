@@ -2813,9 +2813,9 @@ class VariabilityFixationIndex(object):
     """Calculates a fixation index matrix
 
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
-    (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
+    (https://www.nature.com/articles/nature11711#Sec14)
     which extends the traditional metric to allow for multiple alleles in one site. We further
-    extend to allow for codon and amino acid alleles.
+    extend to allow for codon and amino acid alleles. See supplemental.
     """
 
     def __init__(self, args={}, p=progress, r=run):
