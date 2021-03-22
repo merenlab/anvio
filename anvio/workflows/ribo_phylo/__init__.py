@@ -196,21 +196,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         for ribosomal_protein_name in self.SCG_protein_list:
 
-
             # Count num sequences removed per step
             tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-
-            # tail_path = "%s_all.fna" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
-
-            # # Get SCG taxonomy for each metagenome or external-genome 
-            # for external_genome_name in self.names_list:
-            #     tail_path = "%s_%s_estimate_scg_taxonomy_results.tsv" % (external_genome_name, ribosomal_protein_name)
-            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], external_genome_name, tail_path)
-            #     target_files.append(target_file)
 
             # Get final misc data for anvi-interactive display of tree
             tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
@@ -227,8 +216,6 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-
-            #########################
             # The FINAL trees :)
             # For iq-tree
             if self.run_iqtree == True:
@@ -240,7 +227,5 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 tail_path = "%s.nwk" % (ribosomal_protein_name)
                 target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
                 target_files.append(target_file)
-            #########################
 
-            # print(target_files)
         return target_files
