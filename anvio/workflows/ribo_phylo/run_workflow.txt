@@ -24,10 +24,11 @@ anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_pro
                  --manual
 
 ## fasttree
-anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
-                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.nwk \
-                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
-                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa \
+SCG="Ribosomal_S2"
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/${SCG}"/${SCG}"_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/${SCG}"/${SCG}".nwk \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/$SCG/"${SCG}"_all_misc_data_final.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/${SCG}"/${SCG}"_aligned_trimmed_filtered.faa \
                  --manual
 
 ## Check out where all your reads went
