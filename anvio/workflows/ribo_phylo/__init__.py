@@ -36,8 +36,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
-        self.rules.extend(['anvi_get_sequences_for_hmm_hits_ribosomal_proteins',
-                           'anvi_estimate_scg_taxonomy_for_ribosomal_proteins',
+        self.rules.extend(['anvi_get_sequences_for_hmm_hits_SCGs',
+                           'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
                            'cat_ribo_proteins_to_one_fasta',
                            'anvi_script_reformat_fasta',
@@ -63,8 +63,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # Parameters for each rule that are accessible in the config file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_ribosomal_proteins'] = ['--hmm-source']
-        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_ribosomal_proteins'] = ['--metagenome-mode']
+        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs'] = ['--hmm-source']
+        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
@@ -81,10 +81,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'anvi_script_reformat_fasta': {'threads': 5},
             'SCG_protein_list': 'SCG_protein_list.txt',
             'MSA_gap_threshold': '',
-            'anvi_estimate_scg_taxonomy_for_ribosomal_proteins': {'threads': 5, '--metagenome-mode': True},
+            'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
-            'anvi_get_sequences_for_hmm_hits_ribosomal_proteins': {'threads': 5, '--hmm-source': 'Bacteria_71'},
+            'anvi_get_sequences_for_hmm_hits_SCGs': {'threads': 5, '--hmm-source': 'Bacteria_71'},
             'join_renamed_fasta_with_misc_data': {'threads': 5},
             'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
             'align_muscle': {'threads': 5},
