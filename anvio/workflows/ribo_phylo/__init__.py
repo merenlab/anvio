@@ -120,7 +120,10 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         # WorkflowSuperclass().init()
 
         self.dirs_dict.update({"LOGS_DIR": "RIBO_PHYLO_WORKFLOW/00_LOGS"})
-        os.rmdir("00_LOGS")
+        try:
+            os.rmdir("00_LOGS")
+        except:
+            pass
 
 
         # initiating a list to fill with names of contigDBs
