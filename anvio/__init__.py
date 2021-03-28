@@ -2324,7 +2324,9 @@ D = {
                      "all contigs do not scale well when you wish to work with a single bin in the refine mode. For "
                      "this reason, the default behavior of anvi-refine is to ignore min/max values set in the default "
                      "state. This flag is your way of telling anvi'o to not do that, and load the state stored in the "
-                     "profile database as is."}
+                     "profile database as is. Please note that this variable has no influence on the `detection` view. "
+                     "For the `detection` view, anvi'o will always load the global detection settings as if you have "
+                     "used this flag."}
                 ),
     'state': (
             ['-s', '--state'],
