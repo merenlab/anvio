@@ -132,6 +132,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
+        self.input_dirs_dict = {}
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
             try:
@@ -139,7 +140,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
-                self.input_dirs_dict = dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list))
+                self.input_dirs_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list)))
                 self.names_dirs.extend(self.metagenomes_dirname_list)
                 self.names_list.extend(self.metagenomes_name_list)
 
