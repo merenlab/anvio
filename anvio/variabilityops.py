@@ -2389,7 +2389,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         coverage = self.data['coverage'].values.astype(int)
 
         self.progress.update("You're ungrateful if you think this is slow")
-        frac_syns, frac_nonsyns = _calculate_synonymous_fraction_test(
+        frac_syns, frac_nonsyns = _calculate_synonymous_fraction(
             counts_array,
             comparison_array,
             coverage,
@@ -3115,53 +3115,8 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
                 else:
                     num_nonsyn += contribution
 
-            if num_nonsyn == 0:
-                num_nonsyns.append(0)
-            else:
-                num_nonsyns.append(num_nonsyn)
-
-            if num_syn == 0:
-                num_syns.append(0)
-            else:
-                num_syns.append(num_syn)
-
-    return num_syns, num_nonsyns
-
-
-@jit(nopython=True)
-def _calculate_synonymous_fraction_test(counts_array, comparison_array, coverage, codon_nums, is_synonymous):
-    num_nonsyns, num_syns = [], []
-    for i in range(counts_array.shape[0]):
-        comp = comparison_array[i] # The codon to be compared against
-        num_nonsyn, num_syn = 0, 0
-
-        if comp < 0:
-            # No sense talking about synonymity relative to a stop codon or codon containing N
-            num_nonsyns.append(np.nan)
-            num_syns.append(np.nan)
-        else:
-            cov = coverage[i]
-
-            for codon in codon_nums:
-                if codon == comp:
-                    # Don't compare the reference codon with itself, we care only about codons that
-                    # differ from the reference codon
-                    continue
-
-                contribution = counts_array[i, codon]/cov
-
-                if is_synonymous[comp, codon]:
-                    num_syn += contribution
-                else:
-                    num_nonsyn += contribution
-
-            # on/off switch to reflect saav/scv ratio
-            if num_nonsyn >= 0.1:
-                num_syns.append(0)
-                num_nonsyns.append(1)
-            else:
-                num_syns.append(1)
-                num_nonsyns.append(0)
+            num_nonsyns.append(num_nonsyn)
+            num_syns.append(num_syn)
 
     return num_syns, num_nonsyns
 
