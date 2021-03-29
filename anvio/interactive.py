@@ -1540,6 +1540,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for split_name in splits_to_remove:
             self.items_additional_data_dict.pop(split_name)
 
+        # if you remove all splits from the additional data dict (say because you are in)
+        # collection mode and your `items` are bin names and not split names), make sure
+        # the items additional data keys variable reflects that fact (reported by
+        # Florentin Constancias / @fconstancias in #1705):
+        if not len(self.items_additional_data_dict):
+            self.items_additional_data_keys = []
+
         self.progress.end()
 
 
