@@ -652,10 +652,12 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('entropy', float),
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
-                ('pN_site_consensus', float),
-                ('pS_site_consensus', float),
-                ('pN_site_reference', float),
-                ('pS_site_reference', float),
+                ('pN_consensus', float),
+                ('pS_consensus', float),
+                ('pN_reference', float),
+                ('pS_reference', float),
+                ('pN_popular_consensus', float),
+                ('pS_popular_consensus', float),
             ],
             'SSMs': [
             ],
@@ -2350,6 +2352,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         if self.include_site_pnps:
             self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
             self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
@@ -2445,8 +2448,6 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         if contigs_db is None:
             contigs_db = self
 
-        pN_name, pS_name = f"pN_{grouping}_{comparison}", f"pS_{grouping}_{comparison}"
-
         frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison)
 
         if grouping == 'site':
@@ -2456,6 +2457,8 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         else:
             raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
 
+        group_tag = (grouping + '_') if grouping != 'site' else ''
+        pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
         self.data[pS_name] = frac_syns/potentials[:, 0]
         self.data[pN_name] = frac_nonsyns/potentials[:, 1]
 
