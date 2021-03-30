@@ -2337,6 +2337,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.engine = 'CDN'
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
+        self.include_site_pnps = A('include_site_pnps', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2346,8 +2347,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
-        self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
+        if self.include_site_pnps:
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
 
 
     def calc_synonymous_fraction(self, comparison='reference'):

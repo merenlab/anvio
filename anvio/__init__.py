@@ -1622,6 +1622,15 @@ D = {
                      "additional columns to your output. NOTE: This is not yet implemented for the `nucleotide_additional_data` "
                      "table."}
                 ),
+    'include-site-pnps': (
+            ['--include-site-pnps'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
+                     "will be calculate with respect to the reference, with repsect to the consenus, and with respect to the "
+                     "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
+                     "added columns. This flag will be ignored if --engine is not CDN."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
