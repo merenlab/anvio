@@ -133,6 +133,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              -o test-output/variability_CDN.txt \
                              --gene-caller-ids 0 \
                              --quince-mode \
+                             --include-site-pnps \
                              --engine CDN
 
 head test-output/variability_CDN.txt
