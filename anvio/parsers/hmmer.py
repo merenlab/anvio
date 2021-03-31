@@ -526,7 +526,9 @@ class HMMERTableOutput(Parser):
             #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- -----------
 
         CONTIG:
-            Undocumented FIXME
+            #
+            # target name        accession  query name           accession  hmmfrom hmm to  alifrom   ali to  envfrom   env to   modlen strand   E-value  score  bias  description of target
+            #------------------- ---------- -------------------- ---------- ------- -------  -------  -------  -------  -------  ------- ------ --------- ------ ----- ---------------------
 
         `DOMAIN` is untested.
     """
