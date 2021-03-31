@@ -266,7 +266,7 @@ class ContigsSuperclass(object):
     def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([]), contig_names_of_interest=set([])):
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        if not len(split_names_of_interest):
+        if not len(split_names_of_interest) and not len(gene_caller_ids_of_interest) and not len(contig_names_of_interest):
             split_names_of_interest = self.split_names_of_interest
 
         too_many_args = False
