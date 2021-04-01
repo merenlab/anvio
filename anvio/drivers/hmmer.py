@@ -412,9 +412,9 @@ class HMMer:
 
 
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
-        """Append table output to the main file.
+        """Append table output to the main file, with some pre-processing.
 
-        Lines starting with '#' (ie, header lines) are ignored.
+        Lines starting with '#' (ie, header lines) are ignored, and runs of spaces are changed to tabs.
         """
 
         detected_non_ascii = False
