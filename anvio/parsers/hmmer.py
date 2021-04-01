@@ -532,6 +532,9 @@ class HMMERTableOutput(Parser):
             #------------------- ---------- -------------------- ---------- ------- -------  -------  -------  -------  -------  ------- ------ --------- ------ ----- ---------------------
 
         `DOMAIN` is untested.
+
+    program: str, 'hmmscan'
+        Which HMMER program was used to generate the output we are parsing? Pick from {'hmmscan', 'hmmsearch'}
     """
 
     def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', run=terminal.Run()):
