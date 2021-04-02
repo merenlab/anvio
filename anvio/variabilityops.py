@@ -2407,7 +2407,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def _get_per_position_potential(self, comparison):
-        """Returns array of len(self.data) that defines the num of nonsyn and syn on a per-site basis"""
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-site basis"""
         coding_codons = sorted(constants.coding_codons)
         stop_codons = list(set(constants.codons) - set(constants.coding_codons))
 
@@ -2427,7 +2427,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def _get_per_gene_potential(self, contigs_db, comparison):
-        """Returns array of len(self.data) that defines the num of nonsyn and syn on a per-gene basis"""
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-gene basis"""
         syn_lookup, nonsyn_lookup = {}, {}
         for corresponding_gene_call in self.data['corresponding_gene_call'].unique():
             gene_call = contigs_db.genes_in_contigs_dict[corresponding_gene_call]
@@ -2444,8 +2444,49 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference'):
     def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+        """Calculate new columns in self.data corresponding to each site's contribution to a grouping
+
+        First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
+        fN and fS are respectively the fraction of non-synonymous and synonymous variation observed in the SAAV.
+        fN and fS sum to 1. Then, each fN and fS value is divided by the number of non-synonymous sites and
+        synonymous sites (aka the synonymity potentials), which will depend on the grouping (see `grouping`).
+
+        Parameters
+        ==========
+        contigs_db : dbops.ContigsSuperclass
+            If None, it is assumed that `self` has inherited `ContigsSuperclass` already.
+        grouping : str, 'site'
+            This keyword specifies the number of synonymous and non-synonymous sites that fN and fS
+            should be divided by to yield pN and pS. E.g. if `grouping` is 'gene', then each SCV
+            belonging to gene X should be divided by the number of synonymous and non-synonymous
+            sites that are present in gene X's sequence, i.e. the output of
+            `utils.get_synonymous_and_non_synonymous_potential`.  As another example, if `grouping`
+            is 'site' and the comparison codon at a site is CGA, then there are 1.33 synonymous
+            sites and 1.66 non-synonymous sites. So each SCV's pN and pS should be calculated by
+            taking fN and fS, and dividing them by 1.66 and 1.33 respectively. If `potentials` is
+            None, the available `grouping` values are {'gene', 'site'}, otherwise `grouping` can be
+            assigned to anything, and it will be used to name the columns (see Returns).
+        comparison : str, 'reference'
+            This specifices the comparison codon that should be used for determining synonymity. Options are
+            {'reference', 'consensus', 'popular_consensus'}. reference means the codon in the reference sequence
+            is the comparison codon, consensus means most common codon in the SCV should be used as the reference,
+            and popular_consensus means that the most frequently observed consensus codon across all samples should
+            be used as the comparison codon.
+        potentials : numpy.array, None
+            Most people should not use this. If provides a way to create custom groupings. If
+            passed, it should be a (len(self.data), 2) shaped numpy array. potentials[:,0] and
+            potentials[:,1] specify the amount that each SCV's fS and fS values should be divided by
+            to yield pS and pN.
+
+        Returns
+        =======
+        output : None
+            This function does not return anything. It creates 2 new columns in `self.data` with
+            names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+        """
+
         if contigs_db is None:
             contigs_db = self
 
