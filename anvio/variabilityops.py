@@ -2445,17 +2445,19 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference'):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
         if contigs_db is None:
             contigs_db = self
 
         frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison)
 
-        if grouping == 'site':
-            potentials = self._get_per_position_potential(comparison=comparison)
-        elif grouping == 'gene':
-            potentials = self._get_per_gene_potential(contigs_db=contigs_db, comparison=comparison)
-        else:
-            raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
+        if potentials is None:
+            if grouping == 'site':
+                potentials = self._get_per_position_potential(comparison=comparison)
+            elif grouping == 'gene':
+                potentials = self._get_per_gene_potential(contigs_db=contigs_db, comparison=comparison)
+            else:
+                raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
 
         group_tag = (grouping + '_') if grouping != 'site' else ''
         pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
