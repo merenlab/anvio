@@ -2115,9 +2115,10 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     Parameters
     ==========
     contig_sequences_dict : dict
-        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
-        ContigsSuperClass.init_contig_sequences)
+        An object that looks like that ContigsSuperclass.contig_sequences (initialized with
+        ContigsSuperclass.init_contig_sequences)
     """
+
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
