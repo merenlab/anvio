@@ -115,7 +115,7 @@ $(document).ready(function() {
         "onclick": null,
         "showDuration": "500",
         "hideDuration": "2000",
-        "timeOut": "6000",
+        "timeOut": "12000",
         "extendedTimeOut": "1000",
         "showEasing": "swing",
         "hideEasing": "linear",
@@ -152,6 +152,23 @@ $(document).ready(function() {
     });
 
     $('#grid_color').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            emit('bin-settings-changed');
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    $('#inverse_color').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
@@ -1198,21 +1215,20 @@ function buildLayersTable(order, settings)
                     // set default categorical layer type to 'text'
                     // if there are more than 11 unique values and leaf count is less than 300
                     // 301 because layerdata has one extra row for the titles
-                    if (layerdata.length <= 301)
+                    console.log(layerdata.length);
+                    var _unique_items = [];
+                    for (var _pos = 1; _pos < layerdata.length; _pos++)
                     {
-                        var _unique_items = [];
-                        for (var _pos = 1; _pos < layerdata.length; _pos++)
-                        {
-                            if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
-                                _unique_items.push(layerdata[_pos][layer_id]);
+                        if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
+                            _unique_items.push(layerdata[_pos][layer_id]);
 
-                            if (_unique_items.length > 11) {
-                                height = '0';
-                                type = 'text';
-                                // we have at least one text layer, we can show max font size input
-                                $('.max-font-size-input').show();
-                                break;
-                            }
+                        if (_unique_items.length > 20) {
+                            toastr.info("Too many categorical values for the layer '" + layer_name + "' to be shown in colors, switching to text.");
+                            height = '0';
+                            type = 'text';
+                            // we have at least one text layer, we can show max font size input
+                            $('.max-font-size-input').show();
+                            break;
                         }
                     }
                 }
@@ -1439,6 +1455,11 @@ function serializeSettings(use_layer_names) {
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
+    state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); 
+    state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
+    state['invert-shade-for-bins'] = $('#invert_shade_for_bins').is(':checked');
+    state['inverse-fill-opacity'] = $('#inverse_fill_opacity').val();
+    state['inverse-color'] = $('#inverse_color').attr('color')
     state['grid-color'] = $('#grid_color').attr('color');
     state['grid-width'] = $('#grid_width').val();
     state['samples-order'] = $('#samples_order').val();
@@ -1604,7 +1625,6 @@ function drawTree() {
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
-
                 bins.RedrawBins();
 
                 $('#btn_draw_tree').prop('disabled', false);
@@ -2396,7 +2416,14 @@ function processState(state_name, state) {
             views[view_key] = {};
             for (let key in state['views'][view_key])
             {
-                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1) {
+                // the if statement below is an important one. this if statement enables min/max values for a given layer
+                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
+                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
+                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
+                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
+                // detection, we actually would like to apply the global detection settings by default without expecting
+                // the user to pass the --load-full-state flag.
+                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
                     continue;
                 }
 
@@ -2507,6 +2534,21 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+    }
+    if (state.hasOwnProperty('show-shade-for-bins')) {
+        $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
+    }
+    if (state.hasOwnProperty('shade-fill-opacity')){
+        $('#shade_fill_opacity').val(state['shade-fill-opacity']); 
+    }
+    if (state.hasOwnProperty('invert-shade-for-bins')){
+        $('#invert_shade_for_bins').prop('checked', state['invert-shade-for-bins']);
+    }
+    if (state.hasOwnProperty('inverse-fill-opacity')){
+        $('#inverse_fill_opacity').val(state['inverse-fill-opacity']);
+    }
+    if (state.hasOwnProperty('inverse-color')){
+        $('#inverse_color').attr('color', state['inverse-color']);
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);

@@ -113,6 +113,14 @@ class DB:
                                   "dictionary." % (', '.join(bad_tables)))
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, *args):
+        self.disconnect()
+
+
     def _not_if_read_only(func):
         def inner(self, *args, **kwargs):
             if self.read_only:
@@ -418,7 +426,7 @@ class DB:
 
     def is_table_exists(self, table_name):
         if table_name not in self.table_names_in_db:
-            raise ConfigError(f"The database at {self.db_path} does seem to have a table `{table_name}` :/ "
+            raise ConfigError(f"The database at {self.db_path} does not seem to have a table named `{table_name}` :/ "
                               f"Here is a list of table names this database knows: {', '.join(self.table_names_in_db)}")
 
 
@@ -677,18 +685,18 @@ class DB:
                                     "errors and you wish to contact us for that, please don't forget to mention that you did try "
                                     "to fix your sad tables.", mc="green")
                 else:
-                    raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems "
-                                      "to be something wrong with the table '%s' that you are trying to read from. While there "
-                                      "are %d items in this table, there are only %d unique keys, which means some of them are "
-                                      "going to be overwritten when this function creates a final dictionary of data to return. "
-                                      "This often happens when the user runs multiple processes in parallel that tries to write "
-                                      "to the same table. For instance, running a separate instance of `anvi-run-hmms` on the same "
-                                      "contigs database with different HMM profiles. Anvi'o is very sad for not handling this "
-                                      "properly, but such database tables need fixin' before things can continue :( If you would "
-                                      "like anvi'o to try to fix this, please run the same command you just run with the flag "
-                                      "`--fix-sad-tables`. If you do that it is a great idea to backup your original database "
-                                      "and then very carefully check the results to make sure things do not look funny." \
-                                                    % (table_name, len(rows), len(unique_keys)))
+                    raise ConfigError(f"This is one of the core functions of anvi'o you never want to hear from, but there seems "
+                                      f"to be something wrong with the table {table_name} (in the database at '{self.db_path}') "
+                                      f"that you are trying to read from. While there are {len(rows)} items in this table, there "
+                                      f"are only {len(unique_keys)} unique keys, which means some of them are going to be overwritten "
+                                      f"when this function creates a final dictionary of data to return. This only happens when the "
+                                      f"user (or their fancy workflow) runs multiple instances of `anvi-run-hmms` on the same "
+                                      f"contigs database with different HMM profiles. Anvi'o is very sad for not handling this "
+                                      f"properly, but such database tables need fixin' before things can continue :( If you would "
+                                      f"like anvi'o to try to fix this, please run the same command you just run with the flag "
+                                      f"`--fix-sad-tables`. If you do that it is a great idea to backup your original database "
+                                      f"and then very carefully check the results to make sure things do not look funny. If you want "
+                                      f"things to go parallel and fast, please consider using the anvi'o snakemake workflows.")
 
         #
         # SAD TABLES END

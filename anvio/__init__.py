@@ -28,6 +28,29 @@ NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
+TMP_DIR = None
+
+# if the user wants to use a non-default tmp directory, we set it here
+if '--tmp-dir' in sys.argv:
+    try:
+        idx = sys.argv.index('--tmp-dir')
+        TMP_DIR = os.path.abspath(sys.argv[idx+1])
+
+        if not os.path.exists(TMP_DIR):
+            parent_dir = os.path.dirname(TMP_DIR)
+            if os.access(parent_dir, os.W_OK):
+                os.makedirs(TMP_DIR)
+            else:
+                raise OSError(f"You do not have permission to generate a directory in '{parent_dir}'")
+        if not os.path.isdir(TMP_DIR):
+            raise OSError(f"The path provided to --tmp-dir, {TMP_DIR}, is not a directory...")
+        if not os.access(TMP_DIR, os.W_OK):
+            raise OSError(f"You do not have permission to generate files in '{TMP_DIR}'")
+
+        os.environ['TMPDIR'] = TMP_DIR
+    except Exception as e:
+        print("OSError: ", e)
+        sys.exit()
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -122,7 +145,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to "
-                     "take a look from it), this flag will become very hand. After creating a contigs database for your "
+                     "take a look from it), this flag will become very handy. After creating a contigs database for your "
                      "contigs, you can create a blank anvi'o profile database to use anvi'o interactive "
                      "interface with that contigs database without any mapping data."}
                 ),
@@ -941,6 +964,36 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'aggregate-based-on-accession': (
+            ['--aggregate-based-on-accession'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
+                     "or to display them, it uses by default the 'function text' as keys. This is because "
+                     "multiple accession IDs in various databases may correspond to the same function, and "
+                     "when you are doing a functional enrichment analysis, you most likely would like to "
+                     "avoid over-splitting of functions due to this. But then how can we know if you are "
+                     "doing something that requires things to be aggregated based on accession ids for "
+                     "functions rather than actual functions? We can't. But we have this flag here so you can "
+                     "instruct anvi'o to listen to you and not to us."}
+                ),
+    'aggregate-using-all-hits': (
+            ['--aggregate-using-all-hits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This program will aggregate functions based on best hits only, and this flag will change that "
+                     "behavior. In some cases a gene may be annotated with multiple functions. This is a decision often "
+                     "made at the level of function annotation tool. For instance, when you run `anvi-run-ncbi-cogs`, "
+                     "you may end up having two COG annotations for a single gene because the gene hit both of them "
+                     "with significance scores that were above the default noise cutoff. While this can be useful when "
+                     "one visualizes functions or works with an `anvi-summarize` output where things should be most "
+                     "comprehensive, having some genes annotated with multiple functions and others with one function "
+                     "may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in "
+                     "different bins). Thus, when working on functional enrichment analyses or displaying functions "
+                     "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
+                     "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
+                ),
+
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
             {'default': False,
@@ -1737,7 +1790,7 @@ D = {
                      "anymore, and you would have to leave anvi'o right now."}
                 ),
     'input-dir': (
-            ['-i', '--input-dir'],
+            ['--input-dir'],
             {'metavar': 'DIR_PATH',
              'type': str,
              'help': "Directory path for input files"}
@@ -2179,9 +2232,33 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'domtblout': (
+            ['-F', '--domtblout'],
+            {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
+                     "The output file will contain the suffix '_domtable.txt'."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'type': str,
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
+                     "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -2249,7 +2326,9 @@ D = {
                      "all contigs do not scale well when you wish to work with a single bin in the refine mode. For "
                      "this reason, the default behavior of anvi-refine is to ignore min/max values set in the default "
                      "state. This flag is your way of telling anvi'o to not do that, and load the state stored in the "
-                     "profile database as is."}
+                     "profile database as is. Please note that this variable has no influence on the `detection` view. "
+                     "For the `detection` view, anvi'o will always load the global detection settings as if you have "
+                     "used this flag."}
                 ),
     'state': (
             ['-s', '--state'],
@@ -2329,6 +2408,13 @@ D = {
              'action': 'store_true',
              'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this "
                      "flag if you want to perform oligotyping-like analyses on matching reads."}
+                ),
+    'add-coverage': (
+            ['--add-coverage'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
+                     "output files. You must provide the profile database corresonding to your contigs db for this to work."}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
@@ -2645,6 +2731,30 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'heuristic-e-value': (
+            ['-E', '--heuristic-e-value'],
+            {'default': 1.0e-5,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with e-values <= this number. (This is X.)"}
+                ),
+    'heuristic-bitscore-fraction': (
+            ['-H', '--heuristic-bitscore-fraction'],
+            {'default': 0.75,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
+                     "It should be a fraction between 0 and 1 (inclusive)."}
+                ),
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
+                     "threshold, use this flag to skip the mumbo-jumbo we do here to relax those thresholds. "}
+                ),
     'include-metadata': (
             ['--include-metadata'],
             {'default': False,
@@ -2696,10 +2806,14 @@ D = {
             ['-G', '--groups-txt'],
             {'default': None,
             'metavar': 'TEXT_FILE',
-            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
-                    "The first column should have the header 'sample' and contain sample names matching "
-                    "to those in the modules-txt file. The second column should have the header 'group' "
-                    "and contain the group name/acronym for each sample (each sample should be in 1 group only)"}
+            'help': "A tab-delimited text file specifying which group each item belongs to. "
+                    "Depending on the context, items here may be individual samples or genomes. "
+                    "The first column must contain item names matching to those that are in your "
+                    "input data. A different column should have the header 'group' and contain the "
+                    "group name for each item. Each item should be associated with a single "
+                    "group. It is always a good idea to define groups using single words without any fancy "
+                    "characters. For instance, `HIGH_TEMPERATURE` or `LOW_FITNESS` are good group names. "
+                    "`my group #1` or `IS-THIS-OK?`, are not good group names."}
                 ),
     'sample-header': (
             ['--sample-header'],

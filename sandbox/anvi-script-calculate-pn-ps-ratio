@@ -90,6 +90,7 @@ def calculate_pN_pS_ratio(args):
 
     # load contigs db and variability table
     contigs_db = load_contigs_db(args)
+
     var = load_variability(args, contigs_db)
     var.calc_pN_pS(
         contigs_db=contigs_db,
@@ -143,6 +144,7 @@ def calculate_pN_pS_ratio(args):
             fillna(0)
 
     report(args, pNpS, pN, pS, SCVs_per_group)
+
 
 
 if __name__ == '__main__':

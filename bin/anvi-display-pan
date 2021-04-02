@@ -37,32 +37,33 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
-    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
-    groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
-                                                           the interface.")
-    groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
-                                                                       nice to have).")
-    groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
     groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
 
+    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+
+    groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
     groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
     groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
     groupD.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
     groupD.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
     groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
+    groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                       nice to have).")
     groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
     groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
     groupE.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
 
+    groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
     groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
     groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupF.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = parser.get_args(parser)
+    args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
         args.mode = 'pan'

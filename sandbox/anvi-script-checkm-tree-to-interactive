@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from anvio.argparse import ArgumentParser
+
 from ete3 import Tree
 
 import anvio
@@ -11,6 +11,8 @@ import anvio.utils as utils
 import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -20,9 +22,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__resources__ = [("The context in which the script was conceived", "https://anvio.slack.com/archives/C8SFMGYF3/p1518192776000335")]
-__description__ = ("Reformat FASTA file (remove contigs based on length, or based on given lists of "
-                   "deflines to include/exclude, and/or generate an output with simpler names)")
+__requires__ = ["phylogeny"]
+__provides__ = ["interactive"]
+__description__ = ("A helper script to convert CheckM trees into anvio interactive with taxonomy information")
 
 
 run = terminal.Run()
@@ -83,7 +85,7 @@ def process(input_fasta_file, output_dir):
     run.info('Output tree path', output_newick_path)
     run.info('Output view data path', output_view_data_path)
 
-    utils.store_dict_as_TAB_delimited_file(output_dict, output_view_data_path, 
+    utils.store_dict_as_TAB_delimited_file(output_dict, output_view_data_path,
         headers=['items'] + list(taxon_letter_to_name.values()))
 
     with open(output_newick_path, 'w') as f:

@@ -1032,7 +1032,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              "rest of the parameters you may have declred. Most of them will not matter.")
 
             if not self.output_directory:
-                raise ConfigError("If you want to generate a blank profile, you need to declare an output diretory path.")
+                raise ConfigError("If you want to generate a blank profile, you need to declare an output directory path.")
             if not self.sample_id:
                 raise ConfigError("Mock profiles require a sample name to be declared. Because :/")
             return
