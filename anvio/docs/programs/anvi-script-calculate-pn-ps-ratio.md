@@ -20,16 +20,7 @@ anvi-script-calculate-pn-ps-ratio -V SCVs.txt \
                                   -o output_dir 
 {{ codestop }}
 
-By default, a pN/pS value is calculated for each (gene, sample) combo. Each unique (gene, sample) combo is considered a "grouping". This corresponds to the parameter choice `--groupby corresponding_gene_call,sample_id`. You can select any arbitrary groupings with the parameter `--groupby`. For example, if `SCVs.txt` corresponds to variants in a single genome, and you would like a genome-wide pN/pS value calculated for each sample, you would want to use the parameter `--groupby sample_id`.
-
-{{ codestart }}
-anvi-script-calculate-pn-ps-ratio -V SCVs.txt \
-                                  -c %(contigs-db)s \
-                                  --groupby sample_id \
-                                  -o output_dir 
-{{ codestop }}
-
-This will result in a directory called `output_dir` that contains several tables that describe each of your genes. See %(pn-ps-data)s for more information.
+A pN/pS value is calculated for each (gene, sample) combo. This will result in a directory called `output_dir` that contains several tables that describe each of your genes. See %(pn-ps-data)s for more information.
 
 ### Other parameters
 
