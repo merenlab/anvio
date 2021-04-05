@@ -688,30 +688,33 @@ class HMMERTableOutput(Parser):
 
         See class docstring for details of the fields
         """
-
+        #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+        # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+        #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
         col_info = [
             ('gene_callers_id', int),   # target name
-            ('f',               str),   # accession
+            ('gene_call_acc',   str),   # accession
             ('gene_length',     int),   # tlen
-            ('gene_name',        str),   # query name
-            ('gene_hmm_id',          str),   # accession
+            ('gene_name',       str),   # query name
+            ('gene_hmm_id',     str),   # accession
             ('hmm_length',      int),   # qlen
-            ('e_value',          float), # E-value (full sequence)
-            ('bit_score',        float), # score (full sequence)
+            ('e_value',         float), # E-value (full sequence)
+            ('bit_score',       float), # score (full sequence)
             ('bias',            float), # bias (full sequence)
             ('match_num',       int),   # # (this domain)
             ('num_matches',     int),   # of (this domain)
             ('dom_c_evalue',    float), # c-Evalue (this domain)
             ('dom_i_evalue',    float), # i-Evalue (this domain)
-            ('dom_bit_score',    str),   # score (this domain)
+            ('dom_bit_score',   str),   # score (this domain)
             ('dom_bias',        float), # bias (this domain)
             ('hmm_start',       int),   # from (hmm coord)
             ('hmm_stop',        int),   # to (hmm coord)
             ('gene_start',      int),   # from (ali coord)
             ('gene_stop',       int),   # to (ali coord)
-            ('f',               str),   # from (env coord)
-            ('f',               str),   # to (env coord)
+            ('env_start',       str),   # from (env coord)
+            ('env_stop',        str),   # to (env coord)
             ('mean_post_prob',  float), # acc
+            ('description',     str)    # description of target
         ]
 
         return list(zip(*col_info))
