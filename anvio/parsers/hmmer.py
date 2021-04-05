@@ -582,21 +582,61 @@ class HMMERTableOutput(Parser):
 
         if self.program == 'hmmscan':
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc
-            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- ---
-            col_names = ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
-            col_mapping = [str, str, int, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+            col_info = [
+                ('gene_name', str),         # target name
+                ('gene_hmm_id', str),       # accession
+                ('gene_callers_id', int),   # query name
+                ('gene_call_acc', str),     # accession
+                ('e_value', float),         # e-value (full sequence)
+                ('bit_score', float),       # score (full sequence)
+                ('bias', str),              # bias (full sequence)
+                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_bit_score', float),   # score (best 1 domain)
+                ('dom_bias', str),          # bias (best 1 domain)
+                ('dom_exp', str),           # exp (domain number estimation)
+                ('dom_reg', str),           # reg (domain number estimation)
+                ('dom_clu', str),           # clu (domain number estimation)
+                ('dom_ov', str),            # ov (domain number estimation)
+                ('dom_env', str),           # env (domain number estimation)
+                ('dom_dom', str),           # dom (domain number estimation)
+                ('dom_rep', str),           # rep (domain number estimation)
+                ('dom_inc', str),           # inc (domain number estimation)
+                ('description', str)        # description
+            ]
+
         elif self.program == 'hmmsearch':
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc
-            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- ---
-            col_names = ['gene_callers_id', 'f', 'gene_name', 'gene_hmm_id', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
-            col_mapping = [int, str, str, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+            col_info = [
+                ('gene_callers_id', int),   # target name
+                ('gene_call_acc', str),     # accession
+                ('gene_name', str),         # query name
+                ('gene_hmm_id', str),       # accession
+                ('e_value', float),         # e-value (full sequence)
+                ('bit_score', float),       # score (full sequence)
+                ('bias', str),              # bias (full sequence)
+                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_bit_score', float),   # score (best 1 domain)
+                ('dom_bias', str),          # bias (best 1 domain)
+                ('dom_exp', str),           # exp (domain number estimation)
+                ('dom_reg', str),           # reg (domain number estimation)
+                ('dom_clu', str),           # clu (domain number estimation)
+                ('dom_ov', str),            # ov (domain number estimation)
+                ('dom_env', str),           # env (domain number estimation)
+                ('dom_dom', str),           # dom (domain number estimation)
+                ('dom_rep', str),           # rep (domain number estimation)
+                ('dom_inc', str),           # inc (domain number estimation)
+                ('description', str)        # description
+            ]
+
         else:
             raise ConfigError("The HMMScan Parser class is not sure if you know what you are doing. You told it that you wanted to "
                                 "parse HMM hits from the program %s, but this class doesn't know how to handle those." % (self.program))
 
-        return col_names, col_mapping
+        return list(zip(*col_info))
 
 
     def get_col_info_for_CONTIG_context(self):
