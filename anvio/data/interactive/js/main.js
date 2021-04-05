@@ -2479,171 +2479,106 @@ function processState(state_name, state) {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
             }
         }
-    } else {
-        // state['stack_bar_colors'] = serializedState['stack_bar_colors']
-        // modifiedItems.push('stack bar colors')
-    }
+    } 
 
     if (state.hasOwnProperty('tree-type')){
         $('#tree_type').val(state['tree-type']).trigger('change');
-    } else{
-        // state['tree-type'] = serializedState['tree-type']
-        // $('#tree_type').val('circlephylogram').trigger('change');
-        // userStateHasBeenModified = true 
-        // modifiedItems.push('tree type')
-    }
+    } 
+
     if (state.hasOwnProperty('angle-min')){
         $('#angle-min').val(state['angle-min']);
-    } else {
-        // state['angle-min'] = serializedState['angle-min']
-        // $('#angle-min').val('0');
-        // userStateHasBeenModified = true 
-    }
+    } 
+
     if (state.hasOwnProperty('tree-height')){
         $('#tree_height').val(state['tree-height']);
-    } else {
-        // state['tree-height'] = serializedState['tree-height']
-        // $('#tree_height').val('0');
-    }
+    } 
+
     if (state.hasOwnProperty('tree-width')){
         $('#tree_width').val(state['tree-width']);
-    } else {
-        // state['tree-width'] = serializedState['tree-width']
-        // $('#tree_width').val('0');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('angle-max')){
         $('#angle-max').val(state['angle-max']);
-    } else {
-        // state['angle-max'] = serializedState['angle-max']
-        // $('#angle-max').val('180');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('tree-radius')) {
         $('#tree-radius-container').show();
         $('#tree-radius').val(state['tree-radius']);
-    } else {
-        // state['tree-radius'] = serializedState['tree-radius']
-        // $('#tree-radius-container').show();
-        // $('#tree-radius').val('2000');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
         $('#trees_container').val(state['order-by']);
-    } else {
-        // state['order-by'] = serializedState['order-by'];
-        // $('#trees_container').val(state['order-by']);
-        // modifiedItems.push('stack bar colors');
-    }
+    } 
+
     if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
         $('#views_container').val(state['current-view']);
-    } else {
-        // state['current-view'] = serializedState['current-view']
-        // $('#views_container').val(state['current-view']);
-    }
+    } 
+
     if (state.hasOwnProperty('max-font-size')) {
         $('#max_font_size').val(state['max-font-size']);
-    } else {
-        // state['max-font-size'] = serializedState['max-font-size']
-        // $('#max_font_size').val(state['max-font-size']);
-        // modifiedItems.push('max font size')
-    }
+    } 
+
     if (state.hasOwnProperty('max-font-size-label')) {
         $('#max_font_size_label').val(state['max-font-size-label']);
-    } else {
-        // state['max-font-size-label'] = serializedState['max-font-size-label']
-        // $('#max_font_size_label').val(state['max-font-size-label']);
-        // modifiedItems.push('max font size label')
-    }
+    } 
+
     if (state.hasOwnProperty('layer-margin')){
         $('#layer-margin').val(state['layer-margin']);
-    } else {
-        // state['layer-margin'] = serializedState['layer-margin']
-        // $('#layer-margin').val(state['layer-margin']);
-    }
+    } 
+
     if (state.hasOwnProperty('outer-ring-height')){
         $('#outer-ring-height').val(state['outer-ring-height']);
-    } else {
-        // state['outer-ring-height'] = serializedState['outer-ring-height']
-        // $('#outer-ring-height').val('60');
-    }
+    } 
+
     if (state.hasOwnProperty('outer-ring-margin')){
         $('#outer-ring-margin').val(state['outer-ring-margin']);
-    } else {
-        // state['outer-ring-margin'] = serializedState['outer-ring-margin']
-        // $('#outer-ring-margin').val('30');
-    }
+    } 
+
     if (state.hasOwnProperty('edge-normalization')){
         $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-    } else {
-        // state['edge-normailzation'] = serializedState['edge-normalization']
-        // $('#edge_length_normalization').prop('checked', false);
-    }
+    } 
+
     if (state.hasOwnProperty('optimize-speed')){
         $('#optimize_speed').prop('checked', state['optimize-speed']);
-    } else {
-        // state['optimize-speed'] = serializedState['optimize-speed']
-        // $('#optimize_speed').prop('checked', true);
     }
+
     if (state.hasOwnProperty('custom-layer-margin')){
         $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-    } else {
-        // state['custom-layer-margin'] = serializedState['custom-layer-margin']
-        // $('#custom_layer_margin').prop('checked', true).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
-    } else {
-        // state['grid-color'] = serializedState['grid-color']
-        // $('#grid_color').attr('color', '#FFFFFF');
-        // $('#grid_color').css('background-color', '#FFFFFF');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('grid-width')) {
         $('#grid_width').val(state['grid-width']);
-    } else {
-        // state['grid-width'] = serializedState['grid-width']
-        // $('#grid_width').val('1');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('bin-labels-font-size')) {
         $('#bin_labels_font_size').val(state['bin-labels-font-size']);
-    } else {
-        // state['bin-labels-font-size'] = serializedState['bin-labels-font-size']
-        // $('#bin_labels_font_size').val('128');
-    }
+    } 
+
     if (state.hasOwnProperty('bin-labels-angle')) {
         $('#bin_labels_angle').val(state['bin-labels-angle']);
-    } else {
-        // state['bin-labels-angle'] = serializedState['bin-labels-angle']
-        // $('#bin_labels_angle').val('0');
-    }
+    } 
+
     if (state.hasOwnProperty('show-bin-labels')) {
         $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
-    } else {
-        // state['show-bin-labels'] = serializedState['show-bin-labels']
-        // $('#show_bin_labels').prop('checked', true).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
-    } else {
-        // state['autorotate-bin-labels'] = serializedState['autorotate-bin-labels']
-        // $('#autorotate_bin_labels').prop('checked', true).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
-    } else {
-        // state['estimate-taxonomy'] = serializedState['estimate-taxonomy']
-        // $('#estimate_taxonomy').prop('checked', false).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-    } else {
-        // state['show-grid-for-bins'] = serializedState['show-grid-for-bins']
-        // $('#show_grid_for_bins').prop('checked', false).trigger('change');
-        // userStateHasBeenModified = true
-    }
+    } 
+
     if (state.hasOwnProperty('show-shade-for-bins')) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
     }
@@ -2661,39 +2596,27 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
-    } else {
-        // $('#samples_edge_length_normalization').prop('checked', true);
-    }
+    } 
+
     if (state.hasOwnProperty('samples-ignore-branch-length')) {
         $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
-    } else {
-        // state['samples-ignore-branch-length'] = serializedState['samples-ignore-branch-length']
-        // $('#samples_ignore_branch_length').prop('checked', false);
-    }
+    } 
+
     if (state.hasOwnProperty('samples-tree-height')) {
         $('#samples_tree_height').val(state['samples-tree-height']);
-    } else {
-        // state['samples-tree-height'] = serializedState['samples-tree-height']
-        // $('#samples_tree_height').val(state['samples-tree-height']);
-    }
+    } 
+
     if (state.hasOwnProperty('background-opacity')) {
         $('#background_opacity').val(state['background-opacity']);
-    } else {
-        // state['background-opacity'] = serializedState['background-opacity']
-        // $('#background_opacity').val('0.15');
-    }
+    } 
+
     if (state.hasOwnProperty('draw-guide-lines')) {
         $('#draw_guide_lines').val(state['draw-guide-lines'])
-    } else {
-        // state['draw-guide-lines'] = serializedState['draw-guide-lines']
-        // $('#draw_guide_lines').val('no') // no?? not false ? 0_0
-    }
+    } 
+
     if (state.hasOwnProperty('begins-from-branch')) {
         $('#begins_from_branch').val(state['begins-from-branch'])
-    } else {
-        // state['begins-from-branch'] = serializedState['begins-from-branch']
-        // $('#begins_from_branch').val(false)
-    }
+    } 
 
     // bootstrap values
     if (state.hasOwnProperty('show-support-values')){
@@ -2795,7 +2718,7 @@ function processState(state_name, state) {
 
     current_state_name = state_name;
 
-    // console.log('serialized ==>', serializedState['samples-layers']['default']) comparing the anvio generated state to the modified user-supplied state
+    console.log('serialized ==>', serializedState)  //comparing the anvio generated state to the modified user-supplied state
     // console.log('user provided ==>', state['samples-layers']['default'])
     if(modifiedItems){
         toastr.warning(`It appears the state file (${current_state_name}) you provided may have been missing some key elements. Anvio has done its best to fill in the blanks for you. How nice!`)
