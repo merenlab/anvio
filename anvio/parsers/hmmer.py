@@ -646,6 +646,31 @@ class HMMERTableOutput(Parser):
         return list(zip(*col_info))
 
 
+    def fix_sad_hmmer_table_output(self, hmmer_table_txt, column_names):
+        """"FIXME"""
+
+        tmp_dir = os.path.dirname(hmmer_table_txt)
+        fixed_table_path = os.path.join(tmp_dir, "hmm.table.fixed")
+
+        # we tack on some six columns at the end to catch up to six words split from the original description column
+        extra_desc_cols = ["a", "b", "c", "d", "e", "f"]
+        col_names_plus_description_cols = list(column_names) + extra_desc_cols
+        all_desc_cols = ['description'] + extra_desc_cols
+
+        hmmer_df = pd.read_csv(hmmer_table_txt, sep="\t", names=col_names_plus_description_cols, index_col=False)
+        hmmer_df.fillna('', inplace=True)
+
+        # join the description columns into one
+        hmmer_df['full_description'] = hmmer_df[all_desc_cols].agg(' '.join, axis=1)
+        hmmer_df['full_description'] = hmmer_df['full_description'].str.strip()
+        hmmer_df.drop(all_desc_cols, axis=1, inplace=True)
+        hmmer_df.rename(columns={'full_description': 'description'}, inplace=True)
+
+        hmmer_df.to_csv(fixed_table_path, sep="\t", index=False, header=False)
+
+        return fixed_table_path
+
+
     def get_search_results(self, noise_cutoff_dict=None):
         """Goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
