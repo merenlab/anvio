@@ -659,11 +659,28 @@ class HMMERTableOutput(Parser):
         See class docstring for details of the fields for AA sequence search, and DNA sequence search.
         """
 
-        # 'hmm_target', 'hmm_acc', 'query_id', 'query_acc', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'seq_len', 'strand', 'e_value', 'score', 'bias',]
-        col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f']
-        col_mapping = [str, str, str, str, str, str, int, int, int, int, str, str, float, str, str]
+        # target name        accession  query name           accession  hmmfrom hmm to alifrom  ali to envfrom  env to  modlen strand   E-value  score  bias  description of target
+        #------------------- ---------- -------------------- ---------- ------- ------- ------- ------- ------- ------- ------- ------ --------- ------ ----- ---------------------
+        col_info = [
+            ('gene_name', str),         # target name
+            ('gene_hmm_id', str),       # accession
+            ('contig_name', str),       # query name
+            ('contig_acc', str),        # accession
+            ('hmm_from', int),          # hmmfrom
+            ('hmm_to', int),            # hmm to
+            ('alignment_from', int),    # alifrom
+            ('alignment_to', int),      # ali to
+            ('envelope_from', int),     # envfrom
+            ('envelope_to', int),       # env to
+            ('seq_len', str),           # modlen
+            ('strand', str),            # strand
+            ('e_value', float),         # E-value
+            ('score', str),             # score
+            ('bias', str),              # bias
+            ('description', str)        # description of target
+        ]
 
-        return col_names, col_mapping
+        return list(zip(*col_info))
 
 
     def get_col_info_for_DOMAIN_context(self):
