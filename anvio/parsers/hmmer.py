@@ -545,8 +545,6 @@ class HMMERTableOutput(Parser):
 
         self.run = run
 
-        files_expected = {'hits': hmmer_table_txt}
-
         if self.context == "GENE":
             col_info = self.get_col_info_for_GENE_context()
         elif self.context == "CONTIG" and (self.alphabet == "DNA" or self.alphabet == "RNA"):
@@ -572,7 +570,22 @@ class HMMERTableOutput(Parser):
             },
         }
 
-        Parser.__init__(self, 'HMMScan', [hmmer_table_txt], files_expected, files_structure)
+        ## Here we have some sad extra parsing that will hopefully go away once HMMER4 comes out. Due to stupid
+        ## space-delimited and column-aligned HMMER output with a description field that can contain internal spaces,
+        ## when anvio.driver.HMMER converts spaces into to tabs we can end up with lines of variable columns. Which
+        ## means that before we can send this file to the base parser, we have to combine the split description fields
+        ## into one column. Yeah, it sucks doing it this way. But we tried asking the HMMER people to just give us tab-
+        ## delimited output already (https://github.com/EddyRivasLab/hmmer/issues/235) and it seems that we'll have to
+        ## wait for HMMER4 to have this feature. So it has to be this way until HMMER 4 comes out.
+        ##
+        ## We could just parse everything with pandas right here, but the base parser is already set up nicely to do it,
+        ## and it will be easy to switch back to using that parser directly once the promised tab-delimited output is
+        ## implemented. So for now we just make a slight detour to fix the shitty format before going back to the base
+        ## parser.
+        fixed_hmmer_table_txt =  self.fix_sad_hmmer_table_output(hmmer_table_txt, col_names)
+        files_expected = {'hits': fixed_hmmer_table_txt}
+
+        Parser.__init__(self, 'HMMScan', [fixed_hmmer_table_txt], files_expected, files_structure)
 
 
     def get_col_info_for_GENE_context(self):
