@@ -412,9 +412,9 @@ class HMMer:
 
 
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
-        """Append table output to the main file, with some pre-processing.
+        """Append table output to the main file.
 
-        Lines starting with '#' (ie, header lines) are ignored, and runs of spaces are changed to tabs.
+        Lines starting with '#' (ie, header lines) are ignored.
         """
 
         detected_non_ascii = False
@@ -434,7 +434,7 @@ class HMMer:
                     continue
 
                 with buffer_write_lock:
-                    merged_file_buffer.write('\t'.join(line.split()) + '\n')
+                    merged_file_buffer.write(line)
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "

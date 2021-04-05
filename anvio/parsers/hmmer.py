@@ -731,7 +731,7 @@ class HMMERTableOutput(Parser):
         col_names_plus_description_cols = list(column_names) + extra_desc_cols
         all_desc_cols = ['description'] + extra_desc_cols
 
-        hmmer_df = pd.read_csv(hmmer_table_txt, sep="\t", names=col_names_plus_description_cols, index_col=False)
+        hmmer_df = pd.read_csv(hmmer_table_txt, sep="\s+", names=col_names_plus_description_cols, index_col=False)
         hmmer_df.fillna('', inplace=True)
 
         # join the description columns into one
