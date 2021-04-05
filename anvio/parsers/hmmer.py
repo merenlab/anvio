@@ -8,6 +8,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
 
+import os
 import numpy as np
 import pandas as pd
 
