@@ -2372,6 +2372,24 @@ function processState(state_name, state) {
     let modifiedItems = []
     // keep track of the things we update and let the user know their state data has been tweaked
 
+    function traverseNestedData(serializedStateObj, providedStateObj){
+        Object.entries(serializedStateObj).forEach(([key, value]) => {
+            if(!providedStateObj[key]){
+                providedStateObj[key] = value 
+            } else if (providedStateObj[key] !== value){
+                Object.entries(value).forEach(([key, value]) => {
+                    if(!providedStateObj[key]){
+                        providedStateObj[key] = value
+                    } else if(providedStateObj[key] !== value){
+                        console.log(value)
+                    }
+                })
+            } 
+            // console.log(providedStateObj)
+            // console.log(serializedStateObj)
+        })
+    }
+
     if (!state.hasOwnProperty('version'))
     {
         toastr.error("Interface received a state without version information, it will be not loaded.");
@@ -2667,32 +2685,33 @@ function processState(state_name, state) {
                 samples_categorical_colors[key] = state['samples-categorical-colors'][key];
             }
         }
-    } else {
-        state['samples-categorical-colors'] = serializedState['samples-categorical-colors']
-    }
+    } 
     if (state.hasOwnProperty('samples-stack-bar-colors')) {
         for (let key in state['samples-stack-bar-colors']) {
             if (key in samples_stack_bar_colors) {
                 samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
             }
         }
-    } else {
-        state['samples-stack-bar-colors'] = serializedState['samples-stack-bar-colors']
-        for (let key in state['samples-stack-bar-colors']) {
-            if (key in samples_stack_bar_colors) {
-                samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
-            }
-        }
-        modifiedItems.push('sample stack bar colors')
-    }
+    } 
 
     buildLayersTable(layer_order, views[current_view]);
 
-    if(state['samples-layer-order'] && state['samples-layers']){
+    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else {
-        state['samples-layers'] = serializedState['samples-layers']
         state['samples-layer-order'] = serializedState['samples-layer-order']
+        console.log(state['samples-layers'])
+        
+        Object.entries(serializedState['samples-layers']).forEach(([key, value]) => {
+            console.log(key)
+            if(!state['samples-layers'][key]){ 
+                state['samples-layers'][key] = value // if it doesn't exist in user state, add it 
+            } else if ( state['samples-layers'][key] !== value){ // if it exists but doesn't match the generated value, we dive in
+                // traverseNestedData(serializedState['samples-layers'][key], state['samples-layers'][key])
+            }
+        })
+        
+        state['samples-layers'] = serializedState['samples-layers']
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
         modifiedItems.push('samples layer order, samples layers')
     }
@@ -2718,7 +2737,7 @@ function processState(state_name, state) {
 
     current_state_name = state_name;
 
-    console.log('serialized ==>', serializedState)  //comparing the anvio generated state to the modified user-supplied state
+    // console.log('serialized ==>', serializedState)  //comparing the anvio generated state to the modified user-supplied state
     // console.log('user provided ==>', state['samples-layers']['default'])
     if(modifiedItems){
         toastr.warning(`It appears the state file (${current_state_name}) you provided may have been missing some key elements. Anvio has done its best to fill in the blanks for you. How nice!`)
