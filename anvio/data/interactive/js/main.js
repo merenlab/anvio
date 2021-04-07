@@ -2454,8 +2454,10 @@ function processState(state_name, state) {
                 }
             }
         }
-    } else {
+    }  else if(!state['views']){
         state['views'] = serializedState['views']
+    } else {
+        traverseNestedData(serializedState['views'], state['views'])
         modifiedItems.push('views')
     }
 
