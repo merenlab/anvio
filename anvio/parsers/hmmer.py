@@ -754,7 +754,10 @@ class HMMERTableOutput(Parser):
         hmmer_df.fillna('', inplace=True)
 
         # join the description columns into one
-        hmmer_df['full_description'] = hmmer_df[all_desc_cols].agg(' '.join, axis=1)
+        hmmer_df['full_description'] = hmmer_df[all_desc_cols[0]]
+        for c in all_desc_cols[1:]:
+            # Concatenate two string columns
+            hmmer_df['full_description'] += ' ' + hmmer_df[c]
         hmmer_df['full_description'] = hmmer_df['full_description'].str.strip()
         hmmer_df.drop(all_desc_cols, axis=1, inplace=True)
         hmmer_df.rename(columns={'full_description': 'description'}, inplace=True)
