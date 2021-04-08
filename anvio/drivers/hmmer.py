@@ -180,7 +180,7 @@ class HMMer:
                 raise ConfigError("Oh, dear. Someone (probably a programmer) has requested domain table output from "
                                   f"the run_hmmer() function when the alphabet is {alphabet}. Sadly, this will not "
                                   "work because that alphabet requires the use of `nhmmscan`, which does not have "
-                                  "the --domtblout parameter.") 
+                                  "the --domtblout parameter.")
         else:
             self.run.info('HMMer program used for search', self.program_to_use)
 
@@ -414,15 +414,11 @@ class HMMer:
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
         """Append table output to the main file.
 
-        FIXME In addition to appending, this function also pre-processes the data, which should not
-        be done here. That qualifies as hmmer output parsing, and should be in
-        anvio/parsers/hmmer.py.
+        Lines starting with '#' (ie, header lines) are ignored.
         """
 
         detected_non_ascii = False
         lines_with_non_ascii = []
-        clip_description_index = None
-        clip_index_found = False
 
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
@@ -435,15 +431,10 @@ class HMMer:
                     detected_non_ascii = True
 
                 if line.startswith('#'):
-                    if not clip_index_found and line.find('description') != -1:
-                        # This parser removes the description column from the data
-                        clip_description_index = line.find('description')
-                        clip_index_found = True
-
                     continue
 
                 with buffer_write_lock:
-                    merged_file_buffer.write('\t'.join(line[:clip_description_index].split()) + '\n')
+                    merged_file_buffer.write(line)
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
