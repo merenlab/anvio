@@ -493,11 +493,8 @@ class HMMERTableOutput(Parser):
     NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     <rant>
-    Parsing of HMMER tabular output needs to be redesigned. This code does not actually take output from hmmer
-    and parse it. It parses the output file of anvio.driver.HMMER.hmmscan_worker which preprocesses the
-    output format. The responsibility of HMMER output parsing needs to be consolidated in one spot. Biopython, a
-    dependency of anvi'o, has an HMMER parser. See https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html.
-    Perhaps this is more robust solution. This design is currently hanging on by a thread.
+    Parsing of HMMER tabular output needs to be redesigned. See https://github.com/merenlab/anvio/issues/1670
+    for details
     </rant>
 
     Output specifictions of HMMER can be found in the user guide. At time of writing this,
