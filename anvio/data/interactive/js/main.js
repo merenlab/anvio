@@ -2381,12 +2381,8 @@ function processState(state_name, state) {
                     return 
                 } else if(!providedStateObj[key]){ // if user's state is missing an element found in anvio's generated state , add it 
                     providedStateObj[key] = value 
-                } else if (providedStateObj[key] !== value){
-                    if(!value){ // no data left :(
-                        return 
-                    } else{
-                        traverseNestedData(serializedStateObj[key], providedStateObj[key]) // again! again!
-                    }        
+                } else if (providedStateObj[key] !== value){ // user's state element doesnt match anvio's, so we go again
+                    traverseNestedData(serializedStateObj[key], providedStateObj[key])       
                 } 
             })
         }
