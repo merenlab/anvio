@@ -2457,7 +2457,7 @@ function processState(state_name, state) {
         modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers') && state['layers'] == serializedState['layers']) { //check if user provides incomplete data against serialized data
+    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { //check if user provides incomplete data against serialized data
         layers = {};
         for (let key in state['layers'])
         {
@@ -2468,10 +2468,16 @@ function processState(state_name, state) {
                 layers[layer_id] = state['layers'][key];
             }
         }
-    } else {
-       state['layers'] = serializedState['layers']
-       state['layers-order'] = serializedState['layers-order']
-       modifiedItems.push('layers, layer order')
+    } else if(!state['layers']) {
+        state['layers'] = serializedState['layers']
+        state['layers-order'] = serializedState['layers-order']
+    } 
+    else {
+        traverseNestedData(serializedState['layers'], state['layers'])
+        state['layers-order'] = serializedState['layers-order']
+
+        console.log(state['layers'])
+        modifiedItems.push('layers, layer order')
     }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
@@ -2483,9 +2489,6 @@ function processState(state_name, state) {
                 categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
             }
         }
-    } else {
-        state['catagorical_data_colors'] = serializedState['categorical_data_colors']
-        modifiedItems.push('cat data colors')
     }
 
     if (state.hasOwnProperty('stack_bar_colors')) {
@@ -2698,11 +2701,14 @@ function processState(state_name, state) {
 
     if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-    } else {
-        
-        traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
-        
+    } else if (!state['samples-layers']){
+        state['samples-layers'] = serializedState['samples-layers']
         state['samples-layer-order'] = serializedState['samples-layer-order']
+        buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+    } else {        
+        traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
+        state['samples-layer-order'] = serializedState['samples-layer-order']
+        
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
         modifiedItems.push('samples layer order, samples layers')
     }
@@ -2728,9 +2734,8 @@ function processState(state_name, state) {
 
     current_state_name = state_name;
 
-    // console.log('serialized ==>', serializedState)  //comparing the anvio generated state to the modified user-supplied state
-    // console.log('user provided ==>', state['samples-layers']['default'])
     if(modifiedItems){
+        toastr.warning(`You can export this updated state to json and see what's been changed :)`)
         toastr.warning(`It appears the state file (${current_state_name}) you provided may have been missing some key elements. Anvio has done its best to fill in the blanks for you. How nice!`)
     } else {
         toastr.success("State '" + current_state_name + "' successfully loaded.");
