@@ -92,16 +92,20 @@ rule get_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        # contigDB = expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs),
         contigDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
-        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls.tsv")
+        external_gene_calls_ed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls_ed.tsv")
     params:
         fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_orfs.fna")),
+        external_gene_calls = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_orfs.fna")),
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
-    shell: "anvi-get-sequences-for-gene-calls -c {input.contigDB} \
-                                              --external-gene-calls {output.external_gene_calls} \
-                                              -o {params.fasta} 2> {log}"
+    shell:
+          """
+          anvi-get-sequences-for-gene-calls -c {input.contigDB} \
+                                            --external-gene-calls {params.external_gene_calls} \
+                                            -o {params.fasta} 2> {log};
+          awk -v sample="{wildcards.sample_name}" 'NR==1 {{print}} NR>1 {{$2=sample"_"$2; print}}' {params.external_gene_calls} > {output.external_gene_calls_ed}
+          """
 
 rule cat_external_gene_calls_file:
     """
@@ -110,7 +114,7 @@ rule cat_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
     input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_external_gene_calls.tsv"), sample_names = M.names_list, ribosomal_protein_names = M.SCG_protein_list),
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_external_gene_calls_ed.tsv"), sample_names = M.names_list, ribosomal_protein_names = M.SCG_protein_list),
     output:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
