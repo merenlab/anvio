@@ -130,7 +130,7 @@ rule rename_and_filter_external_gene_calls_file_all:
         headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_headers_for_mapping.txt")
     output:
         external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.tsv")
-    threads: M.T('rename_external_gene_calls_file')
+    threads: 5
     script:
         "scripts/rename_external_gene_calls_file.py"
 
