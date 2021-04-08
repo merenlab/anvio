@@ -4,7 +4,7 @@ This page describes general properties of anvi'o interactive displays and progra
 
 Anvi'o uses a simple terminology to address various aspects of interactive displays it produces, such as items, layers, views, orders, and so on. The purpose of this section is to provide some insights into these terminology using the figure below:
 
-![an anvi'o display](../../images/anvio_display_template.png){:.center-img}
+![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
 
 Even though the figure is a product of %(anvi-display-pan)s, the general terminology does not change across different interfaces, including the default visualizations of %(anvi-interactive)s. Here are the descriptions of numbered areas in the figure:
 
