@@ -1582,14 +1582,9 @@ class TRNASeqDataset(object):
                               "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
 
 
-        if self.descrip_path:
-            filesnpaths.is_file_plain_text(self.descrip_path)
-            self.descrip = open(self.descrip_path).read()
-
-        if not 1 <= self.num_threads <= mp.cpu_count():
-            raise ConfigError("The number of threads to use must be a positive integer less than or equal to %d. "
-                              "Try again!" % mp.cpu_count())
-
+    def del_start_stop_sanity_check(self):
+        """Check the logic of allowed start and stop positions of in silico deletions relative to
+        sites of predicted modification-induced substitutions."""
         if (self.fiveprimemost_del_start > self.threeprimemost_del_start
             or self.fiveprimemost_del_start > self.fiveprimemost_del_stop
             or self.threeprimemost_del_start > self.threeprimemost_del_stop
@@ -1603,6 +1598,7 @@ class TRNASeqDataset(object):
                               f"a 3'-most deletion start of {self.threeprimemost_del_start}, "
                               f"a 5'-most deletion stop of {self.fiveprimemost_del_stop}, and "
                               f"a 3'-most deletion stop of {self.threeprimemost_del_stop}.")
+
         self.possible_del_starts = tuple(range(self.fiveprimemost_del_start, self.threeprimemost_del_start + 1))
         self.possible_pythonic_del_stops = tuple(range(self.fiveprimemost_del_stop + 1, self.threeprimemost_del_stop + 2))
         # Determine the spectrum of different deletion sizes/positions relative to a substitution.
