@@ -1551,22 +1551,22 @@ class TRNASeqDataset(object):
             self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green', nl_after=1)
 
 
-            if len(os.listdir(self.out_dir)) == 0:
-                # There is nothing in the output directory. This may be caused by
-                # `anvi-run-workflow`, which creates the output directory even before `anvi-trnaseq`
-                # is called.
-                pass
-            elif self.overwrite_out_dest:
-                if self.load_checkpoint:
-                    raise ConfigError("You cannot use `--load-checkpoint` in conjunction with `--overwrite-output-destinations`. "
-                                      "Starting at a checkpoint requires loading intermediate files written to the output "
-                                      "directory in a previous `anvi-trnaseq` run, but this directory would be removed with "
-                                      "`--overwrite-output-destinations`.")
-                shutil.rmtree(self.out_dir)
-            else:
-                if not self.load_checkpoint:
-                    raise ConfigError("The directory that was specified by --output-dir or -o, %s, already exists. "
-                                      "Use the flag --overwrite-output-destinations to overwrite this directory." % self.out_dir)
+    def existing_out_dir_sanity_check(self):
+        """Conditions must be fulfilled for the `anvi-trnaseq` output directory to already exist."""
+        if len(os.listdir(self.out_dir)) == 0:
+            # There is nothing in the output directory.
+            pass
+        elif self.overwrite_out_dest:
+            if self.load_checkpoint:
+                raise ConfigError("You cannot use `--load-checkpoint` in conjunction with `--overwrite-output-destinations`. "
+                                  "Starting at a checkpoint requires loading intermediate files written to the output "
+                                  "directory in a previous `anvi-trnaseq` run, but this directory would be removed with "
+                                  "`--overwrite-output-destinations`.")
+            shutil.rmtree(self.out_dir)
+        else:
+            if not self.load_checkpoint:
+                raise ConfigError(f"The directory that was specified by --output-dir or -o, {self.out_dir}, already exists. "
+                                  "Use the flag --overwrite-output-destinations to overwrite this directory.")
 
         if self.load_checkpoint:
             # Check that needed intermediate pickle files exist when loading from a checkpoint.
