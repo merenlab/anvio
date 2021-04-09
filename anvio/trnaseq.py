@@ -3111,13 +3111,13 @@ class TRNASeqDataset(object):
                                                mod_seq_child_names,
                                                mod_seq_child_reversed_seq_strings,
                                                mod_seq_child_extras):
-        """3'-dereplicate modified sequences with speculative in silico deletions ("children") and
-        normalized sequences. This method is modeled on `sequence.Dereplicator.prefix_dereplicate` with
-        changes for the deletion detection problem. Clusters containing longest "seed" sequences and
-        equal-length or shorter 3'-subsequences are produced for each modified sequence child and for
-        normalized sequences with subsequences. Since normalized sequences have already been
-        dereplicated, they will not be subsequences of each other and there will only be one normalized
-        sequence per cluster."""
+        """3'-dereplicate modified sequence "children," M', with speculative in silico deletions and
+        normalized sequences. This method is modeled on `sequence.Dereplicator.prefix_dereplicate`
+        with changes for the deletion detection problem. Clusters containing longest "seed"
+        sequences and equal-length or shorter 3'-subsequences are produced for each M'. Clusters are
+        also produced for normalized sequences with subsequences, which must be M'. Since normalized
+        sequences have already been dereplicated, they will not be subsequences of each other --
+        there will only be one normalized sequence per cluster."""
         # Use k-mers to more rapidly narrow the subsequence search space.
         kmer_size = min(map(len, norm_seq_reversed_seq_strings + mod_seq_child_reversed_seq_strings))
 
@@ -3129,26 +3129,24 @@ class TRNASeqDataset(object):
         norm_seq_hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings]
         mod_seq_child_hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings]
 
-        # Find normalized sequences within modified sequence children.
+        # Find normalized sequences within M'.
         num_norm_seq_matches = 0
         for norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra, norm_seq_prefix_hash, norm_seq_target in zip(norm_seq_names, norm_seq_reversed_seq_strings, norm_seq_extras, norm_seq_hashed_prefixes, norm_seq_targets):
             if norm_seq_prefix_hash not in mod_seq_child_kmer_dict:
                 continue
 
-            # The k-mer but not necessarily the whole normalized sequence was found in the modified
-            # sequence child.
+            # The k-mer but not necessarily the whole normalized sequence was found in an M'.
             hit_found = False
             for mod_seq_child_name, candidate_mod_seq_child_target in mod_seq_child_kmer_dict[norm_seq_prefix_hash].items():
                 if norm_seq_reversed_seq_string == candidate_mod_seq_child_target.seq_string[: len(norm_seq_reversed_seq_string)]:
                     candidate_mod_seq_child_target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
                     hit_found = True
             if hit_found:
-                # The normalized sequence will not seed a cluster if in a modified sequence child.
+                # The normalized sequence will not seed a cluster if in an M'.
                 norm_seq_target.hit_another_target = True
                 num_norm_seq_matches += 1
 
-        # Find modified sequence children in normalized sequences and in other modified sequence
-        # children.
+        # Find M' in normalized sequences and in other M'.
         num_mod_seq_matches = 0
         for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_prefix_hash, mod_seq_child_target in zip(mod_seq_child_names, mod_seq_child_reversed_seq_strings, mod_seq_child_extras, mod_seq_child_hashed_prefixes, mod_seq_child_targets):
             match_found = False
@@ -3157,7 +3155,7 @@ class TRNASeqDataset(object):
                     if mod_seq_child_reversed_seq_string == candidate_norm_seq_target.seq_string[: len(mod_seq_child_reversed_seq_string)]:
                         if len(mod_seq_child_reversed_seq_string) != len(candidate_norm_seq_target.seq_string):
                             # Equal length matches were already covered in the prior search for
-                            # normalized sequences within modified sequence children.
+                            # normalized sequences within M'.
                             candidate_norm_seq_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
                             match_found = True
             if match_found:
@@ -3174,15 +3172,14 @@ class TRNASeqDataset(object):
             if norm_seq_target.hit_another_target:
                 continue
 
-            # If no modified sequence children are subsequences of the normalized sequence, don't create
-            # a cluster.
+            # If no M' are subsequences of the normalized sequence, don't create a cluster.
             if norm_seq_target.alignments:
                 cluster = Cluster()
                 cluster.member_names.append(norm_seq_name)
                 cluster.member_seqs.append(norm_seq_reversed_seq_string)
                 cluster.member_extras.append(norm_seq_extra)
-                # For full reproducibility, sort the matching modified sequence children in
-                # descending order of length, and in case of ties, by name.
+                # For full reproducibility, sort matching M' in descending order of length, and in
+                # case of ties, by name.
                 for mod_seq_child_alignment_with_norm_seq in sorted(norm_seq_target.alignments,
                                                                     key=lambda mod_seq_child_alignment_with_norm_seq: (-len(mod_seq_child_alignment_with_norm_seq[1]), mod_seq_child_alignment_with_norm_seq[0])):
                     cluster.member_names.append(mod_seq_child_alignment_with_norm_seq[0])
@@ -3190,22 +3187,22 @@ class TRNASeqDataset(object):
                     cluster.member_extras.append(mod_seq_child_alignment_with_norm_seq[2])
                 clusters.append(cluster)
 
-        # Create cluster objects for every modified sequence child.
+        # Create a cluster object for each M'.
         for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_target in zip(mod_seq_child_names, mod_seq_child_reversed_seq_strings, mod_seq_child_extras, mod_seq_child_targets):
-            cluster = Cluster()
-            cluster.member_names.append(mod_seq_child_name)
-            cluster.member_seqs.append(mod_seq_child_reversed_seq_string)
-            cluster.member_extras.append(mod_seq_child_extra)
             norm_seq_added = False
             if mod_seq_child_target.alignments:
+                cluster = Cluster()
                 for alignment_with_mod_seq_child in sorted(mod_seq_child_target.alignments,
                                                            key=lambda alignment_with_mod_seq_child: (-len(alignment_with_mod_seq_child[1]), alignment_with_mod_seq_child[0])):
                     cluster.member_names.append(alignment_with_mod_seq_child[0])
                     cluster.member_seqs.append(alignment_with_mod_seq_child[1])
                     cluster.member_extras.append(alignment_with_mod_seq_child[2])
-                    if isinstance(alignment_with_mod_seq_child[2][2], NormalizedSeq):
+                    if not isinstance(alignment_with_mod_seq_child[2], ModifiedSequence):
                         norm_seq_added = True
             if norm_seq_added:
+                cluster.member_names.insert(0, mod_seq_child_name)
+                cluster.member_seqs.insert(0, mod_seq_child_reversed_seq_string)
+                cluster.member_extras.insert(0, mod_seq_child_extra)
                 clusters.append(cluster)
 
         # For full reproducibility, sort clusters in descending order of size, and in case of ties,
