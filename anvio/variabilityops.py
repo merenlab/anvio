@@ -1875,6 +1875,73 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.end()
 
 
+    def compute_residue_coordinates(self, structure_db):
+        """Appends columns x, y, and z to self.data, which correspond to the center of mass coordinates of the reference amino acid
+
+        Parameters
+        ==========
+        structure_db : anvio.structureops.StructureDatabase
+            A structure database generated with the same contigs DB that variability profile is defined for.
+
+        Notes
+        =====
+        - Currently, the client's only access to this functionality is through the API.
+        """
+
+        genes_with_structure = structure_db.get_genes_with_structure()
+        genes_with_variability = self.data['corresponding_gene_call'].unique()
+        genes_to_process = [x for x in genes_with_structure if x in genes_with_variability]
+
+        self.progress.new("Adding 3D coordinates", progress_total_items=len(genes_to_process))
+
+        combos = self.data.\
+            groupby(['corresponding_gene_call', 'codon_order_in_gene'])\
+            ['reference'].\
+            apply(pd.Series.mode).\
+            reset_index().\
+            drop('level_2', axis=1) # The mysterious presence of this 'level_2' column is exactly the kind
+                                    # of thing that likely depends on which pandas version is used. Beware.
+        combos = combos[combos['corresponding_gene_call'].isin(genes_to_process)]
+
+        coords = {
+            'corresponding_gene_call': [],
+            'codon_order_in_gene': [],
+            'x': [],
+            'y': [],
+            'z': [],
+        }
+
+        counter = 0
+        last_gene_id = None
+        for _, row in combos.iterrows():
+            gene_id, codon_order_in_gene, reference = row
+
+            if last_gene_id != gene_id:
+                self.progress.update(f"{counter} / {len(genes_to_process)} genes")
+                self.progress.increment()
+                structure = structure_db.get_structure(gene_id)
+
+            if reference == 'STP':
+                continue
+
+            x, y, z = structure.get_residue_center_of_mass(structure.get_residue(0))
+            coords['corresponding_gene_call'].append(gene_id)
+            coords['codon_order_in_gene'].append(codon_order_in_gene)
+            coords['x'].append(x)
+            coords['y'].append(y)
+            coords['z'].append(z)
+
+            last_gene_id = gene_id
+
+        self.progress.increment(increment_to=len(genes_to_process))
+        self.progress.update('Merging coordinate data')
+
+        coords = pd.DataFrame(coords)
+        self.data = self.data.merge(coords, on=['corresponding_gene_call', 'codon_order_in_gene'], how='left')
+
+        self.progress.end()
+
+
     def compute_gene_coverage_fields(self):
         """Adds _gene_ coverage, not position coverage, to self.data.
 
