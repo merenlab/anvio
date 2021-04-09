@@ -1345,7 +1345,8 @@ class TRNASeqDataset(object):
         self.load_checkpoint = A('load_checkpoint')
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
         self.min_length_of_long_fiveprime_extension = A('min_length_long_fiveprime')
-        TrimmedSeq.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
+        TrimmedSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
+        NormalizedDeletionSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         self.min_trna_frag_size = A('min_trna_fragment_size')
         self.agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
