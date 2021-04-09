@@ -3887,17 +3887,132 @@ class TRNASeqDataset(object):
         self.run.info("Summary", self.analysis_summary_path)
 
 
+    def write_feature_table(self):
+        self.progress.new("Writing tRNA-seq database table of profiled tRNA features")
+        self.progress.update("...")
+
+        feature_table_entries = []
+        for uniq_seq in self.uniq_trna_seq_dict.values():
+            class_name = type(uniq_seq).__name__
+            if class_name == 'UniqueMappedSequence':
+                continue
+            if class_name == 'UniqueFullProfileSequence' or class_name == 'UniqueTransferredProfileSequence':
+                has_complete_feature_set = uniq_seq.has_complete_feature_set
+                num_extrapolated_fiveprime_nts = uniq_seq.num_extrapolated_fiveprime_nts
+                extra_fiveprime_length = uniq_seq.extra_fiveprime_length
+            elif class_name == 'UniqueTruncatedProfileSequence':
+                has_complete_feature_set = False
+                num_extrapolated_fiveprime_nts = 0
+                extra_fiveprime_length = 0
+            else:
+                raise ConfigError(f"An object of class, {class_name}, is not recognized as a profiled tRNA sequence.")
+            feature_table_entries.append(
+                (uniq_seq.represent_name,
+                 has_complete_feature_set,
+                 uniq_seq.anticodon_string,
+                 uniq_seq.anticodon_aa,
+                 len(uniq_seq.seq_string),
+                 # Zero-based start position of identified tRNA features within the read.
+                 len(uniq_seq.seq_string) - uniq_seq.profiled_seq_length,
+                 uniq_seq.num_conserved,
+                 uniq_seq.num_unconserved,
+                 uniq_seq.num_paired,
+                 uniq_seq.num_unpaired,
+                 num_extrapolated_fiveprime_nts,
+                 extra_fiveprime_length,
+                 uniq_seq.acceptor_length)
+                # When tRNA features are not found at the 5' end of the read,
+                # the start and stop positions of these features also are not found.
+                + tuple([None for _ in range((len(self.TRNA_FEATURE_NAMES) - len(uniq_seq.feature_start_indices)))]) * 2
+                + tuple(itertools.chain(*zip(
+                    [str(start) if isinstance(start, int) else ','.join(map(str, start))
+                     for start in uniq_seq.feature_start_indices],
+                    # Convert Pythonic stop position to real stop position of feature.
+                    [str(stop - 1) if isinstance(stop, int) else ','.join(str(i - 1) for i in stop)
+                     for stop in uniq_seq.feature_stop_indices])))
+                # The alpha and beta sections of the D loop are "subfeatures," not "features,"
+                # so add them as columns to the table after the features.
+                + (uniq_seq.alpha_start_index,
+                   uniq_seq.alpha_stop_index - 1 if uniq_seq.alpha_stop_index else None,
+                   uniq_seq.beta_start_index,
+                   uniq_seq.beta_stop_index - 1 if uniq_seq.beta_stop_index else None)
+            )
+
+        if feature_table_entries:
+            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
+                                     % ('feature', ','.join('?' * len(tables.trnaseq_feature_table_structure))),
+                                     feature_table_entries)
+            trnaseq_db.disconnect()
+
+        self.progress.end()
+
+
+    def write_unconserved_table(self):
+        self.progress.new("Writing tRNA-seq database table of unconserved nucleotides in fully profiled tRNA")
+        self.progress.update("...")
+
+        unconserved_table_entries = []
+        for uniq_seq in self.uniq_trna_seq_dict.values():
+            if not isinstance(uniq_seq, UniqueFullProfileSequence):
+                continue
+
+            for unconserved_tuple in uniq_seq.unconserved_info:
+                unconserved_table_entries.append((uniq_seq.represent_name, ) + unconserved_tuple)
+
+        if unconserved_table_entries:
+            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
+                                     % ('unconserved', ','.join('?' * len(tables.trnaseq_unconserved_table_structure))),
+                                     unconserved_table_entries)
+            trnaseq_db.disconnect()
+
+        self.progress.end()
+
+
+    def write_unpaired_table(self):
+        self.progress.new("Writing tRNA-seq database table of unpaired nucleotides in profiled tRNA")
+        self.progress.update("...")
+
+        unpaired_table_entries = []
+        for uniq_seq in self.uniq_trna_seq_dict.values():
+            if not isinstance(uniq_seq, UniqueFullProfileSequence):
+                continue
+
+            for unpaired_tuple in uniq_seq.unpaired_info:
+                unpaired_table_entries.append((uniq_seq.represent_name, ) + unpaired_tuple)
+
+        if unpaired_table_entries:
+            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
+                                     % ('unpaired', ','.join('?' * len(tables.trnaseq_unpaired_table_structure))),
+                                     unpaired_table_entries)
+            trnaseq_db.disconnect()
+
+        self.progress.end()
+
+
     def write_sequences_table(self):
         self.progress.new("Writing tRNA-seq database table of unique tRNA sequences")
         self.progress.update("...")
 
         sequences_table_entries = []
-        for uniq_seq in self.uniq_trna_seqs:
+        class_name_id_info_dict = {'UniqueFullProfileSequence': 'full_profile',
+                                   'UniqueTruncatedProfileSequence': 'truncated_profile',
+                                   'UniqueTransferredProfileSequence': 'transferred_profile',
+                                   'UniqueMappedSequence': 'mapped'}
+        for uniq_seq in self.uniq_trna_seq_dict.values():
+            class_name = type(uniq_seq).__name__
+            try:
+                id_info = class_name_id_info_dict[class_name]
+            except KeyError:
+                raise ConfigError(f"An object of class, {class_name}, is not recognized as a unique tRNA sequence. "
+                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
+
             sequences_table_entries.append(
                 (uniq_seq.represent_name,
                  uniq_seq.read_count,
-                 uniq_seq.id_method,
-                 0 if uniq_seq.trunc_profile_index is None else 1,
+                 id_info,
                  uniq_seq.seq_string)
             )
 
@@ -3910,8 +4025,8 @@ class TRNASeqDataset(object):
                                        tables.trnaseq_sequences_table_types)
         if sequences_table_entries:
             trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                    % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
-                                    sequences_table_entries)
+                                     % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
+                                     sequences_table_entries)
         trnaseq_db.disconnect()
 
         self.progress.end()
@@ -3922,19 +4037,28 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         trimmed_table_entries = []
-        for trimmed_seq in self.trimmed_trna_seqs:
+        class_name_id_info_dict = {'TrimmedFullProfileSequence': 'full_profile',
+                                   'TrimmedTruncatedProfileSequence': 'truncated_profile',
+                                   'TrimmedMappedSequence': 'mapped'}
+        no_threeprime_variants = tuple([0 for _ in THREEPRIME_VARIANTS])
+        for trimmed_seq in self.trimmed_trna_seq_dict.values():
+            class_name = type(trimmed_seq).__name__
+            try:
+                id_info = class_name_id_info_dict[class_name]
+            except KeyError:
+                raise ConfigError(f"An object of class, {class_name}, is not recognized as a trimmed tRNA sequence. "
+                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
+
             trimmed_table_entries.append(
                 (trimmed_seq.represent_name,
                  len(trimmed_seq.uniq_seqs),
                  trimmed_seq.read_count,
-                 trimmed_seq.id_method,
-                 trimmed_seq.has_trunc_profile,
-                 trimmed_seq.trunc_profile_recovered_by_derep,
+                 id_info,
                  trimmed_seq.seq_string,
-                 trimmed_seq.norm_seq_count,
-                 trimmed_seq.uniq_with_extra_fiveprime_count,
-                 trimmed_seq.read_with_extra_fiveprime_count)
-                + tuple([v for v in trimmed_seq.read_acceptor_variant_count_dict.values()])
+                 len(trimmed_seq.norm_seqs),
+                 trimmed_seq.uniq_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
+                 trimmed_seq.read_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0)
+                + (tuple([v for v in trimmed_seq.read_acceptor_variant_count_dict.values()]) if id_info != 'mapped' else no_threeprime_variants)
             )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -3946,8 +4070,8 @@ class TRNASeqDataset(object):
                                        tables.trnaseq_trimmed_table_types)
         if trimmed_table_entries:
             trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                    % ('trimmed', ','.join('?' * len(tables.trnaseq_trimmed_table_structure))),
-                                    trimmed_table_entries)
+                                     % ('trimmed', ','.join('?' * len(tables.trnaseq_trimmed_table_structure))),
+                                     trimmed_table_entries)
         trnaseq_db.disconnect()
 
         self.progress.end()
@@ -3958,7 +4082,16 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         norm_table_entries = []
-        for norm_seq in self.norm_trna_seqs:
+        class_name_id_info_dict = {'NormalizedFullProfileSequence': 'full_profile',
+                                   'NormalizedDeletionSequence': 'deletion'}
+        for norm_seq in self.norm_trna_seq_dict.values():
+            class_name = type(norm_seq).__name__
+            try:
+                id_info = class_name_id_info_dict[class_name]
+            except KeyError:
+                raise ConfigError(f"An object of class, {class_name}, is not recognized as a normalized tRNA sequence. "
+                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
+
             specific_long_fiveprime_extensions = ''
             specific_long_fiveprime_extension_read_counts = ''
             for fiveprime_extension_string, read_count in sorted(norm_seq.specific_long_fiveprime_extension_dict.items(),
@@ -3976,6 +4109,7 @@ class TRNASeqDataset(object):
             norm_table_entries.append(
                 (norm_seq.represent_name,
                  len(norm_seq.trimmed_seqs),
+                 id_info,
                  norm_seq.mean_specific_cov,
                  norm_seq.mean_nonspecific_cov,
                  ','.join(map(str, norm_seq.specific_covs)) + ',',
@@ -3983,10 +4117,8 @@ class TRNASeqDataset(object):
                  len(norm_seq.mod_seqs),
                  norm_seq.specific_read_count,
                  norm_seq.nonspecific_read_count,
-                 norm_seq.profile_changed_by_del_analysis,
-                 norm_seq.trunc_profile_recovered_by_del_analysis,
-                 norm_seq.count_of_specific_reads_with_extra_fiveprime,
-                 norm_seq.count_of_nonspecific_reads_with_extra_fiveprime,
+                 norm_seq.specific_read_with_extra_fiveprime_count,
+                 norm_seq.nonspecific_read_with_extra_fiveprime_count,
                  norm_seq.specific_mapped_read_count,
                  norm_seq.nonspecific_mapped_read_count,
                  specific_long_fiveprime_extensions,
@@ -4006,8 +4138,8 @@ class TRNASeqDataset(object):
                                        tables.trnaseq_normalized_table_types)
         if norm_table_entries:
             trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                    % ('normalized', ','.join('?' * len(tables.trnaseq_normalized_table_structure))),
-                                    norm_table_entries)
+                                     % ('normalized', ','.join('?' * len(tables.trnaseq_normalized_table_structure))),
+                                     norm_table_entries)
         trnaseq_db.disconnect()
 
         self.progress.end()
@@ -4018,7 +4150,7 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         mod_table_entries = []
-        for mod_seq in self.mod_trna_seqs:
+        for mod_seq in self.mod_trna_seq_dict.values():
             specific_long_fiveprime_extensions = ''
             specific_long_fiveprime_extension_read_counts = ''
             for fiveprime_extension_string, read_count in sorted(mod_seq.specific_long_fiveprime_extension_dict.items(),
@@ -4052,8 +4184,8 @@ class TRNASeqDataset(object):
                    ','.join([norm_seq.represent_name for norm_seq in mod_seq.norm_seqs_with_dels]),
                    mod_seq.specific_read_count,
                    mod_seq.nonspecific_read_count,
-                   mod_seq.count_of_specific_reads_with_extra_fiveprime,
-                   mod_seq.count_of_nonspecific_reads_with_extra_fiveprime,
+                   mod_seq.specific_read_with_extra_fiveprime_count,
+                   mod_seq.nonspecific_read_with_extra_fiveprime_count,
                    mod_seq.specific_mapped_read_count,
                    mod_seq.nonspecific_mapped_read_count,
                    specific_long_fiveprime_extensions,
@@ -4073,8 +4205,8 @@ class TRNASeqDataset(object):
                                        tables.trnaseq_modified_table_types)
         if mod_table_entries:
             trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                    % ('modified', ','.join('?' * len(tables.trnaseq_modified_table_structure))),
-                                    mod_table_entries)
+                                     % ('modified', ','.join('?' * len(tables.trnaseq_modified_table_structure))),
+                                     mod_table_entries)
         trnaseq_db.disconnect()
 
         self.progress.end()
