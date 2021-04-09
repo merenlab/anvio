@@ -1716,13 +1716,13 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Max deletion configurations", self.max_del_configs))
 
 
-    def profile_trna(self, uniq_reads):
-        """Profile tRNA features in reads.
+    def get_summary_line(self, label, value, is_time_value=False, padding=68):
+        """Return a string formatted to be written to the summary statistics file."""
+        # Report elapsed time in seconds in minutes.
+        if is_time_value:
+            value = "%.2f" % round(value / 60, 2)
+        return '%s%s\t%s\n' % (label, ' ' + '.' * (padding - len(label)), value)
 
-        Appends UniqueSeq objects representing profiled tRNA sequences to `self.uniq_trna_seqs`.
-        Appends UniqueSeq objects representing sequences with a truncated tRNA profile to
-        `self.uniq_trunc_seqs`. Appends leftover UniqueSeq objects representing unprofiled tRNA
-        sequences to `self.uniq_nontrna_seqs`.
 
         Parameters
         ==========
