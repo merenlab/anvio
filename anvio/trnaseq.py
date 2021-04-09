@@ -4454,11 +4454,10 @@ class DatabaseConverter(object):
     ]
     NORM_TABLE_COLS_OF_INTEREST = [
         'name',
+        'id_info',
         'mean_specific_coverage',
         'specific_coverages',
-        'nonspecific_coverages',
-        'profile_changed_by_del_analysis',
-        'truncated_profile_recovered_by_del_analysis'
+        'nonspecific_coverages'
     ]
     MOD_TABLE_COLS_OF_INTEREST = [
         'name',
@@ -4796,13 +4795,12 @@ class DatabaseConverter(object):
 
         for norm_seq_info in trnaseq_db.db.get_some_columns_from_table('normalized', ', '.join(self.NORM_TABLE_COLS_OF_INTEREST)):
             (name,
+             id_info,
              mean_specific_cov,
              specific_covs_string,
-             nonspecific_covs_string,
-             profile_changed_by_del_analysis,
-             trunc_profile_recovered_by_del_analysis) = norm_seq_info
+             nonspecific_covs_string) = norm_seq_info
 
-            if profile_changed_by_del_analysis or trunc_profile_recovered_by_del_analysis:
+            if id_info == 'deletion':
                 # Ignore normalized sequences with deletions. The coverage of deletions themselves
                 # is recorded in the parent modified sequence, but the contribution of these
                 # sequences to nucleotide coverage is ignored. Inclusion of these sequences would
