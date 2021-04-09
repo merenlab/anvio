@@ -921,19 +921,27 @@ class NormalizedDeletionSequence(NormalizedSequence):
         # Store a uniqued list of defunct normalized sequences.
         self.defunct_norm_seqs = derep_defunct_norm_seqs
 
-class ModifiedSeq(object):
-    """A tRNA sequence with sites of predicted modification-induced substitutions and deletions,
-    formed from normalized sequences with distinct patterns of modification-induced mutations.
 
-    The workflow aggregates similar normalized sequences and processes the resulting clusters to
-    produce clusters of normalized sequences distinguished by potential modification-induced
-    substitutions (3-4 different nucleotides at one or more aligned positions). A modified sequence
-    is initialized by a list of clustered normalized sequences, with the first sequence in the list
-    being the longest, or tied for longest, and substitution positions indexed relative to this
-    longest sequence. The workflow later finds sequences with modification-induced deletions (which
-    occur in the vicinity of substitutions) and adds them to the modified sequences. After adding
-    sequences with deletions, the workflow calls `init` to calculate coverages and other
-    information.
+class ModifiedSequence(object):
+    """A tRNA sequence with sites of predicted modification-induced substitutions and deletions,
+    formed from normalized sequences with distinct patterns of these mutations.
+
+    The `anvi-trnaseq` workflow aggregates similar normalized sequences and processes the resulting
+    clusters to produce clusters of normalized sequences distinguished by potential
+    modification-induced substitutions (3-4 different nucleotides at one or more aligned positions).
+    A modified sequence is initialized with a list of clustered normalized sequences, with the first
+    sequence in the list being the longest, or tied for longest, and substitution positions indexed
+    relative to this longest sequence. The workflow later finds sequences with modification-induced
+    deletions (which occur in the vicinity of substitutions) and adds them to the modified
+    sequences. After adding sequences with deletions, the workflow calls `init` to calculate
+    coverages and other information.
+
+    The workflow currently requires that a normalized sequence with deletions must be assigned to
+    only one modified sequence. In other words, if the normalized sequence with deletions can be
+    found through the introduction of in silico deletions in multiple modified sequences, then the
+    sequence is disregarded. However, this class is capable of handling "nonspecific" normalized
+    sequences with deletions assigned to multiple modified sequences though this capability is not
+    used.
 
     EXAMPLE:
     Consider E. coli tRNA-Ala-GGC-1-1, with detected modifications at positions 17 and 46. As seen
@@ -965,10 +973,10 @@ class ModifiedSeq(object):
         'del_configs',
         'specific_read_count',
         'nonspecific_read_count',
-        'count_of_specific_reads_with_extra_fiveprime',
-        'count_of_nonspecific_reads_with_extra_fiveprime',
         'specific_mapped_read_count',
         'nonspecific_mapped_read_count',
+        'specific_read_with_extra_fiveprime_count',
+        'nonspecific_read_with_extra_fiveprime_count',
         'specific_long_fiveprime_extension_dict',
         'nonspecific_long_fiveprime_extension_dict',
         'specific_read_acceptor_variant_count_dict',
@@ -984,43 +992,45 @@ class ModifiedSeq(object):
         'consensus_seq_string'
     )
 
-    def __init__(self, norm_seqs_without_dels, sub_positions, skip_init=True):
+    def __init__(self, norm_seqs_without_dels, sub_positions):
         self.norm_seqs_without_dels = norm_seqs_without_dels
         self.sub_positions = sub_positions
         # A normalized sequence without modification-induced deletions can only be assigned to one
-        # modified sequence, but a normalized sequence with deletions can be assigned to more than
-        # one.
+        # modified sequence.
         for norm_seq in norm_seqs_without_dels:
             norm_seq.mod_seqs.append(self)
         self.represent_name = norm_seqs_without_dels[0].represent_name
 
-        if skip_init:
-            self.norm_seqs_with_dels = []
-            # The deletion configurations of normalized sequences with deletions are recorded in the
-            # modified sequence rather than the normalized sequence, because the positions of the
-            # deletions correspond to nucleotides in the modified sequence.
-            self.del_configs = []
-            self.specific_read_count = None
-            self.nonspecific_read_count = None
-            self.count_of_specific_reads_with_extra_fiveprime = None
-            self.count_of_nonspecific_reads_with_extra_fiveprime = None
-            self.specific_mapped_read_count = None
-            self.nonspecific_mapped_read_count = None
-            self.specific_long_fiveprime_extension_dict = None
-            self.nonspecific_long_fiveprime_extension_dict = None
-            self.specific_read_acceptor_variant_count_dict = None
-            self.nonspecific_read_acceptor_variant_count_dict = None
-            self.specific_covs = None
-            self.nonspecific_covs = None
-            self.mean_specific_cov = None
-            self.mean_nonspecific_cov = None
-            self.specific_sub_covs = None
-            self.nonspecific_sub_covs = None
-            self.specific_del_covs = None
-            self.nonspecific_del_covs = None
-            self.consensus_seq_string = None
-        else:
-            self.init()
+        self.norm_seqs_with_dels = []
+        # The deletion configurations of normalized sequences with deletions are recorded in the
+        # modified sequence rather than the normalized sequences, because the positions of the
+        # deletions correspond to nucleotides in the modified sequence.
+        self.del_configs = []
+        self.specific_read_count = None
+        self.nonspecific_read_count = None
+        self.specific_mapped_read_count = None
+        self.nonspecific_mapped_read_count = None
+        self.specific_read_with_extra_fiveprime_count = None
+        self.nonspecific_read_with_extra_fiveprime_count = None
+        self.specific_long_fiveprime_extension_dict = None
+        self.nonspecific_long_fiveprime_extension_dict = None
+        self.specific_read_acceptor_variant_count_dict = None
+        self.nonspecific_read_acceptor_variant_count_dict = None
+        self.specific_covs = None
+        self.nonspecific_covs = None
+        self.mean_specific_cov = None
+        self.mean_nonspecific_cov = None
+        self.specific_sub_covs = None
+        self.nonspecific_sub_covs = None
+        # Currently, each normalized sequence with deletions can only be derived from a single
+        # modified sequence, so trimmed sequences specific to a normalized sequence with deletions
+        # must also be specific to the modified sequence. This allows specific deletion coverages to
+        # be determined. Nonspecific deletion coverages are not determined, because a nonspecific
+        # trimmed sequence may occur in multiple normalized sequences with deletions that are
+        # assigned to the same modified sequence.
+        self.specific_del_covs = None
+        self.nonspecific_del_covs = None
+        self.consensus_seq_string = None
 
 
     def init(self):
@@ -1030,225 +1040,235 @@ class ModifiedSeq(object):
         norm_seqs_with_dels = self.norm_seqs_with_dels
         all_norm_seqs = norm_seqs_without_dels + norm_seqs_with_dels
         del_configs = self.del_configs
-        specific_read_count = 0
-        nonspecific_read_count = 0
-        count_of_specific_reads_with_extra_fiveprime = 0
-        count_of_nonspecific_reads_with_extra_fiveprime = 0
         specific_mapped_read_count = 0
         nonspecific_mapped_read_count = 0
+        specific_read_count = 0
+        nonspecific_read_count = 0
+        specific_read_with_extra_fiveprime_count = 0
+        nonspecific_read_with_extra_fiveprime_count = 0
         specific_long_fiveprime_extension_dict = defaultdict(int)
         nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_acceptor_variant_count_dict = OrderedDict(
-            [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict(
-            [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+
         mod_seq_len = len(norm_seqs_without_dels[0].seq_string)
         norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         norm_seq_nonspecific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
         num_subs = len(self.sub_positions)
         self.specific_sub_covs = specific_sub_covs = np.zeros((num_subs, len(UNAMBIG_NTS)), dtype=int)
         self.nonspecific_sub_covs = nonspecific_sub_covs = np.zeros((num_subs, len(UNAMBIG_NTS)), dtype=int)
+
         del_positions = sorted(set([i for del_config in del_configs for i in del_config]))
         self.specific_del_covs = specific_del_covs = np.zeros(len(del_positions), dtype=int)
+        # Nonspecific deletion coverages are not currently calculated.
         self.nonspecific_del_covs = nonspecific_del_covs = np.zeros(len(del_positions), dtype=int)
 
-        # Make an array of aligned nucleotide positions in all normalized sequences.
-        norm_seq_array = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
-        for n, norm_seq in enumerate(norm_seqs_without_dels):
-            norm_seq_array[n, mod_seq_len - len(norm_seq.seq_string): ] += [
-                NT_INT_DICT[nt] for nt in norm_seq.seq_string]
-
-        nt_positions_covered_by_norm_seqs_with_dels = []
-        n = len(norm_seqs_without_dels)
-        for norm_seq, del_config in zip(norm_seqs_with_dels, del_configs):
-            aligned_seq = [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
-            # Insert a 0 (no nucleotide) at each deletion position in the alignment.
-            for del_pos in del_config:
-                aligned_seq.insert(del_pos, 0)
-            norm_seq_start_in_mod_seq = mod_seq_len - len(aligned_seq)
-            norm_seq_array[n, norm_seq_start_in_mod_seq: ] += aligned_seq
-
-            covered_nt_positions = []
-            for i, nt_int in enumerate(aligned_seq):
-                if nt_int != 0:
-                    covered_nt_positions.append(norm_seq_start_in_mod_seq + i)
-            nt_positions_covered_by_norm_seqs_with_dels.append(covered_nt_positions)
-            n += 1
-
+        # Trimmed sequences may be shared among the normalized sequences comprising the modified
+        # sequence. Therefore, most of the processing involves the analysis of trimmed sequences.
         processed_trimmed_seq_names = []
+        all_norm_seq_names = []
+        for norm_seq in all_norm_seqs:
+            all_norm_seq_names.append(norm_seq.represent_name)
+        all_norm_seq_names = [norm_seq.represent_name for norm_seq in all_norm_seqs]
 
-        # First handle sequences without deletions.
-        for n, norm_seq in enumerate(norm_seqs_without_dels):
+        # Process sequences without deletions.
+        for i, norm_seq in enumerate(norm_seqs_without_dels):
             norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string)
 
-            for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(
-                norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
+            for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
                 if trimmed_seq.represent_name in processed_trimmed_seq_names:
                     continue
 
                 # Determine whether the reads constituting the trimmed sequence are specific to the
-                # modified sequence.
-                if trimmed_seq.norm_seq_count == 1:
+                # modified sequence or are found in other normalized sequences outside the modified
+                # sequence.
+                if len(trimmed_seq.norm_seqs) == 1:
                     is_trimmed_seq_specific_to_mod_seq = True
                 else:
-                    # The trimmed sequence is specific to the modified sequence if it is unique to a
-                    # set of normalized sequences specific to the modified sequence. Coverage
-                    # information for such trimmed sequences will be recorded in the row of the
-                    # array for the first normalized sequence in which it was found.
-                    num_specific_norm_seqs_containing_trimmed_seq = 1
-                    trimmed_seq_name = trimmed_seq.represent_name
-                    for p, other_norm_seq in enumerate(all_norm_seqs):
-                        if n == p:
-                            continue
-                        for other_trimmed_seq in other_norm_seq.trimmed_seqs:
-                            if trimmed_seq_name == other_trimmed_seq.represent_name:
-                                num_specific_norm_seqs_containing_trimmed_seq += 1
-                                break
-
-                    if num_specific_norm_seqs_containing_trimmed_seq == trimmed_seq.norm_seq_count:
-                        is_trimmed_seq_specific_to_mod_seq = True
-                    elif num_specific_norm_seqs_containing_trimmed_seq < trimmed_seq.norm_seq_count:
-                        is_trimmed_seq_specific_to_mod_seq = False
+                    # The trimmed sequence is specific to this modified sequence if it is unique to a
+                    # set of normalized sequences that are all part of this modified sequence.
+                    for norm_seq_containing_trimmed_seq in trimmed_seq.norm_seqs:
+                        if norm_seq_containing_trimmed_seq.represent_name not in all_norm_seq_names:
+                            is_trimmed_seq_specific_to_mod_seq = False
+                            break
                     else:
-                        raise ConfigError("The number of normalized sequences containing the trimmed sequence was "
-                                          "somehow miscalculated.")
+                        is_trimmed_seq_specific_to_mod_seq = True
 
                 trimmed_seq_start_in_mod_seq = norm_seq_start_in_mod_seq + trimmed_seq_start_in_norm_seq
                 trimmed_seq_stop_in_mod_seq = trimmed_seq_start_in_mod_seq + len(trimmed_seq.seq_string)
+                trimmed_seq_class_name = type(trimmed_seq).__name__
                 if is_trimmed_seq_specific_to_mod_seq:
                     specific_read_count += trimmed_seq.read_count
-                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-                    # Trimmed sequences are comprised of either profiled or mapped unique sequences.
-                    if trimmed_seq.id_method == 1: # 1 => mapped
+
+                    if trimmed_seq_class_name == 'TrimmedMappedSequence':
                         specific_mapped_read_count += trimmed_seq.read_count
+                    else:
+                        for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                            if read_count > 0:
+                                specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
 
-                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                        specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+                    if trimmed_seq_class_name != 'TrimmedTruncatedProfileSequence':
+                        specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
 
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                            specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
 
-                    norm_seq_specific_covs[n, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
+                    norm_seq_specific_covs[i, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
                 else:
                     nonspecific_read_count += trimmed_seq.read_count
-                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-                    if trimmed_seq.id_method == 1:
+
+                    if trimmed_seq_class_name == 'TrimmedMappedSequence':
                         nonspecific_mapped_read_count += trimmed_seq.read_count
 
-                        # Only mapped sequences can have 5' sequence extensions, as profiled
-                        # sequences with 5' extensions would span the length of the normalized
+                        # Only mapped nonspecific sequences can have 5' extensions, as profiled
+                        # sequences with 5' extensions would span the length of the modified
                         # sequence and would thus be specific to it.
+                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+
                         for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
                             nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+                    else:
+                        for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                            if read_count > 0:
+                                nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
 
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
-
-                    norm_seq_nonspecific_covs[n, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
+                    norm_seq_nonspecific_covs[i, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
 
                 processed_trimmed_seq_names.append(trimmed_seq.represent_name)
 
-        # Handle normalized sequences with deletions.
-        n = len(norm_seqs_without_dels)
-        for norm_seq, del_config, nt_positions_covered_by_norm_seq in zip(
-            norm_seqs_with_dels, del_configs, nt_positions_covered_by_norm_seqs_with_dels):
-            norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string) - len(del_config)
-            # Normalized sequences with deletions can be found in multiple modified sequences,
-            # unlike normalized sequences without deletions. Though the infrastructure to handle
-            # this is provided, at the moment, only normalized sequences with deletions that are
-            # specific to a single modified sequence are produced, as anvi-convert-trnaseq-database
-            # cannot currently handle nonspecific normalized sequences with deletions.
-            num_mod_seqs_containing_norm_seq = len(norm_seq.mod_seqs)
+        # Find deletion site coverages *assuming* that each normalized sequence with
+        # deletions is only derived from this modified sequence.
+        del_pos_index_dict = {del_pos: del_index for del_index, del_pos in enumerate(del_positions)}
+        for norm_seq in self.norm_seqs_with_dels:
+            for norm_seq_del_config, mod_seq_del_config, norm_seq_specific_del_covs in zip(norm_seq.norm_seq_del_configs, norm_seq.mod_seq_del_configs, norm_seq.specific_del_covs_in_mod_seqs):
+                # The normalized sequence with deletions is aligned with the modified sequence at
+                # the 3' end. If the normalized sequence is shorter than the modified sequence, then
+                # it may be missing some deletion positions toward the 5' end.
+                for mod_seq_del_pos, norm_seq_specific_del_cov in zip(mod_seq_del_config[-len(norm_seq_del_config): ], norm_seq_specific_del_covs):
+                    del_index = del_pos_index_dict[mod_seq_del_pos]
+                    specific_del_covs[del_index] += norm_seq_specific_del_cov
 
-            for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(
-                norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                if trimmed_seq.represent_name in processed_trimmed_seq_names:
-                    continue
+        # The following commented code was a sketch of how normalized sequences with deletions
+        # derived from multiple mdoified sequences can be handled. Currently, normalized sequences
+        # with deletions do not contribute to modified sequence coverage. Again, trimmed sequences
+        # can be nonspecific to the normalized sequence. They can be found at the same time in
+        # normalized sequences both with and without deletions. If a trimmed sequence contains a
+        # deletion, its feature profile is invalidated, but an alternate profile is not assigned.
 
-                # Determine whether the reads constituting the trimmed sequence are specific to the
-                # modified sequence.
-                if num_mod_seqs_containing_norm_seq > 1:
-                    is_trimmed_seq_specific_to_mod_seq = False
-                else:
-                    # The trimmed sequence is specific to the modified sequence if it is unique to a
-                    # set of normalized sequences specific to the modified sequence.
-                    num_specific_norm_seqs_containing_trimmed_seq = 1
-                    trimmed_seq_name = trimmed_seq.represent_name
-                    is_trimmed_seq_specific_to_mod_seq = True # initial value
-                    for p, other_norm_seq in enumerate(norm_seqs_with_dels, start=len(norm_seqs_without_dels)):
-                        if n == p:
-                            continue
-                        for other_trimmed_seq in other_norm_seq.trimmed_seqs:
-                            if trimmed_seq_name == other_trimmed_seq.represent_name:
-                                if len(other_norm_seq.mod_seqs) > 1:
-                                    is_trimmed_seq_specific_to_mod_seq = False
-                                else:
-                                    num_specific_norm_seqs_containing_trimmed_seq += 1
-                                break
-                        if not is_trimmed_seq_specific_to_mod_seq:
-                            # The trimmed sequence was found in a normalized sequence that is in
-                            # multiple modified sequences.
-                            break
-                    else:
-                        if num_specific_norm_seqs_containing_trimmed_seq == trimmed_seq.norm_seq_count:
-                            is_trimmed_seq_specific_to_mod_seq = True
-                        elif num_specific_norm_seqs_containing_trimmed_seq < trimmed_seq.norm_seq_count:
-                            # The trimmed sequence was found in normalized sequences that are not in
-                            # the modified sequence.
-                            is_trimmed_seq_specific_to_mod_seq = False
-                        else:
-                            raise ConfigError("The number of normalized sequences containing the trimmed sequence "
-                                              "was somehow miscalculated.")
+        # Make an array of aligned nucleotides from all normalized sequences.
+        # norm_seq_array = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
+        # for i, norm_seq in enumerate(norm_seqs_without_dels):
+        #     norm_seq_array[i, mod_seq_len - len(norm_seq.seq_string): ] += [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
 
-                nt_positions_covered_by_trimmed_seq = nt_positions_covered_by_norm_seq[
-                    trimmed_seq_start_in_norm_seq: trimmed_seq_start_in_norm_seq + len(trimmed_seq.seq_string)]
+        # nt_positions_covered_by_norm_seqs_with_dels = []
+        # i = len(norm_seqs_without_dels)
+        # for norm_seq, del_config in zip(norm_seqs_with_dels, del_configs):
+        #     aligned_seq = [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
+        #     # Insert a 0 (no nucleotide) at each deletion position in the alignment.
+        #     for del_pos in del_config:
+        #         aligned_seq.insert(del_pos, 0)
+        #     norm_seq_start_in_mod_seq = mod_seq_len - len(aligned_seq)
+        #     norm_seq_array[i, norm_seq_start_in_mod_seq: ] += aligned_seq
 
-                trimmed_seq_read_count = trimmed_seq.read_count
-                if is_trimmed_seq_specific_to_mod_seq:
-                    specific_read_count += trimmed_seq_read_count
-                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-                    # Trimmed sequences are comprised of either profiled or mapped unique sequences.
-                    if trimmed_seq.id_method == 1: # 1 => mapped
-                        specific_mapped_read_count += trimmed_seq_read_count
+        #     covered_nt_positions = []
+        #     for j, nt_int in enumerate(aligned_seq, norm_seq_start_in_mod_seq):
+        #         if nt_int != 0:
+        #             covered_nt_positions.append(j)
+        #     nt_positions_covered_by_norm_seqs_with_dels.append(covered_nt_positions)
+        #     i += 1
 
-                    # Long 5' extensions are not counted for sequences with deletions. Recording the
-                    # 5' extensions would occur here if the complex task were undertaken.
+        # # Process normalized sequences with deletions.
+        # i = len(norm_seqs_without_dels)
+        # for norm_seq, del_config, nt_positions_covered_by_norm_seq in zip(norm_seqs_with_dels, del_configs, nt_positions_covered_by_norm_seqs_with_dels):
+        #     norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string) - len(del_config)
 
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+        #     # Again, the `anvi-trnaseq` workflow currently requires that a normalized sequence with
+        #     # deletions be assigned exclusively to a single modified sequence, so the following
+        #     # variable must be 1.
+        #     num_mod_seqs_containing_norm_seq = len(norm_seq.mod_seqs)
 
-                    norm_seq_specific_covs[n, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
-                    for del_pos in del_config:
-                        specific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
-                else:
-                    nonspecific_read_count += trimmed_seq_read_count
-                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-                    if trimmed_seq.id_method == 1:
-                        nonspecific_mapped_read_count += trimmed_seq_read_count
+        #     for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
+        #         if trimmed_seq.represent_name in processed_trimmed_seq_names:
+        #             continue
 
-                        # Long 5' extensions are not counted for sequences with deletions. Recording
-                        # the 5' extensions would occur here if the complex task were undertaken.
+        #         if num_mod_seqs_containing_norm_seq > 1:
+        #             is_trimmed_seq_specific_to_mod_seq = False
+        #         else:
+        #             for norm_seq_containing_trimmed_seq in trimmed_seq.norm_seqs:
+        #                 try:
+        #                     if len(all_norm_seqs[all_norm_seq_names.index(norm_seq_containing_trimmed_seq.represent_name)].mod_seqs) > 1:
+        #                         # The trimmed sequence is part of another normalized sequence that
+        #                         # is part of multiple modified sequences.
+        #                         is_trimmed_seq_specific_to_mod_seq = False
+        #                         break
+        #                 except ValueError:
+        #                     # The trimmed sequence is part of another normalized sequence that is
+        #                     # not part of the modified sequence.
+        #                     is_trimmed_seq_specific_to_mod_seq = False
+        #                     break
+        #             else:
+        #                 is_trimmed_seq_specific_to_mod_seq = True
 
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+        #         nt_positions_covered_by_trimmed_seq = nt_positions_covered_by_norm_seq[trimmed_seq_start_in_norm_seq: trimmed_seq_start_in_norm_seq + len(trimmed_seq.seq_string)]
 
-                    norm_seq_nonspecific_covs[n, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
-                    for del_pos in del_config:
-                        nonspecific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
+        #         trimmed_seq_read_count = trimmed_seq.read_count
+        #         trimmed_seq_class_name = type(trimmed_seq).__name__
+        #         if is_trimmed_seq_specific_to_mod_seq:
+        #             specific_read_count += trimmed_seq_read_count
 
-            processed_trimmed_seq_names.append(trimmed_seq.represent_name)
-            n += 1
+        #             if trimmed_seq_class_name == 'TrimmedMappedSequence':
+        #                 specific_mapped_read_count += trimmed_seq_read_count
+
+        #             try:
+        #                 specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+        #             except:
+        #                 print(type(trimmed_seq))
+        #                 raise Exception
+
+        #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+        #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+        #             for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+        #                 if read_count > 0:
+        #                     specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
+        #             norm_seq_specific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
+        #             for del_pos in del_config:
+        #                 specific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
+        #         else:
+        #             nonspecific_read_count += trimmed_seq_read_count
+
+        #             if isinstance(trimmed_seq, TrimmedMappedSequence):
+        #                 nonspecific_mapped_read_count += trimmed_seq_read_count
+
+        #             # Nonspecific profiled trimmed sequences from normalized sequences without
+        #             # deletions cannot be both nonspecific and have 5' extensions. On the other
+        #             # hand, the same full-length normalized sequence with deletions can sometimes
+        #             # arise from different modified sequences, regardless of the origin of the
+        #             # normalized sequence. Trimmed sequences from these nonspecific normalized
+        #             # sequences may have 5' extensions.
+        #             nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+
+        #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+        #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+        #             for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+        #                 if read_count > 0:
+        #                     nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
+        #             norm_seq_nonspecific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
+        #             for del_pos in del_config:
+        #                 nonspecific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
+
+        #     processed_trimmed_seq_names.append(trimmed_seq.represent_name)
+        #     i += 1
 
         self.specific_read_count = specific_read_count
         self.nonspecific_read_count = nonspecific_read_count
-        self.count_of_specific_reads_with_extra_fiveprime = count_of_specific_reads_with_extra_fiveprime
-        self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
         self.specific_mapped_read_count = specific_mapped_read_count
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
+        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
         self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
         self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
         self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
@@ -1257,16 +1277,21 @@ class ModifiedSeq(object):
         self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
         self.mean_specific_cov = self.specific_covs.mean()
         self.mean_nonspecific_cov = self.nonspecific_covs.mean()
+        self.specific_del_covs = self.specific_del_covs
 
-        # For each substitution position, record the coverage of A, C, G, and T.
-        for s, sub_pos in enumerate(self.sub_positions):
+        # For each substitution position, record the coverage of A, C, G, and T. The following array
+        # of aligned sequences ignores normalized sequences with deletions.
+        norm_seq_array = np.zeros((len(norm_seqs_without_dels), mod_seq_len), dtype=int)
+        for norm_seq_index, norm_seq in enumerate(norm_seqs_without_dels):
+            norm_seq_array[norm_seq_index, mod_seq_len - len(norm_seq.seq_string): ] += [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
+        for sub_num, sub_pos in enumerate(self.sub_positions):
             aligned_nts = norm_seq_array[:, sub_pos]
             nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
             for nt_int, nt_count in enumerate(nt_counts, start=1):
                 if nt_count > 0:
                     norm_seq_rows_with_nt = (aligned_nts == nt_int).nonzero()[0]
-                    specific_sub_covs[s, nt_int - 1] = norm_seq_specific_covs[norm_seq_rows_with_nt, sub_pos].sum()
-                    nonspecific_sub_covs[s, nt_int - 1] = norm_seq_nonspecific_covs[norm_seq_rows_with_nt, sub_pos].sum()
+                    specific_sub_covs[sub_num, nt_int - 1] = norm_seq_specific_covs[norm_seq_rows_with_nt, sub_pos].sum()
+                    nonspecific_sub_covs[sub_num, nt_int - 1] = norm_seq_nonspecific_covs[norm_seq_rows_with_nt, sub_pos].sum()
 
         # Set a consensus sequence from the nucleotides with the highest specific coverage at each
         # position.
