@@ -1447,46 +1447,15 @@ class TRNASeqDataset(object):
         # come from a single modified sequence.
         self.allow_norm_seq_with_dels_from_multiple_mod_seqs = False
 
-    def process(self):
-        """The entry method of TRNASeqDataset, called from `anvi-trnaseq`.
 
-        Checkpoint loading and saving occurs in this method.
-        """
+    def process(self):
+        """The entry method of TRNASeqDataset, called by `anvi-trnaseq`."""
         total_time_start = time.time()
+
         self.sanity_check()
 
-        # The first checkpoint occurs after tRNA profiling, tRNA trimming, and the recovery of tRNA
-        # sequences with truncated feature profiles.
         if not self.load_checkpoint:
-            self.create_trnaseq_db()
-
-            # Profile each read for tRNA features.
-            if self.feature_param_path:
-                trnaidentifier.TRNAFeatureParameterizer().set_params_from_file(self.feature_param_path)
-            self.report_profiling_params()
-            self.report_fragment_mapping_params()
-            self.report_modification_analysis_params()
-            self.profile_trna(self.unique_reads())
-
-            # Trim 5' and 3' ends of profiled tRNA.
-            self.trim_trna_ends()
-            # Trim 3' ends of sequences with truncated tRNA profile.
-            self.trim_truncated_profile_ends()
-
-            # Consolidate 3' fragments of longer profiled tRNA sequences.
-            self.threeprime_dereplicate_trna()
-
-            # Write tRNA feature profile information to the database.
-            self.write_feature_table()
-            self.write_unconserved_table()
-            self.write_unpaired_table()
-
-            # Recover tRNA sequences with truncated feature profiles by comparing to normalized
-            # sequences.
-            self.threeprime_dereplicate_truncated_sequences()
-
-            # Write intermediate files at the "profile" checkpoint
-            self.write_checkpoint_files('profile')
+            self.process_before_profiling_checkpoint()
 
         if self.load_checkpoint == 'profile':
             self.load_checkpoint_files('profile')
@@ -1506,26 +1475,33 @@ class TRNASeqDataset(object):
             # Map fragments derived from the interior and 5' end of tRNA.
             self.map_fragments()
 
+            # "Finalize" normalized tRNA sequence objects now that all of the trimmed tRNA sequences
+            # found through various means have been added to them.
+            for norm_seq in self.norm_trna_seq_dict.values():
+                norm_seq.init()
+
             if self.write_checkpoints:
                 self.write_checkpoint_files('fragment_mapping')
 
-        # Find modified nucleotides, grouping sequences into modified sequences.
+        # Find modified nucleotides, grouping normalized sequences into modified sequences.
         self.find_substitutions()
         if not self.skip_INDEL_profiling:
             self.find_deletions()
-        for mod_seq in self.mod_trna_seqs:
+        for mod_seq in self.mod_trna_seq_dict.values():
             mod_seq.init()
 
-        self.report_stats()
+        self.report_statistics()
 
-        # Write more tables to the database.
+        self.write_feature_table()
+        self.write_unconserved_table()
+        self.write_unpaired_table()
         self.write_sequences_table()
         self.write_trimmed_table()
         self.write_normalized_table()
         self.write_modified_table()
 
         # Write supplementary text files.
-        self.write_uniq_nontrna_supplement()
+        self.write_unique_nontrna_supplement()
         self.write_trimmed_supplement()
 
         with open(self.analysis_summary_path, 'a') as f:
