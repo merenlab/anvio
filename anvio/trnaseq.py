@@ -2990,9 +2990,9 @@ class TRNASeqDataset(object):
         return del_set
 
 
-    def introduce_dels(self, seq_string, sub_positions, max_distinct_dels):
+    def introduce_deletions(self, seq_string, sub_positions, max_distinct_dels):
         """Generate in silico sequences with deletions at and/or around substitution sites in the
-        input sequence. This method is called by self.get_seqs_with_dels.
+        input sequence. This method is called by `get_sequences_with_deletions`.
 
         Parameters
         ==========
@@ -3005,10 +3005,11 @@ class TRNASeqDataset(object):
         Returns
         =======
         del_dict : dict
-            Each dict key is a sequence string containing deletions. Each dict value is a tuple of
-            length-two tuples, with the first element being the index of the deletion in the input
-            sequence and the second being a position score used to measure distance of the deleted
-            nucleotides from the substitution loci.
+            Each dict key is a sequence string resulting from the introduction of deletions in the
+            input sequence. Each dict value is a length-two tuple. The first element of the tuple is
+            another tuple of the deletion positions in the input. The second element is a score used
+            to measure the distance of the deletions from the substitution loci of the input
+            sequence.
         """
         del_ranges = self.del_ranges
         min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
@@ -3020,37 +3021,50 @@ class TRNASeqDataset(object):
         # Deletions of different sizes can be situated at each substitution site. Deletions may be
         # found at one or multiple sites, if multiple substititutions are present. Call each
         # deletion site a "locus".
-        for num_del_sites in range(1, max_distinct_dels + 1):
-            for del_locus_config in combinations(sub_positions, num_del_sites):
-                for del_range_config in product(*[del_ranges for _ in range(num_del_sites)]):
+        for num_del_loci in range(1, max_distinct_dels + 1):
+            # Example: `num_del_loci` of 2 means deletions will be introduced in 2 places.
+            del_range_configs = product(*[del_ranges for _ in range(num_del_loci)])
+            for del_locus_config in combinations(sub_positions, num_del_loci):
+                # Example: `del_locus_config` of (10, 20) means deletions will be introduced around
+                # the substitutions at positions 10 and 20 in the input sequence.
+                for del_range_config in del_range_configs:
+                    # Example: `del_range_config` of (range(-2, 0), range(0, 1)) means the 2
+                    # nucleotides 5' of the first substitution position and the nucleotide at the
+                    # second substitution position will be deleted.
                     all_del_positions = []
                     all_del_pos_scores = []
-                    for i, del_range in enumerate(del_range_config):
-                        sub_pos = del_locus_config[i]
+                    for del_locus_index, del_range in enumerate(del_range_config):
+                        sub_pos = del_locus_config[del_locus_index]
                         locus_del_positions = []
                         locus_del_pos_scores = []
                         for del_pos_relative_to_sub in del_range:
                             del_pos = sub_pos + del_pos_relative_to_sub
+
                             # Deletion positions must be within the template sequence. There must be
                             # sufficient sequence length on the 5' end to confirm the deletion. This
                             # is related to the issue of nontemplated nucleotides. For example,
-                            # there may be a biological 3' tRNA fragment that ends at a modification
-                            # site, but a nontemplated nucleotide is added to the 5' end of the read
-                            # and is the same as the nucleotide that occurs 3 nucleotides 5' of the
-                            # modification site, so without an "anchoring" sequence required on the
-                            # 5' end, a deletion of length 2 could be mistakenly identified between
-                            # the modification and the nontemplated nucleotide. In silico deletions
-                            # are therefore selected when they occur a distance from the 5' end.
+                            # there may be a *biological* 3' tRNA fragment that ends at a
+                            # modification site, but a nontemplated nucleotide is added to the 5'
+                            # end of the read and is the same as the nucleotide that occurs 3
+                            # nucleotides 5' of the modification site, so without an "anchoring"
+                            # stretch of nucleotides on the 5' end, a deletion of length 2 could be
+                            # mistakenly identified as lying between the modification and the
+                            # nontemplated nucleotide. Therefore, only allow silico deletions that
+                            # occur some distance from the 5' end.
                             if not seq_string_length > del_pos >= min_fiveprime_del_pos:
                                 continue
+
                             if not locus_del_positions:
                                 if all_del_positions:
                                     if del_pos - all_del_positions[-1] < min_dist_between_dels:
                                         continue
+
                             locus_del_positions.append(del_pos)
-                            # Lower deletion position scores are better. Distinguish 3' and 5'
-                            # deletions that are the same distance from the substitution locus by
-                            # adding 0.5 to the magnitude of the 3' distance.
+
+                            # Lower deletion position scores are better (see below for the purpose
+                            # of the score). Distinguish 3' and 5' deletions that are the same
+                            # distance from the substitution locus by adding 0.5 to the magnitude of
+                            # the 3' distance.
                             if del_pos_relative_to_sub <= 0:
                                 locus_del_pos_scores.append(abs(del_pos_relative_to_sub))
                             else:
@@ -3068,10 +3082,11 @@ class TRNASeqDataset(object):
                                 del_pos_config.append(del_pos_info)
                         del_pos_configs.append(tuple(del_pos_config))
         # It is possible to generate the same sequence with deletions given different deletion
-        # sites. For example, ACCG can become ACG by deleting either C. If the second C is the sole
-        # substitution locus in the sequence, then only record the in silico deletion as occurring
-        # at that nucleotide rather one nucleotide 5' of it. This is resolved by choosing the lower
-        # deletion position score, which is 0 for the former and 1 for the latter.
+        # configurations. For example, ACCG can become ACG by deleting either C. If the second C is
+        # the sole substitution locus in the sequence, then only record the in silico deletion as
+        # occurring at that nucleotide rather one nucleotide 5' of it. This is resolved by choosing
+        # the lower deletion position score. The deletion at the first C has a score of 1, whereas
+        # the deletion at the second has a score of 0.
         del_dict = {}
         for del_pos_config in del_pos_configs:
             seq_string_with_dels = seq_string
