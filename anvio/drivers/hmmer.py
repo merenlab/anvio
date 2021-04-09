@@ -56,12 +56,10 @@ class HMMer:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
 
-            part_file_name = os.path.join(tmp_dir, os.path.basename(target_files_dict[source]))
-
             # create splitted fasta files inside tmp directory
             self.target_files_dict[source] = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
-                                                               prefix=part_file_name)
+                                                               output_dir=tmp_dir)
 
     def verify_hmmpress_output(self, hmm_path):
         """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
