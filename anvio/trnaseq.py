@@ -2273,33 +2273,44 @@ class TRNASeqDataset(object):
 
 
     def threeprime_dereplicate_acceptorless_sequences(self):
-        """Find tRNA sequences missing a 3'-acceptor sequence variant that are 3' subsequences of
-        normalized tRNA sequences. Sequences required an acceptor sequence variant to be profiled as
-        tRNA. tRNA sequences salvaged here are therefore counted as `mapped` rather than `profiled`
-        in the `id_method` attribute of their `UniqueSeq` and `TrimmedSeq` objects (these sequences
-        form independent `TrimmedSeq` objects rather than being added to existing ones with an
-        identical sequence)."""
+        """Find tRNA sequences missing a 3'-acceptor sequence variant. Sequences required an
+        acceptor sequence variant to have been profiled as tRNA. Unique non-tRNA sequences are
+        searched against normalized tRNA sequences. Non-tRNA is recovered as tRNA when it is a 3'
+        subsequence of normalized tRNA or is longer than normalized tRNA sequences with a complete
+        feature profile and thus is shown to have a 5' extension. Recovered sequences each generate
+        a `MappedSequence` object, a type of `TrimmedSequence` in which no trimming is performed."""
         start_time = time.time()
         self.progress.new("Dereplicating acceptorless tRNA sequences")
         self.progress.update("...")
 
-        represent_names = []
+        # 3'-dereplicate normalized tRNA sequences and unique non-tRNA sequences.
+        names = []
         reversed_seq_strings = []
         extras = []
-        for uniq_nontrna_index, uniq_nontrna_seq in enumerate(self.uniq_nontrna_seqs):
-            if len(uniq_nontrna_seq.seq_string) >= self.min_trna_frag_size:
-                represent_names.append(uniq_nontrna_seq.represent_name)
-                reversed_seq_strings.append(uniq_nontrna_seq.seq_string[::-1])
-                extras.append((uniq_nontrna_index, uniq_nontrna_seq))
-        for norm_seq in self.norm_trna_seqs:
-            represent_names.append(norm_seq.represent_name)
+        # The normalized sequences are added first to the dereplicator so that they appear first in
+        # the clusters. This allows unique non-tRNA sequences that are identical to the normalized
+        # sequence (due to prior trimming of the acceptor variant from the normalized sequence) to
+        # always be recovered.
+        for norm_seq_represent_name, norm_seq in self.norm_trna_seq_dict.items():
+            names.append(norm_seq_represent_name)
             reversed_seq_strings.append(norm_seq.seq_string[::-1])
-            extras.append((-1, norm_seq))
-        clusters = Dereplicator(represent_names, reversed_seq_strings, extras=extras).prefix_dereplicate()
+            extras.append(norm_seq)
+        for uniq_nontrna_seq_represent_name, uniq_nontrna_seq in self.uniq_nontrna_seq_dict.items():
+            if len(uniq_nontrna_seq.seq_string) >= self.min_trna_frag_size:
+                names.append(uniq_nontrna_seq_represent_name)
+                reversed_seq_strings.append(uniq_nontrna_seq.seq_string[::-1])
+                extras.append(uniq_nontrna_seq)
+        clusters = Dereplicator(names, reversed_seq_strings, extras=extras).prefix_dereplicate()
 
-        uniq_nontrna_seq_indices_to_remove = []
+        # Search clusters for normalized tRNA sequences and qualifying unique non-tRNA sequences.
+        # Some unique sequences may be 3' subsequences of more than one normalized sequence. Unique
+        # sequences cannot be longer than more than one normalized sequence, as normalized sequences
+        # have already been dereplicated. The same normalized sequence can be found in multiple
+        # clusters as subsequences of different longer unique sequences.
         uniq_seq_norm_seqs_dict = defaultdict(list)
-        trimmed_trna_seqs = self.trimmed_trna_seqs
+        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
+        uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
         for cluster in clusters:
             if len(cluster.member_seqs) == 1:
                 continue
@@ -2310,10 +2321,10 @@ class TRNASeqDataset(object):
             norm_seq = None
             norm_seq_length = None
             norm_seq_has_complete_feature_set = None
-            for member_index, member_extra in enumerate(cluster.member_extras):
-                if member_extra[0] == -1:
+            for member_index, seq in enumerate(cluster.member_extras):
+                if isinstance(seq, NormalizedFullProfileSequence):
                     cluster_norm_seq_index = member_index
-                    norm_seq = member_extra[1]
+                    norm_seq = seq
                     norm_seq_length = len(norm_seq.seq_string)
                     if member_index > 0:
                         norm_seq_has_complete_feature_set = norm_seq.has_complete_feature_set
@@ -2321,59 +2332,62 @@ class TRNASeqDataset(object):
             else:
                 continue
 
-            for uniq_nontrna_index, uniq_seq in cluster.member_extras[:cluster_norm_seq_index]:
-                # To be longer than a normalized sequence, the sequence must only be found in this
-                # one normalized-sequence-containing cluster, as to be found in multiple of these
-                # clusters would mean that the normalized sequences in those clusters must have
-                # 3'-subsequence relationships, which is impossible by the very existence of the
-                # normalized sequences. If the normalized sequence has a complete feature profile,
-                # than the overhanging 5' bases in the salvaged sequence can be trimmed as "extra"
-                # 5' bases. Otherwise, it is unclear if the overhanging 5' bases are somehow part of
-                # an artifact, so take the conservative option of ignoring the sequence.
+            # To reach this point, a normalized tRNA sequence must have been found in the cluster.
+            # Now process any longer unique sequences.
+            for uniq_nontrna_seq in cluster.member_extras[: cluster_norm_seq_index]:
+                # If the normalized sequence has a complete feature profile (is a full-length tRNA),
+                # then the overhanging 5' bases in the recovered unique sequence can be trimmed as
+                # "extra" 5' bases. Otherwise, it is possible the overhanging bases are part of an
+                # artifact joined to the 5' end of a tRNA fragment, so conservatively ignore the
+                # unique sequence.
                 if not norm_seq_has_complete_feature_set:
                     break
 
-                uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
-                uniq_seq.id_method = 1 # mapped
-                uniq_seq.has_complete_feature_set = False
-                uniq_seq.acceptor_length = 0
-                uniq_seq.extra_fiveprime_length = len(uniq_seq.seq_string) - norm_seq_length
+                uniq_seq_represent_name = uniq_nontrna_seq.represent_name
+                try:
+                    uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
+                except KeyError:
+                    # The unique sequence has already been recovered in another cluster, necessarily
+                    # as a supersequence of the same normalized sequence.
+                    continue
 
-                trimmed_seq = TrimmedSeq(uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: ], [uniq_seq])
-                trimmed_trna_seqs.append(trimmed_seq)
+                uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
+                                                     uniq_seq_represent_name,
+                                                     uniq_nontrna_seq.read_count,
+                                                     extra_fiveprime_length=len(uniq_nontrna_seq.seq_string) - norm_seq_length)
+                uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
 
+                trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
                 norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seq_count += 1
+                trimmed_seq.norm_seqs.append(norm_seq)
                 norm_seq.start_positions.append(0)
                 norm_seq.stop_positions.append(norm_seq_length)
+                trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_seq
 
-            for uniq_nontrna_index, _ in cluster.member_extras[cluster_norm_seq_index + 1:]:
-                uniq_nontrna_seq_indices_to_remove.append(uniq_nontrna_index)
-                uniq_seq_norm_seqs_dict[uniq_nontrna_index].append(norm_seq)
+            # Find all unique sequences in the cluster equal to in length or shorter than the
+            # normalized tRNA sequence.
+            for uniq_nontrna_seq in cluster.member_extras[cluster_norm_seq_index + 1: ]:
+                uniq_seq_norm_seqs_dict[uniq_nontrna_seq.represent_name].append(norm_seq)
 
-        uniq_trna_seqs = self.uniq_trna_seqs
-        for seq_index in sorted(set(uniq_nontrna_seq_indices_to_remove), reverse=True):
-            uniq_seq = self.uniq_nontrna_seqs.pop(seq_index)
-            if uniq_seq.id_method == 1:
-                # This sequence was already handle above, save removal from the list of non-tRNA.
-                continue
+        for uniq_seq_represent_name, norm_seqs in uniq_seq_norm_seqs_dict.items():
+            uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
 
-            uniq_trna_seqs.append(uniq_seq)
-            uniq_seq.id_method = 1
-            uniq_seq.has_complete_feature_set = False
-            uniq_seq.acceptor_length = 0
-            uniq_seq.extra_fiveprime_length = 0
+            uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
+                                                 uniq_seq_represent_name,
+                                                 uniq_nontrna_seq.read_count)
+            uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
 
-            trimmed_seq = TrimmedSeq(uniq_seq.seq_string, [uniq_seq])
-            trimmed_trna_seqs.append(trimmed_seq)
-
-            uniq_seq_length = len(uniq_seq.seq_string)
-            for norm_seq in uniq_seq_norm_seqs_dict[seq_index]:
+            trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
+            uniq_seq_length = len(uniq_trna_seq.seq_string)
+            # The same normalized sequence can be found in multiple clusters, so it can be
+            # represented multiple times in `norm_seqs`.
+            for norm_seq in set(norm_seqs):
                 norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seq_count += 1
+                trimmed_seq.norm_seqs.append(norm_seq)
                 norm_seq_length = len(norm_seq.seq_string)
                 norm_seq.start_positions.append(norm_seq_length - uniq_seq_length)
                 norm_seq.stop_positions.append(norm_seq_length)
+            trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_seq
 
         self.progress.end()
 
