@@ -484,13 +484,10 @@ class TrimmedMappedSequence(TrimmedSequence):
             self.long_fiveprime_extension_dict[uniq_seq.seq_string[: extra_fiveprime_length]] = uniq_seq.read_count
 
 
-        return long_fiveprime_extension_dict, read_acceptor_variant_count_dict
+class NormalizedSequence(object):
+    """A tRNA sequence that can contain shorter tRNA fragment subsequences.
 
-
-class NormalizedSeq(object):
-    """A longer tRNA sequence consolidated from shorter tRNA fragments.
-
-    Normalized sequences are derived from trimmed tRNA sequences. Trimmed profiled tRNA are first
+    Normalized sequences are derived from trimmed sequences. Trimmed profiled tRNA are first
     prefix-dereplicated from the 3' end by the method, `TRNASeqDataset.dereplicate_threeprime`. The
     longest sequence in a cluster of dereplicated sequences becomes the representative normalized
     sequence. `TRNASeqDataset.map_fragments` subsequently maps unprofiled reads to the set of
@@ -511,84 +508,48 @@ class NormalizedSeq(object):
         'trimmed_seqs',
         'represent_name',
         'seq_string',
-        'feature_start_indices',
-        'feature_stop_indices',
-        'has_complete_feature_set',
-        'has_his_g',
-        'has_trunc_profile',
         'start_positions',
         'stop_positions',
         'specific_read_count',
         'nonspecific_read_count',
-        'count_of_specific_reads_with_extra_fiveprime',
-        'count_of_nonspecific_reads_with_extra_fiveprime',
-        'specific_mapped_read_count',
-        'nonspecific_mapped_read_count',
-        'specific_long_fiveprime_extension_dict',
-        'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_acceptor_variant_count_dict',
-        'nonspecific_read_acceptor_variant_count_dict',
         'specific_covs',
         'nonspecific_covs',
         'mean_specific_cov',
         'mean_nonspecific_cov',
-        'mod_seqs',
-        'profile_changed_by_del_analysis',
-        'trunc_profile_recovered_by_del_analysis'
+        'mod_seqs'
     )
 
-    def __init__(self,
-                 trimmed_seqs,
-                 start_positions=None,
-                 stop_positions=None,
-                 skip_init=False):
-        # In practice, a list of prefix-dereplicated, trimmed, profiled tRNA sequences is added when
-        # a normalized sequence is instantiated, and mapped unprofiled sequences are appended later.
+    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False):
         self.trimmed_seqs = trimmed_seqs
         for trimmed_seq in trimmed_seqs:
-            trimmed_seq.norm_seq_count += 1
+            trimmed_seq.norm_seqs.append(self)
         represent_trimmed_seq = trimmed_seqs[0]
         self.represent_name = represent_trimmed_seq.represent_name
         self.seq_string = represent_trimmed_seq.seq_string
-        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
-        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
-        self.has_complete_feature_set = represent_trimmed_seq.has_complete_feature_set
-        self.has_his_g = represent_trimmed_seq.has_his_g
-        self.has_trunc_profile = represent_trimmed_seq.has_trunc_profile
 
         if start_positions and stop_positions:
             self.start_positions = start_positions
             self.stop_positions = stop_positions
         elif (not start_positions) and (not stop_positions):
-            # Trimmed seqs were dereplicated from the 3' end of the normalized sequence. This is how
-            # initialization occurs in the workflow, as mapped tRNA sequences that are not aligned
-            # at the 3' end of the normalized sequence are added later.
+            # This is what occurs in `anvi-trnaseq` for the instantiation of
+            # `NormalizedFullProfileSequence` and `NormalizedTruncatedProfileSequence` objects. All
+            # trimmed sequences provided as input are aligned from the 3' end. Mapped tRNA sequences
+            # that can be aligned to other places in the normalized sequence are added later.
             norm_seq_length = len(self.seq_string)
-            self.start_positions = [norm_seq_length - len(trimmed_seq.seq_string)
-                                    for trimmed_seq in self.trimmed_seqs]
+            self.start_positions = [norm_seq_length - len(trimmed_seq.seq_string) for trimmed_seq in trimmed_seqs]
             self.stop_positions = [norm_seq_length] * len(trimmed_seqs)
         else:
             self.start_positions = None
             self.stop_positions = None
 
         # It is useful to know which modified sequences, if any, contain this normalized sequence. A
-        # normalized sequence with deletions, unlike a normalized sequence without deletions, can be
-        # assigned to more than one modified sequence.
+        # normalized sequence with deletions, unlike a normalized sequence without deletions, can
+        # theoretically be assigned to more than one modified sequence.
         self.mod_seqs = []
-        self.profile_changed_by_del_analysis = None
-        self.trunc_profile_recovered_by_del_analysis = None
 
         if skip_init:
             self.specific_read_count = None
             self.nonspecific_read_count = None
-            self.count_of_specific_reads_with_extra_fiveprime = None
-            self.count_of_nonspecific_reads_with_extra_fiveprime = None
-            self.specific_mapped_read_count = None
-            self.nonspecific_mapped_read_count = None
-            self.specific_long_fiveprime_extension_dict = None
-            self.nonspecific_long_fiveprime_extension_dict = None
-            self.specific_read_acceptor_variant_count_dict = None
-            self.nonspecific_read_acceptor_variant_count_dict = None
             self.specific_covs = None
             self.nonspecific_covs = None
             self.mean_specific_cov = None
@@ -598,79 +559,367 @@ class NormalizedSeq(object):
 
 
     def init(self):
-        """Set attributes for a "finalized" set of input `TrimmedSeq` objects."""
+        """Set attributes for a "finalized" set of input trimmed sequences, including those that
+        were added after object instantiation, such as mapped sequences."""
         # Specific reads are those that are only contained in this normalized sequence.
         specific_read_count = 0
         nonspecific_read_count = 0
-        count_of_specific_reads_with_extra_fiveprime = 0
-        count_of_nonspecific_reads_with_extra_fiveprime = 0
-        specific_mapped_read_count = 0
-        nonspecific_mapped_read_count = 0
-        specific_long_fiveprime_extension_dict = defaultdict(int)
-        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_acceptor_variant_count_dict = OrderedDict(
-            [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict(
-            [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
         specific_covs = np.zeros(len(self.seq_string), dtype=int)
         nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
 
-        for trimmed_seq, start_pos, stop_pos in zip(
-            self.trimmed_seqs, self.start_positions, self.stop_positions):
-            if trimmed_seq.norm_seq_count == 1:
+        for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs, self.start_positions, self.stop_positions):
+            if len(trimmed_seq.norm_seqs) == 1:
                 specific_read_count += trimmed_seq.read_count
-
-                if trimmed_seq.uniq_with_extra_fiveprime_count > 0:
-                    count_of_specific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-
-                if trimmed_seq.id_method == 1: # 1 => mapped
-                    # TrimmedSeqs are comprised of EITHER profiled (0) OR mapped (1) UniqueSeqs.
-                    specific_mapped_read_count += trimmed_seq.read_count
-
-                for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                    specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-
-                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if read_count > 0:
-                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
-
                 specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
             else:
                 nonspecific_read_count += trimmed_seq.read_count
-
-                if trimmed_seq.uniq_with_extra_fiveprime_count > 0:
-                    count_of_nonspecific_reads_with_extra_fiveprime += trimmed_seq.read_with_extra_fiveprime_count
-
-                if trimmed_seq.id_method == 1:
-                    nonspecific_mapped_read_count += trimmed_seq.read_count
-
-                    # Only nonspecific MAPPED sequences can have 5' sequence extensions, as profiled
-                    # sequences with 5' extensions would span the length of the normalized sequence
-                    # and would thus be specific to it.
-                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                        nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-
-                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if read_count > 0:
-                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
-
                 nonspecific_covs[start_pos: stop_pos] += trimmed_seq.read_count
 
         self.specific_read_count = specific_read_count
         self.nonspecific_read_count = nonspecific_read_count
-        self.count_of_specific_reads_with_extra_fiveprime = count_of_specific_reads_with_extra_fiveprime
-        self.count_of_nonspecific_reads_with_extra_fiveprime = count_of_nonspecific_reads_with_extra_fiveprime
-        self.specific_mapped_read_count = specific_mapped_read_count
-        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
-        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
-        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
-        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
         self.specific_covs = specific_covs
         self.nonspecific_covs = nonspecific_covs
         self.mean_specific_cov = specific_covs.mean()
         self.mean_nonspecific_cov = nonspecific_covs.mean()
 
+
+class NormalizedFullProfileSequence(NormalizedSequence):
+    """This object is formed from `TrimmedFullProfileSequence` objects and, optionally,
+    `TrimmedTruncatedProfileSequence` objects that are subsequences of the seed."""
+
+    __slots__ = (
+        'feature_start_indices',
+        'feature_stop_indices',
+        'has_complete_feature_set',
+        'has_his_g',
+        'specific_read_with_extra_fiveprime_count',
+        'nonspecific_read_with_extra_fiveprime_count',
+        'specific_mapped_read_count',
+        'nonspecific_mapped_read_count',
+        'specific_long_fiveprime_extension_dict',
+        'nonspecific_long_fiveprime_extension_dict',
+        'specific_read_acceptor_variant_count_dict',
+        'nonspecific_read_acceptor_variant_count_dict'
+    )
+
+    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
+        super().__init__(trimmed_seqs, start_positions=None, stop_positions=None, skip_init=True)
+
+        represent_trimmed_seq = self.trimmed_seqs[0]
+        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
+        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
+        self.has_complete_feature_set = represent_trimmed_seq.has_complete_feature_set
+        self.has_his_g = represent_trimmed_seq.has_his_g
+
+        self.specific_read_with_extra_fiveprime_count = None
+        self.nonspecific_read_with_extra_fiveprime_count = None
+        self.specific_mapped_read_count = None
+        self.nonspecific_mapped_read_count = None
+        self.specific_long_fiveprime_extension_dict = None
+        self.nonspecific_long_fiveprime_extension_dict = None
+
+
+    def init(self):
+        """Set attributes for a "finalized" set of input trimmed sequences."""
+        super().init()
+
+        specific_mapped_read_count = 0
+        nonspecific_mapped_read_count = 0
+        specific_read_with_extra_fiveprime_count = 0
+        nonspecific_read_with_extra_fiveprime_count = 0
+        specific_long_fiveprime_extension_dict = defaultdict(int)
+        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+
+        for trimmed_seq in self.trimmed_seqs:
+            if len(trimmed_seq.norm_seqs) == 1:
+                if isinstance(trimmed_seq, TrimmedMappedSequence):
+                    specific_mapped_read_count += trimmed_seq.read_count
+                    specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                        specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+                else:
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
+                    if not isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
+                        specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                            specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+            else:
+                if isinstance(trimmed_seq, TrimmedMappedSequence):
+                    nonspecific_mapped_read_count += trimmed_seq.read_count
+                    nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+                else:
+                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                        if read_count > 0:
+                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+
+                    # Nonspecific, unlike specific, profiled sequences can have 5' sequence
+                    # extensions, as profiled sequences with 5' extensions would span the length of
+                    # the normalized sequence and would thus be specific to it.
+                    if not isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
+                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
+                            nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+
+        self.specific_mapped_read_count = specific_mapped_read_count
+        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
+        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
+        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
+        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
+        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
+        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+
+
+class NormalizedTruncatedProfileSequence(NormalizedSequence):
+    """This object is formed exclusively from `TrimmedTruncatedProfileSequence` objects."""
+
+    __slots__ = (
+        'feature_start_indices',
+        'feature_stop_indices',
+        'trunc_profile_index',
+        'specific_read_acceptor_variant_count_dict',
+        'nonspecific_read_acceptor_variant_count_dict'
+    )
+
+    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
+        super().__init__(trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False)
+
+        represent_trimmed_seq = self.trimmed_seqs[0]
+        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
+        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
+        self.trunc_profile_index = represent_trimmed_seq.trunc_profile_index
+
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        for trimmed_seq in self.trimmed_seqs:
+            if len(trimmed_seq.norm_seqs) == 1:
+                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if read_count > 0:
+                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+            else:
+                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if read_count > 0:
+                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
+        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+
+
+class NormalizedDeletionSequence(NormalizedSequence):
+    """This object is generated in the identification of tRNAs with deletions.
+    `NormalizedFullProfileSequence` and `NormalizedTruncatedProfileSequence` objects can be found to
+    contain deletions, invalidating their existing feature profile attributes (including acceptor
+    variants). This object is created in their stead. Note that the input defunct normalized
+    sequence can contain `TrimmedMappedSequence` objects in addition to `TrimmedFullProfileSequence`
+    and `TrimmedTruncatedProfileSequence` objects."""
+
+    __slots__ = (
+        'defunct_norm_seqs',
+        'mod_seq_del_configs',
+        'start_positions_in_mod_seqs',
+        'norm_seq_del_configs',
+        'mod_seqs_contain_anticodon',
+        'specific_del_covs_in_mod_seqs',
+        'nonspecific_del_covs_in_mod_seqs',
+        'specific_read_with_extra_fiveprime_count',
+        'nonspecific_read_with_extra_fiveprime_count',
+        'specific_mapped_read_count',
+        'nonspecific_mapped_read_count',
+        'specific_long_fiveprime_extension_dict',
+        'nonspecific_long_fiveprime_extension_dict'
+    )
+
+    # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
+    # set by `TRNASeqDataset`.
+    min_length_of_long_fiveprime_extension = 4
+
+    def __init__(self, seq_string, defunct_norm_seq, mod_seq, del_config, start_pos_in_mod_seq, norm_seq_del_config, contains_anticodon):
+        self.seq_string = seq_string
+        self.trimmed_seqs = defunct_norm_seq.trimmed_seqs
+        self.defunct_norm_seqs = [defunct_norm_seq for _ in self.trimmed_seqs]
+        # Modified sequences are found before normalized sequences with deletions, and so can be
+        # recorded upon instantiation of this object. Currently, the workflow only recognizes
+        # normalized sequences with deletions that derive from a single modified sequence. If
+        # nonspecific assignment to modified sequences were allowed, then each modified sequence can
+        # have different deletion configurations, the normalized sequence can start at different
+        # places in the modified sequence, and, given the modified sequence, the normalized sequence
+        # may or may not contain the anticodon.
+        self.mod_seqs = [mod_seq]
+        self.mod_seq_del_configs = [del_config]
+        self.start_positions_in_mod_seqs = [start_pos_in_mod_seq]
+        self.norm_seq_del_configs = [norm_seq_del_config]
+        self.mod_seqs_contain_anticodon = [contains_anticodon]
+
+
+    def init(self):
+        """Set attributes for a "finalized" set of input trimmed sequences."""
+        # Here is an important note regarding the trimmed sequences comprising this normalized
+        # sequence. The feature profiles of sequences found to have deletions are invalidated, but
+        # trimmed (and unique) sequence profiles are not changed. A key reason for this, beside
+        # convenience, is that a trimmed sequence may be non-specific -- also assigned to another
+        # normalized sequence -- not necessarily with a deletion in the same place. Ideally,
+        # additional information on each trimmed sequence would be recorded as attributes of this
+        # normalized sequence. For example, each trimmed sequence may have a different number of
+        # extra 5' nucleotides in this normalized sequence. Likewise, the unique sequences and reads
+        # comprising the trimmed sequence would have a different number of extra 5' nucleotides.
+
+        # If there is a trimmed profiled sequence equivalent to the normalized sequence with
+        # deletions, adopt its representative name. Otherwise, use the representative name of the
+        # longest trimmed sequence.
+        norm_seq_length = len(self.seq_string)
+        max_trimmed_seq_length = 0
+        for trimmed_seq in self.trimmed_seqs:
+            if isinstance(trimmed_seq, TrimmedMappedSequence):
+                continue
+            trimmed_seq_length = len(trimmed_seq.seq_string)
+            if trimmed_seq_length == norm_seq_length:
+                represent_name = trimmed_seq.represent_name
+                break
+            if trimmed_seq_length > max_trimmed_seq_length:
+                max_trimmed_seq_length = trimmed_seq_length
+                represent_name = trimmed_seq.represent_name
+        self.represent_name = represent_name
+
+        derep_defunct_norm_seqs = []
+        for norm_seq in self.defunct_norm_seqs:
+            for other_norm_seq in derep_defunct_norm_seqs:
+                if norm_seq.represent_name == other_norm_seq.represent_name:
+                    break
+            else:
+                derep_defunct_norm_seqs.append(norm_seq)
+
+        # Affiliate each trimmed sequence with the present rather than the defunct normalized
+        # sequence(s). A trimmed sequence may be part of more than one defunct normalized sequence
+        # converted into the present normalized sequence with deletions.
+        derep_defunct_norm_seq_names = [norm_seq.represent_name for norm_seq in derep_defunct_norm_seqs]
+        trimmed_seq.norm_seqs = [norm_seq for norm_seq in trimmed_seq.norm_seqs if norm_seq.represent_name not in derep_defunct_norm_seq_names] + [self]
+
+        # Determine attributes of this object.
+        start_positions = []
+        stop_positions = []
+        specific_read_count = 0
+        nonspecific_read_count = 0
+        specific_covs = np.zeros(norm_seq_length, dtype=int)
+        nonspecific_covs = np.zeros(norm_seq_length, dtype=int)
+        norm_seq_del_configs = self.norm_seq_del_configs
+        specific_del_covs_in_mod_seqs = [np.zeros(len(norm_seq_del_config), dtype=int) for norm_seq_del_config in norm_seq_del_configs]
+        nonspecific_del_covs_in_mod_seqs = [np.zeros(len(norm_seq_del_config), dtype=int) for norm_seq_del_config in norm_seq_del_configs]
+        specific_read_with_extra_fiveprime_count = 0
+        nonspecific_read_with_extra_fiveprime_count = 0
+        specific_mapped_read_count = 0
+        nonspecific_mapped_read_count = 0
+        specific_long_fiveprime_extension_dict = defaultdict(int)
+        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
+        for trimmed_seq, defunct_norm_seq in zip(self.trimmed_seqs, self.defunct_norm_seqs):
+            trimmed_seq_length = len(trimmed_seq.seq_string)
+            trimmed_seq_read_count = trimmed_seq.read_count
+            if isinstance(trimmed_seq, TrimmedMappedSequence):
+                # Find where the mapped sequence was located in the defunct normalized sequence.
+                trimmed_seq_name = trimmed_seq.represent_name
+                for trimmed_seq_index, other_trimmed_seq in enumerate(defunct_norm_seq.trimmed_seqs):
+                    if trimmed_seq_name == other_trimmed_seq.represent_name:
+                        defunct_start_pos = defunct_norm_seq.start_positions[trimmed_seq_index]
+                        defunct_stop_pos = defunct_norm_seq.stop_positions[trimmed_seq_index]
+                        break
+                # If the normalized sequence with deletions has extra 5' bases relative to the
+                # defunct normalized sequence, then start and stop positions of the trimmed
+                # sequences decrease.
+                pos_shift = len(defunct_norm_seq.seq_string) - norm_seq_length
+                if defunct_start_pos + pos_shift <= 0:
+                    start_pos = 0
+                else:
+                    start_pos = defunct_start_pos + pos_shift
+                start_positions.append(start_pos)
+                stop_pos = defunct_stop_pos + pos_shift
+                stop_positions.append(stop_pos)
+
+                if len(trimmed_seq.norm_seqs) == 1:
+                    specific_read_count += trimmed_seq_read_count
+                    specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
+                    for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
+                        for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
+                            # A trimmed sequence covering the deletion must start at or before the
+                            # 5' nucleotide adjacent to the deletion and a stop position at or after
+                            # the 3' nucleotide adjacent to the deletion.
+                            if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
+                                specific_del_covs[del_index] += trimmed_seq_read_count
+                    specific_mapped_read_count += trimmed_seq_read_count
+                    if defunct_start_pos + pos_shift < 0:
+                        specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
+                        if -defunct_start_pos - pos_shift >= self.min_length_of_long_fiveprime_extension:
+                            specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+                else:
+                    nonspecific_read_count += trimmed_seq_read_count
+                    nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
+                    for nonspecific_del_covs, norm_seq_del_config in zip(nonspecific_del_covs_in_mod_seqs, norm_seq_del_configs):
+                        for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
+                            if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
+                                nonspecific_del_covs[del_index] += trimmed_seq_read_count
+                    nonspecific_mapped_read_count += trimmed_seq_read_count
+                    if defunct_start_pos + pos_shift < 0:
+                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
+                        if -defunct_start_pos - pos_shift >= self.min_length_of_long_fiveprime_extension:
+                            nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+                continue
+
+            # Profiled trimmed sequences are still anchored to the 3' end of the normalized
+            # sequence.
+            if trimmed_seq_length >= norm_seq_length:
+                start_pos = 0
+                start_positions.append(start_pos)
+            else:
+                start_pos = norm_seq_length - trimmed_seq_length
+                start_positions.append(start_pos)
+            stop_pos = norm_seq_length
+            stop_positions.append(stop_pos)
+
+            if len(trimmed_seq.norm_seqs) == 1:
+                specific_read_count += trimmed_seq_read_count
+                specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
+                for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
+                    for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
+                        if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
+                            specific_del_covs[del_index] += trimmed_seq_read_count
+                if trimmed_seq_length > norm_seq_length:
+                    specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
+                    if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
+                        specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+            else:
+                nonspecific_read_count += trimmed_seq_read_count
+                nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
+                for nonspecific_del_covs, norm_seq_del_config in zip(nonspecific_del_covs_in_mod_seqs, norm_seq_del_configs):
+                    for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
+                        if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
+                            nonspecific_del_covs[del_index] += trimmed_seq_read_count
+                if trimmed_seq_length > norm_seq_length:
+                    nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
+                    if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
+                        nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+
+        # Record the new start and stop positions of the trimmed sequences.
+        self.start_positions = start_positions
+        self.stop_positions = stop_positions
+        self.specific_read_count = specific_read_count
+        self.nonspecific_read_count = nonspecific_read_count
+        self.specific_covs = specific_covs
+        self.nonspecific_covs = nonspecific_covs
+        self.specific_del_covs_in_mod_seqs = specific_del_covs_in_mod_seqs
+        self.nonspecific_del_covs_in_mod_seqs = nonspecific_del_covs_in_mod_seqs
+        self.mean_specific_cov = specific_covs.mean()
+        self.mean_nonspecific_cov = nonspecific_covs.mean()
+        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
+        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
+        self.specific_mapped_read_count = specific_mapped_read_count
+        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
+        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
+        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
+
+        # Store a uniqued list of defunct normalized sequences.
+        self.defunct_norm_seqs = derep_defunct_norm_seqs
 
 class ModifiedSeq(object):
     """A tRNA sequence with sites of predicted modification-induced substitutions and deletions,
