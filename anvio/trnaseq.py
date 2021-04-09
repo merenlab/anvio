@@ -1801,6 +1801,31 @@ class TRNASeqDataset(object):
         self.run.info("Unique sequences processed", total_uniq_count, nl_after=1)
 
 
+    def unique_reads(self):
+        """Dereplicate input reads."""
+        self.progress.new("Finding replicate reads")
+        self.progress.update("Loading reads")
+
+        fasta = fastalib.SequenceSource(self.input_fasta_path)
+        names = []
+        seqs = []
+        read_count = 0
+        while next(fasta):
+            names.append(fasta.id)
+            seqs.append(fasta.seq)
+            read_count += 1
+        fasta.close()
+        self.read_count = read_count
+
+        self.progress.update("Dereplicating")
+        uniq_reads = []
+        for cluster in Dereplicator(names, seqs).full_length_dereplicate():
+            uniq_reads.append((cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names)))
+
+        self.progress.end()
+        return uniq_reads
+
+
     def trim_trna_ends(self):
         """Trim any nucleotides 5' of the acceptor stem and 3' of the discriminator from profiled
         tRNA. Appends TrimmedSeq objects formed from input UniqueSeq objects to
