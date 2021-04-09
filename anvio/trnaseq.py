@@ -1724,17 +1724,22 @@ class TRNASeqDataset(object):
         return '%s%s\t%s\n' % (label, ' ' + '.' * (padding - len(label)), value)
 
 
-        Parameters
-        ==========
-        uniq_reads : list
-            List of UniqueSeq objects
-        """
+    def profile_trna(self):
+        """Profile tRNA features in reads. Add `UniqueSeq` objects representing profiled tRNA
+        sequences to `self.uniq_trna_seq_dict`. Add `UniqueSeq` objects representing sequences with
+        a truncated tRNA profile to `self.uniq_trunc_seq_dict`. Add leftover `UniqueSeq` objects
+        representing unprofiled tRNA sequences to `self.uniq_nontrna_seq_dict`."""
+        uniq_reads = self.unique_reads()
+
         start_time = time.time()
+
         self.progress.new("Profiling tRNA features in reads")
         self.progress.update("...")
 
-        queued_read_count = 0
-        queued_seq_count = 0
+        # Count the number of reads and unique read sequences that have been added to the
+        # multiprocessing input queue.
+        total_read_count = 0
+        total_uniq_count = 0
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -1745,109 +1750,55 @@ class TRNASeqDataset(object):
         for p in processes:
             p.start()
 
+        for seq_string, name, read_count in uniq_reads:
+            input_queue.put((seq_string, name, read_count))
+            total_read_count += read_count
+            total_uniq_count += 1
+
+        # Count the number of unique sequences that have been profiled and fetched from the
+        # multiprocessing output queue.
         fetched_profile_count = 0
-        uniq_seqs_dict = {}
+        uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
+        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
         profiling_progress_interval = self.profiling_progress_interval
-        uniq_trna_seqs = self.uniq_trna_seqs
-        uniq_trunc_seqs = self.uniq_trunc_seqs
-        uniq_nontrna_seqs = self.uniq_nontrna_seqs
-        for uniq_read in uniq_reads:
-            input_queue.put((uniq_read.seq_string, uniq_read.represent_name))
-            uniq_seqs_dict[uniq_read.represent_name] = uniq_read
-            queued_read_count += uniq_read.read_count
-            queued_seq_count += 1
+        pp_uniq_read_count = pp(len(uniq_reads))
+        while fetched_profile_count < total_uniq_count:
+            profile, read_count = output_queue.get()
+            fetched_profile_count += 1
 
-            while fetched_profile_count < queued_seq_count:
-                trna_profile = output_queue.get()
-                fetched_profile_count += 1
-                processed_seq_name = trna_profile.name
-                processed_seq_string = trna_profile.input_seq
+            name = profile.name
+            if profile.is_predicted_trna:
+                uniq_trna_seq_dict[name] = UniqueFullProfileSequence(profile.input_seq, name, read_count, profile)
+            else:
+                if profile.trunc_profile_index:
+                    uniq_trunc_seq_dict[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
+                else:
+                    uniq_nontrna_seq_dict[name] = UniqueSequence(profile.input_seq, name, read_count)
 
-                uniq_seq = uniq_seqs_dict.pop(processed_seq_name)
-
-                if not trna_profile.is_predicted_trna:
-                    if trna_profile.trunc_profile_index: # This cannot be 0, but will be None when the profile is not truncated
-                        uniq_seq.id_method = 0 # Given choice of profiled (0) and mapped (1), choose profiled
-                        uniq_seq.feature_start_indices = [feature.start_pos if hasattr(feature, 'start_pos') else feature.start_positions
-                                                          for feature in trna_profile.features]
-                        uniq_seq.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
-                                                         for feature in trna_profile.features]
-                        uniq_seq.has_complete_feature_set = False # trna_profile.has_complete_feature_set should always be False here
-                        uniq_seq.has_his_g = False
-                        uniq_seq.alpha_start_index = trna_profile.alpha_start
-                        uniq_seq.alpha_stop_index = trna_profile.alpha_stop
-                        uniq_seq.beta_start_index = trna_profile.beta_start
-                        uniq_seq.beta_stop_index = trna_profile.beta_stop
-                        uniq_seq.anticodon_string = anticodon = trna_profile.anticodon_seq
-                        uniq_seq.anticodon_aa = trna_profile.anticodon_aa if trna_profile.anticodon_aa else None
-                        uniq_seq.contains_anticodon = True if anticodon else False
-                        uniq_seq.acceptor_length = len(trna_profile.acceptor_variant_string)
-                        uniq_seq.extra_fiveprime_length = 0 # trna_profile.extra_fiveprime_length should always be None here
-                        uniq_seq.extra_threeprime_length = trna_profile.num_extra_threeprime
-                        uniq_seq.profiled_seq_length = len(trna_profile.profiled_seq)
-                        uniq_seq.trunc_profile_index = trna_profile.trunc_profile_index
-                        uniq_trunc_seqs.append(uniq_seq)
-                    else:
-                        uniq_nontrna_seqs.append(uniq_seq)
-
-                    if fetched_profile_count % profiling_progress_interval == 0:
-                        self.progress.update("%s of %s unique sequences have been profiled"
-                                             % (pp(fetched_profile_count), pp(len(uniq_reads))))
-                    continue
-
-                uniq_seq.id_method = 0
-                uniq_seq.feature_start_indices = [feature.start_pos if hasattr(feature, 'start_pos') else feature.start_positions
-                                                  for feature in trna_profile.features]
-                uniq_seq.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
-                                                 for feature in trna_profile.features]
-                uniq_seq.has_complete_feature_set = trna_profile.has_complete_feature_set
-                uniq_seq.has_his_g = True if trna_profile.features[0].name == 'tRNA-His position 0' else False
-                uniq_seq.alpha_start_index = trna_profile.alpha_start
-                uniq_seq.alpha_stop_index = trna_profile.alpha_stop
-                uniq_seq.beta_start_index = trna_profile.beta_start
-                uniq_seq.beta_stop_index = trna_profile.beta_stop
-                uniq_seq.anticodon_string = anticodon = trna_profile.anticodon_seq
-                uniq_seq.anticodon_aa = trna_profile.anticodon_aa if trna_profile.anticodon_aa else None
-                uniq_seq.contains_anticodon = True if anticodon else False
-                uniq_seq.acceptor_length = len(trna_profile.acceptor_variant_string)
-                uniq_seq.num_extrapolated_fiveprime_nts = trna_profile.num_in_extrapolated_fiveprime_feature
-                uniq_seq.extra_fiveprime_length = trna_profile.num_extra_fiveprime
-                uniq_seq.extra_threeprime_length = trna_profile.num_extra_threeprime
-                uniq_seq.profiled_seq_length = len(trna_profile.profiled_seq)
-                uniq_seq.num_conserved = trna_profile.num_conserved
-                uniq_seq.num_unconserved = trna_profile.num_unconserved
-                uniq_seq.num_paired = trna_profile.num_paired
-                uniq_seq.num_unpaired = trna_profile.num_unpaired
-                # Recover nucleotides that did not fit expectation, either by not being the
-                # expected nucleotide or type of nucleotide or by not base pairing in a stem.
-                uniq_seq.unpaired_info = trna_profile.unpaired_info
-                uniq_seq.unconserved_info = trna_profile.unconserved_info
-                uniq_trna_seqs.append(uniq_seq)
-
-                if fetched_profile_count % profiling_progress_interval == 0:
-                    self.progress.update("%s of %s unique sequences have been profiled"
-                                         % (pp(fetched_profile_count), pp(len(uniq_reads))))
+            if fetched_profile_count % profiling_progress_interval == 0:
+                # Periodically report the number of unique sequences that have been profiled.
+                self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique sequences have been profiled")
 
         for p in processes:
             p.terminate()
             p.join()
 
         # Profiled seqs were added to the output queue as they were processed, so sort by name.
-        uniq_trna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
-        uniq_trunc_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
-        uniq_nontrna_seqs.sort(key=lambda uniq_seq: uniq_seq.represent_name)
+        self.uniq_trna_seq_dict = {name: seq for name, seq in sorted(uniq_trna_seq_dict.items())}
+        self.uniq_trunc_seq_dict = {name: seq for name, seq in sorted(uniq_trunc_seq_dict.items())}
+        self.uniq_nontrna_seq_dict = {name: seq for name, seq in sorted(uniq_nontrna_seq_dict.items())}
 
+        get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed profiling tRNA (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
-            f.write(self.get_summary_line("Reads processed", queued_read_count))
-            f.write(self.get_summary_line("Unique sequences processed", queued_seq_count))
+            f.write(get_summary_line("Time elapsed profiling tRNA (min)", time.time() - start_time, is_time_value=True))
+            f.write(get_summary_line("Reads processed", total_read_count))
+            f.write(get_summary_line("Unique sequences processed", total_uniq_count))
 
         self.progress.end()
 
-        self.run.info("Reads processed", queued_read_count)
-        self.run.info("Unique sequences processed", queued_seq_count, nl_after=1)
+        self.run.info("Reads processed", total_read_count)
+        self.run.info("Unique sequences processed", total_uniq_count, nl_after=1)
 
 
     def trim_trna_ends(self):
