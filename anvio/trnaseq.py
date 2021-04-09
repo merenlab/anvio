@@ -23,11 +23,13 @@ Feature profile: 5'->3' features identified de novo from the 3' end in a merged 
 Profiled sequence: Sequence with an assigned feature profile, which may or may not span the whole
     length of the sequence, but which at minimum includes the T arm
 
-tRNA profile: Profile that spans the full length of the sequence
+Full profile (tRNA profile): Profile that spans (nearly) the full length of the sequence, with a
+    small number of unprofiled nucleotides allowed at the 5' end when that number is less than the
+    minimum length of a missing next 5' tRNA feature
 
-Truncated profile: Profile that does not span the full length of the sequence (e.g., a sequence is
-    a chimera of two 3' tRNA fragments and the profile covers the 3' fragment but not the unexpected
-    5' fragment)
+Truncated profile: Profile that does not span (nearly) the full length of the sequence (e.g., a
+    sequence is a chimera of two 3' tRNA fragments and the profile covers the 3' fragment but not
+    the unexpected 5' fragment)
 
 Modification-induced substitution: Detected as 3-4 different nucleotides at a tRNA position, the
     effect of semi-random nucleotide addition during reverse transcription at the site of a modified
