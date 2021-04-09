@@ -1442,6 +1442,10 @@ class TRNASeqDataset(object):
         # position.
         self.del_ranges = None
 
+        # The same normalized sequence with deletions may arise from multiple modified sequences.
+        # For the sake of simplicity, only consider normalized sequences with deletions that can
+        # come from a single modified sequence.
+        self.allow_norm_seq_with_dels_from_multiple_mod_seqs = False
 
     def process(self):
         """The entry method of TRNASeqDataset, called from `anvi-trnaseq`.
