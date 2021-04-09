@@ -3456,71 +3456,43 @@ class TRNASeqDataset(object):
         return norm_seq_mod_seqs_dict
 
 
-            if extra_fiveprime_length:
-                # The normalized sequence was found to have unidentified extra 5' nucleotides. The
-                # longest trimmed sequence in the normalized sequence has all of these extra
-                # nucleotides. Shorter trimmed sequences may have fewer extra nucleotides. The extra
-                # nucleotides should also be identified in the unique sequences comprising these
-                # trimmed sequences. These trimmed sequences are now known to have the same sequence
-                # string minus the extra nucleotides, so they must be collapsed into a single
-                # trimmed sequence containing the union of their unique sequences. A new trimmed
-                # sequence, which may include an existing trimmed sequence with zero extra
-                # nucleotides, is created and added as the first trimmed sequence of the normalized
-                # sequence. The old trimmed sequences are removed from the normalized sequence, and
-                # purged from the master list of (truncated or tRNA) trimmed sequences. The new
-                # trimmed sequence is not initialized yet, as more unique sequences may be added, as
-                # explained below. There may also be mapped fragments that overlap the extra
-                # nucleotides. If specific to the normalized sequence, these are changed
-                # individually, along with their corresponding unique sequence. Otherwise,
-                # nonspecific mapped fragments are removed from the normalized sequence, as they may
-                # not have the same number of extra nucleotides in the other normalized sequences in
-                # which they are found. The start and stop positions must also be adjusted for all
-                # of the normalized sequence's other trimmed sequences without extra 5' nucleotides,
-                # as there are now fewer nucleotides at the 5' end of the normalized sequence. The
-                # normalized sequence is later reinitialized after all unique sequences are added to
-                # its trimmed sequences.
+    def find_normalized_deletion_sequence_in_modified_sequence(self, norm_del_seq_length, mod_seq, del_config):
+        """Normalized sequences with deletions and modified sequences are aligned at the 3' end, so
+        find the start position of the normalized sequence in the modified sequence by working
+        backward from the 3' end. Also record the normalized sequence positions immediately 5' of
+        the deletion."""
+        # Example:
+        # ACGTAAC (mod seq)
+        #    T  C (norm seq)
+        # del_pos = 4
+        # norm_seq_pos == 1
+        # mod_seq_pos == 6
+        # mod_seq_pos -> 5
+        # norm_seq_pos -> 0
+        # mod_seq_pos -> 4 (continue)
+        # mod_seq_pos -> 3 (del_pos = -1)
+        # mod_seq_pos -> 2
+        # norm_seq_pos -> -1 (break)
+        # norm_seq_start = mod_seq_pos + 1 == 3
 
-                # Multiple normalized sequences may be found to reduce to the same sequence after
-                # trimming different 5' extensions, and are therefore merged, removing the
-                # normalized sequences encountered after the first from the master list. Unique
-                # sequences from the trimmed sequences with a 5' extension are added to the longest
-                # trimmed sequence in the existing normalized sequence. Trimmed sequences with a 5'
-                # extension are removed from the master list. After the rigamarole of consolidating
-                # normalized sequences, the changed normalized sequences and new trimmed sequences
-                # are initialized.
-                trimmed_seq_string = norm_seq.seq_string[extra_fiveprime_length: ]
-                if trimmed_seq_string in changed_norm_seq_dict:
-                    norm_seq_names_to_remove.append(norm_seq.represent_name)
-                    other_norm_seq = changed_norm_seq_dict[trimmed_seq_string]
-                    other_trimmed_seq = other_norm_seq.trimmed_seqs[0]
-                    for trimmed_seq, start_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions):
-                        if trimmed_seq.id_method == 0:
-                            if start_pos < extra_fiveprime_length:
-                                for uniq_seq in trimmed_seq.uniq_seqs:
-                                    uniq_seq.extra_fiveprime_length += extra_fiveprime_length - start_pos
-                                    other_trimmed_seq.uniq_seqs.append(uniq_seq)
-                                if trimmed_seq.norm_seq_count == 1:
-                                    # Only remove trimmed sequences specific to the normalized
-                                    # sequence.
-                                    trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
-                        elif trimmed_seq.id_method == 1:
-                            if start_pos < extra_fiveprime_length:
-                                if trimmed_seq.norm_seq_count == 1:
-                                    trimmed_seq.uniq_seqs[0].extra_fiveprime_length += extra_fiveprime_length - start_pos
-                                    other_norm_seq.trimmed_seqs.append(trimmed_seq)
-                                    other_norm_seq.start_positions.append(0)
-                                    other_norm_seq.stop_positions.append(len(trimmed_seq.seq_string) - extra_fiveprime_length)
-                                else:
-                                    trimmed_seq.norm_seq_count -= 1
-                else:
-                    # Prevent re-trimmed sequences thought to contain deletions from actually being
-                    # 3'-subsequences of the modified sequence that are deletion-free.
-                    unsupported_dels = False
-                    for norm_seq_without_dels in mod_seq.norm_seqs_without_dels:
-                        if trimmed_seq_string == norm_seq_without_dels.seq_string[len(del_config): ]:
-                            unsupported_dels = True
-                    if unsupported_dels:
-                        continue
+        del_config_iterator = iter(del_config[::-1])
+        del_pos = next(del_config_iterator)
+        norm_seq_pos = norm_del_seq_length - 1
+        mod_seq_pos = len(mod_seq.norm_seqs_without_dels[0].seq_string) - 1
+        norm_seq_del_config = []
+        while norm_seq_pos > -1:
+            if mod_seq_pos == del_pos:
+                mod_seq_pos -= 1
+                norm_seq_del_config.append(norm_seq_pos)
+                try:
+                    del_pos = next(del_config_iterator)
+                    continue
+                except StopIteration:
+                    del_pos = -1
+            mod_seq_pos -= 1
+            norm_seq_pos -= 1
+        norm_seq_start_in_mod_seq = mod_seq_pos + 1
+        return norm_seq_start_in_mod_seq, norm_seq_del_config
 
                     changed_norm_seq_dict[trimmed_seq_string] = norm_seq
                     new_trimmed_seq_start_positions = []
