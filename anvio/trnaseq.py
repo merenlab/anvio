@@ -2815,85 +2815,93 @@ class TRNASeqDataset(object):
         """Find potential modification-induced deletions. First, in silico "test" deletions are
         introduced at and around substitution sites in sequences with potential modification-induced
         substitutions. Notate such modified sequences with in silico deletions as *M'*. M' are
-        searched against two pools of sequence targets: 1. normalized tRNA sequences not assigned to
-        modified sequences, notated *Nf*, for normalized sequences with full feature profile, and 2.
-        normalized "non-tRNA" sequences with truncated tRNA profiles, notated *Nt*. Why are these
-        two pools used? 1. Why are Nf considered at all, when they have been successfully profiled,
-        and therefore, presumably, do not have deletions interrupting the profile? Deletions can be
-        erroneously accommodated by flexibility in feature lengths. For example, a deletion
-        associated with a modification in the D loop can cause the variable-length alpha or beta
-        sections of the D loop to be assigned one fewer nucleotide than is correct in order to
-        optimize the profile. 2. Why not all "non-tRNAs," why just those with a truncated feature
-        profile? Deletions can cause truncation of the profile. "Non-tRNAs" without even a truncated
-        profile (sequences that were not profiled past the minimum length threshold of the T arm)
-        also have fewer opportunities for modification-induced mutations.
+        searched against two pools of sequence targets:
+        1. normalized tRNA sequences not assigned to modified sequences, notated *Nf*, for
+           normalized sequences with a full feature profile, and
+        2. normalized "non-tRNA" sequences with truncated tRNA profiles, notated *Nt*.
+
+        Why these two pools?
+        1. Why are Nf considered at all, when they have been successfully profiled, and therefore,
+           presumably, do not have deletions interrupting the profile? Deletions can be erroneously
+           accommodated by flexibility in feature lengths. For example, a deletion associated with a
+           modification in the D loop can cause the variable-length alpha or beta sections of the D
+           loop to be assigned one fewer nucleotide than is correct in order to optimize the
+           profile.
+        2. Why not all "non-tRNAs," why just those with a truncated feature profile (Nt)? Deletions
+           can cause truncation of the profile. "Non-tRNAs" without even a truncated profile
+           (sequences that were not profiled past the minimum length threshold of the T arm) also
+           have fewer opportunities for modification-induced mutations.
 
         Normalized sequences rather than trimmed or unique sequences are searched for the sake of
-        speed. Ideally, normalized sequences found to have deletions would be further processed,
-        finding which of their constituent trimmed sequences actually contain the deletions.
-        However, nonspecific trimmed sequences are also in other normalized sequences, creating the
-        possible ambiguity that in one normalized sequence the trimmed sequence would have a
-        deletion while in another normalized sequence it would not."""
+        speed and simplicity. Ideally, normalized sequences found to have deletions would be further
+        processed, finding which of their constituent trimmed and unique sequences actually contain
+        the deletions. However, *nonspecific* trimmed and unique sequences are, by definition, in
+        other normalized sequences, creating the possible ambiguity that the trimmed sequence would
+        be marked as having a deletion in one but not another normalized sequence. This would not
+        necessarily be an error, as identical underlying reads could theoretically originate from
+        different cDNA sequences, with some containing a deletion, and others, representing a
+        different tRNA, not containing a deletion."""
         start_time = time.time()
         self.progress.new("Finding sequences with modification-induced deletions")
 
         self.progress.update("Generating modified sequences with in silico deletions")
-        mod_seq_child_represent_names = []
+        # A "child" here is a modified sequence with in silico deletions, M'.
+        mod_seq_child_names = []
         mod_seq_child_reversed_seq_strings = []
         mod_seq_child_extras = []
-        for mod_seq in self.mod_trna_seqs:
+        for mod_seq in self.mod_trna_seq_dict.values():
             mod_seq_child_index = 0
-            for seq_string_with_del, del_config in self.get_seqs_with_dels(mod_seq):
-                mod_seq_child_represent_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
+            for seq_string_with_del, del_config in self.get_sequences_with_deletions(mod_seq):
+                mod_seq_child_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
                 mod_seq_child_reversed_seq_strings.append(seq_string_with_del[::-1])
-                # M' are distinguished by 0 as the first element of the tuple.
-                mod_seq_child_extras.append((0, del_config, mod_seq))
+                mod_seq_child_extras.append((del_config, mod_seq))
                 mod_seq_child_index += 1
 
 
         self.progress.update("Gathering normalized sequences with truncated feature profiles")
-        norm_trunc_seq_represent_names = []
+        norm_trunc_seq_names = []
         norm_trunc_seq_reversed_seq_strings = []
         norm_trunc_seq_extras = []
-        for norm_trunc_seq_index, norm_trunc_seq in enumerate(self.norm_trunc_seqs):
-            norm_trunc_seq_represent_names.append(norm_trunc_seq.represent_name)
+        for norm_trunc_seq_name, norm_trunc_seq in self.norm_trunc_seq_dict.items():
+            norm_trunc_seq_names.append(norm_trunc_seq_name)
             norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
-            # Normalized sequences are distinguished by 1 as the first element of the tuple.
-            norm_trunc_seq_extras.append((1, norm_trunc_seq_index, norm_trunc_seq))
+            norm_trunc_seq_extras.append(norm_trunc_seq)
 
         self.progress.update("3'-dereplicating sequences")
-        clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_represent_names,
+        clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
                                                                norm_trunc_seq_reversed_seq_strings,
                                                                norm_trunc_seq_extras,
-                                                               mod_seq_child_represent_names,
+                                                               mod_seq_child_names,
                                                                mod_seq_child_reversed_seq_strings,
                                                                mod_seq_child_extras)
 
-        self.progress.update("Searching normalized sequences with truncated feature profiles")
-        self.process_del_clusters(clusters, 'trunc')
+        if clusters:
+            self.progress.update("Searching normalized sequences with truncated feature profiles")
+            self.process_deletion_clusters(clusters, 'trunc')
 
 
         self.progress.update("Gathering normalized sequences with full feature profiles")
-        norm_trna_seq_represent_names = []
+        norm_trna_seq_names = []
         norm_trna_seq_reversed_seq_strings = []
         norm_trna_seq_extras = []
-        for norm_trna_seq_index, norm_trna_seq in enumerate(self.norm_trna_seqs):
+        for norm_trna_seq_name, norm_trna_seq in self.norm_trna_seq_dict.items():
             if not norm_trna_seq.mod_seqs:
-                norm_trna_seq_represent_names.append(norm_trna_seq.represent_name)
+                norm_trna_seq_names.append(norm_trna_seq_name)
                 norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
-                # Normalized sequences are distinguished by 1 as the first element of the tuple.
-                norm_trna_seq_extras.append((1, norm_trna_seq_index, norm_trna_seq))
+                norm_trna_seq_extras.append(norm_trna_seq)
 
         self.progress.update("3'-dereplicating sequences")
-        clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_represent_names,
+        clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
                                                                norm_trna_seq_reversed_seq_strings,
                                                                norm_trna_seq_extras,
-                                                               mod_seq_child_represent_names,
+                                                               mod_seq_child_names,
                                                                mod_seq_child_reversed_seq_strings,
                                                                mod_seq_child_extras)
 
-        self.progress.update("Searching normalized sequences with full feature profiles")
-        self.process_del_clusters(clusters, 'trna')
+        if clusters:
+            self.progress.update("Searching normalized sequences with full feature profiles")
+            self.process_deletion_clusters(clusters, 'trna')
+
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced deletions (min)",
