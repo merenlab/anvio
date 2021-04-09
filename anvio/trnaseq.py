@@ -2591,26 +2591,31 @@ class TRNASeqDataset(object):
 
 
     def find_substitutions(self):
-        """Find potential modification-induced substitutions."""
+        """Find sites of potential modification-induced substitutions."""
         start_time = time.time()
         self.progress.new("Finding modification-induced substitutions")
 
         # Cluster normalized tRNA sequences. Clusters agglomerate sequences that differ from at
         # least one other sequence in the cluster by no more than 2 substitutions per 71 aligned
         # positions (by default) in a gapless end-to-end alignment.
-        agglomerator = Agglomerator([seq.represent_name for seq in self.norm_trna_seqs],
-                                    [seq.seq_string for seq in self.norm_trna_seqs],
-                                    num_threads=self.num_threads,
-                                    progress=self.progress)
-        # Provide a priority function for seeding clusters that favors fully profiled tRNA over
-        # "longer" tRNA without a full set of profiled features. Such incompletely profiled longer
-        # tRNA includes tRNA-tRNA chimeras -- some of these have a long 5' section that is a long 3'
-        # fragment of tRNA, which can cause other shorter normalized sequences to agglomerate by
-        # aligning to the 5' section of the chimera.
-        full_length_trna_dict = {seq.represent_name: seq.has_complete_feature_set
-                                 for seq in self.norm_trna_seqs}
+        norm_trna_seq_dict = self.norm_trna_seq_dict
+        norm_seq_represent_names = []
+        norm_seq_strings = []
+        norm_seq_feature_completeness_dict = {}
+        for represent_name, norm_seq in norm_trna_seq_dict.items():
+            norm_seq_represent_names.append(represent_name)
+            norm_seq_strings.append(norm_seq.seq_string)
+            norm_seq_feature_completeness_dict[represent_name] = norm_seq.has_complete_feature_set
+
+        agglomerator = Agglomerator(norm_seq_represent_names, norm_seq_strings, num_threads=self.num_threads, progress=self.progress)
+
+        # Provide a priority function for seeding clusters that favors, in order:
+        # 1. normalized sequences with a complete set of tRNA features,
+        # 2. longer normalized sequences,
+        # 3. normalized sequences with more alignments in the all-against-all search,
+        # 4. alphanumeric order of the normalized sequence representative name.
         agglomerator.agglomerate(max_mismatch_freq=self.agglom_max_mismatch_freq,
-                                 priority_function=lambda aligned_ref: (-full_length_trna_dict[aligned_ref.name],
+                                 priority_function=lambda aligned_ref: (-norm_seq_feature_completeness_dict[aligned_ref.name],
                                                                         -len(aligned_ref.seq_string),
                                                                         -len(aligned_ref.alignments),
                                                                         aligned_ref.name),
@@ -2622,8 +2627,9 @@ class TRNASeqDataset(object):
 
         self.progress.update("Separating modification-induced substitutions from \"inter-strain\" variants")
 
-        norm_seq_dict = {seq.represent_name: seq for seq in self.norm_trna_seqs}
-        names_of_norm_seqs_assigned_to_mod_seqs = []
+        excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
+        represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
+        mod_trna_seq_dict = self.mod_trna_seq_dict
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
             # A modification requires at least 3 different nucleotides to be detected, and each
             # normalized sequence differs by at least 1 nucleotide (substitution or gap), so for a
@@ -2632,27 +2638,30 @@ class TRNASeqDataset(object):
                 continue
 
             aligned_ref_length = len(aligned_ref.seq_string)
-
             valid_aligned_queries = []
             for alignment in aligned_ref.alignments:
                 # Normalized tRNA sequences should only align at the 3' end. Alignments to the
-                # interior of the sequence can occur when the reference is a tRNA-tRNA chimera.
+                # interior of the sequence can theoretically occur when the reference is a tRNA-tRNA
+                # chimera.
                 if aligned_ref_length != alignment.target_start + alignment.alignment_length:
                     continue
 
                 query_name = alignment.aligned_query.name
-                # The normalized sequence query may have agglomerated with another reference as
-                # well. If the query formed a modified sequence, it would form the same modified
-                # sequence when starting with this agglomeration.
-                if query_name in names_of_norm_seqs_assigned_to_mod_seqs:
+                # The normalized sequence query may have formed a modified sequence already. If the
+                # normalized sequence had a complete feature profile, or if it was the same length
+                # as such a sequence, then it should not be able to form a longer modified sequence
+                # that would have 5' nucleotides beyond the end of a complete feature profile.
+                if query_name in excluded_norm_seq_names:
                     continue
 
-                valid_aligned_queries.append(norm_seq_dict[query_name])
+                valid_aligned_queries.append(norm_trna_seq_dict[query_name])
 
             # Confirm that 2 or more queries passed the filters, so at least 3 normalized sequences
             # are still in the cluster.
             if len(valid_aligned_queries) < 2:
                 continue
+
+            valid_aligned_queries.sort(key=lambda norm_seq: (-len(norm_seq.seq_string), -norm_seq.has_complete_feature_set, norm_seq.represent_name))
 
             seq_array = np.zeros((len(valid_aligned_queries) + 1, aligned_ref_length), dtype=int)
             # Rather than using the ASCII representation of each character, which saves some time in
@@ -2661,10 +2670,9 @@ class TRNASeqDataset(object):
             # determine the number of unique nucleotides at an alignment position.
             seq_array[0, :] += [NT_INT_DICT[nt] for nt in aligned_ref.seq_string]
             for i, aligned_query in enumerate(valid_aligned_queries, start=1):
-                seq_array[i, aligned_ref_length - len(aligned_query.seq_string): ] += [NT_INT_DICT[nt]
-                                                                                       for nt in aligned_query.seq_string]
+                seq_array[i, aligned_ref_length - len(aligned_query.seq_string): ] += [NT_INT_DICT[nt] for nt in aligned_query.seq_string]
 
-            norm_seqs = np.array([norm_seq_dict[ref_name]] + valid_aligned_queries)
+            norm_seqs = np.array([norm_trna_seq_dict[ref_name]] + valid_aligned_queries)
 
             # Find positions in the alignment with nucleotide variability.
             alignment_pos_uniq_nt_counts = (
@@ -2682,15 +2690,14 @@ class TRNASeqDataset(object):
             two_nt_alignment_positions = (alignment_pos_uniq_nt_counts == 2).nonzero()[0]
             clusters = deque(((seq_array, norm_seqs, three_four_nt_alignment_positions), ))
             for alignment_pos in two_nt_alignment_positions:
-                next_clusters = deque() # Make a new object with each iteration rather than clearing it.
+                next_clusters = deque() # Make a new object with each iteration rather than clearing the same one
 
                 while clusters:
                     seq_array, norm_seqs, three_four_nt_alignment_positions = clusters.pop()
 
                     # A modification requires at least 3 different nucleotides to be detected, and
-                    # each normalized sequence differs by at least 1 nucleotide (substitution or
-                    # gap), so for a cluster to form a modified sequence, it must contain at least 3
-                    # normalized sequences.
+                    # each normalized sequence differs by at least 1 nucleotide, so for a cluster to
+                    # form a modified sequence, it must contain at least 3 normalized sequences.
                     if norm_seqs.size < 3:
                         continue
 
@@ -2698,20 +2705,30 @@ class TRNASeqDataset(object):
                     nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
 
                     if (nt_counts != 0).sum() < 2:
-                        # There are now < 2 nucleotides at the alignment position in the (derived)
-                        # cluster under consideration. 2 different nucleotides are needed to
-                        # distinguish single nucleotide variants.
+                        # There are now < 2 nucleotides at the alignment position in the cluster
+                        # under consideration. 2 different nucleotides are needed to distinguish
+                        # single nucleotide variants.
                         next_clusters.appendleft((seq_array, norm_seqs, three_four_nt_alignment_positions))
                         continue
 
-                    # Add a new cluster for each nucleotide variant to the stack of clusters to
-                    # process if the new cluster contains at least 3 sequences.
+                    # Add a new cluster for each single nucleotide variant to the stack of clusters
+                    # to process if: 1. the new cluster contains at least 3 sequences and 2. the
+                    # longest normalized sequence (with a complete feature profile, if applicable)
+                    # in the new cluster has not yet formed a modified sequence. Agglomerative
+                    # clustering ensures that the sequences agglomerated with the longest normalized
+                    # sequence will be the same regardless of the original unsplit cluster.
                     represented_nts = nt_counts.nonzero()[0] + 1
                     for nt in represented_nts:
                         split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
+
                         if split_cluster_seq_indices.size > 2:
+                            split_cluster_norm_seqs = norm_seqs[split_cluster_seq_indices]
+
+                            if split_cluster_norm_seqs[0].represent_name in represent_norm_seq_names:
+                                continue
+
                             next_clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                      norm_seqs[split_cluster_seq_indices],
+                                                      split_cluster_norm_seqs,
                                                       three_four_nt_alignment_positions.copy()))
                 if next_clusters:
                     clusters = next_clusters
@@ -2721,7 +2738,7 @@ class TRNASeqDataset(object):
                 continue
 
             # Check alignment positions previously found to have 3-4 nucleotides. Further split
-            # (derived) clusters when positions now have 2 nucleotides.
+            # clusters when positions now have 2 nucleotides.
             next_clusters = deque()
             while clusters:
                 seq_array, norm_seqs, three_four_nt_alignment_positions = clusters.pop()
@@ -2739,11 +2756,17 @@ class TRNASeqDataset(object):
                         candidates_to_remove.append(i)
                         for nt in represented_nts:
                             split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
-                            # At least 3 normalized sequences are needed to form a modified
-                            # sequence.
+
+                            # At least 3 normalized sequences are needed, and the split cluster
+                            # cannot have already formed a modified sequence.
                             if split_cluster_seq_indices.size > 2:
+                                split_cluster_norm_seqs = norm_seqs[split_cluster_seq_indices]
+
+                                if split_cluster_norm_seqs[0].represent_name in represent_norm_seq_names:
+                                    continue
+
                                 clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                     norm_seqs[split_cluster_seq_indices],
+                                                     split_cluster_norm_seqs,
                                                      np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
                         # Reevaluate previous alignment positions in the split clusters.
                         break
@@ -2751,7 +2774,7 @@ class TRNASeqDataset(object):
                     # At least 1 position was discounted as no longer having 3-4 different
                     # nucleotides, but these positions had fewer than 2 nucleotides, and so did not
                     # cause the cluster to be split into new clusters. Therefore, do not cycle
-                    # through the remaining positions again to find those with fewer than 3
+                    # through the remaining positions again to find any more with fewer than 3
                     # nucleotides.
                     if candidates_to_remove:
                         next_clusters.appendleft((norm_seqs, np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
@@ -2763,19 +2786,27 @@ class TRNASeqDataset(object):
             clusters = next_clusters
 
             while clusters:
-                norm_seqs, mod_positions = clusters.pop()
-                norm_seqs = sorted(norm_seqs, key=lambda seq: (-len(seq.seq_string),  seq.represent_name)) # Turn the `norm_seqs` array into a list.
-                represent_norm_seq_start_in_array = aligned_ref_length - len(norm_seqs[0].seq_string)
+                norm_seqs, mod_positions = clusters.pop() # Normalized sequences should have retained their order
+                norm_seqs = list(norm_seqs) # Turn the array into a list
+                represent_norm_seq = norm_seqs[0]
+                # REMOVE
+                assert tuple([norm_seq.represent_name for norm_seq in norm_seqs]) == tuple([norm_seq.represent_name for norm_seq in sorted(norm_seqs, key=lambda norm_seq: (-len(norm_seq.seq_string), -norm_seq.has_complete_feature_set, norm_seq.represent_name))])
+
+                represent_norm_seq_length = len(represent_norm_seq.seq_string)
+                represent_norm_seq_start_in_array = aligned_ref_length - represent_norm_seq_length
                 mod_positions -= represent_norm_seq_start_in_array
-                mod_seq = ModifiedSeq(norm_seqs, mod_positions.tolist())
-                for norm_seq in norm_seqs:
-                    names_of_norm_seqs_assigned_to_mod_seqs.append(norm_seq.represent_name)
-                self.mod_trna_seqs.append(mod_seq)
+                mod_seq = ModifiedSequence(norm_seqs, mod_positions.tolist())
+
+                if represent_norm_seq.has_complete_feature_set:
+                    for norm_seq in norm_seqs:
+                        if len(norm_seq.seq_string) < represent_norm_seq_length:
+                            break
+                        excluded_norm_seq_names.append(norm_seq.represent_name)
+
+                mod_trna_seq_dict[mod_seq.represent_name] = mod_seq
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
