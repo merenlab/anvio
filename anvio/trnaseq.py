@@ -285,6 +285,7 @@ class UniqueMappedSequence(UniqueSequence):
         self.trimmed_seq = None
 
 
+class TrimmedSequence(object):
     """A tRNA sequence with bases trimmed 5' of the acceptor stem (or 5'-G in the case of tRNA-His)
     and 3' of the discriminator.
 
@@ -313,157 +314,175 @@ class UniqueMappedSequence(UniqueSequence):
     Examples of possible profiled reads that collapse to this sequence:
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCC
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTC
-
-    Unique MAPPED tRNA fragments, including tRNA reads that only lack 3'-CCA/CC/C, each generate a
-    TrimmedSeq object (in TRNASeqDataset.map_fragments and
-    TRNASeqDataset.threeprime_dereplicate_acceptorless_sequences). Mapped fragments with extra 5'
-    nucleotides beyond the acceptor stem are not trimmed. The 5' extension may represent all but a
-    small number of nucleotides in the sequence, so it is best not to dereplicate mapped sequences
-    identical in the non-5' section by grouping them as the same trimmed sequence.
     """
 
-    __slots__ = (
-        'seq_string',
-        'uniq_seqs',
-        'feature_start_indices',
-        'feature_stop_indices',
-        'has_complete_feature_set',
-        'has_his_g',
-        'read_count',
-        'uniq_with_extra_fiveprime_count',
-        'read_with_extra_fiveprime_count',
-        'represent_name',
-        'long_fiveprime_extension_dict',
-        'read_acceptor_variant_count_dict',
-        'id_method',
-        'contains_anticodon',
-        'has_extrapolated_fiveprime_nts',
-        'has_trunc_profile',
-        'trunc_profile_recovered_by_derep',
-        'trunc_profile_recovered_by_del_analysis',
-        'norm_seq_count'
-    )
-
-    # The user can specify what defines a long (biological vs. non-templated) 5' extension.
+    # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
+    # set by `TRNASeqDataset`.
     min_length_of_long_fiveprime_extension = 4
 
-    def __init__(self, seq_string, uniq_seqs, skip_init=False):
+    __slots__ = ('seq_string', 'read_count', 'uniq_seqs', 'norm_seqs')
+
+    def __init__(self, seq_string, uniq_seqs):
         self.seq_string = seq_string
-        self.uniq_seqs = uniq_seqs # list of UniqueSeq objects
-        represent_uniq_seq = uniq_seqs[0]
-        # Assume that the feature profile indices of the representative unique sequence are the same
-        # as the other unique sequences. The acceptor is the last feature in the profile and not
-        # part of the trimmed sequence.
-        self.feature_start_indices = represent_uniq_seq.feature_start_indices[:-1] if represent_uniq_seq.feature_start_indices else None
-        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[:-1] if represent_uniq_seq.feature_stop_indices else None
-        # Assume that if the representative unique sequence has a complete feature set, then so do
-        # the other unique sequences.
-        self.has_complete_feature_set = represent_uniq_seq.has_complete_feature_set
-        self.has_his_g = represent_uniq_seq.has_his_g
-        self.trunc_profile_recovered_by_derep = None
-        self.trunc_profile_recovered_by_del_analysis = None
-        self.norm_seq_count = 0
-
-        if skip_init:
-            self.read_count = None
-            self.uniq_with_extra_fiveprime_count = None
-            self.read_with_extra_fiveprime_count = None
-            self.represent_name = None
-            self.long_fiveprime_extension_dict = None
-            self.read_acceptor_variant_count_dict = None
-            self.id_method = None
-            self.contains_anticodon = None
-            self.has_extrapolated_fiveprime_nts = None
-            self.has_trunc_profile = None
-        else:
-            self.init()
-
-
-    def init(self):
-        """Set attributes for a "finalized" set of input `UniqueSeq` objects."""
+        self.uniq_seqs = uniq_seqs
+        for uniq_seq in uniq_seqs:
+            if uniq_seq.trimmed_seq is None:
+                uniq_seq.trimmed_seq = self
+            else:
+                raise ConfigError(f"The unique sequence with the representative name {uniq_seq.represent_name} "
+                                  f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq.represent_name} "
+                                  "and so cannot be assigned to a new trimmed sequence.")
         self.read_count = sum([uniq_seq.read_count for uniq_seq in self.uniq_seqs])
-
-        self.uniq_with_extra_fiveprime_count = sum(
-            [1 if uniq_seq.extra_fiveprime_length else 0 for uniq_seq in self.uniq_seqs])
-        self.read_with_extra_fiveprime_count = sum(
-            [uniq_seq.read_count if uniq_seq.extra_fiveprime_length else 0 for uniq_seq in self.uniq_seqs])
-
-        self.represent_name = self.get_represent_name()
-
-        self.long_fiveprime_extension_dict, self.read_acceptor_variant_count_dict = self.get_end_counts()
-
-        id_method_set = set(uniq_seq.id_method for uniq_seq in self.uniq_seqs)
-        if len(id_method_set) == 1:
-            self.id_method = id_method_set.pop()
-        else:
-            raise ConfigError("A TrimmedSeq should not be made from UniqueSeq objects with different identification methods. "
-                              "Trimmed tRNA sequences will EITHER be formed from \"profiled\" tRNA sequences or \"mapped\" "
-                              "tRNA sequences, because they are of different lengths and are fragments from different parts "
-                              "of the tRNA.")
-
-        self.contains_anticodon = self.uniq_seqs[0].contains_anticodon
-        self.has_extrapolated_fiveprime_nts = True if self.uniq_seqs[0].num_extrapolated_fiveprime_nts else False
-
-        # Typically all of the unique sequences will either have a truncated or a full profile.
-        # However, in the recovery of sequences with deletions, some truncated trimmed sequences are
-        # found to have extra 5' nucleotides. After these are re-trimmed, these trimmed sequences
-        # may be identical to a fully profiled trimmed tRNA sequence, so the sequences are merged.
-        # However, the feature profiles are not changed, so some of the unique sequences will have a
-        # truncated profile while others will have a full profile.
-        uniq_seq_trunc_profile_statuses = [0 if uniq_seq.trunc_profile_index is None else 1 for uniq_seq in self.uniq_seqs]
-        self.has_trunc_profile = True if uniq_seq_trunc_profile_statuses[0] else False
+        self.norm_seqs = []
 
 
-    def get_represent_name(self):
-        """The representative name of the trimmed sequence is chosen as follows:
-        1. Most abundant full-length tRNA (no extra 5' bases), ignoring acceptor sequence, OR
-        2. Most abundant longer-than-full-length tRNA, OR
-        3. Most abundant fragmentary tRNA
-        """
+class TrimmedFullProfileSequence(TrimmedSequence):
+    """This object is formed from sequences with a full tRNA feature profile."""
+
+    __slots__ = (
+        'represent_uniq_seq',
+        'represent_name',
+        'feature_start_indices',
+        'feature_stop_indices',
+        'contains_anticodon',
+        'read_acceptor_variant_count_dict',
+        'has_complete_feature_set',
+        'has_his_g',
+        'num_extrapolated_fiveprime_nts',
+        'uniq_with_extra_fiveprime_count',
+        'read_with_extra_fiveprime_count',
+        'long_fiveprime_extension_dict'
+    )
+
+    def __init__(self, seq_string, uniq_seqs):
+        super().__init__(seq_string, uniq_seqs)
+
+        # The representative unique sequence is chosen as follows:
+        # 1. Most abundant full-length tRNA without extra 5' bases, ignoring the acceptor sequence, OR
+        # 2. Most abundant full-length tRNA with extra 5' bases, OR
+        # 3. Most abundant 3' tRNA fragment
         # Sort unique sequences such that the first sequence is the most abundant+longest and the
         # last is the least abundant+shortest.
-        uniq_seqs = sorted(
-            self.uniq_seqs, key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.read_count))
-
+        uniq_seqs.sort(key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.read_count, uniq_seq.represent_name))
         if uniq_seqs[0].extra_fiveprime_length > 0:
             if uniq_seqs[-1].extra_fiveprime_length == 0:
                 # If the first unique sequence has extra 5' nucleotides and the last has none, then
                 # the last sequence and others without extra 5' nucleotides must be a full-length
                 # tRNA (ignoring the acceptor). Therefore, select the most abundant of these
-                # full-length tRNAs as the representative sequence.
-                represent_name = sorted(
-                    uniq_seqs, key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, uniq_seq.read_count)
-                )[-1].represent_name
+                # full-length tRNAs with extra 5' nucleotides as the representative sequence.
+                self.represent_uniq_seq = represent_uniq_seq = sorted(uniq_seqs, key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, uniq_seq.read_count, uniq_seq.represent_name))[-1]
             else:
-                represent_name = uniq_seqs[0].represent_name
+                self.represent_uniq_seq = represent_uniq_seq = uniq_seqs[0]
         else:
-            # In this case, ALL unique sequences are EITHER full-length OR a fragment.
-            represent_name = uniq_seqs[0].represent_name
+            # In this case, ALL unique sequences are EITHER full-length tRNA OR a 3' tRNA fragment.
+            self.represent_uniq_seq = represent_uniq_seq = uniq_seqs[0]
+        self.represent_name = represent_uniq_seq.represent_name
 
-        return represent_name
+        # Assume that the feature profile indices of the representative unique sequence are the same
+        # as the other unique sequences. The acceptor is the last feature in the profile and not
+        # part of the trimmed sequence.
+        self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
+        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
+        self.contains_anticodon = represent_uniq_seq.contains_anticodon
+        self.has_complete_feature_set = represent_uniq_seq.has_complete_feature_set
+        self.has_his_g = represent_uniq_seq.has_his_g
+        self.num_extrapolated_fiveprime_nts = represent_uniq_seq.num_extrapolated_fiveprime_nts
 
-
-    def get_end_counts(self):
-        """Get the number of reads containing each unique 5' extension and sequence variant 3' of
-        the discriminator that is collapsed into the trimmed sequence.
-
-        There is a known number of possible 3' variants. Each variant is counted though it may not
-        be represented in the trimmed sequence.
-        """
-        long_fiveprime_extension_dict = {}
-        read_acceptor_variant_count_dict = OrderedDict(
-            [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        # Find the number or reads containing each sequence variant 3' of the discriminator that is
+        # collapsed into the trimmed sequence. There is a known number of possible 3' variants. Each
+        # variant is counted though it may not be represented in the trimmed sequence.
+        read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
         for uniq_seq in self.uniq_seqs:
-            if uniq_seq.extra_fiveprime_length > self.min_length_of_long_fiveprime_extension:
-                long_fiveprime_extension_dict[
-                    uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length]
-                ] = uniq_seq.read_count
-
-            if uniq_seq.acceptor_length: # UniqueSeq need not have an acceptor
+            if uniq_seq.acceptor_length:
                 acceptor_seq_string = uniq_seq.seq_string[-uniq_seq.acceptor_length: ]
                 read_acceptor_variant_count_dict[acceptor_seq_string] += uniq_seq.read_count
-        self.long_fiveprime_extension_dict = long_fiveprime_extension_dict
         self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
+
+        uniq_with_extra_fiveprime_count = 0
+        read_with_extra_fiveprime_count = 0
+        # Find the number of reads containing each unique 5' extension.
+        long_fiveprime_extension_dict = {}
+        for uniq_seq in self.uniq_seqs:
+            if uniq_seq.extra_fiveprime_length:
+                uniq_with_extra_fiveprime_count += 1
+                read_with_extra_fiveprime_count += uniq_seq.read_count
+                if uniq_seq.extra_fiveprime_length >= self.min_length_of_long_fiveprime_extension:
+                    long_fiveprime_extension_dict[uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length]] = uniq_seq.read_count
+        self.uniq_with_extra_fiveprime_count = uniq_with_extra_fiveprime_count
+        self.read_with_extra_fiveprime_count = read_with_extra_fiveprime_count
+        self.long_fiveprime_extension_dict = long_fiveprime_extension_dict
+
+
+class TrimmedTruncatedProfileSequence(TrimmedSequence):
+    """This object is formed from sequences with a truncated tRNA feature profile."""
+
+    __slots__ = (
+        'represent_uniq_seq',
+        'represent_name',
+        'feature_start_indices',
+        'feature_stop_indices',
+        'contains_anticodon',
+        'read_acceptor_variant_count_dict',
+        'trunc_profile_index'
+    )
+
+    def __init__(self, seq_string, uniq_seqs):
+        super().__init__(seq_string, uniq_seqs)
+
+        # Make the most abundant unique sequence the representative sequence.
+        uniq_seqs.sort(key=lambda uniq_seq: (-uniq_seq.read_count, uniq_seq.represent_name))
+        represent_uniq_seq = uniq_seqs[0]
+        self.represent_name = represent_uniq_seq.represent_name
+
+        # Assume that the feature profile indices of the representative unique sequence are the same
+        # as the other unique sequences. The acceptor is the last feature in the profile and not
+        # part of the trimmed sequence.
+        self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
+        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
+        self.contains_anticodon = represent_uniq_seq.contains_anticodon
+
+        # Find the number or reads containing each sequence variant 3' of the discriminator that is
+        # collapsed into the trimmed sequence. There is a known number of possible 3' variants. Each
+        # variant is counted though it may not be represented in the trimmed sequence.
+        read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        for uniq_seq in self.uniq_seqs:
+            if uniq_seq.acceptor_length:
+                acceptor_seq_string = uniq_seq.seq_string[-uniq_seq.acceptor_length: ]
+                read_acceptor_variant_count_dict[acceptor_seq_string] += uniq_seq.read_count
+        self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
+
+        self.trunc_profile_index = represent_uniq_seq.trunc_profile_index
+
+
+class TrimmedMappedSequence(TrimmedSequence):
+    """This object is formed from a single unique sequence (`UniqueMappedSequence`) in the process
+    of mapping unique unprofiled sequences to normalized sequences. It is not like the other trimmed
+    sequence objects. Its purpose is to be one of the trimmed sequence objects added to a normalized
+    sequence, however no 5' bases are trimmed from the unique sequence string in creating the
+    trimmed sequence string (and mapped sequences do not have extra 3' bases). The reason for this
+    is that the 5' extension may represent all but a small number of nucleotides in the sequence, so
+    it is best not to dereplicate mapped sequences identical in the non-5' section by lumping them
+    together as the same trimmed sequence."""
+
+    __slots__ = (
+        'represent_name',
+        'uniq_with_extra_fiveprime_count',
+        'read_with_extra_fiveprime_count',
+        'long_fiveprime_extension_dict'
+    )
+
+    def __init__(self, uniq_seq):
+        super().__init__(uniq_seq.seq_string, [uniq_seq])
+
+        self.represent_name = uniq_seq.represent_name
+
+        extra_fiveprime_length = uniq_seq.extra_fiveprime_length
+        self.uniq_with_extra_fiveprime_count = 1 if extra_fiveprime_length else 0
+        self.read_with_extra_fiveprime_count = uniq_seq.read_count if extra_fiveprime_length else 0
+        self.long_fiveprime_extension_dict = {}
+        if extra_fiveprime_length >= self.min_length_of_long_fiveprime_extension:
+            self.long_fiveprime_extension_dict[uniq_seq.seq_string[: extra_fiveprime_length]] = uniq_seq.read_count
+
 
         return long_fiveprime_extension_dict, read_acceptor_variant_count_dict
 
