@@ -2395,59 +2395,57 @@ class TRNASeqDataset(object):
     def map_fragments(self):
         """Map unprofiled tRNA fragments to longer profiled tRNA sequences.
 
-        If the specified minimum fragment length is shorter than the minimum length of profiled tRNA
-        fragments -- which does not happen with the default settings, as both lengths are 25, but
-        can happen when the user adjusts `--min-trna-fragment-size` downward -- then mapped
-        fragments may occur at the 3' end of a tRNA, but will not include 3' acceptor variants (CCA,
-        CC, C, etc.), as these 3' extensions were trimmed off the mapping targets.
-
         EXAMPLE:
         Normalized tRNA:                 (GT)TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         Mapped tRNA 1 (extra 5' bases) :   T TCCGTGATAGTTTAATGGTCAGAATGG
-        Mapped tRNA 2 (interior)  :                 TAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGG
+        Mapped tRNA 2 (interior)       :            TAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGG
         """
         start_time = time.time()
-        self.progress.new("Mapping unprofiled reads to profiled tRNA")
 
-        self.progress.update("Retrieving queries from unprofiled reads")
+        self.progress.new("Mapping unprofiled reads to profiled tRNA")
+        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
+
+        self.progress.update("Getting queries from unprofiled reads")
         query_length_intervals = []
-        max_query_length = max(map(len, [seq.seq_string for seq in self.uniq_nontrna_seqs]))
+        max_query_length = max(map(len, [uniq_seq.seq_string for uniq_seq in uniq_nontrna_seq_dict.values()]))
+        # Chunk the non-tRNA queries by length to speed up the search.
         # By default, avoid sequences shorter than 25 nucleotides, the default minimum length of a
         # profiled 3' fragment of tRNA.
-        interval_start_length = self.min_trna_frag_size
-        interval_stop_length = interval_start_length + self.frag_mapping_query_chunk_length
+        frag_mapping_query_chunk_length = self.frag_mapping_query_chunk_length
+        min_trna_frag_size = self.min_trna_frag_size
+        interval_start_length = min_trna_frag_size
+        interval_stop_length = interval_start_length + frag_mapping_query_chunk_length
         if interval_stop_length + self.frag_mapping_query_chunk_length > max_query_length:
-            # Group the last chunk in with the second to last chunk if it is less than full size.
             interval_stop_length = max_query_length + 1
         query_length_intervals.append((interval_start_length, interval_stop_length))
         query_names = []
         query_seqs = []
         query_name_chunks = [query_names]
         query_seq_chunks = [query_seqs]
-        for nontrna_index, seq in sorted([t for t in zip(range(len(self.uniq_nontrna_seqs)), self.uniq_nontrna_seqs)
-                                          if len(t[1].seq_string) >= self.min_trna_frag_size],
-                                         key=lambda t: len(t[1].seq_string)):
-            if len(seq.seq_string) < interval_stop_length:
-                query_names.append((seq.represent_name, nontrna_index))
-                query_seqs.append(seq.seq_string)
+        for uniq_seq in sorted([uniq_seq for uniq_seq in uniq_nontrna_seq_dict.values()
+                                if len(uniq_seq.seq_string) >= min_trna_frag_size],
+                               key=lambda uniq_seq: len(uniq_seq.seq_string)):
+            if len(uniq_seq.seq_string) < interval_stop_length:
+                query_names.append(uniq_seq.represent_name)
+                query_seqs.append(uniq_seq.seq_string)
             else:
                 interval_start_length = interval_stop_length
-                interval_stop_length = interval_stop_length + self.frag_mapping_query_chunk_length
-                if interval_stop_length + self.frag_mapping_query_chunk_length > max_query_length:
+                interval_stop_length = interval_stop_length + frag_mapping_query_chunk_length
+                if interval_stop_length + frag_mapping_query_chunk_length > max_query_length:
                     interval_stop_length = max_query_length + 1
                 query_length_intervals.append((interval_start_length, interval_stop_length))
-                query_names = [(seq.represent_name, nontrna_index)]
-                query_seqs = [seq.seq_string]
+                query_names = [uniq_seq.represent_name]
+                query_seqs = [uniq_seq.seq_string]
                 query_name_chunks.append(query_names)
                 query_seq_chunks.append(query_seqs)
 
-        self.progress.update("Retrieving targets from profiled tRNA")
-        # Leftover non-tRNA sequences are mapped to normalized tRNA sequences with extra 5' bases
-        # added when present in underlying unique tRNA sequences. Multiple targets for each
-        # normalized sequence are therefore produced for different 5' sequence extensions.
+        self.progress.update("Getting targets from profiled tRNAs")
+        # Non-tRNA sequences are mapped to normalized tRNA sequences with extra 5' bases added when
+        # present in underlying unique tRNA sequences. Multiple targets for each normalized sequence
+        # are therefore produced for different 5' sequence extensions.
         target_names = []
         target_seqs = []
-        for norm_seq_index, norm_seq in enumerate(self.norm_trna_seqs):
+        for norm_seq in self.norm_trna_seq_dict.values():
             norm_seq_string = norm_seq.seq_string
             # The longest trimmed sequence (the first in the list) is by design the only one of the
             # profiled trimmed sequences forming the normalized sequence that may have extra 5'
@@ -2475,25 +2473,22 @@ class TRNASeqDataset(object):
                 for fiveprime_index, fiveprime_seq_string in enumerate(fiveprime_seq_strings):
                     # Use an index to distinguish otherwise equivalent targets with different 5'
                     # extensions of the same length.
-                    target_names.append((norm_seq_index, len(fiveprime_seq_string), fiveprime_index))
+                    target_names.append((norm_seq.represent_name, len(fiveprime_seq_string), fiveprime_index))
                     target_seqs.append(fiveprime_seq_string + norm_seq_string)
             else:
-                target_names.append((norm_seq_index, 0, 0)) # No extra 5' bases
+                target_names.append((norm_seq.represent_name, 0, 0)) # No extra 5' bases
                 target_seqs.append(norm_seq_string)
 
         self.progress.end()
 
 
         interval_index = 0
-        nontrna_indices = []
-        trimmed_trna_seqs = self.trimmed_trna_seqs
+        uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        norm_trna_seq_dict = self.norm_trna_seq_dict
         for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            self.progress.new("Mapping %s unprofiled reads of length %d-%d to profiled tRNA"
-                              % (pp(len(query_names)),
-                                 query_length_intervals[interval_index][0],
-                                 query_length_intervals[interval_index][1] - 1))
+            self.progress.new(f"Mapping {pp(len(query_names))} unprofiled reads of length {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} to profiled tRNA")
 
-            aligned_query_dict, aligned_target_dict = Aligner( # aligned_target_dict is not used for anything and can be big
+            aligned_query_dict, aligned_target_dict = Aligner(
                 query_names,
                 query_seqs,
                 target_names,
@@ -2503,84 +2498,86 @@ class TRNASeqDataset(object):
             ).align(max_mismatch_freq=0,
                     target_chunk_size=self.alignment_target_chunk_size,
                     query_progress_interval=self.alignment_progress_interval)
-            del aligned_target_dict
+            del aligned_target_dict # aligned_target_dict is not used for anything and can be big
             gc.collect()
 
             self.progress.update("Processing alignments")
 
-            for query_name, aligned_query in aligned_query_dict.items():
+            # Process each unique sequence query, each of which can match more than one normalized
+            # sequence.
+            trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
+            for uniq_seq_represent_name, aligned_query in aligned_query_dict.items():
                 if len(aligned_query.alignments) == 0:
                     continue
 
-                nontrna_index = query_name[1]
-
-                trimmed_seq = None
+                # Each unique sequence will yield a `UniqueMappedSequence` and a
+                # `TrimmedMappedSequence`.
+                uniq_trna_seq = None
+                trimmed_trna_seq = None
 
                 for alignment in aligned_query.alignments:
                     ref_alignment_start = alignment.target_start
                     ref_alignment_stop = alignment.target_start + alignment.alignment_length
 
-                    norm_seq_index, ref_fiveprime_length, _ = alignment.aligned_target.name # extra 5' index doesn't matter now
+                    norm_seq_represent_name, ref_fiveprime_length, fiveprime_index = alignment.aligned_target.name
 
-                    norm_stop_pos = ref_alignment_stop - ref_fiveprime_length
-                    if norm_stop_pos <= 0:
+                    norm_seq_stop_pos = ref_alignment_stop - ref_fiveprime_length
+                    if norm_seq_stop_pos <= 0:
                         # Ignore queries that align entirely to extra 5' bases. Sequences mapping
                         # exclusively to the 5' extension that are long enough to fulfill the
-                        # minimum length requirement are often mapping to an artifactual chimeric
+                        # minimum length requirement may be mapping to an artifactual chimeric
                         # sequence.
                         continue
 
-                    norm_seq = self.norm_trna_seqs[norm_seq_index]
+                    norm_seq = norm_trna_seq_dict[norm_seq_represent_name]
 
-                    if not trimmed_seq:
-                        nontrna_indices.append(nontrna_index)
-
-                        uniq_mapped_seq = self.uniq_nontrna_seqs[nontrna_index]
-                        uniq_mapped_seq.id_method = 1 # 1 => mapped
-                        uniq_mapped_seq.acceptor_length = 0
-                        uniq_mapped_seq.has_complete_feature_set = False
+                    if not uniq_trna_seq:
+                        # Enter this block the first time the unique sequence query validly matches
+                        # a normalized sequence.
+                        uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
 
                         # Assume that 5' extensions are the same for the query regardless of the reference.
                         # This could be false in the cases of
                         # 1. tRNA profiling erroneously identifying the end of the acceptor stem
                         # or 2. the query mapping to different places at the end of the acceptor stem in different tRNAs.
                         if ref_fiveprime_length - ref_alignment_start > 0:
-                            uniq_mapped_seq.extra_fiveprime_length = ref_fiveprime_length - ref_alignment_start
-                            norm_start_pos = 0
+                            extra_fiveprime_length = ref_fiveprime_length - ref_alignment_start
+                            norm_seq_start_pos = 0
                         else:
-                            uniq_mapped_seq.extra_fiveprime_length = 0
-                            norm_start_pos = ref_alignment_start - ref_fiveprime_length
+                            extra_fiveprime_length = 0
+                            norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
 
-                        # There can be multiple trimmed sequence objects representing the same
-                        # sequence that remains after the 5' extension has been trimmed. The 5'
-                        # extension may represent all but a small number of nucleotides in the
-                        # sequence, so it is best not to dereplicate mapped trimmed sequences
-                        # identical in the non-5' section, as is done for trimmed sequences formed
-                        # from profiled tRNA that are grouped into the same normalized sequence.
-                        trimmed_seq = TrimmedSeq(uniq_mapped_seq.seq_string[uniq_mapped_seq.extra_fiveprime_length: ],
-                                                 [uniq_mapped_seq])
-                        trimmed_trna_seqs.append(trimmed_seq)
+                        uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
+                                                             uniq_seq_represent_name,
+                                                             uniq_nontrna_seq.read_count,
+                                                             extra_fiveprime_length=extra_fiveprime_length)
+                        uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
 
-                        norm_seq.trimmed_seqs.append(trimmed_seq)
-                        trimmed_seq.norm_seq_count += 1
-                        norm_seq.start_positions.append(norm_start_pos)
-                        norm_seq.stop_positions.append(norm_stop_pos)
+                        trimmed_trna_seq = TrimmedMappedSequence(uniq_trna_seq)
+                        norm_seq.trimmed_seqs.append(trimmed_trna_seq)
+                        trimmed_trna_seq.norm_seqs.append(norm_seq)
+                        norm_seq.start_positions.append(norm_seq_start_pos)
+                        norm_seq.stop_positions.append(norm_seq_stop_pos)
+                        trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_trna_seq
                     else:
                         for prev_trimmed_seq in norm_seq.trimmed_seqs[::-1]:
                             # Ensure that the trimmed sequence maps to the normalized sequence only
                             # once. Multiple targets can be created from the same normalized
-                            # sequence for different 5' extensions.
-                            if prev_trimmed_seq.id_method == 0:
-                                norm_seq.trimmed_seqs.append(trimmed_seq)
-                                trimmed_seq.norm_seq_count += 1
-                                if ref_fiveprime_length - ref_alignment_start > 0:
-                                    norm_start_pos = 0
-                                else:
-                                    norm_start_pos = ref_alignment_start - ref_fiveprime_length
-                                norm_seq.start_positions.append(norm_start_pos)
-                                norm_seq.stop_positions.append(norm_stop_pos)
+                            # sequence for different 5' extensions. Trimmed mapped sequences are
+                            # added after trimmed profiled sequences to the normalized sequence's
+                            # list of trimmed sequences.
+                            if trimmed_trna_seq.represent_name == prev_trimmed_seq.represent_name:
                                 break
-                            if trimmed_seq.represent_name == prev_trimmed_seq.represent_name:
+
+                            if not isinstance(prev_trimmed_seq, TrimmedMappedSequence):
+                                norm_seq.trimmed_seqs.append(trimmed_trna_seq)
+                                trimmed_trna_seq.norm_seqs.append(norm_seq)
+                                if ref_fiveprime_length - ref_alignment_start > 0:
+                                    norm_seq_start_pos = 0
+                                else:
+                                    norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
+                                norm_seq.start_positions.append(norm_seq_start_pos)
+                                norm_seq.stop_positions.append(norm_seq_stop_pos)
                                 break
             interval_index += 1
 
@@ -2589,18 +2586,8 @@ class TRNASeqDataset(object):
 
             self.progress.end()
 
-        for norm_seq in self.norm_trna_seqs:
-            norm_seq.init()
-
-        uniq_trna_seqs = self.uniq_trna_seqs
-        uniq_nontrna_seqs = self.uniq_nontrna_seqs
-        for nontrna_index in sorted(nontrna_indices, reverse=True):
-            uniq_trna_seqs.append(uniq_nontrna_seqs.pop(nontrna_index))
-
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)", time.time() - start_time, is_time_value=True))
 
 
     def find_substitutions(self):
