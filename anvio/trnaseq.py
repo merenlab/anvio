@@ -2002,42 +2002,68 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def write_unconserved_table(self):
-        self.progress.new("Writing tRNA-seq database table of unconserved nucleotides in profiled tRNA")
-        self.progress.update("...")
+    def consolidate_trimmed_sequences(self, short_trimmed_seq, long_trimmed_seqs):
+        """Consolidate longer trimmed sequences with a shorter trimmed sequence by pooling all of
+        their unique sequences, changing the profile information of these sequences, and generating
+        a new trimmed sequence. Update `self.trimmed_trna_seq_dict` and `self.uniq_trna_seq_dict` in
+        the process."""
+        short_trimmed_seq_string = short_trimmed_seq.seq_string
+        short_uniq_seq = short_trimmed_seq.uniq_seqs[0]
 
-        unconserved_table_entries = []
-        for uniq_seq in self.uniq_trna_seqs:
-            for unconserved_tuple in uniq_seq.unconserved_info:
-                unconserved_table_entries.append((uniq_seq.represent_name, ) + unconserved_tuple)
+        # To transfer profile information from the representative unique sequence to other unique
+        # sequences, determine where features are relative to the 3' end of the short trimmed
+        # sequence, which is found in the other unique sequences.
+        replacement_info_dict = {'trimmed_seq': short_trimmed_seq}
+        feature_index_adjustment = -short_uniq_seq.extra_fiveprime_length - len(short_trimmed_seq_string)
+        replacement_info_dict['feature_start_indices_from_trimmed_threeprime'] = [feature_start_index + feature_index_adjustment for feature_start_index in short_uniq_seq.feature_start_indices]
+        replacement_info_dict['feature_stop_indices_from_trimmed_threeprime'] = [feature_stop_index + feature_index_adjustment for feature_stop_index in short_uniq_seq.feature_stop_indices]
+        replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_start_index is None else short_uniq_seq.alpha_start_index + feature_index_adjustment
+        replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_stop_index is None else short_uniq_seq.alpha_stop_index + feature_index_adjustment
+        replacement_info_dict['beta_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.beta_start_index is None else short_uniq_seq.beta_start_index + feature_index_adjustment
+        replacement_info_dict['beta_stop_index_from_trimmed_threeprime'] = None if short_uniq_seq.beta_stop_index is None else short_uniq_seq.beta_stop_index + feature_index_adjustment
+        replacement_info_dict['anticodon_string'] = short_uniq_seq.anticodon_string
+        replacement_info_dict['anticodon_aa'] = short_uniq_seq.anticodon_aa
+        replacement_info_dict['contains_anticodon'] = short_uniq_seq.contains_anticodon
+        replacement_info_dict['num_conserved'] = short_uniq_seq.num_conserved
+        replacement_info_dict['num_unconserved'] = short_uniq_seq.num_unconserved
+        replacement_info_dict['num_paired'] = short_uniq_seq.num_paired
+        replacement_info_dict['num_unpaired'] = short_uniq_seq.num_unpaired
+        unconserved_info_from_trimmed_threeprime = []
+        for unconserved_tuple in short_trimmed_seq.unconserved_info:
+            unconserved_info_from_trimmed_threeprime.append((unconserved_tuple[0] + feature_index_adjustment,
+                                                             unconserved_tuple[1],
+                                                             unconserved_tuple[2]))
+        replacement_info_dict['unconserved_info_from_trimmed_threeprime'] = unconserved_info_from_trimmed_threeprime
+        unpaired_info_from_trimmed_threeprime = []
+        for unpaired_tuple in short_trimmed_seq.unpaired_info:
+            unpaired_info_from_trimmed_threeprime.append((unpaired_tuple[0] + feature_index_adjustment,
+                                                          unpaired_tuple[1] + feature_index_adjustment,
+                                                          unpaired_tuple[2],
+                                                          unpaired_tuple[3]))
+        replacement_info_dict['unpaired_info_from_trimmed_threeprime'] = unpaired_info_from_trimmed_threeprime
+        replacement_info_dict['acceptorless_profiled_seq_length'] = short_uniq_seq.profiled_seq_length - short_uniq_seq.acceptor_length
 
-        if unconserved_table_entries:
-            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('unconserved', ','.join('?' * len(tables.trnaseq_unconserved_table_structure))),
-                                     unconserved_table_entries)
-            trnaseq_db.disconnect()
+        trimmed_trna_seq_dict.pop(short_trimmed_seq.represent_name)
+        uniq_seqs = short_trimmed_seq.uniq_seqs
+        for long_trimmed_seq in long_trimmed_seqs:
+            trimmed_trna_seq_dict.pop(long_trimmed_seq.represent_name)
 
-        self.progress.end()
+            for uniq_seq in long_trimmed_seq.uniq_seqs:
+                uniq_trna_seq_dict.pop(uniq_seq.represent_name)
+                new_uniq_seq = UniqueTransferredProfileSequence(uniq_seq, replacement_info_dict)
+                uniq_seqs.append(new_uniq_seq)
+                uniq_trna_seq_dict[new_uniq_seq.represent_name] = new_uniq_seq
 
+        consol_trimmed_seqs = self.get_trimmed_seqs(uniq_seqs, TrimmedFullProfileSequence)
 
-    def write_unpaired_table(self):
-        self.progress.new("Writing tRNA-seq database table of unpaired nucleotides in profiled tRNA")
-        self.progress.update("...")
+        if len(consol_trimmed_seqs) > 1:
+            raise ConfigError(f"Consolidation should have produced only 1 trimmed profiled tRNA sequence, not {len(consol_trimmed_seqs)}.")
 
-        unpaired_table_entries = []
-        for uniq_seq in self.uniq_trna_seqs:
-            for unpaired_tuple in uniq_seq.unpaired_info:
-                unpaired_table_entries.append((uniq_seq.represent_name, ) + unpaired_tuple)
+        consol_trimmed_seq = consol_trimmed_seqs[0]
+        trimmed_trna_seq_dict[consol_trimmed_seq.represent_name] = consol_trimmed_seq
 
-        if unpaired_table_entries:
-            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('unpaired', ','.join('?' * len(tables.trnaseq_unpaired_table_structure))),
-                                     unpaired_table_entries)
-            trnaseq_db.disconnect()
+        return consol_trimmed_seq
 
-        self.progress.end()
 
 
     def threeprime_dereplicate_truncated_sequences(self):
