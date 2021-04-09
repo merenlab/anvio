@@ -3393,100 +3393,68 @@ class TRNASeqDataset(object):
                             uniq_trunc_seq_dict.pop(uniq_seq.represent_name)
                             uniq_trna_seq_dict[uniq_seq.represent_name] = uniq_seq
 
+
+    def get_normalized_sequences_containing_modified_sequences_with_deletions(self, clusters):
+        """The first step of `process_deletion_clusters`. Clusters are inspected to find normalized
+        sequences that are the same as or contain as 3' subsequences modified sequences with in
+        silico deletions."""
         norm_seq_mod_seqs_dict = defaultdict(list)
         min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
         for cluster in clusters:
-            if len(cluster.member_seqs) == 1:
-                continue
-
-            norm_seq_index = None
-            # Track the previous (only) normalized sequence found in the cluster.
+            norm_seq_name = None
+            # Track the previous (the only) normalized sequence found in the cluster.
             norm_seq = None
             norm_seq_length = None
             # Track the previous modified sequences found in the cluster before a normalized
             # sequence is found.
             mod_seqs = []
             del_configs = []
-            for member_extra in cluster.member_extras:
-                source = member_extra[0]
-                if source == 0: # considering M'
-                    del_config = member_extra[1]
-                    mod_seq = member_extra[2]
+            for seq_name, member_extra in zip(cluster.member_names, cluster.member_extras):
+                if isinstance(member_extra, tuple):
+                    del_config = member_extra[0]
+                    mod_seq = member_extra[1]
                     del_configs.append(del_config)
                     mod_seqs.append(mod_seq)
                     if norm_seq:
-                        length_diff = norm_seq_length + len(del_config) - len(mod_seq.norm_seqs_without_dels[0].seq_string)
-                        if length_diff == 0:
+                        # The normalized sequence came before the modified sequence in the cluster.
+                        extra_fiveprime_length = norm_seq_length + len(del_config) - len(mod_seq.norm_seqs_without_dels[0].seq_string)
+                        if extra_fiveprime_length == 0:
                             # The normalized sequence is equal in length to the longest M' in the
                             # cluster, and happened to come before it in the cluster. It seems that
                             # this does not actually happen when this method is called from
-                            # self.find_deletions due to the order in which sequences are processed
-                            # during clustering.
+                            # `find_deletions` due to the order in which sequences are processed
+                            # during clustering, but entertain the possibility for the sake of
+                            # completeness were the clusters to be formed slightly differently.
                             for mod_seq, del_config in zip(mod_seqs, del_configs):
-                                norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, 0))
+                                norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
                             mod_seqs = []
                             del_configs = []
-                        elif length_diff > 0:
+                        elif extra_fiveprime_length > 0:
                             # The normalized sequence is longer than the longest M' in the cluster.
                             if mod_seq.norm_seqs_without_dels[0].has_complete_feature_set:
                                 # The longest modified sequence in the cluster is a full-length
                                 # tRNA. Therefore, the normalized sequence contains extra 5'
                                 # nucleotides that should be trimmed.
                                 for mod_seq, del_config in zip(mod_seqs, del_configs):
-                                    norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, length_diff))
+                                    norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, extra_fiveprime_length))
                                 mod_seqs = []
                                 del_configs = []
                 else: # considering normalized sequence
-                    norm_seq_index = member_extra[1]
-                    norm_seq = member_extra[2]
+                    norm_seq_name = seq_name
+                    norm_seq = member_extra
                     norm_seq_length = len(norm_seq.seq_string)
                     if not mod_seqs:
                         continue
                     for mod_seq, del_config in zip(mod_seqs, del_configs):
                         if del_config[0] - len(mod_seq.norm_seqs_without_dels[0].seq_string) + norm_seq_length + len(del_config) < min_fiveprime_del_pos:
-                            # There must be sufficient sequence length on the 5' end of the
+                            # There must be sufficient matching sequence length on the 5' end of the
                             # normalized sequence to confirm the 5'-most deletion.
                             continue
-                        norm_seq_mod_seqs_dict[norm_seq_index].append((norm_seq, mod_seq, del_config, 0))
+                        norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
                     mod_seqs = []
                     del_configs = []
+        return norm_seq_mod_seqs_dict
 
-        # Process the matches between Nt or Nf and one or more M'. Winnow the matches down to
-        # one-to-one matches between a normalized sequence and modified sequence. These are stored,
-        # along with the deletion configuration that produced the match, in the following list.
-        final_matches = []
-        # Track which normalized sequences are changed as a result of the identification of extra 5'
-        # nucleotides.
-        changed_norm_seq_dict = {}
-        # Track the trimmed and normalized sequences made redundant as a result of the
-        # identification of extra 5' nucleotides.
-        trimmed_seq_names_to_remove = []
-        trimmed_seqs_to_add = []
-        norm_seq_names_to_remove = []
-        for norm_seq_index, match_info in norm_seq_mod_seqs_dict.items():
-            if len(match_info) == 1:
-                norm_seq, mod_seq, del_config, extra_fiveprime_length = match_info[0]
-            else:
-                # The normalized sequence was found in multiple M'. These could either originate
-                # from the same or multiple modified sequences. Though the init method of a modified
-                # sequence can handle nonspecific normalized sequences with deletions, it is
-                # complicated to handle these downstream in the tRNA-seq workflow, in finding seed
-                # sequences from multiple datasets. Normalized sequences found in multiple modified
-                # sequences are therefore ignored.
-                uniq_mod_seq_info_dict = {}
-                for norm_seq, mod_seq, del_config, extra_fiveprime_length in match_info:
-                    if mod_seq.represent_name in uniq_mod_seq_info_dict:
-                        if len(del_config) < len(uniq_mod_seq_info_dict[mod_seq.represent_name]):
-                            # Favor the most parsimonious configuration of deletions in the modified
-                            # sequence concordant with the normalized sequence.
-                            uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
-                    else:
-                        uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
-                if len(uniq_mod_seq_info_dict) > 1:
-                    continue
-                mod_seq = match_info[0][1]
-                del_config = uniq_mod_seq_info_dict[mod_seq.represent_name]
-                extra_fiveprime_length = match_info[0][3]
 
             if extra_fiveprime_length:
                 # The normalized sequence was found to have unidentified extra 5' nucleotides. The
