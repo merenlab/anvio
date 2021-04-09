@@ -3504,59 +3504,7 @@ class TRNASeqDataset(object):
             return False
 
 
-        # Add normalized sequences with deletions to modified sequences.
-        if norm_seq_type == 'trunc':
-            norm_trna_seqs = self.norm_trna_seqs
-            trimmed_trna_seqs = self.trimmed_trna_seqs
-            uniq_trna_seqs = self.uniq_trna_seqs
-            norm_trunc_seqs = norm_seqs
-            trimmed_trunc_seqs = trimmed_seqs
-            uniq_trunc_seqs = uniq_seqs
-            # Nt are moved to the master list of normalized tRNA sequences.
-            norm_trunc_seq_names = [norm_trunc_seq.represent_name for norm_trunc_seq in norm_trunc_seqs]
-            recovered_norm_trunc_seq_indices = []
-            trimmed_trunc_seq_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in trimmed_trunc_seqs]
-            recovered_trimmed_trunc_seq_indices = []
-            uniq_trunc_seq_names = [uniq_trunc_seq.represent_name for uniq_trunc_seq in uniq_trunc_seqs]
-            recovered_uniq_trunc_seq_indices = []
-            for norm_trunc_seq, mod_seq, del_config in final_matches:
-                recovered_norm_trunc_seq_indices.append(norm_trunc_seq_names.index(norm_trunc_seq.represent_name))
-                for trimmed_trunc_seq in norm_trunc_seq.trimmed_seqs:
-                    recovered_trimmed_trunc_seq_indices.append(trimmed_trunc_seq_names.index(trimmed_trunc_seq.represent_name))
-                    for uniq_trunc_seq in trimmed_trunc_seq.uniq_seqs:
-                        recovered_uniq_trunc_seq_indices.append(uniq_trunc_seq_names.index(uniq_trunc_seq.represent_name))
-                norm_trunc_seq.trunc_profile_recovered_by_del_analysis = True
-                norm_trunc_seq.mod_seqs.append(mod_seq)
-                mod_seq.norm_seqs_with_dels.append(norm_trunc_seq)
-                mod_seq.del_configs.append(del_config)
-
-            recovered_norm_trunc_seq_indices.sort(reverse=True)
-            for norm_trunc_seq_index in recovered_norm_trunc_seq_indices:
-                norm_trna_seqs.append(norm_trunc_seqs.pop(norm_trunc_seq_index))
-            # The normalized sequence is identified as having deletions (and thus being tRNA), but
-            # constituent trimmed sequences may be nonspecific, and therefore found in other normalized
-            # truncated sequences that are not recovered by this method. This complication is not
-            # resolved here, but this should not affect anything downstream.
-            for trimmed_trunc_seq_index in sorted(set(recovered_trimmed_trunc_seq_indices), reverse=True):
-                trimmed_trunc_seq = trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
-                trimmed_trunc_seq.trunc_profile_recovered_by_del_analysis = True
-                trimmed_trna_seqs.append(trimmed_trunc_seq)
-            for uniq_trunc_seq_index in sorted(set(recovered_uniq_trunc_seq_indices), reverse=True):
-                uniq_trunc_seq = uniq_trunc_seqs.pop(uniq_trunc_seq_index)
-                uniq_trunc_seq.trunc_profile_recovered_by_del_analysis = True
-                uniq_trna_seqs.append(uniq_trunc_seq)
-        elif norm_seq_type == 'trna':
-            for norm_seq, mod_seq, del_config in final_matches:
-                mod_seq.norm_seqs_with_dels.append(norm_seq)
-                mod_seq.del_configs.append(del_config)
-                # The feature profiles of many of the trimmed and unique sequences forming Nf are
-                # also changed. As these may be shorter sequences not containing the deletion or may
-                # be nonspecific sequences found in other normalized sequences, the sequences are
-                # not marked as having changed profiles.
-                norm_seq.profile_changed_by_del_analysis = True
-
-
-    def report_stats(self):
+    def report_statistics(self):
         """Add run statistics to the database and write them to the summary file."""
         profiled_trna_reads = 0
         trna_reads_with_threeprime_cca = 0
@@ -3569,8 +3517,7 @@ class TRNASeqDataset(object):
         min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         profiled_trna_reads_with_short_fiveprime_extension = 0
         profiled_trna_reads_with_long_fiveprime_extension = 0
-        trna_reads_with_trunc_profile_recovered_by_derep = 0
-        trna_reads_with_trunc_profile_recovered_by_del_analysis = 0
+        trna_reads_with_recovered_trunc_profile = 0
         uniq_profiled_trna_seqs = 0
         uniq_trna_seqs_with_threeprime_cca = 0
         uniq_trna_seqs_with_threeprime_cc = 0
@@ -3581,37 +3528,51 @@ class TRNASeqDataset(object):
         uniq_seqs_with_extrapolated_fiveprime_feature = 0
         uniq_seqs_with_short_fiveprime_extension = 0
         uniq_seqs_with_long_fiveprime_extension = 0
-        uniq_seqs_with_trunc_profile_recovered_by_derep = 0
-        uniq_seqs_with_trunc_profile_recovered_by_del_analysis = 0
+        uniq_seqs_with_recovered_trunc_profile = 0
         interior_mapped_reads = 0
         fiveprime_mapped_reads = 0
         interior_mapped_uniq_seqs = 0
         fiveprime_mapped_uniq_seqs = 0
-        for uniq_trna_seq in self.uniq_trna_seqs:
+        for uniq_trna_seq in self.uniq_trna_seq_dict.values():
             read_count = uniq_trna_seq.read_count
-            if uniq_trna_seq.id_method == 0: # profiled
-                profiled_trna_reads += read_count
-                uniq_profiled_trna_seqs += 1
 
-                if uniq_trna_seq.acceptor_length == 3:
-                    trna_reads_with_threeprime_cca += read_count
-                    uniq_trna_seqs_with_threeprime_cca += 1
-                elif uniq_trna_seq.acceptor_length == 2:
-                    trna_reads_with_threeprime_cc += read_count
-                    uniq_trna_seqs_with_threeprime_cc += 1
-                elif uniq_trna_seq.acceptor_length == 1:
-                    trna_reads_with_threeprime_c += read_count
-                    uniq_trna_seqs_with_threeprime_c += 1
-                elif uniq_trna_seq.acceptor_length == 4 or uniq_trna_seq.acceptor_length == 5:
-                    trna_reads_with_threeprime_ccan_ccann += read_count
-                    uniq_trna_seqs_with_threeprime_ccan_ccann += 1
+            if isinstance(uniq_trna_seq, UniqueMappedSequence):
+                if uniq_trna_seq.extra_fiveprime_length:
+                    fiveprime_mapped_reads += read_count
+                    fiveprime_mapped_uniq_seqs += 1
                 else:
-                    raise ConfigError("Acceptor variants are expected to be 1-5 nucleotides in length.")
+                    interior_mapped_reads += read_count
+                    interior_mapped_uniq_seqs += 1
+                continue
 
-                if uniq_trna_seq.contains_anticodon:
-                    profiled_trna_reads_containing_anticodon += read_count
-                    uniq_trna_seqs_containing_anticodon += 1
+            # To reach this point, the unique sequence has a full or truncated feature profile.
+            profiled_trna_reads += read_count
+            uniq_profiled_trna_seqs += 1
 
+            has_full_profile = True
+            if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
+                has_full_profile = False
+
+            if uniq_trna_seq.acceptor_length == 3:
+                trna_reads_with_threeprime_cca += read_count
+                uniq_trna_seqs_with_threeprime_cca += 1
+            elif uniq_trna_seq.acceptor_length == 2:
+                trna_reads_with_threeprime_cc += read_count
+                uniq_trna_seqs_with_threeprime_cc += 1
+            elif uniq_trna_seq.acceptor_length == 1:
+                trna_reads_with_threeprime_c += read_count
+                uniq_trna_seqs_with_threeprime_c += 1
+            elif uniq_trna_seq.acceptor_length == 4 or uniq_trna_seq.acceptor_length == 5:
+                trna_reads_with_threeprime_ccan_ccann += read_count
+                uniq_trna_seqs_with_threeprime_ccan_ccann += 1
+            else:
+                raise ConfigError("Acceptor variants are expected to be 1-5 nucleotides in length.")
+
+            if uniq_trna_seq.contains_anticodon:
+                profiled_trna_reads_containing_anticodon += read_count
+                uniq_trna_seqs_containing_anticodon += 1
+
+            if has_full_profile:
                 if uniq_trna_seq.has_complete_feature_set:
                     full_length_trna_reads += read_count
                     full_length_uniq_seqs += 1
@@ -3627,31 +3588,97 @@ class TRNASeqDataset(object):
                     else:
                         profiled_trna_reads_with_short_fiveprime_extension += read_count
                         uniq_seqs_with_short_fiveprime_extension += 1
-
-                if uniq_trna_seq.trunc_profile_index:
-                    if uniq_trna_seq.trunc_profile_recovered_by_derep:
-                        trna_reads_with_trunc_profile_recovered_by_derep += read_count
-                        uniq_seqs_with_trunc_profile_recovered_by_derep += 1
-                    elif uniq_trna_seq.trunc_profile_recovered_by_del_analysis:
-                        trna_reads_with_trunc_profile_recovered_by_del_analysis += read_count
-                        uniq_seqs_with_trunc_profile_recovered_by_del_analysis += 1
-                    else:
-                        ConfigError("It should not be possible for a UniqueSeq object listed as tRNA in self.uniq_trna_seqs "
-                                    "to have a value of trunc_profile_index but not show "
-                                    "that it was recovered by dereplication or deletion analysis.")
-            elif uniq_trna_seq.id_method == 1: # mapped
-                if uniq_trna_seq.extra_fiveprime_length:
-                    fiveprime_mapped_reads += read_count
-                    fiveprime_mapped_uniq_seqs += 1
-                else:
-                    interior_mapped_reads += read_count
-                    interior_mapped_uniq_seqs += 1
             else:
-                raise ConfigError("The only recognized tRNA identification methods are 0 (profiled) and 1 (mapped).")
+                trna_reads_with_recovered_trunc_profile += read_count
+                uniq_seqs_with_recovered_trunc_profile += 1
+
         total_trna_reads = profiled_trna_reads + interior_mapped_reads + fiveprime_mapped_reads
         total_uniq_trna_seqs = uniq_profiled_trna_seqs + interior_mapped_uniq_seqs + fiveprime_mapped_uniq_seqs
         mean_profiled_reads_per_uniq_seq = profiled_trna_reads / uniq_profiled_trna_seqs
         mean_mapped_reads_per_uniq_seq = (fiveprime_mapped_reads + interior_mapped_reads) / (fiveprime_mapped_uniq_seqs + interior_mapped_uniq_seqs)
+
+
+        trna_reads_specific_to_norm_seqs_with_del_signature = 0
+        trna_reads_nonspecific_to_norm_seqs_with_del_signature = 0
+        uniq_seqs_specific_to_norm_seqs_with_del_signature = 0
+        uniq_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
+        # Count unique sequences that are part of normalized sequences with deletions. For unique
+        # sequences that are only part of normalized sequences with deletions, subtract their counts
+        # from the previous counts.
+        for uniq_trna_seq in self.uniq_del_seq_dict.values():
+            read_count = uniq_trna_seq.read_count
+
+            specific_to_norm_seqs_with_del_signature = False
+            for norm_seq in uniq_trna_seq.trimmed_seq.norm_seqs:
+                if not isinstance(norm_seq, NormalizedDeletionSequence):
+                    break
+            else:
+                specific_to_norm_seqs_with_del_signature = True
+
+            if specific_to_norm_seqs_with_del_signature:
+                trna_reads_specific_to_norm_seqs_with_del_signature += read_count
+                uniq_seqs_specific_to_norm_seqs_with_del_signature += 1
+            else:
+                trna_reads_nonspecific_to_norm_seqs_with_del_signature += read_count
+                uniq_seqs_nonspecific_to_norm_seqs_with_del_signature += 1
+                continue
+
+            # To reach this point, the unique sequence must be specific to a normalized sequence
+            # with deletions.
+            if isinstance(uniq_trna_seq, UniqueMappedSequence):
+                if uniq_trna_seq.extra_fiveprime_length:
+                    fiveprime_mapped_reads -= read_count
+                    fiveprime_mapped_uniq_seqs -= 1
+                else:
+                    interior_mapped_reads -= read_count
+                    interior_mapped_uniq_seqs -= 1
+                continue
+
+            # To reach this point, the unique sequence has a full or truncated profile.
+            profiled_trna_reads -= read_count
+            uniq_profiled_trna_seqs -= 1
+
+            has_full_profile = True
+            if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
+                has_full_profile = False
+
+            if uniq_trna_seq.acceptor_length == 3:
+                trna_reads_with_threeprime_cca -= read_count
+                uniq_trna_seqs_with_threeprime_cca -= 1
+            elif uniq_trna_seq.acceptor_length == 2:
+                trna_reads_with_threeprime_cc -= read_count
+                uniq_trna_seqs_with_threeprime_cc -= 1
+            elif uniq_trna_seq.acceptor_length == 1:
+                trna_reads_with_threeprime_c -= read_count
+                uniq_trna_seqs_with_threeprime_c -= 1
+            elif uniq_trna_seq.acceptor_length == 4 or uniq_trna_seq.acceptor_length == 5:
+                trna_reads_with_threeprime_ccan_ccann -= read_count
+                uniq_trna_seqs_with_threeprime_ccan_ccann -= 1
+
+            if uniq_trna_seq.contains_anticodon:
+                profiled_trna_reads_containing_anticodon -= read_count
+                uniq_trna_seqs_containing_anticodon -= 1
+
+            if has_full_profile:
+                if uniq_trna_seq.has_complete_feature_set:
+                    full_length_trna_reads -= read_count
+                    full_length_uniq_seqs -= 1
+
+                if uniq_trna_seq.num_extrapolated_fiveprime_nts:
+                    trna_reads_with_extrapolated_fiveprime_feature -= read_count
+                    uniq_seqs_with_extrapolated_fiveprime_feature -= 1
+
+                if uniq_trna_seq.extra_fiveprime_length:
+                    if uniq_trna_seq.extra_fiveprime_length >= min_length_of_long_fiveprime_extension:
+                        profiled_trna_reads_with_long_fiveprime_extension -= read_count
+                        uniq_seqs_with_long_fiveprime_extension -= 1
+                    else:
+                        profiled_trna_reads_with_short_fiveprime_extension -= read_count
+                        uniq_seqs_with_short_fiveprime_extension -= 1
+            else:
+                trna_reads_with_recovered_trunc_profile -= read_count
+                uniq_seqs_with_recovered_trunc_profile -= 1
+
 
         # The TOTAL count of trimmed sequence objects combines apples and oranges (profiled and
         # mapped sequences) and so should not be reported. Separate trimmed sequences are formed for
@@ -3661,36 +3688,72 @@ class TRNASeqDataset(object):
         trimmed_profiled_seqs_containing_anticodon = 0
         full_length_trimmed_seqs = 0
         trimmed_seqs_with_extrapolated_fiveprime_feature = 0
-        trimmed_seqs_with_trunc_profile_recovered_by_derep = 0
-        trimmed_seqs_with_trunc_profile_recovered_by_del_analysis = 0
-        for trimmed_trna_seq in self.trimmed_trna_seqs:
+        trimmed_seqs_with_recovered_trunc_profile = 0
+        for trimmed_trna_seq in self.trimmed_trna_seq_dict.values():
+            if isinstance(trimmed_trna_seq, TrimmedMappedSequence):
+                continue
+
             represent_uniq_seq = trimmed_trna_seq.uniq_seqs[0]
+
             if trimmed_trna_seq.contains_anticodon:
                 trimmed_profiled_seqs_containing_anticodon += 1
 
-            if trimmed_trna_seq.has_complete_feature_set:
-                full_length_trimmed_seqs += 1
+            has_full_profile = True
+            if isinstance(trimmed_trna_seq, TrimmedTruncatedProfileSequence):
+                has_full_profile = False
 
-            if represent_uniq_seq.num_extrapolated_fiveprime_nts:
-                trimmed_seqs_with_extrapolated_fiveprime_feature += 1
+            if has_full_profile:
+                if trimmed_trna_seq.has_complete_feature_set:
+                    full_length_trimmed_seqs += 1
 
-            if trimmed_trna_seq.has_trunc_profile:
-                if trimmed_trna_seq.trunc_profile_recovered_by_derep:
-                    trimmed_seqs_with_trunc_profile_recovered_by_derep += 1
-                elif trimmed_trna_seq.trunc_profile_recovered_by_del_analysis:
-                    trimmed_seqs_with_trunc_profile_recovered_by_del_analysis += 1
-                else:
-                    raise ConfigError("It should not be possible for a TrimmedSeq object listed as tRNA in self.trimmed_trna_seqs "
-                                      "to have a truncated profile but not show "
-                                      "that it was recovered by dereplication or deletion analysis.")
+                if represent_uniq_seq.num_extrapolated_fiveprime_nts:
+                    trimmed_seqs_with_extrapolated_fiveprime_feature += 1
+            else:
+                trimmed_seqs_with_recovered_trunc_profile += 1
 
-        norm_trna_seqs = len(self.norm_trna_seqs)
+
+        # Count trimmed sequences that are part of normalized sequences with deletions. For trimmed
+        # sequences that are only part of normalized sequences with deletions, subtract their counts
+        # from the previous counts.
+        trimmed_seqs_specific_to_norm_seqs_with_del_signature = 0
+        trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
+        for trimmed_trna_seq in self.trimmed_del_seq_dict.values():
+            represent_uniq_seq = trimmed_trna_seq.uniq_seqs[0]
+
+            specific_to_norm_seqs_with_del_signature = False
+            for norm_seq in trimmed_trna_seq.norm_seqs:
+                if not isinstance(norm_seq, NormalizedDeletionSequence):
+                    break
+            else:
+                specific_to_norm_seqs_with_del_signature = True
+
+            if specific_to_norm_seqs_with_del_signature:
+                trimmed_seqs_specific_to_norm_seqs_with_del_signature += 1
+            else:
+                trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature += 1
+                continue
+
+            # To reach this point, the trimmed sequence must be specific to a normalized sequence
+            # with deletions.
+            has_full_profile = True
+            if isinstance(trimmed_trna_seq, TrimmedTruncatedProfileSequence):
+                has_full_profile = False
+
+            if has_full_profile:
+                if trimmed_trna_seq.has_complete_feature_set:
+                    full_length_trimmed_seqs -= 1
+
+                if represent_uniq_seq.num_extrapolated_fiveprime_nts:
+                    trimmed_seqs_with_extrapolated_fiveprime_feature -= 1
+            else:
+                trimmed_seqs_with_recovered_trunc_profile -= 1
+
+
+        norm_trna_seqs = len(self.norm_trna_seq_dict)
         norm_trna_seqs_without_mods = 0
         norm_trna_seqs_containing_anticodon = 0
         full_length_norm_seqs = 0
-        norm_seqs_with_profile_changed_by_del_analysis = 0
-        norm_seqs_with_trunc_profile_recovered_by_del_analysis = 0
-        for norm_trna_seq in self.norm_trna_seqs:
+        for norm_trna_seq in self.norm_trna_seq_dict.values():
             if not norm_trna_seq.mod_seqs:
                 norm_trna_seqs_without_mods += 1
 
@@ -3700,21 +3763,17 @@ class TRNASeqDataset(object):
             if norm_trna_seq.has_complete_feature_set:
                 full_length_norm_seqs += 1
 
-            if norm_trna_seq.profile_changed_by_del_analysis:
-                norm_seqs_with_profile_changed_by_del_analysis += 1
+        norm_seqs_with_del_signature = len(self.norm_del_seq_dict)
 
-            if norm_trna_seq.trunc_profile_recovered_by_del_analysis:
-                norm_seqs_with_trunc_profile_recovered_by_del_analysis += 1
-        norm_seqs_with_dels = norm_seqs_with_profile_changed_by_del_analysis + norm_seqs_with_trunc_profile_recovered_by_del_analysis
-
-        mod_trna_seqs = len(self.mod_trna_seqs)
-        mod_seqs_with_dels = 0
-        for mod_trna_seq in self.mod_trna_seqs:
+        mod_trna_seqs = len(self.mod_trna_seq_dict)
+        mod_seqs_with_del_signature = 0
+        for mod_trna_seq in self.mod_trna_seq_dict.values():
             if mod_trna_seq.del_configs:
-                mod_seqs_with_dels += 1
+                mod_seqs_with_del_signature += 1
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         set_meta_value = trnaseq_db.db.set_meta_value
+
         set_meta_value('total_trna_reads', total_trna_reads)
         set_meta_value('profiled_trna_reads', profiled_trna_reads)
         set_meta_value('trna_reads_with_threeprime_cca', trna_reads_with_threeprime_cca)
@@ -3726,10 +3785,12 @@ class TRNASeqDataset(object):
         set_meta_value('trna_reads_with_extrapolated_fiveprime_feature', trna_reads_with_extrapolated_fiveprime_feature)
         set_meta_value('profiled_trna_reads_with_short_fiveprime_extension', profiled_trna_reads_with_short_fiveprime_extension)
         set_meta_value('profiled_trna_reads_with_long_fiveprime_extension', profiled_trna_reads_with_long_fiveprime_extension)
-        set_meta_value('trna_reads_with_truncated_profile_recovered_by_dereplication', trna_reads_with_trunc_profile_recovered_by_derep)
-        set_meta_value('trna_reads_with_truncated_profile_recovered_by_deletion_analysis', trna_reads_with_trunc_profile_recovered_by_del_analysis)
+        set_meta_value('trna_reads_with_recovered_truncated_profile', trna_reads_with_recovered_trunc_profile)
         set_meta_value('interior_mapped_reads', interior_mapped_reads)
         set_meta_value('fiveprime_mapped_reads', fiveprime_mapped_reads)
+        set_meta_value('trna_reads_specific_to_norm_seqs_with_del_signature', trna_reads_specific_to_norm_seqs_with_del_signature)
+        set_meta_value('trna_reads_nonspecific_to_norm_seqs_with_del_signature', trna_reads_nonspecific_to_norm_seqs_with_del_signature)
+
         set_meta_value('total_unique_trna_seqs', total_uniq_trna_seqs)
         set_meta_value('unique_profiled_trna_seqs', uniq_profiled_trna_seqs)
         set_meta_value('unique_trna_seqs_with_threeprime_cca', uniq_trna_seqs_with_threeprime_cca)
@@ -3741,24 +3802,28 @@ class TRNASeqDataset(object):
         set_meta_value('unique_seqs_with_extrapolated_fiveprime_feature', uniq_seqs_with_extrapolated_fiveprime_feature)
         set_meta_value('unique_seqs_with_short_fiveprime_extension', uniq_seqs_with_short_fiveprime_extension)
         set_meta_value('unique_seqs_with_long_fiveprime_extension', uniq_seqs_with_long_fiveprime_extension)
-        set_meta_value('unique_seqs_with_truncated_profile_recovered_by_dereplication', uniq_seqs_with_trunc_profile_recovered_by_derep)
-        set_meta_value('unique_seqs_with_truncated_profile_recovered_by_deletion_analysis', uniq_seqs_with_trunc_profile_recovered_by_del_analysis)
+        set_meta_value('unique_seqs_with_recovered_truncated_profile', uniq_seqs_with_recovered_trunc_profile)
         set_meta_value('interior_mapped_uniq_seqs', interior_mapped_uniq_seqs)
         set_meta_value('fiveprime_mapped_uniq_seqs', fiveprime_mapped_uniq_seqs)
+        set_meta_value('uniq_seqs_specific_to_norm_seqs_with_del_signature', uniq_seqs_specific_to_norm_seqs_with_del_signature)
+        set_meta_value('uniq_seqs_nonspecific_to_norm_seqs_with_del_signature', uniq_seqs_nonspecific_to_norm_seqs_with_del_signature)
+
         set_meta_value('trimmed_profiled_seqs_containing_anticodon', trimmed_profiled_seqs_containing_anticodon)
         set_meta_value('full_length_trimmed_seqs', full_length_trimmed_seqs)
         set_meta_value('trimmed_seqs_with_extrapolated_fiveprime_feature', trimmed_seqs_with_extrapolated_fiveprime_feature)
-        set_meta_value('trimmed_seqs_with_truncated_profile_recovered_by_dereplication', trimmed_seqs_with_trunc_profile_recovered_by_derep)
-        set_meta_value('trimmed_seqs_with_truncated_profile_recovered_by_deletion_analysis', trimmed_seqs_with_trunc_profile_recovered_by_del_analysis)
+        set_meta_value('trimmed_seqs_with_recovered_trunc_profile', trimmed_seqs_with_recovered_trunc_profile)
+        set_meta_value('trimmed_seqs_specific_to_norm_seqs_with_del_signature', trimmed_seqs_specific_to_norm_seqs_with_del_signature)
+        set_meta_value('trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature', trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature)
+
         set_meta_value('normalized_trna_seqs', norm_trna_seqs)
         set_meta_value('normalized_trna_seqs_without_potential_modifications', norm_trna_seqs_without_mods)
         set_meta_value('normalized_trna_seqs_containing_anticodon', norm_trna_seqs_containing_anticodon)
         set_meta_value('full_length_normalized_seqs', full_length_norm_seqs)
-        set_meta_value('normalized_seqs_with_profile_changed_by_deletion_analysis', norm_seqs_with_profile_changed_by_del_analysis)
-        set_meta_value('normalized_seqs_with_truncated_profile_recovered_by_deletion_analysis', norm_seqs_with_trunc_profile_recovered_by_del_analysis)
-        set_meta_value('normalized_seqs_with_deletions', norm_seqs_with_dels)
+        set_meta_value('normalized_seqs_with_del_signature', norm_seqs_with_del_signature)
+
         set_meta_value('potentially_modified_seqs', mod_trna_seqs)
-        set_meta_value('potentially_modified_seqs_with_deletions', mod_seqs_with_dels)
+        set_meta_value('potentially_modified_seqs_with_del_signature', mod_seqs_with_del_signature)
+
         trnaseq_db.disconnect()
 
         # Use debug flag to write additional statistics of technical but not general interest to the
@@ -3775,17 +3840,15 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_reads))
             if anvio.DEBUG:
                 f.write(get_summary_line("Profiled reads with extrapolated 5' feature", trna_reads_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Profiled reads with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1),
-                                     profiled_trna_reads_with_short_fiveprime_extension))
-            f.write(get_summary_line("Profiled reads with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1),
-                                     profiled_trna_reads_with_long_fiveprime_extension))
+            f.write(get_summary_line("Profiled reads with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_short_fiveprime_extension))
+            f.write(get_summary_line("Profiled reads with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_long_fiveprime_extension))
             if anvio.DEBUG:
-                f.write(get_summary_line("Profiled reads with truncated profile recovered by 3'-dereplication",
-                                         trna_reads_with_trunc_profile_recovered_by_derep))
-                f.write(get_summary_line("Profiled reads with truncated profile recovered by deletion analysis",
-                                         trna_reads_with_trunc_profile_recovered_by_del_analysis))
+                f.write(get_summary_line("Profiled reads with recovered truncated profile", trna_reads_with_recovered_trunc_profile))
             f.write(get_summary_line("Reads mapped to tRNA interior", interior_mapped_reads))
             f.write(get_summary_line("Reads mapped to tRNA with extra 5' bases", fiveprime_mapped_reads))
+            f.write(get_summary_line("Profiled reads specific to normalized sequences with deletion signature", trna_reads_specific_to_norm_seqs_with_del_signature))
+            f.write(get_summary_line("Profiled reads nonspecific to normalized sequences with deletion signature", trna_reads_nonspecific_to_norm_seqs_with_del_signature))
+
             f.write(get_summary_line("Total unique tRNA sequences", total_uniq_trna_seqs))
             f.write(get_summary_line("Unique profiled tRNA sequences", uniq_profiled_trna_seqs))
             f.write(get_summary_line("Unique tRNA sequences ending in 3'-CCA", uniq_trna_seqs_with_threeprime_cca))
@@ -3796,39 +3859,30 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Unique tRNA sequences spanning acceptor stem", full_length_uniq_seqs))
             if anvio.DEBUG:
                 f.write(get_summary_line("Unique tRNA sequences with extrapolated 5' feature", uniq_seqs_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Unique tRNA sequences with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1),
-                                     uniq_seqs_with_short_fiveprime_extension))
-            f.write(get_summary_line("Unique tRNA sequences with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1),
-                                     uniq_seqs_with_long_fiveprime_extension))
+            f.write(get_summary_line("Unique tRNA sequences with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_short_fiveprime_extension))
+            f.write(get_summary_line("Unique tRNA sequences with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_long_fiveprime_extension))
             if anvio.DEBUG:
-                f.write(get_summary_line("Unique tRNA sequences with truncated profile recovered by 3'-dereplication",
-                                         uniq_seqs_with_trunc_profile_recovered_by_derep))
-                f.write(get_summary_line("Unique tRNA sequences with truncated profile recovered by deletion analysis",
-                                         uniq_seqs_with_trunc_profile_recovered_by_del_analysis))
+                f.write(get_summary_line("Unique tRNA sequences with recovered truncated profile", ))
             f.write(get_summary_line("Mean profiled reads per unique sequence", mean_profiled_reads_per_uniq_seq))
             f.write(get_summary_line("Unique sequences mapped to tRNA interior", interior_mapped_uniq_seqs))
             f.write(get_summary_line("Unique sequences mapped to tRNA with extra 5' bases", fiveprime_mapped_uniq_seqs))
             f.write(get_summary_line("Mean mapped reads per unique sequence", mean_mapped_reads_per_uniq_seq))
+
             f.write(get_summary_line("Trimmed tRNA sequences containing anticodon", trimmed_profiled_seqs_containing_anticodon))
             f.write(get_summary_line("Trimmed tRNA sequences spanning acceptor stem", full_length_trimmed_seqs))
             if anvio.DEBUG:
                 f.write(get_summary_line("Trimmed tRNA sequences with extrapolated 5' feature", trimmed_seqs_with_extrapolated_fiveprime_feature))
-                f.write(get_summary_line("Trimmed tRNA sequences with truncated profile recovered by 3'-dereplication",
-                                         trimmed_seqs_with_trunc_profile_recovered_by_derep))
-                f.write(get_summary_line("Trimmed tRNA sequences with truncated profile recovered by deletion analysis",
-                                         trimmed_seqs_with_trunc_profile_recovered_by_del_analysis))
+                f.write(get_summary_line("Trimmed tRNA sequences specific to normalized sequences with deletion signature", trimmed_seqs_specific_to_norm_seqs_with_del_signature))
+                f.write(get_summary_line("Trimmed tRNA sequences nonspecific to normalized sequences with deletion signature", trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature))
+
             f.write(get_summary_line("Normalized tRNA sequences", norm_trna_seqs))
             f.write(get_summary_line("Normalized tRNA sequences without potential modifications", norm_trna_seqs_without_mods))
             f.write(get_summary_line("Normalized tRNA sequences containing anticodon", norm_trna_seqs_containing_anticodon))
             f.write(get_summary_line("Normalized tRNA sequences spanning acceptor stem", full_length_norm_seqs))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Normalized tRNA sequences with profile changed by deletion analysis",
-                                         norm_seqs_with_profile_changed_by_del_analysis))
-                f.write(get_summary_line("Normalized tRNA sequences with truncated profile recovered by deletion analysis",
-                                         norm_seqs_with_trunc_profile_recovered_by_del_analysis))
-            f.write(get_summary_line("Normalized sequences with deletions", norm_seqs_with_dels))
+            f.write(get_summary_line("Normalized sequences with deletion signature", norm_seqs_with_del_signature))
+
             f.write(get_summary_line("Potentially modified sequences", mod_trna_seqs))
-            f.write(get_summary_line("Potentially modified sequences with deletions", mod_seqs_with_dels))
+            f.write(get_summary_line("Potentially modified sequences with deletion signature", mod_seqs_with_del_signature))
 
         self.run.info("Summary", self.analysis_summary_path)
 
