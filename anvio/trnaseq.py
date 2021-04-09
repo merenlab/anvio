@@ -2252,13 +2252,9 @@ class TRNASeqDataset(object):
         for intermed_file_label, intermed_file_path in overwrote_dict.items():
             # Example: "Overwrote profile checkpoint intermediate file of unique tRNA"
             if intermed_file_path:
-                self.run.info("Overwrote \"%s\" checkpoint intermediate file of %s"
-                              % (checkpoint_name, intermed_file_label),
-                              intermed_file_path)
+                self.run.info("Overwrote \"%s\" checkpoint intermediate file of %s" % (checkpoint_name, intermed_file_label), intermed_file_path)
             else:
-                self.run.info_single("Wrote \"%s\" checkpoint intermediate file of %s"
-                                     % (checkpoint_name, intermed_file_label),
-                                     mc='green', cut_after=200)
+                self.run.info_single("Wrote \"%s\" checkpoint intermediate file of %s" % (checkpoint_name, intermed_file_label), mc='green', cut_after=200)
         print()
 
 
