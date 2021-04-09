@@ -4212,18 +4212,18 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def write_uniq_nontrna_supplement(self):
+    def write_unique_nontrna_supplement(self):
         self.progress.new("Writing a file of unique sequences not identified as tRNA")
         self.progress.update("...")
 
         with open(self.uniq_nontrna_path, 'w') as nontrna_file:
             nontrna_file.write("\t".join(self.UNIQ_NONTRNA_HEADER) + "\n")
-            for uniq_seq in self.uniq_nontrna_seqs:
+            for uniq_seq in self.uniq_nontrna_seq_dict.values():
                 nontrna_file.write(uniq_seq.represent_name + "\t"
                                    + str(uniq_seq.read_count) + "\t"
                                    + "\t"
                                    + uniq_seq.seq_string + "\n")
-            for uniq_seq in self.uniq_trunc_seqs:
+            for uniq_seq in self.uniq_trunc_seq_dict.values():
                 nontrna_file.write(uniq_seq.represent_name + "\t"
                                    + str(uniq_seq.read_count) + "\t"
                                    + str(uniq_seq.trunc_profile_index) + "\t"
@@ -4235,22 +4235,15 @@ class TRNASeqDataset(object):
 
 
     def write_trimmed_supplement(self):
-        """Write a supplementary file showing the spectrum of 5'/3' extensions of core trimmed tRNA
-        sequences.
-
-        Mapped, as opposed to profiled, trimmed sequences are not considered, as each unique mapped
-        sequence with potentially varying 5' ends generates its own trimmed sequence object. The 5'
-        extension of a mapped sequence may represent all but a small number of nucleotides in the
-        sequence, so sequences identical in the non-5' section are not dereplicated into a single
-        trimmed sequence object.
-        """
-        self.progress.new("Writing a file showing the 5'/3' ends of each trimmed profiled tRNA sequence")
+        """Write a supplementary file showing the spectrum of 5'/3' extensions of trimmed, fully
+        profiled tRNA sequences."""
+        self.progress.new("Writing a file showing the 5'/3' ends of each trimmed, fully profiled tRNA sequence")
         self.progress.update("...")
 
         with open(self.trimmed_ends_path, 'w') as trimmed_file:
             trimmed_file.write("\t".join(self.TRIMMED_ENDS_HEADER) + "\n")
-            for trimmed_seq in sorted(self.trimmed_trna_seqs, key=lambda trimmed_seq: -trimmed_seq.read_count):
-                if trimmed_seq.id_method == 1:
+            for trimmed_seq in sorted(self.trimmed_trna_seq_dict.values(), key=lambda trimmed_seq: -trimmed_seq.read_count):
+                if not isinstance(trimmed_seq, TrimmedFullProfileSequence):
                     continue
 
                 represent_name = trimmed_seq.represent_name
