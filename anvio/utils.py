@@ -809,7 +809,7 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     parts : int
         Number of parts the input file to be split into
     file_name_prefix : str
-        Prefferably a single-word prefix for the output files
+        Preferably a single-word prefix for the output files
     shuffle : bool
         Whether input sequences should be randomly shuffled (so the input sequences
         randomly distribute across output files)
@@ -4350,4 +4350,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-
