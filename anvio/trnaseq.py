@@ -1665,16 +1665,18 @@ class TRNASeqDataset(object):
     def report_profiling_params(self):
         """Add profiling parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        db = trnaseq_db.db
         parameterizer = trnaidentifier.TRNAFeatureParameterizer()
         for param_tuple in parameterizer.list_accessible_param_tuples():
-            trnaseq_db.db.set_meta_value(param_tuple[0], param_tuple[1])
-        trnaseq_db.db.set_meta_value('min_length_of_long_fiveprime_extension', self.min_length_of_long_fiveprime_extension)
+            db.set_meta_value(param_tuple[0], param_tuple[1])
+        db.set_meta_value('min_length_of_long_fiveprime_extension', self.min_length_of_long_fiveprime_extension)
         trnaseq_db.disconnect()
 
+        get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
             for param_tuple in parameterizer.list_accessible_param_tuples(pretty=True):
-                f.write(self.get_summary_line(param_tuple[0], param_tuple[1]))
-            f.write(self.get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
+                f.write(get_summary_line(param_tuple[0], param_tuple[1]))
+            f.write(get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
 
 
     def report_fragment_mapping_params(self):
@@ -1690,26 +1692,28 @@ class TRNASeqDataset(object):
     def report_modification_analysis_params(self):
         """Add modification analysis parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        trnaseq_db.db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
-        trnaseq_db.db.set_meta_value('fiveprimemost_deletion_start', self.fiveprimemost_del_start)
-        trnaseq_db.db.set_meta_value('threeprimemost_deletion_start', self.threeprimemost_del_start)
-        trnaseq_db.db.set_meta_value('fiveprimemost_deletion_stop', self.fiveprimemost_del_stop)
-        trnaseq_db.db.set_meta_value('threeprimemost_deletion_stop', self.threeprimemost_del_stop)
-        trnaseq_db.db.set_meta_value('max_distinct_deletions', self.max_distinct_dels)
-        trnaseq_db.db.set_meta_value('min_distance_between_deletions', self.min_dist_between_dels)
-        trnaseq_db.db.set_meta_value('max_deletion_configurations', self.max_del_configs)
+        db = trnaseq_db.db
+        db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
+        db.set_meta_value('fiveprimemost_deletion_start', self.fiveprimemost_del_start)
+        db.set_meta_value('threeprimemost_deletion_start', self.threeprimemost_del_start)
+        db.set_meta_value('fiveprimemost_deletion_stop', self.fiveprimemost_del_stop)
+        db.set_meta_value('threeprimemost_deletion_stop', self.threeprimemost_del_stop)
+        db.set_meta_value('max_distinct_deletions', self.max_distinct_dels)
+        db.set_meta_value('min_distance_between_deletions', self.min_dist_between_dels)
+        db.set_meta_value('max_deletion_configurations', self.max_del_configs)
         trnaseq_db.disconnect()
 
+        get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
-            f.write(self.get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
-            f.write(self.get_summary_line("Fiveprime-most deletion start", self.fiveprimemost_del_start))
-            f.write(self.get_summary_line("Threeprime-most deletion start", self.threeprimemost_del_start))
-            f.write(self.get_summary_line("Fiveprime-most deletion start", self.threeprimemost_del_start))
-            f.write(self.get_summary_line("Threeprime-most deletion stop", self.threeprimemost_del_start))
-            f.write(self.get_summary_line("Max distinct deletions", self.max_distinct_dels))
-            f.write(self.get_summary_line("Min distance between deletions", self.min_dist_between_dels))
-            f.write(self.get_summary_line("Max deletion configurations", self.max_del_configs))
+            f.write(get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
+            f.write(get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
+            f.write(get_summary_line("Fiveprime-most deletion start", self.fiveprimemost_del_start))
+            f.write(get_summary_line("Threeprime-most deletion start", self.threeprimemost_del_start))
+            f.write(get_summary_line("Fiveprime-most deletion start", self.threeprimemost_del_start))
+            f.write(get_summary_line("Threeprime-most deletion stop", self.threeprimemost_del_start))
+            f.write(get_summary_line("Max distinct deletions", self.max_distinct_dels))
+            f.write(get_summary_line("Min distance between deletions", self.min_dist_between_dels))
+            f.write(get_summary_line("Max deletion configurations", self.max_del_configs))
 
 
     def profile_trna(self, uniq_reads):
