@@ -1568,22 +1568,19 @@ class TRNASeqDataset(object):
                 raise ConfigError(f"The directory that was specified by --output-dir or -o, {self.out_dir}, already exists. "
                                   "Use the flag --overwrite-output-destinations to overwrite this directory.")
 
-        if self.load_checkpoint:
-            # Check that needed intermediate pickle files exist when loading from a checkpoint.
-            missing_intermed_files = []
-            for intermed_file_path in self.intermed_file_path_dict[self.load_checkpoint].values():
-                if not os.path.exists(intermed_file_path):
-                    missing_intermed_files.append(intermed_file_path)
-            if missing_intermed_files:
-                raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint %s` are missing: %s. "
-                                  "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
-                                  "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`."
-                                  % (self.load_checkpoint, ', '.join(missing_intermed_files)))
-        else:
-            if not os.path.exists(self.out_dir):
-                os.mkdir(self.out_dir)
 
-        filesnpaths.is_output_dir_writable(self.out_dir)
+    def load_checkpoint_sanity_check(self):
+        """Needed intermediate files must exist to load from a checkpoint."""
+        missing_intermed_files = []
+        for intermed_file_path in self.intermed_file_path_dict[self.load_checkpoint].values():
+            if not os.path.exists(intermed_file_path):
+                missing_intermed_files.append(intermed_file_path)
+        if missing_intermed_files:
+            raise ConfigError(f"Intermediate files needed for running `anvi-trnaseq` "
+                              f"with `--load-checkpoint {self.load_checkpoint}` are missing: {', '.join(missing_intermed_files)}. "
+                              "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
+                              "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
+
 
         if self.descrip_path:
             filesnpaths.is_file_plain_text(self.descrip_path)
