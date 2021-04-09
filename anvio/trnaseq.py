@@ -1617,15 +1617,39 @@ class TRNASeqDataset(object):
         self.del_ranges = tuple(del_ranges)
 
 
-        if not self.skip_fasta_check and not self.load_checkpoint:
-            self.progress.new("Checking input FASTA defline format")
-            self.progress.update("...")
+    def process_before_profiling_checkpoint(self):
+        """Do the steps before the first checkpoint. This "profiling" checkpoint occurs after tRNA
+        profiling, tRNA trimming, and the recovery of tRNA sequences with truncated feature
+        profiles."""
+        self.create_trnaseq_db()
 
-            utils.check_fasta_id_formatting(self.input_fasta_path)
+        if self.feature_param_path:
+            # The user provided an optional tRNA feature parameterization file.
+            trnaidentifier.TRNAFeatureParameterizer().set_params_from_file(self.feature_param_path)
 
-            self.progress.end()
+        # Add the user parameterizations as meta-values in the "self" table of the tRNA-seq
+        # database.
+        self.report_profiling_params()
+        self.report_fragment_mapping_params()
+        self.report_modification_analysis_params()
 
-            self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green', nl_after=1)
+        # Profile each (unique) read for tRNA features.
+        self.profile_trna()
+
+        # Trim 5' and 3' ends of profiled tRNA.
+        self.trim_trna_ends()
+        # Trim 3' ends of sequences with truncated tRNA profile.
+        self.trim_truncated_profile_ends()
+
+        # Consolidate 3' fragments of longer profiled tRNA sequences, forming normalized sequences.
+        self.threeprime_dereplicate_trna()
+
+        # Recover tRNA sequences with truncated feature profiles by comparing to normalized
+        # sequences.
+        self.threeprime_dereplicate_truncated_sequences()
+
+        # Write intermediate files at the "profile" checkpoint
+        self.write_checkpoint_files('profile')
 
 
     def create_trnaseq_db(self):
