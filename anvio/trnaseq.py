@@ -2065,162 +2065,167 @@ class TRNASeqDataset(object):
         return consol_trimmed_seq
 
 
-
     def threeprime_dereplicate_truncated_sequences(self):
-        """Try to recover sequences with truncated tRNA profiles that are 3' subsequences of
+        """Recover sequences with truncated tRNA profiles that are found to be 3' subsequences of
         profiled tRNA and thus legitimate 3' tRNA fragments. These trimmed sequences are folded into
-        the normalized tRNA sequences in self.norm_trna_seqs. Unrecovered trimmed sequences are
-        themselves 3'-dereplicated, forming another pool of normalized sequences,
-        self.norm_trunc_seqs."""
+        the normalized tRNA sequences of `self.norm_trna_seq_dict`. Unrecovered trimmed sequences
+        are themselves 3'-dereplicated, forming another pool of normalized sequences in
+        `self.norm_trunc_seq_dict`."""
         start_time = time.time()
         self.progress.new("Dereplicating trimmed sequences with a truncated feature profile")
         self.progress.update("...")
 
-        trimmed_trunc_seq_represent_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in self.trimmed_trunc_seqs]
-        norm_trna_seq_represent_names = [norm_trna_seq.represent_name for norm_trna_seq in self.norm_trna_seqs]
-        # Reverse sequence orientation to dereplicate from the 3' end.
-        reversed_trimmed_trunc_seq_strings = [trimmed_trunc_seq.seq_string[::-1] for trimmed_trunc_seq in self.trimmed_trunc_seqs]
-        reversed_norm_trna_seq_strings = [norm_trna_seq.seq_string[::-1] for norm_trna_seq in self.norm_trna_seqs]
-        clusters = Dereplicator(trimmed_trunc_seq_represent_names + norm_trna_seq_represent_names,
-                                reversed_trimmed_trunc_seq_strings + reversed_norm_trna_seq_strings,
-                                extras=self.trimmed_trunc_seqs + self.norm_trna_seqs).prefix_dereplicate()
+        # Prefix dereplicate both trimmed sequences with truncated profiles and normalized sequences
+        # with full profiles from the 3' end.
+        trimmed_trunc_seq_names = []
+        trimmed_trunc_reversed_seq_strings = []
+        trimmed_trunc_seqs = []
+        for name, trimmed_seq in self.trimmed_trunc_seq_dict.items():
+            trimmed_trunc_seq_names.append(name)
+            trimmed_trunc_reversed_seq_strings.append(trimmed_seq.seq_string[::-1])
+            trimmed_trunc_seqs.append(trimmed_seq)
+        norm_seq_names = []
+        norm_reversed_seq_strings = []
+        norm_seqs = []
+        for name, norm_seq in self.norm_trna_seq_dict.items():
+            norm_seq_names.append(name)
+            norm_reversed_seq_strings.append(norm_seq.seq_string[::-1])
+            norm_seqs.append(norm_seq)
+        clusters = Dereplicator(trimmed_trunc_seq_names + norm_seq_names,
+                                trimmed_trunc_reversed_seq_strings + norm_reversed_seq_strings,
+                                extras=trimmed_trunc_seqs + norm_seqs).prefix_dereplicate()
 
         # Associate each truncated sequence with any normalized tRNA sequences that contain it as a
-        # 3'-subsequence. Do not bother with the complex task of reconstructing a feature profile of
-        # the truncated sequence (entries for each unique truncated sequence would appear in the
-        # Features table of the tRNA-seq database). An attempt to do this revealed that it is a very
-        # deep rabbit hole.
+        # 3'-subsequence. Since the trimmed truncated sequence can be a 3' subsequence of multiple
+        # normalized sequences, do not reconstruct a feature profile for the truncated sequence.
+        # (Similarly, trimmed sequences with full profiles need not have the same profile as the
+        # seed trimmed sequence of a normalized sequence.) The unique sequences in the trimmed
+        # sequence are therefore not included in the features table of the tRNA-seq database.
 
-        # Clusters cannot contain more than one normalized tRNA sequence, as they have already been
-        # 3'-dereplicated. Normalized sequences can seed clusters and also be members of clusters
-        # seed by truncated sequences. In the latter case of clusters containing a normalized tRNA
-        # sequence as a member but not as the seed, truncated sequences in the cluster that are
-        # shorter than the normalized sequence (3' subsequences) are incorporated as members of the
-        # normalized sequence.
+        # Clusters cannot contain more than one normalized tRNA sequence, as these have already been
+        # 3'-dereplicated (by definition). Normalized sequences can seed clusters and also be
+        # members of clusters seeded by a truncated sequence. In the latter case, truncated
+        # sequences in the cluster that are shorter than the normalized sequence (3' subsequences)
+        # are incorporated as members of the normalized sequence.
 
-        # Consider three types of cluster: 1. clusters consisting of a single normalized sequence
+        # There are three types of cluster: 1. clusters consisting of a single normalized sequence
         # (ignore), 2. clusters containing a normalized sequence as seed or member with shorter
         # truncated sequence members, and 3. clusters seeded by truncated sequences. If a truncated
         # sequence is found in group 2 (part of one or more longer normalized sequences) then ignore
         # it in group 3 (do not include it in normalized truncated sequences formed from group 3
-        # clusters).
-        norm_trna_seq_match_dict = {}
-        trimmed_trunc_seq_match_dict = {}
+        # clusters). The alternatives do not make sense -- including the truncated sequence in
+        # normalized sequences with truncated but not full profiles, or withholding it from both,
+        # perhaps as a new category of sequence.
+
+        # This dict relates trimmed truncated sequences to normalized sequences containing them.
+        trunc_seq_norm_seq_dict = defaultdict(list)
+        # This dict relates trimmed truncated sequences to other trimmed truncated sequences found
+        # to be subsequences of the former.
+        trunc_seq_trunc_seq_dict = {}
         for cluster in clusters:
             if len(cluster.member_names) == 1:
-                if isinstance(cluster.member_extras[0], NormalizedSeq):
+                if isinstance(cluster.member_extras[0], NormalizedSequence):
                     continue
 
             norm_trna_seq = None
-            trimmed_trunc_seq_seed = cluster.member_extras[0] if isinstance(cluster.member_extras[0], TrimmedSeq) else None
+            trimmed_trunc_seq_seed = cluster.member_extras[0] if isinstance(cluster.member_extras[0], TrimmedTruncatedProfileSequence) else None
+            if trimmed_trunc_seq_seed:
+                trunc_seed_seq_members = []
+                trunc_seq_trunc_seq_dict[trimmed_trunc_seq_seed.represent_name] = (trimmed_trunc_seq_seed, trunc_seed_seq_members)
             for seq in cluster.member_extras:
                 # Members of each cluster are pre-sorted in descending order of sequence length.
-                # There cannot be a normalized tRNA sequence and a truncated sequence of the same
-                # length (they would be the same sequence).
-                if isinstance(seq, NormalizedSeq):
+                # There cannot be a normalized tRNA and trimmed truncated profile sequence of the
+                # same length.
+                if norm_trna_seq:
+                    if isinstance(seq, TrimmedTruncatedProfileSequence):
+                        trunc_seq_norm_seq_dict[seq.represent_name].append(norm_trna_seq)
+                        continue
+                    else:
+                        raise ConfigError("It appears that a cluster in the 3' dereplication "
+                                          "of trimmed sequences with truncated profiles and normalized sequences with full profiles "
+                                          "contains more than one normalized sequence, when it should only contain zero or one.")
+
+                if isinstance(seq, NormalizedSequence):
                     norm_trna_seq = seq
                     continue
 
-                if norm_trna_seq:
-                    if isinstance(seq, TrimmedSeq):
-                        try:
-                            norm_trna_seq_match_dict[seq.represent_name][1].append(norm_trna_seq)
-                        except KeyError:
-                            norm_trna_seq_match_dict[seq.represent_name] = (seq, [norm_trna_seq])
-                        continue
-                    else:
-                        raise ConfigError("Each cluster should only contain zero or one normalized sequence, "
-                                          "but it appears that this cluster contains more than one.")
-
-                try:
-                    trimmed_trunc_seq_match_dict[trimmed_trunc_seq_seed.represent_name][1].append(seq)
-                except KeyError:
-                    trimmed_trunc_seq_match_dict[trimmed_trunc_seq_seed.represent_name] = (trimmed_trunc_seq_seed, [])
+                # The cluster is seeded by a truncated sequence.
+                trunc_seed_seq_members.append(seq)
 
         # Add truncated sequences to matching normalized tRNA sequences.
-
-        # To determine the count of truncated sequences with an anticodon, the location of the
-        # anticodon in a matching normalized sequence must first be found.
-        relative_anticodon_loop_index = self.TRNA_FEATURE_NAMES.index('anticodon_loop') - len(self.TRNA_FEATURE_NAMES) + 1
-        norm_trna_seq_anticodon_dict = {}
-
-        trimmed_trunc_seq_represent_names = [trimmed_trunc_seq.represent_name for trimmed_trunc_seq in self.trimmed_trunc_seqs]
-        uniq_trunc_seq_represent_names = [uniq_trunc_seq.represent_name for uniq_trunc_seq in self.uniq_trunc_seqs]
-        trimmed_trunc_seq_indices_to_remove = []
-        uniq_trunc_seq_indices_to_remove = []
-        for trimmed_trunc_seq_represent_name, entry in norm_trna_seq_match_dict.items():
-            trimmed_trunc_seq, norm_trna_seqs = entry
+        trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
+        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
+        uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
+        uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        # The count of recovered truncated sequences containing an anticodon is recorded to
+        # facilitate measurement of isoacceptor abundances. A truncated profile may stop 3' of the
+        # anticodon, but the anticodon may still be in the sequence. The presence of the anticodon
+        # is therefore inferred from the longest trimmed tRNA sequence in the matching normalized
+        # sequence.
+        norm_trna_seq_anticodon_dict = {} # This saves time finding the position of the anticodon relative to the acceptor in normalized sequences
+        for trimmed_trunc_seq_name, norm_trna_seqs in trunc_seq_norm_seq_dict.items():
+            trimmed_trunc_seq = trimmed_trunc_seq_dict.pop(trimmed_trunc_seq_name)
+            # The sequence with a truncated tRNA profile has been confirmed as tRNA, so transfer the
+            # object between dictionaries.
+            trimmed_trna_seq_dict[trimmed_trunc_seq.represent_name] = trimmed_trunc_seq
             trimmed_trunc_seq_length = len(trimmed_trunc_seq.seq_string)
 
-            trimmed_trunc_seq_indices_to_remove.append(trimmed_trunc_seq_represent_names.index(trimmed_trunc_seq_represent_name))
             for uniq_trunc_seq in trimmed_trunc_seq.uniq_seqs:
-                uniq_trunc_seq_indices_to_remove.append(uniq_trunc_seq_represent_names.index(uniq_trunc_seq.represent_name))
+                # The sequence with a truncated tRNA profile has been confirmed as tRNA.
+                uniq_trna_seq_dict[uniq_trunc_seq.represent_name] = uniq_trunc_seq_dict.pop(uniq_trunc_seq.represent_name)
 
             for norm_seq in norm_trna_seqs:
                 norm_seq.trimmed_seqs.append(trimmed_trunc_seq)
                 norm_seq_length = len(norm_seq.seq_string)
                 norm_seq.start_positions.append(norm_seq_length - trimmed_trunc_seq_length)
                 norm_seq.stop_positions.append(norm_seq_length)
-                trimmed_trunc_seq.norm_seq_count += 1
+                trimmed_trunc_seq.norm_seqs.append(norm_seq)
 
-                # Determine from the first normalized sequence in which the truncated sequence is
-                # found whether the truncated sequence contains the anticodon.
                 if not trimmed_trunc_seq.contains_anticodon:
+                    # Determine from the first normalized sequence in which the truncated sequence is
+                    # found whether the truncated sequence contains the anticodon.
                     try:
+                        # The position of the anticodon in the normalized sequence has already been found.
                         anticodon_start_relative_to_acceptor = norm_trna_seq_anticodon_dict[norm_seq.represent_name]
                     except KeyError:
-                        anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[relative_anticodon_loop_index]
+                        anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
                         if anticodon_loop_start > -1:
+                            # The anticodon loop was profiled.
                             anticodon_start = anticodon_loop_start + 2
+                            # The position of the anticodon relative to the acceptor is a negative number.
                             anticodon_start_relative_to_acceptor = anticodon_start - norm_seq.trimmed_seqs[0].uniq_seqs[0].feature_start_indices[-1]
                         else:
-                            anticodon_start_relative_to_acceptor = 1 # A positive number is used to mean the anticodon was not profiled
+                            # The anticodon loop was not profiled, indicated by a positive number.
+                            anticodon_start_relative_to_acceptor = 1
+                        norm_trna_seq_anticodon_dict[norm_seq.represent_name] = anticodon_start_relative_to_acceptor
+                    if anticodon_start_relative_to_acceptor == 1:
+                        continue
                     if trimmed_trunc_seq_length + anticodon_start_relative_to_acceptor >= 0:
                         trimmed_trunc_seq.contains_anticodon = True
                         for uniq_seq in trimmed_trunc_seq.uniq_seqs:
                             uniq_seq.contains_anticodon = True
 
-        # Consolidate trimmed truncated sequences that don't match normalized tRNA sequences into
+        # Trimmed truncated sequences that don't match normalized tRNA sequences are grouped into
         # normalized truncated sequences.
-        for trimmed_trunc_seq_target_represent_name, entry in trimmed_trunc_seq_match_dict.items():
-            trimmed_trunc_seq_target, trimmed_trunc_seq_queries = entry
-            if trimmed_trunc_seq_target_represent_name in norm_trna_seq_match_dict:
-                # All shorter trimmed truncated sequences in the cluster will also have matched a
-                # normalized tRNA sequence.
-                continue
+        for trimmed_trunc_seq_seed_represent_name, entry in trunc_seq_trunc_seq_dict.items():
+            trimmed_trunc_seq_seed, trimmed_trunc_seq_members = entry
 
-            for i, trimmed_trunc_seq_query in enumerate(trimmed_trunc_seq_queries):
-                if trimmed_trunc_seq_query.represent_name in norm_trna_seq_match_dict:
-                    trimmed_trunc_seq_queries = trimmed_trunc_seq_queries[: i]
+            # REMOVE
+            if trimmed_trunc_seq_seed_represent_name in trunc_seq_norm_seq_dict:
+                raise ConfigError("How is a trimmed truncated seed a part of a normalized tRNA sequence?")
+
+            # If a trimmed truncated sequence is a 3' subsequence of a normalized tRNA sequence,
+            # then it and all shorter sequences should be excluded from the new normalized truncated
+            # sequence.
+            for i, trimmed_trunc_seq in enumerate(trimmed_trunc_seq_members):
+                if trimmed_trunc_seq.represent_name in trunc_seq_norm_seq_dict:
+                    trimmed_trunc_seq_members = trimmed_trunc_seq_members[: i]
                     break
 
-            self.norm_trunc_seqs.append(NormalizedSeq([trimmed_trunc_seq_target] + trimmed_trunc_seq_queries, skip_init=True))
-
-        # Transfer recovered truncated sequences into the tRNA lists.
-        trimmed_trunc_seq_indices_to_remove.sort(reverse=True)
-        trimmed_trunc_seqs = self.trimmed_trunc_seqs
-        trimmed_trna_seqs = self.trimmed_trna_seqs
-        for trimmed_trunc_seq_index in trimmed_trunc_seq_indices_to_remove:
-            trimmed_trunc_seq = trimmed_trunc_seqs.pop(trimmed_trunc_seq_index)
-            trimmed_trunc_seq.trunc_profile_recovered_by_derep = True
-            trimmed_trna_seqs.append(trimmed_trunc_seq)
-        uniq_trunc_seq_indices_to_remove.sort(reverse=True)
-        uniq_trunc_seqs =  self.uniq_trunc_seqs
-        uniq_trna_seqs = self.uniq_trna_seqs
-        for uniq_trunc_seq_index in uniq_trunc_seq_indices_to_remove:
-            uniq_trunc_seq = uniq_trunc_seqs.pop(uniq_trunc_seq_index)
-            uniq_trunc_seq.trunc_profile_recovered_by_derep = True
-            uniq_trna_seqs.append(uniq_trunc_seq)
-
-        # All trimmed sequences have now been added to normalized truncated sequences, so they can
-        # be initialized.
-        for norm_trunc_seq in self.norm_trunc_seqs:
-            norm_trunc_seq.init()
+            self.norm_trunc_seq_dict[trimmed_trunc_seq_seed_represent_name] = NormalizedTruncatedProfileSequence([trimmed_trunc_seq_seed] + trimmed_trunc_seq_members)
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
