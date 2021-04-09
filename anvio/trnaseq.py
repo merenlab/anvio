@@ -1845,16 +1845,21 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def get_trimmed_seqs(self, uniq_seqs):
-        represent_names = [uniq_seq.represent_name for uniq_seq in uniq_seqs]
-        trimmed_seq_strings = [
-            uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
-            for uniq_seq in uniq_seqs
-        ]
+    def get_trimmed_seqs(self, uniq_seqs, trimmed_seq_class):
+        """Find trimmed sequences with either a full or truncated profile
+        ('TrimmedFullProfileSequence` or `TrimmedTruncatedProfileSequence`, respectively) from
+        unique profiled sequences."""
+        names = [uniq_seq.represent_name for uniq_seq in uniq_seqs]
+        if trimmed_seq_class == TrimmedFullProfileSequence:
+            trimmed_seq_strings = [uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
+                                   for uniq_seq in uniq_seqs]
+        elif trimmed_seq_class == TrimmedTruncatedProfileSequence:
+            trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
+                                   for uniq_seq in uniq_seqs]
 
-        clusters = Dereplicator(represent_names, trimmed_seq_strings, extras=uniq_seqs).full_length_dereplicate()
+        clusters = Dereplicator(names, trimmed_seq_strings, extras=uniq_seqs).full_length_dereplicate()
 
-        trimmed_seqs = [TrimmedSeq(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
+        trimmed_seqs = [trimmed_seq_class(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
         return trimmed_seqs
 
 
