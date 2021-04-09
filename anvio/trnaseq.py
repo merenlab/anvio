@@ -1384,9 +1384,10 @@ class TRNASeqDataset(object):
 
         self.analysis_summary_path = get_out_dir_path(self.sample_id + "-ANALYSIS_SUMMARY.txt")
 
-        # Supplementary text file paths
+        # Supplementary text file paths produced by DEBUG flag
         self.uniq_nontrna_path = get_out_dir_path(self.sample_id + "-UNIQUED_NONTRNA.txt")
         self.trimmed_ends_path = get_out_dir_path(self.sample_id + "-TRIMMED_ENDS.txt")
+        self.consol_seqs_with_inconsis_profiles_path = get_out_dir_path(self.sample_id + "-CONSOLIDATED_SEQS_WITH_INCONSISTENT_PROFILES.txt")
 
         # Intermediate pickle file paths
         self.intermed_file_path_dict = {
