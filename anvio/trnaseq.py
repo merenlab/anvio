@@ -2911,33 +2911,36 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def get_seqs_with_dels(self, mod_seq):
+    def get_sequences_with_deletions(self, mod_seq):
         """Generate in silico modified sequences with deletions, *M'*, at and/or around substitution
-        sites. This method is called by self.find_deletions.
+        sites. This method is called by `find_deletions`.
 
-        This method introduces in silico substitutions at substitution sites to create template
-        sequences. Substitutions correspond to the nucleotides observed in the normalized sequences
-        comprising the modified sequence, i.e., if 3 nucleotides are observed at a substitution
-        site, then 3 are introduced in silico, rather than the maximum 4. For each template,
-        self.introduce_dels is called to introduce deletions of different lengths at the possible
-        configurations of substitution sites. This method then removes redundant sequences that may
-        be produced from the different templates.
+        This method first introduces in silico nucleotide *substitutions* at possible substitution
+        sites to create template sequences. Substitutions are only allowed to the nucleotides
+        observed in the normalized sequences comprising the modified sequence, i.e., if 3
+        nucleotides are observed at a substitution site, then 3 are introduced in silico, rather
+        than the maximum 4. For each template sequence produced, `introduce_deletions` is called to
+        introduce deletions of different lengths at the possible configurations of substitution
+        sites. This may produce redundant sequences from the different templates, which are removed
+        in the present method.
 
         Returns
         =======
         del_set : set
-            A set of tuples with 2 elements. The first element is a sequence string containing
+            A set of tuples, each with 2 elements. The first element is a sequence string containing
             deletions. The second element is a tuple of the indices of these deletions in the input
             sequence.
         """
         longest_norm_seq_string = mod_seq.norm_seqs_without_dels[0].seq_string
         mod_seq_length = len(longest_norm_seq_string)
         sub_positions = mod_seq.sub_positions
+
         # Record the configurations of nucleotides at the substitution positions found in the
         # normalized sequences comprising the modified sequence. For normalized sequences shorter
-        # than the modified sequence (shorter than the longest normalized sequence) that are lacking
-        # certain substitution positions nearer the 5' end of the sequence, use the nucleotides at
-        # the missing substitution positions from the representative longest normalized sequence.
+        # than the modified sequence (shorter than its longest normalized sequence) that do not
+        # include certain substitution positions nearer the 5' end of the modified sequence, use the
+        # nucleotides at the missing substitution positions from the representative longest
+        # normalized sequence in the substitution configuration.
         longest_norm_seq_sub_nts = tuple([longest_norm_seq_string[sub_pos] for sub_pos in sub_positions])
         sub_nt_config_set = set([longest_norm_seq_sub_nts])
         for norm_seq in mod_seq.norm_seqs_without_dels[1: ]:
@@ -2950,6 +2953,7 @@ class TRNASeqDataset(object):
                 else:
                     norm_seq_sub_nts.append(norm_seq_string[sub_pos - norm_seq_start_in_mod_seq])
             sub_nt_config_set.add(tuple(norm_seq_sub_nts))
+
         # Make template sequences (without deletions) from the substitution configurations.
         seq_strings_without_dels = []
         for sub_nt_config in sub_nt_config_set:
@@ -2964,7 +2968,7 @@ class TRNASeqDataset(object):
             # sequences.
             del_dict = {}
             for seq_string in seq_strings_without_dels:
-                del_dict_for_seq = self.introduce_dels(seq_string, sub_positions, max_distinct_dels=max_distinct_dels)
+                del_dict_for_seq = self.introduce_deletions(seq_string, sub_positions, max_distinct_dels=max_distinct_dels)
                 # The same sequence with deletions may sometimes be generated from different
                 # template normalized sequences. In case of redundancy, favor the deletion
                 # configuration closest to the substitution site around which deletions were
@@ -2976,12 +2980,12 @@ class TRNASeqDataset(object):
                             continue
                     del_dict[seq_string_with_del] = del_pos_info
             # Nota bene: Generated sequences may be 3' subsequences of each other. These are
-            # 3'-dereplicated in self.find_deletions, which calls the present method.
+            # 3'-dereplicated in `find_deletions`, which calls the present method.
             del_set = set([(seq_string_with_del, del_pos_info[0]) for seq_string_with_del, del_pos_info in del_dict.items()])
             if len(del_set) <= self.max_del_configs:
-                # Too many sequences were generated to process in a reasonable amount of time, so
-                # decrement the number of distinct sites at which deletions can be introduced in a
-                # single template sequence.
+                # A very large number of sequences with in silico deletions was generated,
+                # potentially preventing processing in a reasonable time, so decrement the number of
+                # distinct sites at which deletions can be introduced in a single template sequence.
                 break
         return del_set
 
