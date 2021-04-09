@@ -4264,8 +4264,8 @@ def profile_worker(input_queue, output_queue, profiler):
     """This client for `trnaidentifier.Profiler.profile` is located outside the `TRNASeqDataset`
     class to allow multiprocessing."""
     while True:
-        seq_string, seq_name = input_queue.get()
-        output_queue.put(profiler.profile(seq_string, name=seq_name))
+        seq_string, represent_name, read_count = input_queue.get()
+        output_queue.put((profiler.profile(seq_string, name=represent_name), read_count))
 
 
 class NormalizedSeqSummary(object):
