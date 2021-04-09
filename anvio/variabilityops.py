@@ -1920,6 +1920,7 @@ class VariabilitySuper(VariabilityFilter, object):
                 self.progress.update(f"{counter} / {len(genes_to_process)} genes")
                 self.progress.increment()
                 structure = structure_db.get_structure(gene_id)
+                counter += 1
 
             if reference == 'STP':
                 continue
