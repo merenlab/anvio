@@ -3494,85 +3494,15 @@ class TRNASeqDataset(object):
         norm_seq_start_in_mod_seq = mod_seq_pos + 1
         return norm_seq_start_in_mod_seq, norm_seq_del_config
 
-                    changed_norm_seq_dict[trimmed_seq_string] = norm_seq
-                    new_trimmed_seq_start_positions = []
-                    new_trimmed_seq_stop_positions = []
-                    obsolete_trimmed_seq_indices = []
-                    collected_uniq_seqs = []
-                    trimmed_seq_index = 0
-                    for trimmed_seq, start_pos, stop_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                        if trimmed_seq.id_method == 0: # profiled
-                            if start_pos <= extra_fiveprime_length:
-                                obsolete_trimmed_seq_indices.append(trimmed_seq_index)
-                                if trimmed_seq.norm_seq_count == 1:
-                                    # Only remove trimmed sequences specific to the normalized
-                                    # sequence.
-                                    trimmed_seq_names_to_remove.append(trimmed_seq.represent_name)
-                                for uniq_seq in trimmed_seq.uniq_seqs:
-                                    uniq_seq.extra_fiveprime_length += extra_fiveprime_length - start_pos
-                                    collected_uniq_seqs.append(uniq_seq)
-                        elif trimmed_seq.id_method == 1: # mapped
-                            if start_pos < extra_fiveprime_length:
-                                if trimmed_seq.norm_seq_count == 1:
-                                    trimmed_seq.uniq_seqs[0].extra_fiveprime_length += extra_fiveprime_length - start_pos
-                                else:
-                                    obsolete_trimmed_seq_indices.append(trimmed_seq_index)
-                                    trimmed_seq.norm_seq_count -= 1
-                        trimmed_seq_index += 1
-                    obsolete_trimmed_seq_indices.sort(reverse=True)
-                    has_trunc_profile = norm_seq.trimmed_seqs[0].has_trunc_profile
-                    trunc_profile_recovered_by_derep = norm_seq.trimmed_seqs[0].trunc_profile_recovered_by_derep
-                    for trimmed_seq_index in obsolete_trimmed_seq_indices:
-                        norm_seq.trimmed_seqs.pop(trimmed_seq_index)
-                        norm_seq.start_positions.pop(trimmed_seq_index)
-                        norm_seq.stop_positions.pop(trimmed_seq_index)
-                    new_trimmed_seq = TrimmedSeq(trimmed_seq_string, collected_uniq_seqs)
-                    norm_seq.trimmed_seqs.insert(0, new_trimmed_seq)
-                    norm_seq.seq_string = trimmed_seq_string
-                    norm_seq.represent_name = new_trimmed_seq.represent_name
-                    # Seed the new positions of the trimmed sequences in the normalized sequence
-                    # with the positions of the new, longest trimmed sequence.
-                    corrected_start_positions = [0]
-                    corrected_stop_positions = [len(trimmed_seq_string)]
-                    for trimmed_seq, start_pos, stop_pos in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                        corrected_start_positions.append(start_pos - extra_fiveprime_length)
-                        corrected_stop_positions.append(stop_pos - extra_fiveprime_length)
-                    norm_seq.start_positions = corrected_start_positions
-                    norm_seq.stop_positions = corrected_stop_positions
-                    new_trimmed_seq_start_positions.insert(0, 0)
-                    new_trimmed_seq_stop_positions.insert(0, len(trimmed_seq_string))
-                    new_trimmed_seq.norm_seq_count += 1
-                    new_trimmed_seq.has_trunc_profile = has_trunc_profile
-                    new_trimmed_seq.trunc_profile_recovered_by_derep = trunc_profile_recovered_by_derep
-                    trimmed_seqs_to_add.append(new_trimmed_seq)
-                    final_matches.append((norm_seq, mod_seq, del_config))
-            else:
-                final_matches.append((norm_seq, mod_seq, del_config))
 
-        # Re-initialize the consolidated normalized sequences with newly detected extra 5' nucleotides.
-        for norm_seq in changed_norm_seq_dict.values():
-            norm_seq.init()
-        # Remove trimmed sequences made redundant by consolidation of normalized sequences.
-        if norm_seq_type == 'trunc':
-            norm_seqs = self.norm_trunc_seqs
-            trimmed_seqs = self.trimmed_trunc_seqs
-            uniq_seqs = self.uniq_trunc_seqs
-        elif norm_seq_type == 'trna':
-            norm_seqs = self.norm_trna_seqs
-            trimmed_seqs = self.trimmed_trna_seqs
-            uniq_seqs = self.uniq_trna_seqs
-        norm_seq_names = [norm_seq.represent_name for norm_seq in norm_seqs]
-        norm_seq_indices_to_remove = [norm_seq_names.index(norm_seq_name) for norm_seq_name in norm_seq_names_to_remove]
-        norm_seq_indices_to_remove.sort(reverse=True)
-        for norm_seq_index in norm_seq_indices_to_remove:
-            norm_seqs.pop(norm_seq_index)
-        trimmed_seq_names = [trimmed_seq.represent_name for trimmed_seq in trimmed_seqs]
-        trimmed_seq_indices_to_remove = [trimmed_seq_names.index(trimmed_seq_name) for trimmed_seq_name in trimmed_seq_names_to_remove]
-        trimmed_seq_indices_to_remove.sort(reverse=True)
-        for trimmed_seq_index in trimmed_seq_indices_to_remove:
-            trimmed_seqs.pop(trimmed_seq_index)
-        for trimmed_seq in trimmed_seqs_to_add:
-            trimmed_seqs.append(trimmed_seq)
+    def check_normalized_deletion_sequence_for_anticodon(self, mod_seq, norm_del_seq_start_in_mod_seq):
+        # Determine whether the normalized sequence with deletions contains the anticodon.
+        anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+        if anticodon_loop_start >= norm_del_seq_start_in_mod_seq:
+            return True
+        else:
+            return False
+
 
         # Add normalized sequences with deletions to modified sequences.
         if norm_seq_type == 'trunc':
