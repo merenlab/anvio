@@ -797,7 +797,32 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
 
 
 def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+    """Splits a given FASTA file into multiple parts.
 
+    Please note that this function will not clean after itself. You need to take care of the
+    output files in context.
+
+    Parameters
+    ==========
+    input_file_path : str
+        FASTA-formatted flat text file to be split
+    parts : int
+        Number of parts the input file to be split into
+    file_name_prefix : str
+        Prefferably a single-word prefix for the output files
+    shuffle : bool
+        Whether input sequences should be randomly shuffled (so the input sequences
+        randomly distribute across output files)
+    output_dir : str, path
+        Output directory. By default, anvi'o will store things in a new directory under
+        the system location for temporary files
+
+    Returns
+    =======
+    output_file_paths : list
+        Array with `parts` number of elements where each item is an output file path
+
+    """
     if not file_name_prefix:
         file_name_prefix = os.path.basename(input_file_path)
     else:
