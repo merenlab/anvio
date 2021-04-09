@@ -1662,40 +1662,6 @@ class TRNASeqDataset(object):
         self.run.info("New tRNA-seq database", self.trnaseq_db_path, nl_after=1)
 
 
-    def get_summary_line(self, label, value, is_time_value=False, padding=68):
-        """Return a string formatted to be written to the summary statistics file."""
-        # Report elapsed time in seconds in minutes.
-        if is_time_value:
-            value = "%.2f" % round(value / 60, 2)
-        return '%s%s\t%s\n' % (label, ' ' + '.' * (padding - len(label)), value)
-
-
-    def unique_reads(self):
-        """Dereplicate input reads."""
-        self.progress.new("Finding replicate reads")
-        self.progress.update("Loading reads")
-
-        fasta = fastalib.SequenceSource(self.input_fasta_path)
-        names = []
-        seqs = []
-        read_count = 0
-        while next(fasta):
-            names.append(fasta.id)
-            seqs.append(fasta.seq)
-            read_count += 1
-        fasta.close()
-        self.read_count = read_count
-
-        self.progress.update("Dereplicating")
-        clusters = Dereplicator(names, seqs).full_length_dereplicate()
-
-        uniq_reads = [UniqueSeq(cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names))
-                      for cluster in clusters]
-
-        self.progress.end()
-        return uniq_reads
-
-
     def report_profiling_params(self):
         """Add profiling parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
