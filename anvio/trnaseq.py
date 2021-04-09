@@ -1307,6 +1307,7 @@ class TRNASeqDataset(object):
     """Processes reads from a tRNA-seq library. `bin/anvi-trnaseq` is the client."""
 
     TRNA_FEATURE_NAMES = constants.TRNA_FEATURE_NAMES
+    RELATIVE_ANTICODON_LOOP_INDEX = TRNA_FEATURE_NAMES.index('anticodon_loop') - len(TRNA_FEATURE_NAMES) + 1
 
     # Column headers for supplementary tables written to text files
     UNIQ_NONTRNA_HEADER = [
