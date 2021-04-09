@@ -1514,8 +1514,43 @@ class TRNASeqDataset(object):
 
 
     def sanity_check(self):
-        """Check user inputs before proceeding."""
+        """Check `anvi-trnaseq` user inputs."""
         if os.path.exists(self.out_dir):
+            self.existing_out_dir_sanity_check()
+
+        if self.load_checkpoint:
+            self.load_checkpoint_sanity_check()
+        elif not os.path.exists(self.out_dir):
+            os.mkdir(self.out_dir)
+
+        filesnpaths.is_output_dir_writable(self.out_dir)
+
+        if self.descrip_path:
+            filesnpaths.is_file_plain_text(self.descrip_path)
+            self.descrip = open(self.descrip_path).read()
+
+        if self.num_threads < 1:
+            raise ConfigError("Surely you must be joking, Mr. Feynman! "
+                              "`--num-threads` wants a value greater than 0. "
+                              f"Last we checked, {self.num_threads} is not greater than 0.")
+
+        self.del_start_stop_sanity_check()
+
+        self.parameterize_dels()
+
+        self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
+
+        if not self.skip_fasta_check and not self.load_checkpoint:
+            self.progress.new("Checking input FASTA defline format")
+            self.progress.update("...")
+
+            utils.check_fasta_id_formatting(self.input_fasta_path)
+
+            self.progress.end()
+
+            self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green', nl_after=1)
+
+
             if len(os.listdir(self.out_dir)) == 0:
                 # There is nothing in the output directory. This may be caused by
                 # `anvi-run-workflow`, which creates the output directory even before `anvi-trnaseq`
