@@ -1599,9 +1599,16 @@ class TRNASeqDataset(object):
                               f"a 5'-most deletion stop of {self.fiveprimemost_del_stop}, and "
                               f"a 3'-most deletion stop of {self.threeprimemost_del_stop}.")
 
+
+    def parameterize_dels(self):
+        """Parameterize in silico deletions."""
+        # In silico deletions are allowed to start and stop at positions relative to sites of
+        # predicted modification-induced substitutions.
         self.possible_del_starts = tuple(range(self.fiveprimemost_del_start, self.threeprimemost_del_start + 1))
         self.possible_pythonic_del_stops = tuple(range(self.fiveprimemost_del_stop + 1, self.threeprimemost_del_stop + 2))
-        # Determine the spectrum of different deletion sizes/positions relative to a substitution.
+        # In silico deletions can be different sizes, so, in combination with possible start and
+        # stop positions, find all of the different deletions allowed relative to predicted
+        # substitutions.
         del_ranges = []
         for del_start in self.possible_del_starts:
             for del_stop in self.possible_pythonic_del_stops:
@@ -1609,7 +1616,6 @@ class TRNASeqDataset(object):
                     del_ranges.append(range(del_start, del_stop))
         self.del_ranges = tuple(del_ranges)
 
-        self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
 
         if not self.skip_fasta_check and not self.load_checkpoint:
             self.progress.new("Checking input FASTA defline format")
