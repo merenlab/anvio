@@ -123,16 +123,21 @@ NUM_NT_BINS = len(UNAMBIG_NTS) + 1
 ANTICODON_TO_AA = constants.anticodon_to_AA
 
 
-class UniqueSeq(object):
-    """A dereplicated tRNA-seq read that can contain additional information from tRNA feature
-    profiling.
-    """
+class UniqueSequence(object):
+    """A dereplicated tRNA-seq read."""
+
+    __slots__ = ('seq_string', 'represent_name', 'read_count')
+
+    def __init__(self, seq_string, represent_name, read_count):
+        self.seq_string = seq_string
+        self.represent_name = represent_name
+        self.read_count = read_count
+
+
+class UniqueProfileSequence(UniqueSequence):
+    """A tRNA feature profile, either full or truncated, was assigned to the sequence."""
 
     __slots__ = (
-        'seq_string',
-        'represent_name',
-        'read_count',
-        'id_method',
         'feature_start_indices',
         'feature_stop_indices',
         'has_complete_feature_set',
@@ -141,10 +146,10 @@ class UniqueSeq(object):
         'alpha_stop_index',
         'beta_start_index',
         'beta_stop_index',
-        'acceptor_length',
         'anticodon_string',
         'anticodon_aa',
         'contains_anticodon',
+        'acceptor_length',
         'num_conserved',
         'num_unconserved',
         'num_paired',
@@ -152,47 +157,134 @@ class UniqueSeq(object):
         'unconserved_info',
         'unpaired_info',
         'profiled_seq_length',
-        'num_extrapolated_fiveprime_nts',
-        'extra_fiveprime_length',
-        'extra_threeprime_length',
-        'trunc_profile_index',
-        'trunc_profile_recovered_by_derep',
-        'trunc_profile_recovered_by_del_analysis'
+        'trimmed_seq'
     )
 
-    def __init__(self, seq_string, represent_name, read_count):
-        self.seq_string = seq_string
-        self.represent_name = represent_name
-        self.read_count = read_count
-        self.id_method = None # If dealing with tRNA, identification method 0 = profiled, 1 = mapped
-        self.feature_start_indices = None
-        self.feature_stop_indices = None
-        self.has_complete_feature_set = None
-        self.has_his_g = None
-        self.alpha_start_index = None
-        self.alpha_stop_index = None
-        self.beta_start_index = None
-        self.beta_stop_index = None
-        self.acceptor_length = None
-        self.anticodon_string = None
-        self.anticodon_aa = None
-        self.contains_anticodon = None
-        self.num_conserved = None
-        self.num_unconserved = None
-        self.num_paired = None
-        self.num_unpaired = None
-        self.unconserved_info = None
-        self.unpaired_info = None
-        self.profiled_seq_length = None
-        self.num_extrapolated_fiveprime_nts = None
-        self.extra_fiveprime_length = None
-        self.extra_threeprime_length = None
-        self.trunc_profile_index = None # Index at which feature profile is truncated (None maintained if not truncated)
-        self.trunc_profile_recovered_by_derep = None
-        self.trunc_profile_recovered_by_del_analysis = None
+    def __init__(self, seq_string, represent_name, read_count, profile):
+        super().__init__(seq_string, represent_name, read_count)
+
+        self.feature_start_indices = [feature.start_pos if hasattr(feature, 'start_pos') else feature.start_positions
+                                      for feature in profile.features]
+        self.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
+                                     for feature in profile.features]
+        self.alpha_start_index = profile.alpha_start
+        self.alpha_stop_index = profile.alpha_stop
+        self.beta_start_index = profile.beta_start
+        self.beta_stop_index = profile.beta_stop
+        self.anticodon_string = anticodon = profile.anticodon_seq
+        self.anticodon_aa = profile.anticodon_aa if profile.anticodon_aa else None
+        self.contains_anticodon = True if anticodon else False
+        self.acceptor_length = len(profile.acceptor_variant_string)
+        self.num_conserved = profile.num_conserved
+        self.num_unconserved = profile.num_unconserved
+        self.num_paired = profile.num_paired
+        self.num_unpaired = profile.num_unpaired
+        self.unconserved_info = profile.unconserved_info
+        self.unpaired_info = profile.unpaired_info
+        self.profiled_seq_length = len(profile.profiled_seq)
+        self.trimmed_seq = None
 
 
-class TrimmedSeq(object):
+class UniqueFullProfileSequence(UniqueProfileSequence):
+    """A full tRNA feature profile was assigned to the sequence."""
+
+    __slots__ = (
+        'has_complete_feature_set',
+        'has_his_g',
+        'num_extrapolated_fiveprime_nts',
+        'extra_fiveprime_length'
+    )
+
+    def __init__(self, seq_string, represent_name, read_count, profile):
+        super().__init__(seq_string, represent_name, read_count, profile)
+
+        self.has_complete_feature_set = profile.has_complete_feature_set
+        self.has_his_g = True if profile.features[0].name == 'tRNA-His position 0' else False
+        self.num_extrapolated_fiveprime_nts = profile.num_in_extrapolated_fiveprime_feature
+        self.extra_fiveprime_length = 0 if profile.num_extra_fiveprime is None else profile.num_extra_fiveprime
+
+
+class UniqueTruncatedProfileSequence(UniqueProfileSequence):
+    """A truncated tRNA feature profile was assigned to the sequence."""
+
+    __slots__ = ('trunc_profile_index', )
+
+    def __init__(self, seq_string, represent_name, read_count, profile):
+        super().__init__(seq_string, represent_name, read_count, profile)
+
+        self.trunc_profile_index = profile.trunc_profile_index
+
+
+class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
+    """This object is generated as part of the determination of normalized tRNA sequences from
+    trimmed tRNA sequences. This type of sequence is produced in the special circumstance that the
+    profile of a longer sequence is transferred to a shorter sequence, because the longer sequence
+    was originally found to have a complete profile, but a shorter 3' subsequence also had a
+    complete profile; so, parsimoniously, the profile of the latter sequence was transferred to the
+    former, and the additional 5' nucleotides of the former sequence reclassified as extra
+    nucleotides beyond the 5' end of a mature tRNA sequence."""
+
+    __slots__ = ('defunct_uniq_seq', )
+
+    def __init__(self, defunct_uniq_seq, replacement_info_dict):
+        UniqueSeq.__init__(defunct_uniq_seq.seq_string, defunct_uniq_seq.represent_name, defunct_uniq_seq.read_count)
+
+        uniq_seq_string = defunct_uniq_seq.seq_string
+        uniq_seq_length = len(uniq_seq_string)
+        trimmed_seq_stop_in_uniq_seq = uniq_seq_length - uniq_seq_string[::-1].index(replacement_info_dict['trimmed_seq_string'][::-1])
+        self.feature_start_indices = [trimmed_seq_stop_in_uniq_seq + feature_start_index_from_trimmed_threeprime
+                                      for feature_start_index_from_trimmed_threeprime in replacement_info_dict['feature_start_indices_from_trimmed_threeprime']]
+        self.feature_stop_indices = [trimmed_seq_stop_in_uniq_seq + feature_stop_index_from_trimmed_threeprime
+                                     for feature_stop_index_from_trimmed_threeprime in replacement_info_dict['feature_stop_indices_from_trimmed_threeprime']]
+        self.alpha_start_index = (None if replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] is None
+                                  else trimmed_seq_stop_in_uniq_seq + replacement_info_dict['alpha_start_index_from_trimmed_threeprime'])
+        self.alpha_stop_index = (None if replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] is None
+                                 else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'])
+        self.beta_start_index = (None if replacement_info_dict['beta_start_index_from_trimmed_threeprime'] is None
+                                 else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['beta_start_index_from_trimmed_threeprime'])
+        self.beta_stop_index = (None if replacement_info_dict['beta_stop_index_from_trimmed_threeprime'] is None
+                                else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['beta_stop_index_from_trimmed_threeprime'])
+        self.anticodon_string = replacement_info_dict['anticodon_string']
+        self.anticodon_aa = replacement_info_dict['anticodon_aa']
+        self.contains_anticodon = replacement_info_dict['contains_anticodon']
+        self.acceptor_length = uniq_seq_length - replacement_info_dict['trimmed_seq_stop_in_uniq_seq']
+        self.num_conserved = replacement_info_dict['num_conserved']
+        self.num_unconserved = replacement_info_dict['num_unconserved']
+        self.num_paired = replacement_info_dict['num_paired']
+        self.num_unpaired = replacement_info_dict['num_unpaired']
+        unconserved_info = []
+        for unconserved_tuple in replacement_info_dict['unconserved_info_from_trimmed_threeprime']:
+            unconserved_info.append((trimmed_seq_stop_in_uniq_seq + unconserved_tuple[0],
+                                     unconserved_tuple[1],
+                                     unconserved_tuple[2]))
+        self.unconserved_info = unconserved_info
+        unpaired_info = []
+        for unpaired_tuple in replacement_info_dict['unpaired_info_from_trimmed_threeprime']:
+            unpaired_info.append((trimmed_seq_stop_in_uniq_seq + unpaired_tuple[0],
+                                  trimmed_seq_stop_in_uniq_seq + unpaired_tuple[1],
+                                  unpaired_tuple[2],
+                                  unpaired_tuple[3]))
+        self.unpaired_info = unpaired_info
+        self.profiled_seq_length = replacement_info_dict['acceptorless_profiled_seq_length'] + uniq_seq.acceptor_length
+        self.extra_fiveprime_length = uniq_seq_length - self.profiled_seq_length
+        self.trimmed_seq = replacement_info_dict['trimmed_seq']
+
+        # Store the defunct profile information for posterity.
+        self.defunct_uniq_seq = defunct_uniq_seq
+
+
+class UniqueMappedSequence(UniqueSequence):
+    """This object is generated in the identification of tRNA fragments by mapping."""
+
+    __slots__ = ('extra_fiveprime_length', 'trimmed_seq')
+
+    def __init__(self, seq_string, represent_name, read_count, extra_fiveprime_length=0):
+        super().__init__(seq_string, represent_name, read_count)
+
+        self.extra_fiveprime_length = extra_fiveprime_length
+        self.trimmed_seq = None
+
+
     """A tRNA sequence with bases trimmed 5' of the acceptor stem (or 5'-G in the case of tRNA-His)
     and 3' of the discriminator.
 
