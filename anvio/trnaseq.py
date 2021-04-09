@@ -1420,14 +1420,17 @@ class TRNASeqDataset(object):
             'norm_trunc_seq_dict': 'normalized sequences with a truncated feature profile'
         }
 
-        self.uniq_nontrna_seqs = []
-        self.uniq_trunc_seqs = []
-        self.uniq_trna_seqs = []
-        self.trimmed_trna_seqs = []
-        self.trimmed_trunc_seqs = []
-        self.norm_trna_seqs = []
-        self.norm_trunc_seqs = []
-        self.mod_trna_seqs = []
+        self.uniq_nontrna_seq_dict = {}
+        self.uniq_trunc_seq_dict = {}
+        self.uniq_trna_seq_dict = {}
+        self.trimmed_trna_seq_dict = {}
+        self.trimmed_trunc_seq_dict = {}
+        self.norm_trna_seq_dict = {}
+        self.norm_trunc_seq_dict = {}
+        self.mod_trna_seq_dict = {}
+        self.norm_del_seq_dict = {}
+        self.uniq_del_seq_dict = {}
+        self.trimmed_del_seq_dict = {}
 
         self.possible_del_starts = None
         self.possible_del_stops = None
