@@ -1865,19 +1865,19 @@ class TRNASeqDataset(object):
 
     def trim_truncated_profile_ends(self):
         """Trim any nucleotides 3' of the discriminator from sequences with a truncated tRNA
-        profile. Appends TrimmedSeq objects formed from input UniqueSeq objects to
-        `self.trimmed_trunc_seqs`."""
+        profile. Add `TrimmedTruncatedProfileSequence` objects formed from input
+        `UniqueTruncatedProfileSequence` objects to `self.trimmed_trunc_seq_dict`."""
         start_time = time.time()
         self.progress.new("Trimming the 3' ends of sequences with truncated tRNA profiles")
         self.progress.update("...")
 
-        self.trimmed_trunc_seqs.extend(self.get_trimmed_seqs(self.uniq_trunc_seqs))
-        self.trimmed_trunc_seqs.sort(key=lambda trimmed_seq: trimmed_seq.represent_name)
+        trimmed_seqs = self.get_trimmed_seqs([uniq_seq for uniq_seq in self.uniq_trunc_seq_dict.values()], TrimmedTruncatedProfileSequence)
+        trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
+        for trimmed_seq in sorted(trimmed_seqs, key=lambda trimmed_seq: trimmed_seq.represent_name):
+            trimmed_trunc_seq_dict[trimmed_seq.represent_name] = trimmed_seq
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed trimming sequences with truncated feature profile (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed trimming sequences with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
