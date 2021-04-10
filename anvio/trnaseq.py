@@ -708,10 +708,10 @@ class NormalizedTruncatedProfileSequence(NormalizedSequence):
 class NormalizedDeletionSequence(NormalizedSequence):
     """This object is generated in the identification of tRNAs with deletions.
     `NormalizedFullProfileSequence` and `NormalizedTruncatedProfileSequence` objects can be found to
-    contain deletions, invalidating their existing feature profile attributes (including acceptor
-    variants). This object is created in their stead. Note that the input defunct normalized
-    sequence can contain `TrimmedMappedSequence` objects in addition to `TrimmedFullProfileSequence`
-    and `TrimmedTruncatedProfileSequence` objects."""
+    contain deletions, invalidating their existing feature profile attributes. This object is
+    created in their stead. Note that the input defunct normalized sequence can contain
+    `TrimmedMappedSequence` objects in addition to `TrimmedFullProfileSequence` and
+    `TrimmedTruncatedProfileSequence` objects."""
 
     __slots__ = (
         'defunct_norm_seqs',
