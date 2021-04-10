@@ -218,11 +218,11 @@ class UniqueTruncatedProfileSequence(UniqueProfileSequence):
 class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
     """This object is generated as part of the determination of normalized tRNA sequences from
     trimmed tRNA sequences. This type of sequence is produced in the special circumstance that the
-    profile of a longer sequence is transferred to a shorter sequence, because the longer sequence
+    profile of a shorter sequence is transferred to a longer sequence, because the longer sequence
     was originally found to have a complete profile, but a shorter 3' subsequence also had a
-    complete profile; so, parsimoniously, the profile of the latter sequence was transferred to the
-    former, and the additional 5' nucleotides of the former sequence reclassified as extra
-    nucleotides beyond the 5' end of a mature tRNA sequence."""
+    complete profile; so, parsimoniously, the profile of the shorter sequence was transferred to the
+    longer, and the additional 5' nucleotides of the longer reclassified as extra nucleotides beyond
+    the 5' end of a mature tRNA sequence."""
 
     __slots__ = ('defunct_uniq_seq', )
 
