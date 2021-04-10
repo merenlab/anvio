@@ -290,6 +290,23 @@ class StructureDatabase(object):
         )
 
 
+    def get_template_info_for_gene(self, corresponding_gene_call):
+        """Get template info for gene as a dataframe"""
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.templates_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+
+
+    def get_template_info_for_all(self):
+        """Get the full template info as a dataframe"""
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.templates_table_name,
+        )
+
+
     def disconnect(self):
         self.db.disconnect()
 

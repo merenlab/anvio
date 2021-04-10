@@ -162,7 +162,7 @@ class InteracDomeSuper(Pfam):
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer(
+        hmm_hits_file,domain_hits_file = hmmer.run_hmmer(
             source='InteracDome',
             alphabet='AA',
             context='DOMAIN',
@@ -172,8 +172,7 @@ class InteracDomeSuper(Pfam):
             hmm=self.hmm_filepath,
             ref=None,
             noise_cutoff_terms='--cut_ga',
-            desired_output='standard',
-            out_fmt='--domtblout',
+            desired_output=('standard','domtable'),
         )
 
         self.run.warning("", header='HMMER results', lc='green')

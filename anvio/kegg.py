@@ -5017,8 +5017,7 @@ class KeggModuleEnrichment(KeggContext):
                                f"are: {col_list}")
 
         required_groups_txt_headers = ['sample', 'group']
-        sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
-        samples_to_groups_dict = {samp : sample_groups_dict[samp]['group'] for samp in sample_groups_dict.keys()}
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
 
         # make sure the samples all have a group
         samples_with_none_group = []
@@ -5047,7 +5046,7 @@ class KeggModuleEnrichment(KeggContext):
 
         # sanity check for mismatch between modules-txt and groups-txt
         sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
-        sample_names_in_groups_txt = set(sample_groups_dict.keys())
+        sample_names_in_groups_txt = set(samples_to_groups_dict.keys())
         samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
         samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
         if anvio.DEBUG:
@@ -5179,35 +5178,19 @@ class KeggModuleEnrichment(KeggContext):
 
         self.progress.update('Converting modules mode output into input for enrichment script')
         enrichment_input_path = filesnpaths.get_temp_file_path()
+
         if anvio.DEBUG:
             self.progress.reset()
             self.run.info("Temporary input file for enrichment script", enrichment_input_path)
+
         self.get_enrichment_input(enrichment_input_path)
 
-        cmd = f"anvi-script-enrichment-stats --input {enrichment_input_path} --output {self.output_file_path}"
-        log_file_path = filesnpaths.get_temp_file_path()
-
-        self.progress.update("Running Amy's enrichment")
-        utils.run_command(cmd, log_file_path)
         self.progress.end()
-        if not filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
-            raise ConfigError("It looks like something went wrong during the enrichment analysis. "
-                              f"We don't know what happened, but this log file could contain some clues: {log_file_path}")
 
-        if filesnpaths.is_file_empty(self.output_file_path):
-            raise ConfigError("It looks like something went wrong during the functional enrichment analysis. "
-                              "An output file was created, but it is empty "
-                              f"We don't know why this happened, but this log file could contain some clues: {log_file_path}")
+        # run the enrichment analysis
+        enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
+                                                                 self.output_file_path,
+                                                                 run=self.run,
+                                                                 progress=self.progress)
 
-
-        self.run.info('Enrichment results', self.output_file_path)
-
-        if not anvio.DEBUG:
-            # get rid of the temporary files now that we are done
-            os.remove(enrichment_input_path)
-            os.remove(log_file_path)
-        else:
-            self.run.info('Enrichment log file:', log_file_path)
-            self.run.warning("Because you ran this script with the --debug flag, the temporary files are kept. Please "
-                             "consider cleaning them up when you are done taking a look at them. Here they are: "
-                             f"{enrichment_input_path}, {log_file_path}")
+        return enrichment_stats

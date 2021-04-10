@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""A library to help anvi'o desribe itself"""
+"""A library to help anvi'o describe itself"""
 
 import os
 import sys
@@ -840,3 +840,5 @@ class ProgramsVignette(AnvioPrograms):
         open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
         run.info('Output file', os.path.abspath(self.output_file_path))
+
+

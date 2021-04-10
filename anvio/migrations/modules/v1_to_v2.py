@@ -21,7 +21,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.is_modules_db(db_path)
+    utils.is_kegg_modules_db(db_path)
 
     # make sure the current version is 1
     modules_db = db.DB(db_path, None, ignore_version = True)

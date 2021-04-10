@@ -56,12 +56,10 @@ class HMMer:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
 
-            part_file_name = os.path.join(tmp_dir, os.path.basename(target_files_dict[source]))
-
             # create splitted fasta files inside tmp directory
             self.target_files_dict[source] = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
-                                                               prefix=part_file_name)
+                                                               output_dir=tmp_dir)
 
     def verify_hmmpress_output(self, hmm_path):
         """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
@@ -87,7 +85,7 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
-                  desired_output='table', out_fmt='--tblout'):
+                  desired_output='table', hmmer_output_dir=None):
         """Run the program
 
         Parameters
@@ -122,13 +120,15 @@ class HMMer:
 
         desired_output : str OR list, 'table'
             HMMER programs have a couple of outputs. For the standard output (specified by the hmmer
-            program flag `-o`), pass 'standard'. For the tabular output (specified by the hmmer
-            program flag `--tblout` or `--domtblout`), pass 'table'. If you want to use both, pass
+            program flag `-o`), pass 'standard'. For the regular tabular output (specified by the hmmer
+            program flag `--tblout`), pass 'table'. For the domain tabular output (specified by the hmmer
+            program flag `--domtblout`), pass 'domtable'. If you want to use multiple, pass a tuple like
             ('standard', 'table')
 
-        out_fmt : str, '--tblout'
-            HMMer programs have different table output formats. For example, choose from --tblout or
-            --domtblout.
+        hmmer_output_dir : str
+            The path at which to store the HMMER output files, if desired. After all HMMER workers are
+            done and their partial output files have been combined into one (for each type), those combined
+            output files will be moved to this location.
         """
 
         target = ':'.join([alphabet, context])
@@ -146,11 +146,21 @@ class HMMer:
             desired_output = (desired_output, )
 
         for output in desired_output:
-            if output not in ['standard', 'table']:
+            if output not in ['standard', 'table', 'domtable']:
                 raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % output)
 
-        if out_fmt not in ['--tblout', '--domtblout']:
-            raise ConfigError("HMMer.run_hmmer :: Unknown out_fmt, '%s'" % out_fmt)
+        if hmmer_output_dir:
+            if not os.path.exists(hmmer_output_dir):
+                filesnpaths.gen_output_directory(hmmer_output_dir)
+            else:
+                filesnpaths.is_output_dir_writable(hmmer_output_dir)
+                for output in desired_output:
+                    file_path = os.path.join(hmmer_output_dir, f"hmm.{output}")
+                    if filesnpaths.is_file_exists(file_path, dont_raise=True):
+                        raise ConfigError(f"The file {file_path} already exists, and anvi'o does not like to "
+                                          "to overwrite things. Please either remove the file or rename your "
+                                          "desired output.")
+
 
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
@@ -164,6 +174,11 @@ class HMMer:
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
         if alphabet in ['DNA', 'RNA']:
             self.run.info('HMMer program used for search', 'nhmmscan')
+            if 'domtable' in desired_output:
+                raise ConfigError("Oh, dear. Someone (probably a programmer) has requested domain table output from "
+                                  f"the run_hmmer() function when the alphabet is {alphabet}. Sadly, this will not "
+                                  "work because that alphabet requires the use of `nhmmscan`, which does not have "
+                                  "the --domtblout parameter.")
         else:
             self.run.info('HMMer program used for search', self.program_to_use)
 
@@ -197,27 +212,48 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
+
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
             output_file = partial_input_file + '_output'
             table_file = partial_input_file + '_table'
+            if 'domtable' in desired_output:
+                domtable_file = partial_input_file + '_domtable'
+            else:
+                domtable_file = None
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
 
             if noise_cutoff_terms:
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file, *noise_cutoff_terms.split(),
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            hmm, partial_input_file]
+                if 'domtable' in desired_output:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                '--domtblout', domtable_file,
+                                hmm, partial_input_file]
+                else:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file, *noise_cutoff_terms.split(),
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
-                            '-o', output_file,
-                            '--cpu', cores_per_process,
-                            out_fmt, table_file,
-                            hmm, partial_input_file]
+                if 'domtable' in desired_output:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                '--domtblout', domtable_file,
+                                hmm, partial_input_file]
+                else:
+                    cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
+                                '-o', output_file,
+                                '--cpu', cores_per_process,
+                                '--tblout', table_file,
+                                hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
                                                        cmd_line,
@@ -226,7 +262,8 @@ class HMMer:
                                                        desired_output,
                                                        log_file,
                                                        output_queue,
-                                                       ret_value_queue))
+                                                       ret_value_queue,
+                                                       domtable_file))
             t.start()
             workers.append(t)
 
@@ -260,6 +297,8 @@ class HMMer:
                         append_function = self.append_to_main_table_file
                     elif file_type == 'standard':
                         append_function = self.append_to_main_standard_file
+                    elif file_type == 'domtable':
+                        append_function = self.append_to_main_table_file
 
                     append_function(main_file_buffer, worker_file, main_file_lock)
 
@@ -280,15 +319,18 @@ class HMMer:
 
         output_file_paths = []
         for output in desired_output:
-            output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
+            if hmmer_output_dir:
+                output_file_path = os.path.join(hmmer_output_dir, f"hmm.{output}")
+            else:
+                output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
 
             with open(output_file_path, 'w') as out:
                 merged_files_dict[output]['buffer'].seek(0)
                 out.write(merged_files_dict[output]['buffer'].read())
 
-            if output == 'table':
+            if output == 'table' or output == 'domtable':
                 num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
-                self.run.info('Number of raw hits', num_raw_hits, progress=self.progress)
+                self.run.info(f'Number of raw hits in {output} file', num_raw_hits, progress=self.progress)
                 output_file_path = output_file_path if num_raw_hits else None
 
             output_file_paths.append(output_file_path)
@@ -302,13 +344,14 @@ class HMMer:
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     output_queue, ret_value_queue):
+                     output_queue, ret_value_queue, domtable_output_file=None):
 
         try:
             # First we run the command
             utils.run_command(cmd_line, log_file)
 
-            if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file):
+            if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file) or \
+                                 (domtable_output_file and not os.path.exists(domtable_output_file)):
                 self.progress.end()
                 raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
                                   "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
@@ -321,6 +364,8 @@ class HMMer:
                     output_dict['table'] = table_output_file
                 elif output == 'standard':
                     output_dict['standard'] = standard_output_file
+                elif output == 'domtable':
+                    output_dict['domtable'] = domtable_output_file
             output_queue.put(output_dict)
 
             # return value of 0 to indicate success
@@ -367,15 +412,11 @@ class HMMer:
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
         """Append table output to the main file.
 
-        FIXME In addition to appending, this function also pre-processes the data, which should not
-        be done here. That qualifies as hmmer output parsing, and should be in
-        anvio/parsers/hmmer.py.
+        Lines starting with '#' (ie, header lines) are ignored.
         """
 
         detected_non_ascii = False
         lines_with_non_ascii = []
-        clip_description_index = None
-        clip_index_found = False
 
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
@@ -388,15 +429,10 @@ class HMMer:
                     detected_non_ascii = True
 
                 if line.startswith('#'):
-                    if not clip_index_found and line.find('description') != -1:
-                        # This parser removes the description column from the data
-                        clip_description_index = line.find('description')
-                        clip_index_found = True
-
                     continue
 
                 with buffer_write_lock:
-                    merged_file_buffer.write('\t'.join(line[:clip_description_index].split()) + '\n')
+                    merged_file_buffer.write(line)
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "

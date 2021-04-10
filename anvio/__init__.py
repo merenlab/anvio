@@ -28,6 +28,29 @@ NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
+TMP_DIR = None
+
+# if the user wants to use a non-default tmp directory, we set it here
+if '--tmp-dir' in sys.argv:
+    try:
+        idx = sys.argv.index('--tmp-dir')
+        TMP_DIR = os.path.abspath(sys.argv[idx+1])
+
+        if not os.path.exists(TMP_DIR):
+            parent_dir = os.path.dirname(TMP_DIR)
+            if os.access(parent_dir, os.W_OK):
+                os.makedirs(TMP_DIR)
+            else:
+                raise OSError(f"You do not have permission to generate a directory in '{parent_dir}'")
+        if not os.path.isdir(TMP_DIR):
+            raise OSError(f"The path provided to --tmp-dir, {TMP_DIR}, is not a directory...")
+        if not os.access(TMP_DIR, os.W_OK):
+            raise OSError(f"You do not have permission to generate files in '{TMP_DIR}'")
+
+        os.environ['TMPDIR'] = TMP_DIR
+    except Exception as e:
+        print("OSError: ", e)
+        sys.exit()
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -1652,6 +1675,15 @@ D = {
                      "additional columns to your output. NOTE: This is not yet implemented for the `nucleotide_additional_data` "
                      "table."}
                 ),
+    'include-site-pnps': (
+            ['--include-site-pnps'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
+                     "will be calculate with respect to the reference, with repsect to the consenus, and with respect to the "
+                     "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
+                     "added columns. This flag will be ignored if --engine is not CDN."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
@@ -1696,13 +1728,6 @@ D = {
              'type': str,
              'required': True,
              'help': "Automatic binning drivers. Available options '%(choices)s'."}
-                ),
-    'skip-synonymity': (
-            ['--skip-synonymity'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Computing synonymity can be an expensive operation for large data sets. Provide this flag to skip "
-                     "computing synonymity. It only makes sense to provide this flag when using --engine CDN."}
                 ),
     'transpose': (
             ['--transpose'],
@@ -1765,7 +1790,7 @@ D = {
                      "anymore, and you would have to leave anvi'o right now."}
                 ),
     'input-dir': (
-            ['-i', '--input-dir'],
+            ['--input-dir'],
             {'metavar': 'DIR_PATH',
              'type': str,
              'help': "Directory path for input files"}
@@ -2207,9 +2232,33 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'domtblout': (
+            ['-F', '--domtblout'],
+            {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
+                     "The output file will contain the suffix '_domtable.txt'."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'type': str,
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
+                     "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -2277,7 +2326,9 @@ D = {
                      "all contigs do not scale well when you wish to work with a single bin in the refine mode. For "
                      "this reason, the default behavior of anvi-refine is to ignore min/max values set in the default "
                      "state. This flag is your way of telling anvi'o to not do that, and load the state stored in the "
-                     "profile database as is."}
+                     "profile database as is. Please note that this variable has no influence on the `detection` view. "
+                     "For the `detection` view, anvi'o will always load the global detection settings as if you have "
+                     "used this flag."}
                 ),
     'state': (
             ['-s', '--state'],
@@ -2755,10 +2806,14 @@ D = {
             ['-G', '--groups-txt'],
             {'default': None,
             'metavar': 'TEXT_FILE',
-            'help': "A 2-column tab-delimited text file specifying which group each sample belongs to. "
-                    "The first column should have the header 'sample' and contain sample names matching "
-                    "to those are in the other input data. The second column should have the header 'group' "
-                    "and contain the group name for each sample (each sample should be in 1 group only)"}
+            'help': "A tab-delimited text file specifying which group each item belongs to. "
+                    "Depending on the context, items here may be individual samples or genomes. "
+                    "The first column must contain item names matching to those that are in your "
+                    "input data. A different column should have the header 'group' and contain the "
+                    "group name for each item. Each item should be associated with a single "
+                    "group. It is always a good idea to define groups using single words without any fancy "
+                    "characters. For instance, `HIGH_TEMPERATURE` or `LOW_FITNESS` are good group names. "
+                    "`my group #1` or `IS-THIS-OK?`, are not good group names."}
                 ),
     'sample-header': (
             ['--sample-header'],
