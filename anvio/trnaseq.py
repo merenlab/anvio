@@ -2387,7 +2387,9 @@ class TRNASeqDataset(object):
 
 
     def map_fragments(self):
-        """Map unprofiled tRNA fragments to longer profiled tRNA sequences.
+        """Map unprofiled tRNA fragments to longer profiled tRNA sequences. Fragments only missing a
+        3' acceptor variant were already found by `threeprime_dereplicate_acceptorless_sequences`
+        using an efficient shortcut.
 
         EXAMPLE:
         Normalized tRNA:                 (GT)TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
