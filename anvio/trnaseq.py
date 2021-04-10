@@ -1719,10 +1719,10 @@ class TRNASeqDataset(object):
 
 
     def profile_trna(self):
-        """Profile tRNA features in reads. Add `UniqueSeq` objects representing profiled tRNA
-        sequences to `self.uniq_trna_seq_dict`. Add `UniqueSeq` objects representing sequences with
-        a truncated tRNA profile to `self.uniq_trunc_seq_dict`. Add leftover `UniqueSeq` objects
-        representing unprofiled tRNA sequences to `self.uniq_nontrna_seq_dict`."""
+        """Profile tRNA features in reads. Add `UniqueSequence` objects representing profiled tRNA
+        sequences to `self.uniq_trna_seq_dict`. Add `UniqueSequence` objects representing sequences
+        with a truncated tRNA profile to `self.uniq_trunc_seq_dict`. Add leftover `UniqueSequence`
+        objects representing unprofiled tRNA sequences to `self.uniq_nontrna_seq_dict`."""
         uniq_reads = self.unique_reads()
 
         start_time = time.time()
