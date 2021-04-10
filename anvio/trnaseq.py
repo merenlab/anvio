@@ -2272,7 +2272,7 @@ class TRNASeqDataset(object):
         searched against normalized tRNA sequences. Non-tRNA is recovered as tRNA when it is a 3'
         subsequence of normalized tRNA or is longer than normalized tRNA sequences with a complete
         feature profile and thus is shown to have a 5' extension. Recovered sequences each generate
-        a `MappedSequence` object, a type of `TrimmedSequence` in which no trimming is performed."""
+        a `TrimmedMappedSequence` object."""
         start_time = time.time()
         self.progress.new("Dereplicating acceptorless tRNA sequences")
         self.progress.update("...")
