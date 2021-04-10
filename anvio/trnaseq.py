@@ -3456,7 +3456,7 @@ class TRNASeqDataset(object):
         """Normalized sequences with deletions and modified sequences are aligned at the 3' end, so
         find the start position of the normalized sequence in the modified sequence by working
         backward from the 3' end. Also record the normalized sequence positions immediately 5' of
-        the deletion."""
+        the deletions."""
         # Example:
         # ACGTAAC (mod seq)
         #    T  C (norm seq)
