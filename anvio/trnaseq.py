@@ -1453,12 +1453,12 @@ class TRNASeqDataset(object):
 
         if self.load_checkpoint == 'profile':
             self.load_checkpoint_files('profile')
-            self.report_fragment_mapping_params()
-            self.report_modification_analysis_params()
+            self.report_fragment_mapping_parameters()
+            self.report_modification_analysis_parameters()
 
         if self.load_checkpoint == 'fragment_mapping':
             self.load_checkpoint_files('fragment_mapping')
-            self.report_modification_analysis_params()
+            self.report_modification_analysis_parameters()
         else:
             # Reach this point either by starting from the beginning of the workflow
             # or loading the 'profile' checkpoint.
@@ -1510,7 +1510,7 @@ class TRNASeqDataset(object):
     def sanity_check(self):
         """Check `anvi-trnaseq` user inputs."""
         if os.path.exists(self.out_dir):
-            self.existing_out_dir_sanity_check()
+            self.existing_output_directory_sanity_check()
 
         if self.load_checkpoint:
             self.load_checkpoint_sanity_check()
@@ -1528,9 +1528,9 @@ class TRNASeqDataset(object):
                               "`--num-threads` wants a value greater than 0. "
                               f"Last we checked, {self.num_threads} is not greater than 0.")
 
-        self.del_start_stop_sanity_check()
+        self.deletion_start_stop_sanity_check()
 
-        self.parameterize_dels()
+        self.parameterize_deletions()
 
         self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
 
@@ -1545,7 +1545,7 @@ class TRNASeqDataset(object):
             self.run.info_single("FASTA deflines were found to be anvi'o-compliant", mc='green', nl_after=1)
 
 
-    def existing_out_dir_sanity_check(self):
+    def existing_output_directory_sanity_check(self):
         """Conditions must be fulfilled for the `anvi-trnaseq` output directory to already exist."""
         if len(os.listdir(self.out_dir)) == 0:
             # There is nothing in the output directory.
@@ -1576,7 +1576,7 @@ class TRNASeqDataset(object):
                               "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
 
 
-    def del_start_stop_sanity_check(self):
+    def deletion_start_stop_sanity_check(self):
         """Check the logic of allowed start and stop positions of in silico deletions relative to
         sites of predicted modification-induced substitutions."""
         if (self.fiveprimemost_del_start > self.threeprimemost_del_start
@@ -1594,7 +1594,7 @@ class TRNASeqDataset(object):
                               f"a 3'-most deletion stop of {self.threeprimemost_del_stop}.")
 
 
-    def parameterize_dels(self):
+    def parameterize_deletions(self):
         """Parameterize in silico deletions."""
         # In silico deletions are allowed to start and stop at positions relative to sites of
         # predicted modification-induced substitutions.
@@ -1615,7 +1615,7 @@ class TRNASeqDataset(object):
         """Do the steps before the first checkpoint. This "profiling" checkpoint occurs after tRNA
         profiling, tRNA trimming, and the recovery of tRNA sequences with truncated feature
         profiles."""
-        self.create_trnaseq_db()
+        self.create_trnaseq_database()
 
         if self.feature_param_path:
             # The user provided an optional tRNA feature parameterization file.
@@ -1623,9 +1623,9 @@ class TRNASeqDataset(object):
 
         # Add the user parameterizations as meta-values in the "self" table of the tRNA-seq
         # database.
-        self.report_profiling_params()
-        self.report_fragment_mapping_params()
-        self.report_modification_analysis_params()
+        self.report_profiling_parameters()
+        self.report_fragment_mapping_parameters()
+        self.report_modification_analysis_parameters()
 
         # Profile each (unique) read for tRNA features.
         self.profile_trna()
@@ -1646,7 +1646,7 @@ class TRNASeqDataset(object):
         self.write_checkpoint_files('profile')
 
 
-    def create_trnaseq_db(self):
+    def create_trnaseq_database(self):
         """Create an empty tRNA-seq database."""
         meta_values = {'sample_id': self.sample_id,
                        'treatment': self.treatment,
@@ -1656,7 +1656,7 @@ class TRNASeqDataset(object):
         self.run.info("New tRNA-seq database", self.trnaseq_db_path, nl_after=1)
 
 
-    def report_profiling_params(self):
+    def report_profiling_parameters(self):
         """Add profiling parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         db = trnaseq_db.db
@@ -1673,7 +1673,7 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
 
 
-    def report_fragment_mapping_params(self):
+    def report_fragment_mapping_parameters(self):
         """Add fragment mapping parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         trnaseq_db.db.set_meta_value('min_mapped_trna_fragment_size', self.min_trna_frag_size)
@@ -1683,7 +1683,7 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
 
 
-    def report_modification_analysis_params(self):
+    def report_modification_analysis_parameters(self):
         """Add modification analysis parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         db = trnaseq_db.db
