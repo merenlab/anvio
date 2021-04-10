@@ -306,14 +306,10 @@ class TrimmedSequence(object):
 
     EXAMPLE 2:
     3' fragment of the same tRNA, ending in 3'-CC rather than canonical 3'-CCA
-                                TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA
+                                TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACC
 
     This collapses to the following trimmed sequence, removing 3'-CC:
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
-
-    Examples of possible profiled reads that collapse to this sequence:
-                                TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCC
-                                TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTC
     """
 
     # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
