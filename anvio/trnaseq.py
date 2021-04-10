@@ -935,9 +935,7 @@ class ModifiedSequence(object):
     The workflow currently requires that a normalized sequence with deletions must be assigned to
     only one modified sequence. In other words, if the normalized sequence with deletions can be
     found through the introduction of in silico deletions in multiple modified sequences, then the
-    sequence is disregarded. However, this class is capable of handling "nonspecific" normalized
-    sequences with deletions assigned to multiple modified sequences though this capability is not
-    used.
+    sequence is disregarded.
 
     EXAMPLE:
     Consider E. coli tRNA-Ala-GGC-1-1, with detected modifications at positions 17 and 46. As seen
