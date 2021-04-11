@@ -332,7 +332,7 @@ class GenomeDescriptions(object):
         if genome_name in self.internal_genome_names:
             args.split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(g)
 
-        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False), p=self.progress)
 
         if self.functions_are_available:
             contigs_super.init_functions(requested_sources=requested_source_list)
