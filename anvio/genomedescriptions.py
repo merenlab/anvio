@@ -425,8 +425,10 @@ class GenomeDescriptions(object):
                                             (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
                 else:
                     # every function ever observed is common to all genomes.
-                    self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
-                                     "downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
+                    self.run.warning(f"Good news! Anvi'o found functions that are common to all of your genomes and will use them for "
+                                     f"downstream analyses and is very proud of you. Here is the "
+                                     f"{P('annotation source', len(self.function_annotation_sources), alt='list of annotation sources')}: "
+                                     f"anvi'o recognizes: {', '.join(self.function_annotation_sources)}'.", header="YAY FOR FUNCTIONS 🥂", lc='green')
 
 
     def get_genome_hash_for_external_genome(self, entry):
