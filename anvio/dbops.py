@@ -3719,8 +3719,8 @@ class PanDatabase:
             except:
                 pass
 
-        self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
-        self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
+        self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',') if len(s.strip())]
+        self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',') if len(s.strip())]
         self.genomes = self.internal_genomes + self.external_genomes
 
         # open the database
