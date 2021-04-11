@@ -31,7 +31,7 @@ from anvio.tables.views import TablesForViews
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
-from anvio.genomedescriptions import AggregateFunctions
+from anvio.genomedescriptions import AggregateFunctions, AggregateGenomes
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -1773,6 +1773,31 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.anvio_news = utils.get_anvio_news()
             except:
                 pass
+
+
+class GenomeView(AggregateGenomes):
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+        self.mode = 'genomeview'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.mode = A('mode')
+        self.tree = A('tree')
+        self.title = A('title')
+        self.skip_auto_ordering = A('skip_auto_ordering')
+        self.skip_news = A('skip_news')
+        self.skip_news = A('dry-run')
+
+        # critical items for genome view bottleroutes, which will be filled
+        # by `AggregateGenomes` upon initialization:
+        self.genomes = {}
+        self.initialized = False
+
+        if not skip_init:
+            AggregateGenomes.__init__(self, self.args, run=self.run, progress=self.progress)
 
 
 class StructureInteractive(VariabilitySuper, ContigsSuperclass):
