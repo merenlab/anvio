@@ -728,7 +728,9 @@ class NormalizedDeletionSequence(NormalizedSequence):
         'specific_mapped_read_count',
         'nonspecific_mapped_read_count',
         'specific_long_fiveprime_extension_dict',
-        'nonspecific_long_fiveprime_extension_dict'
+        'nonspecific_long_fiveprime_extension_dict',
+        'specific_read_acceptor_variant_count_dict',
+        'nonspecific_read_acceptor_variant_count_dict'
     )
 
     # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
@@ -812,6 +814,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
         nonspecific_mapped_read_count = 0
         specific_long_fiveprime_extension_dict = defaultdict(int)
         nonspecific_long_fiveprime_extension_dict = defaultdict(int)
+        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
         for trimmed_seq, defunct_norm_seq in zip(self.trimmed_seqs, self.defunct_norm_seqs):
             trimmed_seq_length = len(trimmed_seq.seq_string)
             trimmed_seq_read_count = trimmed_seq.read_count
@@ -886,6 +890,9 @@ class NormalizedDeletionSequence(NormalizedSequence):
                     specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
                     if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
                         specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+                for acceptor_seq_string, acceptor_variant_read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if acceptor_variant_read_count > 0:
+                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += acceptor_variant_read_count
             else:
                 nonspecific_read_count += trimmed_seq_read_count
                 nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
@@ -897,6 +904,9 @@ class NormalizedDeletionSequence(NormalizedSequence):
                     nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
                     if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
                         nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
+                for acceptor_seq_string, acceptor_variant_read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
+                    if acceptor_variant_read_count > 0:
+                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += acceptor_variant_read_count
 
         # Record the new start and stop positions of the trimmed sequences.
         self.start_positions = start_positions
@@ -915,6 +925,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
         self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
         self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
+        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
+        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
 
         # Store a uniqued list of defunct normalized sequences.
         self.defunct_norm_seqs = derep_defunct_norm_seqs
