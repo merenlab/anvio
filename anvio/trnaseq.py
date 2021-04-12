@@ -4074,52 +4074,45 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         norm_table_entries = []
-        class_name_id_info_dict = {'NormalizedFullProfileSequence': 'full_profile',
-                                   'NormalizedDeletionSequence': 'deletion'}
-        for norm_seq in self.norm_trna_seq_dict.values():
-            class_name = type(norm_seq).__name__
-            try:
-                id_info = class_name_id_info_dict[class_name]
-            except KeyError:
-                raise ConfigError(f"An object of class, {class_name}, is not recognized as a normalized tRNA sequence. "
-                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
+        for norm_seqs, id_info in ((self.norm_trna_seq_dict.values(), 'full_profile'),
+                                   (self.norm_del_seq_dict.values(), 'deletion')):
+            for norm_seq in norm_seqs:
+                specific_long_fiveprime_extensions = ''
+                specific_long_fiveprime_extension_read_counts = ''
+                for fiveprime_extension_string, read_count in sorted(norm_seq.specific_long_fiveprime_extension_dict.items(),
+                                                                     key=lambda item: -len(item[0])):
+                    specific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                    specific_long_fiveprime_extension_read_counts += str(read_count) + ','
 
-            specific_long_fiveprime_extensions = ''
-            specific_long_fiveprime_extension_read_counts = ''
-            for fiveprime_extension_string, read_count in sorted(norm_seq.specific_long_fiveprime_extension_dict.items(),
-                                                                 key=lambda item: -len(item[0])):
-                specific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                specific_long_fiveprime_extension_read_counts += str(read_count) + ','
+                nonspecific_long_fiveprime_extensions = ''
+                nonspecific_long_fiveprime_extension_read_counts = ''
+                for fiveprime_extension_string, read_count in sorted(norm_seq.nonspecific_long_fiveprime_extension_dict.items(),
+                                                                     key=lambda item: -len(item[0])):
+                    nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
+                    nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
 
-            nonspecific_long_fiveprime_extensions = ''
-            nonspecific_long_fiveprime_extension_read_counts = ''
-            for fiveprime_extension_string, read_count in sorted(norm_seq.nonspecific_long_fiveprime_extension_dict.items(),
-                                                                 key=lambda item: -len(item[0])):
-                nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
-
-            norm_table_entries.append(
-                (norm_seq.represent_name,
-                 len(norm_seq.trimmed_seqs),
-                 id_info,
-                 norm_seq.mean_specific_cov,
-                 norm_seq.mean_nonspecific_cov,
-                 ','.join(map(str, norm_seq.specific_covs)) + ',',
-                 ','.join(map(str, norm_seq.nonspecific_covs)) + ',',
-                 len(norm_seq.mod_seqs),
-                 norm_seq.specific_read_count,
-                 norm_seq.nonspecific_read_count,
-                 norm_seq.specific_read_with_extra_fiveprime_count,
-                 norm_seq.nonspecific_read_with_extra_fiveprime_count,
-                 norm_seq.specific_mapped_read_count,
-                 norm_seq.nonspecific_mapped_read_count,
-                 specific_long_fiveprime_extensions,
-                 specific_long_fiveprime_extension_read_counts,
-                 nonspecific_long_fiveprime_extensions,
-                 nonspecific_long_fiveprime_extension_read_counts)
-                + tuple(norm_seq.specific_read_acceptor_variant_count_dict.values())
-                + tuple(norm_seq.nonspecific_read_acceptor_variant_count_dict.values())
-            )
+                norm_table_entries.append(
+                    (norm_seq.represent_name,
+                    len(norm_seq.trimmed_seqs),
+                    id_info,
+                    norm_seq.mean_specific_cov,
+                    norm_seq.mean_nonspecific_cov,
+                    ','.join(map(str, norm_seq.specific_covs)) + ',',
+                    ','.join(map(str, norm_seq.nonspecific_covs)) + ',',
+                    len(norm_seq.mod_seqs),
+                    norm_seq.specific_read_count,
+                    norm_seq.nonspecific_read_count,
+                    norm_seq.specific_read_with_extra_fiveprime_count,
+                    norm_seq.nonspecific_read_with_extra_fiveprime_count,
+                    norm_seq.specific_mapped_read_count,
+                    norm_seq.nonspecific_mapped_read_count,
+                    specific_long_fiveprime_extensions,
+                    specific_long_fiveprime_extension_read_counts,
+                    nonspecific_long_fiveprime_extensions,
+                    nonspecific_long_fiveprime_extension_read_counts)
+                    + tuple(norm_seq.specific_read_acceptor_variant_count_dict.values())
+                    + tuple(norm_seq.nonspecific_read_acceptor_variant_count_dict.values())
+                )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         # Overwrite the existing table if starting from a checkpoint.
