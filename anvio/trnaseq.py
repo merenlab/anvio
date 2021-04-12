@@ -3250,10 +3250,8 @@ class TRNASeqDataset(object):
 
         # Process the matches between N and one or more M'.
         if norm_seq_type == 'trna':
-            trimmed_seq_dict = self.trimmed_trna_seq_dict
             norm_seq_dict = self.norm_trna_seq_dict
         elif norm_seq_type == 'trunc':
-            trimmed_seq_dict = self.trimmed_trunc_seq_dict
             norm_seq_dict = self.norm_trunc_seq_dict
         new_norm_del_seq_dict = {}
         # Winnow the matches down to one-to-one matches between a normalized sequence and modified
