@@ -41,6 +41,12 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 <!-- wireframe of documentation layout 
      each subtopic should link to relevant tutorials/workflows that highlight focused portion of the interactive interface
+
+     pull in content from 
+     https://merenlab.org/2016/02/27/the-anvio-interactive-interface/
+     https://merenlab.org/tutorials/interactive-interface/
+
+     https://merenlab.org/software/anvio/help/main/programs/anvi-inspect/ 
 -->
 - Settings Panel 
     - Main
@@ -60,7 +66,7 @@ However, there are more interfaces available in anvi'o than just that one, so le
 - Mouse Panel 
 
 - Inspect Page 
-    - accessed from context menu and ??
+    - accessed from context menu and terminal 
 
 - Glossary of keyboard shortcuts 
 - Glossry of helpful hints
