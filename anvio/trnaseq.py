@@ -109,6 +109,8 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
+sys.setrecursionlimit(10000)
+
 pp = terminal.pretty_print
 
 THREEPRIME_VARIANTS = constants.THREEPRIME_VARIANTS
