@@ -3347,26 +3347,6 @@ class TRNASeqDataset(object):
                 mod_seq.norm_seqs_with_dels.append(norm_del_seq)
                 mod_seq.del_configs.append(del_config)
 
-                del_config_iterator = iter(del_config[::-1])
-                del_pos = next(del_config_iterator)
-                norm_del_seq_pos = len(norm_del_seq_string)
-                mod_seq_pos = len(mod_seq.norm_seqs_without_dels[0].seq_string)
-                while norm_del_seq_pos > 0:
-                    if mod_seq_pos == del_pos:
-                        mod_seq_pos -= 1
-                        try:
-                            del_pos = next(del_config_iterator)
-                        except StopIteration:
-                            pass
-                    mod_seq_pos -= 1
-                    norm_del_seq_pos -= 1
-                norm_del_seq_start_in_mod_seq = mod_del_seq_pos
-                anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
-                if anticodon_loop_start >= norm_del_seq_start_in_mod_seq:
-                    norm_del_seq.contains_anticodon = True
-                else:
-                    norm_del_seq.contains_anticodon = False
-
         norm_del_seq_dict = self.norm_del_seq_dict
         trimmed_del_seq_dict = self.trimmed_del_seq_dict
         uniq_del_seq_dict = self.uniq_del_seq_dict
