@@ -2803,8 +2803,6 @@ class TRNASeqDataset(object):
                 norm_seqs, mod_positions = clusters.pop() # Normalized sequences should have retained their order
                 norm_seqs = list(norm_seqs) # Turn the array into a list
                 represent_norm_seq = norm_seqs[0]
-                # REMOVE
-                assert tuple([norm_seq.represent_name for norm_seq in norm_seqs]) == tuple([norm_seq.represent_name for norm_seq in sorted(norm_seqs, key=lambda norm_seq: (-len(norm_seq.seq_string), -norm_seq.has_complete_feature_set, norm_seq.represent_name))])
 
                 represent_norm_seq_length = len(represent_norm_seq.seq_string)
                 represent_norm_seq_start_in_array = aligned_ref_length - represent_norm_seq_length
