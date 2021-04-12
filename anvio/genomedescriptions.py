@@ -1035,6 +1035,10 @@ class AggregateGenomes(object):
         self.internal_genomes_file = A('internal_genomes')
         self.pan_db_path = A('pan_db')
 
+        if self.pan_db_path:
+            utils.is_pan_db(self.pan_db_path)
+
+
         self.genome_descriptions = GenomeDescriptions(args, progress=terminal.Progress(verbose=False))
         self.genome_descriptions.load_genomes_descriptions()
 
@@ -1051,7 +1055,7 @@ class AggregateGenomes(object):
 
     def init(self):
         """Learn everything about genomes of interest.
-        
+
         Calling this funciton will populate multiple critical dictionaries this class
         designed to give access to, including `self.genomes` and `self.gene_associations`.
         """
@@ -1068,7 +1072,7 @@ class AggregateGenomes(object):
 
             # learn all about genes:
             self.genomes[genome_name]['genes'] = self.get_genes_dict(genome_name)
-            
+
             # learn all about contigs:
             self.genomes[genome_name]['contigs'] = self.get_contigs_dict(genome_name)
 
