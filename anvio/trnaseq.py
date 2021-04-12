@@ -3358,13 +3358,11 @@ class TRNASeqDataset(object):
                 trimmed_del_seq_dict[trimmed_seq.represent_name] = trimmed_seq
                 for uniq_seq in trimmed_seq.uniq_seqs:
                     uniq_del_seq_dict[uniq_seq.represent_name] = uniq_seq
-
         if norm_seq_type == 'trunc':
             # If a sequence with a truncated feature profile is identified as tRNA, albeit with a
             # deletion, then record it as such. Trimmed truncated sequences may be nonspecific,
             # found in other normalized truncated sequences not recovered by this method. This
             # nuance should not affect anything downstream.
-            norm_trna_seq_dict = self.norm_trna_seq_dict
             trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
             trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
             uniq_trna_seq_dict = self.uniq_trna_seq_dict
