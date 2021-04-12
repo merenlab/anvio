@@ -1,4 +1,21 @@
-//  Edit Attributes For Multiple Layers
+/**
+ * Edit Attributes For Multiple Layers
+ *
+ *  Authors: Ozcan Esen
+ *           Dogan Can Kilment
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
 
 $(document).ready(function() {
     $('.select_layer').on('change', function() {
@@ -85,7 +102,7 @@ $(document).ready(function() {
                 var row = $(this).parent().parent();
                 var combo = $(row).find(target_selector);
 
-                if (combo.find('option[value="' + new_val + '"]').length > 0) 
+                if (combo.find('option[value="' + new_val + '"]').length > 0)
                 {
                     combo.val(new_val).trigger('change');
                     return;

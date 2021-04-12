@@ -1,9 +1,9 @@
 /**
- *  Handles right click menu
+ *  Handles right click menu functions
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2018, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren
+ *           Matthew Klein <mtt.l.kln@gmail.com>
  *
  * This file is part of anvi'o (<https://github.com/merenlab/anvio>).
  *
@@ -17,6 +17,7 @@
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
+
 let outerLimit1;
 let outerLimit2;
 

@@ -1,17 +1,16 @@
 /**
  * Draw bins, bin labels stuff.
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2017, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren <a. murat.eren@gmail.com>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
- * 
+ *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
@@ -125,7 +124,7 @@ Bins.prototype.NewBin = function(id, binState) {
 
             if (current_color != previous_color) {
                 emit('bin-settings-changed');
-                bins.PushHistory([{'type': 'ChangeColor', 
+                bins.PushHistory([{'type': 'ChangeColor',
                                    'bin_id': id,
                                    'color-before': previous_color,
                                    'color': current_color}]);
@@ -184,13 +183,13 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
         node.ResetColor();
 
         if (this.keepHistory) {
-            transaction.push({'type': 'RemoveNode', 
+            transaction.push({'type': 'RemoveNode',
                              'bin_id': bin_id,
                              'node': node});
         }
     }
 
-    transaction.push({'type': 'DeleteBin', 
+    transaction.push({'type': 'DeleteBin',
                        'bin_id': bin_id,
                        'name': document.getElementById('bin_name_' + bin_id).value,
                        'color': document.getElementById('bin_color_' + bin_id).getAttribute('color')});
@@ -211,7 +210,7 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     if (!this.container.querySelector('input[name=active_bin]:checked')) {
         this.SelectLastRadio();
     }
-    
+
     this.RedrawBins();
 };
 
@@ -253,13 +252,13 @@ Bins.prototype.Redo = function() {
     }
 }
 
-Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {        
+Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
     this.keepHistory = false;
     this.allowRedraw = false;
 
     let updated_bins = new Set();
     let removed_bins = new Set();
-    
+
     for (var i = 0; i < transaction.length; i++) {
         let operation = transaction[i];
 
@@ -278,7 +277,7 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
                     $('#bin_color_' + operation.bin_id).css('background-color', operation['color-before']);
                     break;
                 case 'DeleteBin':
-                    this.NewBin(operation.bin_id, {'name': operation.name, 
+                    this.NewBin(operation.bin_id, {'name': operation.name,
                                                   'color': operation.color});
                     removed_bins.delete(operation.bin_id);
                     break;
@@ -305,7 +304,7 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
                     removed_bins.add(operation.bin_id);
                     break;
                 case 'NewBin':
-                    this.NewBin(operation.bin_id, {'name': operation.name, 
+                    this.NewBin(operation.bin_id, {'name': operation.name,
                                                   'color': operation.color});
                     removed_bins.delete(operation.bin_id);
                     break;
@@ -368,7 +367,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                     bins_to_update.add(other_bin_id);
 
                     if (this.keepHistory && node.IsLeaf()) {
-                        transaction.push({'type': 'RemoveNode', 
+                        transaction.push({'type': 'RemoveNode',
                                           'bin_id': other_bin_id,
                                           'node': node});
                     }
@@ -380,16 +379,16 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                 bins_to_update.add(bin_id);
 
                 if (this.keepHistory && node.IsLeaf()) {
-                    transaction.push({'type': 'AppendNode', 
+                    transaction.push({'type': 'AppendNode',
                                       'bin_id': bin_id,
                                       'node': node});
                 }
             }
 
             node.SetColor(bin_color);
-        }    
+        }
     }
-    
+
     bins_to_update = Array.from(bins_to_update);
     this.PushHistory(transaction);
     this.RedrawBins();
@@ -419,7 +418,7 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
                     bins_to_update.add(bin_id);
 
                     if (this.keepHistory && node.IsLeaf()) {
-                        transaction.push({'type': 'RemoveNode', 
+                        transaction.push({'type': 'RemoveNode',
                                           'bin_id': bin_id,
                                           'node': node});
                     }
@@ -449,7 +448,7 @@ Bins.prototype.IsNodeMemberOfBin = function(node) {
 
 Bins.prototype.BinsSorted = function() {
     // move every taxonomy row after their original parent.
-    this.container.querySelectorAll('[data-parent]').forEach((elem) => { 
+    this.container.querySelectorAll('[data-parent]').forEach((elem) => {
         let taxonomy_row = elem.parentNode.removeChild(elem);
         let parent_bin_id = elem.getAttribute('data-parent');
 
@@ -471,7 +470,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
         if (mode == 'pan') {
             let num_gene_clusters = 0;
             let num_gene_calls = 0;
-            
+
             for (let node of this.selections[bin_id].values()) {
                 if (node.IsLeaf()) {
                     num_gene_clusters++;
@@ -676,8 +675,8 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
             if (mode != 'full')
             {
                 nodes.push(collection['data'][bin_name][i]);
-            } 
-            else if (typeof item_lengths[collection['data'][bin_name][i]] !== 'undefined') 
+            }
+            else if (typeof item_lengths[collection['data'][bin_name][i]] !== 'undefined')
             {
                 nodes.push(collection['data'][bin_name][i]);
                 sum_length += item_lengths[collection['data'][bin_name][i]];
@@ -805,11 +804,11 @@ Bins.prototype.RedrawLineColors = function() {
 };
 
 Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
-    
+
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
-    let nodes_for_inversion = [] 
-        
+    let nodes_for_inversion = []
+
     for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
             nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
@@ -818,17 +817,17 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
 
     nodes_for_inversion.map((node, idx) => {
 
-        let p1; 
-        let p2; 
+        let p1;
+        let p2;
         let p = node[0];
 
         if(idx == [nodes_for_inversion.length - 1]){
-            return // last node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
+            return // last node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call
         }
         else {
             [p1, p2] = p.GetBorderNodes();
         }
-        
+
         if (tree_type == 'circlephylogram'){
             let pie = drawPie(
                 'bin',
@@ -850,9 +849,9 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
         } else {
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
-                p.xy.x, 
+                p.xy.x,
                 p.xy.y,
-                p.size, 
+                p.size,
                 rect_width,
                 inverse_color,
                 inverse_fill_opacity,
@@ -914,8 +913,8 @@ Bins.prototype.RedrawBins = function() {
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
-    var show_shade = $('#show_shade_for_bins')[0].checked; 
-    var invert_shade = $('#invert_shade_for_bins')[0].checked; 
+    var show_shade = $('#show_shade_for_bins')[0].checked;
+    var invert_shade = $('#invert_shade_for_bins')[0].checked;
     var shade_fill_opacity = $('#shade_fill_opacity').val();
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
@@ -924,7 +923,7 @@ Bins.prototype.RedrawBins = function() {
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
     var background_starts_from_branch = $('#begins_from_branch').is(':checked');
-    
+
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
@@ -939,7 +938,7 @@ Bins.prototype.RedrawBins = function() {
             var startAncestors = new Set(start.GetAncestors());
             var endAncestors = new Set(end.GetAncestors());
             var intersection = new Set([...startAncestors].filter(x => endAncestors.has(x))).values().next().value;
-            
+
             if (typeof intersection === 'undefined') {
                 throw `It seems Node:${start.id} and Node:${end.id} does not have common ancestor.`;
             }
@@ -982,8 +981,8 @@ Bins.prototype.RedrawBins = function() {
                 drawRotatedText(
                     'bin',
                     {
-                        'x': bin_label_px, 
-                        'y': bin_label_py, 
+                        'x': bin_label_px,
+                        'y': bin_label_py,
                     },
                     $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
                     (autorotate_bin_labels) ? new_angle : bin_labels_angle,
@@ -1005,7 +1004,7 @@ Bins.prototype.RedrawBins = function() {
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
-                (show_grid) ? 0 : shade_fill_opacity, 
+                (show_grid) ? 0 : shade_fill_opacity,
                 false);
 
             if (show_grid && !show_shade) {
@@ -1046,8 +1045,8 @@ Bins.prototype.RedrawBins = function() {
                 drawRotatedText(
                     'bin',
                     {
-                        'y':  (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2 + (bin_labels_font_size / 3), 
-                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (this.higlighted_items.length > 0 ? 2 : 1)), 
+                        'y':  (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2 + (bin_labels_font_size / 3),
+                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (this.higlighted_items.length > 0 ? 2 : 1)),
                     },
                     $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
                     (autorotate_bin_labels) ? 0 : bin_labels_angle,
@@ -1065,7 +1064,7 @@ Bins.prototype.RedrawBins = function() {
 
             width_with_grids = total_radius + outer_ring_margin + outer_ring_size - backgroundStart
             width_no_grids = total_radius - backgroundStart
-            // ^ these get passed to invert_shade method so we don't have to re-declare a bunch of other stuff. 
+            // ^ these get passed to invert_shade method so we don't have to re-declare a bunch of other stuff.
 
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
@@ -1113,7 +1112,7 @@ Bins.prototype.RedrawBins = function() {
                 (node.size / 2 > Math.PI) ? 1 : 0,
                 color,
                 1,
-                true);     
+                true);
         }
         else
         {
@@ -1128,7 +1127,7 @@ Bins.prototype.RedrawBins = function() {
                 true);
         }
     }
-    invert_shade ? this.DrawInvertedNodes(leaf_list, show_grid ? width_with_grids : width_no_grids) : null 
+    invert_shade ? this.DrawInvertedNodes(leaf_list, show_grid ? width_with_grids : width_no_grids) : null
 
 }
 
@@ -1165,7 +1164,7 @@ Bins.prototype.RebuildIntersections = function() {
                     this.selections[bin_id].delete(node);
                     node.ResetColor();
                 }
-            }   
+            }
         }
 
         while (inserted) {
