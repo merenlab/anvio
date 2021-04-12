@@ -1,11 +1,14 @@
 /**
  * Javascript library to visualize anvi'o charts
  *
- *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen, Gökmen Göksel, Tobias Paczian.
- *  Copyright 2015, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Ozcan Esen
+ *           Isaac Fink <iafink@uchicago.edu>
+ *           Matthew Klein <mtt.l.kln@gmail.com>
+ *           Gökmen Göksel
+ *           Tobias Paczian
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public

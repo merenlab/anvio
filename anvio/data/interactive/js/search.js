@@ -1,5 +1,22 @@
+/**
+ * Search functions for the interactive interface.
+ *
+ *  Authors: Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
 
-function searchContigs() 
+function searchContigs()
 {
     var svalue = $('#searchValue').val();
 
@@ -11,7 +28,7 @@ function searchContigs()
     var column = $('#searchLayerList').val();
     search_column = (column == 0) ? 'Item Name' : layerdata[0][column];
     var operator = $('#searchOperator').val();
-    
+
     if (operator < 6)
     {
         var operator_text = $('#searchOperator option:selected').text();
@@ -81,7 +98,7 @@ function searchFunctions() {
                         var _accession      = data['results'][i][3];
                         var _annotation     = data['results'][i][4];
                         var _search_term    = data['results'][i][5];
-                        var _split_name     = data['results'][i][6];                        
+                        var _split_name     = data['results'][i][6];
                     }
                     else
                     {
@@ -94,10 +111,10 @@ function searchFunctions() {
                     }
 
                     var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
-                    _annotation = [_annotation.slice(0, _beginning), 
-                                   '<mark>', 
-                                   _annotation.slice(_beginning, _beginning + _search_term.length), 
-                                   '</mark>', 
+                    _annotation = [_annotation.slice(0, _beginning),
+                                   '<mark>',
+                                   _annotation.slice(_beginning, _beginning + _search_term.length),
+                                   '</mark>',
                                    _annotation.slice(_beginning + _search_term.length, _annotation.length)
                                    ].join("");
 
@@ -196,11 +213,11 @@ function highlightResult() {
         highlighted_splits.push(search_results[i]['split']);
     }
 
-    bins.HighlightItems(highlighted_splits); 
+    bins.HighlightItems(highlighted_splits);
 }
 
 function highlightSplit(name) {
-    bins.HighlightItems(name); 
+    bins.HighlightItems(name);
 }
 
 function appendResult() {

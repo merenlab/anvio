@@ -1,3 +1,22 @@
+/**
+ * Javascript library to visualize gene structures
+ *
+ *  Authors: Evan Kiefl <kiefl.evan@gmail.com>
+ *           Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
 const mode = 'structure';
 const MAX_NGL_WIDGETS = 16;
 
@@ -82,8 +101,8 @@ $(document).ready(function() {
         url: '/data/get_initial_data?timestamp=' + new Date().getTime(),
         success: function(data) {
             let available_gene_callers_ids = data['available_gene_callers_ids'];
-            let available_engines = data['available_engines']; 
-            sample_groups = data['sample_groups']; 
+            let available_engines = data['available_engines'];
+            sample_groups = data['sample_groups'];
 
             available_gene_callers_ids.forEach(function(gene_callers_id) {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
@@ -134,7 +153,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
                     <input class="form-check-input"
                         checkbox-for="group"
                         id="${category}_${group}"
-                        type="checkbox" 
+                        type="checkbox"
                         data-category="${category}"
                         data-group="${group}"
                         value="${group}"
@@ -151,13 +170,13 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
 
             tableHtml += `
                 <div class="table-group-checkbox" style="display: inline-block; float: left;">
-                    <input class="form-check-input" 
+                    <input class="form-check-input"
                             id="${category}_${group}_${sample}"
-                            type="checkbox" 
+                            type="checkbox"
                             data-category="${category}"
                             data-group="${group}"
                             data-sample="${sample}"
-                            value="${sample}" 
+                            value="${sample}"
                             ${sample_checked ? 'checked="checked"' : ''}>
                     <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>
                 </div>`;
@@ -175,7 +194,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
 
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
-        stages[group].viewerControls.orient(orientationMatrix); 
+        stages[group].viewerControls.orient(orientationMatrix);
     }
     cached_orientation_matrices[$('#gene_callers_id_list').val()] = orientationMatrix;
 }
@@ -217,8 +236,8 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     var defer = $.Deferred();
 
     $('#ngl-container').append(`
-        <div id="ngl_${group}_wrapper" 
-             class="col-md-${parseInt(12 / num_columns)} nopadding" 
+        <div id="ngl_${group}_wrapper"
+             class="col-md-${parseInt(12 / num_columns)} nopadding"
              style="height: ${parseFloat(100 / num_rows)}%; ">
              <div class="ngl-group-title">
                 ${group}
@@ -347,7 +366,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
 
             if (pickingProxy && pickingProxy.atom) {
                 if (pickingProxy.atom.resno != previous_hovered_residue && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))) {
-                    // remove ball+stick if hovered residue changed or 
+                    // remove ball+stick if hovered residue changed or
                     if (pickingProxy.atom.resno != previous_hovered_residue) {
                         stage.compList[0].reprList.slice(0).forEach((rep) => {
                             if (rep.name == 'ball+stick') {
@@ -373,7 +392,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         for (i in contacts) {
                             if (contacts[i] == String(residue)) {
                                 variant_contacts.push(contacts[i]);
-                            } 
+                            }
                             else if (variability[group].hasOwnProperty(parseInt(contacts[i]))) {
                                 variant_contacts.push(contacts[i]);
                             }
@@ -930,7 +949,7 @@ function draw_variability() {
                     }
                     else
                     {
-                        spacefill_options['color'] = color_legend[engine][column][column_value];   
+                        spacefill_options['color'] = color_legend[engine][column][column_value];
                     }
                 } else {
                     spacefill_options['color'] = $('#color_static').attr('color');
@@ -1101,13 +1120,13 @@ function create_ui() {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
-                            <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>   
-                            <input id="${item['name']}" 
-                                    type="${item['data_type']}" 
+                            <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>
+                            <input id="${item['name']}"
+                                    type="${item['data_type']}"
                                     data-provide="slider"
-                                    data-slider-min="${item['min']}" 
-                                    data-slider-max="${item['max']}" 
-                                    data-slider-step="${item['step']}" 
+                                    data-slider-min="${item['min']}"
+                                    data-slider-max="${item['max']}"
+                                    data-slider-step="${item['step']}"
                                     data-slider-value="[${min_val},${max_val}]"
                                     >
                         </div>
@@ -1222,7 +1241,7 @@ function onTargetColumnChange(element) {
 
         $(`#${prefix}_min`).val(selected_column_info['min']);
         $(`#${prefix}_max`).val(selected_column_info['max']);
-    } 
+    }
     else
     {
         $(`#${prefix}_numerical_panel`).hide();
@@ -1238,7 +1257,7 @@ function onTargetColumnChange(element) {
 
             if (prefix == 'color') {
                 $(`#color_legend_panel`).append(`<div class="col-md-4">
-                                                 <div class="colorpicker colorpicker-legend" 
+                                                 <div class="colorpicker colorpicker-legend"
                                                       color="${value}"
                                                       style="background-color:${value}"
                                                       data-engine="${engine}"
@@ -1343,12 +1362,12 @@ function move_codon_number_to_index(data) {
 async function make_image(group, sample) {
     let blob;
     let image_options = {
-        'trim': $('#trim').is(':checked'), 
+        'trim': $('#trim').is(':checked'),
         'factor': $('#scale').val(),
         'transparent': $('#transparent').is(':checked'),
         'antialias': $('#antialias').is(':checked')
     }
-    
+
     if (typeof sample === 'undefined') {
         // no sample requested, we generate image for merged.
         blob = await stages[group].viewer.makeImage(image_options);
@@ -1449,7 +1468,7 @@ function store_variability() {
             console.log(request, status, error);
             $('.overlay').hide();
         }
-    }); 
+    });
 }
 
 function store_structure_as_pdb(path_id, success_id, failure_id) {
@@ -1784,7 +1803,7 @@ function showSaveStateWindow()
                 var _select = "";
                 if (state_name == current_state_name)
                 {
-                    _select = ' selected="selected"'; 
+                    _select = ' selected="selected"';
                 }
                 $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
             }
@@ -1799,7 +1818,7 @@ function showSaveStateWindow()
     });
 }
 
-function saveState() 
+function saveState()
 {
     var name = $('#saveState_name').val();
 

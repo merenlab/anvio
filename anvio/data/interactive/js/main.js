@@ -1,11 +1,11 @@
 /**
  * Javascript library for anvi'o interactive interface
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren, Doğan Can Kilment
- *  Copyright 2015, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Ozcan Esen
+ *           Isaac Fink <iafink@uchicago.edu>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
