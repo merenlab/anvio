@@ -2196,7 +2196,11 @@ class TRNASeqDataset(object):
                         # The position of the anticodon in the normalized sequence has already been found.
                         anticodon_start_relative_to_acceptor = norm_trna_seq_anticodon_dict[norm_seq.represent_name]
                     except KeyError:
-                        anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+                        try:
+                            anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+                        except IndexError:
+                            # The anticodon loop was not reached in the profile.
+                            anticodon_loop_start = -1
                         if anticodon_loop_start > -1:
                             # The anticodon loop was profiled.
                             anticodon_start = anticodon_loop_start + 2
@@ -3507,7 +3511,11 @@ class TRNASeqDataset(object):
 
     def check_normalized_deletion_sequence_for_anticodon(self, mod_seq, norm_del_seq_start_in_mod_seq):
         # Determine whether the normalized sequence with deletions contains the anticodon.
-        anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+        try:
+            anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+        except IndexError:
+            # The anticodon loop was not reached in the profile.
+            return False
         if anticodon_loop_start >= norm_del_seq_start_in_mod_seq:
             return True
         else:
