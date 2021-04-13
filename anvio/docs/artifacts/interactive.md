@@ -89,3 +89,20 @@ Through the layers tab you can,
 - __Customize individual__ layers by switching between different __display modes__ depending on the layer type (i.e., ‘text’ or ‘color’ mode for categorical layers, or ‘bar’ or ‘intensity’ mode for numerical layers), __set normalization__ (i.e., ‘square-root’, or ‘log’ normalization), __minimum, and maximum cutoff__ values for numerical layers, or set __layer height__, and __layer margin__ (i.e., its distance from the previous layer).
 - Use the __multi-selector__ at the bottom to change settings for multiple layers at once.
 
+<!-- blog post links to 'working with SVGs blog post, good info, should incorporate? -->
+## Samples tab 
+Samples tab is for the additional data you provide the interface through a samples database (see samples order and samples infomration sections above). Through this layer you can,
+- __Change the order__ of layers using automatically-generated or user-provided orders of layers using the Sample order combo box,
+- __Customize individual samples information entries.__
+Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
+
+## Bins tab 
+Anvi’o allows you to create selections of items shown in the display (whether they are metagenomic contigs, 16S rRNA tags, or any other type of information). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
+- __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
+- View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
+- __Store a collection of bins__, or __load a previously stored collection.__
+
+
+
+
+
