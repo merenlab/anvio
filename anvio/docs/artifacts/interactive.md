@@ -73,14 +73,20 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 # An overview of the display
 
-The interactive interface has two major areas of interaction: the space for visualization on the right, and the left panel. The left panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
+The interactive interface has two major areas of interaction: the space for visualization on the right, and the settings panel. The settings panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
 
-# The left panel 
+# Settings panel
 
-At the bottom of the layers tab there is a section with tiny controls that are available in all tabs. Through these controls you can,
+At the bottom of the settings panel there is a section with tiny controls that are available in all tabs. Through these controls you can,
 - __Create or refresh__ the display when necessary using the draw button (some changes require you to do that),
 - __Zoom in, zoom out, and center__ the display.
 - __Download your display as an SVG file.__
+
+## Main tab 
+- Display
+    - content 
+- Layers
+    - content
 ## Layers tab 
 Through the layers tab you can,
 
@@ -95,13 +101,31 @@ Samples tab is for the additional data you provide the interface through a sampl
 - __Change the order__ of layers using automatically-generated or user-provided orders of layers using the Sample order combo box,
 - __Customize individual samples information entries.__
 Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
-
 ## Bins tab 
 Anvi’o allows you to create selections of items shown in the display (whether they are metagenomic contigs, 16S rRNA tags, or any other type of information). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
 - __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
 - View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
 - __Store a collection of bins__, or __load a previously stored collection.__
+## Legends tab 
+- content 
+## Search tab 
+It does what the name suggests. Using this tab you can,
+- __Build expressions to search items__ visualized in the main display.
+- __Highlight matches__, and __append__ them to, or __remove__ them from the __selected bin__ in the Bins tab.
 
+
+
+
+# The right panels
+## Mouse panel
+The mouse panel displays the value of items underneath the mouse pointer while the user browse the tree.
+
+Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘mouse panel’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
+
+## News panel 
+- some info here
+## Description panel 
+- some info here
 
 
 
