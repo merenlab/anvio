@@ -113,19 +113,30 @@ It does what the name suggests. Using this tab you can,
 - __Build expressions to search items__ visualized in the main display.
 - __Highlight matches__, and __append__ them to, or __remove__ them from the __selected bin__ in the Bins tab.
 
-
-
-
+## Dropdown menu (hamburger menu)
+- content
 # The right panels
 ## Mouse panel
 The mouse panel displays the value of items underneath the mouse pointer while the user browse the tree.
 
 Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘mouse panel’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
-
 ## News panel 
 - some info here
 ## Description panel 
 - some info here
+## Interactive interface tips + tricks
+Here are some small conveniences that may help the interface serve you better (we are happy to expand these little tricks with your suggestions).
+- You can zoom to a section of the display by making a rectangular selection of the area __while the pressing the shift button.__
+- You can click an entire branch to add items into the selected bin, and remove them by __right-clicking__ a branch.
+- If you click a branch __while pressing the <kbd>Command</kbd> or <kbd>CTRL</kbd> button__, it will create a new bin, and add the content of the selection into that bin.
+- By pressing <kbd>1</kbd>,<kbd>2</kbd>,<kbd>3</kbd>,<kbd>4</kbd>, and<kbd>5</kbd>, you can go between Layers, Bins, Samples, Mouse, and Search tabs!
+
+
+
+
+
+
+
 
 
 
