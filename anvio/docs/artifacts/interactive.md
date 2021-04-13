@@ -70,3 +70,22 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 - Glossary of keyboard shortcuts 
 - Glossry of helpful hints
+
+# An overview of the display
+
+The interactive interface has two major areas of interaction: the space for visualization on the right, and the left panel. The left panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
+
+# The left panel 
+
+At the bottom of the layers tab there is a section with tiny controls that are available in all tabs. Through these controls you can,
+- __Create or refresh__ the display when necessary using the draw button (some changes require you to do that),
+- __Zoom in, zoom out, and center__ the display.
+- __Download your display as an SVG file.__
+## Layers tab 
+Through the layers tab you can,
+
+- __Change general settings for the tree__ (i.e., switching between circle or rectengular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
+- __Load or save states__ to store all visual settings, or load a previously saved state.
+- __Customize individual__ layers by switching between different __display modes__ depending on the layer type (i.e., ‘text’ or ‘color’ mode for categorical layers, or ‘bar’ or ‘intensity’ mode for numerical layers), __set normalization__ (i.e., ‘square-root’, or ‘log’ normalization), __minimum, and maximum cutoff__ values for numerical layers, or set __layer height__, and __layer margin__ (i.e., its distance from the previous layer).
+- Use the __multi-selector__ at the bottom to change settings for multiple layers at once.
+
