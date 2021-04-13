@@ -98,6 +98,12 @@ D = {
              'required': True,
              'help': "Anvi'o profile database"}
                 ),
+    'genes-db': (
+            ['--genes-db'],
+            {'metavar': "GENES_DB",
+             'required': True,
+             'help': "Anvi'o genes database"}
+                ),
     'pan-db': (
             ['-p', '--pan-db'],
             {'metavar': "PAN_DB",

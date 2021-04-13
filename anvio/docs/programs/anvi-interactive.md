@@ -66,6 +66,8 @@ anvi-interactive -p %(profile-db)s \
                  --gene-mode
 {{ codestop }}
 
+If there isn't one already, this command will automatically generate an anvi'o %(genes-db)s under the `GENES` directory at the same level of the profile database. When the same command is run again, %(anvi-interactive)s will use the existing genes database.
+
 In this view you can order genes based on their distributions patterns across metagenomes (*without paying attention to their synteny*) or by ordering them based on their synteny in a given genome (*without paying attention to their differential distribution*). [Figure 2 in this paper](https://peerj.com/articles/4320/) examples the latter, and [Figure 5 in this paper](https://stm.sciencemag.org/content/11/507/eaau9356) examples the former case, which is also shown below:
 
 ![](http://merenlab.org/images/gene-distribution-across-metagenomes.png)
