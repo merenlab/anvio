@@ -122,7 +122,7 @@ The mouse panel displays the value of items underneath the mouse pointer while t
 
 Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘mouse panel’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
 ## News panel 
-- some info here
+The news panel provides information and external links tracking major Anvi'o releases and development updates. 
 ## Description panel 
 - some info here
 ## Interactive interface tips + tricks
