@@ -37,3 +37,6 @@
 [submodule "anvio/data/interactive/lib/JavaScript-MD5"]
 	path = anvio/data/interactive/lib/JavaScript-MD5
 	url = https://github.com/blueimp/JavaScript-MD5.git
+[submodule "anvio/data/interactive/lib/fabric.js"]
+	path = anvio/data/interactive/lib/fabric
+	url = https://github.com/fabricjs/fabric.js.git

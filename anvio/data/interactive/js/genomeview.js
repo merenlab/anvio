@@ -22,7 +22,6 @@
 
  var canvas;
  var genomeMax = 0;
- var genomes;
 
  // Settings vars
 
@@ -80,18 +79,16 @@ $(document).ready(function() {
 
           <table class="tftable" border="1">
             <tr><th>Data</th><th>Value</th></tr>
-            <tr><td>Split</td><td>${event.target.gene.split}</td></tr>
-            <tr><td>Start in Contig</td><td>${event.target.gene.start_in_contig}</td></tr>
-            <tr><td>Length</td><td>${event.target.gene.length}</td></tr>
-            <tr><td>Gene Callers ID</td><td>${event.target.gene.gene_callers_id}</td></tr>
-            <tr><td>Gene Cluster</td><td>${idToGC[event.target.gene.gene_callers_id]}</td></tr>
+            <tr><td>Split</td><td>${event.target.gene.contig}</td></tr>
+            <tr><td>Start in Contig</td><td>${event.target.gene.start}</td></tr>
+            <tr><td>Length</td><td>${event.target.gene.stop - event.target.gene.start}</td></tr>
+            <tr><td>Gene Callers ID</td><td>${event.target.geneID}</td></tr>
+            <tr><td>Gene Cluster</td><td>${undefined}</td></tr>
           </table>
           <button>some action</button>
           <button>some other action</button>
           `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
       }
-
-      genomes = [contig437, contig1001, contig798];
 
       $('#gene_color_order').append($('<option>', {
         value: 'Source',
@@ -178,22 +175,25 @@ $(document).ready(function() {
     }
 
     function draw() {
-      for(genes of genomes) {
-        let g = genes[genes.length-1].stop_in_split;
+      // Find max length genome
+      for(let genomeID in genomeData.genomes) {
+        let genome = genomeData.genomes[genomeID].genes.gene_calls;
+        let g = genome[Object.keys(genome).length-1].stop;
         if(g > genomeMax) genomeMax = g;
       }
 
-      var i;
-      for(i = 0; i < genomes.length; i++) {
-        var genome = genomes[i];
-        var label = genome[0].split.substring(9,genome[0].split.indexOf('_', 9));
-        addGenome(label, genome, i+1);
+      var y = 1;
+      for(let genomeID in genomeData.genomes) {
+        let genome = genomeData.genomes[genomeID].genes.gene_calls;
+        let label = genome[0].contig;
+        addGenome(label, genome, genomeID, y)
+        y++;
       }
 
       if(showScale) {
         for(var w = 0; w < genomeMax; w+=scale) {
           canvas.add(new fabric.Line([0,0,0,20], {left: w+(showLabels?120:0),
-                top: (i+1)*(spacing)-24,
+                top: y*(spacing)-24,
                 stroke: 'black',
                 strokeWidth: 1,
                 fontSize: 10,
@@ -201,7 +201,7 @@ $(document).ready(function() {
                 selectable: false}));
 
           canvas.add(new fabric.Text(w/1000 + " kB", {left: w+5+(showLabels?120:0),
-                top: (i+1)*(spacing)-24,
+                top: y*(spacing)-24,
                 stroke: 'black',
                 strokeWidth: .25,
                 fontSize: 15,
@@ -210,12 +210,12 @@ $(document).ready(function() {
         }
 
         canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0),
-              top: (i+1)*(1.25*spacing)-4,
+              top: y*(1.25*spacing)-4,
               stroke: 'black',
               strokeWidth: 2,
               selectable: false}));
         canvas.add(new fabric.Text("100 nts", {left: 15+(showLabels?120:0),
-              top: (i+1)*(1.25*spacing)-4,
+              top: y*(1.25*spacing)-4,
               stroke: 'black',
               strokeWidth: 1,
               fontSize: 20,
@@ -225,7 +225,7 @@ $(document).ready(function() {
     }
 
     function alignToCluster(gc) {
-      if(!gc || gc in mock_gene_clusters) {
+      if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]) {
         alignToGC = gc;
         showLabels = !gc; // only show labels if changing to default view
         $('#toggle_label_box').attr("checked", showLabels);
@@ -236,12 +236,12 @@ $(document).ready(function() {
       draw();
     }
 
-    function addGenome(label, gene_list, y) {
+    function addGenome(label, gene_list, genomeID, y) {
       var offsetX = 0;
-      if(alignToGC) {
-        var targetGeneID = mock_gene_clusters[alignToGC][label];
-        var targetGene = gene_list.find(gene => gene.gene_callers_id == targetGeneID);
-        var genePos = targetGene.start_in_split + (targetGene.stop_in_split - targetGene.start_in_split) / 2;
+      if(false && alignToGC) { /* TEMPORARILY DISABLED until proper data structure (geneID -> GC) added */
+        var targetGeneID = genomeData.gene_associations["anvio-pangenome"][genomeID][0]; /* TODO: implementation for multiple matching gene IDs */
+        var targetGene = gene_list[targetGeneID];
+        var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
         //var windowCenter = fabric.util.transformPoint({x:canvas.getWidth()/2,y:0}, canvas.viewportTransform)['x'];
         var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
         offsetX = windowCenter - genePos;
@@ -265,10 +265,10 @@ $(document).ready(function() {
       // so for now they are drawn individually
 
       //var geneGroup = new fabric.Group();
-      for(gene of gene_list) {
-        //addGene(gene, y);
+      for(let geneID in gene_list) {
+        let gene = gene_list[geneID];
         //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
-        var geneObj = geneArrow(gene,y);
+        var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y);
         if(showLabels) {
           geneObj.left += 120;
         }
@@ -281,19 +281,18 @@ $(document).ready(function() {
       //geneGroup.destroy();
     }
 
-    function geneArrow(gene, y) {
+    function geneArrow(gene, geneID, functions, y) {
       var cag = null;
       var color = 'gray';
-      if(gene.functions) {
+      if(functions) {
         switch(color_db) {
           case 'COG':
-            if(gene.functions["COG14_CATEGORY"]) cag = gene.functions["COG14_CATEGORY"][0][0];
-            if(gene.functions["COG20_CATEGORY"]) cag = gene.functions["COG20_CATEGORY"][0][0];
+            if(functions["COG_CATEGORY"]) cag = functions["COG_CATEGORY"][1];
             color = cag in default_COG_colors ? default_COG_colors[cag] : 'gray';
             break;
           case 'KEGG':
-            if(gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
-              cag = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
+            if(functions.hasOwnProperty("KEGG_Class") && functions.KEGG_Class != null) {
+              cag = getCategoryForKEGGClass(functions["KEGG_Class"][1]);
             }
             color = cag in default_KEGG_colors ? default_KEGG_colors[cag] : 'gray';
             break;
@@ -310,14 +309,15 @@ $(document).ready(function() {
       }
       /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
-      var length = gene.stop_in_split-gene.start_in_split;
+      var length = gene.stop-gene.start;
       var arrow = new fabric.Path('M 0 0 L ' + length + ' 0 L ' + length + ' 10 L 0 10 M ' + length + ' 0 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z');
       arrow.set({
         id: 'arrow',
-        gene: gene,   // better not to store entire gene object, but a pointer/id to find it in the genomes dict?
         selectable: false,
+        gene: gene,
+        geneID: geneID,
         top: -11+spacing*y,
-        left: 1.5+gene.start_in_split,
+        left: 1.5+gene.start,
         scaleX: 0.5,
         scaleY: 0.5,
         fill: color,
@@ -338,6 +338,7 @@ function initData() {
         type: 'POST',
         cache: false,
         url: '/data/get_genome_view_data',
+        async:false,
         success: function(data) {
             genomeData = data;
             console.log("Saved the following data:");
@@ -372,21 +373,4 @@ function getClassFromKEGGAnnotation(class_str) {
 // https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
-}
-
-var mock_gene_clusters = {'GC_X': {'contig437': 14902,
-                                   'contig1001': 19391,
-                                   'contig798': 18019},
-                          'GC_Y': {'contig437': 14937,
-                                   'contig1001': 19393,
-                                   'contig798': 18011}
-}
-
-var idToGC = {
-  14902: 'GC_X',
-  19391: 'GC_X',
-  18019: 'GC_X',
-  14937: 'GC_Y',
-  19393: 'GC_Y',
-  18011: 'GC_Y'
 }
