@@ -47,6 +47,8 @@ However, there are more interfaces available in anvi'o than just that one, so le
      https://merenlab.org/tutorials/interactive-interface/
 
      https://merenlab.org/software/anvio/help/main/programs/anvi-inspect/ 
+
+     https://merenlab.org/2017/05/08/anvio-views/
 -->
 - Settings Panel 
     - Main
@@ -142,12 +144,6 @@ The interactive interface recognizes a handful of keyboard shortcuts to help spe
 - The <kbd>T</kbd> key toggles showing the Title panel 
 - Keys <kbd>1</kbd> through <kbd>5</kbd> will toggle between tabs within the Settings panel, granted the Settings panel is currently shown. 
 - <kbd>CTRL</kbd>+<kbd>Z</kbd> and <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>Z</kbd> will undo or redo bin actions, respectively. 
-
-
-
-
-
-
 
 
 
