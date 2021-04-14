@@ -2367,8 +2367,8 @@ function loadState()
 function processState(state_name, state) {
 
     let serializedState = serializeSettings()
-    // this var is the state obj returned from serializeSettings, representing the default state anvio generates. 
-    // We can now check it against the user supplied state to update values in the default. 
+    // state obj returned from serializeSettings, representing the default state anvio generates. 
+    // We can now check it against the user supplied state to update/ADD values in the default. 
     let modifiedItems = []
     // keep track of the things we update and let the user know their state data has been tweaked
 
@@ -2482,8 +2482,6 @@ function processState(state_name, state) {
     else {
         traverseNestedData(serializedState['layers'], state['layers'])
         state['layers-order'] = serializedState['layers-order']
-
-        console.log(state['layers'])
         modifiedItems.push('layers, layer order')
     }
 
@@ -2742,7 +2740,7 @@ function processState(state_name, state) {
     current_state_name = state_name;
 
     if(modifiedItems){
-        toastr.warning(`You can export this updated state to json and see what's been changed :)`)
+        toastr.warning(`You can export this updated state as json and see what's been changed :)`)
         toastr.warning(`It appears the state file (${current_state_name}) you provided may have been missing some key elements. Anvio has done its best to fill in the blanks for you. How nice!`)
     } else {
         toastr.success("State '" + current_state_name + "' successfully loaded.");
