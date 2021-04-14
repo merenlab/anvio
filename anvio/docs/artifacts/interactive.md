@@ -114,7 +114,8 @@ It does what the name suggests. Using this tab you can,
 - __Highlight matches__, and __append__ them to, or __remove__ them from the __selected bin__ in the Bins tab.
 
 ## Dropdown menu (hamburger menu)
-- content
+This menu provides links to external information, resources, and issue-reporting related to anvi'o. In addition, users can select
+- __Show help tooltips__ to display informational tooltips while using the interactive interface. 
 # The right panels
 ## Mouse panel
 The mouse panel displays the value of items underneath the mouse pointer while the user browse the tree.
@@ -130,6 +131,17 @@ Here are some small conveniences that may help the interface serve you better (w
 - You can click an entire branch to add items into the selected bin, and remove them by __right-clicking__ a branch.
 - If you click a branch __while pressing the <kbd>Command</kbd> or <kbd>CTRL</kbd> button__, it will create a new bin, and add the content of the selection into that bin.
 - By pressing <kbd>1</kbd>,<kbd>2</kbd>,<kbd>3</kbd>,<kbd>4</kbd>, and<kbd>5</kbd>, you can go between Layers, Bins, Samples, Mouse, and Search tabs!
+
+## Keyboard shortcuts
+The interactive interface recognizes a handful of keyboard shortcuts to help speed up your workflow
+- The <kbd>S</kbd> key toggles the Settings panel 
+- The <kbd>M</kbd> key toggles the Mouse panel 
+- The <kbd>N</kbd> key toggles the Description panel 
+- The <kbd>W</kbd> key toggles the News panel
+- The <kbd>D</kbd> key triggers a redraw of your visualization
+- The <kbd>T</kbd> key toggles showing the Title panel 
+- Keys <kbd>1</kbd> through <kbd>5</kbd> will toggle between tabs within the Settings panel, granted the Settings panel is currently shown. 
+- <kbd>CTRL</kbd>+<kbd>Z</kbd> and <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>Z</kbd> will undo or redo bin actions, respectively. 
 
 
 
