@@ -1108,7 +1108,9 @@ class AggregateGenomes(object):
             pan_db = dbops.PanSuperclass(self.args)
             pan_db.init_gene_clusters()
 
-            d['anvio-pangenome'] = pan_db.gene_clusters
+            d['anvio-pangenome'] = {}
+            d['anvio-pangenome']['gene-cluster-name-to-genomes-and-genes'] = pan_db.gene_clusters
+            d['anvio-pangenome']['genome-and-gene-names-to-gene-clusters'] = pan_db.gene_callers_id_to_gene_cluster
 
         return d
 
