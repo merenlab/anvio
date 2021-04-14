@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import operator as op
 
+from numba import jit
 from scipy.stats import entropy
 
 import anvio
@@ -651,7 +652,12 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('entropy', float),
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
-                ('synonymity', float),
+                ('pN_consensus', float),
+                ('pS_consensus', float),
+                ('pN_reference', float),
+                ('pS_reference', float),
+                ('pN_popular_consensus', float),
+                ('pS_popular_consensus', float),
             ],
             'SSMs': [
             ],
@@ -1869,6 +1875,74 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.end()
 
 
+    def compute_residue_coordinates(self, structure_db):
+        """Appends columns x, y, and z to self.data, which correspond to the center of mass coordinates of the reference amino acid
+
+        Parameters
+        ==========
+        structure_db : anvio.structureops.StructureDatabase
+            A structure database generated with the same contigs DB that variability profile is defined for.
+
+        Notes
+        =====
+        - Currently, the client's only access to this functionality is through the API.
+        """
+
+        genes_with_structure = structure_db.get_genes_with_structure()
+        genes_with_variability = self.data['corresponding_gene_call'].unique()
+        genes_to_process = [x for x in genes_with_structure if x in genes_with_variability]
+
+        self.progress.new("Adding 3D coordinates", progress_total_items=len(genes_to_process))
+
+        combos = self.data.\
+            groupby(['corresponding_gene_call', 'codon_order_in_gene'])\
+            ['reference'].\
+            apply(pd.Series.mode).\
+            reset_index().\
+            drop('level_2', axis=1) # The mysterious presence of this 'level_2' column is exactly the kind
+                                    # of thing that likely depends on which pandas version is used. Beware.
+        combos = combos[combos['corresponding_gene_call'].isin(genes_to_process)]
+
+        coords = {
+            'corresponding_gene_call': [],
+            'codon_order_in_gene': [],
+            'x': [],
+            'y': [],
+            'z': [],
+        }
+
+        counter = 0
+        last_gene_id = None
+        for _, row in combos.iterrows():
+            gene_id, codon_order_in_gene, reference = row
+
+            if last_gene_id != gene_id:
+                self.progress.update(f"{counter} / {len(genes_to_process)} genes")
+                self.progress.increment()
+                structure = structure_db.get_structure(gene_id)
+                counter += 1
+
+            if reference == 'STP':
+                continue
+
+            x, y, z = structure.get_residue_center_of_mass(structure.get_residue(0))
+            coords['corresponding_gene_call'].append(gene_id)
+            coords['codon_order_in_gene'].append(codon_order_in_gene)
+            coords['x'].append(x)
+            coords['y'].append(y)
+            coords['z'].append(z)
+
+            last_gene_id = gene_id
+
+        self.progress.increment(increment_to=len(genes_to_process))
+        self.progress.update('Merging coordinate data')
+
+        coords = pd.DataFrame(coords)
+        self.data = self.data.merge(coords, on=['corresponding_gene_call', 'codon_order_in_gene'], how='left')
+
+        self.progress.end()
+
+
     def compute_gene_coverage_fields(self):
         """Adds _gene_ coverage, not position coverage, to self.data.
 
@@ -2148,7 +2222,6 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
-
 class QuinceModeWrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
@@ -2334,7 +2407,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.engine = 'CDN'
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.skip_synonymity = A('skip_synonymity', null)
+        self.include_site_pnps = A('include_site_pnps', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2344,35 +2417,161 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.compute_synonymity))
+        if self.include_site_pnps:
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
 
 
-    def compute_synonymity(self):
-        """This method is currently prohibitively slow for large datasets."""
-        if self.skip_synonymity:
-            return
+    def calc_synonymous_fraction(self, comparison='reference'):
+        """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
-        coding_codons = constants.coding_codons
+        self.progress.new('Calculating per-site synonymous fraction')
+        progress.update('...')
 
-        number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
-        array = np.zeros((self.data.shape[0], number_of_pairs))
+        # Some lookups
+        coding_codons = sorted(constants.coding_codons)
+        codon_to_num = {coding_codons[i]: i for i in range(len(coding_codons))}
+        codon_nums = np.arange(len(coding_codons))
 
-        array_index = 0
-        s_or_ns = []
-        for i in coding_codons:
-            for j in coding_codons:
-                if j > i:
-                    break
-                array[:, array_index] = self.data.loc[:, i] * self.data.loc[:, j]
-                array_index += 1
-                s_or_ns.append(constants.is_synonymous[i][j])
+        is_synonymous = np.zeros((len(coding_codons), len(coding_codons))).astype(bool)
+        for i, codon1 in enumerate(coding_codons):
+            for j, codon2 in enumerate(coding_codons):
+                if constants.codon_to_AA[codon1] == constants.codon_to_AA[codon2]:
+                    is_synonymous[i, j] = True
+                else:
+                    is_synonymous[i, j] = False
 
-        # normalize
-        array = array / np.sum(array, axis=1)[:,np.newaxis]
+        # Populate necessary per-site info
+        progress.update('...')
+        if comparison == 'popular_consensus':
+            progress.update('Finding popular consensus; You have time for a quick stretch')
+            self.data['popular_consensus'] = self.data.\
+                groupby('unique_pos_identifier')\
+                ['consensus'].\
+                transform(lambda x: x.value_counts().index[0])
 
-        # each row sums to 1. Synonymity is the sum of those that are synonymous
-        synonymity = np.sum(array[:, s_or_ns], axis=1)
-        self.data["synonymity"] = synonymity
+        comparison_array = self.data\
+            [comparison].\
+            map(codon_to_num).\
+            fillna(-1).\
+            values.\
+            astype(int)
+
+        counts_array = self.data[constants.coding_codons].values.astype(int)
+        coverage = self.data['coverage'].values.astype(int)
+
+        self.progress.update("You're ungrateful if you think this is slow")
+        frac_syns, frac_nonsyns = _calculate_synonymous_fraction(
+            counts_array,
+            comparison_array,
+            coverage,
+            codon_nums,
+            is_synonymous,
+        )
+
+        self.progress.end()
+        return np.array(frac_syns), np.array(frac_nonsyns)
+
+
+    def _get_per_position_potential(self, comparison):
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-site basis"""
+        coding_codons = sorted(constants.coding_codons)
+        stop_codons = list(set(constants.codons) - set(constants.coding_codons))
+
+        syn_lookup, nonsyn_lookup = {}, {}
+        for null_codon in stop_codons + ['X']:
+            syn_lookup[null_codon], nonsyn_lookup[null_codon] = 0, 0
+
+        for codon in coding_codons:
+            syn_lookup[codon], nonsyn_lookup[codon], _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+
+        potentials = np.zeros((len(self.data), 2))
+        for i, comp in enumerate(self.data[comparison]):
+            potentials[i, 0] = syn_lookup[comp]
+            potentials[i, 1] = nonsyn_lookup[comp]
+
+        return potentials
+
+
+    def _get_per_gene_potential(self, contigs_db, comparison):
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-gene basis"""
+        syn_lookup, nonsyn_lookup = {}, {}
+        for corresponding_gene_call in self.data['corresponding_gene_call'].unique():
+            gene_call = contigs_db.genes_in_contigs_dict[corresponding_gene_call]
+            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
+
+            syn_lookup[corresponding_gene_call], nonsyn_lookup[corresponding_gene_call], _ = \
+                utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
+
+        potentials = np.zeros((len(self.data), 2))
+        for i, corresponding_gene_call in enumerate(self.data['corresponding_gene_call']):
+            potentials[i, 0] = syn_lookup[corresponding_gene_call]
+            potentials[i, 1] = nonsyn_lookup[corresponding_gene_call]
+
+        return potentials
+
+
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+        """Calculate new columns in self.data corresponding to each site's contribution to a grouping
+
+        First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
+        fN and fS are respectively the fraction of non-synonymous and synonymous variation observed in the SAAV.
+        fN and fS sum to 1. Then, each fN and fS value is divided by the number of non-synonymous sites and
+        synonymous sites (aka the synonymity potentials), which will depend on the grouping (see `grouping`).
+
+        Parameters
+        ==========
+        contigs_db : dbops.ContigsSuperclass
+            If None, it is assumed that `self` has inherited `ContigsSuperclass` already.
+        grouping : str, 'site'
+            This keyword specifies the number of synonymous and non-synonymous sites that fN and fS
+            should be divided by to yield pN and pS. E.g. if `grouping` is 'gene', then each SCV
+            belonging to gene X should be divided by the number of synonymous and non-synonymous
+            sites that are present in gene X's sequence, i.e. the output of
+            `utils.get_synonymous_and_non_synonymous_potential`.  As another example, if `grouping`
+            is 'site' and the comparison codon at a site is CGA, then there are 1.33 synonymous
+            sites and 1.66 non-synonymous sites. So each SCV's pN and pS should be calculated by
+            taking fN and fS, and dividing them by 1.66 and 1.33 respectively. If `potentials` is
+            None, the available `grouping` values are {'gene', 'site'}, otherwise `grouping` can be
+            assigned to anything, and it will be used to name the columns (see Returns).
+        comparison : str, 'reference'
+            This specifices the comparison codon that should be used for determining synonymity. Options are
+            {'reference', 'consensus', 'popular_consensus'}. reference means the codon in the reference sequence
+            is the comparison codon, consensus means most common codon in the SCV should be used as the reference,
+            and popular_consensus means that the most frequently observed consensus codon across all samples should
+            be used as the comparison codon.
+        potentials : numpy.array, None
+            Most people should not use this. If provides a way to create custom groupings. If
+            passed, it should be a (len(self.data), 2) shaped numpy array. potentials[:,0] and
+            potentials[:,1] specify the amount that each SCV's fS and fS values should be divided by
+            to yield pS and pN.
+
+        Returns
+        =======
+        output : None
+            This function does not return anything. It creates 2 new columns in `self.data` with
+            names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+        """
+
+        if contigs_db is None:
+            contigs_db = self
+
+        frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison)
+
+        if potentials is None:
+            if grouping == 'site':
+                potentials = self._get_per_position_potential(comparison=comparison)
+            elif grouping == 'gene':
+                potentials = self._get_per_gene_potential(contigs_db=contigs_db, comparison=comparison)
+            else:
+                raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
+
+        group_tag = (grouping + '_') if grouping != 'site' else ''
+        pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
+        self.data[pS_name] = frac_syns/potentials[:, 0]
+        self.data[pN_name] = frac_nonsyns/potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
@@ -2697,8 +2896,18 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
+        if self.columns_to_load is not None:
+            cols = self.get_columns()
+            for col in self.columns_to_load:
+                if col not in cols:
+                    raise ConfigError(f"Hmmm. The column '{col}' isn't in your variability table..."
+                                      f"Here are the columns that do exist: {cols}")
 
         self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def get_columns(self):
+        return set(pd.read_csv(self.variability_table_path, sep="\t", nrows = 0).columns)
 
 
     def process_external_table(self):
@@ -2720,9 +2929,9 @@ class VariabilityFixationIndex(object):
     """Calculates a fixation index matrix
 
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
-    (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
+    (https://www.nature.com/articles/nature11711#Sec14)
     which extends the traditional metric to allow for multiple alleles in one site. We further
-    extend to allow for codon and amino acid alleles.
+    extend to allow for codon and amino acid alleles. See supplemental.
     """
 
     def __init__(self, args={}, p=progress, r=run):
@@ -2993,6 +3202,39 @@ class VariabilityFixationIndex(object):
 
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
+
+
+@jit(nopython=True)
+def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, codon_nums, is_synonymous):
+    num_nonsyns, num_syns = [], []
+    for i in range(counts_array.shape[0]):
+        comp = comparison_array[i] # The codon to be compared against
+        num_nonsyn, num_syn = 0, 0
+
+        if comp < 0:
+            # No sense talking about synonymity relative to a stop codon or codon containing N
+            num_nonsyns.append(np.nan)
+            num_syns.append(np.nan)
+        else:
+            cov = coverage[i]
+
+            for codon in codon_nums:
+                if codon == comp:
+                    # Don't compare the reference codon with itself, we care only about codons that
+                    # differ from the reference codon
+                    continue
+
+                contribution = counts_array[i, codon]/cov
+
+                if is_synonymous[comp, codon]:
+                    num_syn += contribution
+                else:
+                    num_nonsyn += contribution
+
+            num_nonsyns.append(num_nonsyn)
+            num_syns.append(num_syn)
+
+    return num_syns, num_nonsyns
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

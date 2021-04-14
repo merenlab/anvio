@@ -550,7 +550,7 @@ class BottleApplication(Bottle):
         except:
             data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
 
-        data['sequence'] = self.interactive.split_sequences[split_name]
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence']
 
         ## get the variability information dict for split:
         progress.new('Variability', discard_previous_if_exists=True)
@@ -739,7 +739,7 @@ class BottleApplication(Bottle):
             coverage_list = coverages[layer].tolist()
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
 
-        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence'][focus_region_start:focus_region_end]
 
         ## get the variability information dict for split:
         progress.new('Variability')
@@ -1000,7 +1000,7 @@ class BottleApplication(Bottle):
 
     def get_sequence_for_split(self, split_name):
         try:
-            sequence = self.interactive.split_sequences[split_name]
+            sequence = self.interactive.split_sequences[split_name]['sequence']
             header = split_name
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
