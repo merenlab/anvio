@@ -1013,7 +1013,7 @@ class ContigSummarizer(SummarizerSuperClass):
         if split_names:
             split_names = set(split_names)
             c.init_split_sequences()
-            seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
+            seq = ''.join([c.split_sequences[split_name]['sequence'] for split_name in split_names])
             for e in list(c.genes_in_splits.values()):
                 if e['split'] in split_names:
                     process_gene_call(e['gene_callers_id'])
@@ -1648,7 +1648,7 @@ class Bin:
 
                 sequence = ''
                 for split_order in sequential_block:
-                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]
+                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]['sequence']
 
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)

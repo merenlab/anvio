@@ -116,7 +116,11 @@ class DBInfo(ABC):
         if expecting is not None and db_type not in expecting:
             if dont_raise:
                 return
-            raise ConfigError(f"Was expecting any of the db types {expecting}, but '{path}' has type '{db_type}'")
+            if len(expecting) == 1:
+                raise ConfigError(f"The database at '{path}' is a {db_type} database but you passed it as a '{expecting[0]}' database :/")
+            else:
+                raise ConfigError(f"The database at '{path}' is a {db_type} database but your parameters claim that it is of type "
+                                  f"either {' or '.join(expecting)} :/")
 
         if db_type in dbinfo_classes:
             # This is the most important line in this method:
@@ -310,6 +314,8 @@ class FindAnvioDBs(object):
         # sort by level, so we know what is closest to the search_path root directory
         for db_type in self.anvio_dbs:
             self.anvio_dbs[db_type] = sorted(self.anvio_dbs[db_type], key=lambda d: d.level)
+
+        self.anvio_dbs_found = True
 
 
     def listdir(self, path):
