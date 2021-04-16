@@ -21,7 +21,7 @@ function alertDependencyError(dependencyError, isFinalDependency){
         FAILED_DEPENDENCIES.push(dependencyError)
     }
     
-    if(isFinalDependency && ERROR_COUNT){
+    if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
         ERROR_COUNT === 1 ? 
         alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}`)
         :
