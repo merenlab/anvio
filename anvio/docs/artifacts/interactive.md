@@ -126,7 +126,10 @@ Displaying the numerical or categorical value of an item shown on the tree is no
 ## News panel 
 The news panel provides information and external links tracking major Anvi'o releases and development updates. 
 ## Description panel 
-- some info here
+- The description panel is a flexible, multipurpose space where users can, 
+- Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment. 
+- Display context, references, reproducibility instructions, and any other salient details for published figures. 
+<!-- reference image here https://anvi-server.org/merenlab/dwh_o_desum -->
 ## Interactive interface tips + tricks
 Here are some small conveniences that may help the interface serve you better (we are happy to expand these little tricks with your suggestions).
 - You can zoom to a section of the display by making a rectangular selection of the area __while the pressing the shift button.__
