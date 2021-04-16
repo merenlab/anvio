@@ -91,10 +91,6 @@ $(window).resize(function() {
     VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
 });
 
-function alertDependencyError(dependency){
-    alert(`One or more dependencies were unable to be loaded :( The ${dependency} dependency raised this issue.`)
-}
-
 $(document).ready(function() {
 
     $.ajaxPrefilter(function(options) {
