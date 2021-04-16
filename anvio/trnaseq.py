@@ -3725,6 +3725,9 @@ class TRNASeqDataset(object):
                 trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature += 1
                 continue
 
+            if isinstance(trimmed_trna_seq, TrimmedMappedSequence):
+                continue
+
             # To reach this point, the trimmed sequence must be specific to a normalized sequence
             # with deletions.
             has_full_profile = True
