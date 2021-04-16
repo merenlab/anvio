@@ -109,7 +109,8 @@ Anvi’o allows you to create selections of items shown in the display (whether 
 - View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
 - __Store a collection of bins__, or __load a previously stored collection.__
 ## Legends tab 
-- content 
+- The legends tab enables users to easily change individual or batch legend colors for any of their additional data items 
+<!-- grab legend example from infant gut w/ additional data layer -->
 ## Search tab 
 It does what the name suggests. Using this tab you can,
 - __Build expressions to search items__ visualized in the main display.
