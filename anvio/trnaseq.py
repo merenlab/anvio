@@ -318,7 +318,7 @@ class TrimmedSequence(object):
     # set by `TRNASeqDataset`.
     min_length_of_long_fiveprime_extension = 4
 
-    __slots__ = ('seq_string', 'read_count', 'uniq_seqs', 'norm_seqs')
+    __slots__ = ('seq_string', 'read_count', 'uniq_seqs', 'norm_seq_represent_names')
 
     def __init__(self, seq_string, uniq_seqs):
         self.seq_string = seq_string
@@ -329,7 +329,7 @@ class TrimmedSequence(object):
                                   f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq.represent_name} "
                                   "and so cannot be assigned to a new trimmed sequence.")
         self.read_count = sum([uniq_seq.read_count for uniq_seq in self.uniq_seqs])
-        self.norm_seqs = []
+        self.norm_seq_represent_names = []
 
 
 class TrimmedFullProfileSequence(TrimmedSequence):
@@ -522,10 +522,10 @@ class NormalizedSequence(object):
 
     def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False):
         self.trimmed_seqs = trimmed_seqs
-        for trimmed_seq in trimmed_seqs:
-            trimmed_seq.norm_seqs.append(self)
         represent_trimmed_seq = trimmed_seqs[0]
-        self.represent_name = represent_trimmed_seq.represent_name
+        self.represent_name = represent_name = represent_trimmed_seq.represent_name
+        for trimmed_seq in trimmed_seqs:
+            trimmed_seq.norm_seq_represent_names.append(represent_name)
         self.seq_string = represent_trimmed_seq.seq_string
 
         if start_positions and stop_positions:
@@ -569,7 +569,7 @@ class NormalizedSequence(object):
         nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
 
         for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs, self.start_positions, self.stop_positions):
-            if len(trimmed_seq.norm_seqs) == 1:
+            if len(trimmed_seq.norm_seq_represent_names) == 1:
                 specific_read_count += trimmed_seq.read_count
                 specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
             else:
@@ -634,7 +634,7 @@ class NormalizedFullProfileSequence(NormalizedSequence):
         nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
 
         for trimmed_seq in self.trimmed_seqs:
-            if len(trimmed_seq.norm_seqs) == 1:
+            if len(trimmed_seq.norm_seq_represent_names) == 1:
                 if isinstance(trimmed_seq, TrimmedMappedSequence):
                     specific_mapped_read_count += trimmed_seq.read_count
                     specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
@@ -698,7 +698,7 @@ class NormalizedTruncatedProfileSequence(NormalizedSequence):
         specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
         nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
         for trimmed_seq in self.trimmed_seqs:
-            if len(trimmed_seq.norm_seqs) == 1:
+            if len(trimmed_seq.norm_seq_represent_names) == 1:
                 for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
                     if read_count > 0:
                         specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
@@ -799,7 +799,7 @@ class NormalizedDeletionSequence(NormalizedSequence):
         # sequence(s). A trimmed sequence may be part of more than one defunct normalized sequence
         # converted into the present normalized sequence with deletions.
         derep_defunct_norm_seq_names = [norm_seq.represent_name for norm_seq in derep_defunct_norm_seqs]
-        trimmed_seq.norm_seqs = [norm_seq for norm_seq in trimmed_seq.norm_seqs if norm_seq.represent_name not in derep_defunct_norm_seq_names] + [self]
+        trimmed_seq.norm_seq_represent_names = [name for name in trimmed_seq.norm_seq_represent_names if name not in derep_defunct_norm_seq_names] + [represent_name]
 
         # Determine attributes of this object.
         start_positions = []
@@ -842,7 +842,7 @@ class NormalizedDeletionSequence(NormalizedSequence):
                 stop_pos = defunct_stop_pos + pos_shift
                 stop_positions.append(stop_pos)
 
-                if len(trimmed_seq.norm_seqs) == 1:
+                if len(trimmed_seq.norm_seq_represent_names) == 1:
                     specific_read_count += trimmed_seq_read_count
                     specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
                     for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
@@ -882,7 +882,7 @@ class NormalizedDeletionSequence(NormalizedSequence):
             stop_pos = norm_seq_length
             stop_positions.append(stop_pos)
 
-            if len(trimmed_seq.norm_seqs) == 1:
+            if len(trimmed_seq.norm_seq_represent_names) == 1:
                 specific_read_count += trimmed_seq_read_count
                 specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
                 for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
@@ -1093,13 +1093,13 @@ class ModifiedSequence(object):
                 # Determine whether the reads constituting the trimmed sequence are specific to the
                 # modified sequence or are found in other normalized sequences outside the modified
                 # sequence.
-                if len(trimmed_seq.norm_seqs) == 1:
+                if len(trimmed_seq.norm_seq_represent_names) == 1:
                     is_trimmed_seq_specific_to_mod_seq = True
                 else:
                     # The trimmed sequence is specific to this modified sequence if it is unique to a
                     # set of normalized sequences that are all part of this modified sequence.
-                    for norm_seq_containing_trimmed_seq in trimmed_seq.norm_seqs:
-                        if norm_seq_containing_trimmed_seq.represent_name not in all_norm_seq_names:
+                    for norm_seq_containing_trimmed_seq_name in trimmed_seq.norm_seq_represent_names:
+                        if norm_seq_containing_trimmed_seq_name not in all_norm_seq_names:
                             is_trimmed_seq_specific_to_mod_seq = False
                             break
                     else:
@@ -1205,9 +1205,9 @@ class ModifiedSequence(object):
         #         if num_mod_seqs_containing_norm_seq > 1:
         #             is_trimmed_seq_specific_to_mod_seq = False
         #         else:
-        #             for norm_seq_containing_trimmed_seq in trimmed_seq.norm_seqs:
+        #             for norm_seq_containing_trimmed_seq_name in trimmed_seq.norm_seq_represent_names:
         #                 try:
-        #                     if len(all_norm_seqs[all_norm_seq_names.index(norm_seq_containing_trimmed_seq.represent_name)].mod_seqs) > 1:
+        #                     if len(all_norm_seqs[all_norm_seq_names.index(norm_seq_containing_trimmed_seq_name)].mod_seqs) > 1:
         #                         # The trimmed sequence is part of another normalized sequence that
         #                         # is part of multiple modified sequences.
         #                         is_trimmed_seq_specific_to_mod_seq = False
@@ -2190,7 +2190,7 @@ class TRNASeqDataset(object):
                 norm_seq_length = len(norm_seq.seq_string)
                 norm_seq.start_positions.append(norm_seq_length - trimmed_trunc_seq_length)
                 norm_seq.stop_positions.append(norm_seq_length)
-                trimmed_trunc_seq.norm_seqs.append(norm_seq)
+                trimmed_trunc_seq.norm_seq_represent_names.append(norm_seq.represent_name)
 
                 if not trimmed_trunc_seq.contains_anticodon:
                     # Determine from the first normalized sequence in which the truncated sequence is
@@ -2374,7 +2374,7 @@ class TRNASeqDataset(object):
 
                 trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
                 norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seqs.append(norm_seq)
+                trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
                 norm_seq.start_positions.append(0)
                 norm_seq.stop_positions.append(norm_seq_length)
                 trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_seq
@@ -2398,7 +2398,7 @@ class TRNASeqDataset(object):
             # represented multiple times in `norm_seqs`.
             for norm_seq in set(norm_seqs):
                 norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seqs.append(norm_seq)
+                trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
                 norm_seq_length = len(norm_seq.seq_string)
                 norm_seq.start_positions.append(norm_seq_length - uniq_seq_length)
                 norm_seq.stop_positions.append(norm_seq_length)
@@ -2572,7 +2572,7 @@ class TRNASeqDataset(object):
 
                         trimmed_trna_seq = TrimmedMappedSequence(uniq_trna_seq)
                         norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                        trimmed_trna_seq.norm_seqs.append(norm_seq)
+                        trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
                         norm_seq.start_positions.append(norm_seq_start_pos)
                         norm_seq.stop_positions.append(norm_seq_stop_pos)
                         trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_trna_seq
@@ -2588,7 +2588,7 @@ class TRNASeqDataset(object):
 
                             if not isinstance(prev_trimmed_seq, TrimmedMappedSequence):
                                 norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                                trimmed_trna_seq.norm_seqs.append(norm_seq)
+                                trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
                                 if ref_fiveprime_length - ref_alignment_start > 0:
                                     norm_seq_start_pos = 0
                                 else:
@@ -3711,14 +3711,15 @@ class TRNASeqDataset(object):
         # Count trimmed sequences that are part of normalized sequences with deletions. For trimmed
         # sequences that are only part of normalized sequences with deletions, subtract their counts
         # from the previous counts.
+        norm_seqs_with_dels = self.norm_seqs_with_dels
         trimmed_seqs_specific_to_norm_seqs_with_del_signature = 0
         trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
         for trimmed_trna_seq in self.trimmed_del_seq_dict.values():
             represent_uniq_seq = trimmed_trna_seq.uniq_seqs[0]
 
             specific_to_norm_seqs_with_del_signature = False
-            for norm_seq in trimmed_trna_seq.norm_seqs:
-                if not isinstance(norm_seq, NormalizedDeletionSequence):
+            for name in trimmed_trna_seq.norm_seq_represent_names:
+                if not isinstance(norm_seqs_with_dels[name], NormalizedDeletionSequence):
                     break
             else:
                 specific_to_norm_seqs_with_del_signature = True
