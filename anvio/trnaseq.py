@@ -159,7 +159,7 @@ class UniqueProfileSequence(UniqueSequence):
         'unconserved_info',
         'unpaired_info',
         'profiled_seq_length',
-        'trimmed_seq'
+        'trimmed_seq_represent_name'
     )
 
     def __init__(self, seq_string, represent_name, read_count, profile):
@@ -184,7 +184,7 @@ class UniqueProfileSequence(UniqueSequence):
         self.unconserved_info = profile.unconserved_info
         self.unpaired_info = profile.unpaired_info
         self.profiled_seq_length = len(profile.profiled_seq)
-        self.trimmed_seq = None
+        self.trimmed_seq_represent_name = None
 
 
 class UniqueFullProfileSequence(UniqueProfileSequence):
@@ -269,7 +269,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.unpaired_info = unpaired_info
         self.profiled_seq_length = replacement_info_dict['acceptorless_profiled_seq_length'] + uniq_seq.acceptor_length
         self.extra_fiveprime_length = uniq_seq_length - self.profiled_seq_length
-        self.trimmed_seq = replacement_info_dict['trimmed_seq']
+        self.trimmed_seq_represent_name = replacement_info_dict['trimmed_seq_represent_name']
 
         # Store the defunct profile information for posterity.
         self.defunct_uniq_seq = defunct_uniq_seq
@@ -284,7 +284,7 @@ class UniqueMappedSequence(UniqueSequence):
         super().__init__(seq_string, represent_name, read_count)
 
         self.extra_fiveprime_length = extra_fiveprime_length
-        self.trimmed_seq = None
+        self.trimmed_seq_representative_name = None
 
 
 class TrimmedSequence(object):
@@ -324,9 +324,7 @@ class TrimmedSequence(object):
         self.seq_string = seq_string
         self.uniq_seqs = uniq_seqs
         for uniq_seq in uniq_seqs:
-            if uniq_seq.trimmed_seq is None:
-                uniq_seq.trimmed_seq = self
-            else:
+            if uniq_seq.trimmed_seq_represent_name is not None:
                 raise ConfigError(f"The unique sequence with the representative name {uniq_seq.represent_name} "
                                   f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq.represent_name} "
                                   "and so cannot be assigned to a new trimmed sequence.")
@@ -374,7 +372,9 @@ class TrimmedFullProfileSequence(TrimmedSequence):
         else:
             # In this case, ALL unique sequences are EITHER full-length tRNA OR a 3' tRNA fragment.
             self.represent_uniq_seq = represent_uniq_seq = uniq_seqs[0]
-        self.represent_name = represent_uniq_seq.represent_name
+        self.represent_name = represent_name = represent_uniq_seq.represent_name
+        for uniq_seq in uniq_seqs:
+            uniq_seq.trimmed_seq_represent_name = represent_name
 
         # Assume that the feature profile indices of the representative unique sequence are the same
         # as the other unique sequences. The acceptor is the last feature in the profile and not
@@ -430,7 +430,9 @@ class TrimmedTruncatedProfileSequence(TrimmedSequence):
         # Make the most abundant unique sequence the representative sequence.
         uniq_seqs.sort(key=lambda uniq_seq: (-uniq_seq.read_count, uniq_seq.represent_name))
         represent_uniq_seq = uniq_seqs[0]
-        self.represent_name = represent_uniq_seq.represent_name
+        self.represent_name = represent_name = represent_uniq_seq.represent_name
+        for uniq_seq in uniq_seqs:
+            uniq_seq.trimmed_seq_represent_name = represent_name
 
         # Assume that the feature profile indices of the representative unique sequence are the same
         # as the other unique sequences. The acceptor is the last feature in the profile and not
@@ -473,6 +475,7 @@ class TrimmedMappedSequence(TrimmedSequence):
         super().__init__(uniq_seq.seq_string, [uniq_seq])
 
         self.represent_name = uniq_seq.represent_name
+        uniq_seq.trimmed_seq_represent_name = represent_name
 
         extra_fiveprime_length = uniq_seq.extra_fiveprime_length
         self.uniq_with_extra_fiveprime_count = 1 if extra_fiveprime_length else 0
@@ -2021,7 +2024,7 @@ class TRNASeqDataset(object):
         # To transfer profile information from the representative unique sequence to other unique
         # sequences, determine where features are relative to the 3' end of the short trimmed
         # sequence, which is found in the other unique sequences.
-        replacement_info_dict = {'trimmed_seq': short_trimmed_seq}
+        replacement_info_dict = {'trimmed_seq_represent_name': short_trimmed_seq.represent_name}
         feature_index_adjustment = -short_uniq_seq.extra_fiveprime_length - len(short_trimmed_seq_string)
         replacement_info_dict['feature_start_indices_from_trimmed_threeprime'] = [feature_start_index + feature_index_adjustment for feature_start_index in short_uniq_seq.feature_start_indices]
         replacement_info_dict['feature_stop_indices_from_trimmed_threeprime'] = [feature_stop_index + feature_index_adjustment for feature_stop_index in short_uniq_seq.feature_stop_indices]
@@ -3590,6 +3593,7 @@ class TRNASeqDataset(object):
         mean_mapped_reads_per_uniq_seq = (fiveprime_mapped_reads + interior_mapped_reads) / (fiveprime_mapped_uniq_seqs + interior_mapped_uniq_seqs)
 
 
+        trimmed_del_seq_dict = self.trimmed_del_seq_dict
         trna_reads_specific_to_norm_seqs_with_del_signature = 0
         trna_reads_nonspecific_to_norm_seqs_with_del_signature = 0
         uniq_seqs_specific_to_norm_seqs_with_del_signature = 0
@@ -3601,7 +3605,7 @@ class TRNASeqDataset(object):
             read_count = uniq_trna_seq.read_count
 
             specific_to_norm_seqs_with_del_signature = False
-            for norm_seq in uniq_trna_seq.trimmed_seq.norm_seqs:
+            for norm_seq in trimmed_del_seq_dict[uniq_trna_seq.trimmed_seq_represent_name]:
                 if not isinstance(norm_seq, NormalizedDeletionSequence):
                     break
             else:
