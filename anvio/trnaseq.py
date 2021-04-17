@@ -278,13 +278,13 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
 class UniqueMappedSequence(UniqueSequence):
     """This object is generated in the identification of tRNA fragments by mapping."""
 
-    __slots__ = ('extra_fiveprime_length', 'trimmed_seq')
+    __slots__ = ('extra_fiveprime_length', 'trimmed_seq_represent_name')
 
     def __init__(self, seq_string, represent_name, read_count, extra_fiveprime_length=0):
         super().__init__(seq_string, represent_name, read_count)
 
         self.extra_fiveprime_length = extra_fiveprime_length
-        self.trimmed_seq_representative_name = None
+        self.trimmed_seq_represent_name = None
 
 
 class TrimmedSequence(object):
@@ -475,7 +475,7 @@ class TrimmedMappedSequence(TrimmedSequence):
         super().__init__(uniq_seq.seq_string, [uniq_seq])
 
         self.represent_name = uniq_seq.represent_name
-        uniq_seq.trimmed_seq_represent_name = represent_name
+        uniq_seq.trimmed_seq_represent_name = self.represent_name
 
         extra_fiveprime_length = uniq_seq.extra_fiveprime_length
         self.uniq_with_extra_fiveprime_count = 1 if extra_fiveprime_length else 0
