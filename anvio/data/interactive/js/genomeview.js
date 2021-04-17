@@ -83,7 +83,7 @@ $(document).ready(function() {
             <tr><td>Start in Contig</td><td>${event.target.gene.start}</td></tr>
             <tr><td>Length</td><td>${event.target.gene.stop - event.target.gene.start}</td></tr>
             <tr><td>Gene Callers ID</td><td>${event.target.geneID}</td></tr>
-            <tr><td>Gene Cluster</td><td>${undefined}</td></tr>
+            <tr><td>Gene Cluster</td><td>${genomeData.gene_associations["anvio-pangenome"]["genome-and-gene-names-to-gene-clusters"][event.target.genomeID][event.target.geneID]}</td></tr>
           </table>
           <button>some action</button>
           <button>some other action</button>
@@ -225,7 +225,7 @@ $(document).ready(function() {
     }
 
     function alignToCluster(gc) {
-      if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]) {
+      if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
         alignToGC = gc;
         showLabels = !gc; // only show labels if changing to default view
         $('#toggle_label_box').attr("checked", showLabels);
@@ -238,8 +238,9 @@ $(document).ready(function() {
 
     function addGenome(label, gene_list, genomeID, y) {
       var offsetX = 0;
-      if(false && alignToGC) { /* TEMPORARILY DISABLED until proper data structure (geneID -> GC) added */
-        var targetGeneID = genomeData.gene_associations["anvio-pangenome"][genomeID][0]; /* TODO: implementation for multiple matching gene IDs */
+      if(alignToGC) { /* TEMPORARILY DISABLED until proper data structure (geneID -> GC) added */
+        var genomeGCs = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][alignToGC][genomeID];
+        var targetGeneID = genomeGCs[0]; /* TODO: implementation for multiple matching gene IDs */
         var targetGene = gene_list[targetGeneID];
         var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
         //var windowCenter = fabric.util.transformPoint({x:canvas.getWidth()/2,y:0}, canvas.viewportTransform)['x'];
@@ -268,7 +269,7 @@ $(document).ready(function() {
       for(let geneID in gene_list) {
         let gene = gene_list[geneID];
         //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
-        var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y);
+        var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y,genomeID);
         if(showLabels) {
           geneObj.left += 120;
         }
@@ -281,7 +282,7 @@ $(document).ready(function() {
       //geneGroup.destroy();
     }
 
-    function geneArrow(gene, geneID, functions, y) {
+    function geneArrow(gene, geneID, functions, y, genomeID) {
       var cag = null;
       var color = 'gray';
       if(functions) {
@@ -316,6 +317,7 @@ $(document).ready(function() {
         selectable: false,
         gene: gene,
         geneID: geneID,
+        genomeID: genomeID,
         top: -11+spacing*y,
         left: 1.5+gene.start,
         scaleX: 0.5,
