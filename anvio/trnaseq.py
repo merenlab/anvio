@@ -3331,7 +3331,7 @@ class TRNASeqDataset(object):
                 norm_del_seq = new_norm_del_seq_dict[norm_del_seq_string]
                 # Avoid adding duplicate trimmed sequences to the object (those shorter than N).
                 norm_del_seq_length = len(norm_del_seq_string)
-                trimmed_seqs = [trimmed_seq for trimmed_seq in norm_del_seq.trimmed_seqs if len(trimmed_seq.seq_string) <= norm_del_seq_length]
+                trimmed_seqs = [trimmed_seq for trimmed_seq in norm_seq.trimmed_seqs if len(trimmed_seq.seq_string) > norm_del_seq_length]
                 norm_del_seq.trimmed_seqs.extend(trimmed_seqs)
                 norm_del_seq.defunct_norm_seqs.extend([norm_seq for _ in trimmed_seqs])
             else:
