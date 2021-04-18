@@ -4054,7 +4054,7 @@ class TRNASeqDataset(object):
                  trimmed_seq.read_count,
                  id_info,
                  trimmed_seq.seq_string,
-                 len(trimmed_seq.norm_seqs),
+                 len(trimmed_seq.norm_seq_represent_names),
                  trimmed_seq.uniq_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
                  trimmed_seq.read_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0)
                 + (tuple([v for v in trimmed_seq.read_acceptor_variant_count_dict.values()]) if id_info != 'mapped' else no_threeprime_variants)
