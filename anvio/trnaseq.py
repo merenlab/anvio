@@ -3718,7 +3718,6 @@ class TRNASeqDataset(object):
         trimmed_seqs_specific_to_norm_seqs_with_del_signature = 0
         trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
         for trimmed_trna_seq, defunct_norm_seq_names in self.trimmed_del_seq_dict.values():
-
             if len(trimmed_trna_seq.norm_seq_represent_names) == len(defunct_norm_seq_names):
                 specific_to_norm_seqs_with_del_signature = True
             else:
@@ -3743,7 +3742,7 @@ class TRNASeqDataset(object):
                 if trimmed_trna_seq.has_complete_feature_set:
                     full_length_trimmed_seqs -= 1
 
-                if represent_uniq_seq.num_extrapolated_fiveprime_nts:
+                if trimmed_trna_seq.uniq_seqs[0].num_extrapolated_fiveprime_nts:
                     trimmed_seqs_with_extrapolated_fiveprime_feature -= 1
             else:
                 trimmed_seqs_with_recovered_trunc_profile -= 1
