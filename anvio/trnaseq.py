@@ -2237,7 +2237,7 @@ class TRNASeqDataset(object):
                     trimmed_trunc_seq_members = trimmed_trunc_seq_members[: i]
                     break
 
-            self.norm_trunc_seq_dict[trimmed_trunc_seq_seed_represent_name] = NormalizedTruncatedProfileSequence([trimmed_trunc_seq_seed] + trimmed_trunc_seq_members)
+            self.norm_trunc_seq_dict[trimmed_trunc_seq_seed_represent_name] = NormalizedTruncatedProfileSequence(trimmed_trunc_seq_members)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
