@@ -3257,6 +3257,9 @@ class TRNASeqDataset(object):
         elif norm_seq_type == 'trunc':
             norm_seq_dict = self.norm_trunc_seq_dict
         new_norm_del_seq_dict = {}
+        # It is useful to know which of a trimmed sequence's normalized sequences are found to
+        # contain deletions.
+        trimmed_seq_norm_del_seq_dict = defaultdict(list)
         # Winnow the matches down to one-to-one matches between a normalized sequence and modified
         # sequence, ignoring N that can be formed from the introduction of deletions in different
         # modified sequences, as indicated by the following variable, which is set to `False` and
@@ -3291,6 +3294,8 @@ class TRNASeqDataset(object):
                 mod_seq = match_info[0][1]
                 del_config = uniq_mod_seq_info_dict[mod_seq.represent_name]
                 extra_fiveprime_length = match_info[0][3]
+            for trimmed_seq in norm_seq.trimmed_seqs:
+                trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name].append(norm_seq.represent_name)
 
             # Transfer the contents of a normalized sequence with supported deletions to a
             # `NormalizedDeletionSequence` object. Some if not all of the feature profiles of the
@@ -3358,7 +3363,7 @@ class TRNASeqDataset(object):
             norm_del_seq_dict[norm_seq.represent_name] = norm_seq
             # Record the constituent sequences of normalized sequences with deletions.
             for trimmed_seq in norm_seq.trimmed_seqs:
-                trimmed_del_seq_dict[trimmed_seq.represent_name] = trimmed_seq
+                trimmed_del_seq_dict[trimmed_seq.represent_name] = (trimmed_seq, set(trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name]))
                 for uniq_seq in trimmed_seq.uniq_seqs:
                     uniq_del_seq_dict[uniq_seq.represent_name] = uniq_seq
         if norm_seq_type == 'trunc':
@@ -3604,12 +3609,11 @@ class TRNASeqDataset(object):
         for uniq_trna_seq in self.uniq_del_seq_dict.values():
             read_count = uniq_trna_seq.read_count
 
-            specific_to_norm_seqs_with_del_signature = False
-            for norm_seq in trimmed_del_seq_dict[uniq_trna_seq.trimmed_seq_represent_name]:
-                if not isinstance(norm_seq, NormalizedDeletionSequence):
-                    break
-            else:
+            trimmed_seq, defunct_norm_seq_names = trimmed_del_seq_dict[uniq_trna_seq.trimmed_seq_represent_name]
+            if len(trimmed_seq.norm_seq_represent_names) == len(defunct_norm_seq_names):
                 specific_to_norm_seqs_with_del_signature = True
+            else:
+                specific_to_norm_seqs_with_del_signature = False
 
             if specific_to_norm_seqs_with_del_signature:
                 trna_reads_specific_to_norm_seqs_with_del_signature += read_count
@@ -3711,18 +3715,14 @@ class TRNASeqDataset(object):
         # Count trimmed sequences that are part of normalized sequences with deletions. For trimmed
         # sequences that are only part of normalized sequences with deletions, subtract their counts
         # from the previous counts.
-        norm_seqs_with_dels = self.norm_seqs_with_dels
         trimmed_seqs_specific_to_norm_seqs_with_del_signature = 0
         trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
-        for trimmed_trna_seq in self.trimmed_del_seq_dict.values():
-            represent_uniq_seq = trimmed_trna_seq.uniq_seqs[0]
+        for trimmed_trna_seq, defunct_norm_seq_names in self.trimmed_del_seq_dict.values():
 
-            specific_to_norm_seqs_with_del_signature = False
-            for name in trimmed_trna_seq.norm_seq_represent_names:
-                if not isinstance(norm_seqs_with_dels[name], NormalizedDeletionSequence):
-                    break
-            else:
+            if len(trimmed_trna_seq.norm_seq_represent_names) == len(defunct_norm_seq_names):
                 specific_to_norm_seqs_with_del_signature = True
+            else:
+                specific_to_norm_seqs_with_del_signature = False
 
             if specific_to_norm_seqs_with_del_signature:
                 trimmed_seqs_specific_to_norm_seqs_with_del_signature += 1
