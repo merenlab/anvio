@@ -212,6 +212,23 @@ class Kmerizer:
         return kmer_dict
 
 
+    def get_prefixes_full_seq_dict(self, kmer_sizes):
+        kmer_sizes.sort()
+        kmer_dict = {kmer_size: defaultdict(list) for kmer_size in kmer_sizes}
+        targets = []
+        for name, seq_string in zip(self.names, self.seqs):
+            target = MappableAlignedTarget(seq_string, name=name)
+            targets.append(target)
+            seq_length = len(seq_string)
+            for kmer_size in kmer_sizes:
+                if kmer_size > seq_length:
+                    break
+
+                hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+                kmer_dict[kmer_size][hashed_kmer].append(target)
+        return kmer_dict, targets
+
+
     def get_prefix_target_dict(self, kmer_size):
         kmer_dict = defaultdict(dict)
         targets = []
