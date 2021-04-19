@@ -3118,75 +3118,77 @@ class TRNASeqDataset(object):
 
 
     def prefix_dereplicate_deletion_candidates(self,
-                                               norm_seq_names,
-                                               norm_seq_reversed_seq_strings,
-                                               norm_seq_extras,
-                                               mod_seq_child_names,
-                                               mod_seq_child_reversed_seq_strings,
-                                               mod_seq_child_extras):
-        """3'-dereplicate modified sequence "children," M', with speculative in silico deletions and
-        normalized sequences. This method is modeled on `sequence.Dereplicator.prefix_dereplicate`
-        with changes for the deletion detection problem. Clusters containing longest "seed"
-        sequences and equal-length or shorter 3'-subsequences are produced for each M'. Clusters are
-        also produced for normalized sequences with subsequences, which must be M'. Since normalized
-        sequences have already been dereplicated, they will not be subsequences of each other --
-        there will only be one normalized sequence per cluster."""
-        # Use k-mers to more rapidly narrow the subsequence search space.
-        kmer_size = min(map(len, norm_seq_reversed_seq_strings + mod_seq_child_reversed_seq_strings))
+                                                norm_seq_names,
+                                                norm_seq_reversed_seq_strings,
+                                                norm_seq_extras,
+                                                mod_seq_child_names,
+                                                mod_seq_child_reversed_seq_strings,
+                                                mod_seq_child_extras):
+        """3'-dereplicate modified sequence "children" with speculative in silico deletions (M') and
+        normalized sequences (N). Clusters seeded by M' are produced when an N is found that is a 3'
+        subsequence, potentially of equal length. Other M' may be part of the cluster. Clusters
+        seeded by N with 3' subsequences, which must be M', are also produced. Since N have already
+        been dereplicated, they will not be subsequences of each other -- there will only be one N
+        per cluster."""
+        norm_seq_lengths = list(set([len(seq_string) for seq_string in norm_seq_reversed_seq_strings]))
+        norm_seq_kmer_dict, norm_seq_targets = Kmerizer(norm_seq_names, norm_seq_reversed_seq_strings).get_prefixes_full_seq_dict(norm_seq_lengths)
+        mod_seq_child_lengths = list(set([len(seq_string) for seq_string in mod_seq_child_reversed_seq_strings]))
+        mod_seq_child_kmer_dict, mod_seq_child_targets = Kmerizer(mod_seq_child_names, mod_seq_child_reversed_seq_strings).get_prefixes_full_seq_dict(mod_seq_child_lengths)
 
-        # Targets are objects that represent a sequence and contain alignment objects.
-        norm_seq_kmer_dict, norm_seq_targets = Kmerizer(norm_seq_names, norm_seq_reversed_seq_strings).get_prefix_target_dict(kmer_size)
-        mod_seq_child_kmer_dict, mod_seq_child_targets = Kmerizer(mod_seq_child_names, mod_seq_child_reversed_seq_strings).get_prefix_target_dict(kmer_size)
-
-        # The starts of sequences used in the initial k-mer search.
-        norm_seq_hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings]
-        mod_seq_child_hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings]
-
-        # Find normalized sequences within M'.
-        num_norm_seq_matches = 0
-        for norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra, norm_seq_prefix_hash, norm_seq_target in zip(norm_seq_names, norm_seq_reversed_seq_strings, norm_seq_extras, norm_seq_hashed_prefixes, norm_seq_targets):
-            if norm_seq_prefix_hash not in mod_seq_child_kmer_dict:
+        # Find N within M'.
+        for norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra, norm_seq_prefix_hash, norm_seq_target in zip(norm_seq_names,
+                                                                                                                      norm_seq_reversed_seq_strings,
+                                                                                                                      norm_seq_extras,
+                                                                                                                      [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings],
+                                                                                                                      norm_seq_targets):
+            try:
+                candidate_mod_seq_child_targets = mod_seq_child_kmer_dict[len(norm_seq_reversed_seq_string)][norm_seq_prefix_hash]
+            except KeyError:
                 continue
 
-            # The k-mer but not necessarily the whole normalized sequence was found in an M'.
-            hit_found = False
-            for mod_seq_child_name, candidate_mod_seq_child_target in mod_seq_child_kmer_dict[norm_seq_prefix_hash].items():
-                if norm_seq_reversed_seq_string == candidate_mod_seq_child_target.seq_string[: len(norm_seq_reversed_seq_string)]:
-                    candidate_mod_seq_child_target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
-                    hit_found = True
-            if hit_found:
-                # The normalized sequence will not seed a cluster if in an M'.
-                norm_seq_target.hit_another_target = True
-                num_norm_seq_matches += 1
+            for candidate_mod_seq_child_target in candidate_mod_seq_child_targets:
+                candidate_mod_seq_child_target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
 
-        # Find M' in normalized sequences and in other M'.
-        num_mod_seq_matches = 0
-        for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_prefix_hash, mod_seq_child_target in zip(mod_seq_child_names, mod_seq_child_reversed_seq_strings, mod_seq_child_extras, mod_seq_child_hashed_prefixes, mod_seq_child_targets):
-            match_found = False
-            if mod_seq_child_prefix_hash in norm_seq_kmer_dict:
-                for norm_seq_name, candidate_norm_seq_target in norm_seq_kmer_dict[mod_seq_child_prefix_hash].items():
-                    if mod_seq_child_reversed_seq_string == candidate_norm_seq_target.seq_string[: len(mod_seq_child_reversed_seq_string)]:
-                        if len(mod_seq_child_reversed_seq_string) != len(candidate_norm_seq_target.seq_string):
-                            # Equal length matches were already covered in the prior search for
-                            # normalized sequences within M'.
-                            candidate_norm_seq_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-                            match_found = True
-            if match_found:
-                num_mod_seq_matches += 1
+            # N will not be used seed a cluster once found in an M'.
+            norm_seq_target.hit_another_target = True
 
-            for other_mod_seq_child_name, candidate_other_mod_seq_child_target in mod_seq_child_kmer_dict[mod_seq_child_prefix_hash].items():
-                if mod_seq_child_reversed_seq_string == candidate_other_mod_seq_child_target.seq_string[: len(mod_seq_child_reversed_seq_string)]:
-                    if mod_seq_child_name != other_mod_seq_child_name:
-                        candidate_other_mod_seq_child_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
+
+        # Find M' in N and other M'.
+        for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_prefix_hash, mod_seq_child_target in zip(mod_seq_child_names,
+                                                                                                                                               mod_seq_child_reversed_seq_strings,
+                                                                                                                                               mod_seq_child_extras,
+                                                                                                                                               [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings],
+                                                                                                                                               mod_seq_child_targets):
+            try:
+                candidate_norm_seq_targets = norm_seq_kmer_dict[len(mod_seq_child_reversed_seq_string)][mod_seq_child_prefix_hash]
+            except KeyError:
+                candidate_norm_seq_targets = None
+
+            mod_seq_child_seq_length = len(mod_seq_child_reversed_seq_string)
+            if candidate_norm_seq_targets:
+                for candidate_norm_seq_target in candidate_norm_seq_targets:
+                    if mod_seq_child_seq_length != len(candidate_mod_seq_child_target.seq_string):
+                        # Equal length matches were already covered in the prior search for N in M'.
+                        candidate_norm_seq_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
+
+            same_mod_seq_child_not_yet_found = True
+            for candidate_other_mod_seq_child_target in mod_seq_child_kmer_dict[mod_seq_child_seq_length][mod_seq_child_prefix_hash]:
+                if same_mod_seq_child_not_yet_found:
+                    if mod_seq_child_name == candidate_other_mod_seq_child_target.name:
+                        same_mod_seq_child_not_yet_found = False
+                        continue
+                candidate_other_mod_seq_child_target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
+
 
         clusters = []
-        # Create cluster objects from normalized sequence targets.
+        # Create cluster objects for each N containing but not contained by an M'.
         for norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra, norm_seq_target in zip(norm_seq_names, norm_seq_reversed_seq_strings, norm_seq_extras, norm_seq_targets):
             if norm_seq_target.hit_another_target:
+                # N is contained by an M'.
                 continue
 
-            # If no M' are subsequences of the normalized sequence, don't create a cluster.
             if norm_seq_target.alignments:
+                # M' were found to be subsequences of N.
                 cluster = Cluster()
                 cluster.member_names.append(norm_seq_name)
                 cluster.member_seqs.append(norm_seq_reversed_seq_string)
@@ -3200,7 +3202,7 @@ class TRNASeqDataset(object):
                     cluster.member_extras.append(mod_seq_child_alignment_with_norm_seq[2])
                 clusters.append(cluster)
 
-        # Create a cluster object for each M'.
+        # Create a cluster object for each M' containing an N.
         for mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra, mod_seq_child_target in zip(mod_seq_child_names, mod_seq_child_reversed_seq_strings, mod_seq_child_extras, mod_seq_child_targets):
             norm_seq_added = False
             if mod_seq_child_target.alignments:
@@ -3210,13 +3212,14 @@ class TRNASeqDataset(object):
                     cluster.member_names.append(alignment_with_mod_seq_child[0])
                     cluster.member_seqs.append(alignment_with_mod_seq_child[1])
                     cluster.member_extras.append(alignment_with_mod_seq_child[2])
-                    if not isinstance(alignment_with_mod_seq_child[2], ModifiedSequence):
-                        norm_seq_added = True
-            if norm_seq_added:
-                cluster.member_names.insert(0, mod_seq_child_name)
-                cluster.member_seqs.insert(0, mod_seq_child_reversed_seq_string)
-                cluster.member_extras.insert(0, mod_seq_child_extra)
-                clusters.append(cluster)
+                    if not norm_seq_added:
+                        if not isinstance(alignment_with_mod_seq_child[2], ModifiedSequence):
+                            norm_seq_added = True
+                if norm_seq_added:
+                    cluster.member_names.insert(0, mod_seq_child_name)
+                    cluster.member_seqs.insert(0, mod_seq_child_reversed_seq_string)
+                    cluster.member_extras.insert(0, mod_seq_child_extra)
+                    clusters.append(cluster)
 
         # For full reproducibility, sort clusters in descending order of size, and in case of ties,
         # by name.
