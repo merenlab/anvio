@@ -23,8 +23,8 @@ function alertDependencyError(dependencyError, isFinalDependency){
     
     if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
         ERROR_COUNT === 1 ? 
-        alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}`)
+        alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
         :
-        alert(`${ERROR_COUNT} dependencies failed to load :(. These are the culprits: ${FAILED_DEPENDENCIES}`)
+        alert(`${ERROR_COUNT} dependencies failed to load :(. These are the culprits: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
     }
 }
