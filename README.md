@@ -1,3 +1,5 @@
+![anvio](https://github.com/merenlab/anvio/raw/master/anvio/data/interactive/images/logo-fancy.png)
+
 ### Releases
 
 Github [releases page](https://github.com/meren/anvio/releases) lists all the stable releases of anvi'o.
