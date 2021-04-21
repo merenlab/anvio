@@ -2665,7 +2665,12 @@ class ProfileSuperclass(object):
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
-        self.split_names_of_interest = A('split_names_of_interest') or set([])
+        if not hasattr(self, 'split_names_of_interest'):
+            self.split_names_of_interest = set([])
+
+        if A('split_names_of_interest'):
+            self.split_names_of_interest = set(self.args.split_names_of_interest)
+
         self.collection_name = A('collection_name')
 
         # figure out bin names, if there is one to figure out
