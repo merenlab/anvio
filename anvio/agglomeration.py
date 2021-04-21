@@ -134,7 +134,7 @@ class Agglomerator:
                 # as it mapped to another reference sequence that had been processed.
                 processed_input_count += 1
                 if processed_input_count % agglom_progress_interval == 0:
-                    self.progress.update("%s/%s sequences processed in agglomerative remapping"
+                    self.progress.update("%s/%s seqs processed in agglomerative remapping"
                                          % (pp(processed_input_count), pp(total_input_count)))
                 continue
 
@@ -282,10 +282,10 @@ class Agglomerator:
             agglom_aligned_refs.append(agglom_aligned_ref)
             processed_input_count += 1
             if processed_input_count % agglom_progress_interval == 0:
-                self.progress.update("%s/%s sequences processed in agglomerative remapping"
+                self.progress.update("%s/%s seqs processed in agglomerative remapping"
                                      % (pp(processed_input_count), pp(total_input_count)))
         if processed_input_count % agglom_progress_interval != 0:
-            self.progress.update("%s/%s sequences processed in agglomerative remapping"
+            self.progress.update("%s/%s seqs processed in agglomerative remapping"
                                  % (pp(total_input_count), pp(total_input_count)))
 
         agglom_aligned_ref_dict = {ref.name: ref for ref in agglom_aligned_refs}
