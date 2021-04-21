@@ -2640,12 +2640,17 @@ class TRNASeqDataset(object):
 
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
-        self.progress.update("Separating 3-4 nt from 2 nt variants")
+        self.progress.update("Decomposing clusters, separating 3-4 nt from 2 nt variants")
 
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
         represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
         mod_trna_seq_dict = self.mod_trna_seq_dict
+        num_processed_refs = -1
+        total_ref_count = len(agglom_aligned_ref_dict)
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
+            num_processed_refs += 1
+            self.progress.update(f"{num_processed_refs}/{total_ref_count} clusters decomposed")
+
             # A modification requires at least 3 different nucleotides to be detected, and each
             # normalized sequence differs by at least 1 nucleotide (substitution or gap), so for a
             # cluster to form a modified sequence, it must contain at least 3 normalized sequences.
@@ -2817,6 +2822,7 @@ class TRNASeqDataset(object):
                         excluded_norm_seq_names.append(norm_seq.represent_name)
 
                 mod_trna_seq_dict[mod_seq.represent_name] = mod_seq
+        self.progress.update(f"{total_ref_count}/{total_ref_count} clusters decomposed")
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
