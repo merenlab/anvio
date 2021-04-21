@@ -2640,7 +2640,7 @@ class TRNASeqDataset(object):
 
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
-        self.progress.update("Separating modification-induced substitutions from \"inter-strain\" variants")
+        self.progress.update("Separating 3-4 nt from 2 nt variants")
 
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
         represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
