@@ -785,7 +785,7 @@ class Aligner:
                 self.progress.update("Aligning...")
             else:
                 self.progress.update("Aligning shorter queries...")
-                reported_query_type = 'shorter than length %d ' % (short_query_threshold + 1)
+                reported_query_type = '<%d nt ' % (short_query_threshold + 1)
             aligned_short_query_dict, aligned_short_target_dict = self.align_without_indels(
                 short_query_names,
                 short_query_seq_arrays,
@@ -803,7 +803,7 @@ class Aligner:
         if long_query_seq_arrays:
             reported_query_type = ''
             self.progress.update("Aligning longer queries...")
-            reported_query_type = 'at least length %d ' % (short_query_threshold + 1)
+            reported_query_type = '≥%d nt ' % (short_query_threshold + 1)
             aligned_long_query_dict, aligned_long_target_dict = self.align_without_indels(
                 long_query_names,
                 long_query_seq_arrays,
