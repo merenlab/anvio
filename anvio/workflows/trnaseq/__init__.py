@@ -41,10 +41,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.init_workflow_super_class(args, workflow_name='trnaseq')
 
         self.rules.extend([
-            'make_iu_input',
-            'iu_gen_configs',
             'iu_merge_pairs',
-            'gen_qc_report',
             'anvi_reformat_fasta',
             'anvi_trnaseq',
             'anvi_convert_trnaseq_database',
@@ -197,9 +194,6 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--write-buffer-size': anvio.D['write-buffer-size'][1]['default'],
                 'threads': 1
             },
-            'make_iu_input': {'threads': 1},
-            'iu_gen_configs': {'threads': 1},
-            'gen_qc_report': {'threads': 1},
             'output_dirs': {}, # This ensures that output_dirs comes before max_threads in the file
             'max_threads': 1
         })

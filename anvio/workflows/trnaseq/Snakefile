@@ -37,8 +37,6 @@ rule make_iu_input:
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "make_iu_input.log")
     input: ancient(M.get_param_value_from_config(['samples_txt']))
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "iu_samples_input.txt")
-    threads: M.T('make_iu_input')
-    resources: nodes = M.T('make_iu_input')
     run:
         library_num = M.sample_names.index(wildcards.sample_name)
         r1_path = M.r1_paths[library_num]
@@ -53,8 +51,6 @@ rule iu_gen_configs:
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_gen_configs.log")
     input: rules.make_iu_input.output
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
-    threads: M.T('iu_gen_configs')
-    resources: nodes = M.T('iu_gen_configs')
     run:
         out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
@@ -75,7 +71,6 @@ rule iu_merge_pairs:
         report_r1_prefix = M.get_rule_param('iu_merge_pairs', '--report-r1-prefix'), # flag for reporting the actual sequence of an adapter tag at the beginning of the forward read, which should be specified in iu_gen_configs
         report_r2_prefix = M.get_rule_param('iu_merge_pairs', '--report-r2-prefix') # flag for reporting the actual sequence of an adapter tag at the beginning of the reverse read
     threads: M.T('iu_merge_pairs')
-    resources: nodes = M.T('iu_merge_pairs')
     run:
         shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
         if M.gzip_iu_merge_pairs_output:
@@ -99,8 +94,6 @@ rule gen_qc_report:
     log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
     input: expand(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done"), sample_name=M.sample_names)
     output: report = os.path.join(dirs_dict['QC_DIR'], "qc_report.txt") # optional target file that triggers Illumina-utils QC steps
-    threads: M.T('gen_qc_report')
-    resources: nodes = M.T('gen_qc_report')
     run:
         report_dict = {}
         headers = []
@@ -143,8 +136,6 @@ rule anvi_reformat_fasta:
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "reformat_fasta.log")
     input: M.get_input_for_anvi_reformat_fasta
     output: touch(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "REFORMAT.done"))
-    threads: M.T('anvi_reformat_fasta')
-    resources: nodes = M.T('anvi_reformat_fasta')
     params:
         simplify_names = M.get_rule_param('anvi_reformat_fasta', '--simplify-names')
     run:
@@ -194,7 +185,6 @@ rule anvi_trnaseq:
     input: M.get_input_for_anvi_trnaseq
     output: touch(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "IDENT.done"))
     threads: M.T('anvi_trnaseq')
-    resources: nodes = M.T('anvi_trnaseq')
     params:
         overwrite_output_destinations = M.get_rule_param('anvi_trnaseq', '--overwrite-output-destinations'),
         description = M.get_rule_param('anvi_trnaseq', '--description'),
@@ -251,7 +241,6 @@ rule anvi_convert_trnaseq_database:
     input: expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "IDENT.done"), sample_name=M.sample_names)
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "CONVERT.done"))
     threads: M.T('anvi_convert_trnaseq_database')
-    resources: nodes = M.T('anvi_convert_trnaseq_database')
     params:
         trnaseq_db_paths = expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}-TRNASEQ.db"), sample_name=M.sample_names),
         project_name = M.get_rule_param('anvi_convert_trnaseq_database', '--project-name'),
@@ -276,14 +265,13 @@ rule anvi_run_trna_taxonomy:
     input: rules.anvi_convert_trnaseq_database.output
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
     threads: M.T('anvi_run_trna_taxonomy')
-    resources: nodes = M.get_param_value_from_config(['anvi_run_trna_taxonomy', '--num-parallel-processes'])
     params:
         contigs_db_path = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'CONTIGS.db'),
         min_percent_identity = M.get_rule_param('anvi_run_trna_taxonomy', '--min-percent-identity'),
         max_num_target_sequences = M.get_rule_param('anvi_run_trna_taxonomy', '--max-num-target-sequences'),
         write_buffer_size = M.get_rule_param('anvi_run_trna_taxonomy', '--write-buffer-size'),
         all_hits_output_file = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'TAXONOMY-HITS.txt')
-    shell: "anvi-run-trna-taxonomy -c {params.contigs_db_path} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -P {resources.nodes} -T {threads} >> {log} 2>&1"
+    shell: "anvi-run-trna-taxonomy -c {params.contigs_db_path} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -T {threads} >> {log} 2>&1"
 
 
 if 'workflows/trnaseq' in workflow.included[0]:
