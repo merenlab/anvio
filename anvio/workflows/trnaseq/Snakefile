@@ -35,7 +35,7 @@ rule make_iu_input:
     """Create an Illumina-utils samples file for each sequence library."""
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "make_iu_input.log")
-    input: M.get_param_value_from_config(['samples_txt'])
+    input: ancient(M.get_param_value_from_config(['samples_txt']))
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "iu_samples_input.txt")
     threads: M.T('make_iu_input')
     resources: nodes = M.T('make_iu_input')
@@ -67,7 +67,7 @@ rule iu_merge_pairs:
     """Merge paired-end reads using Illumina-utils."""
     version: 1.0
     log: os.path.join(os.path.join(dirs_dict['LOGS_DIR'], "{sample_name}"), "iu_merge_pairs.log")
-    input: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
+    input: ancient(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini"))
     output: touch(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done"))
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
@@ -180,6 +180,12 @@ rule anvi_reformat_fasta:
             else:
                 shell("gzip -f %s >> {log} 2>&1" % fasta)
             shell("gzip -f %s >> {log} 2>&1" % report)
+
+
+rule all_reformatting_done:
+    version: 1.0
+    input: expand(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "REFORMAT.done"), sample_name=M.sample_names)
+    output: touch(os.path.join(dirs_dict['QC_DIR'], "ALL_REFORMATTING.done"))
 
 
 rule anvi_trnaseq:

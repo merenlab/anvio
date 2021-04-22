@@ -3,8 +3,11 @@
 """Sets up an anvi'o tRNA-seq snakemake workflow."""
 
 import os
-import anvio
 import pandas as pd
+
+from snakemake.io import ancient
+
+import anvio
 import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
@@ -462,9 +465,15 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc_report.txt"))
 
         if self.run_anvi_reformat_fasta:
-            for sample_name in self.sample_names:
-                out_dir = os.path.join(self.dirs_dict['QC_DIR'], sample_name)
-                target_files.append(os.path.join(out_dir, "REFORMAT.done"))
+            # Do not use `REFORMAT.done` output files produced by rule `run_anvi-reformat_fasta` as
+            # workflow targets. If this were the case and these files were last modified before
+            # `run_anvi_reformat_fasta` input files (`MERGE.done` when starting with FASTQ files) --
+            # which can occur when copying the contents of `01_QC` from one location to another --
+            # then `run_anvi_reformat_fasta` would always be rerun, even if attempting to start the
+            # workflow after this rule, say at `anvi_trnaseq`. Therefore, touch
+            # `ALL_REFORMATTING.done` as the output of dummy rule `all_reformatting_done` in lieu of
+            # using `REFORMAT.done` files as workflow targets.
+            target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "ALL_REFORMATTING.done"))
 
         if self.run_anvi_trnaseq:
             for sample_name in self.sample_names:
@@ -488,8 +497,8 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         merged reads generated from user-supplied FASTQ files."""
         sample_name = wildcards.sample_name
         if self.fasta_paths:
-            return self.fasta_paths[self.sample_names.index(sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "MERGE.done")
+            return ancient(self.fasta_paths[self.sample_names.index(sample_name)])
+        return ancient(os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "MERGE.done"))
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
