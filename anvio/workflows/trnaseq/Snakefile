@@ -261,7 +261,7 @@ rule anvi_convert_trnaseq_database:
         min_del_fraction = M.get_rule_param('anvi_convert_trnaseq_database', '--min-deletion-fraction'),
         distance = M.get_rule_param('anvi_convert_trnaseq_database', '--distance'),
         linkage = M.get_rule_param('anvi_convert_trnaseq_database', '--linkage')
-    shell: "anvi-convert-trnaseq-database {params.trnaseq_db_paths} --output-dir {params.output_dir} {params.project_name} {params.max_reported_trna_seeds} {params.overwrite_output_destinations} {params.description} {params.feature_threshold} {params.preferred_treatment} {params.nonspecific_output} {params.min_variation} {params.min_third_fourth_nt} {params.min_del_fraction} {params.distance} {params.linkage} >> {log} 2>&1"
+    shell: "anvi-convert-trnaseq-database {params.trnaseq_db_paths} --output-dir {params.output_dir} {params.project_name} {params.max_reported_trna_seeds} {params.overwrite_output_destinations} {params.description} {params.feature_threshold} {params.preferred_treatment} {params.nonspecific_output} {params.min_variation} {params.min_third_fourth_nt} {params.min_del_fraction} {params.distance} {params.linkage} -T {threads} >> {log} 2>&1"
 
 
 rule anvi_run_trna_taxonomy:
