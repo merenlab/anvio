@@ -14,6 +14,7 @@ __requires__ = ["kegg-metabolism","external-genomes"]
 __provides__ = []
 __description__ = "An ad-hoc script to analyze KEGG modules from metabolism estimation output"
 
+
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
@@ -25,3 +26,18 @@ if __name__ == '__main__':
                                  "In addition to the standard 'name' and 'contigs_db_path' columns, it must "
                                  "also include a 'metabolism_output_path' column which lists the path to "
                                  "the modules mode output from anvi-estimate-metabolism for this genome."}))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def main(args):
+    pass
