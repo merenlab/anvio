@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import anvio
+import anvio.kegg as kegg
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__requires__ = ["kegg-metabolism","external-genomes"]
+__provides__ = []
+__description__ = "An ad-hoc script to analyze KEGG modules from metabolism estimation output"
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupI = parser.add_argument_group('INPUT')
+    groupI.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes',
+                                {'help': "A TAB-delimited flat text file that lists anvi'o contigs databases. "
+                                 "In addition to the standard 'name' and 'contigs_db_path' columns, it must "
+                                 "also include a 'metabolism_output_path' column which lists the path to "
+                                 "the modules mode output from anvi-estimate-metabolism for this genome."}))
