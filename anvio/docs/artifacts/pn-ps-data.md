@@ -1,7 +1,7 @@
-This describes the output of %(anvi-script-calculate-pn-ps-ratio)s, which calculates the pN/pS ratio for each gene in a %(contigs-db)s. 
+This describes the output of %(anvi-get-pn-ps-ratio)s, which calculates the pN/pS ratio for each gene in a %(contigs-db)s. 
 
 {:.notice}
-See the page for %(anvi-script-calculate-pn-ps-ratio)s for an explanation of the pN/pS ratio 
+See the page for %(anvi-get-pn-ps-ratio)s for an explanation of the pN/pS ratio 
 
 This describes a directory that contains the following four files: 
 
