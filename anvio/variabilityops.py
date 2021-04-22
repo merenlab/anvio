@@ -1925,7 +1925,7 @@ class VariabilitySuper(VariabilityFilter, object):
             if reference == 'STP':
                 continue
 
-            x, y, z = structure.get_residue_center_of_mass(structure.get_residue(0))
+            x, y, z = structure.get_residue_center_of_mass(structure.get_residue(codon_order_in_gene))
             coords['corresponding_gene_call'].append(gene_id)
             coords['codon_order_in_gene'].append(codon_order_in_gene)
             coords['x'].append(x)
