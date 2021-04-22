@@ -1922,7 +1922,7 @@ class VariabilitySuper(VariabilityFilter, object):
                 structure = structure_db.get_structure(gene_id)
                 counter += 1
 
-            if reference == 'STP':
+            if reference in ['STP', 'TAA', 'TGA', 'TAG']:
                 continue
 
             x, y, z = structure.get_residue_center_of_mass(structure.get_residue(codon_order_in_gene))
