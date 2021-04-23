@@ -4,6 +4,8 @@
 import anvio
 import anvio.kegg as kegg
 
+import anvio.terminal as terminal
+
 from anvio.errors import ConfigError,FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
@@ -17,6 +19,8 @@ __requires__ = ["kegg-metabolism","external-genomes"]
 __provides__ = []
 __description__ = "An ad-hoc script to analyze KEGG modules from metabolism estimation output"
 
+run = terminal.Run()
+progress = terminal.Progress()
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
