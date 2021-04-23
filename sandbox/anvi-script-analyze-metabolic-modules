@@ -85,9 +85,9 @@ class ModuleAnalyzer:
                 corresponding_genome = modules_file_dict[id]['genome_name']
 
                 if corresponding_genome != genome:
-                    raise ConfigError(f"In the metabolism output file for genome {genome} (which is {input_file}, by "
+                    raise ConfigError(f"In the metabolism output file for genome '{genome}' (which is {input_file}, by "
                                       f"the way) we found a line that does not correspond to this genome. The fishy "
-                                      f"'genome_name' column has the genome {corresponding_genome} instead. Maybe you "
+                                      f"'genome_name' column has the genome '{corresponding_genome}' instead. Maybe you "
                                       f"gave us the wrong file, or maybe you gave us the wrong genome name, but either "
                                       f"way, you should make sure the names correspond.")
 
