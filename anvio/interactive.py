@@ -1739,20 +1739,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.ids_for_already_refined_bins = set([])
 
         if anvio.DEBUG:
-            run.info('collection from db', collection_dict)
-            run.info('bins info from db', bins_info_dict)
+            run.info('collection from db', f"{collection_dict}")
+            run.info('bins info from db', f"{bins_info_dict}")
             run.info_single('')
 
-            run.info('incoming collection data', refined_bin_data)
-            run.info('incoming bins info', refined_bins_info_dict)
+            run.info('incoming collection data', f"{refined_bin_data}")
+            run.info('incoming bins info', f"{refined_bins_info_dict}")
             run.info_single('')
 
         for bin_id in refined_bin_data:
             self.ids_for_already_refined_bins.add(bin_id)
 
         if anvio.DEBUG:
-            run.info('resulting collection', collection_dict)
-            run.info('resulting bins info', bins_info_dict)
+            run.info('resulting collection', f"{collection_dict}")
+            run.info('resulting bins info', f"{bins_info_dict}")
             run.info_single('')
 
         collections.append(self.collection_name, refined_bin_data, refined_bins_info_dict, drop_collection=False)
