@@ -82,7 +82,8 @@ class ModuleAnalyzer:
             modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(input_file, expected_fields=expected_headers)
 
             for id in modules_file_dict:
-                corresponding_genome = modules_file_dict[id]['genome_name']
+                module_info_in_genome = modules_file_dict[id]
+                corresponding_genome = module_info_in_genome['genome_name']
 
                 if corresponding_genome != genome:
                     raise ConfigError(f"In the metabolism output file for genome '{genome}' (which is {input_file}, by "
@@ -91,6 +92,9 @@ class ModuleAnalyzer:
                                       f"gave us the wrong file, or maybe you gave us the wrong genome name, but either "
                                       f"way, you should make sure the names correspond.")
 
+                module_id = module_info_in_genome['kegg_module']
+                if module_id not in self.modules:
+                    self.modules[module_id] = Module(module_info_in_genome)
 class Module:
     """This class represents one metabolic module, and summarizes information about this module in all input genomes.
 
