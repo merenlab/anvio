@@ -90,7 +90,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--fragment-mapping-query-chunk-length',
             '--profiling-progress-interval',
             '--alignment-progress-interval',
-            '--agglomeration-progress-interval'
+            '--modification-progress-interval'
         ]
         rule_acceptable_params_dict['anvi_convert_trnaseq_database'] = [
             'run',
@@ -166,7 +166,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--fragment-mapping-query-chunk-length': anvio.D['fragment-mapping-query-chunk-length'][1]['default'],
                 '--profiling-progress-interval': anvio.D['profiling-progress-interval'][1]['default'],
                 '--alignment-progress-interval': anvio.D['alignment-progress-interval'][1]['default'],
-                '--agglomeration-progress-interval': anvio.D['agglomeration-progress-interval'][1]['default'],
+                '--modification-progress-interval': anvio.D['modification-progress-interval'][1]['default'],
                 'threads': 1
             },
             'anvi_convert_trnaseq_database': {
