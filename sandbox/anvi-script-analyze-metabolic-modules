@@ -74,7 +74,8 @@ class ModuleAnalyzer:
         """
 
         self.modules = {}
-        expected_headers = kegg.OUTPUT_MODES['modules']['headers']
+        # these expected headers should make sure we are working only with single genome metabolism estimation output files
+        expected_headers = kegg.OUTPUT_MODES['modules']['headers'] + ['genome_name']
 
         for genome in self.genomes:
             modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(self.genomes[genome]['metabolism_output_path'], expected_fields=expected_headers)
