@@ -78,7 +78,19 @@ class ModuleAnalyzer:
         expected_headers = kegg.OUTPUT_MODES['modules']['headers'] + ['genome_name']
 
         for genome in self.genomes:
-            modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(self.genomes[genome]['metabolism_output_path'], expected_fields=expected_headers)
+            input_file = self.genomes[genome]['metabolism_output_path']
+            modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(input_file, expected_fields=expected_headers)
+
+            for id in modules_file_dict:
+                corresponding_genome = modules_file_dict[id]['genome_name']
+
+                if corresponding_genome != genome:
+                    raise ConfigError(f"In the metabolism output file for genome {genome} (which is {input_file}, by "
+                                      f"the way) we found a line that does not correspond to this genome. The fishy "
+                                      f"'genome_name' column has the genome {corresponding_genome} instead. Maybe you "
+                                      f"gave us the wrong file, or maybe you gave us the wrong genome name, but either "
+                                      f"way, you should make sure the names correspond.")
+
 
 ## END CLASSES AND FUNCTION DEFINITIONS
 ## Script driver
