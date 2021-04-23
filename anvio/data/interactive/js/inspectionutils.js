@@ -254,6 +254,7 @@ function removeGeneChart() {
 
 
 function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
+    console.log("Drawing gene arrows (" + (new Date(Date.now())).toLocaleString().substr(11,7) + ")");
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -374,7 +375,6 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         $(popover).css('left', '0px');
       }
     });
-    console.log("Drawing gene arrows (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function getGeneEndpts(_start, _stop) {
