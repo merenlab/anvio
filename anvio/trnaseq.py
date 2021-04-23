@@ -2501,7 +2501,7 @@ class TRNASeqDataset(object):
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
         norm_trna_seq_dict = self.norm_trna_seq_dict
         for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            self.progress.new(f"Mapping {pp(len(query_names))} unprofiled reads of length {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} to profiled tRNA")
+            self.progress.new(f"Mapping {pp(len(query_names))} unprofiled {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} nt reads to profiled tRNA")
 
             aligned_query_dict, aligned_target_dict = Aligner(
                 query_names,
