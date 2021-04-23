@@ -57,6 +57,7 @@ var mcags;
 var cog_annotated = false, kegg_annotated = false;
 
 function loadAll() {
+    console.log("Initiated: " + Math.round(Date.now()/1000));
     $.ajaxPrefilter(function(options) {
         if (request_prefix) {
             options.url = request_prefix + options.url;
@@ -98,7 +99,6 @@ function loadAll() {
     if(state['snvs_enabled'] == null) {
         state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
     }
-    if(state['show_highlights'] == null) state['show_highlights'] = true;
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
 
@@ -148,6 +148,7 @@ function loadAll() {
                     }
                   }
                 }
+                console.log("Checking SNV and indels tables from state data (done: " + Math.round(Date.now()/1000) + ")");
 
                 previous_contig_name = contig_data.previous_contig_name;
                 next_contig_name = contig_data.next_contig_name;
@@ -213,6 +214,7 @@ function loadAll() {
                     if(cog_annotated && kegg_annotated) return;
                   }
                 });
+                console.log("Checking for gene functional annotations (done: " + Math.round(Date.now()/1000) + ")");
 
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
@@ -311,6 +313,7 @@ function loadAll() {
                 $('#toggle_nucl_box').attr("checked", "checked");
 
                 createCharts(state);
+                console.log("Creating charts (done: " + Math.round(Date.now()/1000) + ")");
                 $('.loading-screen').hide();
 
                 // on initial load from main interface
@@ -324,6 +327,7 @@ function loadAll() {
                                   clusteringData = response[1]['data'];
                                   loadOrderingAdditionalData(response[1]);
                                   processState(state['state-name'], response[0]);
+                                  console.log("Processing state data from the server (done: " + Math.round(Date.now()/1000) + ")");
                               }catch(e){
                                   console.error("Exception thrown", e.stack);
                                   toastr.error('Failed to parse state data, ' + e);
@@ -465,6 +469,7 @@ function loadAll() {
                 $('#toggle_nucl_box').on('change', function() {
                   toggle_nucleotide_display();
                 });
+                console.log("Setting event listeners (done: " + Math.round(Date.now()/1000) + ")");
             }
         });
 }
@@ -491,6 +496,7 @@ function drawHighlightBoxes() {
                   .attr("fill-opacity", 0)
                   .attr("transform", "translate(50,20)");
   }
+  console.log("Drawing vertical highlight boxes (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function drawAAHighlightBoxes() {
@@ -512,6 +518,7 @@ function drawAAHighlightBoxes() {
       $('#highlight_' + box_num + ', #highlight_' + (box_num+1)).attr('fill', '#989898');
     }
   });
+  console.log("Drawing amino acid highlight boxes (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function get_box_id_for_AA(aa, id_start) {
@@ -626,16 +633,19 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filt
     }
 
   }
+  console.log("Generating gene functional annotation color table (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function toggleSNVs() {
   state['show_snvs'] = !state['show_snvs'];
   createCharts(state);
+  console.log("Toggling SNV markers (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function toggleIndels() {
   state['show_indels'] = !state['show_indels'];
   createCharts(state);
+  console.log("Toggling indel markers (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function toggleHighlightBoxes() {
@@ -649,6 +659,7 @@ function toggleHighlightBoxes() {
     $('#highlight-boxes').css('pointer-events', 'all');
   }
   state['show_highlights'] = !state['show_highlights'];
+  console.log("Togging highlight boxes (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function toggleGeneIDColor(gene_id, color="#FF0000") {
@@ -715,6 +726,7 @@ function removeGeneIDColor(gene_id) {
 function redrawArrows() {
   resetArrowMarkers();
   drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
+  console.log("Redrawing gene arrows (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function resetArrowMarkers() {
@@ -734,6 +746,7 @@ function resetArrowMarkers() {
           .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
           .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
   });
+  console.log("Resetting arrow markers (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 /*
@@ -761,6 +774,7 @@ function resetFunctionColors(fn_colors=null) {
                              $('#gene_color_order').val(),
                              state['highlight-genes'],
                              show_cags_in_split);
+  console.log("Resetting functional annotation colors (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 function toggleShowCagsInSplit() {
@@ -787,6 +801,7 @@ function toggle_nucleotide_display() {
     drawHighlightBoxes();
     $('#context-container').off('mouseover mouseout');
   }
+  console.log("Toggling nucleotide display (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 /*
@@ -972,6 +987,7 @@ function display_nucleotides() {
     drawHighlightBoxes();
     drawAAHighlightBoxes();
   }
+  console.log("Drawing nucleotides (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
@@ -1007,6 +1023,7 @@ function computeGCContent(window_size, step_size) {
     }
 
     return gc_array;
+    console.log("Computing GC content (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
@@ -1035,12 +1052,14 @@ function applyOverlayGCContent() {
 
     sessionStorage.gc_overlay_settings = JSON.stringify(gc_overlay_settings);
     createCharts(state);
+    console.log("Applying GC content overlay (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
 function resetOverlayGCContent() {
     delete sessionStorage.gc_overlay_settings;
     createCharts(state);
+    console.log("Resetting GC content overlay (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
@@ -1102,12 +1121,14 @@ function applyMaxValues() {
 
     sessionStorage.max_coverage = JSON.stringify(max_values);
     createCharts(state);
+    console.log("Applying max values (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
 function resetMaxValues() {
     delete sessionStorage.max_coverage;
     createCharts(state);
+    console.log("Resetting max values (done: " + Math.round(Date.now()/1000) + ")");
 }
 
 
@@ -1387,6 +1408,7 @@ function processState(state_name, state) {
     if(!state['highlight-genes']) {
       state['highlight-genes'] = {};
     }
+    if(!state['show_highlights']) state['show_highlights'] = true;
 
     // define arrow markers for highlighted gene ids
     Object.keys(state['highlight-genes']).forEach(function(gene_id){
@@ -1505,6 +1527,7 @@ function createCharts(state){
     if (has_max_coverage_values) {
         max_coverage_values = JSON.parse(sessionStorage.max_coverage);
     }
+    console.log("Plotting coverage (done: " + Math.round(Date.now()/1000) + ")");
 
     let gc_content_array = [];
     let gc_overlay_color = '#00FF00';
@@ -1904,6 +1927,7 @@ function Chart(options){
                                 .text(function (d) {
                                     return d.value['competing_nts'];
                                 });
+                                console.log("Drawing SNV markers (done: " + Math.round(Date.now()/1000) + ")");
     }
 
     if(state['show_indels']) {
@@ -2025,6 +2049,7 @@ function Chart(options){
                                   if(d.value['pos'] in mult_indels) return 'x';
                                   return d.value['type'] == 'INS' ? '+' : '-';
                               });
+                              console.log("Drawing indel markers (done: " + Math.round(Date.now()/1000) + ")");
     }
 
 
