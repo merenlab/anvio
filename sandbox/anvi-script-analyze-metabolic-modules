@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
+import sys
+
 import anvio
 import anvio.kegg as kegg
 
@@ -21,6 +24,55 @@ __description__ = "An ad-hoc script to analyze KEGG modules from metabolism esti
 
 run = terminal.Run()
 progress = terminal.Progress()
+
+
+## CLASSES AND FUNCTION DEFINITIONS
+## Ideally, these will eventually go into a separate file.
+class ModuleAnalyzer:
+    """This class defines functions for analysis of metabolic modules."""
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.external_genomes_file = A('external_genomes') or None
+
+        g = GenomeDescriptions(self.args, run=self.run, progress=self.progress)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
+        self.genomes = g.genomes
+
+        self.input_paths_sanity_check()
+
+
+    def input_paths_sanity_check(self):
+        """Make sure each genome has a metabolism input file path, and convert to absolute paths if necessary."""
+
+        for genome_name in self.genomes:
+            if 'metabolism_output_path' not in self.genomes[genome_name]:
+                raise ConfigError(f"Your input file should contain a column called 'metabolism_output_path' "
+                                  f"containing paths to metabolism estimation output files for each genome, "
+                                  f"buuuut it doesn't, so... see ya.")
+
+            path = self.genomes[genome_name]['metabolism_output_path']
+            if not path:
+                raise ConfigError(f"Your input file did not contain a path to metabolism output "
+                                  f"for genome {genome_name}. Better fix that or this whole thing "
+                                  f"won't work.")
+
+            if not path.startswith('/'):
+                self.genomes[genome_name]['metabolism_output_path'] = os.path.abspath(os.path.join(os.path.dirname(self.external_genomes_file), path))
+
+
+
+## END CLASSES AND FUNCTION DEFINITIONS
+## Script driver
+def main(args):
+    """The main driver function for analyzing modules."""
+
+    a = ModuleAnalyzer(args)
+
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
@@ -44,7 +96,3 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
-
-
-def main(args):
-    pass
