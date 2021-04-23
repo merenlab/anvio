@@ -68,7 +68,7 @@ if __name__ == '__main__':
     group1E = parser.add_argument_group('PROGRESS')
     group1E.add_argument(*anvio.A('profiling-progress-interval'), **anvio.K('profiling-progress-interval'))
     group1E.add_argument(*anvio.A('alignment-progress-interval'), **anvio.K('alignment-progress-interval'))
-    group1E.add_argument(*anvio.A('agglomeration-progress-interval'), **anvio.K('agglomeration-progress-interval'))
+    group1E.add_argument(*anvio.A('modification-progress-interval'), **anvio.K('modification-progress-interval'))
 
     group2 = parser.add_argument_group('DEFAULTS')
     group2.add_argument(*anvio.A('default-feature-param-file'), **anvio.K('default-feature-param-file'))

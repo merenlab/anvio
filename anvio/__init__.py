@@ -3101,13 +3101,14 @@ D = {
                      "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
                      "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
                 ),
-    'agglomeration-progress-interval': (
-            ['--agglomeration-progress-interval'],
+    'modification-progress-interval': (
+            ['--modification-progress-interval'],
             {'default': 10000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress in sequence agglomeration, a stage in the identification of modifications, "
-                     "is reported after a certain number of sequences have been processed."}
+             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
+                     "Progress is reported in two distinct stages of this process, "
+                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],

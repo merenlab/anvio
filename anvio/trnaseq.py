@@ -1376,7 +1376,7 @@ class TRNASeqDataset(object):
         # Argument group 1E: PROGRESS
         self.profiling_progress_interval = A('profiling_progress_interval')
         self.alignment_progress_interval = A('alignment_progress_interval')
-        self.agglom_progress_interval = A('agglomeration_progress_interval')
+        self.mod_progress_interval = A('modification_progress_interval')
 
         if not self.input_fasta_path:
             raise ConfigError("Please specify the path to a FASTA file of tRNA-seq reads using --fasta-file or -f.")
@@ -2636,7 +2636,7 @@ class TRNASeqDataset(object):
                                                                         aligned_ref.name),
                                  alignment_target_chunk_size=self.alignment_target_chunk_size,
                                  alignment_progress_interval=self.alignment_progress_interval,
-                                 agglom_progress_interval=self.agglom_progress_interval)
+                                 agglom_progress_interval=self.mod_progress_interval)
 
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
@@ -2645,11 +2645,15 @@ class TRNASeqDataset(object):
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
         represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
         mod_trna_seq_dict = self.mod_trna_seq_dict
-        num_processed_refs = -1
+        num_processed_refs = 0
         total_ref_count = len(agglom_aligned_ref_dict)
+        decomposition_progress_interval = self.mod_progress_interval
+        next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
+            if num_processed_refs % decomposition_progress_interval == 0:
+                self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}")
+                next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
             num_processed_refs += 1
-            self.progress.update(f"{num_processed_refs}/{total_ref_count} clusters decomposed")
 
             # A modification requires at least 3 different nucleotides to be detected, and each
             # normalized sequence differs by at least 1 nucleotide (substitution or gap), so for a
