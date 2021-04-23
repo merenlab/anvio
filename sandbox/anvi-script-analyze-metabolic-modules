@@ -4,7 +4,7 @@
 import anvio
 import anvio.kegg as kegg
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError,FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
