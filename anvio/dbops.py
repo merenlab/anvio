@@ -2662,10 +2662,17 @@ class ProfileSuperclass(object):
 
         utils.is_profile_db(self.profile_db_path)
 
+        # NOTE for programmers. The next few lines are quite critical for the flexibility of ProfileSuper.
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
         if not hasattr(self, 'split_names_of_interest'):
+            self.split_names_of_interest = set([])
+        elif self.collection_name:
+            # if self.split_names_of_interest is defined upstream somewhere,
+            # but if we ALSO have a collection name here, we want to recover those
+            # split names relevant to the collection name later. so in this case,
+            # we will OVERWRITE this variable, which is kind of dangerous.
             self.split_names_of_interest = set([])
 
         if A('split_names_of_interest'):
