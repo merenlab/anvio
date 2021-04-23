@@ -943,12 +943,8 @@ class Aligner:
 
                 num_processed_queries += 1
                 if num_processed_queries % query_progress_interval == 0:
-                    self.progress.update("%s/%s %squeries processed for targets %s-%s"
-                                         % (pp(num_processed_queries),
-                                         pp(total_query_count),
-                                         reported_query_type,
-                                         pp(target_chunk_start + 1),
-                                         pp(target_chunk_stop)))
+                    self.progress.update("%s/%s %squeries processed"
+                                         % (pp(num_processed_queries), pp(total_query_count), reported_query_type))
 
             for p in processes:
                 p.terminate()
@@ -958,11 +954,8 @@ class Aligner:
             del target_seq_dict
             gc.collect()
 
-            self.progress.update("%s/%s queries processed for targets %s-%s"
-                                 % (pp(num_processed_queries),
-                                 pp(total_query_count),
-                                 pp(target_chunk_start + 1),
-                                 pp(target_chunk_stop)))
+            self.progress.update("%s/%s queries processed"
+                                 % (pp(num_processed_queries), pp(total_query_count)))
 
         return aligned_query_dict, aligned_target_dict
 
