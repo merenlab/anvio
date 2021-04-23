@@ -95,6 +95,8 @@ class ModuleAnalyzer:
                 module_id = module_info_in_genome['kegg_module']
                 if module_id not in self.modules:
                     self.modules[module_id] = Module(module_info_in_genome)
+
+                self.modules[module_id].add_genome_data(module_info_in_genome)
 class Module:
     """This class represents one metabolic module, and summarizes information about this module in all input genomes.
 
@@ -134,6 +136,19 @@ class Module:
     def __str__(self):
         return f"Module ID: {self.id}\nName: {self.name}\nClass: {self.module_class}\nCategory: {self.category}\nSubcategory: {self.subcategory}\n" \
                f"Definition: {self.definition}"
+
+
+    def add_genome_data(self, mod_info_in_one_genome):
+        """Processes a line from metabolism estimation output for this module in one genome and adds data to summary attributes.
+
+        The line should be in dictionary form and the required keys are the headers in that metabolism estimation output file,
+        which are: kegg.OUTPUT_MODES['modules']['headers'] + ['genome_name']
+        """
+
+        data_mod_id = mod_info_in_one_genome['kegg_module']
+        if data_mod_id != self.id:
+            raise ConfigError(f"Ooopsie. You gave Module.add_genome_data() some data that is for the wrong module. This Module object "
+                              f"has the id '{self.id}', but the data is for module '{data_mod_id}'.")
 
 
 ## END CLASSES AND FUNCTION DEFINITIONS
