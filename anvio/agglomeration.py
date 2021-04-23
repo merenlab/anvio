@@ -87,7 +87,7 @@ class Agglomerator:
         agglomeration_progress_interval : int, 10000
             The number of alignment references remapped between progress statements
         """
-        self.progress.update("Aligning sequences to themselves")
+        self.progress.update("Aligning seqs to themselves")
 
         if priority_function is None:
             priority_function = lambda aligned_ref: (-len(aligned_ref.seq_string),

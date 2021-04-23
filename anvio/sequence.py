@@ -197,7 +197,7 @@ class Kmerizer:
             Nested dict, with the outer dict keyed by hashed prefix subsequence k-mers,
             and each inner dict mapping names of input sequences containing the k-mer to input sequence strings
         """
-        self.progress.update("Relating prefix subsequences to parent sequences")
+        self.progress.update("Relating prefix subseqs to parent seqs")
 
         kmer_dict = {}
         for name, seq_string in zip(self.names, self.seqs):
@@ -980,7 +980,7 @@ class Aligner:
         matched_target_names : list
             List of target names with prefix subsequence match to query; max length equal to `int(max_matches_per_query)`
         """
-        self.progress.update("Matching prefix sequences")
+        self.progress.update("Matching prefix seqs")
 
         kmer_size = min(map(len, self.query_seq_strings))
 

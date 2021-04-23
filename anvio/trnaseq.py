@@ -1787,7 +1787,7 @@ class TRNASeqDataset(object):
 
             if fetched_profile_count % profiling_progress_interval == 0:
                 # Periodically report the number of unique sequences that have been profiled.
-                self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique sequences have been profiled")
+                self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
 
         for p in processes:
             p.terminate()
@@ -1877,7 +1877,7 @@ class TRNASeqDataset(object):
         profile. Add `TrimmedTruncatedProfileSequence` objects formed from input
         `UniqueTruncatedProfileSequence` objects to `self.trimmed_trunc_seq_dict`."""
         start_time = time.time()
-        self.progress.new("Trimming the 3' ends of sequences with truncated tRNA profiles")
+        self.progress.new("Trimming the 3' ends of seqs with truncated tRNA profiles")
         self.progress.update("...")
 
         trimmed_seqs = self.get_trimmed_seqs([uniq_seq for uniq_seq in self.uniq_trunc_seq_dict.values()], TrimmedTruncatedProfileSequence)
@@ -1900,7 +1900,7 @@ class TRNASeqDataset(object):
         Trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         """
         start_time = time.time()
-        self.progress.new("Dereplicating trimmed tRNA sequences from the 3' end")
+        self.progress.new("Dereplicating trimmed tRNA seqs from the 3' end")
         self.progress.update("...")
 
         # Prefix dereplicate trimmed sequences from the 3' end.
@@ -1942,7 +1942,7 @@ class TRNASeqDataset(object):
         # the cluster is assigned a wrong complete or incomplete profile, but all of the shorter
         # sequences in the cluster are assigned correct incomplete profiles -- presumably a rare
         # inaccuracy that goes unchecked.
-        self.progress.update("Inspecting normalized sequence clusters")
+        self.progress.update("Inspecting normalized seq clusters")
 
         norm_trna_seq_dict = self.norm_trna_seq_dict
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
@@ -2081,7 +2081,7 @@ class TRNASeqDataset(object):
         are themselves 3'-dereplicated, forming another pool of normalized sequences in
         `self.norm_trunc_seq_dict`."""
         start_time = time.time()
-        self.progress.new("Dereplicating trimmed sequences with a truncated feature profile")
+        self.progress.new("Dereplicating trimmed seqs with a truncated feature profile")
         self.progress.update("...")
 
         # Prefix dereplicate both trimmed sequences with truncated profiles and normalized sequences
@@ -2293,7 +2293,7 @@ class TRNASeqDataset(object):
         feature profile and thus is shown to have a 5' extension. Recovered sequences each generate
         a `TrimmedMappedSequence` object."""
         start_time = time.time()
-        self.progress.new("Dereplicating acceptorless tRNA sequences")
+        self.progress.new("Dereplicating acceptorless tRNA seqs")
         self.progress.update("...")
 
         # 3'-dereplicate normalized tRNA sequences and unique non-tRNA sequences.
@@ -2865,9 +2865,9 @@ class TRNASeqDataset(object):
         different cDNA sequences, with some containing a deletion, and others, representing a
         different tRNA, not containing a deletion."""
         start_time = time.time()
-        self.progress.new("Finding sequences with modification-induced deletions")
+        self.progress.new("Finding seqs with modification-induced dels")
 
-        self.progress.update("Generating modified sequences with in silico deletions")
+        self.progress.update("Generating modified seqs with in silico dels")
         # A "child" here is a modified sequence with in silico deletions, M'.
         mod_seq_child_names = []
         mod_seq_child_reversed_seq_strings = []
@@ -2881,7 +2881,7 @@ class TRNASeqDataset(object):
                 mod_seq_child_index += 1
 
 
-        self.progress.update("Gathering normalized sequences with truncated feature profiles")
+        self.progress.update("Gathering normalized seqs with truncated feature profiles")
         norm_trunc_seq_names = []
         norm_trunc_seq_reversed_seq_strings = []
         norm_trunc_seq_extras = []
@@ -2890,7 +2890,7 @@ class TRNASeqDataset(object):
             norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
             norm_trunc_seq_extras.append(norm_trunc_seq)
 
-        self.progress.update("3'-dereplicating sequences")
+        self.progress.update("3'-dereplicating seqs")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
                                                                norm_trunc_seq_reversed_seq_strings,
                                                                norm_trunc_seq_extras,
@@ -2899,11 +2899,11 @@ class TRNASeqDataset(object):
                                                                mod_seq_child_extras)
 
         if clusters:
-            self.progress.update("Searching normalized sequences with truncated feature profiles")
+            self.progress.update("Searching normalized seqs with truncated feature profiles")
             self.process_deletion_clusters(clusters, 'trunc')
 
 
-        self.progress.update("Gathering normalized sequences with full feature profiles")
+        self.progress.update("Gathering normalized seqs with full feature profiles")
         norm_trna_seq_names = []
         norm_trna_seq_reversed_seq_strings = []
         norm_trna_seq_extras = []
@@ -2913,7 +2913,7 @@ class TRNASeqDataset(object):
                 norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
                 norm_trna_seq_extras.append(norm_trna_seq)
 
-        self.progress.update("3'-dereplicating sequences")
+        self.progress.update("3'-dereplicating seqs")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
                                                                norm_trna_seq_reversed_seq_strings,
                                                                norm_trna_seq_extras,
@@ -2922,12 +2922,12 @@ class TRNASeqDataset(object):
                                                                mod_seq_child_extras)
 
         if clusters:
-            self.progress.update("Searching normalized sequences with full feature profiles")
+            self.progress.update("Searching normalized seqs with full feature profiles")
             self.process_deletion_clusters(clusters, 'trna')
 
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed finding modification-induced deletions (min)",
+            f.write(self.get_summary_line("Time elapsed finding modification-induced dels (min)",
                                           time.time() - start_time,
                                           is_time_value=True))
 
@@ -3959,7 +3959,7 @@ class TRNASeqDataset(object):
 
 
     def write_unconserved_table(self):
-        self.progress.new("Writing tRNA-seq database table of unconserved nucleotides in fully profiled tRNA")
+        self.progress.new("Writing tRNA-seq database table of unconserved nts in fully profiled tRNA")
         self.progress.update("...")
 
         unconserved_table_entries = []
@@ -3981,7 +3981,7 @@ class TRNASeqDataset(object):
 
 
     def write_unpaired_table(self):
-        self.progress.new("Writing tRNA-seq database table of unpaired nucleotides in profiled tRNA")
+        self.progress.new("Writing tRNA-seq database table of unpaired nts in profiled tRNA")
         self.progress.update("...")
 
         unpaired_table_entries = []
@@ -4003,7 +4003,7 @@ class TRNASeqDataset(object):
 
 
     def write_sequences_table(self):
-        self.progress.new("Writing tRNA-seq database table of unique tRNA sequences")
+        self.progress.new("Writing tRNA-seq database table of unique tRNA seqs")
         self.progress.update("...")
 
         sequences_table_entries = []
@@ -4043,7 +4043,7 @@ class TRNASeqDataset(object):
 
 
     def write_trimmed_table(self):
-        self.progress.new("Writing tRNA-seq database table of trimmed tRNA sequences")
+        self.progress.new("Writing tRNA-seq database table of trimmed tRNA seqs")
         self.progress.update("...")
 
         trimmed_table_entries = []
@@ -4088,7 +4088,7 @@ class TRNASeqDataset(object):
 
 
     def write_normalized_table(self):
-        self.progress.new("Writing tRNA-seq database table of fragment-dereplicated tRNA sequences")
+        self.progress.new("Writing tRNA-seq database table of fragment-dereplicated tRNA seqs")
         self.progress.update("...")
 
         norm_table_entries = []
@@ -4149,7 +4149,7 @@ class TRNASeqDataset(object):
 
 
     def write_modified_table(self):
-        self.progress.new("Writing tRNA-seq database table of modified tRNA sequences")
+        self.progress.new("Writing tRNA-seq database table of modified tRNA seqs")
         self.progress.update("...")
 
         mod_table_entries = []
@@ -4216,7 +4216,7 @@ class TRNASeqDataset(object):
 
 
     def write_unique_nontrna_supplement(self):
-        self.progress.new("Writing a file of unique sequences not identified as tRNA")
+        self.progress.new("Writing file of unique seqs not identified as tRNA")
         self.progress.update("...")
 
         with open(self.uniq_nontrna_path, 'w') as nontrna_file:
@@ -4240,7 +4240,7 @@ class TRNASeqDataset(object):
     def write_trimmed_supplement(self):
         """Write a supplementary file showing the spectrum of 5'/3' extensions of trimmed, fully
         profiled tRNA sequences."""
-        self.progress.new("Writing a file showing the 5'/3' ends of each trimmed, fully profiled tRNA sequence")
+        self.progress.new("Writing file showing 5'/3' ends of trimmed, fully profiled tRNA seqs")
         self.progress.update("...")
 
         with open(self.trimmed_ends_path, 'w') as trimmed_file:
@@ -4732,7 +4732,7 @@ class DatabaseConverter(object):
     def load_trnaseq_dbs(self):
         loaded_db_count = 0
         num_trnaseq_db_paths = len(self.trnaseq_db_paths)
-        self.progress.new("Loading sequence information from tRNA-seq databases")
+        self.progress.new("Loading seq info from tRNA-seq databases")
         self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} databases loaded")
 
         manager = mp.Manager()
@@ -4958,7 +4958,7 @@ class DatabaseConverter(object):
         merging for the more abundant tRNA species, in particular, as these are most likely to be
         represented by reads spanning the full length of the tRNA, producing the same normalized
         sequences."""
-        self.progress.new("Forming seed sequences from input samples")
+        self.progress.new("Forming seed seqs from input samples")
 
         norm_seq_string_seed_seq_dict = {}
         for trnaseq_db_num, trnaseq_db_path in enumerate(self.trnaseq_db_paths):
