@@ -91,6 +91,46 @@ class ModuleAnalyzer:
                                       f"gave us the wrong file, or maybe you gave us the wrong genome name, but either "
                                       f"way, you should make sure the names correspond.")
 
+class Module:
+    """This class represents one metabolic module, and summarizes information about this module in all input genomes.
+
+    This includes information about gene order and synteny, KOs that are commonly used/missing, etc.
+
+    You can initialize this class using a dictionary of the module's information. It is most convenient to get this information
+    from a line of a modules mode metabolism estimation output file. but you can also generate your own dictionary.
+
+    Here is an example, which shows the requisite headers in that dictionary:
+    >>> mod = Module({'kegg_module': 'M00001', 'module_name': 'Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate', \
+                      'module_class': 'Pathway modules', 'module_category': 'Carbohydrate metabolism', \
+                      'module_subcategory': 'Central carbohydrate metabolism', \
+                      'module_definition': '"(K00844,K12407,K00845,K00886,K08074,K00918) (K01810,K06859,K13810,K15916) (K00850,K16370,K21071,K00918) (K01623,K01624,K11645,K16305,K16306) K01803 ((K00134,K00150) K00927,K11389) (K01834,K15633,K15634,K15635) K01689 (K00873,K12406)"', \
+                      'module_warnings': 'None'})
+    """
+
+    def __init__(self, mod_info_in_one_genome):
+        # initialize attributes that will never change
+        self.id = mod_info_in_one_genome['kegg_module']
+        self.name = mod_info_in_one_genome['module_name']
+        self.module_class = mod_info_in_one_genome['module_class']
+        self.category = mod_info_in_one_genome['module_category']
+        self.subcategory = mod_info_in_one_genome['module_subcategory']
+        self.definition = mod_info_in_one_genome['module_definition'].strip('"')
+        self.warnings = mod_info_in_one_genome['warnings']
+
+        # initialize summary attributes
+        self.gcid_distances = []            # the distances between subsequent gene calls within one genome (saved for each genome)
+        self.completeness_scores = []       # completeness of this module in each genome
+
+
+    def __repr__(self):
+        return f"Module(id={self.id}, name={self.name}, class={self.module_class}, category={self.category}, subcategory={self.subcategory}, " \
+               f"definition={self.definition})"
+
+
+    def __str__(self):
+        return f"Module ID: {self.id}\nName: {self.name}\nClass: {self.module_class}\nCategory: {self.category}\nSubcategory: {self.subcategory}\n" \
+               f"Definition: {self.definition}"
+
 
 ## END CLASSES AND FUNCTION DEFINITIONS
 ## Script driver
