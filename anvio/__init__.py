@@ -3097,7 +3097,7 @@ D = {
             {'default': 100000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress is reported after a certain number of queries have been processed (by default %(default)d) "
+             'help': "Progress is reported after a certain number of queries have been processed "
                      "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
                      "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
                 ),
