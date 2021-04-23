@@ -6,6 +6,7 @@ import sys
 
 import anvio
 import anvio.kegg as kegg
+import anvio.utils as utils
 
 import anvio.terminal as terminal
 
@@ -65,6 +66,18 @@ class ModuleAnalyzer:
                 self.genomes[genome_name]['metabolism_output_path'] = os.path.abspath(os.path.join(os.path.dirname(self.external_genomes_file), path))
 
 
+    def analyze_modules(self):
+        """Driver function for module analysis.
+
+        We go through each genome and process its module estimation output file. Each time we find a new module, we initialize
+        a module object to keep track of its data.
+        """
+
+        self.modules = {}
+        expected_headers = kegg.OUTPUT_MODES['modules']['headers']
+
+        for genome in self.genomes:
+            modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(self.genomes[genome]['metabolism_output_path'], expected_fields=expected_headers)
 
 ## END CLASSES AND FUNCTION DEFINITIONS
 ## Script driver
@@ -72,6 +85,7 @@ def main(args):
     """The main driver function for analyzing modules."""
 
     a = ModuleAnalyzer(args)
+    a.analyze_modules()
 
 
 if __name__ == '__main__':
