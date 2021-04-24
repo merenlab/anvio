@@ -7,11 +7,13 @@ import sys
 import anvio
 import anvio.kegg as kegg
 import anvio.utils as utils
+import anvio.tables as t
 
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError,FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
+from anvio.dbops import ContigsDatabase
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -81,6 +83,12 @@ class ModuleAnalyzer:
             input_file = self.genomes[genome]['metabolism_output_path']
             modules_file_dict = utils.get_TAB_delimited_file_as_dictionary(input_file, expected_fields=expected_headers)
 
+            # we open the contigs db so we can access contig information
+            contigs_db_path = self.genomes[genome]['contigs_db_path']
+            contigs_db = ContigsDatabase(contigs_db_path, run=self.run, progress=self.progress)
+            genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
+            gene_to_contig_dict = {gene: contig for gene,contig in genes_in_contigs}
+
             for id in modules_file_dict:
                 module_info_in_genome = modules_file_dict[id]
                 corresponding_genome = module_info_in_genome['genome_name']
@@ -96,7 +104,9 @@ class ModuleAnalyzer:
                 if module_id not in self.modules:
                     self.modules[module_id] = Module(module_info_in_genome)
 
-                self.modules[module_id].add_genome_data(module_info_in_genome)
+                self.modules[module_id].add_genome_data(module_info_in_genome, gene_to_contig_dict)
+
+            contigs_db.disconnect()
 class Module:
     """This class represents one metabolic module, and summarizes information about this module in all input genomes.
 
