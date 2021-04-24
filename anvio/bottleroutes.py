@@ -553,18 +553,12 @@ class BottleApplication(Bottle):
         data['sequence'] = self.interactive.split_sequences[split_name]['sequence']
 
         ## get the variability information dict for split:
-        progress.new('Variability', discard_previous_if_exists=True)
-        progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
         ## get the indels information dict for split:
-        progress.new('Indels', discard_previous_if_exists=True)
-        progress.update('Collecting info for "%s"' % split_name)
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
-
         for layer in layers:
-            progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
@@ -626,8 +620,6 @@ class BottleApplication(Bottle):
 
             data['genes'].append(p)
 
-        progress.end()
-
         return json.dumps(data)
 
 
@@ -643,7 +635,6 @@ class BottleApplication(Bottle):
         for candidate_entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
             if int(gene_callers_id) == int(self.interactive.genes_in_splits[candidate_entry_id]['gene_callers_id']):
                 entry_id = candidate_entry_id
-
 
         if not entry_id:
             raise ConfigError("Can not find this gene_callers_id in any splits.")
