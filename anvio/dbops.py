@@ -943,6 +943,33 @@ class ContigsSuperclass(object):
         return output
 
 
+    def get_gene_amino_acid_sequence(self, gene_caller_ids):
+        """A much faster way to get back amino acid sequences for genes.
+
+        Paremeters
+        ==========
+        gene_caller_ids : list
+            A list of one or more gene caller ids.
+        """
+
+        if not isinstance(gene_callers_id, list):
+            raise ConfigError("Anvi'o is disappoint. Gene caller ids sent to this function must "
+                              "be of type `list`.")
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        d = contigs_db.db.smart_get(t.gene_amino_acid_sequences_table_name, 'gene_callers_id', gene_caller_ids)
+        contigs_db.disconnect()
+
+        sequences = {}
+        for gene_callers_id in gene_caller_ids:
+            if gene_callers_id in d:
+                sequences[gene_callers_id] = d[gene_callers_id]['sequence']
+            else:
+                sequences[gene_callers_id] = None
+
+        return sequences
+
+
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
                                            output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
 
