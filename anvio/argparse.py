@@ -192,7 +192,10 @@ class ArgumentParser(argparse.ArgumentParser):
         args, unknown = parser.parse_known_args()
 
         if auto_fill_anvio_dbs:
-            args = PopulateAnvioDBArgs(args).get_updated_args()
+            if anvio.DEBUG:
+                args = PopulateAnvioDBArgs(args, lazy_init=False).get_updated_args()
+            else:
+                args = PopulateAnvioDBArgs(args).get_updated_args()
 
         # if there are any args in the unknown that we do not expect to find
         # we we will make argparse complain about those.
@@ -232,6 +235,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
 
         if lazy_init:
             self.anvio_dbs_found = False
+            self.anvio_dbs = None
         else:
             FindAnvioDBs.__init__(self, run=self.run, progress=self.progress)
 
