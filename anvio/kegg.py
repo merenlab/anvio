@@ -3117,11 +3117,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
-                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                                # gene call list should be in same order as KO list
+                                sorted_kos = sorted(c_dict['kofam_hits'].keys())
+                                # gene call list should be in same order as KO list with 1:1 correspondence
+                                kos_in_mod = []
                                 gcids_in_mod = []
-                                if kos_in_mod:
-                                    for ko in kos_in_mod:
+                                if sorted_kos:
+                                    for ko in sorted_kos:
+                                        kos_in_mod += [ko for x in c_dict["kofam_hits"][ko]]
                                         gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                                 if "kofam_hits_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
@@ -3184,11 +3186,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["module_intermediates"] = "None"
 
                     # comma-separated lists of KOs and gene calls in module
-                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                    # gene call list should be in same order as KO list
+                    sorted_kos = sorted(c_dict['kofam_hits'].keys())
+                    # gene call list should be in same order as KO list with 1:1 correspondence
+                    kos_in_mod = []
                     gcids_in_mod = []
-                    if kos_in_mod:
-                        for ko in kos_in_mod:
+                    if sorted_kos:
+                        for ko in sorted_kos:
+                            kos_in_mod += [ko for x in c_dict["kofam_hits"][ko]]
                             gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                     if "kofam_hits_in_module" in headers_to_include:
                         d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
