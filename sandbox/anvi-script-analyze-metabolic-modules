@@ -168,6 +168,7 @@ class Module:
             raise ConfigError(f"Ooopsie. You gave Module.add_genome_data() some data that is for the wrong module. This Module object "
                               f"has the id '{self.id}', but the data is for module '{data_mod_id}'.")
 
+        self.completeness_scores.append(float(mod_info_in_one_genome['module_completeness']))
 
 ## END CLASSES AND FUNCTION DEFINITIONS
 ## Script driver
