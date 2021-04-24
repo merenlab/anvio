@@ -204,13 +204,37 @@ class Module:
             else:
                 contigs_to_genes_dict[on_contig].append(gene)
 
-        for contig in contigs_to_genes_dict:
-            genes_on_contig = contigs_to_genes_dict[contig] # these are already sorted
-            for i in range(1, len(genes_on_contig)):
-                gene1 = genes_on_contig[i-1]
-                gene2 = genes_on_contig[i]
-                dist_between_genes = gene2 - gene1
-                self.gcid_distances.append(dist_between_genes)
+        # we only compile KO data for modules that are defined by KOs, not by other modules
+        if self.ko_data:
+            # compute KO frequency
+            for k in kos_in_mod:
+                self.ko_data[k]['frequency'] += 1
+
+            for contig in contigs_to_genes_dict:
+                genes_on_contig = contigs_to_genes_dict[contig] # these are already sorted from low to high
+
+                for i in range(1, len(genes_on_contig)):
+                    gene1 = genes_on_contig[i-1]
+                    gene2 = genes_on_contig[i]
+                    ko1 = gcid_to_ko_dict[gene1]
+                    ko2 = gcid_to_ko_dict[gene2]
+
+                    # compute distances between adjacent genes
+                    dist_between_genes = gene2 - gene1
+                    self.gcid_distances.append(dist_between_genes)
+
+                    # determine KO adjacency
+                    if ko1 not in self.ko_data[ko2]['adjacency']:
+                        self.ko_data[ko2]['adjacency'][ko1] = 1
+                    else:
+                        self.ko_data[ko2]['adjacency'][ko1] += 1
+
+                    if ko1 != ko2: # avoid double-counting twins
+                        if ko2 not in self.ko_data[ko1]['adjacency']:
+                            self.ko_data[ko1]['adjacency'][ko2] = 1
+                        else:
+                            self.ko_data[ko1]['adjacency'][ko2] += 1
+
 
 
 ## END CLASSES AND FUNCTION DEFINITIONS
