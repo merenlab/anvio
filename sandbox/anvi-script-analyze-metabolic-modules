@@ -148,6 +148,17 @@ class Module:
                f"Definition: {self.definition}"
 
 
+    def get_kos_from_definition(self):
+        """This function returns a list of KOs in the given module, in order of the DEFINITION (self.definition)"""
+
+        ko_list = []
+        k_indices = [x for x, v in enumerate(self.definition) if v == 'K']
+        for idx in k_indices:
+            ko_list.append(self.definition[idx:idx+6])
+
+        return ko_list
+
+
     def add_genome_data(self, mod_info_in_one_genome, genes_to_contigs_in_genome):
         """Processes a line from metabolism estimation output for this module in one genome and adds data to summary attributes.
 
