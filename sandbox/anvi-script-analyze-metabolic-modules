@@ -148,11 +148,19 @@ class Module:
                f"Definition: {self.definition}"
 
 
-    def add_genome_data(self, mod_info_in_one_genome):
+    def add_genome_data(self, mod_info_in_one_genome, genes_to_contigs_in_genome):
         """Processes a line from metabolism estimation output for this module in one genome and adds data to summary attributes.
 
         The line should be in dictionary form and the required keys are the headers in that metabolism estimation output file,
         which are: kegg.OUTPUT_MODES['modules']['headers'] + ['genome_name']
+
+        PARAMETERS
+        ==========
+        mod_info_in_one_genome : dict
+            one line of metabolism estimation modules mode output for current genome, in dictionary form.
+            See class docstring for partial example.
+        genes_to_contigs_in_genome : dict
+            dictionary where keys are gene caller ids and values are contigs where the gene is located, for current genome.
         """
 
         data_mod_id = mod_info_in_one_genome['kegg_module']
