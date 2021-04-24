@@ -605,7 +605,6 @@ class BottleApplication(Bottle):
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
 
-            run.info_single(f"Learned basic properties ({timer.time_elapsed()}). Recovering the AA sequene...")
             # get amino acid sequence for the gene call:
             p['aa_sequence'] = gene_aa_sequences_dict[gene_callers_id]
 
