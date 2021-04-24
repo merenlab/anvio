@@ -102,14 +102,14 @@ function loadAll() {
 
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
 
-    info("Sending ajax request for state data");
+    info("Sending ajax request to gather split data");
     $.ajax({
             type: 'POST',
             cache: false,
             url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
             data: {'state': JSON.stringify(state)},
             success: function(contig_data) {
-                info("Recieved CONTIGS data from the server");
+                info("Received split data from the server");
                 state = contig_data['state'];
                 page_header = contig_data.title;
                 layers = contig_data.layers;
