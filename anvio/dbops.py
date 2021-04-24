@@ -952,7 +952,7 @@ class ContigsSuperclass(object):
             A list of one or more gene caller ids.
         """
 
-        if not isinstance(gene_callers_id, list):
+        if not isinstance(gene_caller_ids, list):
             raise ConfigError("Anvi'o is disappoint. Gene caller ids sent to this function must "
                               "be of type `list`.")
 
