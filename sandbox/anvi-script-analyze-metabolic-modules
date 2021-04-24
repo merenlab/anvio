@@ -170,6 +170,28 @@ class Module:
 
         self.completeness_scores.append(float(mod_info_in_one_genome['module_completeness']))
 
+        gcids_in_mod = [int(x) for x in mod_info_in_one_genome['gene_caller_ids_in_module'].split(",")]
+        kos_in_mod = mod_info_in_one_genome['kofam_hits_in_module'].split(",")
+
+        # this will only work with gcids on same contig, so let's figure out which those are
+        contigs_to_genes_dict = {}
+        sorted_gcids = sorted(gcids_in_mod)
+        for gene in sorted_gcids:
+            on_contig = genes_to_contigs_in_genome[gene]
+            if on_contig not in contigs_to_genes_dict:
+                contigs_to_genes_dict[on_contig] = [gene]
+            else:
+                contigs_to_genes_dict[on_contig].append(gene)
+
+        for contig in contigs_to_genes_dict:
+            genes_on_contig = contigs_to_genes_dict[contig] # these are already sorted
+            for i in range(1, len(genes_on_contig)):
+                gene1 = genes_on_contig[i-1]
+                gene2 = genes_on_contig[i]
+                dist_between_genes = gene2 - gene1
+                self.gcid_distances.append(dist_between_genes)
+
+
 ## END CLASSES AND FUNCTION DEFINITIONS
 ## Script driver
 def main(args):
