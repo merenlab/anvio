@@ -136,6 +136,12 @@ class Module:
         # initialize summary attributes
         self.gcid_distances = []            # the distances between subsequent gene calls within one genome (saved for each genome)
         self.completeness_scores = []       # completeness of this module in each genome
+        self.ko_data = {}                   # KO statistics, like adjacency matrix and frequency
+
+        for k in self.get_kos_from_definition():
+            # frequency - number of times we observe this KO across all genomes
+            # adjacency - which KOs we observe immediately adjacent to this KO (key), and how many times that happens (value)
+            self.ko_data[k] = {'frequency': 0, 'adjacency': {}}
 
 
     def __repr__(self):
