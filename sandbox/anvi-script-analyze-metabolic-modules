@@ -189,6 +189,10 @@ class Module:
 
         gcids_in_mod = [int(x) for x in mod_info_in_one_genome['gene_caller_ids_in_module'].split(",")]
         kos_in_mod = mod_info_in_one_genome['kofam_hits_in_module'].split(",")
+        if len(gcids_in_mod) != len(kos_in_mod):
+            raise ConfigError(f"Something is terribly wrong. In genome '{mod_info_in_one_genome['genome_name']}', the KO string "
+                              f"does not have the same length as the gene caller id string for module {self.id}.")
+        gcid_to_ko_dict = {gcid: ko for gcid,ko in zip(gcids_in_mod, kos_in_mod)}
 
         # this will only work with gcids on same contig, so let's figure out which those are
         contigs_to_genes_dict = {}
