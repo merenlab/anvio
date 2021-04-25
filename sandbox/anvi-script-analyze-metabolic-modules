@@ -108,8 +108,25 @@ class ModuleAnalyzer:
 
             contigs_db.disconnect()
 
+        always_complete_modules = []
+        operon_modules = []
+        no_info_modules = []
         for mod in self.modules:
-            self.modules[mod].summarize()
+            complete, operon, no_info = self.modules[mod].summarize()
+            if complete:
+                always_complete_modules.append(mod)
+            if operon:
+                operon_modules.append(mod)
+            if no_info:
+                no_info_modules.append(mod)
+
+        ## Summary reporting
+        self.run.info("Number of modules always complete: ", len(always_complete_modules))
+        self.run.info("Modules always complete: ", ", ".join(always_complete_modules))
+        self.run.info("Number of modules in operon: ", len(operon_modules))
+        self.run.info("Modules in operon: ", ", ".join(operon_modules))
+        self.run.info("Number of modules with no synteny info: ", len(no_info_modules))
+        self.run.info("Modules with no synteny info: ", ", ".join(no_info_modules))
 
 
 class Module:
