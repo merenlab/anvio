@@ -2651,8 +2651,8 @@ class TRNASeqDataset(object):
         next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
             if num_processed_refs % decomposition_progress_interval == 0:
-                self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}")
                 next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
+                self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}/{total_ref_count}")
             num_processed_refs += 1
 
             # A modification requires at least 3 different nucleotides to be detected, and each
@@ -2826,7 +2826,6 @@ class TRNASeqDataset(object):
                         excluded_norm_seq_names.append(norm_seq.represent_name)
 
                 mod_trna_seq_dict[mod_seq.represent_name] = mod_seq
-        self.progress.update(f"{total_ref_count}/{total_ref_count} clusters decomposed")
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
