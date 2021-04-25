@@ -107,6 +107,11 @@ class ModuleAnalyzer:
                 self.modules[module_id].add_genome_data(module_info_in_genome, gene_to_contig_dict)
 
             contigs_db.disconnect()
+
+        for mod in self.modules:
+            self.modules[mod].summarize()
+
+
 class Module:
     """This class represents one metabolic module, and summarizes information about this module in all input genomes.
 
@@ -235,6 +240,17 @@ class Module:
                         else:
                             self.ko_data[ko1]['adjacency'][ko2] += 1
 
+
+    def summarize(self):
+        """Summarizes the collected module data from across all genomes."""
+
+        self.avg_completeness = sum(self.completeness_scores) / len(self.completeness_scores)
+        self.avg_gene_distance = None
+        if self.gcid_distances:
+            self.avg_gene_distance = sum(self.gcid_distances) / len(self.gcid_distances)
+
+        if self.avg_gene_distance == 1.0:
+            print(f"{self.id} is an operon")
 
 
 ## END CLASSES AND FUNCTION DEFINITIONS
