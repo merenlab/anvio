@@ -742,12 +742,16 @@ class HMMERTableOutput(Parser):
         tmp_dir = os.path.dirname(hmmer_table_txt)
         fixed_table_path = os.path.join(tmp_dir, "hmm.table.fixed")
 
-        # we tack on some six columns at the end to catch up to six words split from the original description column
-        extra_desc_cols = ["a", "b", "c", "d", "e", "f"]
+        hmmer_df = pd.DataFrame([line.strip().split() for line in open(hmmer_table_txt, 'r')])
+
+        # we tack on extra columns to catch up all words split from the original description column
+        num_cols = len(hmmer_df.columns)
+        num_extra_cols = num_cols - len(column_names)
+        extra_desc_cols = [str(x) for x in range(num_extra_cols)]
         col_names_plus_description_cols = list(column_names) + extra_desc_cols
         all_desc_cols = ['description'] + extra_desc_cols
 
-        hmmer_df = pd.read_csv(hmmer_table_txt, sep="\s+", names=col_names_plus_description_cols, index_col=False)
+        hmmer_df.columns = col_names_plus_description_cols
         hmmer_df.fillna('', inplace=True)
 
         # join the description columns into one

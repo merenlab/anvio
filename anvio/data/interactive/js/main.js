@@ -2464,7 +2464,7 @@ function processState(state_name, state) {
         modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { //check if user provides incomplete data against serialized data
+    if (state.hasOwnProperty('layers')) { 
         layers = {};
         for (let key in state['layers'])
         {
@@ -2479,11 +2479,6 @@ function processState(state_name, state) {
         state['layers'] = serializedState['layers']
         state['layers-order'] = serializedState['layers-order']
     } 
-    else {
-        traverseNestedData(serializedState['layers'], state['layers'])
-        state['layers-order'] = serializedState['layers-order']
-        modifiedItems.push('layers, layer order')
-    }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
         for (let key in state['categorical_data_colors'])
@@ -2738,13 +2733,8 @@ function processState(state_name, state) {
     buildLegendTables();
 
     current_state_name = state_name;
-
-    if(modifiedItems){
-        toastr.warning(`You can export this updated state as json and see what's been changed :)`)
-        toastr.warning(`It appears the state file (${current_state_name}) you provided may have been missing some key elements. Anvio has done its best to fill in the blanks for you. How nice!`)
-    } else {
-        toastr.success("State '" + current_state_name + "' successfully loaded.");
-    }
+    toastr.success("State '" + current_state_name + "' successfully loaded.");
+    
 }
 
 
