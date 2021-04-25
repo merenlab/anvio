@@ -12,6 +12,7 @@ import multiprocessing as mp
 from hashlib import sha1
 from itertools import groupby
 from operator import itemgetter
+from collections import defaultdict
 
 import anvio
 import anvio.terminal as terminal
@@ -196,7 +197,7 @@ class Kmerizer:
             Nested dict, with the outer dict keyed by hashed prefix subsequence k-mers,
             and each inner dict mapping names of input sequences containing the k-mer to input sequence strings
         """
-        self.progress.update("Relating prefix subsequences to parent sequences")
+        self.progress.update("Relating prefix subseqs to parent seqs")
 
         kmer_dict = {}
         for name, seq_string in zip(self.names, self.seqs):
@@ -211,8 +212,25 @@ class Kmerizer:
         return kmer_dict
 
 
+    def get_prefixes_full_seq_dict(self, kmer_sizes):
+        kmer_sizes.sort()
+        kmer_dict = {kmer_size: defaultdict(list) for kmer_size in kmer_sizes}
+        targets = []
+        for name, seq_string in zip(self.names, self.seqs):
+            target = MappableAlignedTarget(seq_string, name=name)
+            targets.append(target)
+            seq_length = len(seq_string)
+            for kmer_size in kmer_sizes:
+                if kmer_size > seq_length:
+                    break
+
+                hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+                kmer_dict[kmer_size][hashed_kmer].append(target)
+        return kmer_dict, targets
+
+
     def get_prefix_target_dict(self, kmer_size):
-        kmer_dict = {}
+        kmer_dict = defaultdict(dict)
         targets = []
         for name, seq_string in zip(self.names, self.seqs):
             if kmer_size > len(seq_string):
@@ -222,10 +240,7 @@ class Kmerizer:
             targets.append(target)
 
             hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-            if hashed_kmer in kmer_dict:
-                kmer_dict[hashed_kmer][name] = target
-            else:
-                kmer_dict[hashed_kmer] = {name: target}
+            kmer_dict[hashed_kmer][name] = target
         return kmer_dict, targets
 
 
@@ -426,7 +441,7 @@ class Cluster:
 
 
 class Dereplicator:
-    def __init__(self, names, seq_strings, extras=None, num_threads=1, progress=None):
+    def __init__(self, names, seq_strings, extras=None, num_threads=1):
         """This class has methods to dereplicate input sequences in different ways.
 
         Parameters
@@ -442,8 +457,6 @@ class Dereplicator:
 
         num_threads : int, 1
             Threads available for multithreaded operations
-
-        progress : anvio.terminal.Progress object, None
         """
         if len(names) != len(seq_strings):
             raise ConfigError("Your Dereplicator input lists were not the same length. "
@@ -460,10 +473,6 @@ class Dereplicator:
         self.seq_strings = seq_strings
         self.extras = extras
         self.num_threads = num_threads
-        if not progress:
-            progress = terminal.Progress()
-            progress.new("Dereplicating")
-        self.progress = progress
 
 
     def full_length_dereplicate(self):
@@ -474,8 +483,6 @@ class Dereplicator:
         clusters : list
             List of Cluster objects for each dereplicated sequence
         """
-        self.progress.update("Dereplicating identical sequences")
-
         clusters = []
 
         if self.extras:
@@ -514,8 +521,6 @@ class Dereplicator:
         clusters : list
             List of Cluster objects
         """
-        self.progress.update("Prefix-dereplicating sequences")
-
         kmer_size = min(map(len, self.seq_strings))
 
         kmer_dict, targets = Kmerizer(self.names, self.seq_strings).get_prefix_target_dict(kmer_size)
@@ -524,31 +529,19 @@ class Dereplicator:
                            for seq_string in self.seq_strings]
 
         if self.extras:
-            for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names,
-                                                                                                    self.seq_strings,
-                                                                                                    self.extras,
-                                                                                                    hashed_prefixes,
-                                                                                                    targets):
-                if prefix_hash not in kmer_dict:
-                    continue
-
+            for query_name, query_seq_string, query_extra_item, prefix_hash, query_as_target in zip(self.names, self.seq_strings, self.extras, hashed_prefixes, targets):
                 # Record which target sequences contain the query sequence as a prefix subsequence.
                 hit_found = False
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
                     if query_seq_string == candidate_target.seq_string[: len(query_seq_string)]:
                         if len(query_seq_string) != len(candidate_target.seq_string):
-                            candidate_target.alignments.append(
-                                (query_name, query_seq_string, query_extra_item)
-                            )
+                            candidate_target.alignments.append((query_name, query_seq_string, query_extra_item))
                             hit_found = True
                 if hit_found:
                     query_as_target.hit_another_target = True
 
             clusters = []
-            for query_name, query_seq_string, query_extra_item, query_as_target in zip(self.names,
-                                                                                       self.seq_strings,
-                                                                                       self.extras,
-                                                                                       targets):
+            for query_name, query_seq_string, query_extra_item, query_as_target in zip(self.names, self.seq_strings, self.extras, targets):
                 if query_as_target.hit_another_target:
                     continue
 
@@ -564,21 +557,13 @@ class Dereplicator:
                         cluster.member_extras.append(item_for_different_query[2])
                 clusters.append(cluster)
         else:
-            for query_name, query_seq_string, prefix_hash, query_as_target in zip(self.names,
-                                                                                  self.seq_strings,
-                                                                                  hashed_prefixes,
-                                                                                  targets):
-                if prefix_hash not in kmer_dict:
-                    continue
-
+            for query_name, query_seq_string, prefix_hash, query_as_target in zip(self.names, self.seq_strings, hashed_prefixes, targets):
                 # Record which target sequences contain the query sequence as a prefix subsequence.
                 hit_found = False
                 for target_name, candidate_target in kmer_dict[prefix_hash].items():
                     if query_seq_string == candidate_target.seq_string[: len(query_seq_string)]:
                         if len(query_seq_string) != len(candidate_target.seq_string):
-                            candidate_target.alignments.append(
-                                (query_name, query_seq_string)
-                            )
+                            candidate_target.alignments.append((query_name, query_seq_string))
                             hit_found = True
                 if hit_found:
                     query_as_target.hit_another_target = True
@@ -800,7 +785,7 @@ class Aligner:
                 self.progress.update("Aligning...")
             else:
                 self.progress.update("Aligning shorter queries...")
-                reported_query_type = 'shorter than length %d ' % (short_query_threshold + 1)
+                reported_query_type = '<%d nt ' % (short_query_threshold + 1)
             aligned_short_query_dict, aligned_short_target_dict = self.align_without_indels(
                 short_query_names,
                 short_query_seq_arrays,
@@ -818,7 +803,7 @@ class Aligner:
         if long_query_seq_arrays:
             reported_query_type = ''
             self.progress.update("Aligning longer queries...")
-            reported_query_type = 'at least length %d ' % (short_query_threshold + 1)
+            reported_query_type = '≥%d nt ' % (short_query_threshold + 1)
             aligned_long_query_dict, aligned_long_target_dict = self.align_without_indels(
                 long_query_names,
                 long_query_seq_arrays,
@@ -958,12 +943,8 @@ class Aligner:
 
                 num_processed_queries += 1
                 if num_processed_queries % query_progress_interval == 0:
-                    self.progress.update("%s/%s %squeries processed for targets %s-%s"
-                                         % (pp(num_processed_queries),
-                                         pp(total_query_count),
-                                         reported_query_type,
-                                         pp(target_chunk_start + 1),
-                                         pp(target_chunk_stop)))
+                    self.progress.update("%s/%s %squeries processed"
+                                         % (pp(num_processed_queries), pp(total_query_count), reported_query_type))
 
             for p in processes:
                 p.terminate()
@@ -973,11 +954,8 @@ class Aligner:
             del target_seq_dict
             gc.collect()
 
-            self.progress.update("%s/%s queries processed for targets %s-%s"
-                                 % (pp(num_processed_queries),
-                                 pp(total_query_count),
-                                 pp(target_chunk_start + 1),
-                                 pp(target_chunk_stop)))
+            self.progress.update("%s/%s queries processed"
+                                 % (pp(num_processed_queries), pp(total_query_count)))
 
         return aligned_query_dict, aligned_target_dict
 
@@ -995,7 +973,7 @@ class Aligner:
         matched_target_names : list
             List of target names with prefix subsequence match to query; max length equal to `int(max_matches_per_query)`
         """
-        self.progress.update("Matching prefix sequences")
+        self.progress.update("Matching prefix seqs")
 
         kmer_size = min(map(len, self.query_seq_strings))
 

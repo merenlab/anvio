@@ -3,8 +3,11 @@
 """Sets up an anvi'o tRNA-seq snakemake workflow."""
 
 import os
-import anvio
 import pandas as pd
+
+from snakemake.io import ancient
+
+import anvio
 import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
@@ -38,10 +41,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.init_workflow_super_class(args, workflow_name='trnaseq')
 
         self.rules.extend([
-            'make_iu_input',
-            'iu_gen_configs',
             'iu_merge_pairs',
-            'gen_qc_report',
             'anvi_reformat_fasta',
             'anvi_trnaseq',
             'anvi_convert_trnaseq_database',
@@ -77,17 +77,20 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--min-length-long-fiveprime',
             '--min-trna-fragment-size',
             '--agglomeration-max-mismatch-freq',
+            '--skip-INDEL-profiling',
             '--fiveprimemost-deletion-start',
             '--threeprimemost-deletion-start',
             '--fiveprimemost-deletion-stop',
             '--threeprimemost-deletion-stop',
             '--max-distinct-deletions',
+            '--min-distance-between-deletions',
+            '--max-deletion-configurations',
             '--skip-fasta-check',
-            '--write-buffer-size',
             '--alignment-target-chunk-size',
             '--fragment-mapping-query-chunk-length',
+            '--profiling-progress-interval',
             '--alignment-progress-interval',
-            '--agglomeration-progress-interval'
+            '--modification-progress-interval'
         ]
         rule_acceptable_params_dict['anvi_convert_trnaseq_database'] = [
             'run',
@@ -100,6 +103,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--nonspecific-output',
             '--min-variation',
             '--min-third-fourth-nt',
+            '--min-deletion-fraction',
             '--distance',
             '--linkage'
         ]
@@ -149,17 +153,20 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--min-length-long-fiveprime': anvio.D['min-length-long-fiveprime'][1]['default'],
                 '--min-trna-fragment-size': anvio.D['min-trna-fragment-size'][1]['default'],
                 '--agglomeration-max-mismatch-freq': anvio.D['agglomeration-max-mismatch-freq'][1]['default'],
+                '--skip-INDEL-profiling': anvio.D['skip-INDEL-profiling'][1]['default'],
                 '--fiveprimemost-deletion-start': anvio.D['fiveprimemost-deletion-start'][1]['default'],
                 '--threeprimemost-deletion-start': anvio.D['threeprimemost-deletion-start'][1]['default'],
                 '--fiveprimemost-deletion-stop': anvio.D['fiveprimemost-deletion-stop'][1]['default'],
                 '--threeprimemost-deletion-stop': anvio.D['threeprimemost-deletion-stop'][1]['default'],
                 '--max-distinct-deletions': anvio.D['max-distinct-deletions'][1]['default'],
+                '--min-distance-between-deletions': anvio.D['min-distance-between-deletions'][1]['default'],
+                '--max-deletion-configurations': anvio.D['max-deletion-configurations'][1]['default'],
                 '--skip-fasta-check': True, # not the default in anvi-trnaseq
-                '--write-buffer-size': 100000, # the default set in anvi-trnaseq (not the anvi'o-wide default)
                 '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 '--fragment-mapping-query-chunk-length': anvio.D['fragment-mapping-query-chunk-length'][1]['default'],
+                '--profiling-progress-interval': anvio.D['profiling-progress-interval'][1]['default'],
                 '--alignment-progress-interval': anvio.D['alignment-progress-interval'][1]['default'],
-                '--agglomeration-progress-interval': anvio.D['agglomeration-progress-interval'][1]['default'],
+                '--modification-progress-interval': anvio.D['modification-progress-interval'][1]['default'],
                 'threads': 1
             },
             'anvi_convert_trnaseq_database': {
@@ -173,6 +180,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--nonspecific-output': anvio.D['nonspecific-output'][1]['default'],
                 '--min-variation': anvio.D['min-variation'][1]['default'],
                 '--min-third-fourth-nt': anvio.D['min-third-fourth-nt'][1]['default'],
+                '--min-deletion-fraction': anvio.D['min-deletion-fraction'][1]['default'],
                 '--distance': anvio.D['distance'][1]['default'],
                 '--linkage': anvio.D['linkage'][1]['default'],
                 'threads': 1
@@ -180,15 +188,12 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             'anvi_run_trna_taxonomy': {
                 'run': True,
                 '--trna-taxonomy-data-dir': "",
-                '--min-percent-identity': anvio.D['min-percent-identity'][1]['default'],
-                '--max-num-target-sequences': anvio.D['max-num-target-sequences'][1]['default'],
+                '--min-percent-identity': 90, # default in anvi-run-trna-taxonomy
+                '--max-num-target-sequences': 100, # default in anvi-run-trna-taxonomy
                 '--num-parallel-processes': anvio.D['num-parallel-processes'][1]['default'],
                 '--write-buffer-size': anvio.D['write-buffer-size'][1]['default'],
                 'threads': 1
             },
-            'make_iu_input': {'threads': 1},
-            'iu_gen_configs': {'threads': 1},
-            'gen_qc_report': {'threads': 1},
             'output_dirs': {}, # This ensures that output_dirs comes before max_threads in the file
             'max_threads': 1
         })
@@ -206,13 +211,12 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
         self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
-        self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
+        self.gzip_anvi_reformat_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
         self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
         self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
 
-        # Load table of sample info from samples_txt (sample names, treatments, paths to r1 and r2,
-        # r1 and r2 prefixes).
+        # Load table of sample info from samples_txt.
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         filesnpaths.is_file_exists(self.samples_txt_file)
         try:
@@ -269,7 +273,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         if missing_columns:
             raise ConfigError("The samples_txt file, '%s', is not properly formatted, "
                               "as the following columns are missing: '%s'."
-                              % (self.sample_info, ', '.join(missing_columns)))
+                              % (self.samples_txt_file, ', '.join(missing_columns)))
 
 
     def check_sample_names(self):
@@ -449,28 +453,35 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         """Determine the snakemake target files."""
         target_files = []
 
-        for sample_name in self.sample_names:
-            output_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
-            # If anvi-trnaseq output files were used as targets, they would be deleted upon workflow
-            # failure.
-            target_files.append(os.path.join(output_dir, sample_name + ".done"))
-
         if self.run_iu_merge_pairs:
             # Each library of paired-end reads is run separately through Illumina-utils, as each can
             # have different prefix sequences, and a single run cannot handle multiple prefixes.
             target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc_report.txt"))
 
         if self.run_anvi_reformat_fasta:
+            # Do not use `REFORMAT.done` output files produced by rule `run_anvi-reformat_fasta` as
+            # workflow targets. If this were the case and these files were last modified before
+            # `run_anvi_reformat_fasta` input files (`MERGE.done` when starting with FASTQ files) --
+            # which can occur when copying the contents of `01_QC` from one location to another --
+            # then `run_anvi_reformat_fasta` would always be rerun, even if attempting to start the
+            # workflow after this rule, say at `anvi_trnaseq`. Therefore, touch
+            # `ALL_REFORMATTING.done` as the output of dummy rule `all_reformatting_done` in lieu of
+            # using `REFORMAT.done` files as workflow targets.
+            target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "ALL_REFORMATTING.done"))
+
+        if self.run_anvi_trnaseq:
             for sample_name in self.sample_names:
-                output_dir = os.path.join(self.dirs_dict['QC_DIR'], sample_name)
-                target_files.append(os.path.join(output_dir, sample_name + "-reformat_report.txt"))
+                out_dir = os.path.join(self.dirs_dict['IDENT_DIR'], sample_name)
+                # If anvi-trnaseq output files such as the tRNA-seq database or analysis summary
+                # were used as targets, they would be deleted upon workflow failure.
+                target_files.append(os.path.join(out_dir, "IDENT.done"))
 
         if self.run_anvi_convert_trnaseq_database:
             project_name = self.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])
-            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], 'CONVERT.done'))
+            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "CONVERT.done"))
 
         if self.run_anvi_run_trna_taxonomy:
-            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], 'TAXONOMY.done'))
+            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
 
         return target_files
 
@@ -478,15 +489,22 @@ class TRNASeqWorkflow(WorkflowSuperClass):
     def get_input_for_anvi_reformat_fasta(self, wildcards):
         """Input can come from two possible sources: a user-supplied FASTA file or the FASTA file of
         merged reads generated from user-supplied FASTQ files."""
+        sample_name = wildcards.sample_name
         if self.fasta_paths:
-            return self.fasta_paths[self.sample_names.index(wildcards.sample_name)]
-        return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "_MERGED")
+            return ancient(self.fasta_paths[self.sample_names.index(sample_name)])
+        return ancient(os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "MERGE.done"))
 
 
     def get_input_for_anvi_trnaseq(self, wildcards):
         """Input can come from two possible sources: a FASTA file with Anvi'o-compliant deflines
         supplied by the user or the reformatted FASTA file produced by the rule,
         anvi_reformat_fasta."""
+        sample_name = wildcards.sample_name
         if self.run_anvi_reformat_fasta:
-            return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_name), wildcards.sample_name + "-reformatted.fasta")
-        return self.fasta_paths[self.sample_names.index(wildcards.sample_name)]
+            return os.path.join(os.path.join(self.dirs_dict['QC_DIR'], sample_name), "REFORMAT.done")
+        elif self.fasta_paths:
+            return self.fasta_paths[self.sample_names.index(sample_name)]
+        else:
+            raise ConfigError("The rule, `anvi_reformat_fasta`, should be run after the rule, `iu_merge_pairs`, "
+                              "to produce an anvi'o-compliant FASTA file. "
+                              "The `run` parameter for `anvi_reformat_fasta` should be set to `True` in the workflow config file.")
