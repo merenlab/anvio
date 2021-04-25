@@ -2105,7 +2105,7 @@ class TRNASeqDataset(object):
                                 extras=trimmed_trunc_seqs + norm_seqs).prefix_dereplicate()
 
         # Associate each truncated sequence with any normalized tRNA sequences that contain it as a
-        # 3'-subsequence. Since the trimmed truncated sequence can be a 3' subsequence of multiple
+        # 3' subsequence. Since the trimmed truncated sequence can be a 3' subsequence of multiple
         # normalized sequences, do not reconstruct a feature profile for the truncated sequence.
         # (Similarly, trimmed sequences with full profiles need not have the same profile as the
         # seed trimmed sequence of a normalized sequence.) The unique sequences in the trimmed
@@ -3257,7 +3257,7 @@ class TRNASeqDataset(object):
         meant to have trimmed 3' and 5' ends. For the extra 5' nucleotides to be detected, it must
         be confirmed that the longest modified sequence is a full-length tRNA.
 
-        N can also arise from tRNA fragments. In a cluster, these would be 3'-subsequences of one or
+        N can also arise from tRNA fragments. In a cluster, these would be 3' subsequences of one or
         more M'.
         """
         norm_seq_mod_seqs_dict = self.get_normalized_sequences_containing_modified_sequences_with_deletions(clusters)
@@ -3346,7 +3346,7 @@ class TRNASeqDataset(object):
                 norm_del_seq.trimmed_seqs.extend(trimmed_seqs)
                 norm_del_seq.defunct_norm_seqs.extend([norm_seq for _ in trimmed_seqs])
             else:
-                # Prevent N from actually being a slightly shorter, deletion-free 3'-subsequence
+                # Prevent N from actually being a slightly shorter, deletion-free 3' subsequence
                 # fragment of the modified sequence, M.
                 unsupported_dels = False
                 for norm_seq_without_dels in mod_seq.norm_seqs_without_dels:
