@@ -3057,9 +3057,9 @@ D = {
             {'default': 20000,
              'metavar': 'INT',
              'type': int,
-             'help': "The anvi'o sequence aligner manages memory consumption by chunking the list of alignment targets, "
+             'help': "Anvi'o sequence alignment manages memory consumption by chunking the list of alignment targets, "
                      "so that queries are aligned to the first chunk of targets, then the second chunk, and so on. "
-                     "This parameter sets the maximum number of target sequences in each chunk (by default %(default)d). "
+                     "This parameter sets the maximum number of target sequences in each chunk. "
                      "Memory management becomes important when aligning short queries to a large number of targets, "
                      "which involves searching queries against a massive number of k-mers "
                      "(equal in length to the shortest query) that have been extracted from targets. "
@@ -3078,7 +3078,8 @@ D = {
                      "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
                      "This parameter sets the sequence length interval used to chunk queries. "
                      "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
-                     "and a maximum unprofiled query length of, say, 170, the default length interval of %(default)d would result in 8 chunks. "
+                     "and a maximum unprofiled query length of, say, 170, "
+                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
                      "Adjust this parameter downward if your system runs out of memory during alignment; "
                      "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
                      "Ideally, we would set this parameter using a heuristic function "
