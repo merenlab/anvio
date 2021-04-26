@@ -128,6 +128,11 @@ class ModuleAnalyzer:
         self.run.info("Number of modules with no synteny info: ", len(no_info_modules))
         self.run.info("Modules with no synteny info: ", ", ".join(no_info_modules))
 
+        for mod in operon_modules:
+            operon_order = self.modules[mod].get_operon_structure()
+            self.run.info(f"Operon structure for module {mod}", ", ".join(operon_order))
+            self.run.info(f"Average completeness for module {mod}", self.modules[mod].avg_completeness)
+
 
 class Module:
     """This class represents one metabolic module, and summarizes information about this module in all input genomes.
@@ -287,6 +292,33 @@ class Module:
             self.no_synteny_info = True
 
         return self.always_complete, self.is_operon, self.no_synteny_info
+
+
+    def get_operon_structure(self):
+        """Walks through KO adjacency matrix to determine gene order in modules with operon structure.
+        Early implementation, not guaranteed to work.
+        """
+
+        previous_ko = None
+        for ko in self.ko_data:
+            if len(self.ko_data[ko]['adjacency'].keys()) == 1:
+                previous_ko = ko
+                break
+
+        next_ko = list(self.ko_data[previous_ko]['adjacency'].keys())[0]
+        ko_order = [previous_ko, next_ko]
+        while True:
+            possible_next_kos = set(self.ko_data[next_ko]['adjacency'].keys())
+            possible_next_kos.remove(previous_ko)
+
+            if len(possible_next_kos) == 1:
+                previous_ko = next_ko
+                next_ko = possible_next_kos.pop()
+                ko_order.append(next_ko)
+            else:
+                break
+
+        return ko_order
 
 
 ## END CLASSES AND FUNCTION DEFINITIONS
