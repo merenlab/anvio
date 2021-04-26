@@ -1686,7 +1686,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
-                     "will be calculate with respect to the reference, with repsect to the consenus, and with respect to the "
+                     "will be calculate with respect to the reference, with respect to the consenus, and with respect to the "
                      "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
                      "added columns. This flag will be ignored if --engine is not CDN."}
                 ),
@@ -2909,10 +2909,8 @@ D = {
                      "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
                      "in each of the 4 stems; the user could, for instance, "
                      "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
-                     "There are 4 variable-length sections of tRNA. The user could, for whatever strange reason, "
-                     "prevent the program from considering D stems of length 3 as well as 4 "
-                     "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
-                     "(Logically, the allowed length range of both paired positions in the stem, 13 and 22, must be changed here.)"}
+                     "There are 3 variable-length sections of tRNA. The user could, for example, "
+                     "change the allowed lengths of the V loop from a discontinuous range, \"4-5,9-23\", to a continuous range, \"4-23\"."}
                 ),
     'min-length-long-fiveprime': (
             ['--min-length-long-fiveprime'],
@@ -3018,6 +3016,36 @@ D = {
                      "others will be produced containing deletions at the first and second positions; "
                      "the first and third positions; the second position; the second and third; and the third."}
                 ),
+    'min-distance-between-deletions': (
+            ['--min-distance-between-deletions'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The minimum number of nucleotides that must exist between distinct deletions "
+                     "introduced around potential modifications in the search for deletions. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "In silico deletions introduced around nearby substitutions in this smear "
+                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
+                     "Separation of in silico deletions using this parameter quashes this problem. "
+                     "The default value was determined by inspection of deletions predicted from large datasets. "
+                     "It is hard to envision a case where the user would adjust this parameter downward."}
+                ),
+    'max-deletion-configurations': (
+            ['--max-deletion-configurations'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
+                     "that can be generated from a single sequence with potential modifications. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
+                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
+                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
+                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
+                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
+                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
+                     "is decremented for the sequence and in silico deletions are again introduced."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,
@@ -3029,9 +3057,9 @@ D = {
             {'default': 20000,
              'metavar': 'INT',
              'type': int,
-             'help': "The anvi'o sequence aligner manages memory consumption by chunking the list of alignment targets, "
+             'help': "Anvi'o sequence alignment manages memory consumption by chunking the list of alignment targets, "
                      "so that queries are aligned to the first chunk of targets, then the second chunk, and so on. "
-                     "This parameter sets the maximum number of target sequences in each chunk (by default %(default)d). "
+                     "This parameter sets the maximum number of target sequences in each chunk. "
                      "Memory management becomes important when aligning short queries to a large number of targets, "
                      "which involves searching queries against a massive number of k-mers "
                      "(equal in length to the shortest query) that have been extracted from targets. "
@@ -3050,28 +3078,38 @@ D = {
                      "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
                      "This parameter sets the sequence length interval used to chunk queries. "
                      "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
-                     "and a maximum unprofiled query length of, say, 170, the default length interval of %(default)d would result in 8 chunks. "
+                     "and a maximum unprofiled query length of, say, 170, "
+                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
                      "Adjust this parameter downward if your system runs out of memory during alignment; "
                      "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
-    'alignment-progress-interval': (
-            ['--alignment-progress-interval'],
+    'profiling-progress-interval': (
+            ['--profiling-progress-interval'],
             {'default': 100000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress is reported after a certain number of queries have been processed (by default %(default)d) "
+             'help': "Progress in the tRNA feature profiling of unique input sequences "
+                     "is reported after a certain number of sequences have been processed."}
+                ),
+    'alignment-progress-interval': (
+            ['--alignment-progress-interval'],
+            {'default': 200000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress is reported after a certain number of queries have been processed "
                      "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
                      "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
                 ),
-    'agglomeration-progress-interval': (
-            ['--agglomeration-progress-interval'],
+    'modification-progress-interval': (
+            ['--modification-progress-interval'],
             {'default': 10000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress in sequence agglomeration, a stage in the identification of modifications, "
-                     "is reported after a certain number of sequences have been processed."}
+             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
+                     "Progress is reported in two distinct stages of this process, "
+                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
@@ -3186,9 +3224,9 @@ D = {
                      "to inspect seeds for undisplayed variants (possible SNVs) "
                      "with a low level of third and fourth nucleotides."}
                 ),
-    'min-del-fraction': (
-            ['--min-del-fraction'],
-            {'default': 0.01,
+    'min-deletion-fraction': (
+            ['--min-deletion-fraction'],
+            {'default': 0.002,
              'metavar': 'FLOAT',
              'type': float,
              'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "

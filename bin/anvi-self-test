@@ -98,8 +98,8 @@ if __name__ == '__main__':
                             f"database, profiling BAM files, or starting an interactive interface. But you are welcome to "
                             f"execute different component tests. Here is a list of what is available to you: "
                             f"{available_tests}")
-    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {"help": "If you declare an outuput dir, all your data will be "
-                            "stored in there, instead of being stored in a temporary directroy to be deleted once the tests are done. "
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {"help": "If you declare an output dir, all your data will be "
+                            "stored in there, instead of being stored in a temporary directory to be deleted once the tests are done. "
                             "This is particularly useful if you wish to play with general anvi'o output files"}))
     parser.add_argument(*anvio.A('no-interactive'), **anvio.K('no-interactive'))
 
