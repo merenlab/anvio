@@ -2695,7 +2695,7 @@ class ProfileSuperclass(object):
         # by providing collection name and bin names in args.
         if not hasattr(self, 'split_names_of_interest'):
             self.split_names_of_interest = set([])
-        elif self.collection_name:
+        elif hasattr(self, 'collection_name') and self.collection_name:
             # if self.split_names_of_interest is defined upstream somewhere,
             # but if we ALSO have a collection name here, we want to recover those
             # split names relevant to the collection name later. so in this case,
