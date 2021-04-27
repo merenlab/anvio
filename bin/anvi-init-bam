@@ -23,6 +23,7 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['raw-bam-file',]
 __provides__ = ['bam-file',]
 __description__ = "Sort/Index BAM files"
+__resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
 progress = terminal.Progress()
@@ -64,14 +65,14 @@ def init_bam_file(input_file_path, output_file_path = None, num_threads = 1):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('input_file', metavar = 'BAM_FILE', help = 'BAM file to analyze')
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     if args.num_threads < 1:
         raise ConfigError("--num-threads should be at least 1.")

@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 import textwrap
 import pandas as pd
 
@@ -27,7 +27,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
-__description__ = "Search for anvi\'o programs by keyword, inputs/outputs, etc."
+__description__ = "Search for anvi\'o programs by keyword, inputs/outputs, etc"
 
 
 run = terminal.Run()
@@ -269,8 +269,8 @@ class ProgramSearch:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
-    parser.add_argument('search-term', help='Find programs associated with this search term. if you want all programs, use \'ALL\'')
+    parser = ArgumentParser(description=__description__)
+    parser.add_argument('search-term', help='Find programs associated with this search term (optional)', nargs='?', default='ALL')
     parser.add_argument('--requires', '-r', action='store_true', help='Restrict to programs that require this search term')
     parser.add_argument('--provides', '-p', action='store_true', help='Restrict to programs that provide this search term')
     parser.add_argument('--name', '-n', action='store_true', help='Restrict to programs that contain this search term in their name')
@@ -280,7 +280,7 @@ if __name__ == '__main__':
                                                 For example, if you wanted Description and Resources, you would put \
                                                 here Description,Resources')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         ProgramSearch(args).process()

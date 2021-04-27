@@ -5,7 +5,7 @@
     "current-view": "mean_coverage",
     "angle-min": "0",
     "angle-max": "270",
-    "tree-radius": "1500",
+    "tree-radius": "2000",
     "tree-height": "0",
     "tree-width": "0",
     "layer-margin": "15",
@@ -20,7 +20,7 @@
     "max-font-size": "60",
     "optimize-speed": true,
     "show-bin-labels": true,
-    "begins-from-branch": true,
+    "begins-from-branch": false,
     "bin-labels-font-size": "128",
     "autorotate-bin-labels": true,
     "estimate-taxonomy": false,
@@ -35,11 +35,9 @@
         "SAMPLE_01",
         "SAMPLE_02",
         "SAMPLE_03",
-        "hmms_Ribosomal_RNAs",
-        "hmms_Transfer_RNAs",
-        "hmms_external_hmm_genes",
-        "taxonomy"
+        "hmms_external_hmm_genes"
     ],
+    "categorical_data_colors": {},
     "stack_bar_colors": {},
     "layers": {
         "length": {
@@ -58,21 +56,21 @@
         },
         "SAMPLE_01": {
             "color": "#000000",
-            "height": "250",
+            "height": "300",
             "margin": "30",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
         "SAMPLE_02": {
             "color": "#000000",
-            "height": "250",
+            "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
         "SAMPLE_03": {
             "color": "#000000",
-            "height": "250",
+            "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
@@ -81,33 +79,12 @@
             "height": "50",
             "margin": "15"
         },
-        "hmms_Ribosomal_RNAs": {
-            "color": "#882222",
-            "height": "150",
-            "margin": "30",
-            "type": "intensity",
-            "color-start": "#FFDDDD"
-        },
-        "hmms_Transfer_RNAs": {
-            "color": "#226ab2",
-            "height": "150",
-            "margin": "15",
-            "type": "intensity",
-            "color-start": "#bfd9f3"
-        },
         "hmms_external_hmm_genes": {
             "color": "#3b003b",
             "height": "150",
             "margin": "15",
             "type": "intensity",
             "color-start": "#f5e1f5"
-        },
-        "taxonomy": {
-            "color": "#000000",
-            "height": "0",
-            "margin": "15",
-            "type": "color",
-            "color-start": "#DDDDDD"
         }
     },
     "views": {
@@ -175,28 +152,6 @@
                     "disabled": false
                 }
             },
-            "hmms_Ribosomal_RNAs": {
-                "normalization": "sqrt",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmms_Transfer_RNAs": {
-                "normalization": "sqrt",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
             "hmms_external_hmm_genes": {
                 "normalization": "sqrt",
                 "min": {
@@ -205,14 +160,6 @@
                 },
                 "max": {
                     "value": "1.4142135623730951",
-                    "disabled": false
-                }
-            },
-            "taxonomy": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
                     "disabled": false
                 }
             }
@@ -256,43 +203,27 @@
             "group": "default"
         },
         {
-            "layer_name": "bars!bar1;bar2;bar3",
+            "layer_name": "num_INDELs_reported",
             "group": "default"
         },
         {
-            "layer_name": "t_domain!Bacteria",
-            "group": "t_domain"
+            "layer_name": "num_SCVs_reported",
+            "group": "default"
         },
         {
-            "layer_name": "t_order!Bifidobacteriales;Bacillales",
-            "group": "t_order"
+            "layer_name": "total_reads_kept",
+            "group": "default"
         },
         {
-            "layer_name": "t_genus!Listeria;Bifidobacterium",
-            "group": "t_genus"
-        },
-        {
-            "layer_name": "t_species!Unknown_t_genus_Bifidobacterium;Unknown_t_genus_Listeria;Bifidobacterium_adolescentis",
-            "group": "t_species"
-        },
-        {
-            "layer_name": "t_class!Actinobacteria;Bacilli",
-            "group": "t_class"
-        },
-        {
-            "layer_name": "t_family!Bifidobacteriaceae;Listeriaceae",
-            "group": "t_family"
-        },
-        {
-            "layer_name": "t_phylum!Firmicutes;Actinobacteria",
-            "group": "t_phylum"
+            "layer_name": "bars!bar1;bar2;bar3",
+            "group": "default"
         }
     ],
     "samples-layers": {
         "default": {
             "total_reads_mapped": {
                 "data-type": "numeric",
-                "height": 500,
+                "height": 300,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#004c59",
@@ -309,7 +240,7 @@
             },
             "num_SNVs_reported": {
                 "data-type": "numeric",
-                "height": 500,
+                "height": 300,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#96004b",
@@ -326,7 +257,7 @@
             },
             "percent_mapped_reads": {
                 "data-type": "numeric",
-                "height": 500,
+                "height": 300,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#540054",
@@ -343,8 +274,8 @@
             },
             "visits": {
                 "data-type": "categorical",
-                "height": 80,
-                "margin": 15,
+                "height": 50,
+                "margin": 60,
                 "min": {
                     "value": null,
                     "disabled": false
@@ -354,25 +285,26 @@
                     "disabled": false
                 }
             },
-            "bars!bar1;bar2;bar3": {
-                "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
+            "num_INDELs_reported": {
+                "data-type": "numeric",
+                "height": 200,
+                "margin": 60,
                 "normalization": "none",
+                "color": "#919191",
                 "min": {
-                    "value": null,
+                    "value": 0,
                     "disabled": false
                 },
                 "max": {
-                    "value": null,
+                    "value": 2,
                     "disabled": false
-                }
-            }
-        },
-        "t_domain": {
-            "t_domain!Bacteria": {
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            },
+            "num_SCVs_reported": {
                 "data-type": "numeric",
-                "height": 500,
+                "height": 200,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#919191",
@@ -381,98 +313,33 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 9155,
+                    "value": 32,
                     "disabled": false
                 },
                 "type": "bar",
                 "color-start": "#EFEFEF"
-            }
-        },
-        "t_order": {
-            "t_order!Bifidobacteriales;Bacillales": {
-                "data-type": "stack-bar",
-                "height": 500,
+            },
+            "total_reads_kept": {
+                "data-type": "numeric",
+                "height": 200,
                 "margin": 15,
                 "normalization": "none",
+                "color": "#919191",
                 "min": {
-                    "value": null,
+                    "value": 0,
                     "disabled": false
                 },
                 "max": {
-                    "value": null,
-                    "disabled": false
-                }
-            }
-        },
-        "t_genus": {
-            "t_genus!Listeria;Bifidobacterium": {
-                "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
-                "normalization": "none",
-                "min": {
-                    "value": null,
+                    "value": 24870,
                     "disabled": false
                 },
-                "max": {
-                    "value": null,
-                    "disabled": false
-                }
-            }
-        },
-        "t_species": {
-            "t_species!Unknown_t_genus_Bifidobacterium;Unknown_t_genus_Listeria;Bifidobacterium_adolescentis": {
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            },
+            "bars!bar1;bar2;bar3": {
                 "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
-                "normalization": "none",
-                "min": {
-                    "value": null,
-                    "disabled": false
-                },
-                "max": {
-                    "value": null,
-                    "disabled": false
-                }
-            }
-        },
-        "t_class": {
-            "t_class!Actinobacteria;Bacilli": {
-                "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
-                "normalization": "none",
-                "min": {
-                    "value": null,
-                    "disabled": false
-                },
-                "max": {
-                    "value": null,
-                    "disabled": false
-                }
-            }
-        },
-        "t_family": {
-            "t_family!Bifidobacteriaceae;Listeriaceae": {
-                "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
-                "normalization": "none",
-                "min": {
-                    "value": null,
-                    "disabled": false
-                },
-                "max": {
-                    "value": null,
-                    "disabled": false
-                }
-            }
-        },
-        "t_phylum": {
-            "t_phylum!Firmicutes;Actinobacteria": {
-                "data-type": "stack-bar",
-                "height": 500,
-                "margin": 15,
+                "height": 600,
+                "margin": 60,
                 "normalization": "none",
                 "min": {
                     "value": null,
@@ -484,15 +351,5 @@
                 }
             }
         }
-    },
-    "samples-groups": {
-        "default": true,
-        "t_class": false,
-        "t_domain": false,
-        "t_family": false,
-        "t_genus": false,
-        "t_order": false,
-        "t_phylum": false,
-        "t_species": false
     }
 }

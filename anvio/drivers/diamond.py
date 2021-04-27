@@ -27,7 +27,7 @@ pp = terminal.pretty_print
 
 
 class Diamond:
-    def __init__(self, query_fasta=None, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta=None, target_fasta=None, outfmt=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -40,6 +40,7 @@ class Diamond:
         self.evalue = 1e-05
         self.min_pct_id = None
         self.max_target_seqs = 100000
+        self.outfmt = outfmt or '6'
 
         self.query_fasta = query_fasta
         self.target_fasta = target_fasta
@@ -125,7 +126,8 @@ class Diamond:
                     '-d', self.target_fasta,
                     '-o', self.tabular_output_path,
                     '-t', self.tmp_dir,
-                    '-p', self.num_threads]
+                    '-p', self.num_threads,
+                    '--outfmt', *self.outfmt.split()]
 
         cmd_line.append('--sensitive') if self.sensitive else None
 
@@ -158,7 +160,8 @@ class Diamond:
                     'blastp',
                     '-q', self.query_fasta,
                     '-d', self.target_fasta,
-                    '-p', self.num_threads]
+                    '-p', self.num_threads,
+                    '--outfmt', *self.outfmt.split()]
 
         cmd_line.append('--sensitive') if self.sensitive else None
 
@@ -191,7 +194,8 @@ class Diamond:
         cmd_line = ['diamond',
                     'blastp',
                     '-d', self.target_fasta,
-                    '-p', self.num_threads]
+                    '-p', self.num_threads,
+                    '--outfmt', *self.outfmt.split()]
 
         cmd_line.append('--sensitive') if self.sensitive else None
 
@@ -223,7 +227,8 @@ class Diamond:
         cmd_line = ['diamond',
                     'blastp',
                     '-d', self.target_fasta,
-                    '-p', self.num_threads]
+                    '-p', self.num_threads,
+                    '--outfmt', *self.outfmt.split()]
 
         cmd_line.append('--sensitive') if self.sensitive else None
 
@@ -278,7 +283,8 @@ class Diamond:
                     'view',
                     '-a', self.search_output_path + '.daa',
                     '-o', self.tabular_output_path,
-                    '-p', self.num_threads]
+                    '-p', self.num_threads,
+                    '--outfmt', *self.outfmt.split()]
 
         self.run.info('diamond view cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
@@ -287,11 +293,22 @@ class Diamond:
         self.check_output(self.tabular_output_path, 'view')
 
         if self.names_dict:
-            self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output', quiet=True)
-            self.progress.update('Un-uniqueing the tabular output ...')
             # if we are here, this means the self.tabular_output_path contains information only about unique
             # entries. We will expand it here so downstream analyses do not need to pay attention to this
             # detail.
+            self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output', quiet=True)
+            self.progress.update('Un-uniqueing the tabular output ...')
+
+            try:
+                int(self.outfmt)
+            except:
+                if not self.outfmt.startswith("6 qseqid sseqid"):
+                    self.progress.end()
+                    raise ConfigError("drivers.diamond :: You can't supply a names_dict when running "
+                                      "view(...) unless your outfmt starts with '6 qseqid sseqid'. Update "
+                                      "utils.ununique_BLAST_tabular_output to fix this problem. If you're a "
+                                      "user, please report this on github.")
+
             utils.ununique_BLAST_tabular_output(self.tabular_output_path, self.names_dict)
 
         self.progress.end()
@@ -300,26 +317,25 @@ class Diamond:
 
 
     def view_as_dataframe(self, results_path):
-        """Returns a dataframe of the results path
+        """Returns a dataframe of the results path"""
 
-        Assumes default standard tabular output format is used:
-        http://www.metagenomics.wiki/tools/blast/blastn-output-format-6
-        """
-
-        cols = (
-            'qseqid',
-            'sseqid',
-            'pident',
-            'length',
-            'mismatch',
-            'gapopen',
-            'qstart',
-            'qend',
-            'sstart',
-            'send',
-            'evalue',
-            'bitscore',
-        )
+        if self.outfmt == '6':
+            cols = (
+                'qseqid',
+                'sseqid',
+                'pident',
+                'length',
+                'mismatch',
+                'gapopen',
+                'qstart',
+                'qend',
+                'sstart',
+                'send',
+                'evalue',
+                'bitscore',
+            )
+        else:
+            cols = tuple(self.outfmt.split(" ")[1:])
 
         return pd.read_csv(results_path, sep='\t', comment='#', names=cols, index_col=False)
 

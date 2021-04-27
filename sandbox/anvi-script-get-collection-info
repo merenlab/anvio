@@ -3,8 +3,6 @@
 
 import sys
 
-import anvio
-
 from anvio.errors import ConfigError
 
 __status__ = "Deprecated"

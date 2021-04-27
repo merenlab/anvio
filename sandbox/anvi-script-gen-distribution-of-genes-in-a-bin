@@ -18,8 +18,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["contigs-db", "profile-db", "collection", "bin"]
+__provides__ = ["view-data", "misc-data-items-txt"]
+__resources__ = [("This program in action as part of the metapangenomic workflow", "http://merenlab.org/data/prochlorococcus-metapangenome/#classification-of-genes-as-ecgs-and-eags-by-the-distribution-of-genes-in-a-genome-across-metagenomes")]
 __description__ = ("Quantify the detection of genes in genomes in metagenomes to identify the "
-                   "environmental core. This is a helper script for anvi'o metapangenomic workflow.")
+                   "environmental core. This is a helper script for anvi'o metapangenomic workflow")
 
 
 run = terminal.Run()
@@ -106,9 +109,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
@@ -126,7 +129,7 @@ if __name__ == '__main__':
                         samples will be assumed not a part of the 'environmental core'.")
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

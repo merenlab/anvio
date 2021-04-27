@@ -5,7 +5,7 @@
    Output files can directly be used by anvi-import-collection"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -58,7 +58,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                          will also store in the output file the items that do not appear in any of your bins. This new\
                          bin will be called 'UNBINNED_ITEMS_BIN'. Yes. The ugly name is intentional.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

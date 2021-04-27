@@ -21,9 +21,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db',]
-__provides__ = ['genes-fasta',]
+__requires__ = ['contigs-db', 'genomes-storage-db']
+__provides__ = ['genes-fasta', 'external-gene-calls']
 __description__ = "A script to get back sequences for gene calls"
+__resources__ = [("A tutorial on getting gene-level taxonomy for a contigs-db", "http://merenlab.org/2016/06/18/importing-taxonomy/")]
 
 
 run = terminal.Run()
@@ -48,10 +49,14 @@ def export_from_contigs(args):
     if args.export_gff3:
         if args.get_aa_sequences:
             raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")
+        if args.external_gene_calls:
+            raise ConfigError("External gene calls file is not compatble with GFF format.")
+        if args.flank_length:
+            raise ConfigError("Due to the lazy programming, --flank-length and --export-gff3 flags are incompatible :(")
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
-        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences)
+        c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length, output_file_path_external_gene_calls=args.external_gene_calls)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
@@ -82,18 +87,24 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('OPTION #1: EXPORT FROM CONTIGS DB')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupA.add_argument(*anvio.A('flank-length'), **anvio.K('flank-length'))
     groupA.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
     groupA.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
     groupA.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
     groupA.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupA.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
+    groupA.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls',
+                                        {"help": ("An optional external gene calls file path that precisely "
+                                                  "describes the set of gene sequences exported. Using this file "
+                                                  "you can create an anvi'o contigs database from the resulting "
+                                                  "genes FASTA file without having to do a gene calling from scratch.")}))
 
     groupB = parser.add_argument_group('OPTION #2: EXPORT FROM A GENOMES STORAGE')
     groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
@@ -102,7 +113,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

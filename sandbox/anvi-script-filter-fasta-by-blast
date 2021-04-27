@@ -19,7 +19,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Filter FASTA file according to BLAST table (remove sequences with bad BLAST alignment)."
+__provides__ = ["contigs-fasta"]
+__requires__ = ["contigs-fasta", "blast-table"]
+__description__ = "Filter FASTA file according to BLAST table (remove sequences with bad BLAST alignment)"
 
 
 run = terminal.Run()
@@ -114,9 +116,9 @@ def filter_FASTA_by_blast_results(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': False}))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': False}))
@@ -146,7 +148,7 @@ if __name__ == '__main__':
                                 default is %(default).1f%%.")
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         filter_FASTA_by_blast_results(args)

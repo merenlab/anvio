@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -20,7 +20,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['view-data',]
 __provides__ = ['dendrogram',]
-__description__ = "Takes a distance matrix, returns a newick tree."
+__description__ = "Takes a distance matrix, returns a newick tree"
+__resources__ = [("See this program in action in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#creating-a-quick-pangenome-with-functions")]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -41,7 +42,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT', 'The data you wish to cluster')
     groupA.add_argument('input_matrix', metavar='PATH', default=None,
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
     try:
-        args = anvio.get_args(parser)
+        args = parser.get_args(parser)
         main(args)
     except ConfigError as e:
         print(e)

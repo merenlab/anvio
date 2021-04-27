@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.tables as t
@@ -26,7 +26,7 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['single-profile-db', 'layer-taxonomy-txt',]
 __provides__ = ['layer-taxonomy',]
 __description__ = ("Import layers-level taxonomy into an anvi'o additional layer data table in an "
-                   "anvi'o single-profile database.")
+                   "anvi'o single-profile database")
 
 
 run = terminal.Run()
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     parser_names = parsers.get_parser_names('taxonomy_layers')
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                               percentage cutoff of 0.1%% to eliminate any taxon that occurs less than that in a given input\
                               file.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

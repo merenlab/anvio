@@ -86,8 +86,8 @@ Bins.prototype.NewBin = function(id, binState) {
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
                        ` : ''}
                        ${mode == 'pan' ? `
-                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}"></td>
-                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>                           
+                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for quick gene cluster summaries" onClick="showGeneClusterDetails(${id});"></td>
+                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>
                        ` : `
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
@@ -233,7 +233,6 @@ Bins.prototype.PushHistory = function(transaction) {
 
 Bins.prototype.Undo = function() {
     let transaction = this.history.pop();
-
     if (transaction) {
         this.ProcessTransaction(transaction, reversed=true);
         this.future.push(transaction);
@@ -748,6 +747,27 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
 };
 
 
+Bins.prototype.ExportBin = function(bin_id_to_export, use_bin_id=false) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
+        let bin_id = tr.getAttribute('bin-id');
+
+        if (bin_id == bin_id_to_export) {
+            let bin_name = tr.querySelector('.bin-name').value;
+            let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
+            let items = [];
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    items.push(node.label);
+                }
+            }
+
+            return {'items': items, 'color': bin_color, 'bin_name': bin_name};
+        }
+    }
+};
+
+
 Bins.prototype.HighlightItems = function(item_list) {
     if (!Array.isArray(item_list)) {
         item_list = [item_list];
@@ -784,6 +804,65 @@ Bins.prototype.RedrawLineColors = function() {
     }
 };
 
+Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
+    
+    var inverse_fill_opacity = $('#inverse_fill_opacity').val();
+    var inverse_color = document.getElementById('inverse_color').getAttribute('color');
+    let nodes_for_inversion = [] 
+        
+    for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
+        if(leaf_list[i] === -1){
+            nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
+        }
+    }
+
+    nodes_for_inversion.map((node, idx) => {
+
+        let p1; 
+        let p2; 
+        let p = node[0];
+
+        if(idx == [nodes_for_inversion.length - 1]){
+            return // last node does not have 2 adjacent border nodes, throws error on GetBorderNodes() call 
+        }
+        else {
+            [p1, p2] = p.GetBorderNodes();
+        }
+        
+        if (tree_type == 'circlephylogram'){
+            let pie = drawPie(
+                'bin',
+                'bin_outer_' + idx,
+                p1.angle - p1.size / 2,
+                p2.angle + p2.size / 2,
+                distance(p.backarc, {
+                    'x': 0,
+                    'y': 0
+                }),
+                total_radius,
+                (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
+                inverse_color,
+                inverse_fill_opacity,
+                false
+            );
+            pie.setAttribute('vector-effect', 'non-scaling-stroke');
+            pie.setAttribute('stroke-opacity', inverse_fill_opacity);
+        } else {
+           let rect =  drawPhylogramRectangle('bin',
+                'bin_background_' + idx,
+                p.xy.x, 
+                p.xy.y,
+                p.size, 
+                rect_width,
+                inverse_color,
+                inverse_fill_opacity,
+                true
+            );
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+        }
+    })
+}
 
 Bins.prototype.RedrawBins = function() {
     if (!drawer)
@@ -823,7 +902,6 @@ Bins.prototype.RedrawBins = function() {
             if (prev_value != -1) {
                 bins_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
             }
-
             prev_start = i;
         }
         prev_value = leaf_list[i];
@@ -836,6 +914,9 @@ Bins.prototype.RedrawBins = function() {
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
+    var show_shade = $('#show_shade_for_bins')[0].checked; 
+    var invert_shade = $('#invert_shade_for_bins')[0].checked; 
+    var shade_fill_opacity = $('#shade_fill_opacity').val();
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
@@ -846,6 +927,9 @@ Bins.prototype.RedrawBins = function() {
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
+
+    var width_with_grids;
+    var width_no_grids;
 
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
@@ -865,7 +949,6 @@ Bins.prototype.RedrawBins = function() {
 
         if (tree_type == 'circlephylogram')
         {
-
             drawPie('bin',
                 'bin_outer_' + i,
                 start.angle - start.size / 2,
@@ -922,17 +1005,27 @@ Bins.prototype.RedrawBins = function() {
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
-                (show_grid) ? 0 : 0.1,
+                (show_grid) ? 0 : shade_fill_opacity, 
                 false);
 
-            if (show_grid) {
+            if (show_grid && !show_shade) {
                 pie.setAttribute('vector-effect', 'non-scaling-stroke');
                 pie.setAttribute('stroke-opacity', '1');
                 pie.setAttribute('stroke-width', grid_width);
                 pie.setAttribute('stroke', grid_color);
+            } else if(show_grid && show_shade){
+                pie.setAttribute('vector-effect', 'non-scaling-stroke');
+                pie.setAttribute('stroke-opacity', '1');
+                pie.setAttribute('stroke-width', grid_width);
+                pie.setAttribute('stroke', grid_color);
+                pie.setAttribute('fill-opacity', shade_fill_opacity)
+            } else if(!show_grid && !show_shade){
+                pie.setAttribute('vector-effect', 'non-scaling-stroke');
+                pie.setAttribute('stroke-opacity', '0');
+                pie.setAttribute('stroke-width', 0);
+                pie.setAttribute('stroke', grid_color);
+                pie.setAttribute('fill-opacity', 0)
             }
-
-
         }
         else
         {
@@ -970,21 +1063,37 @@ Bins.prototype.RedrawBins = function() {
 
             let backgroundStart = (background_starts_from_branch) ? intersection.xy['x'] : beginning_of_layers;
 
+            width_with_grids = total_radius + outer_ring_margin + outer_ring_size - backgroundStart
+            width_no_grids = total_radius - backgroundStart
+            // ^ these get passed to invert_shade method so we don't have to re-declare a bunch of other stuff. 
+
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
                 backgroundStart,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
-                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - backgroundStart : total_radius - backgroundStart,
+                (show_grid) ? width_with_grids : width_no_grids,
                 color,
-                (show_grid) ? 0 : 0.1,
+                (show_grid) ? 0 : shade_fill_opacity,
                 false);
 
-            if (show_grid) {
+            if (show_grid && !show_shade) {
                 rect.setAttribute('vector-effect', 'non-scaling-stroke');
                 rect.setAttribute('stroke-opacity', '1');
                 rect.setAttribute('stroke-width', grid_width);
                 rect.setAttribute('stroke', grid_color);
+            } else if(show_grid && show_shade){
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+                rect.setAttribute('stroke-width', grid_width);
+                rect.setAttribute('stroke', grid_color);
+                rect.setAttribute('fill-opacity', shade_fill_opacity)
+            } else if(!show_grid && !show_shade){
+                rect.setAttribute('vector-effect', 'non-scaling-stroke');
+                rect.setAttribute('stroke-opacity', '1');
+                rect.setAttribute('stroke-width', 0);
+                rect.setAttribute('stroke', grid_color);
+                rect.setAttribute('fill-opacity', 0)
             }
         }
     }
@@ -1019,6 +1128,8 @@ Bins.prototype.RedrawBins = function() {
                 true);
         }
     }
+    invert_shade ? this.DrawInvertedNodes(leaf_list, show_grid ? width_with_grids : width_no_grids) : null 
+
 }
 
 Bins.prototype.RebuildIntersections = function() {

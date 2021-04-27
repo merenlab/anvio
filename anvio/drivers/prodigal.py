@@ -1,17 +1,21 @@
 # coding: utf-8
 """Interface to Prodigal."""
 
+# Note: The Prodigal command will be run in a "mutlithreaded" way even if the user selects only one thread.  In other
+#   words, it will still "split" the input fasta into a single split, and run Prodigal in a new thread.  It seems
+#   wasteful, but with the Infant Gut test dataset, it only added a couple of seconds of overhead vs. the original
+#   single threaded code.  So it seems to not be a major performance issue as of now.
+import argparse
 import os
 
 import anvio
 import anvio.utils as utils
-import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
+from anvio.threadingops import ThreadedProdigalRunner
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -20,7 +24,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -35,6 +38,9 @@ class Prodigal:
 
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
         self.prodigal_translation_table = A('prodigal_translation_table')
+        self.num_threads = A('num_threads')
+
+        self.run.info('Num threads for gene calling', self.num_threads)
 
         self.parser = None
         self.installed_version = None
@@ -66,7 +72,7 @@ class Prodigal:
 
         if not len(fields) != 8 or fields[6] not in ['1', '-1']:
             raise ConfigError('Somethings is wrong with this prodigal output :( The parser for the '
-                               'version %s is failing to make sense of it.' % (self.installed_version))
+                              'version %s is failing to make sense of it.' % (self.installed_version))
 
         hit['direction'] = 'f' if fields[6] == '1' else 'r'
         hit['start'] = int(fields[2]) - 1
@@ -83,7 +89,6 @@ class Prodigal:
 
         return hit
 
-
     def check_version(self):
         """checks the installed version of prodigal, sets the parser"""
 
@@ -94,78 +99,71 @@ class Prodigal:
 
         if version_found not in self.available_parsers:
             raise ConfigError("The prodigal version installed on your system is not compatible "
-                               "with any of the versions anvi'o can work with. Please install "
-                               "any of the following versions: %s" % (', '.join(list(self.available_parsers.keys()))))
+                              "with any of the versions anvi'o can work with. Please install "
+                              "any of the following versions: %s" % (', '.join(list(self.available_parsers.keys()))))
 
         self.installed_version = version_found
         self.parser = self.available_parsers[version_found]
 
-
     def process(self, fasta_file_path, output_dir):
         """Take the fasta file, run prodigal on it, and make sense of the output
 
-           Returns a gene calls dict, and amino acid sequences dict.
+        Returns a gene calls dict, and amino acid sequences dict.
         """
-        gene_calls_dict = {} # each entry must contain {'contig', 'start', stop, 'direction', 'partial'} items.
-        amino_acid_sequences_dict = {}
 
+        # Set up the output files.
+        log_file_path = os.path.join(output_dir, '00_log.txt')
         self.genes_in_contigs = os.path.join(output_dir, 'contigs.genes')
         self.amino_acid_sequences_in_contigs = os.path.join(output_dir, 'contigs.amino_acid_sequences')
 
-        log_file_path = os.path.join(output_dir, '00_log.txt')
-
+        # Put some nice logging info.
         self.run.warning('', header='Finding ORFs in contigs', lc='green')
         self.run.info('Genes', self.genes_in_contigs)
         self.run.info('Amino acid sequences', self.amino_acid_sequences_in_contigs)
         self.run.info('Log file', log_file_path)
 
-        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.amino_acid_sequences_in_contigs]
-
-        if self.prodigal_translation_table:
-            cmd_line.extend(['-g', self.prodigal_translation_table])
-            self.run.warning("Prodigal translation table is set to '%s' (whatever you did has worked so far, but "
-                             "keep an eye for errors from prodigal in case it doesn't like your translation table "
-                             "parameter). This means we will not use prodigal in the metagenomics mode, due to this "
-                             "issue: https://github.com/hyattpd/Prodigal/issues/19. If that issue is closed, and you "
-                             "are reading this message, then please contact an anvi'o developer." % str(self.prodigal_translation_table))
-        else:
-            cmd_line.extend(['-p', 'meta'])
-
         self.run.warning("Anvi'o will use 'prodigal' by Hyatt et al (doi:10.1186/1471-2105-11-119) to identify open "
-                         "reading frames in your data. When you publish your findings, please do not forget to properly "
-                         "credit their work.", lc='green', header="CITATION")
+                         "reading frames in your data. When you publish your findings, please do not forget to "
+                         "properly credit their work.", lc='green', header="CITATION")
 
         self.progress.new('Processing')
-        self.progress.update('Identifying ORFs in contigs ...')
+        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
 
-        utils.run_command(cmd_line, log_file_path)
+        # if more threads assigned to gene calling than the number of sequences in the FASTA file,
+        # it can cause issues downstream, and we should set the number of threads accordingly.
+        num_sequences_in_fasta_file = utils.get_num_sequences_in_fasta(fasta_file_path)
+        if num_sequences_in_fasta_file < self.num_threads:
+            self.progress.reset()
+            self.run.warning(f"Even though you set the number of threads to {self.num_threads}, your FASTA file contains only "
+                             f"{terminal.pluralize('sequence', num_sequences_in_fasta_file)}. "
+                             f"To avoid any hiccups later, anvi'o will set the number of threads to match the number of "
+                             f"sequences in your FASTA (who would've thought a perfect assembly can have a downside?).")
+            self.num_threads = num_sequences_in_fasta_file
 
-        if not os.path.exists(self.amino_acid_sequences_in_contigs):
-            self.progress.end()
-            raise ConfigError("Something went wrong with prodigal, and it failed to generate the "
-                              "expected output :/ Fortunately, this log file should tell you what "
-                              "might be the problem: '%s'. Please do not forget to include this "
-                              "file if you were to ask for help." % log_file_path)
+            self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}")
 
-        if filesnpaths.is_file_empty(self.amino_acid_sequences_in_contigs):
-            self.progress.end()
-            self.run.info('Result', 'Prodigal (%s) has identified no genes :/' % (self.installed_version), nl_after=1, mc="red")
-            return gene_calls_dict, amino_acid_sequences_dict
+        # Set up the prodigal runner.
+        collated_output_file_paths = {'gff_path': self.genes_in_contigs,
+                                      'peptide_path': self.amino_acid_sequences_in_contigs}
 
-        self.progress.update('Processing gene calls ...')
+        args = argparse.Namespace(input_file_path=fasta_file_path,
+                                  collated_output_file_paths=collated_output_file_paths,
+                                  number_of_splits=self.num_threads,
+                                  log_file_path=log_file_path,
+                                  logger=terminal.Logger(progress=self.progress, run=self.run),
+                                  installed_version=self.installed_version,
+                                  parser=self.parser,
+                                  translation_table=self.prodigal_translation_table)
 
-        fasta = fastalib.SequenceSource(self.amino_acid_sequences_in_contigs)
+        prodigal_runner = ThreadedProdigalRunner(args)
 
-        hit_id = 0
-        while next(fasta):
-            gene_calls_dict[hit_id] = self.parser(fasta.id)
-            amino_acid_sequences_dict[hit_id] = fasta.seq.replace('*', '')
-            hit_id += 1
-
-        fasta.close()
+        # Run the pipeline!
+        state = prodigal_runner.run()
 
         self.progress.end()
+        self.run.info('Result',
+                      'Prodigal (%s) has identified %d genes.' % (self.installed_version,
+                                                                  len(state['gene_calls_dict'])),
+                      nl_after=1)
 
-        self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_version, len(gene_calls_dict)), nl_after=1)
-
-        return gene_calls_dict, amino_acid_sequences_dict
+        return state['gene_calls_dict'], state['amino_acid_sequences_dict']

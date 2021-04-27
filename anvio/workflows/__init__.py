@@ -31,7 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
-workflow_config_version = "1"
+workflow_config_version = anvio.tables.versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -55,6 +55,7 @@ class WorkflowSuperClass:
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
         self.additional_params = A('additional_params')
+        self.skip_version_check = A('skip_version_check')
 
         if self.additional_params:
             run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. "
@@ -74,6 +75,15 @@ class WorkflowSuperClass:
         if self.config_file:
             filesnpaths.is_file_json_formatted(self.config_file)
             self.config = json.load(open(self.config_file))
+
+        # If a config exists, check that its current
+        if self.config and not self.skip_version_check:
+            if self.config['config_version'] != workflow_config_version:
+                raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
+                                  f"of date (your version: {self.config['config_version']}; up-to-date version: "
+                                  f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
+                                  f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
+                                  f"this error message.")
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
@@ -242,8 +252,20 @@ class WorkflowSuperClass:
 
 
     def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=True):
-        """This function gets a snakemake workflow object and checks whether each shell command
-           exists in the path.
+        """Check whether each shell command in a snakemake_workflow_object exists in PATH
+
+        Parameters
+        ==========
+        snakemake_workflow_object: snakemake.workflow
+            Source code of this object found at
+            https://snakemake.readthedocs.io/en/stable/_modules/snakemake/workflow.html
+
+        Notes
+        =====
+        - FIXME Not all of the programs identified here will _actually_ be used in the workflow.
+          Finding out which commands will actually be used requires building the DAG and then
+          finding the appropriate place in the Snakemake API where we can expose this information.
+          See https://github.com/merenlab/anvio/issues/1316 for discussion.
         """
 
         if self.slave_mode:
@@ -460,9 +482,9 @@ class WorkflowSuperClass:
         '''
         if args:
             if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting %s from "
-                                  "within another class, yet you are providing an `args` parameter. "
-                                  "This is not alright." % type(self))
+                raise ConfigError("Something is wrong. You are inheriting %s from \
+                                   within another class, yet you are providing an `args` parameter.\
+                                   This is not alright." % type(self))
             self.args = args
             self.name = workflow_name
             WorkflowSuperClass.__init__(self)
@@ -643,11 +665,13 @@ def get_workflow_module_dict():
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+    from anvio.workflows.trnaseq import TRNASeqWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
-                      'phylogenomics': PhylogenomicsWorkflow}
+                      'phylogenomics': PhylogenomicsWorkflow,
+                      'trnaseq': TRNASeqWorkflow}
 
     return workflows_dict
 
@@ -657,7 +681,7 @@ def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
     config = json.load(open(config_file))
     workflow_name = config.get('workflow_name')
     # Notice that if there is no config_version then we return "0".
-    # This is in order to accomodate early contig files that had no such parameter.
+    # This is in order to accomodate early config files that had no such parameter.
     version = config.get('config_version', "0")
 
     if (not dont_raise) and (not workflow_name):

@@ -3,12 +3,15 @@
 
 import sys
 
+from argparse import Namespace
+
 import anvio
 import anvio.terminal as terminal
 
 from anvio.cogs import COGs
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -19,11 +22,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'cogs-data',]
 __provides__ = ['functions',]
-__description__ = ("Run NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
+__description__ = ("This program runs NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
                    "COGs database was been designed as an attempt to classify proteins from completely "
-                   "sequenced genomes on the basis of the orthology concept. It is no longer actively "
-                   "developed, however, it is still very effective for daily needs. You may want to "
-                   "consider Pfams or the eggNOG database for more comprehensive functional insights.")
+                   "sequenced genomes on the basis of the orthology concept.")
 
 
 run = terminal.Run()
@@ -37,19 +38,18 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-
     try:
-        cogs = COGs(argparse.Namespace())
+        cogs = COGs(Namespace())
         available_search_methods = cogs.available_search_methods
         default_search_method = cogs.default_search_method
     except ConfigError as e:
         print(e)
         sys.exit(-1)
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('cog-version'), **anvio.K('cog-version'))
     parser.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
@@ -61,7 +61,7 @@ if __name__ == '__main__':
                                         % {'serach_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

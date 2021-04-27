@@ -4,7 +4,7 @@
 
 import os
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -24,7 +24,8 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['concatenated-gene-alignment-fasta']
 __provides__ = ['phylogeny']
-__description__ = "Generate phylogenomic tree from aligment file."
+__resources__ = [("View this program in action in the anvi'o phylogenetics workflow", "http://merenlab.org/2017/06/07/phylogenomics/")]
+__description__ = "Generate phylogenomic tree from aligment file"
 
 
 run = terminal.Run()
@@ -56,7 +57,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Concatenated aligment files exported using anvi-get-sequences-for-gene-clusters")
     groupA.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': True}))
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('PROGRAM', "The program that will be used for generating tree. Available options: " + ", ".join(list(driver_modules['phylogeny'].keys())))
     groupD.add_argument(*anvio.A('program'), **anvio.K('program'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

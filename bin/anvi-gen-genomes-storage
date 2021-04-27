@@ -21,7 +21,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['external-genomes', 'internal-genomes']
 __provides__ = ['genomes-storage-db']
-__description__ = "Create a genome storage from internal and/or external genomes for a pangenome analysis."
+__description__ = "Create a genome storage from internal and/or external genomes for a pangenome analysis"
 __resources__ = [("A tutorial on pangenomics", "http://merenlab.org/2016/11/08/pangenomics-v2/"),]
 
 
@@ -30,9 +30,9 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('EXTERNAL GENOMES', "External genomes listed as anvi'o contigs databases. As in, you have one\
                                                     or more genomes say from NCBI you want to work with, and you created an\
@@ -50,7 +50,7 @@ if __name__ == '__main__':
                                                   distinguish this very special file from them.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True, 'metavar': 'GENOMES_STORAGE'}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         genome_descriptions = genomedescriptions.GenomeDescriptions(args)

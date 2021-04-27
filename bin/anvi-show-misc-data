@@ -3,7 +3,7 @@
 """List misc data keys in pan or profile databases"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -18,6 +18,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["pan-db", "profile-db", "contigs-db"]
 __description__ = "Show all misc data keys in all misc data tables"
 
 
@@ -50,7 +51,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('Database input', "Provide 1 of these")
     group2 = parser.add_argument_group('Details', "Everything else.")
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table'))
     group2.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

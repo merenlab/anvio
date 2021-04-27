@@ -1,6 +1,6 @@
-An external genome is anything you have in a FASTA file format (i.e., a genome you have downloaded from NCBI, or obtained through any other way) that was converted into a %(contigs-db)s.
+An external genome is any genome assembly that was converted into a %(contigs-db)s from its original FASTA file format using the program %(anvi-gen-contigs-database)s. You can obtain one of these in a variety of ways, the most common being 1) downloading a genome from a database such as NCBI and 2) assembling a genome yourself from sequencing reads. The key thing is that the sequences in the %(contigs-db)s represent a _single_ microbial population (or species, if you are not working with microbes) - ie, it is not a metagenome.
 
-External genomes file format enables anvi'o to work with one or more external genomes. A TAB-delimited external genomes file will be composed of the following two columns:
+The external genomes file format enables anvi'o to work with one or more external genomes. A TAB-delimited external genomes file will be composed of at least the following two columns:
 
 |name|contigs_db_path|
 |:--|:--|
@@ -12,4 +12,12 @@ External genomes file format enables anvi'o to work with one or more external ge
 {:.warning}
 Please make sure names in the `name` column does not include any special characters (underscore is fine). It is also a good idea to keep these names short and descriptive as they will appear in various figures in downstream analyses.
 
-Also see, **%(internal-genomes)s** and **%(metagenomes)s**.
+## Additional columns
+
+In some cases additional columns may be required to be in this file. Below is a table of the possible columns you may need.
+
+| header | description | required for |
+|----|----|----|
+| group | which group the genome belongs to (can be empty) | %(anvi-compute-functional-enrichment)s |
+
+Also see **%(internal-genomes)s** and **%(metagenomes)s**.

@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -22,7 +22,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "why yes we do stuff here."
+__requires__ = ['clustering-configuration']
+__provides__ = ['dendrogram']
+__description__ = "Create an experimental clustering dendrogram."
+__resources__ = [("An example use of this program", "https://merenlab.org/2015/06/10/combining-omics-data/")]
 
 
 run = terminal.Run()
@@ -85,7 +88,7 @@ def experimental_organization(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('config_file', metavar = 'FILE', default = None, type=str,
                         help = 'Config file for clustering of contigs. See documentation for help.')
 
@@ -105,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         experimental_organization(args)

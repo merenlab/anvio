@@ -108,201 +108,296 @@
                     </div>
                     <div id="tab_views" role="tabpanel" class="tab-pane fade">
                         <span class="settings-header"><h4>Variants</h4></span>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Color</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Rule: </label>
-                            <div class="col-md-8">
-                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
-                                    <option>Static</option>
-                                    <option>Dynamic</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="static-color">
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Color</h5></span>
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color: </label>
-                                <div class="col-md-8"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
+                                <label class="col-md-4 settings-label">Rule: </label>
+                                <div class="col-md-8">
+                                    <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
+                                        <option>Static</option>
+                                        <option>Dynamic</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="dynamic-color" style="display: none;">
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color by: </label>
-                                <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label" style="margin-bottom: 15px">3 color: </label>
-                                <div class="col-md-8"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></div>
-                            </div>
-                            <div id="color_numerical_panel">
-                                <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
-                                </div>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
-                                </div>
-                                <div class="middle-color-settings" style="display: none">
-                                    <span class="settings-header" id="middle-color" style="margin-left: 22px;"><h5>Middle</h5></span>
-                                    <div class="col-md-12">
-                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
-                                    </div>
-                                </div>
-                                <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
-                                </div>
+                            <div class="static-color">
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_static" color="#c80023" onchange="draw_variability();" style="background-color: #c80023;"></div></div>
                                 </div>
-                                <div class="clearfix"></div>
-                                <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
+                            </div>
+                            <div class="dynamic-color" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color by: </label>
+                                    <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">3 color: </label>
+                                    <div class="col-md-8"><input type="checkbox" id="show_3_color" onclick="if ($(this).is(':checked')) {  $('.middle-color-settings').show(); } else { $('.middle-color-settings').hide(); }; draw_variability();" /></div>
+                                </div>
+                                <div id="color_numerical_panel">
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                    </div>
+                                    <div class="middle-color-settings" style="display: none">
+                                        <span class="settings-header" id="middle-color" style="margin-left: 22px;"><h5>Middle</h5></span>
+                                        <div class="col-md-12">
+                                            <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                            <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
+                                        </div>
+                                    </div>
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
+                                </div>
                             </div>
                         </div>
                         <div class="clearfix"></div>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Size</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Rule: </label>
-                            <div class="col-md-8">
-                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
-                                    <option>Static</option>
-                                    <option>Dynamic</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="static-size">
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Size</h5></span>
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Size: </label>
-                                <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
+                                <label class="col-md-4 settings-label">Rule: </label>
+                                <div class="col-md-8">
+                                    <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
+                                        <option>Static</option>
+                                        <option>Dynamic</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="dynamic-size" style="display: none;">
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size by: </label>
-                                <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
-                            </div>
-                            <div id="size_numerical_panel">
-                                <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="size_min" onblur="draw_variability(); " value="0"></div>
-                                </div>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size: </label>
-                                    <div class="col-md-8"><input type="input" id="size_start" onblur="draw_variability(); " value="0.4"></div>
-                                </div>
-                                <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="size_max" onblur="draw_variability(); " value="1"></div>
-                                </div>
+                            <div class="static-size">
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Size: </label>
-                                    <div class="col-md-8"><input type="input" id="size_end" onblur="draw_variability(); " value="1.4"></div>
+                                    <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
                                 </div>
-                                <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
+                            </div>
+                            <div class="dynamic-size" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size by: </label>
+                                    <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                                </div>
+                                <div id="size_numerical_panel">
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="size_min" onblur="draw_variability(); " value="0"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Size: </label>
+                                        <div class="col-md-8"><input type="input" id="size_start" onblur="draw_variability(); " value="0.4"></div>
+                                    </div>
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="size_max" onblur="draw_variability(); " value="1"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Size: </label>
+                                        <div class="col-md-8"><input type="input" id="size_end" onblur="draw_variability(); " value="1.4"></div>
+                                    </div>
+                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
+                                </div>
                             </div>
                         </div>
                         <div class="clearfix"></div>
                         <span class="settings-header" style="margin-top: 30px;"><h4>Structure</h4></span>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Style: </label>
-                            <div class="col-md-8">
-                                <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
-                                    <option>cartoon</option>
-                                    <option>tube</option>
-                                    <option>rocket</option>
-                                    <option>rocket+loop</option>
-                                    <option>rope</option>
-                                    <option>ribbon</option>
-                                    <option>trace</option>
-                                    <option>helixorient</option>
-                                    <option>point</option>
-                                </select>
-                            </div>
-                        </div>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Show: </label>
-                            <div class="col-md-8">
-                                <input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Color Scheme: </label>
-                            <div class="col-md-8">
-                                <select id="surface_type" onchange="create_ngl_views(fetch_variability=false); if ($(this).val() == 'plain') { $('.plain-color').show(); } else { $('.plain-color').hide(); }">
-                                    <option>plain</option>
-                                    <option>electrostatic</option>
-                                    <option>hydrophobicity</option>
-                                    <option>residueindex</option>
-                                    <option>element</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="plain-color">
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color: </label>
-                                <div class="col-md-8"><div class="colorpicker" id="color_plain" color="#d5e8d5" onchange="create_ngl_views(fetch_variability=false); " style="background-color: #d5e8d5;"></div></div>
+                                <label class="col-md-4 settings-label">Show: </label>
+                                <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Style: </label>
+                                <div class="col-md-8">
+                                    <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
+                                        <option>cartoon</option>
+                                        <option>tube</option>
+                                        <option>rocket</option>
+                                        <option>rocket+loop</option>
+                                        <option>rope</option>
+                                        <option>ribbon</option>
+                                        <option>trace</option>
+                                        <option>helixorient</option>
+                                        <option>point</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Opacity: </label>
-                            <div class="col-md-8"><input type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Probe radius: </label>
-                            <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
-                        </div>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Show: </label>
-                            <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">When: </label>
-                            <div class="col-md-8">
-                                <select id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
-                                    <option>always</option>
-                                    <option>variant residue</option>
-                                    <option>hovered residue</option>
-                                    <option>hovered residue + contacts</option>
-                                    <option>hovered residue + variant contacts</option>
-                                </select>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Backbone Color</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Rule: </label>
+                                <div class="col-md-8">
+                                    <select id="backbone_color_type" onchange="backbone_rule(this);">
+                                        <option>Static</option>
+                                        <option>Dynamic</option>
+                                        <option>residueindex</option>
+                                        <option>bfactor</option>
+                                        <option>hydrophobicity</option>
+                                        <option>sstruc</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="static-color-backbone" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div></div>
+                                </div>
+                            </div>
+                            <div class="dynamic-color-backbone" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color by: </label>
+                                    <div class="col-md-8"><select id="backbone_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
+                                </div>
+                                <div id="backbone_color_numerical_panel">
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="backbone_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                    </div>
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
+                                </div>
                             </div>
                         </div>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Hover Tooltip</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">When: </label>  
-                            <div class="col-md-8">
-                                <select id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
-                                    <option>variant residues</option>
-                                    <option>all residues</option>
-                                </select>
+                        <div class="clearfix"></div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Show: </label>
+                                <div class="col-md-8">
+                                    <input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false);" checked="checked" />
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Opacity: </label>
+                                <div class="col-md-8"><input type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Probe radius: </label>
+                                <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
                             </div>
                         </div>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
-                        <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Surface Color</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Rule: </label>
+                                <div class="col-md-8">
+                                    <select id="surface_color_type" onchange="surface_rule(this);">
+                                        <option>Static</option>
+                                        <option>Dynamic</option>
+                                        <option>atomindex</option>
+                                        <option>bfactor</option>
+                                        <option>electrostatic</option>
+                                        <option>element</option>
+                                        <option>hydrophobicity</option>
+                                        <option>random</option>
+                                        <option>sstruc</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="static-color-surface" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
+                                </div>
+                            </div>
+                            <div class="dynamic-color-surface" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color by: </label>
+                                    <div class="col-md-8"><select id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
+                                </div>
+                                <div id="surface_color_numerical_panel">
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                    </div>
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_backbone_color_error">Max Value must be greater than Min Value.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Show: </label>
+                                <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">When: </label>
+                                <div class="col-md-8">
+                                    <select id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
+                                        <option>always</option>
+                                        <option>variant residue</option>
+                                        <option>hovered residue</option>
+                                        <option>hovered residue + contacts</option>
+                                        <option>hovered residue + variant contacts</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Hover Tooltip</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Show: </label>  
+                                <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">When: </label>  
+                                <div class="col-md-8">
+                                    <select id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
+                                        <option>all residues</option>
+                                        <option>variant residues</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Show: </label>  
+                                <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
+                            </div>
                         </div>
                     </div>
                     <div id="tab_output" role="tabpanel" class="tab-pane fade">
@@ -384,7 +479,7 @@
 
         <!-- PYMOL EXPORT -->
         <div class="modal fade" id="pymol_export_page">
-            <div class="modal-dialog">
+            <div class="modal-dialog" style="width: 40%;">
                 <div class="modal-content">
                     <div class="modal-header">
                         <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>

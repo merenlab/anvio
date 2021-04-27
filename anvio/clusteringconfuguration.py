@@ -258,16 +258,13 @@ class ClusteringConfiguration:
                     database = database[1:]
 
                     if database not in self.db_paths:
-                        raise ConfigError('anvio could not recover the actual path of the database '
-                                           '(!%s) referenced in the config file, because the database '
-                                           'paths variable sent from the client does not have an entry '
-                                           'for it :( There are two options. One is to get a db_paths '
-                                           'dictionary sent to this class that contains a key for %s '
-                                           'with the full path to the dataase as a value. Or the table '
-                                           '"%s" can be exported to a TAB-delimited matrix and declared in '
-                                           'the config file. If you are experimenting and stuck here, please '
-                                           'see the documentation or send an e-mail to the developers.'\
-                                                                                % (database, database, table))
+                        raise ConfigError(f"Ehem. Anvi'o could not recover the actual path of the database (!{database}) referenced in the config file, "
+                                          f"because the database paths variable sent from the client does not have an entry for it :( There are two "
+                                          f"options. One is to get a `db_paths` dictionary sent to this class that contains a key for {database} with "
+                                          f"the full path to the dataase as a value. Or the table '{table}' can be exported to a TAB-delimited matrix "
+                                          f"and declared in the config file. If you are experimenting and got stuck here, we like you. Please send an "
+                                          f"e-mail to the developers.")
+
                     database_path = self.db_paths[database]
                 else:
                     database, table = matrix.split('::')
@@ -295,7 +292,12 @@ class ClusteringConfiguration:
                 if config.has_option(section, 'table_form'):
                     table_form = config.get(section, 'table_form')
 
-                table_rows = dbc.get_all_rows_from_table(table)
+                if self.row_ids_of_interest:
+                    column_name = dbc.get_table_structure(table)[0]
+                    where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
+                    table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                else:
+                    table_rows = dbc.get_all_rows_from_table(table)
 
                 if self.row_ids_of_interest:
                     if table_form == 'dataframe':

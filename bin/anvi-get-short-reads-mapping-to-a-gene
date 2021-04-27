@@ -29,7 +29,7 @@ __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "c
 __description__ = ("Recover short reads from BAM files that were mapped to genes you are "
                    "interested in. It is possible to work with a single gene call, or a "
                    "bunch of them. Similarly, you can get short reads from a single "
-                   "BAM file, or from many of them.")
+                   "BAM file, or from many of them")
 
 
 run = terminal.Run()
@@ -42,6 +42,10 @@ def main(args):
     if args.gene_caller_id and args.genes_of_interest:
         raise ConfigError("You either should define a single gene caller id, or a list of "
                           "gene callers of interest. Not both")
+
+    if not (args.genes_of_interest or args.gene_caller_id):
+        raise ConfigError("You must provide either a single gene caller id, or a file with one or more gene "
+                          "caller ids. You provided none of these. Well .. *starts quietly taking notes*.")
 
     if args.genes_of_interest:
         genes_of_interest = set([int(g) for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
@@ -74,8 +78,8 @@ def main(args):
     progress.update("...")
     for gene_caller_id in genes_of_interest:
         gene_call = c.genes_in_contigs_dict[gene_caller_id]
-        mapping_range_start = gene_call['start'] + args.leeway
-        mapping_range_stop = gene_call['stop'] - args.leeway
+        mapping_range_start = gene_call['start'] - args.leeway
+        mapping_range_stop = gene_call['stop'] + args.leeway
         gene_length = gene_call['stop'] - gene_call['start']
 
         progress.increment()
@@ -87,9 +91,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "An anvi'o contigs database and one or more BAM files.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
@@ -105,7 +109,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OUTPUT', "How should results be stored.")
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -16,6 +16,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-db": {
+        "name": "TRNASEQ",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "modules-db": {
+        "name": "MODULES",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
@@ -26,13 +38,25 @@ ANVIO_ARTIFACTS ={
         "name": "CONTIGS",
         "type": "FASTA",
         "provided_by_anvio": True,
-        "provided_by_user":True
+        "provided_by_user": True
+    },
+    "trnaseq-fasta": {
+        "name": "TRNASEQ",
+        "type": "FASTA",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "configuration-ini": {
+        "name": "CONFIGURATION FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
@@ -58,8 +82,20 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "protein-structure": {
+    "protein-structure-txt": {
         "name": "PDB FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "samples-txt": {
+        "name": "SAMPLES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "fasta-txt": {
+        "name": "FASTA TXT",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
@@ -88,7 +124,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "kegg-db": {
+    "kegg-data": {
         "name": "KEGG DB",
         "type": "DB",
         "provided_by_anvio": True,
@@ -226,12 +262,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-layers-category": {
-        "name": "LAYERS DATA CATEGORY",
-        "type": "CONCEPT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "genome-similarity": {
         "name": "GENOME SIMILARITY",
         "type": "CONCEPT",
@@ -250,13 +280,13 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-item-orders-txt": {
+    "misc-data-items-order-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "misc-data-item-orders": {
+    "misc-data-items-order": {
         "name": "ITEM ORDERS DATA",
         "type": "CONCEPT",
         "provided_by_anvio": True,
@@ -298,6 +328,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "binding-frequencies-txt": {
+        "name": "AMINO ACID BINDING FREQUENCIES TEXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "interacdome-data": {
+        "name": "INTERACDOME DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "functions": {
         "name": "GENE FUNCTIONS",
         "type": "CONCEPT",
@@ -311,7 +353,7 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": True
     },
     "functional-enrichment-txt": {
-        "name": "ENRICHED FUNCTIONS",
+        "name": "ENRICHMENT SCORES",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -382,6 +424,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-taxonomy-db": {
+        "name": "TRNA TAXONOMY DB",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trna-taxonomy": {
+        "name": "TRNA TAXONOMY",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "external-genomes": {
         "name": "EXTERNAL GENOMES",
         "type": "TXT",
@@ -406,15 +460,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "genome-distance-txt": {
-        "name": "DISTANCE ESTIMATES",
+    "detection-txt": {
+        "name": "DETECTIONS",
         "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": True
-    },
-    "genome-distance": {
-        "name": "DISTANCE ESTIMATES",
-        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -481,6 +529,108 @@ ANVIO_ARTIFACTS ={
     "kegg-metabolism": {
         "name": "KEGG METABOLISM ESTIMATES",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "augustus-gene-calls": {
+        "name": "AUGUSTUS GENE CALLS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "genes-stats": {
+        "name": "GENE STATS",
+        "type": "STATS",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "vcf": {
+        "name": "VCF",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "blast-table": {
+        "name": "BLAST TABLE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "splits-txt": {
+        "name": "SPLITS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "genbank-file": {
+        "name": "GENBANK FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "groups-txt": {
+        "name": "GROUPS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "splits-taxonomy-txt": {
+        "name": "SPLITS TAXONOMY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-matrix-txt": {
+        "name": "HMM HITS MATRIX",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pn-ps-data": {
+        "name": "PN/PS OUTPUT",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "clustering-configuration": {
+        "name": "CLUSTERING CONFIG",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "workflow-config": {
+        "name": "WORKFLOW CONFIG",
+        "type": "JSON",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "contigs-workflow": {
+        "name": "CONTIGS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "metagenomics-workflow": {
+        "name": "METAGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pangenomics-workflow": {
+        "name": "PANGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "phylogenomics-workflow": {
+        "name": "PHYLOGENOMICS WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-workflow": {
+        "name": "TRNASEQ WORKFLOW",
+        "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
     }

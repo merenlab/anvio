@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import operator as op
 
+from numba import jit
 from scipy.stats import entropy
 
 import anvio
@@ -28,6 +29,7 @@ import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -539,9 +541,11 @@ class VariabilitySuper(VariabilityFilter, object):
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
+        self.include_additional_data_in_output = A('include_additional_data', null)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
+        self.genes_with_structure = set([])
         self.table_provided = False if self.data.empty else True
         self.load_all_genes = True
         self.load_all_samples = True
@@ -563,23 +567,27 @@ class VariabilitySuper(VariabilityFilter, object):
         # f = function called in self.process
         # **kwargs = parameters passed to function
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions = [F(self.init_commons),
-                                  F(self.load_variability_data),
-                                  F(self.load_structure_data),
-                                  F(self.apply_preliminary_filters),
-                                  F(self.set_unique_pos_identification_numbers),
-                                  F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
-                                  F(self.compute_additional_fields),
-                                  F(self.filter_data, criterion="departure_from_consensus",
-                                                      min_filter=self.min_departure_from_consensus,
-                                                      min_condition=self.min_departure_from_consensus > 0,
-                                                      max_filter=self.max_departure_from_consensus,
-                                                      max_condition=self.max_departure_from_consensus < 1),
-                                  F(self.recover_base_frequencies_for_all_samples),
-                                  F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
-                                  F(self.compute_comprehensive_variability_scores),
-                                  F(self.compute_gene_coverage_fields),
-                                  F(self.get_residue_structure_information,)]
+        self.process_functions = [
+            F(self.init_commons),
+            F(self.load_variability_data),
+            F(self.load_structure_data),
+            F(self.load_additional_data),
+            F(self.apply_preliminary_filters),
+            F(self.set_unique_pos_identification_numbers),
+            F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
+            F(self.compute_additional_fields),
+            F(self.filter_data, criterion="departure_from_consensus",
+                                min_filter=self.min_departure_from_consensus,
+                                min_condition=self.min_departure_from_consensus > 0,
+                                max_filter=self.max_departure_from_consensus,
+                                max_condition=self.max_departure_from_consensus < 1),
+            F(self.recover_base_frequencies_for_all_samples),
+            F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
+            F(self.compute_comprehensive_variability_scores),
+            F(self.compute_gene_coverage_fields),
+            F(self.merge_residue_structure_info,),
+            F(self.merge_additional_data,),
+        ]
 
         if not self.skip_sanity_check:
             self.sanity_check()
@@ -644,15 +652,22 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('entropy', float),
                 ('kullback_leibler_divergence_raw', float),
                 ('kullback_leibler_divergence_normalized', float),
-                ('synonymity', float),
+                ('pN_consensus', float),
+                ('pS_consensus', float),
+                ('pN_reference', float),
+                ('pS_reference', float),
+                ('pN_popular_consensus', float),
+                ('pS_popular_consensus', float),
             ],
             'SSMs': [
             ],
             'structural': [
             ],
+            'additional_data': [
+            ],
         }
         self.columns_to_report_order = ['position_identifiers', 'sample_info', 'gene_info', 'coverage_info',
-                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural']
+                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural', 'additional_data']
 
 
 
@@ -938,7 +953,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
-        self.progress.update('Making sure you are not playing games ..')
+        self.progress.update('Making sure you are not playing games ...')
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
         self.table_structure = t.variable_nts_table_structure if self.engine ==  'NT' else t.variable_codons_table_structure
@@ -969,6 +984,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
             raise ConfigError('You provided a structure database, which is only compatible with --engine AA and --engine CDN')
+
+        if self.include_additional_data_in_output and self.engine not in ["AA", "CDN"]:
+            raise ConfigError('Currently, --include-additional-data is only implemented for --engine AA and --engine CDN')
 
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -1010,10 +1028,20 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def gen_sqlite_where_clause_for_variability_table(self):
-        """It is impractical to load the entire variability table and then filter it according to our
-           splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
-           genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
-           not included here? Because split_name is not a column in the variable codon table."""
+        """Gen sqlite query to avoid loading in entire variability table
+
+        It is impractical to load the entire variability table and then filter it according to our
+        splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, if
+        genes_of_interest is a single gene in a variability table with 6.7 million genes, we should
+        use sqlite filters to avoid clogging memory usage to load the entire 6.7M genes' worth of
+        data into memory.
+
+        Notes
+        =====
+        - FIXME. `variable_codons` does not have a `splits_of_interest` column, but it should (just
+          as `variable_nucleotides` does). This prevents us fom SQL-querying by splits of interest.
+        """
+
         R = lambda x, y: self.run.info("%s that variability data will be fetched for" % \
                          (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
@@ -1051,6 +1079,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
+
         if self.table_provided:
             return
 
@@ -1069,7 +1098,9 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
                                                              columns_of_interest=self.table_structure,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
+            self.check_if_data_is_empty()
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
@@ -1079,12 +1110,14 @@ class VariabilitySuper(VariabilityFilter, object):
                                    profiles :(")
 
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
             self.check_if_data_is_empty()
 
             # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
             # needs to be turned into AAs if the engine is AA.
             if self.engine == 'AA':
+                self.progress.end()
                 self.convert_item_coverages()
                 self.convert_reference_info()
 
@@ -1092,9 +1125,36 @@ class VariabilitySuper(VariabilityFilter, object):
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
+        self.data["codon_number"] = self.data["codon_number"].astype(int)
 
         # we're done here. bye.
         profile_db.disconnect()
+        self.progress.end()
+
+
+    def load_additional_data(self):
+        """Loads additional data from the contigs db as self.additional_data"""
+
+        if not self.include_additional_data_in_output:
+            return
+
+        self.progress.new('Loading additional data')
+        self.progress.update('Fetching dataframe ...')
+
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.ad = TableForAminoAcidAdditionalData(args)
+        self.additional_data = self.ad.get_multigene_dataframe(self.genes_of_interest)
+        self.additional_data.rename(columns={'gene_callers_id': 'corresponding_gene_call'}, inplace=True)
+
+        if self.additional_data.empty:
+            self.run.warning("There is no additional data in the `amino_acid_additional_data` table of your contigs db "
+                             "that matches your genes of interest. Therefore no additional data will be output, despite your "
+                             "flag --include-additional-data.")
+            self.include_additional_data_in_output = False
+            self.progress.end()
+            return
+
+        self.genes_with_additional_data = set(self.additional_data['corresponding_gene_call'].unique())
         self.progress.end()
 
 
@@ -1137,6 +1197,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def check_if_data_is_empty(self):
         if self.data.empty:
+            if self.progress.pid is not None:
+                self.progress.end()
+
             raise self.EndProcess
 
 
@@ -1184,6 +1247,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def is_available_samples_compatible_with_sample_ids_of_interest(self):
         self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)), progress=self.progress)
+
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
@@ -1323,7 +1387,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # method="first" ensures alphabetic ordering in the case of ties. Convert the rank DataFrame
         # into a numpy array, and find the order of indices that sort each entry's items based on
         # their ranks. type(ranks) = pd.DataFrame, type(item_index_order) = numpy array
-        ranks = self.data.loc[entry_ids, self.items].rank(ascending=False, axis=1, method="first").astype(int)
+        ranks = self.data.loc[entry_ids, self.items].astype(int).rank(ascending=False, axis=1, method="first").astype(int)
         item_index_order = np.argsort(ranks.values, axis=1)
 
         # the first and second most common items, according to the 2nd convention in the docstring,
@@ -1670,14 +1734,13 @@ class VariabilitySuper(VariabilityFilter, object):
         try:
             for func, kwargs in process_functions:
                 func(**kwargs)
-
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
             e.end(exit_if_data_empty, msg)
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
-        """ Return a histogram (counts and bins) for a specified column of self.data
+        """Return a histogram (counts and bins) for a specified column of self.data
 
         Parameters
         ==========
@@ -1720,8 +1783,8 @@ class VariabilitySuper(VariabilityFilter, object):
         return values, bins
 
 
-    def get_residue_structure_information(self):
-        """ Merges self.structure_residue_info with self.data
+    def merge_additional_data(self):
+        """Merges self.additional_data with self.data
 
         Notes
         =====
@@ -1729,6 +1792,53 @@ class VariabilitySuper(VariabilityFilter, object):
           with structure, this function raises a warning and the structure columns are not added to
           the table. Otherwise this function appends the columns from residue_info to self.data
         """
+
+        if not self.include_additional_data_in_output:
+            return
+
+        genes_with_var = list(self.data["corresponding_gene_call"].unique())
+        genes_with_var_and_additional_data = [g for g in self.genes_with_additional_data if g in genes_with_var]
+        if not genes_with_var_and_additional_data:
+            self.run.warning("After filtering, there is no overlap between residues with "
+                             "variability and residues with additional data. As a result, "
+                             "no additional data columns will be added.")
+            self.include_additional_data_in_output = False
+            return
+
+        self.progress.new("Adding additional data")
+        self.progress.update("Merging columns...")
+
+        self.data = self.data.merge(
+            self.additional_data,
+            on=['corresponding_gene_call', 'codon_order_in_gene'],
+            how='left',
+        )
+
+        # There may be many columns in self.additional_data, many of which could have mostly NaN
+        # values. After filtering self.data, its possible that columns have _all_ NaN values, so we
+        # remove such columns
+        self.data.dropna(axis=1, how='all', inplace=True)
+
+        # Add types to output. This assumes each data_key has only 1 data_type, and it would be
+        # pretty messed up if that wasn't the case.
+        types = dict(zip(self.ad.df['data_key'], self.ad.df['data_type']))
+        dtypes_convert = {'str': str, 'int': int, 'float': float, 'stackedbar': str, 'unknown': str}
+        types = list(tuple({k: dtypes_convert[v] for k, v in types.items()}.items()))
+        self.columns_to_report['additional_data'].extend(types)
+
+        self.progress.end()
+
+
+    def merge_residue_structure_info(self):
+        """Merges self.structure_residue_info with self.data
+
+        Notes
+        =====
+        - If by the end of all filtering there is no overlap between genes with variability and genes
+          with structure, this function raises a warning and the structure columns are not added to
+          the table. Otherwise this function appends the columns from residue_info to self.data
+        """
+
         if not self.append_structure_residue_info:
             return
 
@@ -1736,7 +1846,7 @@ class VariabilitySuper(VariabilityFilter, object):
         genes_with_var_and_struct = [g for g in self.genes_with_structure if g in genes_with_var]
         if not genes_with_var_and_struct:
             run.warning("Before filtering entries, there was an overlap between genes with "
-                        "variability and genes with structuresr, however that is no longer the case. As a result, "
+                        "variability and genes with structures, however that is no longer the case. As a result, "
                         "no structure information columns will be added. Above you can see the number of genes "
                         "remaining with structures after each filtering step.")
             self.append_structure_residue_info = False
@@ -1761,6 +1871,74 @@ class VariabilitySuper(VariabilityFilter, object):
                                                      for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types)
                                                      if x not in redundant_columns
                                                      and x in self.structure_residue_info.columns])
+
+        self.progress.end()
+
+
+    def compute_residue_coordinates(self, structure_db):
+        """Appends columns x, y, and z to self.data, which correspond to the center of mass coordinates of the reference amino acid
+
+        Parameters
+        ==========
+        structure_db : anvio.structureops.StructureDatabase
+            A structure database generated with the same contigs DB that variability profile is defined for.
+
+        Notes
+        =====
+        - Currently, the client's only access to this functionality is through the API.
+        """
+
+        genes_with_structure = structure_db.get_genes_with_structure()
+        genes_with_variability = self.data['corresponding_gene_call'].unique()
+        genes_to_process = [x for x in genes_with_structure if x in genes_with_variability]
+
+        self.progress.new("Adding 3D coordinates", progress_total_items=len(genes_to_process))
+
+        combos = self.data.\
+            groupby(['corresponding_gene_call', 'codon_order_in_gene'])\
+            ['reference'].\
+            apply(pd.Series.mode).\
+            reset_index().\
+            drop('level_2', axis=1) # The mysterious presence of this 'level_2' column is exactly the kind
+                                    # of thing that likely depends on which pandas version is used. Beware.
+        combos = combos[combos['corresponding_gene_call'].isin(genes_to_process)]
+
+        coords = {
+            'corresponding_gene_call': [],
+            'codon_order_in_gene': [],
+            'x': [],
+            'y': [],
+            'z': [],
+        }
+
+        counter = 0
+        last_gene_id = None
+        for _, row in combos.iterrows():
+            gene_id, codon_order_in_gene, reference = row
+
+            if last_gene_id != gene_id:
+                self.progress.update(f"{counter} / {len(genes_to_process)} genes")
+                self.progress.increment()
+                structure = structure_db.get_structure(gene_id)
+                counter += 1
+
+            if reference in ['STP', 'TAA', 'TGA', 'TAG']:
+                continue
+
+            x, y, z = structure.get_residue_center_of_mass(structure.get_residue(codon_order_in_gene))
+            coords['corresponding_gene_call'].append(gene_id)
+            coords['codon_order_in_gene'].append(codon_order_in_gene)
+            coords['x'].append(x)
+            coords['y'].append(y)
+            coords['z'].append(z)
+
+            last_gene_id = gene_id
+
+        self.progress.increment(increment_to=len(genes_to_process))
+        self.progress.update('Merging coordinate data')
+
+        coords = pd.DataFrame(coords)
+        self.data = self.data.merge(coords, on=['corresponding_gene_call', 'codon_order_in_gene'], how='left')
 
         self.progress.end()
 
@@ -1881,6 +2059,12 @@ class VariabilitySuper(VariabilityFilter, object):
         for column_group, columns in self.columns_to_report.items():
             for column, data_type in columns:
                 if column in data.columns:
+                    if column in structure:
+                        self.run.warning(f"Wow. Very sorry to have caught things this late, but there was no other way. "
+                                         f"There are some columns in your output report that appear twice. This probably "
+                                         f"occurred because an additional data column in your contigs database has the same "
+                                         f"name as one of the standard column outputs of anvi-gen-variability-table. This "
+                                         f"column was named '{column}'. The results may be garbled due to this. Sorry :(")
                     structure.append(column)
                     data_types.append(data_type)
         return structure, data_types
@@ -1894,7 +2078,7 @@ class VariabilitySuper(VariabilityFilter, object):
                    message to user
             """
             if msg:
-                run.info_single(msg, 'red', 1, 1)
+                run.info_single(msg, mc='red', nl_before=1, nl_after=1)
             if exit:
                 sys.exit()
 
@@ -1999,6 +2183,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'split_name': split}
                     new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
@@ -2035,7 +2220,6 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.compute_additional_fields(list(new_entries["entry_id"]))
 
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
-
 
 
 class QuinceModeWrapperForFancyEngines(object):
@@ -2113,6 +2297,7 @@ class QuinceModeWrapperForFancyEngines(object):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'departure_from_reference': 0,
                                                             'coverage': None,
                                                             'reference': reference_item}
@@ -2209,6 +2394,10 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrap
         self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
         self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
 
+        # This filters out positions that were variable as codons, but are non-varying as amino acids
+        smallest_float = np.finfo(np.float).eps
+        self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
+
 
 class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
     def __init__(self, args={}, p=progress, r=run):
@@ -2218,7 +2407,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.engine = 'CDN'
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.skip_synonymity = A('skip_synonymity', null)
+        self.include_site_pnps = A('include_site_pnps', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2228,35 +2417,161 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.compute_synonymity))
+        if self.include_site_pnps:
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
 
 
-    def compute_synonymity(self):
-        """This method is currently prohibitively slow for large datasets."""
-        if self.skip_synonymity:
-            return
+    def calc_synonymous_fraction(self, comparison='reference'):
+        """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
-        coding_codons = constants.coding_codons
+        self.progress.new('Calculating per-site synonymous fraction')
+        progress.update('...')
 
-        number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
-        array = np.zeros((self.data.shape[0], number_of_pairs))
+        # Some lookups
+        coding_codons = sorted(constants.coding_codons)
+        codon_to_num = {coding_codons[i]: i for i in range(len(coding_codons))}
+        codon_nums = np.arange(len(coding_codons))
 
-        array_index = 0
-        s_or_ns = []
-        for i in coding_codons:
-            for j in coding_codons:
-                if j > i:
-                    break
-                array[:, array_index] = self.data.loc[:, i] * self.data.loc[:, j]
-                array_index += 1
-                s_or_ns.append(constants.is_synonymous[i][j])
+        is_synonymous = np.zeros((len(coding_codons), len(coding_codons))).astype(bool)
+        for i, codon1 in enumerate(coding_codons):
+            for j, codon2 in enumerate(coding_codons):
+                if constants.codon_to_AA[codon1] == constants.codon_to_AA[codon2]:
+                    is_synonymous[i, j] = True
+                else:
+                    is_synonymous[i, j] = False
 
-        # normalize
-        array = array / np.sum(array, axis=1)[:,np.newaxis]
+        # Populate necessary per-site info
+        progress.update('...')
+        if comparison == 'popular_consensus':
+            progress.update('Finding popular consensus; You have time for a quick stretch')
+            self.data['popular_consensus'] = self.data.\
+                groupby('unique_pos_identifier')\
+                ['consensus'].\
+                transform(lambda x: x.value_counts().index[0])
 
-        # each row sums to 1. Synonymity is the sum of those that are synonymous
-        synonymity = np.sum(array[:, s_or_ns], axis=1)
-        self.data["synonymity"] = synonymity
+        comparison_array = self.data\
+            [comparison].\
+            map(codon_to_num).\
+            fillna(-1).\
+            values.\
+            astype(int)
+
+        counts_array = self.data[constants.coding_codons].values.astype(int)
+        coverage = self.data['coverage'].values.astype(int)
+
+        self.progress.update("You're ungrateful if you think this is slow")
+        frac_syns, frac_nonsyns = _calculate_synonymous_fraction(
+            counts_array,
+            comparison_array,
+            coverage,
+            codon_nums,
+            is_synonymous,
+        )
+
+        self.progress.end()
+        return np.array(frac_syns), np.array(frac_nonsyns)
+
+
+    def _get_per_position_potential(self, comparison):
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-site basis"""
+        coding_codons = sorted(constants.coding_codons)
+        stop_codons = list(set(constants.codons) - set(constants.coding_codons))
+
+        syn_lookup, nonsyn_lookup = {}, {}
+        for null_codon in stop_codons + ['X']:
+            syn_lookup[null_codon], nonsyn_lookup[null_codon] = 0, 0
+
+        for codon in coding_codons:
+            syn_lookup[codon], nonsyn_lookup[codon], _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+
+        potentials = np.zeros((len(self.data), 2))
+        for i, comp in enumerate(self.data[comparison]):
+            potentials[i, 0] = syn_lookup[comp]
+            potentials[i, 1] = nonsyn_lookup[comp]
+
+        return potentials
+
+
+    def _get_per_gene_potential(self, contigs_db, comparison):
+        """Returns a (len(self.data), 2) shaped array that defines the num of nonsyn and syn on a per-gene basis"""
+        syn_lookup, nonsyn_lookup = {}, {}
+        for corresponding_gene_call in self.data['corresponding_gene_call'].unique():
+            gene_call = contigs_db.genes_in_contigs_dict[corresponding_gene_call]
+            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
+
+            syn_lookup[corresponding_gene_call], nonsyn_lookup[corresponding_gene_call], _ = \
+                utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
+
+        potentials = np.zeros((len(self.data), 2))
+        for i, corresponding_gene_call in enumerate(self.data['corresponding_gene_call']):
+            potentials[i, 0] = syn_lookup[corresponding_gene_call]
+            potentials[i, 1] = nonsyn_lookup[corresponding_gene_call]
+
+        return potentials
+
+
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+        """Calculate new columns in self.data corresponding to each site's contribution to a grouping
+
+        First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
+        fN and fS are respectively the fraction of non-synonymous and synonymous variation observed in the SAAV.
+        fN and fS sum to 1. Then, each fN and fS value is divided by the number of non-synonymous sites and
+        synonymous sites (aka the synonymity potentials), which will depend on the grouping (see `grouping`).
+
+        Parameters
+        ==========
+        contigs_db : dbops.ContigsSuperclass
+            If None, it is assumed that `self` has inherited `ContigsSuperclass` already.
+        grouping : str, 'site'
+            This keyword specifies the number of synonymous and non-synonymous sites that fN and fS
+            should be divided by to yield pN and pS. E.g. if `grouping` is 'gene', then each SCV
+            belonging to gene X should be divided by the number of synonymous and non-synonymous
+            sites that are present in gene X's sequence, i.e. the output of
+            `utils.get_synonymous_and_non_synonymous_potential`.  As another example, if `grouping`
+            is 'site' and the comparison codon at a site is CGA, then there are 1.33 synonymous
+            sites and 1.66 non-synonymous sites. So each SCV's pN and pS should be calculated by
+            taking fN and fS, and dividing them by 1.66 and 1.33 respectively. If `potentials` is
+            None, the available `grouping` values are {'gene', 'site'}, otherwise `grouping` can be
+            assigned to anything, and it will be used to name the columns (see Returns).
+        comparison : str, 'reference'
+            This specifices the comparison codon that should be used for determining synonymity. Options are
+            {'reference', 'consensus', 'popular_consensus'}. reference means the codon in the reference sequence
+            is the comparison codon, consensus means most common codon in the SCV should be used as the reference,
+            and popular_consensus means that the most frequently observed consensus codon across all samples should
+            be used as the comparison codon.
+        potentials : numpy.array, None
+            Most people should not use this. If provides a way to create custom groupings. If
+            passed, it should be a (len(self.data), 2) shaped numpy array. potentials[:,0] and
+            potentials[:,1] specify the amount that each SCV's fS and fS values should be divided by
+            to yield pS and pN.
+
+        Returns
+        =======
+        output : None
+            This function does not return anything. It creates 2 new columns in `self.data` with
+            names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+        """
+
+        if contigs_db is None:
+            contigs_db = self
+
+        frac_syns, frac_nonsyns = self.calc_synonymous_fraction(comparison=comparison)
+
+        if potentials is None:
+            if grouping == 'site':
+                potentials = self._get_per_position_potential(comparison=comparison)
+            elif grouping == 'gene':
+                potentials = self._get_per_gene_potential(contigs_db=contigs_db, comparison=comparison)
+            else:
+                raise NotImplementedError(f"calc_pN_pS doesnt know the grouping '{grouping}'")
+
+        group_tag = (grouping + '_') if grouping != 'site' else ''
+        pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
+        self.data[pS_name] = frac_syns/potentials[:, 0]
+        self.data[pN_name] = frac_nonsyns/potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
@@ -2325,14 +2640,14 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
             self.data = pd.DataFrame(collapsed_coverage_counts, columns=coverage_columns).reset_index(drop=True)
             self.data[data_append.columns] = data_append
             self.data['sample_id'] = 'merged'
-            self.data['consensus'] = self.data[self.items].idxmax(axis=1)
+            self.data['consensus'] = self.data[self.items].astype(int).idxmax(axis=1)
 
         # no data no play.
         if not len(self.data):
-            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons "
-                              "to this. One, anvi'o variability engines reported nothing (in which case you should have gotten "
-                              "an error much earler). Two, you are a programmer and failed to call the 'process()' on your "
-                              "instance from this class. Do you see how the second option is much more likely? :/")
+            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. If you are a user, this means "
+                              "the sequence(s) you are interested in has/have no sequence variability, so there is really nothig "
+                              "to do here... If you are a programmer and failed to call 'process()' on your "
+                              "instance from this class, you may also see this message.")
 
         # learn about the sequences, either contigs or genes
         if self.contigs_mode:
@@ -2344,7 +2659,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                 _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
                 sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
 
-        # here we populate a dictionary with all the right items but witout any real data.
+        # here we populate a dictionary with all the right items but without any real data.
         sample_names = set(self.data['sample_id'])
         for sample_name in sample_names:
             self.sequence_variants_in_samples_dict[sample_name] = {}
@@ -2581,8 +2896,18 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
+        if self.columns_to_load is not None:
+            cols = self.get_columns()
+            for col in self.columns_to_load:
+                if col not in cols:
+                    raise ConfigError(f"Hmmm. The column '{col}' isn't in your variability table..."
+                                      f"Here are the columns that do exist: {cols}")
 
         self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def get_columns(self):
+        return set(pd.read_csv(self.variability_table_path, sep="\t", nrows = 0).columns)
 
 
     def process_external_table(self):
@@ -2604,9 +2929,9 @@ class VariabilityFixationIndex(object):
     """Calculates a fixation index matrix
 
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
-    (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
+    (https://www.nature.com/articles/nature11711#Sec14)
     which extends the traditional metric to allow for multiple alleles in one site. We further
-    extend to allow for codon and amino acid alleles.
+    extend to allow for codon and amino acid alleles. See supplemental.
     """
 
     def __init__(self, args={}, p=progress, r=run):
@@ -2877,6 +3202,39 @@ class VariabilityFixationIndex(object):
 
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
+
+
+@jit(nopython=True)
+def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, codon_nums, is_synonymous):
+    num_nonsyns, num_syns = [], []
+    for i in range(counts_array.shape[0]):
+        comp = comparison_array[i] # The codon to be compared against
+        num_nonsyn, num_syn = 0, 0
+
+        if comp < 0:
+            # No sense talking about synonymity relative to a stop codon or codon containing N
+            num_nonsyns.append(np.nan)
+            num_syns.append(np.nan)
+        else:
+            cov = coverage[i]
+
+            for codon in codon_nums:
+                if codon == comp:
+                    # Don't compare the reference codon with itself, we care only about codons that
+                    # differ from the reference codon
+                    continue
+
+                contribution = counts_array[i, codon]/cov
+
+                if is_synonymous[comp, codon]:
+                    num_syn += contribution
+                else:
+                    num_nonsyn += contribution
+
+            num_nonsyns.append(num_nonsyn)
+            num_syns.append(num_syn)
+
+    return num_syns, num_nonsyns
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

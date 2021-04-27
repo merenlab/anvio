@@ -19,7 +19,7 @@
         "MERGE_DIR": "06_MERGED_references_mode_no_qc_no_gzip",
         "LOGS_DIR": "00_LOGS_references_mode_no_qc_no_gzip"
     },
-    "config_version": "1",
+    "config_version": "2",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },

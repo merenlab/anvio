@@ -3,13 +3,13 @@
 """Adds a DEAFULT collection with EVERYTHING in it into a pan or profile database."""
 
 import sys
-import argparse
 
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.tables import splits_info_table_name
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
@@ -22,8 +22,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__provides__ = ["collection", "bin"]
+__requires__ = ["pan-db", "profile-db", "contigs-db"]
 __description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with "
-                   "a bin named 'EVERYTHING' that describes all items available in the profile database.")
+                   "a bin named 'EVERYTHING' that describes all items available in the profile database")
 
 pp = terminal.pretty_print
 run = terminal.Run()
@@ -42,7 +44,9 @@ def main(args):
                               "things would likely work.")
         else:
             utils.is_profile_db_and_contigs_db_compatible(args.pan_or_profile_db, args.contigs_db)
-            all_items = dbops.ContigsDatabase(args.contigs_db).db.get_single_column_from_table(splits_info_table_name, 'split')
+            contigs_db = dbops.ContigsDatabase(args.contigs_db)
+            all_items = contigs_db.db.get_single_column_from_table(splits_info_table_name, 'split')
+            contigs_db.disconnect()
     else:
         if args.contigs_db:
             run.warning("You should provide a contigs database to this script only if you are working with an anvi'o blank "
@@ -57,7 +61,7 @@ def main(args):
     collections_table.append(args.collection_name, {args.bin_id: all_items})
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
@@ -70,7 +74,7 @@ if __name__ == '__main__':
                                                                         it will be named \"DEFAULT\".",
                                                                'default': "DEFAULT"}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

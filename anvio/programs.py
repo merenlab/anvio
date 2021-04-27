@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""A library to help anvi'o desribe itself"""
+"""A library to help anvi'o describe itself"""
 
 import os
 import sys
@@ -376,6 +376,7 @@ class AnvioArtifacts:
         self.progress = p
 
         self.artifacts_info = {}
+        self.artifact_types = {}
 
         if not hasattr(self, 'programs'):
             raise ConfigError("AnvioArtifacts class is upset. You need to treat this class as a base class, and initialize "
@@ -399,7 +400,7 @@ class AnvioArtifacts:
         artifacts_without_descriptions = set([])
 
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
 
             # learn about the description of the artifact
             artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
@@ -417,6 +418,14 @@ class AnvioArtifacts:
                 if artifact in [a.id for a in program.meta_info['provides']['value']]:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
 
+            # register artifact type
+            artifact_type = self.artifacts_info[artifact]['type']
+
+            if artifact_type not in self.artifact_types:
+                self.artifact_types[artifact_type] = []
+
+            self.artifact_types[artifact_type].append(artifact)
+
         if len(artifacts_without_descriptions):
             self.run.info_single("Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
                                  "see examples and add new descriptions, please see the directory '%s'. Here is the "
@@ -430,11 +439,11 @@ class AnvioArtifacts:
 class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     """Generate a docs output.
 
-       The purpose of this class is to generate a static HTML output with
-       interlinked files that serve as the primary documentation for anvi'o
-       programs, input files they expect, and output files the generate.
+    The purpose of this class is to generate a static HTML output with
+    interlinked files that serve as the primary documentation for anvi'o
+    programs, input files they expect, and output files the generate.
 
-       The default client of this class is `anvi-script-gen-help-docs`.
+    The default client of this class is `anvi-script-gen-help-docs`.
     """
 
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
@@ -453,7 +462,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
 
-        self.base_url = "/software/anvio/help"
+        self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
+        self.base_url = os.path.join("/software/anvio/help", anvio.anvio_version_for_help_docs)
         self.anvio_markdown_variables_conversion_dict = {}
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
@@ -538,7 +548,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                               "for everything to be linked together." % (e, file_path))
         except Exception as e:
             self.progress.end()
-            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'." % (file_path, e))
+            additional_info = ("If you're stumped by that message, here are some common errors and their solutions: "
+                               "(1) 'unsupported format character' could mean that one of your tags specified with "
+                               "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
+                               "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
+                               "This must be replaced with '85%% similar'.")
+            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'. %s" % (file_path, e, additional_info))
 
         # now we have replaced anvi'o variables with markdown links, it is time to replace
         # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
@@ -586,7 +601,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d = {'artifact': ANVIO_ARTIFACTS[artifact],
                  'meta': {'summary_type': 'artifact',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date()}
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
                 }
 
             d['artifact']['name'] = artifact
@@ -615,7 +631,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d = {'program': {},
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date()}
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
                 }
 
             d['program']['name'] = program_name
@@ -625,6 +642,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
                 run.warning(None, 'THE OUTPUT DICT')
@@ -641,8 +659,19 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
 
     def generate_index_page(self):
+        """Generates the index page for help where all programs and artifacts are listed"""
+
+        # let's add the 'path' for each artifact to simplify
+        # access from the template:
+        for artifact in self.artifacts_info:
+            self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
+
+        # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
+        # if we need to improve the functionality of the help index page, we may need to update programs
+        # to a fancy dictionary, too.
         d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
-             'artifacts': [(a, 'artifacts/%s' % a) for a in self.artifacts_info],
+             'artifacts': self.artifacts_info,
+             'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
                       'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
                       'date': utils.get_date()}
@@ -811,3 +840,5 @@ class ProgramsVignette(AnvioPrograms):
         open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
         run.info('Output file', os.path.abspath(self.output_file_path))
+
+

@@ -20,7 +20,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db',]
 __provides__ = ['hmm-hits',]
-__description__ = ("Identify and store tRNA genes in a contigs database.")
+__description__ = ("Identify and store tRNA genes in a contigs database")
 
 
 run = terminal.Run()
@@ -34,8 +34,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('trna-cutoff-score'), **anvio.K('trna-cutoff-score'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

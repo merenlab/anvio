@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
 
 import anvio
 import anvio.tables as t
@@ -11,6 +10,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -20,8 +20,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["contigs-db", "hmm-source", "hmm-hits"]
+__provides__ = ["functions-txt"]
 __description__ = ("A simple script to generate a TAB-delimited file gene caller IDs and their "
-                   "HMM hits for a given HMM source.")
+                   "HMM hits for a given HMM source")
 
 
 run = terminal.Run()
@@ -58,7 +60,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupB = parser.add_argument_group("INPUT: ANVI'O CONTIGS DB")
     groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

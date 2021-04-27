@@ -6,7 +6,7 @@ import sys
 import anvio
 import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -19,7 +19,7 @@ __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxono
 __description__ = ("The purpose of this program is to download necessary information from GTDB (https://gtdb.ecogenomic.org/), "
                    "and set it up in such a way that your anvi'o installation is able to assign taxonomy to single-copy core "
                    "genes using `anvi-run-scg-taxonomy` and estimate taxonomy for genomes or metagenomes using "
-                   "`anvi-estimate-scg-taxonomy`).")
+                   "`anvi-estimate-scg-taxonomy`)")
 
 
 run = terminal.Run()
@@ -28,16 +28,16 @@ pp = terminal.pretty_print
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('scgs-taxonomy-data-dir'), **anvio.K('scgs-taxonomy-data-dir'))
-    parser.add_argument(*anvio.A('scgs-taxonomy-remote-database-url'), **anvio.K('scgs-taxonomy-remote-database-url'))
+    parser.add_argument(*anvio.A('gtdb-release'), **anvio.K('gtdb-release'))
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     parser.add_argument(*anvio.A('redo-databases'), **anvio.K('redo-databases'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         s = scgtaxonomyops.SetupLocalSCGTaxonomyData(args)

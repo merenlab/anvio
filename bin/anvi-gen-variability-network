@@ -3,7 +3,7 @@
 """Creates a network file for a given variability profile output"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -18,12 +18,15 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__provides__ = []
+__requires__ = ["variability-profile"]
+__resources__ = [("This program in the Infant Gut Tutorial", "https://merenlab.org/tutorials/infant-gut/#visualizing-snv-profiles-as-a-network")]
 __description__ = ("A program to generate a network description from an anvi'o variability profile "
-                   "(potentially outdated program).")
+                   "(potentially outdated program)")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-file', metavar = 'VARIABILITY_PROFILE', required = True,
                         help = "The anvi'o variability profile. Please see `anvi-gen-variability-profile` to\
@@ -31,7 +34,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         variable_nt_positions = VariabilityNetwork(args)

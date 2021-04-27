@@ -3,7 +3,7 @@
 """This program runs inspect page directly"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -22,7 +22,8 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin']
 __provides__ = ['interactive']
-__description__ = "Start an anvi'o inspect interactive interface."
+__description__ = "Start an anvi'o inspect interactive interface"
+__resources__ = [("Visualizing contig coverages", "https://merenlab.org/2019/11/25/visualizing-coverages/")]
 
 
 run = terminal.Run()
@@ -30,7 +31,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('GENERAL CONVENIENCE', "From anvi'o developers to you.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         if not args.split_name and not args.just_do_it:

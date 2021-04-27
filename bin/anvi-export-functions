@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'functions']
 __provides__ = ['functions-txt']
-__description__ = "Export functions of genes from an anvi'o contigs database for a given annotation source "
+__description__ = "Export functions of genes from an anvi'o contigs database for a given annotation source"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -80,6 +80,9 @@ def main(args):
     output.write('\t'.join(t.gene_function_calls_table_structure) + '\n')
     num_entries_reported = 0
     for entry in list(functions_dict.values()):
+        if entry['e_value'] == None:
+            entry['e_value'] = 0.0
+
         output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure]) + '\n')
         num_entries_reported += 1
     output.close()
@@ -90,16 +93,16 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
     parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -5,8 +5,10 @@ import sys
 import anvio.profiler as profiler
 
 import anvio
-from anvio.errors import ConfigError, FilesNPathsError
+
 from anvio.terminal import time_program
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -19,13 +21,13 @@ __email__ = "a.murat.eren@gmail.com"
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
-__provides__ = ['single-profile-db', 'misc-data-item-orders', 'variability-profile']
-__description__ = "Creates a single anvi'o profile database. The default input to this program is a BAM file.\
+__provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
+__description__ = "Creates a single anvi'o profile database. \
                    When it is run on a BAM file, depending on the user parameters, the program quantifies\
-                   coverage per nucleotide position (and averages them out per contig), calculates\
-                   single-nucleotide, single-codon, and single-amino acid variants, as well as structurel variants\
-                   such as insertion and deletions and stores these data into appropriate tables. Anvi'o single\
-                   profiles can be merged by the program `anvi-merge`."
+                   coverage per nucleotide position (and averages them  per contig), calculates\
+                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
+                   such as insertion and deletions and stores these data into appropriate tables"
+__resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
 @time_program
@@ -34,9 +36,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(__description__)
 
     groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
                                                   to declare either of these two.')
@@ -92,7 +92,7 @@ if __name__ == '__main__':
                         help="This is not useful to non-developers. It forces the multi-process "
                              "routine even when 1 thread is chosen.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

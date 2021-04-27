@@ -3,7 +3,7 @@
 """A script to export a FASTA file of contigs (or splits) from a contigs database."""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -34,13 +34,20 @@ def main(args):
     else:
         seq_names_to_export = None
 
-    utils.export_sequences_from_contigs_db(args.contigs_db, args.output_file, seq_names_to_export=seq_names_to_export, splits_mode=args.splits_mode, just_do_it=args.just_do_it, run=run)
+    utils.export_sequences_from_contigs_db(args.contigs_db,
+                                           args.output_file,
+                                           seq_names_to_export=seq_names_to_export,
+                                           splits_mode=args.splits_mode,
+                                           just_do_it=args.just_do_it,
+                                           truncate=(not args.no_wrap),
+                                           run=run)
+
     run.info('Export mode', 'splits' if args.splits_mode else 'contigs')
     run.info('Output FASTA', args.output_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
@@ -48,8 +55,9 @@ if __name__ == '__main__':
                         sequences instead.")
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    parser.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

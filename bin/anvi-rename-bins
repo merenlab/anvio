@@ -24,7 +24,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Rename all bins in a given collection (so they have pretty names)."
+__provides__ = ["collection", "bin"]
+__requires__ = ["collection", "bin", "profile-db", "contigs-db"]
+__description__ = "Rename all bins in a given collection (so they have pretty names)"
 
 
 run = terminal.Run()
@@ -133,7 +135,6 @@ def main(args):
         counter += 1
         progress.update('%d in %d' % (counter, total_num_bins))
         p_completion, p_redundancy, domain, domain_probabilities, info_text, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
-        domain_confidence = domain_probabilities[domain] if domain else 0.0
 
         l = []
         for domain in d:
@@ -198,9 +199,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "Standard stuff")
     groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")
@@ -248,7 +249,7 @@ if __name__ == '__main__':
                               is less than --max-redundancy-for-MAG, AND THEIR SIZE IS LARGER THAN THIS VALUE\
                               REGARDLESS OF THE COMPLETION ESTIMATE. The default behavior is to not care about\
                               this at all.")
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

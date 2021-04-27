@@ -1,0 +1,2 @@
+gene	accession	hmmsource
+28S_rRNA_euk	None	barrnap

@@ -1,3 +1,11 @@
+# v7, "hope" is out! (04.01.2021) #
+We are happy to announce anvi'o v7, with the code name 'hope' after 'Hope E. Hopps'.
+
+This release adds more than 35,000 new lines of code and a myriad of new toys into anvi'o.
+
+Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v2), and our updated installation instructions [here](http://merenlab.org/install-anvio).
+***
+
 # v6.2: a critical update for "esther" (06.04.2020) #
 We have a minor release that contains a set of bug fixes and critical performance improvements for the program `anvi-profile`. Please see the [installation](http://merenlab.org/2016/06/26/installation-v2/) page to upgrade your anvi'o.
 

@@ -5,7 +5,6 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 
@@ -15,6 +14,11 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+
+indels_table_name      = 'indels'
+indels_table_structure = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']
+indels_table_types     = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' ]
+
 
 def migrate(db_path):
     if db_path is None:
@@ -29,7 +33,7 @@ def migrate(db_path):
         raise ConfigError("Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version)
 
     try:
-        profile_db.create_table(t.indels_table_name, t.indels_table_structure, t.indels_table_types)
+        profile_db.create_table(indels_table_name, indels_table_structure, indels_table_types)
     except:
         pass
 
@@ -53,7 +57,8 @@ def migrate(db_path):
     progress.end()
 
     if is_full_profile:
-        run.info_single("Your profile db is now %s." % next_version, nl_after=1, nl_before=1, mc='green')
+        run.info_single("Your profile db is now %s. We just added a bunch of new variables to the `self` table "
+                        "of your database. All good now." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
                         "database since it was a blank profile (which is OK, move along)." \

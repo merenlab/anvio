@@ -22,13 +22,13 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['bam-file',]
 __provides__ = ['linkmers-txt',]
-__description__ = "Access reads in contigs and positions in a BAM file"
+__description__ = "Reports sequences stored in one or more BAM files that cover one of more specific nucleotide positions in a reference"
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
                         help = 'Sorted and indexed BAM files to analyze. It is essential that all BAM files must be\
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         r = LinkMers(args)

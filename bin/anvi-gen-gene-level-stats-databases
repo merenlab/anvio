@@ -4,7 +4,8 @@
 
 import os
 import sys
-import argparse
+
+from argparse import Namespace
 
 import anvio
 import anvio.dbops as dbops
@@ -12,6 +13,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 
@@ -30,7 +32,7 @@ __description__ = ("A program to compute genes databases for a ginen set of bins
                    "detection statistics, and they are usually computed and generated "
                    "automatically when they are required (such as running anvi-interactive "
                    "with `--gene-mode` flag). This program allows you to pre-compute them "
-                   "if you don't want them to be done all at once.")
+                   "if you don't want them to be done all at once")
 
 
 run = terminal.Run()
@@ -103,11 +105,11 @@ def main(args):
                 continue
 
         # we don't have a genes database, so we will create one.
-        profile = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db,
-                                                             contigs_db=args.contigs_db,
-                                                             collection_name=args.collection_name,
-                                                             bin_id=bin_name,
-                                                             inseq_stats=args.inseq_stats,),
+        profile = dbops.ProfileSuperclass(Namespace(profile_db=args.profile_db,
+                                                    contigs_db=args.contigs_db,
+                                                    collection_name=args.collection_name,
+                                                    bin_id=bin_name,
+                                                    inseq_stats=args.inseq_stats,),
                                           r=terminal.Run(verbose=False))
 
         profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
@@ -117,7 +119,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASES', "Which anvi'o databases do you wish to work today?")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -144,7 +146,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
     groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
 
     try:

@@ -10,6 +10,8 @@ import sys
 import copy
 import argparse
 
+from collections import Counter
+
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -186,23 +188,24 @@ class ProfileSplitter:
 
         filesnpaths.gen_output_directory(self.output_directory)
 
-        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This "
-                         "is quite a tricky operation, and even if it finishes successfully, you must double check everyting "
-                         "in the resulting profiles to make sure things worked as expected. Although we are doing our best to "
-                         "test all these, variation between projects make it impossible to be 100% sure.")
+        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. As of "
+                         "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
+                         "still quite a tricky operation and you must double-check things once your split data is ready.",
+                         header="ANVI'O TRICKY OPERATIONS DEPARTMENT", lc="green")
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
+
+        if self.summary.p_meta['blank']:
+            self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
+                             "intention is to split your contigs database only. This warning message is here to make sure "
+                             "you will not be upset when you realize your split profile missing a profile database :(", lc="yellow")
 
         for bin_name in self.bin_names_of_interest:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
 
-            if self.summary.p_meta['blank']:
-                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
-                                 "intention is to split your contigs database only. This warning message is here to make sure "
-                                 "you will not be upset when you realize your split profile missing a profile database :(")
-            else:
+            if not self.summary.p_meta['blank']:
                 b.do_profile_db()
 
                 if self.summary.auxiliary_profile_data_available:
@@ -528,6 +531,32 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         self.migrate_data(tables, self.contigs_db_path, self.bin_contigs_db_path)
 
+        # We're done here in theroy, but there is one more thing to do due to reasons partially explained in
+        # issue https://github.com/merenlab/anvio/issues/1593 and PR https://github.com/merenlab/anvio/pull/1595.
+        # The solution presented in the PR does not apply to split projects. so here we will calculate
+        # what percentage of HMM hits are in splits described in this bin, and remove those that are less
+        # than 100%.
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
+        hmm_hits_in_splits_dict = bin_contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+
+        # the purpose of the folloing dict is to keep track of what total percentage of a given HMM hit is
+        # described by all contig splits involved in this bin
+        hmm_hits_id_percentage_described_dict = Counter({})
+        for entry in hmm_hits_in_splits_dict.values():
+            hmm_hits_id_percentage_described_dict[entry['hmm_hit_entry_id']] += entry['percentage_in_split']
+
+        # now the `hmm_hits_id_percentage_described_dict` looks like this:
+        #
+        #   {2: 100, 3: 100.0, 5: 90.86727989487517, 6: 99.99999999999999, 4: 63.99858956276446}
+        #
+        # HMM hit ids that need to be cleared out from th `hmm_hits_in_splits` table is clear: 5 and 4, in this
+        # example. But the problem is, due floating point logistics, in some cases things are not quite 100%,
+        # although in reality they are, hence the need for `round`ing the percentages below.
+        hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
+        where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
+        bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
+        bin_contigs_db.disconnect()
+
         self.progress.end()
 
 
@@ -611,16 +640,17 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
                 tables[table_name] = ('contig', self.split_names)
 
-
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless
         # of what the values were, we will set the absolut correct ones.
         if self.skip_variability_tables:
             bin_profile_db.db.update_meta_value('SNVs_profiled', False)
             bin_profile_db.db.update_meta_value('SCVs_profiled', False)
+            bin_profile_db.db.update_meta_value('INDELs_profiled', False)
         else:
             tables[t.variable_nts_table_name] = ('split_name', self.split_names)
             tables[t.variable_codons_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+            tables[t.indels_table_name] = ('split_name', self.split_names)
 
         bin_profile_db.disconnect()
 
@@ -704,7 +734,8 @@ class LocusSplitter:
             self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
-            hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
+            dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
+            sys.exit()
 
         # unless we are in debug mode, let's keep things quiet.
         if anvio.DEBUG:
@@ -850,10 +881,11 @@ class LocusSplitter:
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
 
-        # Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
-        # the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
-        # based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
-        # gene-caller-ids provided.
+        # Here we will differentiate between being in default-mode OR flank-mode. If in
+        # default-mode, we will iterate through self.gene_caller_ids_of_interest and cut out the
+        # locus X amount of genes above and below the gene_callers_id based on the --num-genes given
+        # by the user. If in flank-mode, we will only export 1 locus based on the flanking gene
+        # caller ids provided (--gene-caller-ids).
 
         # default
         if not self.is_in_flank_mode:
@@ -931,15 +963,17 @@ class LocusSplitter:
             >>> '/path/to/dir/file_name_prefix.fa'
             >>> '/path/to/dir/file_name_prefix.db'
 
-
-        Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
+        FIXME Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
         then you have more then how to choose which contig to cut out?????????
+
+        NOTE ^^^ has this FIXME been addressed? It looks like this _is_ checked, and raises an error - Evan
         """
-        if gene_callers_id and not isinstance(gene_callers_id, int):
+
+        if gene_callers_id is not None and not isinstance(gene_callers_id, int):
             raise ConfigError("The gene_caller_id must be an integer.")
-        if gene_callers_id and gene_caller_ids_flank_pair:
+        if gene_callers_id is not None and gene_caller_ids_flank_pair is not None:
             raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
-        elif not (gene_callers_id or gene_caller_ids_flank_pair):
+        elif gene_callers_id is None and gene_caller_ids_flank_pair is None:
             raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_id_pair (with a , delimiter).")
 
         if self.is_in_flank_mode:
@@ -949,18 +983,18 @@ class LocusSplitter:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
             if len(gene_caller_ids_flank_pair) == 1:
-                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. "
-                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
+                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene caller id(s). "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene caller id's "
                                   "to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your "
                                   "search-terms was not found the functions of the CONTIGS.db. Please try again with another "
                                   "search-term :)" % (len(self.gene_caller_ids_of_interest)))
             elif len(gene_caller_ids_flank_pair) > 2:
-                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. "
-                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
-                                  "to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found "
+                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene caller id's from the search-terms provided. "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene caller id's "
+                                  "to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene caller ids anvi'o found "
                                   "from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate "
-                                  "these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you "
-                                  "use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus "
+                                  "these gene caller id's, then confirm the correct flanking gene caller ids. Anvi'o recommends you "
+                                  "use the --gene caller ids flag to specify the specific pair gene caller ids you need to cut out the locus "
                                   "so there are no more mix ups. On the other hand, if you are trying to extract multiple loci from a genome "
                                   "using the same flanking genes, anvi'o cannot currently handle this in --flank-mode. If this functionality "
                                   "is necessary for your analysis, please make an issue on github and we will address it." % (len(self.gene_caller_ids_of_interest),

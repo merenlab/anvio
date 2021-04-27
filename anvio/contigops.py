@@ -23,7 +23,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -39,8 +39,13 @@ __status__ = "Development"
 OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
 OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME
 
+# These filter SNVs and INDELs, respectively, based on a coverage-dependent departure from reference value
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
-variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
+indel_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
+
+# These are null filters, which do not filter SNVs and INDELs based on a coverage-dependent departure from reference value
+variability_test_class_null = VariablityTestFactory(params=None)
+indel_test_class_null = VariablityTestFactory(params=None)
 
 
 def gen_split_name(parent_name, order):
@@ -48,8 +53,8 @@ def gen_split_name(parent_name, order):
 
 
 def get_atomic_data_dicts(sample_id, contigs):
-    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data
-       dictionaries"""
+    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data dictionaries"""
+
     atomic_data_contigs = {}
     atomic_data_splits = {}
 
@@ -84,7 +89,6 @@ class Contig:
         self.abundance = 0.0
         self.coverage = anvio.bamops.Coverage()
 
-        self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
 
 
@@ -160,10 +164,11 @@ class Split:
         self.abundance = 0.0
         self.auxiliary = None
         self.num_SNV_entries = 0
+        self.num_INDEL_entries = 0
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
-        self.indels_profiles = {}
+        self.INDEL_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -182,15 +187,15 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False,
-                 skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
+    def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
+                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
 
         self.split = split
         self.variation_density = 0.0
-        self.min_coverage = min_coverage
+        self.min_coverage_for_variability = min_coverage_for_variability
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
@@ -385,7 +390,7 @@ class Auxiliary:
                 allele_counts=allele_counts,
                 allele_to_array_index=self.cdn_to_array_index,
                 sequence=reference_codon_sequences[gene_id],
-                min_coverage=1,
+                min_coverage_for_variability=1,
             )
 
             # By design, we include SCVs only if they contain a SNV--filter out those that do not
@@ -405,6 +410,8 @@ class Auxiliary:
                 # There were no codon positions worth keeping. We do not add this gene to
                 # self.split.SCV_profiles
                 pass
+
+        if anvio.DEBUG: self.run.info_single('%d SCVs to report' % (sum(self.split.num_SCV_entries.values())), nl_before=0, nl_after=0, level=2)
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
@@ -443,8 +450,31 @@ class Auxiliary:
         See `variability-profile` artifact under anvio/docs/artifacts for details.
         """
 
+        additional_per_position_data = self.split.per_position_info
+        additional_per_position_data.update({
+            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
+        })
+
         if not self.skip_INDEL_profiling:
-            indels_profiles = {}
+            indels = {}
+            get_indel_entry = lambda indel_type, seq, pos, length: OrderedDict([
+                ('split_name', self.split.name),
+                ('pos', pos),
+                ('pos_in_contig', pos + self.split.start),
+                ('corresponding_gene_call', additional_per_position_data['corresponding_gene_call'][pos]),
+                ('in_noncoding_gene_call', additional_per_position_data['in_noncoding_gene_call'][pos]),
+                ('in_coding_gene_call', additional_per_position_data['in_coding_gene_call'][pos]),
+                ('base_pos_in_codon', additional_per_position_data['base_pos_in_codon'][pos]),
+                ('codon_order_in_gene', additional_per_position_data['codon_order_in_gene'][pos]),
+                ('cov_outlier_in_split', additional_per_position_data['cov_outlier_in_split'][pos]),
+                ('cov_outlier_in_contig', additional_per_position_data['cov_outlier_in_contig'][pos]),
+                ('reference', self.split.sequence[pos]),
+                ('type', indel_type),
+                ('sequence', seq),
+                ('length', length),
+                ('count', 1),
+            ])
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -474,73 +504,68 @@ class Auxiliary:
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
                     # Get the position and sequence of the insertion, create hash as a key for storage
                     ins_seq = ''.join([chr(x) for x in ins_segment[:, 1]])
-                    ins_pos = ins_segment[0, 0]
+                    ins_pos = ins_segment[0, 0] - self.split.start
                     indel_hash = hash((ins_pos, ins_seq))
 
-                    if indel_hash in indels_profiles:
-                        indels_profiles[indel_hash]['coverage'] += 1
+                    if indel_hash in indels:
+                        indels[indel_hash]['count'] += 1
                     else:
-                        indels_profiles[indel_hash] = OrderedDict([
-                            ('split_name', self.split.name),
-                            ('type', 'INS'),
-                            ('sequence', ins_seq),
-                            ('start_in_contig', int(ins_pos)),
-                            ('start_in_split', int(ins_pos - self.split.start)),
-                            ('length', len(ins_seq)),
-                            ('coverage', 1),
-                        ])
+                        indels[indel_hash] = get_indel_entry(
+                            indel_type='INS',
+                            seq=ins_seq,
+                            pos=ins_pos,
+                            length=len(ins_seq),
+                        )
 
                 for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
-                    # Get the position and sequence of the deletion, create hash as a key for storage
-                    del_seq = ''
-                    del_pos = del_segment[0, 0]
-                    indel_hash = hash((del_pos, del_seq))
+                    # Get the position and length of the deletion, create hash as a key for storage
+                    del_len = del_segment.shape[0]
+                    del_pos = del_segment[0, 0] - self.split.start
+                    indel_hash = hash((del_pos, del_len))
 
-                    if indel_hash in indels_profiles:
-                        indels_profiles[indel_hash]['coverage'] += 1
+                    if indel_hash in indels:
+                        indels[indel_hash]['count'] += 1
                     else:
-                        indels_profiles[indel_hash] = OrderedDict([
-                            ('split_name', self.split.name),
-                            ('type', 'DEL'),
-                            ('sequence', ''),
-                            ('start_in_contig', int(del_pos)),
-                            ('start_in_split', int(del_pos - self.split.start)),
-                            ('length', del_segment.shape[0]),
-                            ('coverage', 1),
-                        ])
+                        indels[indel_hash] = get_indel_entry(
+                            indel_type='DEL',
+                            seq='',
+                            pos=del_pos,
+                            length=del_len,
+                        )
 
             read_count += 1
 
         if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
-        additional_per_position_data = self.split.per_position_info
-        additional_per_position_data.update({
-            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
-            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
-        })
-
-        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
-
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
-
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
             allele_to_array_index=self.nt_to_array_index,
             sequence=self.split.sequence,
             sequence_as_index=split_as_index,
-            min_coverage=self.min_coverage,
-            test_class=test_class,
+            min_coverage_for_variability=self.min_coverage_for_variability,
+            test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
             additional_per_position_data=additional_per_position_data,
         )
-
         nt_profile.process()
-
         self.split.SNV_profiles = nt_profile.d
+
         if not self.skip_INDEL_profiling:
-            self.split.indels_profiles = indels_profiles
+            indel_profile = ProcessIndelCounts(
+                indels=indels,
+                coverage=allele_counts_array.sum(axis=0),
+                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
+                min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
+            )
+            indel_profile.process()
+            self.split.INDEL_profiles = indel_profile.indels
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
+        self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
+
+        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
@@ -751,7 +776,6 @@ class GenbankToAnvio:
                 start = location[0] # start coordinate
                 end = location[1] # end coordinate
 
-
                 # setting direction to "f" or "r":
                 if gene.strand == 1:
                     direction="f"
@@ -840,5 +864,4 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
-
 

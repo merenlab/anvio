@@ -38,7 +38,7 @@ function lineClickHandler(event) {
         {
             if (_q.IsLeaf()) {
 
-                if(_q.label){ 
+                if(_q.label){
                     $('#table_layers').find('.titles').each(
                         function(index, obj){
                             if (_q.label.toLowerCase() == obj.title.toLowerCase())
@@ -64,29 +64,35 @@ function lineClickHandler(event) {
 
 
 function lineContextMenuHandler(event) {
+
     if (event.preventDefault) {
         event.preventDefault();
     }
     if (event.target.parentNode.id == 'samples_tree') {
         var id = event.target.id.match(/\d+/);
         var p = samples_id_to_node_map[id[0]];
+        let allLeaves = drawer.tree.leaves
+        console.log(allLeaves)
 
         let menu = new ContextMenu({'container': document.body,
                                     'event': event,
                                     'node': p,
                                     'layer': null,
+                                    'all' : allLeaves,
                                     'isSample': true});
 
         menu.Show();
     } else {
         let p = getNodeFromEvent(event);
         let layer_id = event.target.parentNode.id.match(/\d+/);
+        let allLeaves = drawer.tree.leaves
 
         if (p.IsLeaf() || IsCtrlPressed(event)) {
             let menu = new ContextMenu({'container': document.body,
                                         'event': event,
                                         'node': p,
                                         'layer': layer_id,
+                                        'all' : allLeaves,
                                         'isSample': false});
 
             menu.Show();
@@ -133,7 +139,7 @@ function lineMouseEnterHandler(event) {
             false);
     }
     else
-    {  
+    {
         var _x = (p.ancestor) ? p.ancestor.xy.x : p.xy.x;
         var begin = p1.xy.y - p1.size / 2;
         var end = p2.xy.y + p2.size / 2;
@@ -158,10 +164,11 @@ function lineMouseLeaveHandler(event) {
 }
 
 function mouseMoveHandler(event) {
+
     if (drawing_zoom)
         return;
 
-    if (event.target.parentNode.id == 'samples_tree' || samples_tree_hover) 
+    if (event.target.parentNode.id == 'samples_tree' || samples_tree_hover)
     {
         var samples_tree = document.getElementById('samples_tree');
         for (var i=0; i < samples_tree.childNodes.length; i++)
@@ -179,6 +186,7 @@ function mouseMoveHandler(event) {
 
     if (event.target.parentNode.id == 'samples_tree')
     {
+
         var id = event.target.id.match(/\d+/);
         var node = samples_id_to_node_map[id[0]];
         var _n = new NodeIterator(node);
@@ -257,7 +265,7 @@ function mouseMoveHandler(event) {
 
                     if (highlight_row && bar_name == stack_bar_name_hover) {
                         layer_stackbar_pos = stack_names.length - j;
-                    }         
+                    }
                 }
                 message += '</table>';
             } else {
@@ -271,9 +279,9 @@ function mouseMoveHandler(event) {
             layer_counter++;
         }
 
-        write_mouse_table(message, 
-            sample_name, 
-            (layer_name_hover.indexOf('!') > -1) ? layer_name_hover.split('!')[0] : layer_name_hover, 
+        write_mouse_table(message,
+            sample_name,
+            (layer_name_hover.indexOf('!') > -1) ? layer_name_hover.split('!')[0] : layer_name_hover,
             layer_pos,
             layer_stackbar_pos);
 
@@ -290,7 +298,7 @@ function mouseMoveHandler(event) {
 
     if (!p.IsLeaf()) {
         write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-                           <tr><td>Support</td><td>${p.branch_support}</td></tr>
+                           <tr><td>Branch support</td><td>${p.branch_support}</td></tr>
                            <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
     }
 
@@ -306,7 +314,7 @@ function mouseMoveHandler(event) {
     }
 
     var tooltip_arr = layerdata_title[target_node.label].slice(0);
-    
+
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
     {
@@ -320,9 +328,9 @@ function mouseMoveHandler(event) {
         }
     }
 
-    write_mouse_table(message, 
-        target_node.label, 
-        getPrettyLayerTitle(tooltip_arr[layer_id - 1].split('>')[1].split('<')[0]), 
+    write_mouse_table(message,
+        target_node.label,
+        getPrettyLayerTitle(tooltip_arr[layer_id - 1].split('>')[1].split('<')[0]),
         layer_id);
 }
 
@@ -351,8 +359,8 @@ function write_mouse_table(content, item_name, layer_name, layer_id, stackbar_la
         $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * top));
     } else {
         $('#mouse_hover_scroll').css('top', 0);
-    } 
-} 
+    }
+}
 
 // globals related single background
 var rect_left;
@@ -384,7 +392,7 @@ function updateSingleBackgroundGlobals()
 
 function getNodeFromEvent(event)
 {
-    if (!drawer) 
+    if (!drawer)
         return null;
 
     if (event.target.id == 'path_event' || event.target.parentNode.id == 'bin')
@@ -392,7 +400,7 @@ function getNodeFromEvent(event)
         if (last_settings['tree-type'] == 'phylogram')
         {
             var _x = original_width - ((event.clientX - rect_left) * (window['original_width'] / rect_width));
-            
+
             for (var i=0; i < drawer.tree.leaves.length; i++) {
                 var node = drawer.tree.leaves[i];
                 if ((_x > (node.xy['y'] - node.size / 2)) && (_x < (node.xy['y'] + node.size / 2))) {

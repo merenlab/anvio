@@ -28,7 +28,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt',]
-__description__ = ("Get amino acid or codon frequencies of genes in a contigs database.")
+__description__ = ("Get amino acid or codon frequencies of genes in a contigs database")
 
 
 class ReportCodonFrequencies:
@@ -136,9 +136,9 @@ class ReportCodonFrequencies:
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASE', 'The contigs database. Clearly those genes must be read from somewhere.')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                                                                 this flag is not applicable if you wish to work with boring amino acids. WHO WORKS WITH AMINO ACIDS\
                                                                 ANYWAYS.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         ReportCodonFrequencies(args)

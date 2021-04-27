@@ -21,10 +21,11 @@ from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None):
         self.run = run
         self.progress = progress
 
@@ -34,6 +35,7 @@ class SequencesForHMMHits:
         if not isinstance(split_names_of_interest, type(set([]))):
             raise ConfigError("'split_names_of_interest' variable has to be a set instance.")
 
+        self.bin_name = bin_name # this is only relevant for some output messages
         self.sources = set([s for s in sources if s])
         self.hmm_hits = {}
         self.hmm_hits_info ={}
@@ -67,6 +69,7 @@ class SequencesForHMMHits:
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             contigs_db.disconnect()
+            progress.reset()
             raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources "
                               "that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
 
@@ -91,15 +94,58 @@ class SequencesForHMMHits:
                                                                     error_if_no_data=False)
 
         # if the user sent a split names of interest, it means they are interested in hits that only occur
-        # in a specific set of split names.
+        # in a specific set of split names. NOTE: this really makes it very difficult to deal with HMM hits
+        # that span through multiple splits. here we will mark such HMM hits in `hmm_hits_splits_entry_ids_to_remove`
+        # for removal, but we will also keep track of those guys and let the user know what happened.
         if len(split_names_of_interest):
             total_num_split_names = len(set(self.hmm_hits_splits[entry_id]['split'] for entry_id in self.hmm_hits_splits))
             hmm_hits_splits_entry_ids_to_remove = set([])
             hmm_hits_entry_ids_to_remove = set([])
+            hmm_hits_entry_ids_associated_with_fragmented_hmm_hits = set([])
+            hmm_sources_associated_with_fragmented_hmm_hits = set([])
             for entry_id in self.hmm_hits_splits:
                 if self.hmm_hits_splits[entry_id]['split'] not in split_names_of_interest:
                     hmm_hits_splits_entry_ids_to_remove.add(entry_id)
                     hmm_hits_entry_ids_to_remove.add(self.hmm_hits_splits[entry_id]['hmm_hit_entry_id'])
+
+                    if not self.hmm_hits_splits[entry_id]['percentage_in_split'] == 100:
+                        # this is important. if we are here, there is a bit more to do since it means that
+                        # the split name associated with self.hmm_hits_splits[entry_id] is not in
+                        # `split_names_of_interest`. but since the `percentage_in_split` for this HMM hit is NOT
+                        # 100%, it could be the case that other splits that contain pieces of this HMM hit may
+                        # still be in `split_names_of_interest`. But here we are setting the stage for this
+                        # HMM hit to be removed from `self.hmm_hits` altogether. To make things right, we must
+                        # go through `hmm_hits_splits`, and remove remaining entries there that is associated with
+                        # this HMM hit later using the contents of this variable:
+                        hmm_hits_entry_ids_associated_with_fragmented_hmm_hits.add(self.hmm_hits_splits[entry_id]['hmm_hit_entry_id'])
+                        hmm_sources_associated_with_fragmented_hmm_hits.add(self.hmm_hits_splits[entry_id]['source'])
+
+            if len(hmm_hits_entry_ids_associated_with_fragmented_hmm_hits):
+                # if we are here, we will have to update `hmm_hits_splits_entry_ids_to_remove` carefully:
+                additional_entry_ids_to_be_removed = set([e for e in self.hmm_hits_splits if self.hmm_hits_splits[e]['hmm_hit_entry_id'] in hmm_hits_entry_ids_associated_with_fragmented_hmm_hits])
+                hmm_hits_splits_entry_ids_to_remove.update(additional_entry_ids_to_be_removed)
+
+                # let's warn the user while we're at it so they panic, too.
+                progress.reset()
+                if self.bin_name:
+                    header = f"A WARNING RELATED TO HMMs IN '{self.bin_name}'"
+                else:
+                    header = f"WARNING"
+
+                self.run.warning(f"While anvi'o was trying to finalize HMM hits associated with splits of interest, "
+                                 f"it realized that there were one or more HMM hits that spanned through multiple splits "
+                                 f"yet not all of those splits were among the splits of interest. This can happen if you "
+                                 f"refined a contig by excluding some of its splits either manually during binning or "
+                                 f"automatically during whatever black magic you were engaged in. Anvi'o does not judge. But "
+                                 f"In these situations anvi'o excludes the entire HMM hit from being reported to be on the "
+                                 f"safe side. Some HMM hits coming from {P('HMM source', len(hmm_sources_associated_with_fragmented_hmm_hits))} "
+                                 f"(\"{', '.join(hmm_sources_associated_with_fragmented_hmm_hits)}\"), will not appear in your "
+                                 f"downstream analyses (including in your `anvi-summarize` outputs). If you are really really "
+                                 f"interested in those partial HMM hits and sequences associated with them, there are multiple "
+                                 f"ways to recover them (one of the best way to do it involves the use of `anvi-split` and "
+                                 f"re-running HMMs in your final bins). Please feel free to reach out to the anvi'o community "
+                                 f"for ideas.", header=header)
+
 
             if len(hmm_hits_splits_entry_ids_to_remove):
                 for entry_id in hmm_hits_splits_entry_ids_to_remove:
@@ -158,26 +204,6 @@ class SequencesForHMMHits:
             raise ConfigError("This SequencesForHMMHits instance cannot do what its asked for "
                               "because it is not yet initialized :/ The programmer could call "
                               "`init_dicts` first, but clearly they didn't care.")
-
-    def list_available_hmm_sources(self, dont_quit=False):
-        self.check_init()
-
-        self.run.warning(None, header="AVAILABLE HMM SOURCES", lc="green")
-
-        hmm_sources_found = list(self.hmm_hits_info.keys())
-
-        if not len(hmm_sources_found):
-            self.run.info_single("This contigs db does not have HMMs :/")
-        else:
-            for source in self.hmm_hits_info:
-                h = self.hmm_hits_info[source]
-                self.run.info_single("'%s' (type: %s; num genes: %d)" % (source, h['search_type'], len(h['genes'].split(','))),
-                                     nl_after = 1 if source == hmm_sources_found[-1] else 0)
-
-        if dont_quit:
-            return
-
-        sys.exit(0)
 
 
     def list_available_gene_names(self, sources=[], dont_quit=False):

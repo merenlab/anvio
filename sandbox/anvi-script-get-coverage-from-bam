@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import pysam
 import numpy as np
 import pandas as pd
-import argparse
 
 import anvio
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -22,6 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+__provides__ = ["coverages-txt"]
+__requires__ = ["bam-file", "collection-txt",]
 __description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file")
 
 
@@ -267,8 +267,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group(
         'REQUIRED',
@@ -359,7 +358,7 @@ if __name__ == '__main__':
                 "names can take a really long time if you have a large enough number of contigs. Use "
                 "this flag to forego checking, and find out the hard way.")
     )
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

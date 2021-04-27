@@ -2,12 +2,11 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
@@ -21,7 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
-__requires__ = ['contigs-db', "kegg-db", "kegg-functions", "profile-db", "collection", "bin"]
+__requires__ = ['contigs-db', "kegg-data", "kegg-functions", "profile-db", "collection", "bin"]
 __provides__ = ['interactive']
 __description__ = "Start the anvi'o interactive interactive for viewing KEGG metabolism data"
 
@@ -29,7 +28,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     groupI = parser.add_argument_group('INPUT', "The minimum you must provide this program is a contigs database. In which case "
                                                 "anvi'o will attempt to estimate and display metabolism for all contigs in it, assuming that "
                                                 "the contigs database represents a single genome. If the contigs database is actually "
@@ -58,7 +57,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:

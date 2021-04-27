@@ -1,6 +1,10 @@
 .*
 *.pyc
 *.so
+*.nhr
+*.nin
+*.nsq
+.env
 /build/
 /dist/
 test-output/
@@ -9,6 +13,8 @@ anvio/__pycache__/
 anvio/extensions/concoct/vbgmm.c
 anvio/data/misc/COG/
 anvio/data/misc/Pfam/
+anvio/data/misc/PDB.db
+anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
 anvio/data/interactive/lib/ngl/
 smtp_config.ini
@@ -16,6 +22,7 @@ smtp_config.ini
 anvio/data/misc/SCG_test
 anvio/data/misc/SCG_old.tar.gz
 anvio/data/misc/SCG
+anvio/data/misc/KEGG
 diamond-log-file.txt
 anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
 

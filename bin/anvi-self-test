@@ -11,6 +11,7 @@ import subprocess
 
 import anvio
 import anvio.tests
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import FilesNPathsError, ConfigError
@@ -26,12 +27,15 @@ __email__ = "a.murat.eren@gmail.com"
 __description__ = "A script for anvi'o to test itself"
 
 
-tests = {'mini': ['run_mini_test.sh'],
-         'full': ['run_all_tests.sh', 'run_pangenome_tests.sh'],
-         'pangenomics': ['run_pangenome_tests.sh'],
-         'alons-classifier': ['run_alons_classifier_tests.sh'],
-         'manual-interface': ['run_manual_interactive.sh']}
+tests = {'mini'                 : ['run_mini_test.sh'],
+         'metagenomics-full'    : ['run_all_tests.sh'],
+         'pangenomics'          : ['run_pangenome_tests.sh'],
+         'interactive-interface': ['run_manual_interactive.sh'],
+         'metabolism'           : ['run_metabolism_tests.sh'],
+         'alons-classifier'     : ['run_alons_classifier_tests.sh'],
+         'trnaseq'              : ['run_trnaseq_tests.sh']}
 
+run = terminal.Run()
 
 def __catch_sig(signum, frame):
     """We need to press CTRL+C to kill the server that is run by this script in a\
@@ -42,8 +46,8 @@ def __catch_sig(signum, frame):
 
 def main(args):
     if args.suite not in tests:
-        raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list "
-                           "of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
+        raise ConfigError(f"Well, the test suite '{args.suite}' is not something anvi'o knows about :/ Here is a list "
+                          f"of tests available if you would like to try again: {', '.join(list(tests.keys()))}.")
 
     tests_dir_path = os.path.dirname(anvio.tests.__file__)
 
@@ -51,45 +55,55 @@ def main(args):
 
     for test in list(itertools.chain(*list(tests.values()))):
         if test not in test_files_found:
-            raise FilesNPathsError("Anvi'o failed to locate the test file for '%s' ('%s')... What a "
-                                    "terrible start :( (it was looking for it under '%s')." \
-                                                % (test, tests[test], tests_dir_path))
+            raise FilesNPathsError(f"Anvi'o failed to locate the test file for '{test}' ('{tests[test]}')... What a "
+                                   f"terrible start :( (it was looking for it under the directory '{tests_dir_path}').")
 
-    temporary_output_dir = filesnpaths.get_temp_directory_path()
+    if args.output_dir:
+        output_dir = os.path.abspath(args.output_dir)
+        filesnpaths.check_output_directory(output_dir)
+        filesnpaths.gen_output_directory(output_dir)
+    else:
+        output_dir = filesnpaths.get_temp_directory_path()
 
     os.chdir(tests_dir_path)
 
     try:
         for test in tests[args.suite]:
-            exitcode = subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True)
+            command = f'./{test} {output_dir} {"no_interactive" if args.no_interactive else ""}'
+            exitcode = subprocess.call(command, shell=True)
             if exitcode != 0:
-                raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while "
-                                  "running your tests :/ We hope that the reason is clear to you from the lines above. But if you "
-                                  "don't see anything obvious, and especially if the test ended up running until the end with "
-                                  "reasonable looking final results, you shouldn't worry too much about this error. Life "
-                                  "is short and we all can worry just a bit less." % str(exitcode))
+                raise ConfigError(f"According to the exit code ('{exitcode}'), anvi'o suspects that something may have gone wrong while "
+                                  f"running your tests :/ We hope that the reason is clear to you from the lines above. But if you "
+                                  f"don't see anything obvious, and especially if the test ended up running until the end with "
+                                  f"reasonable looking final results, you shouldn't worry too much about this error. Life "
+                                  f"is short and we all can worry just a bit less.")
     except KeyboardInterrupt:
         pass
 
-    print()
-    if anvio.DEBUG:
-        print("Anvi'o's self-test is done, and the temporary output files are still here: %s\n" % temporary_output_dir)
+    if args.output_dir:
+        run.info_single(f"The self-test is done, and all the files anvi'o generated are stored in {args.output_dir}", nl_after=1)
     else:
-        shutil.rmtree(temporary_output_dir)
-        print("Anvi'o's self-test is done, and the temporary output files are cleaned.\n")
+        shutil.rmtree(output_dir)
+        run.info_single("Anvi'o's self-test is done, and the temporary files are all gone.", nl_after=1)
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
-    parser.add_argument('--suite', default='full',
-                        help="Suite of tests to execute. By default this program will execute a full suite of example anvi'o\
-                              commands to ensure your installation is ready to run all scenarios anvi'o developers could\
-                              think of. Alternatively you can choose a specific test to run. Here is a full list of available\
-                              options: %s." % ', '.join(list(tests.keys())))
+    available_tests = ', '.join([f"'{test}'" for test in list(tests.keys())])
+    parser.add_argument('--suite', default='mini', help="A suite of component tests to execute. By default this program will "
+                            f"execute the mini test of anvi'o, which will help you to see if your computer and installation is "
+                            f"able to perform some of the most basic anvi'o operations, such as generating an anvi'o contigs "
+                            f"database, profiling BAM files, or starting an interactive interface. But you are welcome to "
+                            f"execute different component tests. Here is a list of what is available to you: "
+                            f"{available_tests}")
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {"help": "If you declare an output dir, all your data will be "
+                            "stored in there, instead of being stored in a temporary directory to be deleted once the tests are done. "
+                            "This is particularly useful if you wish to play with general anvi'o output files"}))
+    parser.add_argument(*anvio.A('no-interactive'), **anvio.K('no-interactive'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         signal.signal(signal.SIGINT, __catch_sig)

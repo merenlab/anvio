@@ -45,7 +45,7 @@ class TableForIndels(Table):
 
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        num_entries = database.get_row_counts_from_table(t.variable_nts_table_name)
+        num_entries = database.get_row_counts_from_table(t.indels_table_name)
         database.disconnect()
 
         return num_entries
@@ -86,7 +86,7 @@ class TableForIndels(Table):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.indels_table_name, self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.indels_table_name, self.db_entries)
         database.disconnect()
 
         if anvio.DEBUG:

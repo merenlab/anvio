@@ -1,4 +1,4 @@
-{% set version = "6.2_master" %}
+{% set version = "7" %}
 
 package:
   name: anvio-minimal
@@ -6,8 +6,7 @@ package:
 
 source:
   git_url: https://github.com/merenlab/anvio
-  git_rev: HEAD
-  git_depth: 1 # shallow clone
+  git_tag: release-candidate
 
 build:
   number: 0
@@ -25,7 +24,10 @@ requirements:
     - pysam
     - ete3
     - scipy
-    - scikit-learn
+    # the following prevents an openmp error first reported in
+    # merenlab/anvio#1489 that also occurs during conda bulid:
+    # https://github.com/bioconda/bioconda-recipes/pull/26014#issuecomment-753693842
+    - scikit-learn <0.21
     - django
     - requests
     - psutil ==5.4.3
@@ -38,6 +40,7 @@ requirements:
     - illumina-utils
     - tabulate
     - numba
+    - sqlite >=3.31.1
     - paste
     # these three are critical versions. any changes must be
     # tested with extra attention:
@@ -45,13 +48,18 @@ requirements:
     - snakemake-minimal ==5.10.0
 test:
   commands:
-    - anvi-self-test --version
-    - anvi-self-test --help
+    - anvi-pan-genome --help
+    - anvi-script-reformat-fasta --help
 
 about:
-  home: http://merenlab.org/software/anvio/index.html
+  home: http://merenlab.org/software/anvio/
   license: GPL-3.0-or-later
   license_family: GPL3
   license_file: LICENSE.txt
   summary: "An interactive analysis and visualization platform for omics data"
   dev_url:  https://github.com/merenlab/anvio
+
+extra:
+  container:
+    # extended-base generates en_US.UTF-8 locale and sets LC_ALL, LANG properly
+    extended-base: True

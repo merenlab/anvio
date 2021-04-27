@@ -3,12 +3,12 @@
 
 import sys
 import random
-import argparse
 import configparser
 
 import anvio
 import anvio.terminal as terminal
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -19,7 +19,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Generate short reads from contigs"
+__requires__ = ['configuration-ini']
+__provides__ = ['short-reads-fasta']
+__description__ = "Generate short reads from contigs. Useful to reconstruct mock data sets from already assembled contigs"
 
 
 run = terminal.Run()
@@ -117,7 +119,7 @@ def main(config):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('configuration', metavar = 'CONFIG_FILE',
                                         help = 'Configuration file')
     parser.add_argument('--output-file-path', metavar = 'FASTA_FILE',
@@ -125,7 +127,7 @@ if __name__ == '__main__':
 
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
     user_config = configparser.ConfigParser()
     user_config.read(args.configuration)
 

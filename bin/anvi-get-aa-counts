@@ -18,6 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__provides__ = ["aa-frequencies-txt"]
+__requires__ = ["splits-txt", "contigs-db", "profile-db", "collection"]
 __description__ = ("Fetches the number of times each amino acid occurs from a contigs database in a "
                    "given bin, set of contigs, or set of genes")
 
@@ -32,9 +34,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     group0 = parser.add_argument_group('MANDATORY STUFF', 'You have to set the following two parameters, then\
                                                            you will select one set of parameters from the\
@@ -57,7 +59,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OPTIONAL PARAMS FOR GENE CALLS')
     groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

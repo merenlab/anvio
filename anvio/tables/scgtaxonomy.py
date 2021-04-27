@@ -70,7 +70,7 @@ class TableForSCGTaxonomy(Table):
         taxonomy_was_run: bool, False
             Set True if taxonomy was run successfuly.
         database_version: str, None
-            This sould be read from the ctx.scg_taxonomy_database_version in taxonomyops.
+            This sould be read from the ctx.target_database_release in taxonomyops.
         """
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))

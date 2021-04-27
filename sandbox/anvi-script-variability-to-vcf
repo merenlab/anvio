@@ -6,7 +6,6 @@ Converts anvi'o variability output to VCF
 
 
 import sys
-import argparse
 import datetime
 
 import numpy as np
@@ -20,6 +19,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -30,6 +30,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["variability-profile-txt"]
+__provides__ = ["vcf"]
 __description__ = ("A script to convert SNV output obtained from anvi-gen-variability-profile "
                    "to the standard VCF format")
 
@@ -144,13 +146,13 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input', metavar='FILE_PATH', help='Filepath to the SNV table. This is the output from the \
                                 anvi-gen-variability-profile program with the nucleotide engine (which is the default engine).')
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

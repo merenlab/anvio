@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
 
 import anvio
 import anvio.utils as utils
@@ -10,6 +9,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
@@ -18,10 +18,13 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Özcan Esen"
-__email__ = "ozcanesen@gmail.com"
-__requires__ = ['structure-db', 'variability-profile-txt', 'contigs-db', 'profile-db']
-__provides__ = ['interactive', 'summary']
+__maintainer__ = "Evan Kiefl"
+__email__ = "kiefl.evan@gmail.com"
+__requires__ = ['structure-db', 'variability-profile-txt', 'contigs-db', 'profile-db', 'splits-txt']
+__provides__ = ['interactive']
+__resources__ = [("The overview page from the release", "http://merenlab.org/software/anvio-structure/"),
+                 ("The section of the Infant Gut Tutorial focused on anvi-display-structure", "http://merenlab.org/tutorials/infant-gut/#chapter-vii-from-single-amino-acid-variants-to-protein-structures"),
+                 ("Integrating sequence variants and predicted protein structures", "http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/")]
 __description__ = "Interactively visualize sequence variants on protein structures"
 
 
@@ -29,7 +32,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupS = parser.add_argument_group("STRUCTURE", "Information related to the structure database, which can be \
                                                      created with anvi-gen-structure-database.")
@@ -47,19 +50,18 @@ if __name__ == '__main__':
                                                                interested in? Define that stuff here.")
     groupP = parser.add_argument_group("SERVER CONFIGURATION", "For power users.")
 
-    bin_id_dict = {"help": "If provided, any genes found in both your bin and your structure database will be available for display."}
-    min_dfc_dict = {"help": "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus.\
-                             it can be an expensive operation to display every variable position, and so the\
-                             default is 0.05. To display every variable position, set this parameter to 0",
-                    "default": 0.05}
+    min_dfc_dict = {
+        "help": "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus. "
+                "it can be an expensive operation to display every variable position, and so the "
+                "default is 0.05. To display every variable position, set this parameter to 0.",
+        "default": 0.05
+    }
 
     groupS.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
     groupV.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {"required": False}))
     groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {"required": False}))
     groupV.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile'))
     groupR.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
-    groupR.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupR.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', bin_id_dict))
     groupR.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
     groupR.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupR.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
@@ -85,7 +87,7 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
     try:
-        args = anvio.get_args(parser)
+        args = parser.get_args(parser)
         args.mode = 'structure'
 
         d = interactive.StructureInteractive(args)

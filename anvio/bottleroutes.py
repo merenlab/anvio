@@ -19,7 +19,6 @@ import base64
 import random
 import getpass
 import argparse
-import requests
 import datetime
 import importlib
 
@@ -35,9 +34,10 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -182,6 +182,7 @@ class BottleApplication(Bottle):
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
 
@@ -198,7 +199,7 @@ class BottleApplication(Bottle):
         try:
             # allow output to terminal when debugging
             if anvio.DEBUG:
-                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': False, 'server': self._wsgi_for_bottle})
                 server_process.start()
             else:
                 with terminal.SuppressAllOutput():
@@ -302,39 +303,12 @@ class BottleApplication(Bottle):
 
 
     def get_news(self):
-        ret = []
-        try:
-            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
-            news_items = news_markdown.text.split("***")
-
-            """ FORMAT
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            ***
-            # Title with spaces (01.01.1970) #
-            Lorem ipsum, dolor sit amet
-            """
-            for news_item in news_items:
-                if len(news_item) < 5:
-                    # too short to parse, just skip it
-                    continue
-
-                ret.append({
-                        'date': news_item.split("(")[1].split(")")[0].strip(),
-                        'title': news_item.split("#")[1].split("(")[0].strip(),
-                        'content': news_item.split("#\n")[1].strip()
-                    })
-        except:
-            ret.append({
-                    'date': '',
-                    'title': 'Something has failed',
-                    'content': 'Anvi\'o failed to retrieve any news for you, maybe you do not have internet connection or something :('
-                })
-
-        return json.dumps(ret)
+        if self.interactive.anvio_news:
+            return json.dumps(self.interactive.anvio_news)
+        else:
+            return json.dumps([{'date': '',
+                                'title': 'No news for you :(',
+                                'content': "Anvi'o couldn't bring any news for you. You can bring yourself to the news by clicking [here](%s)." % constants.anvio_news_url}])
 
 
     def random_hash(self, size=8):
@@ -356,10 +330,10 @@ class BottleApplication(Bottle):
             if self.interactive.state_autoload:
                 state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
 
-                if state_dict['current-view'] in self.interactive.views:
+                if 'current-view' in state_dict and state_dict['current-view'] in self.interactive.views:
                     default_view = state_dict['current-view']
 
-                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                if 'order-by' in state_dict and state_dict['order-by'] in self.interactive.p_meta['item_orders']:
                     default_order = state_dict['order-by']
 
                 autodraw = True
@@ -529,6 +503,7 @@ class BottleApplication(Bottle):
                  'total': None,
                  'coverage': [],
                  'variability': [],
+                 'indels': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -574,22 +549,43 @@ class BottleApplication(Bottle):
             data['coverage'] = [coverages[layer].tolist() for layer in layers]
         except:
             data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
-        data['sequence'] = self.interactive.split_sequences[split_name]
+
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence']
 
         ## get the variability information dict for split:
-        progress.new('Variability', discard_previous_if_exists=True)
-        progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
+        ## get the indels information dict for split:
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+
+        # building layer data
         for layer in layers:
-            progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
+            data['indels'].append(split_indels_info_dict[layer]['indels'])
 
         levels_occupied = {1: []}
-        for entry_id in  self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+        gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we get all the amino acid sequences for genes in this split here to avoid
+        # multiple database calls for each gene later. this dictionary will be used
+        # below as we go through each gene call.
+        gene_aa_sequences_dict = self.interactive.get_gene_amino_acid_sequence([self.interactive.genes_in_splits[e]['gene_callers_id'] for e in gene_entries_in_split])
+
+        for entry_id in gene_entries_in_split:
             gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+
+            # this is a CRAZY case where a gene caller id is found in a split, but
+            # it is not occurring in the genes table. ABSOLUTELY CRAZY, BUT FLORIAN
+            # MANAGED TO DO IT, SO THERE WE GO.
+            if gene_callers_id not in self.interactive.genes_in_contigs_dict:
+                progress.reset()
+                run.info_single(f"Gene caller id {gene_callers_id} is missing from the contigs db. But the "
+                                f"split {split_name} thinks it has it :/ Anvi'o ignores this. Anvi'o is too old "
+                                f"for stuff like this.")
+                continue
+
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
             #
@@ -604,9 +600,13 @@ class BottleApplication(Bottle):
             p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
             p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
             p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+            p['call_type'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['call_type']
             p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            # get amino acid sequence for the gene call:
+            p['aa_sequence'] = gene_aa_sequences_dict[gene_callers_id]
 
             for level in levels_occupied:
                 level_ok = True
@@ -626,8 +626,6 @@ class BottleApplication(Bottle):
 
             data['genes'].append(p)
 
-        progress.end()
-
         return json.dumps(data)
 
 
@@ -643,7 +641,6 @@ class BottleApplication(Bottle):
         for candidate_entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
             if int(gene_callers_id) == int(self.interactive.genes_in_splits[candidate_entry_id]['gene_callers_id']):
                 entry_id = candidate_entry_id
-
 
         if not entry_id:
             raise ConfigError("Can not find this gene_callers_id in any splits.")
@@ -662,9 +659,13 @@ class BottleApplication(Bottle):
         p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
         p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
         p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+        p['call_type'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['call_type']
         p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
         p['length'] = p['stop_in_contig'] - p['start_in_contig']
         p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+        # get amino acid sequence for the gene call:
+        p['aa_sequence'] = self.interactive.get_gene_amino_acid_sequence([gene_callers_id])
 
         return json.dumps(p)
 
@@ -713,6 +714,7 @@ class BottleApplication(Bottle):
                  'total': None,
                  'coverage': [],
                  'variability': [],
+                 'indels': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -734,7 +736,7 @@ class BottleApplication(Bottle):
             coverage_list = coverages[layer].tolist()
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
 
-        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence'][focus_region_start:focus_region_end]
 
         ## get the variability information dict for split:
         progress.new('Variability')
@@ -771,8 +773,37 @@ class BottleApplication(Bottle):
             data['competing_nucleotides'].append(competing_nucleotides_dict)
             data['variability'].append(variability_dict)
 
+        progress.end()
+
+        ## get the indels information dict for split:
+        progress.new('Indels')
+        progress.update('Collecting info for "%s"' % split_name)
+        split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
+
+        for layer in layers:
+            progress.update('Formatting indels data: "%s"' % layer)
+
+            indels_dict_original = copy.deepcopy(split_indels_info_dict[layer]['indels'])
+            indels_dict = {}
+            for indel_entry_id in indels_dict_original:
+                pos = indels_dict_original[indel_entry_id]['pos']
+                if pos < focus_region_start or pos > focus_region_end:
+                    continue
+                else:
+                    indels_dict[indel_entry_id] = indels_dict_original[indel_entry_id]
+                    indels_dict[indel_entry_id]['pos'] = indels_dict[indel_entry_id]['pos'] - focus_region_start
+
+            data['indels'].append(indels_dict)
+
         levels_occupied = {1: []}
-        for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+        gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we get all the amino acid sequences for genes in this split here to avoid
+        # multiple database calls for each gene later. this dictionary will be used
+        # below as we go through each gene call.
+        gene_aa_sequences_dict = self.interactive.get_gene_amino_acid_sequence([self.interactive.genes_in_splits[e]['gene_callers_id'] for e in gene_entries_in_split])
+
+        for entry_id in gene_entries_in_split:
             gene_callers_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
@@ -805,6 +836,9 @@ class BottleApplication(Bottle):
             p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            # add amino acid sequence for the gene call:
+            p['aa_sequence'] = gene_aa_sequences_dict[gene_callers_id]
 
             for level in levels_occupied:
                 level_ok = True
@@ -970,7 +1004,7 @@ class BottleApplication(Bottle):
 
     def get_sequence_for_split(self, split_name):
         try:
-            sequence = self.interactive.split_sequences[split_name]
+            sequence = self.interactive.split_sequences[split_name]['sequence']
             header = split_name
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
@@ -1042,15 +1076,18 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "Gene caller id does not seem to be 'integerable'. Not good :/"})
 
         try:
-            gene_calls_tuple = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id])
+            gene_calls_tuple = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access to that gene: '%s' :/" % e})
 
         entry = gene_calls_tuple[1][gene_callers_id]
+
         sequence = entry['sequence']
+        aa_sequence = entry['aa_sequence']
+
         header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-        return json.dumps({'sequence': sequence, 'header': header})
+        return json.dumps({'sequence': sequence, 'aa_sequence': aa_sequence, 'header': header})
 
 
     def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
@@ -1413,3 +1450,23 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps(output)
+
+
+    def get_functions_for_gene_clusters(self):
+        if not len(self.interactive.gene_clusters_function_sources):
+            message = "Gene cluster functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
+
+        d = {}
+        for gene_cluster_name in gene_cluster_names:
+            if gene_cluster_name not in self.interactive.gene_clusters_functions_summary_dict:
+                message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
+                           f"the functions summary dict :/")
+                return json.dumps({'status': 1, 'message': message})
+                
+            d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
+
+        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})

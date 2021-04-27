@@ -2,7 +2,7 @@
 # -*- coding: utf-8
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
@@ -21,6 +21,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
+__requires__ = ["pan-db", "genomes-storage-db"]
+__provides__ = []
+__resources__ = [("The role of gene cluster homogeneity described in the Anvi'o pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#inferring-the-homogeneity-of-gene-clusters")]
 __description__ = "Compute homogeneity for gene clusters"
 
 
@@ -111,7 +114,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
@@ -140,7 +143,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

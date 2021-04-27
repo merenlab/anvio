@@ -8,7 +8,7 @@ var COG_categories = {
     'G': '[G] Carbohydrate metabolism and transport',
     'H': '[H] Coenzyme metabolis',
     'I': '[I] Lipid metabolism',
-    'J': '[J] Tranlsation',
+    'J': '[J] Translation',
     'K': '[K] Transcription',
     'L': '[L] Replication and repair',
     'M': '[M] Cell wall/membrane/envelop biogenesis',
@@ -26,30 +26,134 @@ var COG_categories = {
     'S': '[S] Function Unknown'
 }
 
+var default_COG_colors = {
+  'A': '#98d67c',
+  'B': '#446af3',
+  'C': '#7e6500',
+  'D': '#ff80ec',
+  'E': '#68a300',
+  'F': '#bc0066',
+  'G': '#acd441',
+  'H': '#c9a1ff',
+  'I': '#eb9800',
+  'J': '#0297f0',
+  'K': '#e74d22',
+  'L': '#01c0ab',
+  'M': '#d1002e',
+  'N': '#00a45c',
+  'O': '#7b3979',
+  'P': '#d6c777',
+  'Q': '#ff9bc6',
+  'T': '#455d00',
+  'U': '#ff8241',
+  'V': '#125e40',
+  'W': '#c35b00',
+  'Y': '#9ecea1',
+  'Z': '#933215',
+  'R': '#ff9a92',
+  'S': '#81402e'
+}
+
+var KEGG_categories = {
+  'C': 'Carbohydrate metabolism',
+  'E': 'Energy metabolism',
+  'L': 'Lipid metabolism',
+  'N': 'Nucleotide metabolism',
+  'A': 'Amino acid metabolism',
+  'G': 'Glycan biosynthesis and metabolism',
+  'V': 'Metabolism of cofactors and vitamins',
+  'T': 'Metabolism of terpenoids and polyketides',
+  'S': 'Biosynthesis of other secondary metabolites',
+  'X': 'Xenobiotics biodegradation and metabolism'
+}
+
+var default_KEGG_colors = {
+  'C': '#0000ee',
+  'E': '#9933cc',
+  'L': '#009999',
+  'N': '#ff0000',
+  'A': '#ff9933',
+  'G': '#3399ff',
+  'V': '#ff6699',
+  'T': '#00cc33',
+  'S': '#cc3366',
+  'X': '#ccaa99'
+}
+
+var default_source_colors = {
+  'None': '#808080',
+  'Function': '#008000',
+  'tRNA': '#226ab2',
+  'rRNA': '#b22222'
+}
+
 var named_functional_sources = {
-    'EGGNOG (BACT)': {
+    'EGGNOG_BACT': {
         'accession_decorator': (function (d) {
                                     return '<a href="http://www.uniprot.org/uniprot/?query=' + d + '&sort=score" target="_blank">' + d + '</a>';
                                 }),
 
     },
 
-    'COG_FUNCTION': {
+    'COG14_FUNCTION': {
         'accession_decorator': (function (d) {
                                     var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
                                     return cogs.join(', ');
                                 }),
     },
 
-    'COG_CATEGORY': {
+    'COG14_CATEGORY': {
         'annotation_decorator': (function (d) {
                                     var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
                                     return cogs.join('; ');
                                 }),
     },
 
+    'COG20_FUNCTION': {
+        'accession_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){return '<a href="https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return cogs.join(', ');
+                                }),
+    },
+
+    'COG20_CATEGORY': {
+        'annotation_decorator': (function (d) {
+                                    var cogs = d.split(', ').map((function (c){if (c in COG_categories) {return COG_categories[c];} else {return c;}}));
+                                    return cogs.join('; ');
+                                }),
+    },
+
+
+    'KOfam': {
+        'accession_decorator': (function (d) {
+                                    var kos = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/dbget-bin/www_bget?ko:' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return kos.join(', ');
+                                }),
+    },
+
+    'KEGG_Module': {
+        'accession_decorator': (function (d) {
+                                    var modules = d.split(', ').map((function (c){return '<a href="https://www.genome.jp/kegg-bin/show_module?' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return modules.join(', ');
+                                }),
+    },
+
+    'Pfam': {
+        'accession_decorator': (function (d) {
+                                    var pfams = d.split(', ').map((function (c){return '<a href="https://pfam.xfam.org/family/' + c +'" target=_"blank">' + c + '</a>';}));
+                                    return pfams.join(', ');
+                                }),
+    },
+
     'KEGG_PATHWAYS': {
         'annotation_decorator': (function (d) {
+                                    var maps = d.split(', ').map((function (m){return '<a href="http://www.genome.jp/dbget-bin/www_bget?' + m +'" target=_"blank">' + m + '</a>';}));
+                                    return maps.join(', ');
+                                }),
+    },
+
+    'KEGG_Module': {
+        'accession_decorator': (function (d) {
                                     var maps = d.split(', ').map((function (m){return '<a href="http://www.genome.jp/dbget-bin/www_bget?' + m +'" target=_"blank">' + m + '</a>';}));
                                     return maps.join(', ');
                                 }),
@@ -64,7 +168,29 @@ var named_functional_sources = {
 }
 
 
+function getPrettyFunctionsString(fstring, source) {
+    if (!fstring)
+        return ["-"];
+    else
+        farray = fstring.split('!!!');
+
+        if ((source == null) || source == '' || source == 'None')
+            return farray.join(' / ');
+        else {
+            var dec = new Array();
+
+            for (f in farray)
+                dec.push(decorateAccession(source, farray[f]))
+
+            return dec.join(' / ')
+        }
+}
+
+
 function decorateAccession(source, accession_id){
+    if (!accession_id)
+        return accession_id;
+
     if (source in named_functional_sources){
         if ('accession_decorator' in named_functional_sources[source]){
             return named_functional_sources[source]['accession_decorator'](accession_id);
@@ -338,22 +464,22 @@ var named_layers = {
 };
 
 named_category_colors = {
-    'KNOWN'    : '#00AA00',
-    'UNKNOWN'  : '#F0F0F0',
-    'ECG'      : '#00AA00',
-    'EAG'      : '#AA0000',
-    'NA'       : '#F0F0F0',
-    'TSC'      : '#e38181',
-    'TSA'      : '#0000AA',
-    'TNC'      : '#00AA00',
-    'TNA'      : '#00d1ca',
-    'NaN'      : '#73727a',
-    'K'        : '#233B43',
-    'KWP'      : '#556C74',
-    'GU'       : '#65ADC2',
-    'EU'       : '#E84646',
-    'SINGL'    : '#BCC8CC',
-    'DISC'     : '#BCC8CC'
+    'KNOWN'           : '#00AA00',
+    'UNKNOWN'         : '#F0F0F0',
+    'ECG'             : '#00AA00',
+    'EAG'             : '#AA0000',
+    'NA'              : '#F0F0F0',
+    'TSC'             : '#e38181',
+    'TSA'             : '#0000AA',
+    'TNC'             : '#00AA00',
+    'TNA'             : '#00d1ca',
+    'NaN'             : '#73727a',
+    'AGNOSTOS_K'      : '#233B43',
+    'AGNOSTOS_KWP'    : '#556C74',
+    'AGNOSTOS_GU'     : '#65ADC2',
+    'AGNOSTOS_EU'     : '#E84646',
+    'AGNOSTOS_SINGL'  : '#BCC8CC',
+    'AGNOSTOS_DISC'   : '#BCC8CC'
 };
 
 function getNamedCategoryColor(name)
@@ -454,7 +580,7 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     if (layer.substring(0, 5) == "hmmx_") {
         if (attribute == 'height') return '30';
         if (attribute == 'norm')   return 'none';
-        if (attribute == 'color')  return '#882222'
+        if (attribute == 'color')  return '#882222';
     }
 
     /* Some ad-hoc manipulation of special hmms_ single hmm layers */
@@ -476,7 +602,11 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
             if (attribute == 'color')  return '#444444';
             if (attribute == 'color-start')  return '#DDDDDD';
         }
+    }
 
+    if (layer.substring(0, 6) == "motif_") {
+        if (attribute == 'norm')   return 'none';
+        if (attribute == 'color')  return '#222288';
     }
 
     if (layer in named_layers)

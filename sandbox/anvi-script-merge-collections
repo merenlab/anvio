@@ -22,7 +22,9 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Generate an additional data file from multiple collections."
+__provides__ = []
+__requires__ = ["contigs-db", "collection-txt"]
+__description__ = "Generate an additional data file from multiple collections"
 
 
 def main(args):
@@ -69,9 +71,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
@@ -81,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE', default = None, required = True,
                         help = 'Output file name.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

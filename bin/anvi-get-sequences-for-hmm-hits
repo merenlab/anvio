@@ -36,7 +36,6 @@
 
 import os
 import sys
-import argparse
 
 import anvio
 import anvio.utils as utils
@@ -45,8 +44,10 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
+import anvio.genomedescriptions as genomedescriptions
 
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, ContigsDatabase
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -57,9 +58,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-source']
+__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-source', "hmm-hits"]
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
-__description__ = "Get sequences for HMM hits from many inputs."
+__description__ = "Get sequences for HMM hits from many inputs"
 __resources__ = [("A tutorial on anvi'o phylogenomics workflow", "http://merenlab.org/2017/06/07/phylogenomics/"),
                  ("A detailed application of phylogenomics to place a new genome on a tree", "http://merenlab.org/data/parcubacterium-in-hbcfdna/")]
 
@@ -75,6 +76,14 @@ def main(args):
 
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
+
+    if args.list_hmm_sources:
+        if args.contigs_db:
+            ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        elif args.external_genomes or args.internal_genomes:
+            genomedescriptions.GenomeDescriptions(args).list_HMM_info_and_quit()
+
+        sys.exit()
 
     if args.concatenate_genes:
         if not args.return_best_hit:
@@ -125,9 +134,6 @@ def main(args):
             if(missing_hmm_sources):
                 raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database "
                                   "knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
-
-        if args.list_hmm_sources:
-            hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
         if args.list_available_gene_names:
             hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(sources=list(hmm_sources))
@@ -234,7 +240,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
                                         provide a contigs database, and call it a day. In this case the program will return you\
@@ -293,7 +299,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

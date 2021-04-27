@@ -4,13 +4,12 @@
 import os
 import sys
 import glob
-import stat
 import uuid
 import shutil
 import zipfile
-import argparse
 import requests
 import subprocess
+
 from distutils.spawn import find_executable
 
 import anvio
@@ -18,9 +17,10 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import UpgradeError
+from anvio.argparse import ArgumentParser
+from anvio.errors import UpgradeError, ConfigError
 
-__description__ = "Download and install minor releases of anvi'o from a Github repository."
+__description__ = "Download and install minor releases of anvi'o from a Github repository"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -255,7 +255,7 @@ class Upgrader(object):
         self.progress.end()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('repository'), **anvio.K('repository'))
     args, unknown = parser.parse_known_args()
 

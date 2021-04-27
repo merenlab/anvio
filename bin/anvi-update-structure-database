@@ -3,9 +3,8 @@
 
 import sys
 import anvio
-import argparse
+from anvio.argparse import ArgumentParser
 
-import anvio.terminal as terminal
 import anvio.structureops as structops
 
 from anvio.errors import ConfigError, FilesNPathsError, ModellerError
@@ -18,8 +17,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["contigs-db", "structure-db"]
 __description__ = ("Add or re-run genes from an already existing structure database. All settings used "
-                   "to generate your database will be used in this program.")
+                   "to generate your database will be used in this program")
 
 
 def main(args):
@@ -27,7 +27,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupG = parser.add_argument_group('GENES', 'Specify which genes you want to be modelled. If a gene already '
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     }
     groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

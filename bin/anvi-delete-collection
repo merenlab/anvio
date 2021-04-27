@@ -18,7 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Remove a collection from a given profile database."
+__requires__ = ["profile-db", "collection"]
+__description__ = "Remove a collection from a given profile database"
 
 
 run = terminal.Run()
@@ -52,15 +53,15 @@ def main(args):
     run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

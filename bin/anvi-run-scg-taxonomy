@@ -5,7 +5,7 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -17,12 +17,12 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
-__requires__ = ['contigs-db', 'scgs-taxonomy-db']
+__requires__ = ['contigs-db', 'scgs-taxonomy-db', 'hmm-hits']
 __provides__ = ['scgs-taxonomy']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("The purpose of this program is to affiliate single-copy core genes in an anvi'o contigs database with "
                    "taxonomic names. A properly setup local SCG taxonomy database is required for this program to perform properly. "
-                   "After its successful run, `anvi-estimate-scg-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
+                   "After its successful run, `anvi-estimate-scg-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level)")
 
 
 @terminal.time_program
@@ -32,9 +32,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASE', "An anvi'o contigs databaes to search for and  store the taxonomic\
                                         affiliations of SCGs.")
@@ -52,12 +52,24 @@ if __name__ == '__main__':
                         with a `--debug` flag to see what is really going on. We strongly advice you to do this only with single genomes,\
                         and never with metagenomes.", 'default': 90}))
 
+    groupA.add_argument(*anvio.A('max-num-target-sequences'), **anvio.K('max-num-target-sequences', {'help': "This parameter is used to determine \
+                        how many hits from the database that has a reasonable match to the query sequence should be taken into consideration \
+                        to make a final decision about the consensus taxonomy for each individual single-copy core gene sequence. The default \
+                        is %(default)d, which has been quite reasonable in our tests, however, you may need to increase this number to get more \
+                        accurate results for your own data. In cases where you think this is what you need, the best way to test the parameter \
+                        space for `--max-num-target-sequences` is to run the program multiple times on the same database with `--debug` \
+                        and compare results.", 'default': 20}))
+
     groupH = parser.add_argument_group("PERFORMANCE")
     groupH.add_argument(*anvio.A('num-parallel-processes'), **anvio.K('num-parallel-processes'))
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
-    args = anvio.get_args(parser)
+    groupI = parser.add_argument_group("OUTPUT", "By default, this program does not generate an output and instead simply store taxonomy \
+                                                  information into the contigs database. But if the user wants more, they get more.")
+    groupI.add_argument(*anvio.A('all-hits-output-file'), **anvio.K('all-hits-output-file'))
+
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -1,0 +1,4 @@
+gene	accession	hmmsource
+16S_rRNA_bac	None	barrnap
+16S_rRNA_arc	None	barrnap
+16S_rRNA_mit	None	barrnap

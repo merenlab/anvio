@@ -3,7 +3,7 @@
 """Populate misc data tables"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
@@ -18,12 +18,12 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/")]
-__requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt',  'misc-data-amino-acids-txt']
+__resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/"),]
+__requires__ = ['pan-db', 'profile-db', 'contigs-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt',  'misc-data-amino-acids-txt']
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "
                    "items and layers, OR additional data in contigs databases for nucleotides "
-                   "and amino acids (the Swiss army knife-level serious stuff).")
+                   "and amino acids (the Swiss army knife-level serious stuff)")
 
 
 @terminal.time_program
@@ -44,7 +44,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
                         for layers or items. The expected format of this file depends on the data table you will target. This\
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     group2.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

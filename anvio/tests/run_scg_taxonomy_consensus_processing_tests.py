@@ -3,7 +3,7 @@
 import argparse
 
 import anvio.terminal as terminal
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 

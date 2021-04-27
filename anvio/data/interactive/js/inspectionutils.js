@@ -30,7 +30,7 @@ GeneParser = (function() {
     _ref = this.data;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       gene = _ref[_i];
-      
+
       if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split <= start && gene.stop_in_split >= stop) {
         _data.push(gene);
       }
@@ -55,7 +55,7 @@ $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
     if ($(e.target).data('toggle') !== 'popover'
-        && $(e.target).parents('.popover.in').length === 0) { 
+        && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
     }
   });
@@ -66,7 +66,7 @@ function get_gene_functions_table_html(gene){
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
-    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
+    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
     functions_table_html += '<tr><td>' + gene.gene_callers_id
                           + '</td><td>' + gene.source
@@ -74,11 +74,18 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.direction
                           + '</td><td>' + gene.start_in_contig
                           + '</td><td>' + gene.stop_in_contig
+                          + '</td><td>' + gene.call_type
                           + '</td><td>' + gene.complete_gene_call
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+
+    if(gene.call_type == 1)
+        functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
+    else
+        functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
+
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
@@ -94,13 +101,18 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '<th>Annotation</th></thead>';
     functions_table_html += '<tbody>';
 
-    for (function_source in gene.functions){
+    const gene_functions = {};
+    Object.keys(gene.functions).sort().forEach(function(key) {
+      gene_functions[key] = gene.functions[key];
+    });
+
+    for (function_source in gene_functions){
         functions_table_html += '<tr>';
 
         functions_table_html += '<td><b>' + function_source + '</b></td>';
         if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
-            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
+            functions_table_html += '<td>' + getPrettyFunctionsString(gene.functions[function_source][0], function_source) + '</td>';
+            functions_table_html += '<td><em>' + getPrettyFunctionsString(gene.functions[function_source][1]) + '</em></td>';
         } else {
             functions_table_html += '<td>&nbsp;</td>';
             functions_table_html += '<td>&nbsp;</td>';
@@ -126,7 +138,6 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
         success: function(data) {
             data.gene_info['genome_name'] = genome_name;
             data.gene_info['gene_callers_id'] = gene_callers_id;
-            
             gene = data.gene_info;
         }
     });
@@ -216,7 +227,19 @@ function show_sequence(gene_id) {
         cache: false,
         url: '/data/gene/' + gene_id,
         success: function(data) {
-          show_sequence_modal('Split Sequence', data['header'] + '\n' + data['sequence']);
+          show_sequence_modal('Gene DNA Sequence', data['header'] + '\n' + data['sequence']);
+        }
+    });
+}
+
+
+function show_aa_sequence(gene_id) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/gene/' + gene_id,
+        success: function(data) {
+          show_sequence_modal('Gene Amino Acid Sequence', data['header'] + '\n' + data['aa_sequence']);
         }
     });
 }
@@ -230,7 +253,8 @@ function removeGeneChart() {
 }
 
 
-function drawArrows(_start, _stop) {
+function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
+    info("Drawing gene arrows");
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -239,7 +263,7 @@ function drawArrows(_start, _stop) {
 
     paths = contextSvg.append('svg:g')
       .attr('id', 'gene-arrow-chart')
-      .attr('transform', 'translate(50, -10)');
+      .attr('transform', 'translate(50, ' + (gene_offset_y-10) + ')');
 
     paths.selectAll('path');
 
@@ -266,15 +290,30 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      var color = 'gray';
-      if (gene.source == 'Ribosomal_RNAs') {
-        color = 'firebrick';
+      var category = "none";
+      if(colortype == "COG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
+          category = gene.functions["COG_CATEGORY"][0][0];
+        }
+        if(category == null || category == "X") category = "none";
+      } else if(colortype == "KEGG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
+          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
+        }
+        if(category == null) category = "none";
+      } else if(colortype == "Source") {
+        if (gene.source.startsWith('Ribosomal_RNA')) {
+          category = 'rRNA';
+        } else if (gene.source == 'Transfer_RNAs') {
+          category = 'tRNA';
+        } else if (gene.functions !== null) {
+          category = 'Function';
+        } else {
+          category = "None";
+        }
       }
-      else if (gene.source == 'Transfer_RNAs') {
-        color = '#226ab2';
-      }
-      else if (gene.functions !== null) {
-        color = 'green';
+      if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
+        category = gene.gene_callers_id;
       }
 
       if (highlight_gene && gene.gene_callers_id == contig_id)
@@ -292,15 +331,16 @@ function drawArrows(_start, _stop) {
 
       // M10 15 l20 0
       path = paths.append('svg:path')
+           .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', color)
+           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + color + ')';
+                   return 'url(#arrow_' + category + ')';
                  }
 
               return '';
@@ -310,6 +350,11 @@ function drawArrows(_start, _stop) {
              })
            .attr('data-content', get_gene_functions_table_html(gene) + '')
 	    .attr('data-toggle', 'popover');
+      // disable default right-click behavior
+      document.querySelector('#gene_' + gene.gene_callers_id).addEventListener('contextmenu', function (evt) { evt.preventDefault(); });
+      $('#gene_' + gene.gene_callers_id).contextmenu(function() {
+        toggleGeneIDColor(gene.gene_callers_id);
+      });
     });
     $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
 
@@ -332,6 +377,16 @@ function drawArrows(_start, _stop) {
     });
 }
 
+function getGeneEndpts(_start, _stop) {
+  genes = geneParser.filterData(_start, _stop);
+  var ret = [];
+
+  genes.forEach(function(gene){
+    ret.push(gene.start_in_split - _start, gene.stop_in_split - _start - 1);
+  });
+
+  return ret;
+}
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
@@ -348,6 +403,22 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
+}
+
+function getCategoryForKEGGClass(class_str) {
+  if(class_str == null) return null;
+
+  var category_name = getClassFromKEGGAnnotation(class_str);
+  return getKeyByValue(KEGG_categories, category_name);
+}
+
+function getClassFromKEGGAnnotation(class_str) {
+  return class_str.substring(17, class_str.indexOf(';', 17));
+}
+
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js

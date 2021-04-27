@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 # Set INSEQ files path

@@ -64,9 +64,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('matrix', help = 'TAB-delimited matrix of CPR genome names, classes, and presence absence\
                                           of single-copy genes. Headers of the first two rows should be "genome", and\
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default = "cpr-scg.classifier", help = "Output file name for the classifier.",
                         metavar='CLASSIFIER_FILE')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

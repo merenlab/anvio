@@ -241,9 +241,11 @@ class Pangenome(object):
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        self.run.warning("You elected to use NCBI's blastp for amino acid sequence search. Running blastp will "
-                         "be significantly slower than DIAMOND (although, anvi'o developers are convinced that "
-                         "you *are* doing the right thing, so, kudos to you).")
+        self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
+                         "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
+                         "We are unsure about whether the slight increase in sensitivity may justify significant "
+                         "increase in run time, but you are the boss.", lc="cyan")
+
         blast = BLAST(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
@@ -509,7 +511,7 @@ class Pangenome(object):
 
            The synteny in this context is defined by the gene caller ids. Gene caller ids
            follow a numerical order in anvi'o contigs databases for genes that are coming
-           from the same contig. Of course, the synteny does not mean much for genmes that
+           from the same contig. Of course, the synteny does not mean much for genes that
            fragmented into multiple contigs.
         """
 
@@ -531,7 +533,7 @@ class Pangenome(object):
             dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(gene_clusters_order_based_on_genome_synteny), order_data_type_newick=False, run=self.run)
 
         gene_cluster_gene_cluster_edges = []
-        # network description of gene_cluster-gene_cluster relationshops given the gene synteny.
+        # network description of gene_cluster-gene_cluster relationships given the gene synteny.
         gene_ordered_list_of_gene_clusters = list(zip(df.gene_caller_id, df.gene_cluster_id))
         for index in range(1, len(gene_ordered_list_of_gene_clusters)):
             (GENE_A, gene_cluster_A), (GENE_B, gene_cluster_B) = gene_ordered_list_of_gene_clusters[index-1], gene_ordered_list_of_gene_clusters[index]

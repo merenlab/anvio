@@ -3,7 +3,7 @@
 """Split an anvi'o profile into smaller pieces."""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.splitter as splitter
@@ -19,20 +19,17 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['profile-db', 'contigs-db', 'collection',]
+__requires__ = ['profile-db', 'contigs-db', 'genomes-storage-db', 'pan-db', 'collection',]
 __provides__ = ['split-bins',]
+__resources__ = [("Anvi-split in action in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#splitting-the-pangenome")]
 __description__ = ("Split an anvi'o pan or profile database into smaller, self-contained pieces. "
-                   "This is usually great when you want to share a subset of an anvi'o project. "
-                   "You give this guy your databases, and a collection id, and it gives "
-                   "you back directories of individual projects for each bin that can be treated as "
-                   "self-contained smaller anvi'o projects. We know you don't read this far into "
-                   "these help menus, but please remember: you will either need to provide a profile & "
-                   "contigs database pair, or a pan & genomes storage pair. The rest will be taken "
-                   "care of. Magic.")
+                   "Provide either a genomes-storage and pan database or a profile and contigs database "
+                   "pair, and you'll get back directories of individual projects for each bin "
+                   " that can be treated as smaller anvi'o projects")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
@@ -67,7 +64,7 @@ if __name__ == '__main__':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         splitter.DBSplitter(args).get()(args).process()

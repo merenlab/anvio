@@ -10,7 +10,7 @@ via available parsers in anvi-populate-collections table."""
 
 import os
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
@@ -33,7 +33,7 @@ __provides__ = ['contigs-fasta', 'coverages-txt']
 __description__ = ("Export split or contig sequences and coverages across samples stored in an anvi'o "
                    "profile database. This program is especially useful if you would like to 'bin' your "
                    "splits or contigs outside of anvi'o and import the binning results into anvi'o "
-                   "using `anvi-import-collection` program.")
+                   "using `anvi-import-collection` program")
 
 
 run = terminal.Run()
@@ -78,7 +78,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -95,7 +95,7 @@ if __name__ == '__main__':
                          The hope is that this removes 'outlier' positions resulting from non-specific mapping, etc. \
                          that skew the mean coverage estimate.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -34,7 +34,9 @@ def migrate(config_path):
     progress.new("Upgrading your config")
     progress.update("...")
 
-    args = argparse.Namespace(workflow=workflow_name, config_file=config_path)
+    # You must skip version check, otherwise anvi'o complains that the config is out of date. DUH,
+    # that's why we are migrating.
+    args = argparse.Namespace(workflow=workflow_name, config_file=config_path, skip_version_check=True)
 
     workflow_module_dict = w.get_workflow_module_dict()
     workflow_object = workflow_module_dict[workflow_name](args)
