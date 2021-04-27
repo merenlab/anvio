@@ -14,7 +14,7 @@ a range of other tools in the anvi'o platform.
 
 GLOSSARY of essential terms
 ===========================
-Feature: Canonical feature or structural element of tRNA (e.g., 3'-CCA acceptor, anticodon stem)
+Feature: Canonical feature or structural element of tRNA, e.g., anticodon stem
 
 Read: Synonymous with merged paired-end tRNA-seq read oriented 5'->3'
 
@@ -45,7 +45,7 @@ Unique sequence: Set of dereplicated merged tRNA-seq paired-end reads
 Nontemplated nucleotide: Artifact typically added to the 5' end of a read in reverse transcription
 
 Trimmed sequence: Set of unique sequences that are identical after trimming sequence extensions 5'
-    and 3' of the acceptor stem (e.g., nontemplated 5' nucleotides, 3'-CCA acceptor)
+    and 3' of the discriminator nucleotide, e.g., nontemplated 5' nucleotides and 3'-CCA acceptor
 
 Normalized sequence: The longest sequence of a set of trimmed sequences, with shorter sequences
     being tRNA fragment subsequences
@@ -56,7 +56,7 @@ Nonspecific sequence: In contrast to a specific sequence, a trimmed sequence (or
 
 Mapped fragment: Sequence without a feature profile that maps to a normalized sequence and may
     include extra nucleotides beyond the trimmed 5' end of the normalized sequence but not
-    nucleotides in the trimmed 3' end (acceptor) of the normalized sequence
+    nucleotides in the trimmed 3' terminus of the normalized sequence
 
 Modified sequence: Set of normalized sequences differing by potential modification-induced mutations
 """
@@ -113,6 +113,7 @@ pp = terminal.pretty_print
 
 THREEPRIME_VARIANTS = constants.THREEPRIME_VARIANTS
 
+ALL_NTS = tuple(constants.nucleotides)
 UNAMBIG_NTS = ('A', 'C', 'G', 'T')
 NT_INT_DICT = {nt: i for i, nt in enumerate(UNAMBIG_NTS, start=1)}
 INT_NT_DICT = {i: nt for i, nt in enumerate(UNAMBIG_NTS, start=1)}
@@ -149,7 +150,7 @@ class UniqueProfileSequence(UniqueSequence):
         'anticodon_string',
         'anticodon_aa',
         'contains_anticodon',
-        'acceptor_length',
+        'threeprime_terminus_length',
         'num_conserved',
         'num_unconserved',
         'num_paired',
@@ -174,7 +175,7 @@ class UniqueProfileSequence(UniqueSequence):
         self.anticodon_string = anticodon = profile.anticodon_seq
         self.anticodon_aa = profile.anticodon_aa if profile.anticodon_aa else None
         self.contains_anticodon = True if anticodon else False
-        self.acceptor_length = len(profile.acceptor_variant_string)
+        self.threeprime_terminus_length = len(profile.threeprime_terminus_seq)
         self.num_conserved = profile.num_conserved
         self.num_unconserved = profile.num_unconserved
         self.num_paired = profile.num_paired
@@ -247,7 +248,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.anticodon_string = replacement_info_dict['anticodon_string']
         self.anticodon_aa = replacement_info_dict['anticodon_aa']
         self.contains_anticodon = replacement_info_dict['contains_anticodon']
-        self.acceptor_length = uniq_seq_length - replacement_info_dict['trimmed_seq_stop_in_uniq_seq']
+        self.threeprime_terminus_length = uniq_seq_length - replacement_info_dict['trimmed_seq_stop_in_uniq_seq']
         self.num_conserved = replacement_info_dict['num_conserved']
         self.num_unconserved = replacement_info_dict['num_unconserved']
         self.num_paired = replacement_info_dict['num_paired']
@@ -265,7 +266,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
                                   unpaired_tuple[2],
                                   unpaired_tuple[3]))
         self.unpaired_info = unpaired_info
-        self.profiled_seq_length = replacement_info_dict['acceptorless_profiled_seq_length'] + uniq_seq.acceptor_length
+        self.profiled_seq_length = replacement_info_dict['profiled_seq_without_terminus_length'] + uniq_seq.threeprime_terminus_length
         self.extra_fiveprime_length = uniq_seq_length - self.profiled_seq_length
         self.trimmed_seq_represent_name = replacement_info_dict['trimmed_seq_represent_name']
 
@@ -296,8 +297,8 @@ class TrimmedSequence(object):
     E. coli tRNA-Ala-GGC-1-1
      GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA
 
-    This collapses to the following trimmed sequence, removing the acceptor (the acceptor happens to
-    be genomic rather than post-transcriptionally added in this example, but it doesn't matter):
+    This collapses to the following trimmed sequence, removing the 3' terminus (the acceptor happens
+    to be genomic rather than post-transcriptionally added in this example, but it doesn't matter):
      GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
 
     Examples of possible profiled reads that collapse to this sequence:
@@ -339,7 +340,7 @@ class TrimmedFullProfileSequence(TrimmedSequence):
         'feature_start_indices',
         'feature_stop_indices',
         'contains_anticodon',
-        'read_acceptor_variant_count_dict',
+        'read_threeprime_terminus_count_dict',
         'has_complete_feature_set',
         'has_his_g',
         'num_extrapolated_fiveprime_nts',
@@ -352,7 +353,7 @@ class TrimmedFullProfileSequence(TrimmedSequence):
         super().__init__(seq_string, uniq_seqs)
 
         # The representative unique sequence is chosen as follows:
-        # 1. Most abundant full-length tRNA without extra 5' bases, ignoring the acceptor sequence, OR
+        # 1. Most abundant full-length tRNA without extra 5' bases, ignoring the 3' terminus sequence, OR
         # 2. Most abundant full-length tRNA with extra 5' bases, OR
         # 3. Most abundant 3' tRNA fragment
         # Sort unique sequences such that the first sequence is the most abundant+longest and the
@@ -362,7 +363,7 @@ class TrimmedFullProfileSequence(TrimmedSequence):
             if uniq_seqs[-1].extra_fiveprime_length == 0:
                 # If the first unique sequence has extra 5' nucleotides and the last has none, then
                 # the last sequence and others without extra 5' nucleotides must be a full-length
-                # tRNA (ignoring the acceptor). Therefore, select the most abundant of these
+                # tRNA (ignoring the 3' terminus). Therefore, select the most abundant of these
                 # full-length tRNAs with extra 5' nucleotides as the representative sequence.
                 self.represent_uniq_seq = represent_uniq_seq = sorted(uniq_seqs, key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, uniq_seq.read_count, uniq_seq.represent_name))[-1]
             else:
@@ -375,7 +376,7 @@ class TrimmedFullProfileSequence(TrimmedSequence):
             uniq_seq.trimmed_seq_represent_name = represent_name
 
         # Assume that the feature profile indices of the representative unique sequence are the same
-        # as the other unique sequences. The acceptor is the last feature in the profile and not
+        # as the other unique sequences. The 3' terminus is the last feature in the profile and not
         # part of the trimmed sequence.
         self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
         self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
@@ -384,15 +385,13 @@ class TrimmedFullProfileSequence(TrimmedSequence):
         self.has_his_g = represent_uniq_seq.has_his_g
         self.num_extrapolated_fiveprime_nts = represent_uniq_seq.num_extrapolated_fiveprime_nts
 
-        # Find the number or reads containing each sequence variant 3' of the discriminator that is
-        # collapsed into the trimmed sequence. There is a known number of possible 3' variants. Each
-        # variant is counted though it may not be represented in the trimmed sequence.
-        read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        read_threeprime_terminus_count_dict = defaultdict(int)
         for uniq_seq in self.uniq_seqs:
-            if uniq_seq.acceptor_length:
-                acceptor_seq_string = uniq_seq.seq_string[-uniq_seq.acceptor_length: ]
-                read_acceptor_variant_count_dict[acceptor_seq_string] += uniq_seq.read_count
-        self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
+            if uniq_seq.threeprime_terminus_length:
+                read_threeprime_terminus_count_dict[uniq_seq.seq_string[-uniq_seq.threeprime_terminus_length: ]] += uniq_seq.read_count
+            else:
+                read_threeprime_terminus_count_dict[''] += uniq_seq.read_count
+        self.read_threeprime_terminus_count_dict = read_threeprime_terminus_count_dict
 
         uniq_with_extra_fiveprime_count = 0
         read_with_extra_fiveprime_count = 0
@@ -418,7 +417,7 @@ class TrimmedTruncatedProfileSequence(TrimmedSequence):
         'feature_start_indices',
         'feature_stop_indices',
         'contains_anticodon',
-        'read_acceptor_variant_count_dict',
+        'read_threeprime_terminus_count_dict',
         'trunc_profile_index'
     )
 
@@ -433,21 +432,19 @@ class TrimmedTruncatedProfileSequence(TrimmedSequence):
             uniq_seq.trimmed_seq_represent_name = represent_name
 
         # Assume that the feature profile indices of the representative unique sequence are the same
-        # as the other unique sequences. The acceptor is the last feature in the profile and not
+        # as the other unique sequences. The 3' terminus is the last feature in the profile and not
         # part of the trimmed sequence.
         self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
         self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
         self.contains_anticodon = represent_uniq_seq.contains_anticodon
 
-        # Find the number or reads containing each sequence variant 3' of the discriminator that is
-        # collapsed into the trimmed sequence. There is a known number of possible 3' variants. Each
-        # variant is counted though it may not be represented in the trimmed sequence.
-        read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        read_threeprime_terminus_count_dict = defaultdict(int)
         for uniq_seq in self.uniq_seqs:
-            if uniq_seq.acceptor_length:
-                acceptor_seq_string = uniq_seq.seq_string[-uniq_seq.acceptor_length: ]
-                read_acceptor_variant_count_dict[acceptor_seq_string] += uniq_seq.read_count
-        self.read_acceptor_variant_count_dict = read_acceptor_variant_count_dict
+            if uniq_seq.threeprime_terminus_length:
+                read_threeprime_terminus_count_dict[uniq_seq.seq_string[-uniq_seq.threeprime_terminus_length: ]] += uniq_seq.read_count
+            else:
+                read_threeprime_terminus_count_dict[''] += uniq_seq.read_count
+        self.read_threeprime_terminus_count_dict = read_threeprime_terminus_count_dict
 
         self.trunc_profile_index = represent_uniq_seq.trunc_profile_index
 
@@ -597,8 +594,8 @@ class NormalizedFullProfileSequence(NormalizedSequence):
         'nonspecific_mapped_read_count',
         'specific_long_fiveprime_extension_dict',
         'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_acceptor_variant_count_dict',
-        'nonspecific_read_acceptor_variant_count_dict'
+        'specific_read_threeprime_terminus_count_dict',
+        'nonspecific_read_threeprime_terminus_count_dict'
     )
 
     def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
@@ -628,8 +625,8 @@ class NormalizedFullProfileSequence(NormalizedSequence):
         nonspecific_read_with_extra_fiveprime_count = 0
         specific_long_fiveprime_extension_dict = defaultdict(int)
         nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        specific_read_threeprime_terminus_count_dict = defaultdict(int)
+        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
 
         for trimmed_seq in self.trimmed_seqs:
             if len(trimmed_seq.norm_seq_represent_names) == 1:
@@ -639,9 +636,8 @@ class NormalizedFullProfileSequence(NormalizedSequence):
                     for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
                         specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
                 else:
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                    for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                        specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
                     if not isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
                         specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
@@ -652,9 +648,8 @@ class NormalizedFullProfileSequence(NormalizedSequence):
                     nonspecific_mapped_read_count += trimmed_seq.read_count
                     nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
                 else:
-                    for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                        if read_count > 0:
-                            nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                    for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                        nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
                     # Nonspecific, unlike specific, profiled sequences can have 5' sequence
                     # extensions, as profiled sequences with 5' extensions would span the length of
@@ -670,8 +665,8 @@ class NormalizedFullProfileSequence(NormalizedSequence):
         self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
         self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
         self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
-        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
+        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
 
 
 class NormalizedTruncatedProfileSequence(NormalizedSequence):
@@ -681,8 +676,8 @@ class NormalizedTruncatedProfileSequence(NormalizedSequence):
         'feature_start_indices',
         'feature_stop_indices',
         'trunc_profile_index',
-        'specific_read_acceptor_variant_count_dict',
-        'nonspecific_read_acceptor_variant_count_dict'
+        'specific_read_threeprime_terminus_count_dict',
+        'nonspecific_read_threeprime_terminus_count_dict'
     )
 
     def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
@@ -693,19 +688,17 @@ class NormalizedTruncatedProfileSequence(NormalizedSequence):
         self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
         self.trunc_profile_index = represent_trimmed_seq.trunc_profile_index
 
-        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        specific_read_threeprime_terminus_count_dict = defaultdict(int)
+        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
         for trimmed_seq in self.trimmed_seqs:
             if len(trimmed_seq.norm_seq_represent_names) == 1:
-                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if read_count > 0:
-                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                    specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
             else:
-                for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if read_count > 0:
-                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
-        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
-        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+                for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                    nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
+        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
+        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
 
 
 class NormalizedDeletionSequence(NormalizedSequence):
@@ -730,8 +723,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
         'nonspecific_mapped_read_count',
         'specific_long_fiveprime_extension_dict',
         'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_acceptor_variant_count_dict',
-        'nonspecific_read_acceptor_variant_count_dict'
+        'specific_read_threeprime_terminus_count_dict',
+        'nonspecific_read_threeprime_terminus_count_dict'
     )
 
     # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
@@ -815,8 +808,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
         nonspecific_mapped_read_count = 0
         specific_long_fiveprime_extension_dict = defaultdict(int)
         nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        specific_read_threeprime_terminus_count_dict = defaultdict(int)
+        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
         for trimmed_seq, defunct_norm_seq in zip(self.trimmed_seqs, self.defunct_norm_seqs):
             trimmed_seq_length = len(trimmed_seq.seq_string)
             trimmed_seq_read_count = trimmed_seq.read_count
@@ -891,9 +884,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
                     specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
                     if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
                         specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                for acceptor_seq_string, acceptor_variant_read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if acceptor_variant_read_count > 0:
-                        specific_read_acceptor_variant_count_dict[acceptor_seq_string] += acceptor_variant_read_count
+                for threeprime_terminus_seq_string, threeprime_terminus_read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                    specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += threeprime_terminus_read_count
             else:
                 nonspecific_read_count += trimmed_seq_read_count
                 nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
@@ -905,9 +897,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
                     nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
                     if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
                         nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                for acceptor_seq_string, acceptor_variant_read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                    if acceptor_variant_read_count > 0:
-                        nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += acceptor_variant_read_count
+                for threeprime_terminus_seq_string, threeprime_terminus_read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                    nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += threeprime_terminus_read_count
 
         # Record the new start and stop positions of the trimmed sequences.
         self.start_positions = start_positions
@@ -926,8 +917,8 @@ class NormalizedDeletionSequence(NormalizedSequence):
         self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
         self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
         self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
-        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
+        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
 
         # Store a uniqued list of defunct normalized sequences.
         self.defunct_norm_seqs = derep_defunct_norm_seqs
@@ -988,8 +979,8 @@ class ModifiedSequence(object):
         'nonspecific_read_with_extra_fiveprime_count',
         'specific_long_fiveprime_extension_dict',
         'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_acceptor_variant_count_dict',
-        'nonspecific_read_acceptor_variant_count_dict',
+        'specific_read_threeprime_terminus_count_dict',
+        'nonspecific_read_threeprime_terminus_count_dict',
         'specific_covs',
         'nonspecific_covs',
         'mean_specific_cov',
@@ -1023,8 +1014,8 @@ class ModifiedSequence(object):
         self.nonspecific_read_with_extra_fiveprime_count = None
         self.specific_long_fiveprime_extension_dict = None
         self.nonspecific_long_fiveprime_extension_dict = None
-        self.specific_read_acceptor_variant_count_dict = None
-        self.nonspecific_read_acceptor_variant_count_dict = None
+        self.specific_read_threeprime_terminus_count_dict = None
+        self.nonspecific_read_threeprime_terminus_count_dict = None
         self.specific_covs = None
         self.nonspecific_covs = None
         self.mean_specific_cov = None
@@ -1057,8 +1048,8 @@ class ModifiedSequence(object):
         nonspecific_read_with_extra_fiveprime_count = 0
         specific_long_fiveprime_extension_dict = defaultdict(int)
         nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
-        nonspecific_read_acceptor_variant_count_dict = OrderedDict([(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANTS])
+        specific_read_threeprime_terminus_count_dict = defaultdict(int)
+        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
 
         mod_seq_len = len(norm_seqs_without_dels[0].seq_string)
         norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
@@ -1112,9 +1103,8 @@ class ModifiedSequence(object):
                     if trimmed_seq_class_name == 'TrimmedMappedSequence':
                         specific_mapped_read_count += trimmed_seq.read_count
                     else:
-                        for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                            if read_count > 0:
-                                specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                        for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                            specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
                     if trimmed_seq_class_name != 'TrimmedTruncatedProfileSequence':
                         specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
@@ -1137,9 +1127,8 @@ class ModifiedSequence(object):
                         for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
                             nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
                     else:
-                        for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-                            if read_count > 0:
-                                nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+                        for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                            nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
                     norm_seq_nonspecific_covs[i, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
 
@@ -1237,9 +1226,8 @@ class ModifiedSequence(object):
         #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
         #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
 
-        #             for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-        #                 if read_count > 0:
-        #                     specific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+        #             for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+        #                 specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
         #             norm_seq_specific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
         #             for del_pos in del_config:
@@ -1261,9 +1249,8 @@ class ModifiedSequence(object):
         #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
         #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
 
-        #             for acceptor_seq_string, read_count in trimmed_seq.read_acceptor_variant_count_dict.items():
-        #                 if read_count > 0:
-        #                     nonspecific_read_acceptor_variant_count_dict[acceptor_seq_string] += read_count
+        #             for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+        #                 nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
 
         #             norm_seq_nonspecific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
         #             for del_pos in del_config:
@@ -1280,8 +1267,8 @@ class ModifiedSequence(object):
         self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
         self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
         self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_acceptor_variant_count_dict = specific_read_acceptor_variant_count_dict
-        self.nonspecific_read_acceptor_variant_count_dict = nonspecific_read_acceptor_variant_count_dict
+        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
+        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
         self.specific_covs = norm_seq_specific_covs.sum(0)
         self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
         self.mean_specific_cov = self.specific_covs.mean()
@@ -1353,6 +1340,7 @@ class TRNASeqDataset(object):
         self.write_checkpoints = A('write_checkpoints')
         self.load_checkpoint = A('load_checkpoint')
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
+        self.threeprime_termini_param = A('threeprime_termini')
         self.min_length_of_long_fiveprime_extension = A('min_length_long_fiveprime')
         TrimmedSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         NormalizedDeletionSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
@@ -1478,8 +1466,9 @@ class TRNASeqDataset(object):
             # Reach this point either by starting from the beginning of the workflow
             # or loading the 'profile' checkpoint.
 
-            # Recover 3' tRNA sequences lacking an acceptor sequence.
-            self.threeprime_dereplicate_acceptorless_sequences()
+            if '' in self.threeprime_termini:
+                # Recover 3' tRNA sequences lacking a 3' terminus.
+                self.threeprime_dereplicate_sequences_without_terminus()
 
             # Map fragments derived from the interior and 5' end of tRNA.
             self.map_fragments()
@@ -1543,6 +1532,9 @@ class TRNASeqDataset(object):
                               "`--num-threads` wants a value greater than 0. "
                               f"Last we checked, {self.num_threads} is not greater than 0.")
 
+        self.threeprime_termini = self.threeprime_termini_sanity_check()
+        trnaidentifier.TRNAFeatureParameterizer.set_threeprime_termini(self.threeprime_termini)
+
         self.deletion_start_stop_sanity_check()
 
         self.parameterize_deletions()
@@ -1589,6 +1581,29 @@ class TRNASeqDataset(object):
                               f"with `--load-checkpoint {self.load_checkpoint}` are missing: {', '.join(missing_intermed_files)}. "
                               "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
                               "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
+
+
+    def threeprime_termini_sanity_check(self):
+        """Check validity of provided tRNA 3' termini, returning a list of terminus strings."""
+        valid_threeprime_termini = []
+        invalid_threeprime_termini = []
+        for threeprime_terminus in self.threeprime_termini_param.split(','):
+            if threeprime_terminus == '_':
+                valid_threeprime_termini.append('')
+                continue
+
+            for nt in threeprime_terminus:
+                if nt not in ALL_NTS:
+                    invalid_threeprime_termini.append(threeprime_terminus)
+                    break
+            valid_threeprime_termini.append(threeprime_terminus)
+
+        if invalid_threeprime_termini:
+            raise ConfigError(f"3' termini can consist of A, C, G, T, and N (any nucleotide) "
+                              "or the discriminator nucleotide with no extension, symbolized by a single underscore, \"_\". "
+                              f"The following invalid 3' sequence parameterizations were provided: {', '.join(invalid_threeprime_termini)}")
+
+        return valid_threeprime_termini
 
 
     def deletion_start_stop_sanity_check(self):
@@ -1683,8 +1698,7 @@ class TRNASeqDataset(object):
 
         get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
-            for param_tuple in parameterizer.list_accessible_param_tuples(pretty=True):
-                f.write(get_summary_line(param_tuple[0], param_tuple[1]))
+            f.write(get_summary_line("Allowed 3' termini", ",".join(self.threeprime_termini)))
             f.write(get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
 
 
@@ -1860,10 +1874,10 @@ class TRNASeqDataset(object):
         unique profiled sequences."""
         names = [uniq_seq.represent_name for uniq_seq in uniq_seqs]
         if trimmed_seq_class == TrimmedFullProfileSequence:
-            trimmed_seq_strings = [uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
+            trimmed_seq_strings = [uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length]
                                    for uniq_seq in uniq_seqs]
         elif trimmed_seq_class == TrimmedTruncatedProfileSequence:
-            trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.acceptor_length]
+            trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length]
                                    for uniq_seq in uniq_seqs]
 
         clusters = Dereplicator(names, trimmed_seq_strings, extras=uniq_seqs).full_length_dereplicate()
@@ -2050,7 +2064,7 @@ class TRNASeqDataset(object):
                                                           unpaired_tuple[2],
                                                           unpaired_tuple[3]))
         replacement_info_dict['unpaired_info_from_trimmed_threeprime'] = unpaired_info_from_trimmed_threeprime
-        replacement_info_dict['acceptorless_profiled_seq_length'] = short_uniq_seq.profiled_seq_length - short_uniq_seq.acceptor_length
+        replacement_info_dict['profiled_seq_without_terminus_length'] = short_uniq_seq.profiled_seq_length - short_uniq_seq.threeprime_terminus_length
 
         trimmed_trna_seq_dict.pop(short_trimmed_seq.represent_name)
         uniq_seqs = short_trimmed_seq.uniq_seqs
@@ -2171,7 +2185,7 @@ class TRNASeqDataset(object):
         # anticodon, but the anticodon may still be in the sequence. The presence of the anticodon
         # is therefore inferred from the longest trimmed tRNA sequence in the matching normalized
         # sequence.
-        norm_trna_seq_anticodon_dict = {} # This saves time finding the position of the anticodon relative to the acceptor in normalized sequences
+        norm_trna_seq_anticodon_dict = {} # This saves time finding the position of the anticodon relative to the 3' terminus in normalized sequences
         for trimmed_trunc_seq_name, norm_trna_seqs in trunc_seq_norm_seq_dict.items():
             trimmed_trunc_seq = trimmed_trunc_seq_dict.pop(trimmed_trunc_seq_name)
             # The sequence with a truncated tRNA profile has been confirmed as tRNA, so transfer the
@@ -2195,7 +2209,7 @@ class TRNASeqDataset(object):
                     # found whether the truncated sequence contains the anticodon.
                     try:
                         # The position of the anticodon in the normalized sequence has already been found.
-                        anticodon_start_relative_to_acceptor = norm_trna_seq_anticodon_dict[norm_seq.represent_name]
+                        anticodon_start_relative_to_threeprime_terminus = norm_trna_seq_anticodon_dict[norm_seq.represent_name]
                     except KeyError:
                         try:
                             anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
@@ -2205,15 +2219,15 @@ class TRNASeqDataset(object):
                         if anticodon_loop_start > -1:
                             # The anticodon loop was profiled.
                             anticodon_start = anticodon_loop_start + 2
-                            # The position of the anticodon relative to the acceptor is a negative number.
-                            anticodon_start_relative_to_acceptor = anticodon_start - norm_seq.trimmed_seqs[0].uniq_seqs[0].feature_start_indices[-1]
+                            # The position of the anticodon relative to the 3' terminus is a negative number.
+                            anticodon_start_relative_to_threeprime_terminus = anticodon_start - norm_seq.trimmed_seqs[0].uniq_seqs[0].feature_start_indices[-1]
                         else:
                             # The anticodon loop was not profiled, indicated by a positive number.
-                            anticodon_start_relative_to_acceptor = 1
-                        norm_trna_seq_anticodon_dict[norm_seq.represent_name] = anticodon_start_relative_to_acceptor
-                    if anticodon_start_relative_to_acceptor == 1:
+                            anticodon_start_relative_to_threeprime_terminus = 1
+                        norm_trna_seq_anticodon_dict[norm_seq.represent_name] = anticodon_start_relative_to_threeprime_terminus
+                    if anticodon_start_relative_to_threeprime_terminus == 1:
                         continue
-                    if trimmed_trunc_seq_length + anticodon_start_relative_to_acceptor >= 0:
+                    if trimmed_trunc_seq_length + anticodon_start_relative_to_threeprime_terminus >= 0:
                         trimmed_trunc_seq.contains_anticodon = True
                         for uniq_seq in trimmed_trunc_seq.uniq_seqs:
                             uniq_seq.contains_anticodon = True
@@ -2285,15 +2299,15 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def threeprime_dereplicate_acceptorless_sequences(self):
-        """Find tRNA sequences missing a 3'-acceptor sequence variant. Sequences required an
-        acceptor sequence variant to have been profiled as tRNA. Unique non-tRNA sequences are
+    def threeprime_dereplicate_sequences_without_terminus(self):
+        """Find tRNA sequences missing a 3' terminus. Sequences required an
+        3' terminus to have been profiled as tRNA. Unique non-tRNA sequences are
         searched against normalized tRNA sequences. Non-tRNA is recovered as tRNA when it is a 3'
         subsequence of normalized tRNA or is longer than normalized tRNA sequences with a complete
         feature profile and thus is shown to have a 5' extension. Recovered sequences each generate
         a `TrimmedMappedSequence` object."""
         start_time = time.time()
-        self.progress.new("Dereplicating acceptorless tRNA seqs")
+        self.progress.new("Dereplicating tRNA seqs ending in discriminator nt")
         self.progress.update("...")
 
         # 3'-dereplicate normalized tRNA sequences and unique non-tRNA sequences.
@@ -2302,8 +2316,8 @@ class TRNASeqDataset(object):
         extras = []
         # The normalized sequences are added first to the dereplicator so that they appear first in
         # the clusters. This allows unique non-tRNA sequences that are identical to the normalized
-        # sequence (due to prior trimming of the acceptor variant from the normalized sequence) to
-        # always be recovered.
+        # sequence (due to prior trimming of the 3' terminus from the normalized sequence) to always
+        # be recovered.
         for norm_seq_represent_name, norm_seq in self.norm_trna_seq_dict.items():
             names.append(norm_seq_represent_name)
             reversed_seq_strings.append(norm_seq.seq_string[::-1])
@@ -2407,8 +2421,9 @@ class TRNASeqDataset(object):
 
     def map_fragments(self):
         """Map unprofiled tRNA fragments to longer profiled tRNA sequences. Fragments only missing a
-        3' acceptor variant were already found by `threeprime_dereplicate_acceptorless_sequences`
-        using an efficient shortcut.
+        3' terminus were already found by mapping with
+        `threeprime_dereplicate_sequences_without_terminus` using an efficient shortcut or by profiling
+        if '' was an accepted 3' terminus.
 
         EXAMPLE:
         Normalized tRNA:                 (GT)TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
@@ -3643,7 +3658,7 @@ class TRNASeqDataset(object):
         trna_reads_with_threeprime_cca = 0
         trna_reads_with_threeprime_cc = 0
         trna_reads_with_threeprime_c = 0
-        trna_reads_with_threeprime_ccan_ccann = 0
+        trna_reads_with_other_threeprime_termini = 0
         profiled_trna_reads_containing_anticodon = 0
         full_length_trna_reads = 0
         trna_reads_with_extrapolated_fiveprime_feature = 0
@@ -3655,7 +3670,7 @@ class TRNASeqDataset(object):
         uniq_trna_seqs_with_threeprime_cca = 0
         uniq_trna_seqs_with_threeprime_cc = 0
         uniq_trna_seqs_with_threeprime_c = 0
-        uniq_trna_seqs_with_threeprime_ccan_ccann = 0
+        uniq_trna_seqs_with_other_threeprime_termini = 0
         uniq_trna_seqs_containing_anticodon = 0
         full_length_uniq_seqs = 0
         uniq_seqs_with_extrapolated_fiveprime_feature = 0
@@ -3686,20 +3701,23 @@ class TRNASeqDataset(object):
             if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
                 has_full_profile = False
 
-            if uniq_trna_seq.acceptor_length == 3:
-                trna_reads_with_threeprime_cca += read_count
-                uniq_trna_seqs_with_threeprime_cca += 1
-            elif uniq_trna_seq.acceptor_length == 2:
-                trna_reads_with_threeprime_cc += read_count
-                uniq_trna_seqs_with_threeprime_cc += 1
-            elif uniq_trna_seq.acceptor_length == 1:
-                trna_reads_with_threeprime_c += read_count
-                uniq_trna_seqs_with_threeprime_c += 1
-            elif uniq_trna_seq.acceptor_length == 4 or uniq_trna_seq.acceptor_length == 5:
-                trna_reads_with_threeprime_ccan_ccann += read_count
-                uniq_trna_seqs_with_threeprime_ccan_ccann += 1
+            if uniq_trna_seq.threeprime_terminus_length:
+                threeprime_terminus = uniq_trna_seq.seq_string[-uniq_trna_seq.threeprime_terminus_length: ]
+                if threeprime_terminus == 'CCA':
+                    trna_reads_with_threeprime_cca += read_count
+                    uniq_trna_seqs_with_threeprime_cca += 1
+                elif threeprime_terminus == 'CC':
+                    trna_reads_with_threeprime_cc += read_count
+                    uniq_trna_seqs_with_threeprime_cc += 1
+                elif threeprime_terminus == 'C':
+                    trna_reads_with_threeprime_c += read_count
+                    uniq_trna_seqs_with_threeprime_c += 1
+                else:
+                    trna_reads_with_other_threeprime_termini += read_count
+                    uniq_trna_seqs_with_other_threeprime_termini += 1
             else:
-                raise ConfigError("Acceptor variants are expected to be 1-5 nucleotides in length.")
+                trna_reads_with_other_threeprime_termini += read_count
+                uniq_trna_seqs_with_other_threeprime_termini += 1
 
             if uniq_trna_seq.contains_anticodon:
                 profiled_trna_reads_containing_anticodon += read_count
@@ -3775,18 +3793,23 @@ class TRNASeqDataset(object):
             if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
                 has_full_profile = False
 
-            if uniq_trna_seq.acceptor_length == 3:
-                trna_reads_with_threeprime_cca -= read_count
-                uniq_trna_seqs_with_threeprime_cca -= 1
-            elif uniq_trna_seq.acceptor_length == 2:
-                trna_reads_with_threeprime_cc -= read_count
-                uniq_trna_seqs_with_threeprime_cc -= 1
-            elif uniq_trna_seq.acceptor_length == 1:
-                trna_reads_with_threeprime_c -= read_count
-                uniq_trna_seqs_with_threeprime_c -= 1
-            elif uniq_trna_seq.acceptor_length == 4 or uniq_trna_seq.acceptor_length == 5:
-                trna_reads_with_threeprime_ccan_ccann -= read_count
-                uniq_trna_seqs_with_threeprime_ccan_ccann -= 1
+            if uniq_trna_seq.threeprime_terminus_length:
+                threeprime_terminus = uniq_trna_seq.seq_string[-uniq_trna_seq.threeprime_terminus_length: ]
+                if threeprime_terminus == 'CCA':
+                    trna_reads_with_threeprime_cca -= read_count
+                    uniq_trna_seqs_with_threeprime_cca -= 1
+                elif threeprime_terminus == 'CC':
+                    trna_reads_with_threeprime_cc -= read_count
+                    uniq_trna_seqs_with_threeprime_cc -= 1
+                elif threeprime_terminus == 'C':
+                    trna_reads_with_threeprime_c -= read_count
+                    uniq_trna_seqs_with_threeprime_c -= 1
+                else:
+                    trna_reads_with_other_threeprime_termini -= read_count
+                    uniq_trna_seqs_with_other_threeprime_termini -= 1
+            else:
+                trna_reads_with_other_threeprime_termini -= read_count
+                uniq_trna_seqs_with_other_threeprime_termini -= 1
 
             if uniq_trna_seq.contains_anticodon:
                 profiled_trna_reads_containing_anticodon -= read_count
@@ -3911,7 +3934,7 @@ class TRNASeqDataset(object):
         set_meta_value('trna_reads_with_threeprime_cca', trna_reads_with_threeprime_cca)
         set_meta_value('trna_reads_with_threeprime_cc', trna_reads_with_threeprime_cc)
         set_meta_value('trna_reads_with_threeprime_c', trna_reads_with_threeprime_c)
-        set_meta_value('trna_reads_with_threeprime_ccan_ccann', trna_reads_with_threeprime_ccan_ccann)
+        set_meta_value('trna_reads_with_other_threeprime_termini', trna_reads_with_other_threeprime_termini)
         set_meta_value('profiled_trna_reads_containing_anticodon', profiled_trna_reads_containing_anticodon)
         set_meta_value('full_length_trna_reads', full_length_trna_reads)
         set_meta_value('trna_reads_with_extrapolated_fiveprime_feature', trna_reads_with_extrapolated_fiveprime_feature)
@@ -3928,7 +3951,7 @@ class TRNASeqDataset(object):
         set_meta_value('unique_trna_seqs_with_threeprime_cca', uniq_trna_seqs_with_threeprime_cca)
         set_meta_value('unique_trna_seqs_with_threeprime_cc', uniq_trna_seqs_with_threeprime_cc)
         set_meta_value('unique_trna_seqs_with_threeprime_c', uniq_trna_seqs_with_threeprime_c)
-        set_meta_value('unique_trna_seqs_with_threeprime_ccan_ccann', uniq_trna_seqs_with_threeprime_ccan_ccann)
+        set_meta_value('unique_trna_seqs_with_other_threeprime_termini', uniq_trna_seqs_with_other_threeprime_termini)
         set_meta_value('unique_trna_seqs_containing_anticodon', uniq_trna_seqs_containing_anticodon)
         set_meta_value('full_length_unique_seqs', full_length_uniq_seqs)
         set_meta_value('unique_seqs_with_extrapolated_fiveprime_feature', uniq_seqs_with_extrapolated_fiveprime_feature)
@@ -3967,7 +3990,7 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Profiled reads ending 3'-CCA", trna_reads_with_threeprime_cca))
             f.write(get_summary_line("Profiled reads ending 3'-CC", trna_reads_with_threeprime_cc))
             f.write(get_summary_line("Profiled reads ending 3'-C", trna_reads_with_threeprime_c))
-            f.write(get_summary_line("Profiled reads ending 3'-CCAN/CCANN", trna_reads_with_threeprime_ccan_ccann))
+            f.write(get_summary_line("Profiled reads ending in other 3' termini", trna_reads_with_other_threeprime_termini))
             f.write(get_summary_line("Profiled reads containing anticodon", profiled_trna_reads_containing_anticodon))
             f.write(get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_reads))
             if anvio.DEBUG:
@@ -3986,7 +4009,7 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Unique tRNA seqs ending 3'-CCA", uniq_trna_seqs_with_threeprime_cca))
             f.write(get_summary_line("Unique tRNA seqs ending 3'-CC", uniq_trna_seqs_with_threeprime_cc))
             f.write(get_summary_line("Unique tRNA seqs ending 3'-C", uniq_trna_seqs_with_threeprime_c))
-            f.write(get_summary_line("Unique tRNA seqs ending 3'-CCAN/CCANNs", uniq_trna_seqs_with_threeprime_ccan_ccann))
+            f.write(get_summary_line("Unique tRNA seqs ending in other 3' termini", uniq_trna_seqs_with_other_threeprime_termini))
             f.write(get_summary_line("Unique tRNA seqs containing anticodon", uniq_trna_seqs_containing_anticodon))
             f.write(get_summary_line("Unique tRNA seqs spanning acceptor stem", full_length_uniq_seqs))
             if anvio.DEBUG:
@@ -4052,7 +4075,7 @@ class TRNASeqDataset(object):
                  uniq_seq.num_unpaired,
                  num_extrapolated_fiveprime_nts,
                  extra_fiveprime_length,
-                 uniq_seq.acceptor_length)
+                 uniq_seq.threeprime_terminus_length)
                 # When tRNA features are not found at the 5' end of the read,
                 # the start and stop positions of these features also are not found.
                 + tuple([None for _ in range((len(self.TRNA_FEATURE_NAMES) - len(uniq_seq.feature_start_indices)))]) * 2
@@ -4181,6 +4204,13 @@ class TRNASeqDataset(object):
                 raise ConfigError(f"An object of class, {class_name}, is not recognized as a trimmed tRNA sequence. "
                                   f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
 
+            threeprime_termini = ''
+            threeprime_terminus_read_counts = ''
+            if id_info != 'mapped':
+                for threeprime_terminus_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
+                    threeprime_termini += threeprime_terminus_string + ','
+                    threeprime_terminus_read_counts += str(read_count) + ','
+
             trimmed_table_entries.append(
                 (trimmed_seq.represent_name,
                  len(trimmed_seq.uniq_seqs),
@@ -4189,8 +4219,9 @@ class TRNASeqDataset(object):
                  trimmed_seq.seq_string,
                  len(trimmed_seq.norm_seq_represent_names),
                  trimmed_seq.uniq_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
-                 trimmed_seq.read_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0)
-                + (tuple([v for v in trimmed_seq.read_acceptor_variant_count_dict.values()]) if id_info != 'mapped' else no_threeprime_variants)
+                 trimmed_seq.read_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
+                 threeprime_termini,
+                 threeprime_terminus_read_counts)
             )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -4231,6 +4262,18 @@ class TRNASeqDataset(object):
                     nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
                     nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
 
+                specific_threeprime_termini = ''
+                specific_threeprime_terminus_read_counts = ''
+                for threeprime_terminus_string, read_count in norm_seq.specific_read_threeprime_terminus_count_dict.items():
+                    specific_threeprime_termini += threeprime_terminus_string + ','
+                    specific_threeprime_terminus_read_counts += str(read_count) + ','
+
+                nonspecific_threeprime_termini = ''
+                nonspecific_threeprime_terminus_read_counts = ''
+                for threeprime_terminus_string, read_count in norm_seq.nonspecific_read_threeprime_terminus_count_dict.items():
+                    nonspecific_threeprime_termini += threeprime_terminus_string + ','
+                    nonspecific_threeprime_terminus_read_counts += str(read_count) + ','
+
                 norm_table_entries.append(
                     (norm_seq.represent_name,
                     len(norm_seq.trimmed_seqs),
@@ -4249,9 +4292,11 @@ class TRNASeqDataset(object):
                     specific_long_fiveprime_extensions,
                     specific_long_fiveprime_extension_read_counts,
                     nonspecific_long_fiveprime_extensions,
-                    nonspecific_long_fiveprime_extension_read_counts)
-                    + tuple(norm_seq.specific_read_acceptor_variant_count_dict.values())
-                    + tuple(norm_seq.nonspecific_read_acceptor_variant_count_dict.values())
+                    nonspecific_long_fiveprime_extension_read_counts,
+                    specific_threeprime_termini,
+                    specific_threeprime_terminus_read_counts,
+                    nonspecific_threeprime_termini,
+                    nonspecific_threeprime_terminus_read_counts)
                 )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -4290,6 +4335,18 @@ class TRNASeqDataset(object):
                 nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
                 nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
 
+            specific_threeprime_termini = ''
+            specific_threeprime_terminus_read_counts = ''
+            for threeprime_terminus_string, read_count in mod_seq.specific_read_threeprime_terminus_count_dict.items():
+                specific_threeprime_termini += threeprime_terminus_string + ','
+                specific_threeprime_terminus_read_counts += str(read_count) + ','
+
+            nonspecific_threeprime_termini = ''
+            nonspecific_threeprime_terminus_read_counts = ''
+            for threeprime_terminus_string, read_count in mod_seq.nonspecific_read_threeprime_terminus_count_dict.items():
+                nonspecific_threeprime_termini += threeprime_terminus_string + ','
+                nonspecific_threeprime_terminus_read_counts += str(read_count) + ','
+
             mod_table_entries.append(
                 (mod_seq.represent_name,
                  mod_seq.mean_specific_cov,
@@ -4316,9 +4373,11 @@ class TRNASeqDataset(object):
                    specific_long_fiveprime_extensions,
                    specific_long_fiveprime_extension_read_counts,
                    nonspecific_long_fiveprime_extensions,
-                   nonspecific_long_fiveprime_extension_read_counts)
-                + tuple(mod_seq.specific_read_acceptor_variant_count_dict.values())
-                + tuple(mod_seq.nonspecific_read_acceptor_variant_count_dict.values())
+                   nonspecific_long_fiveprime_extension_read_counts,
+                   specific_threeprime_termini,
+                   specific_threeprime_terminus_read_counts,
+                   nonspecific_threeprime_termini,
+                   nonspecific_threeprime_terminus_read_counts)
             )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -4373,11 +4432,11 @@ class TRNASeqDataset(object):
 
                 represent_name = trimmed_seq.represent_name
                 for uniq_seq in sorted(trimmed_seq.uniq_seqs,
-                                       key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.acceptor_length)):
+                                       key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.threeprime_terminus_length)):
                     trimmed_file.write(represent_name + "\t"
                                        + uniq_seq.represent_name + "\t"
                                        + uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length] + "\t"
-                                       + uniq_seq.seq_string[len(uniq_seq.seq_string) - uniq_seq.acceptor_length: ] + "\t"
+                                       + uniq_seq.seq_string[len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length: ] + "\t"
                                        + str(uniq_seq.read_count) + "\n")
 
         self.progress.end()
