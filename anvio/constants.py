@@ -94,7 +94,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'threeprime_t_stem_sequence',
                       'threeprime_acceptor_stem_sequence',
                       'discriminator',
-                      'acceptor']
+                      'threeprime_terminus']
 TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
