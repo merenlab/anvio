@@ -1405,8 +1405,7 @@ class Profile(object):
             if hasattr(feature, 'conserved_status'):
                 component_start_pos = feature.start_pos
                 # Conserved nucleotides are indexed within the string "component" (substring).
-                for string_component_statuses, string_component in zip(
-                    feature.conserved_status, feature.string_components):
+                for string_component_statuses, string_component in zip(feature.conserved_status, feature.string_components):
                     for nt_pos, is_conserved, observed_nt, expected_nts in string_component_statuses:
                         # Avoid N padding in an extrapolated 5' feature.
                         if not is_conserved and observed_nt != 'N':
@@ -1604,8 +1603,7 @@ class Profiler(object):
                     # If the last profiled primary feature was the 5' strand of the acceptor stem,
                     # do not consider tRNA-His position 0 as the next unprofiled feature even if
                     # dealing with tRNA-His.
-                    if len(input_seq) - len(profile.profiled_seq) > self.max_length_dict[
-                        self.primary_feature_names[primary_feature_pos - 1]]:
+                    if len(input_seq) - len(profile.profiled_seq) > self.max_length_dict[self.primary_feature_names[primary_feature_pos - 1]]:
                         profile.is_predicted_trna = False
                         profile.trunc_profile_index = len(input_seq) - len(profile.profiled_seq)
         else:
@@ -1667,9 +1665,8 @@ class Profiler(object):
             features = []
 
         if feature_pos == len(self.threeprime_to_fiveprime_feature_classes):
-            # To reach this point,
-            # all tRNA features including the tRNA-His 5'-G must have been found,
-            # and the input sequence must extend 5' of that.
+            # To reach this point, all tRNA features including the tRNA-His 5'-G must have been
+            # found, and the input sequence must extend 5' of that.
             return (profiled_seq, # string in 5' to 3' direction
                     features, # listed in the 5' to 3' direction
                     num_conserved,
@@ -1681,8 +1678,8 @@ class Profiler(object):
                     len(unprofiled_seq)) # extra 5' nucleotides
 
         if not unprofiled_seq:
-            # To reach this point,
-            # the full length of the input sequence must have been profiled with tRNA features.
+            # To reach this point, the full length of the input sequence must have been profiled
+            # with tRNA features.
             return (profiled_seq,
                     features, # listed in the 5' to 3' direction
                     num_conserved,
@@ -1711,8 +1708,8 @@ class Profiler(object):
             make_stem = False
             make_arm = False
             if feature_class == TRNAHisPositionZero:
-                # Check for tRNA-His based on the anticodon sequence.
-                # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
+                # Check for tRNA-His based on the anticodon sequence. tRNA-His uniquely has an extra
+                # nucleotide (G) at the 5' end.
                 anticodon_string = features[-self.anticodon_loop_pos - 1].anticodon.string
                 try:
                     aa_string = ANTICODON_TO_AA[anticodon_string]
@@ -1939,8 +1936,8 @@ class Profiler(object):
         # 1. number of features identified (at most, sequence + stem + arm) (descending),
         # 2. number of unconserved + unpaired nucleotides (ascending),
         # 3. incompleteness of the last (most 5') feature (ascending).
-        # This sort also happens later for full sequence profiles,
-        # but this first sort is useful for seeking out and returning "flawless" mature tRNA.
+        # This sort also happens later for full sequence profiles, but this first sort is useful for
+        # seeking out and returning "flawless" mature tRNA.
         incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
         # Continue finding features in input sequences that have not been fully profiled --
         # do not recurse profile candidates in which the final feature was extrapolated.
@@ -2008,8 +2005,8 @@ class Profiler(object):
 
         if supported_profile_candidates:
             if has_profile_with_type_II_D_arm:
-                # Do not favor type II tRNA profiles with paired D stem positions 13 and 22 over
-                # profiles with those positions unpaired.
+                # Favor type II tRNA profiles with unpaired D stem positions 13 and 22 over
+                # profiles with the positions paired.
                 unpaired_positions_13_22_in_type_II_profiles = [
                     1 if p[1][-self.d_stem_pos - 1].unpaired_positions_13_22_in_type_II else 0
                     for p in supported_profile_candidates

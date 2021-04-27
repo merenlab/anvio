@@ -1409,12 +1409,12 @@ class TRNASeqDataset(object):
         }
         self.intermed_file_label_dict = {
             'uniq_trna_seq_dict': 'unique tRNA',
-            'uniq_trunc_seq_dict': 'unique sequences with a truncated feature profile',
+            'uniq_trunc_seq_dict': 'unique seqs with a truncated feature profile',
             'uniq_nontrna_seq_dict': 'unique non-tRNA',
             'trimmed_trna_seq_dict': 'trimmed tRNA',
-            'trimmed_trunc_seq_dict': 'trimmed sequences with a truncated feature profile',
+            'trimmed_trunc_seq_dict': 'trimmed seqs with a truncated feature profile',
             'norm_trna_seq_dict': 'normalized tRNA',
-            'norm_trunc_seq_dict': 'normalized sequences with a truncated feature profile'
+            'norm_trunc_seq_dict': 'normalized seqs with a truncated feature profile'
         }
 
         self.uniq_nontrna_seq_dict = {}
@@ -1683,7 +1683,7 @@ class TRNASeqDataset(object):
                        'description': self.descrip if self.descrip else '_No description is provided_',
                        'INDELs_profiled': not self.skip_INDEL_profiling}
         dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True).create(meta_values)
-        self.run.info("New tRNA-seq database", self.trnaseq_db_path, nl_after=1)
+        self.run.info("New tRNA-seq db", self.trnaseq_db_path, nl_after=1)
 
 
     def report_profiling_parameters(self):
@@ -1698,6 +1698,17 @@ class TRNASeqDataset(object):
 
         get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
+            for param_name, param_value in parameterizer.list_accessible_param_tuples(pretty=True):
+                if 'Conserved nucleotides' in param_name:
+                    f.write(get_summary_line(param_name.replace('Conserved nucleotides', "Conserved nts"), param_value))
+                    continue
+                elif 'Number allowed unconserved' in param_name:
+                    f.write(get_summary_line(param_name.replace('Number allowed unconserved', "Allowed number of unconserved nts"), param_value))
+                    continue
+                elif 'Number allowed unpaired' in param_name:
+                    f.write(get_summary_line(param_name.replace('Number allowed unpaired', "Allowed number of unpaired bps"), param_value))
+                    continue
+                f.write(get_summary_line(param_name, param_value))
             f.write(get_summary_line("Allowed 3' termini", ",".join(self.threeprime_termini)))
             f.write(get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
 
@@ -1730,13 +1741,13 @@ class TRNASeqDataset(object):
         with open(self.analysis_summary_path, 'a') as f:
             f.write(get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
             f.write(get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
-            f.write(get_summary_line("Fiveprime-most deletion start", self.fiveprimemost_del_start))
-            f.write(get_summary_line("Threeprime-most deletion start", self.threeprimemost_del_start))
-            f.write(get_summary_line("Fiveprime-most deletion start", self.threeprimemost_del_start))
-            f.write(get_summary_line("Threeprime-most deletion stop", self.threeprimemost_del_start))
-            f.write(get_summary_line("Max distinct deletions", self.max_distinct_dels))
-            f.write(get_summary_line("Min distance between deletions", self.min_dist_between_dels))
-            f.write(get_summary_line("Max deletion configurations", self.max_del_configs))
+            f.write(get_summary_line("5'-most del start", self.fiveprimemost_del_start))
+            f.write(get_summary_line("3'-most del start", self.threeprimemost_del_start))
+            f.write(get_summary_line("5'-most del start", self.threeprimemost_del_start))
+            f.write(get_summary_line("3'-most del stop", self.threeprimemost_del_start))
+            f.write(get_summary_line("Max distinct dels", self.max_distinct_dels))
+            f.write(get_summary_line("Min distance between dels", self.min_dist_between_dels))
+            f.write(get_summary_line("Max del configurations", self.max_del_configs))
 
 
     def get_summary_line(self, label, value, is_time_value=False, padding=68):
@@ -1816,12 +1827,12 @@ class TRNASeqDataset(object):
         with open(self.analysis_summary_path, 'a') as f:
             f.write(get_summary_line("Time elapsed profiling tRNA (min)", time.time() - start_time, is_time_value=True))
             f.write(get_summary_line("Reads processed", total_read_count))
-            f.write(get_summary_line("Unique sequences processed", total_uniq_count))
+            f.write(get_summary_line("Unique seqs processed", total_uniq_count))
 
         self.progress.end()
 
         self.run.info("Reads processed", total_read_count)
-        self.run.info("Unique sequences processed", total_uniq_count, nl_after=1)
+        self.run.info("Unique seqs processed", total_uniq_count, nl_after=1)
 
 
     def unique_reads(self):
@@ -1863,7 +1874,7 @@ class TRNASeqDataset(object):
             trimmed_trna_seq_dict[trimmed_seq.represent_name] = trimmed_seq
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed trimming profiled sequences (min)", time.time() - start_time, is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed trimming profiled seqs (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
@@ -1900,7 +1911,7 @@ class TRNASeqDataset(object):
             trimmed_trunc_seq_dict[trimmed_seq.represent_name] = trimmed_seq
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed trimming sequences with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed trimming seqs with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
@@ -2020,7 +2031,7 @@ class TRNASeqDataset(object):
             consol_seqs_with_inconsis_profiles_file.close()
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled sequences", time.time() - start_time, is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled seqs", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
@@ -3995,12 +4006,12 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_reads))
             if anvio.DEBUG:
                 f.write(get_summary_line("Profiled reads with extrapolated 5' feature", trna_reads_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Profiled reads with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_short_fiveprime_extension))
-            f.write(get_summary_line("Profiled reads with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_long_fiveprime_extension))
+            f.write(get_summary_line("Profiled reads with 1-%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_short_fiveprime_extension))
+            f.write(get_summary_line("Profiled reads with >%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_long_fiveprime_extension))
             if anvio.DEBUG:
                 f.write(get_summary_line("Profiled reads with recovered truncated profile", trna_reads_with_recovered_trunc_profile))
             f.write(get_summary_line("Reads mapped to tRNA interior", interior_mapped_reads))
-            f.write(get_summary_line("Reads mapped to tRNA with extra 5' bases", fiveprime_mapped_reads))
+            f.write(get_summary_line("Reads mapped to tRNA with extra 5' nts", fiveprime_mapped_reads))
             f.write(get_summary_line("Profiled reads specific to normalized seqs with del signature", trna_reads_specific_to_norm_seqs_with_del_signature))
             f.write(get_summary_line("Profiled reads nonspecific to normalized seqs with del signature", trna_reads_nonspecific_to_norm_seqs_with_del_signature))
 
@@ -4014,13 +4025,13 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Unique tRNA seqs spanning acceptor stem", full_length_uniq_seqs))
             if anvio.DEBUG:
                 f.write(get_summary_line("Unique tRNA seqs with extrapolated 5' feature", uniq_seqs_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Unique tRNA seqs with 1-%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_short_fiveprime_extension))
-            f.write(get_summary_line("Unique tRNA seqs with >%d extra 5' bases" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_long_fiveprime_extension))
+            f.write(get_summary_line("Unique tRNA seqs with 1-%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_short_fiveprime_extension))
+            f.write(get_summary_line("Unique tRNA seqs with >%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_long_fiveprime_extension))
             if anvio.DEBUG:
                 f.write(get_summary_line("Unique tRNA seqs with recovered truncated profile", ))
             f.write(get_summary_line("Mean profiled reads per unique seq", mean_profiled_reads_per_uniq_seq))
             f.write(get_summary_line("Unique seqs mapped to tRNA interior", interior_mapped_uniq_seqs))
-            f.write(get_summary_line("Unique seqs mapped to tRNA with extra 5' bases", fiveprime_mapped_uniq_seqs))
+            f.write(get_summary_line("Unique seqs mapped to tRNA with extra 5' nts", fiveprime_mapped_uniq_seqs))
             f.write(get_summary_line("Mean mapped reads per unique seq", mean_mapped_reads_per_uniq_seq))
 
             f.write(get_summary_line("Trimmed tRNA seqs containing anticodon", trimmed_profiled_seqs_containing_anticodon))
@@ -4043,7 +4054,7 @@ class TRNASeqDataset(object):
 
 
     def write_feature_table(self):
-        self.progress.new("Writing tRNA-seq database table of profiled tRNA features")
+        self.progress.new("Writing tRNA-seq db table of profiled tRNA features")
         self.progress.update("...")
 
         feature_table_entries = []
@@ -4104,7 +4115,7 @@ class TRNASeqDataset(object):
 
 
     def write_unconserved_table(self):
-        self.progress.new("Writing tRNA-seq database table of unconserved nts in fully profiled tRNA")
+        self.progress.new("Writing tRNA-seq db table of unconserved nts in fully profiled tRNA")
         self.progress.update("...")
 
         unconserved_table_entries = []
@@ -4126,7 +4137,7 @@ class TRNASeqDataset(object):
 
 
     def write_unpaired_table(self):
-        self.progress.new("Writing tRNA-seq database table of unpaired nts in profiled tRNA")
+        self.progress.new("Writing tRNA-seq db table of unpaired nts in profiled tRNA")
         self.progress.update("...")
 
         unpaired_table_entries = []
@@ -4148,7 +4159,7 @@ class TRNASeqDataset(object):
 
 
     def write_sequences_table(self):
-        self.progress.new("Writing tRNA-seq database table of unique tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of unique tRNA seqs")
         self.progress.update("...")
 
         sequences_table_entries = []
@@ -4188,7 +4199,7 @@ class TRNASeqDataset(object):
 
 
     def write_trimmed_table(self):
-        self.progress.new("Writing tRNA-seq database table of trimmed tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of trimmed tRNA seqs")
         self.progress.update("...")
 
         trimmed_table_entries = []
@@ -4241,7 +4252,7 @@ class TRNASeqDataset(object):
 
 
     def write_normalized_table(self):
-        self.progress.new("Writing tRNA-seq database table of fragment-dereplicated tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of fragment-dereplicated tRNA seqs")
         self.progress.update("...")
 
         norm_table_entries = []
@@ -4316,7 +4327,7 @@ class TRNASeqDataset(object):
 
 
     def write_modified_table(self):
-        self.progress.new("Writing tRNA-seq database table of modified tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of modified tRNA seqs")
         self.progress.update("...")
 
         mod_table_entries = []
@@ -4693,7 +4704,7 @@ class DatabaseConverter(object):
         self.linkage = A('linkage') or constants.linkage_method_default
 
         if not self.project_name:
-            raise ConfigError("Please specify a name for the collection of input tRNA-seq databases "
+            raise ConfigError("Please specify a name for the collection of input tRNA-seq dbs "
                               "using --project-name or -n.")
         if not self.out_dir:
             raise ConfigError("Please provide an output directory using --output-dir or -o.")
@@ -4794,9 +4805,9 @@ class DatabaseConverter(object):
         self.populate_trnaseq_dbs_info_dict()
         self.trnaseq_db_sample_ids = [inner_dict['sample_id'] for inner_dict in self.trnaseq_dbs_info_dict.values()]
         if len(self.trnaseq_dbs_info_dict) != len(set(self.trnaseq_db_sample_ids)):
-            raise ConfigError("Sample IDs in each input tRNA-seq database must be unique. This is "
-                              "not the case with your input. Here are the sample names so you can "
-                              "see which ones occur more than once: '%s'" % (", ".join(self.trnaseq_db_sample_ids)))
+            raise ConfigError("Sample IDs in each input tRNA-seq db must be unique. This is not "
+                              "the case with your input. Here are the sample names so you can see "
+                              "which ones occur more than once: '%s'" % (", ".join(self.trnaseq_db_sample_ids)))
         self.num_trnaseq_dbs = len(self.trnaseq_db_sample_ids)
 
         self.check_trnaseq_db_versions()
@@ -4832,10 +4843,10 @@ class DatabaseConverter(object):
             self.seed_seq_limit = sys.maxsize
         elif self.seed_seq_limit < 1:
             raise ConfigError(f"{self.seed_seq_limit} is an invalid value for `--max-reported-seed-seqs`. "
-                              "To remove the limit on tRNA seeds reported to the contigs database, "
+                              "To remove the limit on tRNA seeds reported to the contigs db, "
                               "provide a value of -1. Otherwise provide an integer greater than 0.")
 
-        self.run.info("Input tRNA-seq databases", ", ".join(self.trnaseq_db_paths))
+        self.run.info("Input tRNA-seq dbs", ", ".join(self.trnaseq_db_paths))
         if self.preferred_treatment:
             self.run.info("Databases preferred for seed formation",
                           ", ".join([trnaseq_db_path for trnaseq_db_num, trnaseq_db_path
@@ -4856,13 +4867,13 @@ class DatabaseConverter(object):
             trnaseq_db_version_report = "\n".join([trnaseq_db_path + " : " + inner_dict['version']
                                                    for trnaseq_db_path, inner_dict in self.trnaseq_dbs_info_dict.items()])
             if anvio.FORCE:
-                self.run.warning("Not all input tRNA-seq databases have the same version number, "
+                self.run.warning("Not all input tRNA-seq dbs have the same version number, "
                                  "but since you have used the `--force` flag, `anvi-convert-trnaseq-database` "
                                  "will proceed though this is dangerous and may lead to errors. "
                                  f"Here is the version number of each database:\n{trnaseq_db_version_report}")
             else:
-                raise ConfigError("Not all input tRNA-seq databases have the same version number. "
-                                  f"Here is the version number of each database:\n{trnaseq_db_version_report}")
+                raise ConfigError("Not all input tRNA-seq dbs have the same version number. "
+                                  f"Here is the version number of each db:\n{trnaseq_db_version_report}")
 
 
     def set_treatment_preference(self):
@@ -4874,7 +4885,7 @@ class DatabaseConverter(object):
         self.preferred_trnaseq_db_nums = []
         if self.preferred_treatment not in input_treatments:
             raise ConfigError("You provided a preferred treatment type, %s, "
-                              "but it was not found in any of the input databases, "
+                              "but it was not found in any of the input dbs, "
                               "which were found to have the following treatments: %s."
                               % (self.preferred_treatment, ', '.join(input_treatments)))
         for trnaseq_db_num, treatment in enumerate(input_treatments):
@@ -4887,8 +4898,8 @@ class DatabaseConverter(object):
         self.nonspecific_db_types = self.nonspecific_output.split(',')
         for nonspecific_db_type in self.nonspecific_db_types:
             if nonspecific_db_type not in ['nonspecific_db', 'combined_db', 'summed_db']:
-                raise ConfigError("The nonspecific profile database types provided by `--nonspecific-output` are not recognized. "
-                                  "The database types must be comma separated without spaces, "
+                raise ConfigError("The nonspecific profile db types provided by `--nonspecific-output` are not recognized. "
+                                  "The db types must be comma separated without spaces, "
                                   f"e.g., 'nonspecific_db,combined_db,summed_db'. Your argument was: {self.nonspecific_output}'")
 
         if 'nonspecific_db' in self.nonspecific_db_types:
@@ -4913,8 +4924,8 @@ class DatabaseConverter(object):
     def load_trnaseq_dbs(self):
         loaded_db_count = 0
         num_trnaseq_db_paths = len(self.trnaseq_db_paths)
-        self.progress.new("Loading seq info from tRNA-seq databases")
-        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} databases loaded")
+        self.progress.new("Loading seq info from tRNA-seq dbs")
+        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -4932,7 +4943,7 @@ class DatabaseConverter(object):
             self.unmod_norm_seq_summaries_dict[trnaseq_db_path] = unmod_norm_seq_summaries
             self.mod_seq_summaries_dict[trnaseq_db_path] = mod_seq_summaries
             loaded_db_count += 1
-            self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} databases loaded")
+            self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
 
         for p in processes:
             p.terminate()
@@ -5659,7 +5670,7 @@ class DatabaseConverter(object):
         not used because it tries to call genes, count kmers, and do other things that are
         irrelevant to tRNA-seq reads. There are no tRNA splits, but to satisfy the structure of the
         database, call every contig a split, and maintain tables on both."""
-        self.progress.new("Generating a contigs database of tRNA seeds")
+        self.progress.new("Generating a contigs db of tRNA seeds")
         self.progress.update("...")
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
@@ -6174,7 +6185,7 @@ class DatabaseConverter(object):
 
 
     def gen_profile_db(self, db_cov_type):
-        self.progress.new(f"Generating {db_cov_type} profile database")
+        self.progress.new(f"Generating {db_cov_type} profile db")
         self.progress.update("...")
 
         if db_cov_type == 'specific':
