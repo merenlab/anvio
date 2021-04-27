@@ -2365,7 +2365,6 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    
     let serializedState = serializeSettings()
     // state obj returned from serializeSettings, representing the default state anvio generates. 
     // We can now check it against the user supplied state to update/ADD values in the default. 
@@ -2385,6 +2384,33 @@ function processState(state_name, state) {
                     traverseNestedData(serializedStateObj[key], providedStateObj[key])       
                 } 
             })
+        }
+    }
+
+    function setViews(){
+        views = {};
+        for (let view_key in state['views'])
+        {
+            views[view_key] = {};
+            for (let key in state['views'][view_key])
+            {
+                // the if statement below is an important one. this if statement enables min/max values for a given layer
+                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
+                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
+                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
+                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
+                // detection, we actually would like to apply the global detection settings by default without expecting
+                // the user to pass the --load-full-state flag.
+                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
+                    continue;
+                }
+
+                let layer_id = getLayerId(key);
+                if (layer_id != -1)
+                {
+                    views[view_key][layer_id] = state['views'][view_key][key];
+                }
+            }
         }
     }
 
@@ -2433,34 +2459,13 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('views') && state['views'] === serializedState['views']) { //check if user provides incomplete data against serialized data
-        views = {};
-        for (let view_key in state['views'])
-        {
-            views[view_key] = {};
-            for (let key in state['views'][view_key])
-            {
-                // the if statement below is an important one. this if statement enables min/max values for a given layer
-                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
-                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
-                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
-                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
-                // detection, we actually would like to apply the global detection settings by default without expecting
-                // the user to pass the --load-full-state flag.
-                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
-                    continue;
-                }
-
-                let layer_id = getLayerId(key);
-                if (layer_id != -1)
-                {
-                    views[view_key][layer_id] = state['views'][view_key][key];
-                }
-            }
-        }
+        setViews()
     }  else if(!state['views']){
         state['views'] = serializedState['views']
+        setViews()
     } else {
         traverseNestedData(serializedState['views'], state['views'])
+        setViews()
         modifiedItems.push('views')
     }
 
