@@ -1,0 +1,45 @@
+#!/usr/bin/env Rscript
+
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(tidyverse))
+
+# command line options
+option_list <- list(
+  make_option(c("--output"),
+              help = "Output file prefix"),
+  make_option(c("--input"),
+              help = "Input file name")
+)
+parser <- OptionParser(option_list = option_list,
+                       description = "This script converts the output of Agnostos to anvio friendly formats.")
+arguments <- parse_args(parser,
+                        positional_arguments = TRUE)
+opts <- arguments$options
+
+
+# Angostos categories
+IGD_genes_summary_info_exp <- read_tsv(opts$input)
+
+# Convert data into anvio friendly functions table format
+IGD_gene_functions <- IGD_genes_summary_info_exp %>%
+  mutate("source" = "agnostos_categories") %>%
+  mutate(e_value = 0) %>% # just a filler value
+  rename(accession = cl_name, "function" = category) %>%
+  select(gene_callers_id, source, accession, `function`, e_value)
+
+
+IGD_gene_sources <- IGD_genes_summary_info_exp %>%
+  mutate("source" = "agnostos_source") %>%
+  mutate(e_value = 0) %>% # just a filler value
+  rename(accession = cl_name, "function" = db) %>%
+  select(gene_callers_id, source, accession, `function`, e_value)  
+
+
+# Format output file strings
+IGD_gene_functions_output_file <- str_c(opts$output, "_functions.tsv")
+IGD_gene_sources_output_file <- str_c(opts$output, "_sources.tsv")
+
+
+# Write to output dir
+write_tsv(IGD_gene_functions, file = IGD_gene_functions_output_file, col_names = TRUE)
+write_tsv(IGD_gene_sources, file = IGD_gene_sources_output_file, col_names = TRUE)

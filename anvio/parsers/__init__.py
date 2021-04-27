@@ -13,6 +13,7 @@ from anvio.parsers.kaiju import Kaiju
 from anvio.parsers.hmmer import HMMERTableOutput, HMMERStandardOutput
 from anvio.parsers.concoct import CONCOCT
 from anvio.parsers.interproscan import InterProScan
+from anvio.parsers.agnostos import Agnostos
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -28,6 +29,7 @@ parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
 parser_modules['taxonomy_layers'] = {"krakenuniq": KrakenUniq}
 parser_modules['functions']       = {"interproscan": InterProScan}
+parser_modules['functions']       = {"agnostos": Agnostos}
 parser_modules['search']          = {"hmmer_table_output": HMMERTableOutput, "hmmer_std_output": HMMERStandardOutput}
 parser_modules['collections']     = {"concoct": CONCOCT}
 
