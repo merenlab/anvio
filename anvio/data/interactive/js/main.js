@@ -2365,13 +2365,13 @@ function loadState()
 }
 
 function processState(state_name, state) {
-
+    
     let serializedState = serializeSettings()
     // state obj returned from serializeSettings, representing the default state anvio generates. 
     // We can now check it against the user supplied state to update/ADD values in the default. 
     let modifiedItems = []
     // keep track of the things we update and let the user know their state data has been tweaked
-
+    
     function traverseNestedData(serializedStateObj, providedStateObj){ 
         isObject = item => typeof item === 'object' ? true : false // check and end recursion if not provided an object 
 
@@ -2379,8 +2379,8 @@ function processState(state_name, state) {
             Object.entries(serializedStateObj).forEach(([key, value]) => {
                 if(serializedStateObj[key] === providedStateObj[key]){ // if user's state element matches anvio's generated state element, do nothing 
                     return 
-                } else if(!providedStateObj[key]){ // if user's state is missing an element found in anvio's generated state , add it 
-                    providedStateObj[key] = value 
+                } else if(providedStateObj[key] == null || providedStateObj[key] == undefined){ // if user's state is missing an element found in anvio's generated state , add it 
+                    providedStateObj[key] = value                     
                 } else if (providedStateObj[key] !== value){ // user's state element doesnt match anvio's, so we go again
                     traverseNestedData(serializedStateObj[key], providedStateObj[key])       
                 } 
@@ -2705,7 +2705,7 @@ function processState(state_name, state) {
         state['samples-layers'] = serializedState['samples-layers']
         state['samples-layer-order'] = serializedState['samples-layer-order']
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-    } else {        
+    } else { 
         traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
         state['samples-layer-order'] = serializedState['samples-layer-order']
         
