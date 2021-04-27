@@ -2912,6 +2912,22 @@ D = {
                      "There are 3 variable-length sections of tRNA. The user could, for example, "
                      "change the allowed lengths of the V loop from a discontinuous range, \"4-5,9-23\", to a continuous range, \"4-23\"."}
                 ),
+    'threeprime-termini': (
+            ['--threeprime-termini'],
+            {'default': 'CCA,CC,C,CCAN,CCANN',
+             'type': str,
+             'help': "Termini represent the subsequences (in the 5'->3' orientation) "
+                     "to expect at the 3' end of a tRNA read adjacent to the discriminator nucleotide. "
+                     "tRNA feature profiling from the 3' end seeks a valid terminus prior to the discriminator and more 5' features. "
+                     "3' terminal sequences can include the nucleotides, A, C, G, and T, and N, symbolizing any nucleotide. "
+                     "A single underscore, \"_\", can be included in lieu of a sequence, "
+                     "symbolizing the absence of a terminus such that the tRNA feature profile may end with the discriminator. "
+                     "If \"_\" is not included, tRNA sequences ending in the discriminator will still be sought as *fragments* of profiled tRNA. "
+                     "The order of sequences in the argument is the order of consideration in profiling. "
+                     "For example, if CCA is the first 3' terminus considered, "
+                     "and it produces a complete profile with no unconserved or unpaired nucleotides, then the other possible termini are not considered. "
+                     "Other termini are only considered with the possibility of \"improvement\" in the feature profile."}
+                ),
     'min-length-long-fiveprime': (
             ['--min-length-long-fiveprime'],
             {'default': 4,
@@ -2932,10 +2948,9 @@ D = {
              'type': int,
              'help': "Anvi'o profiles a sequence as tRNA by identifying tRNA features from the 3' end of the sequence. "
                      "tRNA-seq datasets can include a significant number of tRNA fragments "
-                     "that are not from the 3' end of the sequence ending in a recognized acceptor tail (CCA, CC, C, CCAN, CCANN). "
+                     "that are not from the 3' end of the sequence ending in a recognized terminus, e.g., CCA. "
                      "These \"interior\" and 5' fragments can be of significant biological interest. "
-                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs "
-                     "that have their 3' acceptor variants trimmed off. "
+                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs that have their 3' termini trimmed off. "
                      "This parameter sets the minimum length of unprofiled reads searched in this manner. "
                      "The choice of %(default)d as the default value is motivated by considerations "
                      "of false positive matches and computational performance with a shorter minimum sequence length. "
