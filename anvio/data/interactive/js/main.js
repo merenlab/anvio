@@ -2365,7 +2365,7 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    let serializedState = serializeSettings()
+    let serializedState = serializeSettings(true)
     // state obj returned from serializeSettings, representing the default state anvio generates. 
     // We can now check it against the user supplied state to update/ADD values in the default. 
     let modifiedItems = []
@@ -2469,7 +2469,7 @@ function processState(state_name, state) {
         modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers')) { 
+    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { 
         layers = {};
         for (let key in state['layers'])
         {
@@ -2483,7 +2483,30 @@ function processState(state_name, state) {
     } else if(!state['layers']) {
         state['layers'] = serializedState['layers']
         state['layers-order'] = serializedState['layers-order']
-    } 
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    } else if (state['layers'] !== serializedState['layers']){
+        traverseNestedData(serializedState['layers'], state['layers'])
+
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
         for (let key in state['categorical_data_colors'])
