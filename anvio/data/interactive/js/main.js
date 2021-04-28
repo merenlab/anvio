@@ -2365,13 +2365,12 @@ function loadState()
 }
 
 function processState(state_name, state) {
-
-    let serializedState = serializeSettings()
+    let serializedState = serializeSettings(true)
     // state obj returned from serializeSettings, representing the default state anvio generates. 
     // We can now check it against the user supplied state to update/ADD values in the default. 
     let modifiedItems = []
     // keep track of the things we update and let the user know their state data has been tweaked
-
+    
     function traverseNestedData(serializedStateObj, providedStateObj){ 
         isObject = item => typeof item === 'object' ? true : false // check and end recursion if not provided an object 
 
@@ -2379,12 +2378,39 @@ function processState(state_name, state) {
             Object.entries(serializedStateObj).forEach(([key, value]) => {
                 if(serializedStateObj[key] === providedStateObj[key]){ // if user's state element matches anvio's generated state element, do nothing 
                     return 
-                } else if(!providedStateObj[key]){ // if user's state is missing an element found in anvio's generated state , add it 
-                    providedStateObj[key] = value 
+                } else if(providedStateObj[key] == null || providedStateObj[key] == undefined){ // if user's state is missing an element found in anvio's generated state , add it 
+                    providedStateObj[key] = value                     
                 } else if (providedStateObj[key] !== value){ // user's state element doesnt match anvio's, so we go again
                     traverseNestedData(serializedStateObj[key], providedStateObj[key])       
                 } 
             })
+        }
+    }
+
+    function setViews(){
+        views = {};
+        for (let view_key in state['views'])
+        {
+            views[view_key] = {};
+            for (let key in state['views'][view_key])
+            {
+                // the if statement below is an important one. this if statement enables min/max values for a given layer
+                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
+                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
+                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
+                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
+                // detection, we actually would like to apply the global detection settings by default without expecting
+                // the user to pass the --load-full-state flag.
+                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
+                    continue;
+                }
+
+                let layer_id = getLayerId(key);
+                if (layer_id != -1)
+                {
+                    views[view_key][layer_id] = state['views'][view_key][key];
+                }
+            }
         }
     }
 
@@ -2433,38 +2459,17 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('views') && state['views'] === serializedState['views']) { //check if user provides incomplete data against serialized data
-        views = {};
-        for (let view_key in state['views'])
-        {
-            views[view_key] = {};
-            for (let key in state['views'][view_key])
-            {
-                // the if statement below is an important one. this if statement enables min/max values for a given layer
-                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
-                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
-                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
-                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
-                // detection, we actually would like to apply the global detection settings by default without expecting
-                // the user to pass the --load-full-state flag.
-                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
-                    continue;
-                }
-
-                let layer_id = getLayerId(key);
-                if (layer_id != -1)
-                {
-                    views[view_key][layer_id] = state['views'][view_key][key];
-                }
-            }
-        }
+        setViews()
     }  else if(!state['views']){
         state['views'] = serializedState['views']
+        setViews()
     } else {
         traverseNestedData(serializedState['views'], state['views'])
+        setViews()
         modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers')) { 
+    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { 
         layers = {};
         for (let key in state['layers'])
         {
@@ -2478,7 +2483,30 @@ function processState(state_name, state) {
     } else if(!state['layers']) {
         state['layers'] = serializedState['layers']
         state['layers-order'] = serializedState['layers-order']
-    } 
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    } else if (state['layers'] !== serializedState['layers']){
+        traverseNestedData(serializedState['layers'], state['layers'])
+
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
         for (let key in state['categorical_data_colors'])
@@ -2705,7 +2733,7 @@ function processState(state_name, state) {
         state['samples-layers'] = serializedState['samples-layers']
         state['samples-layer-order'] = serializedState['samples-layer-order']
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-    } else {        
+    } else { 
         traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
         state['samples-layer-order'] = serializedState['samples-layer-order']
         
