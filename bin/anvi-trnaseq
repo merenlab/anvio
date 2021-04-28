@@ -45,6 +45,7 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('write-checkpoints'), **anvio.K('write-checkpoints'))
     group1C.add_argument(*anvio.A('load-checkpoint'), **anvio.K('load-checkpoint'))
     group1C.add_argument(*anvio.A('feature-param-file'), **anvio.K('feature-param-file'))
+    group1C.add_argument(*anvio.A('threeprime-termini'), **anvio.K('threeprime-termini'))
     group1C.add_argument(*anvio.A('min-length-long-fiveprime'), **anvio.K('min-length-long-fiveprime'))
     group1C.add_argument(*anvio.A('min-trna-fragment-size'), **anvio.K('min-trna-fragment-size'))
     group1C.add_argument(*anvio.A('agglomeration-max-mismatch-freq'), **anvio.K('agglomeration-max-mismatch-freq'))

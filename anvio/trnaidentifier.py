@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """tRNA identification from a nucleotide sequence."""
 
+import re
 import sys
 import itertools
 import pandas as pd
@@ -33,8 +34,7 @@ class TRNAFeature(object):
     string_components : tuple
         Substring components of the feature, with divisions based on "subfeatures," such as the
         variable-length alpha and beta regions of the D loop:
-        e.g., ('AG', 'TT', 'GG', 'G', 'A') for the D loop of yeast tRNA-Phe-GAA,
-                ('CCA', ) for the acceptor sequence
+        e.g., ('AG', 'TT', 'GG', 'G', 'A') for the D loop of yeast tRNA-Phe-GAA
 
     num_allowed_unconserved : int, -1
         Number of unconserved nucleotides allowed among canonically conserved nucleotides in the
@@ -109,12 +109,7 @@ class TRNAFeature(object):
             substring_statuses = []
             conserved_status.append(substring_statuses)
             for pos, expected_nts in nt_dict.items():
-                try:
-                    observed_nt = substring[pos]
-                except IndexError:
-                    # This occurs for an Acceptor feature string that differs from the canonical "CCA", such as "CC", "C", or "CCATT".
-                    break
-
+                observed_nt = substring[pos]
                 if observed_nt in expected_nts:
                     num_conserved += 1
                     substring_statuses.append((pos, True, observed_nt, expected_nts))
@@ -158,7 +153,7 @@ class TRNAFeature(object):
             TStemThreeprimeStrand,
             AcceptorStemThreeprimeStrand,
             Discriminator,
-            Acceptor
+            ThreeprimeTerminus
         ]
 
 
@@ -184,7 +179,7 @@ class TRNAFeature(object):
             TStemThreeprimeStrand,
             AcceptorStemThreeprimeStrand,
             Discriminator,
-            Acceptor
+            ThreeprimeTerminus
         ]
 
 
@@ -217,7 +212,7 @@ class Nucleotide(TRNAFeature):
 
 
 class Sequence(TRNAFeature):
-    """Superclass for tRNA primary sequences, e.g., acceptor, 5' strand of T stem."""
+    """Superclass for tRNA primary sequences, e.g., 5' strand of T stem."""
 
     def __init__(self,
                  substrings, # must be a string, tuple of strings, or tuple of Nucleotide/Sequence objects
@@ -417,7 +412,7 @@ class TRNAHisPositionZero(Nucleotide):
 
 class AcceptorStem(Stem):
     """The base-paired nucleotides of the acceptor stem of tRNA (excludes the discriminator and
-    acceptor)."""
+    CCA acceptor or other 3' terminus)."""
 
     name = 'acceptor stem'
     num_allowed_unconserved = -1
@@ -925,7 +920,7 @@ class AcceptorStemThreeprimeStrand(Sequence):
 
 
 class Discriminator(Nucleotide):
-    """The discriminator nucleotide 5' of the acceptor sequence."""
+    """The discriminator nucleotide 5' of the CCA acceptor or other 3' terminus."""
 
     name = 'discriminator'
     canonical_positions = ((73, ), )
@@ -941,39 +936,27 @@ class Discriminator(Nucleotide):
                          cautious=cautious)
 
 
-class Acceptor(Sequence):
-    """The acceptor sequence (CCA in mature tRNA) and various other 3' endings.
+class ThreeprimeTerminus(object):
+    """The CCA acceptor or any other sequence at the 3' end of tRNA. This feature differs from the
+    others due to the variety of sequences that may be found at the 3' end of tRNA-seq reads."""
 
-    With default values of `self.allowed_input_lengths` and `self.num_extra_threeprime`, a tRNA
-    profile will prioritize CCA > CC > C > CCAN > CCANN.
-    """
+    name = '3\' terminus'
+    patterns = (re.compile('CCA'), )
 
-    name = 'acceptor'
-    canonical_positions = ((74, 75, 76), )
-    allowed_input_lengths = ((3, ), (2, ), (1, )) # Input lengths of 2 and 1 are 3'-CC and 3'-C.
-    summed_input_lengths = (3, 2, 1)
-    conserved_nts = ({0: 'C', 1: 'C', 2: 'A'}, ) # set in stone
-    num_allowed_unconserved = 0 # set in stone
-    max_extra_threeprime = 2 # set in stone -- allowing this to vary would require a lot of work in `trnaseq.py`
-
-    def __init__(self, substrings, num_extra_threeprime=0, start_pos=None, stop_pos=None, cautious=False):
-        # The possibilities of tRNA ending in 3'-CC and 3'-C are accommodated by
-        # `self.allowed_input_lengths`. When bases beyond the 3' end of 3'-CCA (CCAN...) in
-        # profiling, `self.num_extra_threeprime` SHOULD be set accordingly (1 for CCAN, 2 for CCANN) --
-        # these extra 3' bases are not treated explicitly by this class.
-
-        super().__init__(substrings,
-                         conserved_nts=self.conserved_nts,
-                         num_allowed_unconserved=self.num_allowed_unconserved,
-                         start_pos=start_pos,
-                         stop_pos=stop_pos,
-                         cautious=cautious)
+    def __init__(self, string, start_pos, stop_pos, priority=0):
+        self.string = string
+        self.start_pos = start_pos
+        self.stop_pos = stop_pos
+        # Priority is the index of the terminus among the possible termini. Highest priority is
+        # given by a value of 0.
+        self.priority = priority
 
 
 class TRNAFeatureParameterizer(object):
     """Interacts with tRNA feature objects, setting and reporting their tRNA-defining attributes."""
 
     def __init__(self):
+        # Do not include the 3' terminus among the parameterizable features.
         self.dict_mapping_feature_or_subfeature_name_to_class = {
             TRNAHisPositionZero.name: TRNAHisPositionZero,
             AcceptorStem.name: AcceptorStem,
@@ -1003,8 +986,7 @@ class TRNAFeatureParameterizer(object):
             TLoop.name: TLoop,
             TStemThreeprimeStrand.name: TStemThreeprimeStrand,
             AcceptorStemThreeprimeStrand.name: AcceptorStemThreeprimeStrand,
-            Discriminator.name: Discriminator,
-            Acceptor.name: Acceptor
+            Discriminator.name: Discriminator
         }
 
         self.feature_and_subfeature_names_with_accessible_lengths = [
@@ -1080,11 +1062,6 @@ class TRNAFeatureParameterizer(object):
         rows = [["Feature/subfeature"] + TRNAFeature.INI_FEATURE_PARAMS]
         for feature_or_subfeature_name, feature_class in self.dict_mapping_feature_or_subfeature_name_to_class.items():
             row = [feature_or_subfeature_name]
-
-            if feature_or_subfeature_name == 'acceptor': # The acceptor is special.
-                row += ['-' for _ in ACCESSIBLE_FEATURE_PARAMS]
-                rows.append(row)
-                continue
 
             for param_name in ACCESSIBLE_FEATURE_PARAMS:
                 if param_name == 'conserved_nts':
@@ -1344,6 +1321,11 @@ class TRNAFeatureParameterizer(object):
             feature_class.summed_input_lengths = tuple(map(sum, feature_class.allowed_input_lengths))
 
 
+    @staticmethod
+    def set_threeprime_termini(threeprime_termini):
+        ThreeprimeTerminus.allowed_patterns = tuple([re.compile(threeprime_terminus.replace('N', '.')) for threeprime_terminus in threeprime_termini])
+
+
 class Profile(object):
     """A profile of the tRNA features in a sequence. The function, `Profiler.profile`, creates these
     objects."""
@@ -1357,12 +1339,11 @@ class Profile(object):
         'num_unconserved',
         'num_paired',
         'num_unpaired',
-        'num_extra_threeprime',
         'num_in_extrapolated_fiveprime_feature',
         'has_complete_feature_set',
         'num_extra_fiveprime',
         'feature_names',
-        'acceptor_variant_string',
+        'threeprime_terminus_seq',
         'alpha_start',
         'alpha_stop',
         'beta_start',
@@ -1387,12 +1368,11 @@ class Profile(object):
         self.num_unconserved = None
         self.num_paired = None
         self.num_unpaired = None
-        self.num_extra_threeprime = None
         self.num_in_extrapolated_fiveprime_feature = None
         self.has_complete_feature_set = None
         self.num_extra_fiveprime = None
         self.feature_names = None
-        self.acceptor_variant_string = None
+        self.threeprime_terminus_seq = None
         self.alpha_start = None
         self.alpha_stop = None
         self.beta_start = None
@@ -1425,8 +1405,7 @@ class Profile(object):
             if hasattr(feature, 'conserved_status'):
                 component_start_pos = feature.start_pos
                 # Conserved nucleotides are indexed within the string "component" (substring).
-                for string_component_statuses, string_component in zip(
-                    feature.conserved_status, feature.string_components):
+                for string_component_statuses, string_component in zip(feature.conserved_status, feature.string_components):
                     for nt_pos, is_conserved, observed_nt, expected_nts in string_component_statuses:
                         # Avoid N padding in an extrapolated 5' feature.
                         if not is_conserved and observed_nt != 'N':
@@ -1503,6 +1482,8 @@ class Profiler(object):
         # The last of the "summed input lengths" possible for a feature is the maximum possible
         # length of the feature.
         self.max_length_dict = OrderedDict([(feature_class.name, feature_class.summed_input_lengths[-1])
+                                            if feature_class.name != '3\' terminus'
+                                            else (feature_class.name, max(map(len, [pattern.pattern for pattern in feature_class.allowed_patterns])))
                                             for feature_class in TRNAFeature.list_primary_tRNA_features()])
 
         self.stem_formation_triggers = [
@@ -1554,7 +1535,6 @@ class Profiler(object):
          profile.num_unconserved,
          profile.num_paired,
          profile.num_unpaired,
-         profile.num_extra_threeprime,
          profile.num_in_extrapolated_fiveprime_feature,
          profile.has_complete_feature_set,
          profile.num_extra_fiveprime) = self.get_profile(unprofiled_seq=profile.input_seq[::-1])
@@ -1562,14 +1542,10 @@ class Profiler(object):
         profile.feature_names = [f.name for f in profile.features]
 
         if profile.features:
-            # The extra 3' nucleotides are not explicitly added to the Acceptor object.
-            if profile.num_extra_threeprime > 0:
-                profile.acceptor_variant_string = profile.features[-1].string + profile.profiled_seq[-profile.num_extra_threeprime: ]
-            else:
-                profile.acceptor_variant_string = profile.features[-1].string
-
             if len(profile.features) > self.t_arm_pos:
                 profile.is_predicted_trna = True # Liable to change below...
+
+                profile.threeprime_terminus_seq = profile.features[-1].string
 
                 if self.anticodon_loop_pos < len(profile.features):
                     anticodon = profile.features[-self.anticodon_loop_pos - 1].anticodon
@@ -1627,8 +1603,7 @@ class Profiler(object):
                     # If the last profiled primary feature was the 5' strand of the acceptor stem,
                     # do not consider tRNA-His position 0 as the next unprofiled feature even if
                     # dealing with tRNA-His.
-                    if len(input_seq) - len(profile.profiled_seq) > self.max_length_dict[
-                        self.primary_feature_names[primary_feature_pos - 1]]:
+                    if len(input_seq) - len(profile.profiled_seq) > self.max_length_dict[self.primary_feature_names[primary_feature_pos - 1]]:
                         profile.is_predicted_trna = False
                         profile.trunc_profile_index = len(input_seq) - len(profile.profiled_seq)
         else:
@@ -1682,7 +1657,6 @@ class Profiler(object):
                     num_unconserved=0,
                     num_paired=0,
                     num_unpaired=0,
-                    num_extra_threeprime=0,
                     feature_pos=0,
                     has_complete_feature_set=False):
         """A recursive function to sequentially identify tRNA features from the 3' end of a
@@ -1691,31 +1665,28 @@ class Profiler(object):
             features = []
 
         if feature_pos == len(self.threeprime_to_fiveprime_feature_classes):
-            # To reach this point,
-            # all tRNA features including the tRNA-His 5'-G must have been found,
-            # and the input sequence must extend 5' of that.
+            # To reach this point, all tRNA features including the tRNA-His 5'-G must have been
+            # found, and the input sequence must extend 5' of that.
             return (profiled_seq, # string in 5' to 3' direction
                     features, # listed in the 5' to 3' direction
                     num_conserved,
                     num_unconserved,
                     num_paired,
                     num_unpaired,
-                    num_extra_threeprime,
-                    0, # number of nucleotides in an extrapolated 5' feature -- there is no extrapolated 5' feature
+                    0, # no extrapolated 5' nucleotides
                     has_complete_feature_set,
                     len(unprofiled_seq)) # extra 5' nucleotides
 
         if not unprofiled_seq:
-            # To reach this point,
-            # the full length of the input sequence must have been profiled with tRNA features.
+            # To reach this point, the full length of the input sequence must have been profiled
+            # with tRNA features.
             return (profiled_seq,
                     features, # listed in the 5' to 3' direction
                     num_conserved,
                     num_unconserved,
                     num_paired,
                     num_unpaired,
-                    num_extra_threeprime,
-                    0, # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                    0, # no extrapolated 5' nucleotides
                     has_complete_feature_set,
                     0) # input sequence is not longer than full-length tRNA
 
@@ -1737,8 +1708,8 @@ class Profiler(object):
             make_stem = False
             make_arm = False
             if feature_class == TRNAHisPositionZero:
-                # Check for tRNA-His based on the anticodon sequence.
-                # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
+                # Check for tRNA-His based on the anticodon sequence. tRNA-His uniquely has an extra
+                # nucleotide (G) at the 5' end.
                 anticodon_string = features[-self.anticodon_loop_pos - 1].anticodon.string
                 try:
                     aa_string = ANTICODON_TO_AA[anticodon_string]
@@ -1752,7 +1723,6 @@ class Profiler(object):
                             num_unconserved,
                             num_paired,
                             num_unpaired,
-                            num_extra_threeprime,
                             0, # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
                             has_complete_feature_set,
                             len(unprofiled_seq)) # extra 5' nucleotides
@@ -1761,66 +1731,104 @@ class Profiler(object):
         # This list stores the result of a recursive function call finding subsequent 5' features.
         incremental_profile_candidates = []
 
-        # Each primary sequence feature takes (sub)sequence inputs, which can be of varying length.
-        # Consider each possible combination of input lengths for the feature,
-        # e.g., the D loop contains alpha and beta subsequences of variable length.
-        for input_lengths, summed_input_length in zip(feature_class.allowed_input_lengths, feature_class.summed_input_lengths):
-
-            # Strands of unequal length cannot form a stem.
-            if make_stem:
-                # Compare the lengths of the 5' and 3' sequence components.
-                if input_lengths != tuple(map(len, threeprime_stem_seq.string_components[::-1])):
+        if feature_class == ThreeprimeTerminus:
+            processed_lengths = []
+            for priority, terminus_pattern in enumerate(feature_class.allowed_patterns):
+                terminus_length = len(terminus_pattern.pattern)
+                if terminus_length in processed_lengths:
                     continue
 
-            if len(unprofiled_seq) < summed_input_length:
-                # Determine whether there is enough information in the remaining 5' end of the input sequence
-                # to assign it to a feature despite the incompleteness of the feature sequence.
-
-                # Features that lack conserved positions
-                # or that do not form base pairs with a previously profiled stem sequence
-                # do not contain any information for extrapolation of an incomplete sequence.
-                if feature_class in self.extrapolation_ineligible_features:
+                fiveprime_to_threeprime_string = unprofiled_seq[: terminus_length][::-1]
+                if not terminus_pattern.fullmatch(fiveprime_to_threeprime_string):
                     continue
-                # The unprofiled sequence must be at least 6 nucleotides long
-                # to span the 2 conserved positions in the anticodon loop (positions 33 and 37).
-                # Conservation of these positions is here considered to be the minimum information
-                # needed to identify the anticodon loop.
-                elif feature_class == AnticodonLoop:
-                    if len(unprofiled_seq) < 6:
+
+                feature = feature_class(fiveprime_to_threeprime_string,
+                                        start_pos=len(self.p.input_seq) - terminus_length,
+                                        stop_pos=len(self.p.input_seq),
+                                        priority=priority)
+                processed_lengths.append(terminus_length)
+                incremental_profile_candidates.append(
+                    (unprofiled_seq[: terminus_length][::-1], # flip orientation 5' to 3'
+                     [feature],
+                     0, # conserved nucleotides
+                     0, # unconserved nucleotides
+                     0, # not a stem, so 0 paired nucleotides
+                     0, # not a stem, so 0 unpaired nucleotides
+                     0) # no extrapolated 5' nucleotides
+                )
+        else:
+            # Primary sequence features take (sub)sequence inputs, which can be of varying length.
+            # Consider each possible combination of input lengths for the feature, e.g., the D loop
+            # contains alpha and beta subsequences of variable length.
+            for input_lengths, summed_input_length in zip(feature_class.allowed_input_lengths, feature_class.summed_input_lengths):
+
+                # Strands of unequal length cannot form a stem.
+                if make_stem:
+                    # Compare the lengths of the 5' and 3' sequence components.
+                    if input_lengths != tuple(map(len, threeprime_stem_seq.string_components[::-1])):
                         continue
 
-                string_components = [] # feature input substrings
-                num_processed_bases = 0
-                for input_length in input_lengths[::-1]: # create substrings from 3' to 5'
-                    threeprime_to_fiveprime_string = ''
-                    for _ in range(input_length):
-                        if num_processed_bases >= len(unprofiled_seq):
-                            threeprime_to_fiveprime_string += 'N' # pad the string at the 5' end
-                        else:
-                            threeprime_to_fiveprime_string += unprofiled_seq[num_processed_bases]
-                        num_processed_bases += 1
-                    string_components.insert(0, threeprime_to_fiveprime_string[::-1]) # 5' to 3'
-                # WITH THE N PADDING, THE START POSITION (5') OF THE FEATURE IN THE INPUT SEQUENCE IS NEGATIVE.
-                feature = feature_class(*string_components,
-                                        start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
-                                        stop_pos=len(self.p.input_seq) - len(profiled_seq))
+                if len(unprofiled_seq) < summed_input_length:
+                    # Determine whether there is enough information in the remaining 5' end of the
+                    # input sequence to assign it to a feature despite the incompleteness of the
+                    # feature sequence.
 
-                # The sequence is valid if it doesn't have too many unconserved bases.
-                if feature.meets_conserved_thresh:
-                    if make_stem:
-                        if stem_class == DStem:
-                            stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
-                        else:
-                            stem = stem_class(feature, threeprime_stem_seq)
-                        # The stem is valid if it doesn't have too many unpaired bases.
-                        if stem.meets_pair_thresh:
-                            if make_arm:
-                                arm = arm_class(stem, loop)
-                                # The arm is valid if it doesn't have too many unconserved bases.
-                                if arm.meets_conserved_thresh:
+                    # Features that lack conserved positions or that do not form base pairs with a
+                    # previously profiled stem sequence do not contain any information for
+                    # extrapolation of an incomplete sequence.
+                    if feature_class in self.extrapolation_ineligible_features:
+                        continue
+                    # The unprofiled sequence must be at least 6 nucleotides long to span the 2
+                    # conserved positions in the anticodon loop (positions 33 and 37). Conservation
+                    # of these positions is here considered to be the minimum information needed to
+                    # identify the anticodon loop.
+                    elif feature_class == AnticodonLoop:
+                        if len(unprofiled_seq) < 6:
+                            continue
+
+                    string_components = [] # feature input substrings
+                    num_processed_bases = 0
+                    for input_length in input_lengths[::-1]: # create substrings from 3' to 5'
+                        threeprime_to_fiveprime_string = ''
+                        for _ in range(input_length):
+                            if num_processed_bases >= len(unprofiled_seq):
+                                threeprime_to_fiveprime_string += 'N' # pad the string at the 5' end
+                            else:
+                                threeprime_to_fiveprime_string += unprofiled_seq[num_processed_bases]
+                            num_processed_bases += 1
+                        string_components.insert(0, threeprime_to_fiveprime_string[::-1]) # 5' to 3'
+                    # WITH THE N PADDING, THE START POSITION (5') OF THE FEATURE IN THE INPUT SEQUENCE IS NEGATIVE.
+                    feature = feature_class(*string_components,
+                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
+
+                    # The sequence is valid if it doesn't have too many unconserved bases.
+                    if feature.meets_conserved_thresh:
+                        if make_stem:
+                            if stem_class == DStem:
+                                stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
+                            else:
+                                stem = stem_class(feature, threeprime_stem_seq)
+                            # The stem is valid if it doesn't have too many unpaired bases.
+                            if stem.meets_pair_thresh:
+                                if make_arm:
+                                    arm = arm_class(stem, loop)
+                                    # The arm is valid if it doesn't have too many unconserved bases.
+                                    if arm.meets_conserved_thresh:
+                                        incremental_profile_candidates.append(
+                                            (unprofiled_seq[::-1], # flip orientation to 5' to 3'
+                                             [arm, stem, feature],
+                                             feature.num_conserved,
+                                             feature.num_unconserved,
+                                             stem.num_paired,
+                                             stem.num_unpaired,
+                                             summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
+                                        )
+                                        continue
+                                else:
                                     incremental_profile_candidates.append(
                                         (unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                                         [arm, stem, feature],
+                                         [stem, feature],
                                          feature.num_conserved,
                                          feature.num_unconserved,
                                          stem.num_paired,
@@ -1828,126 +1836,78 @@ class Profiler(object):
                                          summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
                                     )
                                     continue
-                            else:
-                                incremental_profile_candidates.append(
-                                    (unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                                     [stem, feature],
-                                     feature.num_conserved,
-                                     feature.num_unconserved,
-                                     stem.num_paired,
-                                     stem.num_unpaired,
-                                     summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
-                                )
-                                continue
-                    else:
-                        incremental_profile_candidates.append(
-                            (unprofiled_seq[::-1], # flip orientation to 5' to 3'
-                             [feature],
-                             feature.num_conserved,
-                             feature.num_unconserved,
-                             0, # since we're not considering a stem, 0
-                             0, # since we're not considering a stem, 0
-                             summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
-                        )
-                        continue
-
-            # The procedure for assigning full-length features
-            # is similar to the prior precedure for partial-length features
-            # with a few efficiencies and special consideration of the acceptor (always a full-length feature).
-            else:
-                string_components = [] # feature input substrings
-                num_processed_bases = 0
-                for input_length in input_lengths[::-1]: # create substrings from 3' to 5'
-                    string_components.insert(0, unprofiled_seq[num_processed_bases: num_processed_bases + input_length][::-1]) # flip orientation to 5' to 3'
-                    num_processed_bases += input_length
-                if feature_class.name == 'acceptor':
-                    feature = feature_class(*string_components,
-                                            num_extra_threeprime=num_extra_threeprime,
-                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
-                else:
-                    feature = feature_class(*string_components,
-                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
-                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
-
-                # The sequence is valid if it doesn't have too many unconserved bases.
-                if feature.meets_conserved_thresh:
-                    if make_stem:
-                        if stem_class == DStem:
-                            stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
                         else:
-                            stem = stem_class(feature, threeprime_stem_seq)
-                        # The stem is valid if it doesn't have too many unpaired bases.
-                        if stem.meets_pair_thresh:
-                            if make_arm:
-                                arm = arm_class(stem, loop)
-                                # The arm is valid if it doesn't have too many unconserved bases.
-                                if arm.meets_conserved_thresh:
+                            incremental_profile_candidates.append(
+                                (unprofiled_seq[::-1], # flip orientation to 5' to 3'
+                                 [feature],
+                                 feature.num_conserved,
+                                 feature.num_unconserved,
+                                 0, # not a stem, so 0 paired nucleotides
+                                 0, # not a stem, so 0 unpaired nucleotides
+                                 summed_input_length - len(unprofiled_seq)) # number of nucleotides in extrapolated 5' feature
+                            )
+                            continue
+                # The procedure for assigning full-length features is similar to the prior precedure
+                # for partial-length features with a few efficiencies.
+                else:
+                    string_components = [] # feature input substrings
+                    num_processed_bases = 0
+                    for input_length in input_lengths[::-1]: # create substrings from 3' to 5'
+                        string_components.insert(0, unprofiled_seq[num_processed_bases: num_processed_bases + input_length][::-1]) # flip orientation to 5' to 3'
+                        num_processed_bases += input_length
+                    feature = feature_class(*string_components,
+                                            start_pos=len(self.p.input_seq) - len(profiled_seq) - num_processed_bases,
+                                            stop_pos=len(self.p.input_seq) - len(profiled_seq))
+
+                    # The sequence is valid if it doesn't have too many unconserved bases.
+                    if feature.meets_conserved_thresh:
+                        if make_stem:
+                            if stem_class == DStem:
+                                stem = stem_class(feature, threeprime_stem_seq, type_II_trna=features[-self.v_loop_pos - 1].type == 'II')
+                            else:
+                                stem = stem_class(feature, threeprime_stem_seq)
+                            # The stem is valid if it doesn't have too many unpaired bases.
+                            if stem.meets_pair_thresh:
+                                if make_arm:
+                                    arm = arm_class(stem, loop)
+                                    # The arm is valid if it doesn't have too many unconserved bases.
+                                    if arm.meets_conserved_thresh:
+                                        incremental_profile_candidates.append(
+                                            (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
+                                             [arm, stem, feature],
+                                             feature.num_conserved,
+                                             feature.num_unconserved,
+                                             stem.num_paired,
+                                             stem.num_unpaired,
+                                             0) # no extrapolated 5' nucleotides
+                                        )
+                                        continue
+                                else:
                                     incremental_profile_candidates.append(
                                         (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                                         [arm, stem, feature],
+                                         [stem, feature],
                                          feature.num_conserved,
                                          feature.num_unconserved,
                                          stem.num_paired,
                                          stem.num_unpaired,
-                                         0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                                         0) # no extrapolated 5' nucleotides
                                     )
                                     continue
-                            else:
-                                incremental_profile_candidates.append(
-                                    (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                                     [stem, feature],
-                                     feature.num_conserved,
-                                     feature.num_unconserved,
-                                     stem.num_paired,
-                                     stem.num_unpaired,
-                                     0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
-                                )
-                                continue
-                    else:
-                        incremental_profile_candidates.append(
-                            (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
-                             [feature],
-                             feature.num_conserved,
-                             feature.num_unconserved,
-                             0, # since we're not considering a stem, 0
-                             0, # since we're not considering a stem, 0
-                             0) # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
-                        )
-
-                        # Avoid testing 3'-CC and 3'-C if 3'-CCA, was just found.
-                        if feature.name == 'acceptor':
-                            if feature.string == 'CCA':
-                                # The following `continue` would otherwise test 3'-CC.
-                                break
-
-                        continue
-                # When considering 3'-CCAN..., don't allow the CCA part to vary from CCA.
-                # The "elif" block here is entered after considering CCAN....
-                # Without the "break" below, CCN..., CN..., N... would then be considered.
-                elif feature.name == 'acceptor':
-                    if summed_input_length == 3:
-                        if num_extra_threeprime > 0:
-                            break
-
-            # Avoid testing CCN..., CN..., N... when CCAN... was just found.
-            if feature_class.name == 'acceptor':
-                if num_extra_threeprime > 0:
-                    break
+                        else:
+                            incremental_profile_candidates.append(
+                                (unprofiled_seq[: num_processed_bases][::-1], # flip orientation to 5' to 3'
+                                [feature],
+                                feature.num_conserved,
+                                feature.num_unconserved,
+                                0, # not a stem, so 0 paired nucleotides
+                                0, # not a stem, so 0 unpaired nucleotides
+                                0) # no extrapolated 5' nucleotides
+                            )
+                            continue
 
 
         if not incremental_profile_candidates:
             # The feature didn't pass muster.
-            if feature_class.name == 'acceptor':
-                if num_extra_threeprime < Acceptor.max_extra_threeprime:
-                    # This will try to find 3'-CCAN..., sequentially adding extra bases.
-                    # The first feature of the profile, the acceptor sequence or variant thereof, has not be found.
-                    # Do not bother to compare this next profile to the current non-existent profile, so `return`.
-                    return self.get_profile(unprofiled_seq=unprofiled_seq[1: ],
-                                            profiled_seq=unprofiled_seq[0] + profiled_seq, # 5' to 3' orientation
-                                            features=[], # extra 3' nucleotides are not counted as a feature
-                                            num_extra_threeprime=num_extra_threeprime + 1)
-
             if feature_class == TRNAHisPositionZero:
                 # The extra 5' G added post-transcriptionally to tRNA-His was not found. Therefore,
                 # unprofiled 5' nucleotides are unaccounted for and called extra 5' nucleotides.
@@ -1957,8 +1917,7 @@ class Profiler(object):
                         num_unconserved,
                         num_paired,
                         num_unpaired,
-                        num_extra_threeprime,
-                        0, # number of nucleotides in extrapolated 5' feature -- there is no extrapolated 5' feature
+                        0, # no extrapolated 5' nucleotides
                         has_complete_feature_set,
                         len(unprofiled_seq))
             else:
@@ -1968,7 +1927,6 @@ class Profiler(object):
                         num_unconserved,
                         num_paired,
                         num_unpaired,
-                        num_extra_threeprime,
                         0,
                         has_complete_feature_set,
                         0) # input sequence is not longer than full-length tRNA
@@ -1978,8 +1936,8 @@ class Profiler(object):
         # 1. number of features identified (at most, sequence + stem + arm) (descending),
         # 2. number of unconserved + unpaired nucleotides (ascending),
         # 3. incompleteness of the last (most 5') feature (ascending).
-        # This sort also happens later for full sequence profiles,
-        # but this first sort is useful for seeking out and returning "flawless" mature tRNA.
+        # This sort also happens later for full sequence profiles, but this first sort is useful for
+        # seeking out and returning "flawless" mature tRNA.
         incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
         # Continue finding features in input sequences that have not been fully profiled --
         # do not recurse profile candidates in which the final feature was extrapolated.
@@ -1994,7 +1952,6 @@ class Profiler(object):
                                                          num_unconserved=ipc[3] + num_unconserved,
                                                          num_paired=ipc[4] + num_paired,
                                                          num_unpaired=ipc[5] + num_unpaired,
-                                                         num_extra_threeprime=num_extra_threeprime,
                                                          feature_pos=feature_pos + len(ipc[1]),
                                                          has_complete_feature_set=True)
                 else:
@@ -2005,10 +1962,9 @@ class Profiler(object):
                                                          num_unconserved=ipc[3] + num_unconserved,
                                                          num_paired=ipc[4] + num_paired,
                                                          num_unpaired=ipc[5] + num_unpaired,
-                                                         num_extra_threeprime=num_extra_threeprime,
                                                          feature_pos=feature_pos + len(ipc[1]),
                                                          has_complete_feature_set=False)
-                if (profile_candidate[8] # has complete feature set
+                if (profile_candidate[7] # has complete feature set
                     and profile_candidate[3] == 0 # number unconserved
                     and profile_candidate[5] == 0): # number unpaired
                     return profile_candidate
@@ -2022,20 +1978,9 @@ class Profiler(object):
                      ipc[3] + num_unconserved,
                      ipc[4] + num_paired,
                      ipc[5] + num_unpaired,
-                     num_extra_threeprime,
                      ipc[6], # number of nucleotides in extrapolated 5' feature
                      False, # does not have a complete feature set
                      0) # input sequence is not longer than full-length tRNA
-                )
-
-        # Consider an extra 3' nucleotide in the acceptor sequence.
-        if feature_class.name == 'acceptor':
-            if num_extra_threeprime < Acceptor.max_extra_threeprime:
-                profile_candidates.append(
-                    self.get_profile(unprofiled_seq=unprofiled_seq[1: ],
-                                     profiled_seq=unprofiled_seq[0] + profiled_seq, # 5' to 3' orientation
-                                     features=[], # extra 3' nucleotides are not counted as a feature
-                                     num_extra_threeprime=num_extra_threeprime + 1)
                 )
 
         # Do not add 5' features to profiled 3' features if the additional features have no
@@ -2052,21 +1997,26 @@ class Profiler(object):
                         supported_profile_candidates.append(p)
                         has_profile_with_type_II_D_arm = True
                         continue
-            if p[2] + p[4] > num_conserved + num_paired:
+            if len(p[1]) == 1:
+                # The only feature in the profile candidate is the 3' terminus.
+                supported_profile_candidates.append(p)
+            elif p[2] + p[4] > num_conserved + num_paired:
                 supported_profile_candidates.append(p)
 
         if supported_profile_candidates:
             if has_profile_with_type_II_D_arm:
-                # Do not favor type II tRNA profiles with paired D stem positions 13 and 22 over
-                # profiles with those positions unpaired.
+                # Favor type II tRNA profiles with unpaired D stem positions 13 and 22 over
+                # profiles with the positions paired.
                 unpaired_positions_13_22_in_type_II_profiles = [
                     1 if p[1][-self.d_stem_pos - 1].unpaired_positions_13_22_in_type_II else 0
                     for p in supported_profile_candidates
                 ]
                 return sorted(zip(supported_profile_candidates, unpaired_positions_13_22_in_type_II_profiles),
-                              key=lambda t: (-len(t[0][1]), t[0][3] + t[0][5] - t[1], t[0][7]))[0][0]
+                              key=lambda t: (-len(t[0][1]), t[0][3] + t[0][5] - t[1], t[0][6], t[0][1][-1].priority))[0][0]
             else:
-                return sorted(supported_profile_candidates, key=lambda p: (-len(p[1]), p[3] + p[5], p[7]))[0]
+                # Favor the profile with more features, fewer unconserved and unpaired nucleotides,
+                # fewer extrapolated 5' nucleotides, and greater priority of 3' terminus.
+                return sorted(supported_profile_candidates, key=lambda p: (-len(p[1]), p[3] + p[5], p[6], p[1][-1].priority))[0]
         else:
             return (profiled_seq,
                     features,
@@ -2074,7 +2024,6 @@ class Profiler(object):
                     num_unconserved,
                     num_paired,
                     num_unpaired,
-                    num_extra_threeprime,
-                    0, # number of nucleotides in extrapolated 5' feature
+                    0, # no extrapolated 5' nucleotides
                     has_complete_feature_set,
                     0) # input sequence is not longer than full-length tRNA
