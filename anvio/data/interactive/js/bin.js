@@ -985,7 +985,7 @@ Bins.prototype.RedrawBins = function() {
                         'x': bin_label_px, 
                         'y': bin_label_py, 
                     },
-                    $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
+                    $('#bin_name_' + bins_to_draw[i][2]).val().replaceAll("_", " "),
                     (autorotate_bin_labels) ? new_angle : bin_labels_angle,
                     align,
                     bin_labels_font_size + "px",
