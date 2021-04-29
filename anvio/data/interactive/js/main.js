@@ -2344,10 +2344,12 @@ function loadState()
                         url: '/state/get/' + state_name,
                         success: function(response) {
                             try{
+                                // console.log('before', response[0])
                                 clusteringData = response[1]['data'];
                                 loadOrderingAdditionalData(response[1]);
                                 changeViewData(response[2]);
                                 processState(state_name, response[0]);
+
                             }catch(e){
                                 console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
@@ -2355,8 +2357,11 @@ function loadState()
                                 return;
                             }
                             waitingDialog.hide();
+                        },
+                        error: function(response){
+                            console.log(response)
                         }
-                    });
+                    }); 
             },
         }
     );
