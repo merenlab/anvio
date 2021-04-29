@@ -2355,6 +2355,10 @@ function loadState()
                                 return;
                             }
                             waitingDialog.hide();
+                        },
+                        error: function(response){
+                            console.log(response)
+                            alert('looks like the server failed to retrieve your state data :( consider rebooting your interactive session with the --debug flag for additional insights. ')
                         }
                     });
             },
