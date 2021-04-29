@@ -472,10 +472,10 @@ class BottleApplication(Bottle):
                 default_view = self.interactive.default_view
                 default_order = self.interactive.p_meta['default_item_order']
 
-                if state_dict['current-view'] in self.interactive.views:
+                if 'current-view' in state_dict and state_dict['current-view'] in self.interactive.views: # extra checks to accomodate minified states without current-view/order-by data
                     default_view = state_dict['current-view']
 
-                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                if 'order-by' in state_dict and state_dict['order-by'] in self.interactive.p_meta['item_orders']:
                     default_order = state_dict['order-by']
 
                 return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
