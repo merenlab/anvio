@@ -14,7 +14,7 @@ The default minimum score for a gene to be counted is 20.  However, you can set 
 
 {{ codestart }}
 anvi-scan-trnas -c %(contigs-db)s \
-                --trna-cut-off-score 10
+                --trna-cutoff-score 10
 {{ codestop }}
 
 ### Other options 

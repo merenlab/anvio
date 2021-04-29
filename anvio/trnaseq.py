@@ -1466,7 +1466,7 @@ class TRNASeqDataset(object):
             # Reach this point either by starting from the beginning of the workflow
             # or loading the 'profile' checkpoint.
 
-            if '' in self.threeprime_termini:
+            if '' not in self.threeprime_termini:
                 # Recover 3' tRNA sequences lacking a 3' terminus.
                 self.threeprime_dereplicate_sequences_without_terminus()
 
@@ -2311,12 +2311,11 @@ class TRNASeqDataset(object):
 
 
     def threeprime_dereplicate_sequences_without_terminus(self):
-        """Find tRNA sequences missing a 3' terminus. Sequences required an
-        3' terminus to have been profiled as tRNA. Unique non-tRNA sequences are
-        searched against normalized tRNA sequences. Non-tRNA is recovered as tRNA when it is a 3'
-        subsequence of normalized tRNA or is longer than normalized tRNA sequences with a complete
-        feature profile and thus is shown to have a 5' extension. Recovered sequences each generate
-        a `TrimmedMappedSequence` object."""
+        """Find tRNA sequences missing a 3' terminus. Sequences required a 3' terminus to have been
+        profiled as tRNA. Unique non-tRNA sequences are searched against normalized tRNA sequences.
+        Non-tRNA is recovered as tRNA when it is a 3' subsequence of normalized tRNA or is longer
+        than normalized tRNA sequences with a complete feature profile and thus is shown to have a
+        5' extension. Recovered sequences each generate a `TrimmedMappedSequence` object."""
         start_time = time.time()
         self.progress.new("Dereplicating tRNA seqs ending in discriminator nt")
         self.progress.update("...")
