@@ -63,6 +63,7 @@ if __name__ == '__main__':
     group1D = parser.add_argument_group('PERFORMANCE')
     group1D.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group1D.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
+    group1D.add_argument(*anvio.A('profiling-chunk-size'), **anvio.K('profiling-chunk-size'))
     group1D.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
     group1D.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
 

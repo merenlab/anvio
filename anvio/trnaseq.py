@@ -1358,6 +1358,7 @@ class TRNASeqDataset(object):
         # Argument group 1D: PERFORMANCE
         self.num_threads = A('num_threads')
         self.skip_fasta_check = A('skip_fasta_check')
+        self.profiling_chunk_size = A('profiling_chunk_size')
         self.alignment_target_chunk_size = A('alignment_target_chunk_size')
         self.frag_mapping_query_chunk_length = A('fragment_mapping_query_chunk_length')
 
@@ -1773,7 +1774,7 @@ class TRNASeqDataset(object):
         # Count the number of reads and unique read sequences that have been added to the
         # multiprocessing input queue.
         total_read_count = 0
-        total_uniq_count = 0
+        total_uniq_count = len(uniq_reads)
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -1784,35 +1785,44 @@ class TRNASeqDataset(object):
         for p in processes:
             p.start()
 
-        for seq_string, name, read_count in uniq_reads:
-            input_queue.put((seq_string, name, read_count))
-            total_read_count += read_count
-            total_uniq_count += 1
-
         # Count the number of unique sequences that have been profiled and fetched from the
         # multiprocessing output queue.
         fetched_profile_count = 0
+        input_count = 0
+        interval_start = 0
+        profiling_chunk_size = self.profiling_chunk_size
+        interval_stop = profiling_chunk_size if profiling_chunk_size < total_uniq_count else total_uniq_count
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
         uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
         uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
         profiling_progress_interval = self.profiling_progress_interval
         pp_uniq_read_count = pp(len(uniq_reads))
         while fetched_profile_count < total_uniq_count:
-            profile, read_count = output_queue.get()
-            fetched_profile_count += 1
+            while input_count < interval_stop:
+                for uniq_read_info in uniq_reads[interval_start: interval_stop]:
+                    input_queue.put(uniq_read_info)
+                    total_read_count += uniq_read_info[2]
+                    input_count += 1
 
-            name = profile.name
-            if profile.is_predicted_trna:
-                uniq_trna_seq_dict[name] = UniqueFullProfileSequence(profile.input_seq, name, read_count, profile)
-            else:
-                if profile.trunc_profile_index:
-                    uniq_trunc_seq_dict[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
+            while fetched_profile_count < interval_stop:
+                profile, read_count = output_queue.get()
+                fetched_profile_count += 1
+
+                name = profile.name
+                if profile.is_predicted_trna:
+                    uniq_trna_seq_dict[name] = UniqueFullProfileSequence(profile.input_seq, name, read_count, profile)
                 else:
-                    uniq_nontrna_seq_dict[name] = UniqueSequence(profile.input_seq, name, read_count)
+                    if profile.trunc_profile_index:
+                        uniq_trunc_seq_dict[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
+                    else:
+                        uniq_nontrna_seq_dict[name] = UniqueSequence(profile.input_seq, name, read_count)
 
-            if fetched_profile_count % profiling_progress_interval == 0:
-                # Periodically report the number of unique sequences that have been profiled.
-                self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
+                if fetched_profile_count % profiling_progress_interval == 0:
+                    # Periodically report the number of unique sequences that have been profiled.
+                    self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
+
+            interval_start = interval_stop
+            interval_stop += profiling_chunk_size if interval_stop + profiling_chunk_size < total_uniq_count else total_uniq_count - interval_stop
 
         for p in processes:
             p.terminate()

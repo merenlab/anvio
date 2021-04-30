@@ -3067,6 +3067,15 @@ D = {
              'action': 'store_true',
              'help': "Don't check the input FASTA file for such things as proper defline formatting to speed things up."}
                 ),
+    'profiling-chunk-size': (
+            ['--profiling-chunk-size'],
+            {'default': 500000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o manages memory consumption during tRNA feature profiling by chunking the unique input sequences. "
+                     "This parameter sets the maximum number of sequences in each chunk. "
+                     "Adjustment of this parameter has little effect on speed."}
+                ),
     'alignment-target-chunk-size': (
             ['--alignment-target-chunk-size'],
             {'default': 20000,
@@ -3102,7 +3111,7 @@ D = {
                 ),
     'profiling-progress-interval': (
             ['--profiling-progress-interval'],
-            {'default': 100000,
+            {'default': 500000,
              'metavar': 'INT',
              'type': int,
              'help': "Progress in the tRNA feature profiling of unique input sequences "

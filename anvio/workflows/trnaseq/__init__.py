@@ -88,6 +88,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--max-deletion-configurations',
             '--skip-fasta-check',
             '--alignment-target-chunk-size',
+            '--profiling-chunk-size',
             '--fragment-mapping-query-chunk-length',
             '--profiling-progress-interval',
             '--alignment-progress-interval',
@@ -164,6 +165,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--min-distance-between-deletions': anvio.D['min-distance-between-deletions'][1]['default'],
                 '--max-deletion-configurations': anvio.D['max-deletion-configurations'][1]['default'],
                 '--skip-fasta-check': True, # not the default in anvi-trnaseq
+                '--profiling-chunk-size': anvio.D['profiling-chunk-size'][1]['default'],
                 '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 '--fragment-mapping-query-chunk-length': anvio.D['fragment-mapping-query-chunk-length'][1]['default'],
                 '--profiling-progress-interval': anvio.D['profiling-progress-interval'][1]['default'],
