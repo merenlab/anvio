@@ -2955,7 +2955,7 @@ class TRNASeqDataset(object):
             norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
             norm_trunc_seq_extras.append(norm_trunc_seq)
 
-        self.progress.update("3'-dereplicating seqs")
+        self.progress.update("3'-dereplicating seqs with in silico dels and truncated profiles")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
                                                                norm_trunc_seq_reversed_seq_strings,
                                                                norm_trunc_seq_extras,
@@ -2978,7 +2978,7 @@ class TRNASeqDataset(object):
                 norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
                 norm_trna_seq_extras.append(norm_trna_seq)
 
-        self.progress.update("3'-dereplicating seqs")
+        self.progress.update("3'-dereplicating seqs with in silico dels and full profiles")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
                                                                norm_trna_seq_reversed_seq_strings,
                                                                norm_trna_seq_extras,
