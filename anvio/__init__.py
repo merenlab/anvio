@@ -3078,7 +3078,7 @@ D = {
                 ),
     'alignment-target-chunk-size': (
             ['--alignment-target-chunk-size'],
-            {'default': 20000,
+            {'default': 25000,
              'metavar': 'INT',
              'type': int,
              'help': "Anvi'o sequence alignment manages memory consumption by chunking the list of alignment targets, "
