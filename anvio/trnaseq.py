@@ -1995,6 +1995,9 @@ class TRNASeqDataset(object):
         norm_trna_seq_dict = self.norm_trna_seq_dict
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
 
+        # It is possible that trimmed sequences from multiple clusters can consolidate.
+        consol_trimmed_seq_dict = {}
+
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file = open(self.consol_seqs_with_inconsis_profiles_path, 'w')
             consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
@@ -2046,12 +2049,33 @@ class TRNASeqDataset(object):
                         consol_seqs_with_inconsis_profiles_file.write("1\t")
                         consol_seqs_with_inconsis_profiles_file.write(uniq_seq.seq_string + "\n")
 
-            consol_trimmed_seq = self.consolidate_trimmed_sequences(trimmed_seqs[complete_profile_indices[-1]], trimmed_seqs[: complete_profile_indices[-1]])
+            short_trimmed_seq = trimmed_seqs[complete_profile_indices[-1]]
+            if short_trimmed_seq.represent_name in consol_trimmed_seq_dict:
+                # Trimmed sequences from multiple clusters consolidate with the same shorter trimmed
+                # sequence with a complete profile.
 
-            norm_trna_seq_dict[consol_trimmed_seq.represent_name] = NormalizedFullProfileSequence([consol_trimmed_seq] + trimmed_seqs[complete_profile_indices[-1] + 1: ])
-
+                # Some of the longer trimmed sequences with rejected "complete" profiles occur in
+                # multiple clusters. Clearly, the longest seed sequence, which is also being
+                # consolidated, must differ between the clusters. Trimmed sequences in the clusters
+                # shorter than that with the chosen complete profile must be the same in each
+                # cluster.
+                long_trimmed_seqs = consol_trimmed_seq_dict[short_trimmed_seq.represent_name]['long_trimmed_seqs']
+                encountered_long_trimmed_seq_names = [trimmed_seq.represent_name for trimmed_seq in long_trimmed_seqs]
+                for long_trimmed_seq in trimmed_seqs[: complete_profile_indices[-1]]:
+                    if long_trimmed_seq.represent_name not in encountered_long_trimmed_seq_names:
+                        long_trimmed_seqs.append(long_trimmed_seq)
+            else:
+                # This is the first time the shortest sequence with a complete profile has been
+                # found in a cluster.
+                consol_trimmed_seq_dict[short_trimmed_seq.represent_name] = {'short_trimmed_seq': short_trimmed_seq,
+                                                                             'long_trimmed_seqs': trimmed_seqs[: complete_profile_indices[-1]],
+                                                                             'norm_seq_members': trimmed_seqs[complete_profile_indices[-1] + 1: ]}
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file.close()
+
+        for consol_trimmed_seq_subdict in consol_trimmed_seq_dict.values():
+            consol_trimmed_seq = self.consolidate_trimmed_sequences(consol_trimmed_seq_subdict['short_trimmed_seq'], consol_trimmed_seq_subdict['long_trimmed_seqs'])
+            norm_trna_seq_dict[consol_trimmed_seq.represent_name] = NormalizedFullProfileSequence([consol_trimmed_seq] + consol_trimmed_seq_subdict['norm_seq_members'])
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled seqs", time.time() - start_time, is_time_value=True))
