@@ -4068,7 +4068,7 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Unique tRNA seqs with 1-%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_short_fiveprime_extension))
             f.write(get_summary_line("Unique tRNA seqs with >%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_long_fiveprime_extension))
             if anvio.DEBUG:
-                f.write(get_summary_line("Unique tRNA seqs with recovered truncated profile", ))
+                f.write(get_summary_line("Unique tRNA seqs with recovered truncated profile", uniq_seqs_with_recovered_trunc_profile))
             f.write(get_summary_line("Mean profiled reads per unique seq", mean_profiled_reads_per_uniq_seq))
             f.write(get_summary_line("Unique seqs mapped to tRNA interior", interior_mapped_uniq_seqs))
             f.write(get_summary_line("Unique seqs mapped to tRNA with extra 5' nts", fiveprime_mapped_uniq_seqs))
