@@ -338,7 +338,7 @@ class TrimmedSequence(object):
         for uniq_seq in uniq_seqs:
             if uniq_seq.trimmed_seq_represent_name is not None:
                 raise ConfigError(f"The unique sequence with the representative name {uniq_seq.represent_name} "
-                                  f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq.represent_name} "
+                                  f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq_represent_name} "
                                   "and so cannot be assigned to a new trimmed sequence.")
         self.read_count = sum([uniq_seq.read_count for uniq_seq in self.uniq_seqs])
         self.norm_seq_represent_names = []
