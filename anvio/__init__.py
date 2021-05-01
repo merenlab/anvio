@@ -3119,7 +3119,7 @@ D = {
                 ),
     'alignment-progress-interval': (
             ['--alignment-progress-interval'],
-            {'default': 200000,
+            {'default': 500000,
              'metavar': 'INT',
              'type': int,
              'help': "Progress is reported after a certain number of queries have been processed "
