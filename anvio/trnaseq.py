@@ -228,15 +228,28 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
     __slots__ = ('defunct_uniq_seq', )
 
     def __init__(self, defunct_uniq_seq, replacement_info_dict):
-        UniqueSeq.__init__(defunct_uniq_seq.seq_string, defunct_uniq_seq.represent_name, defunct_uniq_seq.read_count)
+        UniqueSequence.__init__(self, defunct_uniq_seq.seq_string, defunct_uniq_seq.represent_name, defunct_uniq_seq.read_count)
 
         uniq_seq_string = defunct_uniq_seq.seq_string
         uniq_seq_length = len(uniq_seq_string)
         trimmed_seq_stop_in_uniq_seq = uniq_seq_length - uniq_seq_string[::-1].index(replacement_info_dict['trimmed_seq_string'][::-1])
-        self.feature_start_indices = [trimmed_seq_stop_in_uniq_seq + feature_start_index_from_trimmed_threeprime
-                                      for feature_start_index_from_trimmed_threeprime in replacement_info_dict['feature_start_indices_from_trimmed_threeprime']]
-        self.feature_stop_indices = [trimmed_seq_stop_in_uniq_seq + feature_stop_index_from_trimmed_threeprime
-                                     for feature_stop_index_from_trimmed_threeprime in replacement_info_dict['feature_stop_indices_from_trimmed_threeprime']]
+        feature_start_indices = []
+        for feature_start_index_from_trimmed_threeprime in replacement_info_dict['feature_start_indices_from_trimmed_threeprime']:
+            if isinstance(feature_start_index_from_trimmed_threeprime, int):
+                feature_start_indices.append(trimmed_seq_stop_in_uniq_seq + feature_start_index_from_trimmed_threeprime)
+            else:
+                feature_start_indices.append(tuple([trimmed_seq_stop_in_uniq_seq + strand_start_index_from_trimmed_threeprime for strand_start_index_from_trimmed_threeprime in feature_start_index_from_trimmed_threeprime]))
+        self.feature_start_indices = feature_start_indices
+        feature_stop_indices = []
+        for feature_stop_index_from_trimmed_threeprime in replacement_info_dict['feature_stop_indices_from_trimmed_threeprime']:
+            if isinstance(feature_stop_index_from_trimmed_threeprime, int):
+                feature_stop_indices.append(trimmed_seq_stop_in_uniq_seq + feature_stop_index_from_trimmed_threeprime)
+            else:
+                feature_stop_indices.append(tuple([trimmed_seq_stop_in_uniq_seq + strand_stop_index_from_trimmed_threeprime for strand_stop_index_from_trimmed_threeprime in feature_stop_index_from_trimmed_threeprime]))
+        self.feature_stop_indices = feature_stop_indices
+        self.has_complete_feature_set = True
+        self.num_extrapolated_fiveprime_nts = 0
+        self.has_his_g = replacement_info_dict['has_his_g']
         self.alpha_start_index = (None if replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] is None
                                   else trimmed_seq_stop_in_uniq_seq + replacement_info_dict['alpha_start_index_from_trimmed_threeprime'])
         self.alpha_stop_index = (None if replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] is None
@@ -248,7 +261,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.anticodon_string = replacement_info_dict['anticodon_string']
         self.anticodon_aa = replacement_info_dict['anticodon_aa']
         self.contains_anticodon = replacement_info_dict['contains_anticodon']
-        self.threeprime_terminus_length = uniq_seq_length - replacement_info_dict['trimmed_seq_stop_in_uniq_seq']
+        self.threeprime_terminus_length = uniq_seq_length - trimmed_seq_stop_in_uniq_seq
         self.num_conserved = replacement_info_dict['num_conserved']
         self.num_unconserved = replacement_info_dict['num_unconserved']
         self.num_paired = replacement_info_dict['num_paired']
@@ -266,9 +279,9 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
                                   unpaired_tuple[2],
                                   unpaired_tuple[3]))
         self.unpaired_info = unpaired_info
-        self.profiled_seq_length = replacement_info_dict['profiled_seq_without_terminus_length'] + uniq_seq.threeprime_terminus_length
+        self.profiled_seq_length = replacement_info_dict['profiled_seq_without_terminus_length'] + self.threeprime_terminus_length
         self.extra_fiveprime_length = uniq_seq_length - self.profiled_seq_length
-        self.trimmed_seq_represent_name = replacement_info_dict['trimmed_seq_represent_name']
+        self.trimmed_seq_represent_name = None
 
         # Store the defunct profile information for posterity.
         self.defunct_uniq_seq = defunct_uniq_seq
@@ -2033,7 +2046,7 @@ class TRNASeqDataset(object):
                         consol_seqs_with_inconsis_profiles_file.write("1\t")
                         consol_seqs_with_inconsis_profiles_file.write(uniq_seq.seq_string + "\n")
 
-            consol_trimmed_seq = self.consolidate_trimmed_sequences(selected_trimmed_seq, trimmed_seqs[: complete_profile_indices[-1]])
+            consol_trimmed_seq = self.consolidate_trimmed_sequences(trimmed_seqs[complete_profile_indices[-1]], trimmed_seqs[: complete_profile_indices[-1]])
 
             norm_trna_seq_dict[consol_trimmed_seq.represent_name] = NormalizedFullProfileSequence([consol_trimmed_seq] + trimmed_seqs[complete_profile_indices[-1] + 1: ])
 
@@ -2057,10 +2070,23 @@ class TRNASeqDataset(object):
         # To transfer profile information from the representative unique sequence to other unique
         # sequences, determine where features are relative to the 3' end of the short trimmed
         # sequence, which is found in the other unique sequences.
-        replacement_info_dict = {'trimmed_seq_represent_name': short_trimmed_seq.represent_name}
+        replacement_info_dict = {'trimmed_seq_string': short_trimmed_seq.seq_string}
         feature_index_adjustment = -short_uniq_seq.extra_fiveprime_length - len(short_trimmed_seq_string)
-        replacement_info_dict['feature_start_indices_from_trimmed_threeprime'] = [feature_start_index + feature_index_adjustment for feature_start_index in short_uniq_seq.feature_start_indices]
-        replacement_info_dict['feature_stop_indices_from_trimmed_threeprime'] = [feature_stop_index + feature_index_adjustment for feature_stop_index in short_uniq_seq.feature_stop_indices]
+        feature_start_indices_from_trimmed_threeprime = []
+        for feature_start_index in short_uniq_seq.feature_start_indices:
+            if isinstance(feature_start_index, int):
+                feature_start_indices_from_trimmed_threeprime.append(feature_start_index + feature_index_adjustment)
+            else:
+                feature_start_indices_from_trimmed_threeprime.append(tuple([strand_start_index + feature_index_adjustment for strand_start_index in feature_start_index]))
+        replacement_info_dict['feature_start_indices_from_trimmed_threeprime'] = feature_start_indices_from_trimmed_threeprime
+        feature_stop_indices_from_trimmed_threeprime = []
+        for feature_stop_index in short_uniq_seq.feature_stop_indices:
+            if isinstance(feature_stop_index, int):
+                feature_stop_indices_from_trimmed_threeprime.append(feature_stop_index + feature_index_adjustment)
+            else:
+                feature_stop_indices_from_trimmed_threeprime.append(tuple([strand_stop_index + feature_index_adjustment for strand_stop_index in feature_stop_index]))
+        replacement_info_dict['feature_stop_indices_from_trimmed_threeprime'] = feature_stop_indices_from_trimmed_threeprime
+        replacement_info_dict['has_his_g'] = short_uniq_seq.has_his_g
         replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_start_index is None else short_uniq_seq.alpha_start_index + feature_index_adjustment
         replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_stop_index is None else short_uniq_seq.alpha_stop_index + feature_index_adjustment
         replacement_info_dict['beta_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.beta_start_index is None else short_uniq_seq.beta_start_index + feature_index_adjustment
@@ -2073,13 +2099,13 @@ class TRNASeqDataset(object):
         replacement_info_dict['num_paired'] = short_uniq_seq.num_paired
         replacement_info_dict['num_unpaired'] = short_uniq_seq.num_unpaired
         unconserved_info_from_trimmed_threeprime = []
-        for unconserved_tuple in short_trimmed_seq.unconserved_info:
+        for unconserved_tuple in short_uniq_seq.unconserved_info:
             unconserved_info_from_trimmed_threeprime.append((unconserved_tuple[0] + feature_index_adjustment,
                                                              unconserved_tuple[1],
                                                              unconserved_tuple[2]))
         replacement_info_dict['unconserved_info_from_trimmed_threeprime'] = unconserved_info_from_trimmed_threeprime
         unpaired_info_from_trimmed_threeprime = []
-        for unpaired_tuple in short_trimmed_seq.unpaired_info:
+        for unpaired_tuple in short_uniq_seq.unpaired_info:
             unpaired_info_from_trimmed_threeprime.append((unpaired_tuple[0] + feature_index_adjustment,
                                                           unpaired_tuple[1] + feature_index_adjustment,
                                                           unpaired_tuple[2],
@@ -2087,12 +2113,17 @@ class TRNASeqDataset(object):
         replacement_info_dict['unpaired_info_from_trimmed_threeprime'] = unpaired_info_from_trimmed_threeprime
         replacement_info_dict['profiled_seq_without_terminus_length'] = short_uniq_seq.profiled_seq_length - short_uniq_seq.threeprime_terminus_length
 
+        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
+        uniq_trna_seq_dict = self.uniq_trna_seq_dict
         trimmed_trna_seq_dict.pop(short_trimmed_seq.represent_name)
         uniq_seqs = short_trimmed_seq.uniq_seqs
+        for uniq_seq in uniq_seqs:
+            uniq_seq.trimmed_seq_represent_name = None
         for long_trimmed_seq in long_trimmed_seqs:
             trimmed_trna_seq_dict.pop(long_trimmed_seq.represent_name)
 
             for uniq_seq in long_trimmed_seq.uniq_seqs:
+                uniq_seq.trimmed_seq_represent_name = None
                 uniq_trna_seq_dict.pop(uniq_seq.represent_name)
                 new_uniq_seq = UniqueTransferredProfileSequence(uniq_seq, replacement_info_dict)
                 uniq_seqs.append(new_uniq_seq)
