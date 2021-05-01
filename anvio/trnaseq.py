@@ -2253,7 +2253,7 @@ class TRNASeqDataset(object):
                     else:
                         raise ConfigError("It appears that a cluster in the 3' dereplication "
                                           "of trimmed sequences with truncated profiles and normalized sequences with full profiles "
-                                          "contains more than one normalized sequence, when it should only contain zero or one.")
+                                          "contains >1 normalized sequence, when it should only contain 0 or 1.")
 
                 if isinstance(seq, NormalizedSequence):
                     norm_trna_seq = seq
