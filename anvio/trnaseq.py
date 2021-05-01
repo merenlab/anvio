@@ -1405,20 +1405,25 @@ class TRNASeqDataset(object):
             'profile': {
                 'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
                 'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-PROFILE_CHECKPOINT.pkl")
+                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl")
             },
-            'fragment_mapping': {
-                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl"),
-                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-FRAGMENT_MAPPING_CHECKPOINT.pkl")
+            'normalize': {
+                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
+                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-NORMALIZE_CHECKPOINT.pkl")
+            },
+            'map_fragments': {
+                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
+                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl")
             }
         }
         self.intermed_file_label_dict = {
@@ -1466,19 +1471,54 @@ class TRNASeqDataset(object):
         self.sanity_check()
 
         if not self.load_checkpoint:
-            self.process_before_profiling_checkpoint()
+            # Do the steps before the "profile" checkpoint.
 
-        if self.load_checkpoint == 'profile':
+            self.create_trnaseq_database()
+
+            if self.feature_param_path:
+                # The user provided an optional tRNA feature parameterization file.
+                trnaidentifier.TRNAFeatureParameterizer().set_params_from_file(self.feature_param_path)
+
+            # Add the user parameterizations as meta-values in the "self" table of the tRNA-seq
+            # database.
+            self.report_profiling_parameters()
+            self.report_fragment_mapping_parameters()
+            self.report_modification_analysis_parameters()
+
+            # Profile each (unique) read for tRNA features.
+            self.profile_trna()
+
+            if self.write_checkpoints:
+                self.write_checkpoint_files('profile')
+        elif self.load_checkpoint == 'profile':
             self.load_checkpoint_files('profile')
             self.report_fragment_mapping_parameters()
             self.report_modification_analysis_parameters()
 
-        if self.load_checkpoint == 'fragment_mapping':
-            self.load_checkpoint_files('fragment_mapping')
-            self.report_modification_analysis_parameters()
-        else:
-            # Reach this point either by starting from the beginning of the workflow
-            # or loading the 'profile' checkpoint.
+
+        if not self.load_checkpoint or self.load_checkpoint == 'profile':
+            # Do the steps between the "profile" and "normalize" checkpoints.
+
+            # Trim 5' and 3' ends of profiled tRNA.
+            self.trim_trna_ends()
+            # Trim 3' ends of sequences with truncated tRNA profile.
+            self.trim_truncated_profile_ends()
+
+            # Consolidate 3' fragments of longer profiled tRNA sequences, forming normalized sequences.
+            self.threeprime_dereplicate_trna()
+
+            # Recover tRNA sequences with truncated feature profiles by comparing to normalized
+            # sequences.
+            self.threeprime_dereplicate_truncated_sequences()
+
+            if self.write_checkpoints:
+                self.write_checkpoint_files('normalize')
+        elif self.load_checkpoint == 'normalize':
+            self.load_checkpoint_files('normalize')
+
+
+        if not self.load_checkpoint == 'map_fragments':
+            # Do the steps between the "normalize" and "map_fragments" checkpoints.
 
             if '' not in self.threeprime_termini:
                 # Recover 3' tRNA sequences lacking a 3' terminus.
@@ -1493,7 +1533,13 @@ class TRNASeqDataset(object):
                 norm_seq.init()
 
             if self.write_checkpoints:
-                self.write_checkpoint_files('fragment_mapping')
+                self.write_checkpoint_files('map_fragments')
+        else:
+            self.load_checkpoint_files('map_fragments')
+            self.report_modification_analysis_parameters()
+
+
+        # Do the steps after the "map_fragments" checkpoint.
 
         # Find modified nucleotides, grouping normalized sequences into modified sequences.
         self.find_substitutions()
@@ -1653,41 +1699,6 @@ class TRNASeqDataset(object):
                 if del_start < del_stop:
                     del_ranges.append(range(del_start, del_stop))
         self.del_ranges = tuple(del_ranges)
-
-
-    def process_before_profiling_checkpoint(self):
-        """Do the steps before the first checkpoint. This "profiling" checkpoint occurs after tRNA
-        profiling, tRNA trimming, and the recovery of tRNA sequences with truncated feature
-        profiles."""
-        self.create_trnaseq_database()
-
-        if self.feature_param_path:
-            # The user provided an optional tRNA feature parameterization file.
-            trnaidentifier.TRNAFeatureParameterizer().set_params_from_file(self.feature_param_path)
-
-        # Add the user parameterizations as meta-values in the "self" table of the tRNA-seq
-        # database.
-        self.report_profiling_parameters()
-        self.report_fragment_mapping_parameters()
-        self.report_modification_analysis_parameters()
-
-        # Profile each (unique) read for tRNA features.
-        self.profile_trna()
-
-        # Trim 5' and 3' ends of profiled tRNA.
-        self.trim_trna_ends()
-        # Trim 3' ends of sequences with truncated tRNA profile.
-        self.trim_truncated_profile_ends()
-
-        # Consolidate 3' fragments of longer profiled tRNA sequences, forming normalized sequences.
-        self.threeprime_dereplicate_trna()
-
-        # Recover tRNA sequences with truncated feature profiles by comparing to normalized
-        # sequences.
-        self.threeprime_dereplicate_truncated_sequences()
-
-        # Write intermediate files at the "profile" checkpoint
-        self.write_checkpoint_files('profile')
 
 
     def create_trnaseq_database(self):
@@ -2334,9 +2345,6 @@ class TRNASeqDataset(object):
 
 
     def write_checkpoint_files(self, checkpoint_name):
-        if not self.write_checkpoints:
-            return
-
         self.progress.new(f"Writing intermediate files for the \"{checkpoint_name}\" checkpoint")
         self.progress.update("...")
 

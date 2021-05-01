@@ -2867,7 +2867,7 @@ D = {
                 ),
     'load-checkpoint': (
             ['--load-checkpoint'],
-            {'choices': ['profile', 'fragment_mapping'],
+            {'choices': ['profile', 'normalize', 'map_fragments'],
              'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
                      "This can be useful for saving time if anvi'o crashed "
                      "or in comparing the results of different advanced program parameterizations "
@@ -2875,10 +2875,11 @@ D = {
                      "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
                      "Use of this option requires that anvi-trnaseq was previously run with the flag, "
                      "--write-checkpoints, so that intermediate files were generated. "
-                     "The checkpoint, profile, restarts after tRNA have been profiled and dereplicated. "
-                     "The checkpoint, fragment_mapping, restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
+                     "Checkpoint \"profile\" restarts after tRNA have been profiled and dereplicated. "
+                     "\"normalize\" restarts after trimming and normalizing tRNA. "
+                     "\"map_fragment\" restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
                      "To overwrite subsequent checkpoints after loading a checkpoint "
-                     "(i.e., overwrite the fragment_mapping checkpoint files after loading the profile checkpoint), "
+                     "(e.g., to overwrite \"map_fragment\" intermediate files after loading from \"normalize\"), "
                      "remember to also use the flag, --write-checkpoints."}
                 ),
     'feature-param-file': (
