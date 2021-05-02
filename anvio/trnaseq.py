@@ -2009,6 +2009,9 @@ class TRNASeqDataset(object):
         # It is possible that trimmed sequences from multiple clusters can consolidate.
         consol_trimmed_seq_dict = {}
 
+        # This dict is for an edge case explained below.
+        his_trimmed_seq_dict = {}
+
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file = open(self.consol_seqs_with_inconsis_profiles_path, 'w')
             consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
@@ -2045,8 +2048,15 @@ class TRNASeqDataset(object):
             # separate trimmed sequences.
             if trimmed_seqs[complete_profile_indices[-2]].has_his_g:
                 if trimmed_seqs[complete_profile_indices[-1]].seq_string == trimmed_seqs[complete_profile_indices[-2]].seq_string[1: ]:
-                    norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs[complete_profile_indices[-2]: ])
-                    continue
+
+                    if len(complete_profile_indices) == 2:
+                        assert complete_profile_indices[-2] == 0
+                        his_trimmed_seq_dict[trimmed_seqs[1].represent_name] = trimmed_seqs
+                        continue
+
+                    # Perhaps more than two trimmed sequences in the cluster have "complete"
+                    # profiles, though this has not been checked. In this case, consolidate the
+                    # sequences, retaining the profile of the shortest.
 
             if anvio.DEBUG:
                 # Report the consolidated sequences with different complete feature profiles.
@@ -2083,6 +2093,23 @@ class TRNASeqDataset(object):
                                                                              'norm_seq_members': trimmed_seqs[complete_profile_indices[-1] + 1: ]}
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file.close()
+
+        # Consider the following edge case. One cluster had two trimmed sequences with complete
+        # profiles, T1 and T2, so the sequences were consolidated, forming normalized sequence, N1.
+        # T1:      GGTGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # T2 == N1:   GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Another cluster had two trimmed sequences, T3 and the same T2, only differing by a
+        # supposed tRNA-His 5'-G.
+        # T3:        GGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # T2:         GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Rather than creating another normalized sequence, N2, with the sequence of T3,
+        # consolidate the trimmed sequences from the two clusters. This avoids producing two
+        # normalized sequences, one of which is the 3' subsequence of the other.
+        for name, trimmed_seqs in his_trimmed_seq_dict.items():
+            if name in consol_trimmed_seq_dict:
+                consol_trimmed_seq_dict[name]['long_trimmed_seqs'].append(trimmed_seqs[0])
+            else:
+                norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs)
 
         for consol_trimmed_seq_subdict in consol_trimmed_seq_dict.values():
             consol_trimmed_seq = self.consolidate_trimmed_sequences(consol_trimmed_seq_subdict['short_trimmed_seq'], consol_trimmed_seq_subdict['long_trimmed_seqs'])
