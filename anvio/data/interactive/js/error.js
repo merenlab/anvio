@@ -26,5 +26,11 @@ function alertDependencyError(dependencyError, isFinalDependency){
         alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
         :
         alert(`${ERROR_COUNT} dependencies failed to load :(. These are the culprits: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
+
+        window.open('error-landing.html', '_blank')
     }
+}
+
+errorLandingContext = () => {
+    document.querySelector('#content-div').innerHTML = '<p> this can be programmatically changed based on current issue</p>'
 }
