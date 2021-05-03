@@ -136,6 +136,7 @@ Here are some small conveniences that may help the interface serve you better (w
 - You can zoom to a section of the display by making a rectangular selection of the area __while the pressing the shift button.__
 - You can click an entire branch to add items into the selected bin, and remove them by __right-clicking__ a branch.
 - If you click a branch __while pressing the <kbd>Command</kbd> or <kbd>CTRL</kbd> button__, it will create a new bin, and add the content of the selection into that bin.
+- Tired of selecting items for binning one by one? __right-click__ on an item and select __Mark item as 'range start'__ to set an 'in point', then __right-click__ on another item and select __Add items in range to active bin__ or __Remove items in range from any bin__ to manipulate many items with few clicks. Nice!
 - By pressing <kbd>1</kbd>,<kbd>2</kbd>,<kbd>3</kbd>,<kbd>4</kbd>, and<kbd>5</kbd>, you can go between Layers, Bins, Samples, Mouse, and Search tabs!
 
 ## Keyboard shortcuts
