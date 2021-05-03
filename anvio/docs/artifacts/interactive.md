@@ -86,7 +86,14 @@ At the bottom of the settings panel there is a section with tiny controls that a
 
 ## Main tab 
 - Display
-    - content 
+    - Provides high level options for adjusting __items order__, __view__, and __drawing type__ . 
+    - The __Show Additional Settings__ button provides access to myriad additional, more-granular adjustments like: 
+        - __Radius__ and __Angle__ , and __Edge length normalization__ adjustments for the dendrogram. 
+        - Settings for displaying __bootstrap values__ on the dendrogram
+        - __Selections__ settings to adjust __height__, __grid__ and/or __shade__ display, as well as selection __name__ settings. 
+        - __Layers__ display and label settings
+        - __Performance__ -minded settings. 
+        <!-- ^^WHAT DOES THIS DO -->
 - Layers
     - content
 ## Layers tab 
