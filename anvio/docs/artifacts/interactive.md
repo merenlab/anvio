@@ -95,7 +95,10 @@ At the bottom of the settings panel there is a section with tiny controls that a
         - __Performance__ -minded settings. 
         <!-- ^^WHAT DOES THIS DO -->
 - Layers
-    - content
+    - This section is where users can adjust individual layer attributes like __color__, display __type__, __height__  and __min/max__ values. 
+    - Users can click + drag each layer to rearrange how layers are ordered. 
+    - Users can also __edit attributes for multiple layers__ as well. 
+
 ## Layers tab 
 Through the layers tab you can,
 
