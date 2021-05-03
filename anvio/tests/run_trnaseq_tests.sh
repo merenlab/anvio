@@ -14,6 +14,7 @@ for sample in S01 S02
 do
     for split in untreated demethylase
     do
+        INFO "Analyzing sample \"$sample\" split \"$split\""
         gzip -cd ${files}/TRNASEQ-SAMPLE-${sample}_${split}.fa.gz > \
                  ${output_dir}/TRNASEQ-SAMPLE-${sample}_${split}.fa
         anvi-trnaseq -f ${output_dir}/TRNASEQ-SAMPLE-${sample}_${split}.fa \

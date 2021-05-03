@@ -2355,6 +2355,10 @@ function loadState()
                                 return;
                             }
                             waitingDialog.hide();
+                        },
+                        error: function(response){
+                            console.log(response)
+                            alert('looks like the server failed to retrieve your state data :( consider rebooting your interactive session with the --debug flag for additional insights. ')
                         }
                     });
             },
@@ -2365,6 +2369,55 @@ function loadState()
 }
 
 function processState(state_name, state) {
+    let serializedState = serializeSettings(true)
+    // state obj returned from serializeSettings, representing the default state anvio generates. 
+    // We can now check it against the user supplied state to update/ADD values in the default. 
+    let modifiedItems = []
+    // keep track of the things we update and let the user know their state data has been tweaked
+    
+    function traverseNestedData(serializedStateObj, providedStateObj){ 
+        isObject = item => typeof item === 'object' ? true : false // check and end recursion if not provided an object 
+
+        if(isObject(serializedStateObj)){
+            Object.entries(serializedStateObj).forEach(([key, value]) => {
+                if(serializedStateObj[key] === providedStateObj[key]){ // if user's state element matches anvio's generated state element, do nothing 
+                    return 
+                } else if(providedStateObj[key] == null || providedStateObj[key] == undefined){ // if user's state is missing an element found in anvio's generated state , add it 
+                    providedStateObj[key] = value                     
+                } else if (providedStateObj[key] !== value){ // user's state element doesnt match anvio's, so we go again
+                    traverseNestedData(serializedStateObj[key], providedStateObj[key])       
+                } 
+            })
+        }
+    }
+
+    function setViews(){
+        views = {};
+        for (let view_key in state['views'])
+        {
+            views[view_key] = {};
+            for (let key in state['views'][view_key])
+            {
+                // the if statement below is an important one. this if statement enables min/max values for a given layer
+                // to NOT BE READ from the state file if we are in refine mode. this prevents min/max values that were set
+                // for the ENTIRE profile database to not influence a single bin. it can be turned off if the user passes
+                // --load-full-state to the program anvi-refine. but while this is a great feature for views where data,
+                // points represent coverage data, it is absulutely useless for the `detection` view. if the view is
+                // detection, we actually would like to apply the global detection settings by default without expecting
+                // the user to pass the --load-full-state flag.
+                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1 && view_key != 'detection') {
+                    continue;
+                }
+
+                let layer_id = getLayerId(key);
+                if (layer_id != -1)
+                {
+                    views[view_key][layer_id] = state['views'][view_key][key];
+                }
+            }
+        }
+    }
+
     if (!state.hasOwnProperty('version'))
     {
         toastr.error("Interface received a state without version information, it will be not loaded.");
@@ -2405,31 +2458,48 @@ function processState(state_name, state) {
             }
         }
 
-    } else {
+    } else { // generate layer order if not in state 
         layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
     }
 
-    if (state.hasOwnProperty('views')) {
-        views = {};
-        for (let view_key in state['views'])
-        {
-            views[view_key] = {};
-            for (let key in state['views'][view_key])
-            {
-                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1) {
-                    continue;
-                }
-
-                let layer_id = getLayerId(key);
-                if (layer_id != -1)
-                {
-                    views[view_key][layer_id] = state['views'][view_key][key];
-                }
-            }
-        }
+    if (state.hasOwnProperty('views') && state['views'] === serializedState['views']) { //check if user provides incomplete data against serialized data
+        setViews()
+    }  else if(!state['views']){
+        state['views'] = serializedState['views']
+        setViews()
+    } else {
+        traverseNestedData(serializedState['views'], state['views'])
+        setViews()
+        modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers')) {
+    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { 
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    } else if(!state['layers']) {
+        state['layers'] = serializedState['layers']
+        state['layers-order'] = serializedState['layers-order']
+        layers = {};
+        for (let key in state['layers'])
+        {
+
+            let layer_id = getLayerId(key);
+            if (layer_id != -1)
+            {
+                layers[layer_id] = state['layers'][key];
+            }
+        }
+    } else if (state['layers'] !== serializedState['layers']){
+        traverseNestedData(serializedState['layers'], state['layers'])
+
         layers = {};
         for (let key in state['layers'])
         {
@@ -2462,72 +2532,106 @@ function processState(state_name, state) {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
             }
         }
-    }
+    } 
 
-    if (state.hasOwnProperty('tree-type'))
+    if (state.hasOwnProperty('tree-type')){
         $('#tree_type').val(state['tree-type']).trigger('change');
-    if (state.hasOwnProperty('angle-min'))
+    } 
+
+    if (state.hasOwnProperty('angle-min')){
         $('#angle-min').val(state['angle-min']);
-    if (state.hasOwnProperty('tree-height'))
+    } 
+
+    if (state.hasOwnProperty('tree-height')){
         $('#tree_height').val(state['tree-height']);
-    if (state.hasOwnProperty('tree-width'))
+    } 
+
+    if (state.hasOwnProperty('tree-width')){
         $('#tree_width').val(state['tree-width']);
-    if (state.hasOwnProperty('angle-max'))
+    } 
+
+    if (state.hasOwnProperty('angle-max')){
         $('#angle-max').val(state['angle-max']);
+    } 
+
     if (state.hasOwnProperty('tree-radius')) {
         $('#tree-radius-container').show();
         $('#tree-radius').val(state['tree-radius']);
-    }
+    } 
+
     if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
         $('#trees_container').val(state['order-by']);
-    }
+    } 
+
     if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
         $('#views_container').val(state['current-view']);
-    }
+    } 
+
     if (state.hasOwnProperty('max-font-size')) {
         $('#max_font_size').val(state['max-font-size']);
-    }
+    } 
+
     if (state.hasOwnProperty('max-font-size-label')) {
         $('#max_font_size_label').val(state['max-font-size-label']);
-    }
-    if (state.hasOwnProperty('layer-margin'))
+    } 
+
+    if (state.hasOwnProperty('layer-margin')){
         $('#layer-margin').val(state['layer-margin']);
-    if (state.hasOwnProperty('outer-ring-height'))
+    } 
+
+    if (state.hasOwnProperty('outer-ring-height')){
         $('#outer-ring-height').val(state['outer-ring-height']);
-    if (state.hasOwnProperty('outer-ring-margin'))
+    } 
+
+    if (state.hasOwnProperty('outer-ring-margin')){
         $('#outer-ring-margin').val(state['outer-ring-margin']);
-    if (state.hasOwnProperty('edge-normalization'))
+    } 
+
+    if (state.hasOwnProperty('edge-normalization')){
         $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-    if (state.hasOwnProperty('optimize-speed'))
+    } 
+
+    if (state.hasOwnProperty('optimize-speed')){
         $('#optimize_speed').prop('checked', state['optimize-speed']);
-    if (state.hasOwnProperty('custom-layer-margin')) {
-        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
     }
+
+    if (state.hasOwnProperty('custom-layer-margin')){
+        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+    } 
+
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
-    }
+    } 
+
     if (state.hasOwnProperty('grid-width')) {
         $('#grid_width').val(state['grid-width']);
-    }
+    } 
+
     if (state.hasOwnProperty('bin-labels-font-size')) {
         $('#bin_labels_font_size').val(state['bin-labels-font-size']);
-    }
+    } 
+
     if (state.hasOwnProperty('bin-labels-angle')) {
         $('#bin_labels_angle').val(state['bin-labels-angle']);
-    }
+    } 
+
     if (state.hasOwnProperty('show-bin-labels')) {
         $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-    }
+    } 
+
     if (state.hasOwnProperty('show-shade-for-bins')) {
         $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
     }
@@ -2545,22 +2649,27 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
-    }
+    } 
+
     if (state.hasOwnProperty('samples-ignore-branch-length')) {
         $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
-    }
+    } 
+
     if (state.hasOwnProperty('samples-tree-height')) {
         $('#samples_tree_height').val(state['samples-tree-height']);
-    }
+    } 
+
     if (state.hasOwnProperty('background-opacity')) {
         $('#background_opacity').val(state['background-opacity']);
-    }
+    } 
+
     if (state.hasOwnProperty('draw-guide-lines')) {
         $('#draw_guide_lines').val(state['draw-guide-lines'])
-    }
+    } 
+
     if (state.hasOwnProperty('begins-from-branch')) {
         $('#begins_from_branch').val(state['begins-from-branch'])
-    }
+    } 
 
     // bootstrap values
     if (state.hasOwnProperty('show-support-values')){
@@ -2611,17 +2720,30 @@ function processState(state_name, state) {
                 samples_categorical_colors[key] = state['samples-categorical-colors'][key];
             }
         }
-    }
+    } 
     if (state.hasOwnProperty('samples-stack-bar-colors')) {
         for (let key in state['samples-stack-bar-colors']) {
             if (key in samples_stack_bar_colors) {
                 samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
             }
         }
-    }
+    } 
 
     buildLayersTable(layer_order, views[current_view]);
-    buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
+        buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+    } else if (!state['samples-layers']){
+        state['samples-layers'] = serializedState['samples-layers']
+        state['samples-layer-order'] = serializedState['samples-layer-order']
+        buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+    } else { 
+        traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
+        state['samples-layer-order'] = serializedState['samples-layer-order']
+        
+        buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+        modifiedItems.push('samples layer order, samples layers')
+    }
 
     if (state.hasOwnProperty('samples-groups')) {
         for (let group_name in state['samples-groups']) {
@@ -2637,14 +2759,14 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
         $('#samples_order').val(state['samples-order']).trigger('change');
-    }
+    } 
 
     populateColorDicts();
     buildLegendTables();
 
     current_state_name = state_name;
-
     toastr.success("State '" + current_state_name + "' successfully loaded.");
+    
 }
 
 

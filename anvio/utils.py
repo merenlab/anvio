@@ -796,12 +796,49 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
-    if not prefix:
-        prefix = os.path.abspath(input_file_path)
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+    """Splits a given FASTA file into multiple parts.
 
-    filesnpaths.is_file_exists(input_file_path)
+    Please note that this function will not clean after itself. You need to take care of the
+    output files in context.
+
+    Parameters
+    ==========
+    input_file_path : str
+        FASTA-formatted flat text file to be split
+    parts : int
+        Number of parts the input file to be split into
+    file_name_prefix : str
+        Preferably a single-word prefix for the output files
+    shuffle : bool
+        Whether input sequences should be randomly shuffled (so the input sequences
+        randomly distribute across output files)
+    output_dir : str, path
+        Output directory. By default, anvi'o will store things in a new directory under
+        the system location for temporary files
+
+    Returns
+    =======
+    output_file_paths : list
+        Array with `parts` number of elements where each item is an output file path
+
+    """
+    if not file_name_prefix:
+        file_name_prefix = os.path.basename(input_file_path)
+    else:
+        if '/' in file_name_prefix:
+            raise ConfigError("File name prefix for split fasta can't contain slash characters. It is not "
+                              "supposed to be a path after all :/")
+
+    # check input
     filesnpaths.is_file_fasta_formatted(input_file_path)
+
+    # check output
+    if not output_dir:
+        output_dir = filesnpaths.get_temp_directory_path()
+    else:
+        filesnpaths.gen_output_directory(output_dir)
+        filesnpaths.is_output_dir_writable(output_dir)
 
     source = u.ReadFasta(input_file_path, quiet=True)
     length = len(source.ids)
@@ -811,11 +848,13 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
 
     chunk_size = length // parts
 
-    output_files = []
+    output_file_paths = []
+
+    GET_OUTPUT_FILE_PATH = lambda p: os.path.join(output_dir, ".".join([file_name_prefix, str(p)]))
 
     if shuffle:
-        output_files = [f'{prefix}.{part_no}' for part_no in range(parts)]
-        output_fastas = [u.FastaOutput(file_name) for file_name in output_files]
+        output_file_paths = [f'{GET_OUTPUT_FILE_PATH(part_no)}' for part_no in range(parts)]
+        output_fastas = [u.FastaOutput(file_name) for file_name in output_file_paths]
 
         # The first sequence goes to the first outfile, the second seq to the second outfile, and so on.
         for seq_idx, (seq_id, seq) in enumerate(zip(source.ids, source.sequences)):
@@ -827,7 +866,7 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
             output_fasta.close()
     else:
         for part_no in range(parts):
-            output_file = prefix + '.' + str(part_no)
+            output_file = GET_OUTPUT_FILE_PATH(part_no)
 
             output_fasta = u.FastaOutput(output_file)
 
@@ -843,11 +882,11 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
                 output_fasta.write_seq(source.sequences[i])
 
             output_fasta.close()
-            output_files.append(output_file)
+            output_file_paths.append(output_file)
 
     source.close()
 
-    return output_files
+    return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -2115,9 +2154,10 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     Parameters
     ==========
     contig_sequences_dict : dict
-        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
-        ContigsSuperClass.init_contig_sequences)
+        An object that looks like that ContigsSuperclass.contig_sequences (initialized with
+        ContigsSuperclass.init_contig_sequences)
     """
+
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
@@ -4310,4 +4350,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-

@@ -472,10 +472,10 @@ class BottleApplication(Bottle):
                 default_view = self.interactive.default_view
                 default_order = self.interactive.p_meta['default_item_order']
 
-                if state_dict['current-view'] in self.interactive.views:
+                if 'current-view' in state_dict and state_dict['current-view'] in self.interactive.views: # extra checks to accomodate minified states without current-view/order-by data
                     default_view = state_dict['current-view']
 
-                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                if 'order-by' in state_dict and state_dict['order-by'] in self.interactive.p_meta['item_orders']:
                     default_order = state_dict['order-by']
 
                 return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
@@ -550,21 +550,16 @@ class BottleApplication(Bottle):
         except:
             data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
 
-        data['sequence'] = self.interactive.split_sequences[split_name]
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence']
 
         ## get the variability information dict for split:
-        progress.new('Variability', discard_previous_if_exists=True)
-        progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
         ## get the indels information dict for split:
-        progress.new('Indels', discard_previous_if_exists=True)
-        progress.update('Collecting info for "%s"' % split_name)
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
-
+        # building layer data
         for layer in layers:
-            progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
@@ -572,6 +567,11 @@ class BottleApplication(Bottle):
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we get all the amino acid sequences for genes in this split here to avoid
+        # multiple database calls for each gene later. this dictionary will be used
+        # below as we go through each gene call.
+        gene_aa_sequences_dict = self.interactive.get_gene_amino_acid_sequence([self.interactive.genes_in_splits[e]['gene_callers_id'] for e in gene_entries_in_split])
 
         for entry_id in gene_entries_in_split:
             gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
@@ -606,7 +606,7 @@ class BottleApplication(Bottle):
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
 
             # get amino acid sequence for the gene call:
-            p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
+            p['aa_sequence'] = gene_aa_sequences_dict[gene_callers_id]
 
             for level in levels_occupied:
                 level_ok = True
@@ -626,8 +626,6 @@ class BottleApplication(Bottle):
 
             data['genes'].append(p)
 
-        progress.end()
-
         return json.dumps(data)
 
 
@@ -643,7 +641,6 @@ class BottleApplication(Bottle):
         for candidate_entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
             if int(gene_callers_id) == int(self.interactive.genes_in_splits[candidate_entry_id]['gene_callers_id']):
                 entry_id = candidate_entry_id
-
 
         if not entry_id:
             raise ConfigError("Can not find this gene_callers_id in any splits.")
@@ -668,7 +665,7 @@ class BottleApplication(Bottle):
         p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
 
         # get amino acid sequence for the gene call:
-        p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
+        p['aa_sequence'] = self.interactive.get_gene_amino_acid_sequence([gene_callers_id])
 
         return json.dumps(p)
 
@@ -739,7 +736,7 @@ class BottleApplication(Bottle):
             coverage_list = coverages[layer].tolist()
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
 
-        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
+        data['sequence'] = self.interactive.split_sequences[split_name]['sequence'][focus_region_start:focus_region_end]
 
         ## get the variability information dict for split:
         progress.new('Variability')
@@ -799,7 +796,14 @@ class BottleApplication(Bottle):
             data['indels'].append(indels_dict)
 
         levels_occupied = {1: []}
-        for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+        gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we get all the amino acid sequences for genes in this split here to avoid
+        # multiple database calls for each gene later. this dictionary will be used
+        # below as we go through each gene call.
+        gene_aa_sequences_dict = self.interactive.get_gene_amino_acid_sequence([self.interactive.genes_in_splits[e]['gene_callers_id'] for e in gene_entries_in_split])
+
+        for entry_id in gene_entries_in_split:
             gene_callers_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
@@ -833,8 +837,8 @@ class BottleApplication(Bottle):
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
 
-            # get amino acid sequence for the gene call:
-            p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
+            # add amino acid sequence for the gene call:
+            p['aa_sequence'] = gene_aa_sequences_dict[gene_callers_id]
 
             for level in levels_occupied:
                 level_ok = True
@@ -1000,7 +1004,7 @@ class BottleApplication(Bottle):
 
     def get_sequence_for_split(self, split_name):
         try:
-            sequence = self.interactive.split_sequences[split_name]
+            sequence = self.interactive.split_sequences[split_name]['sequence']
             header = split_name
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})

@@ -14,6 +14,7 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -90,9 +91,12 @@ def main(args):
 
         ext_genomes_dict = {}
         for file in glob.glob(os.path.join(args.input_dir, '*.db')):
-            if utils.is_contigs_db(file, dont_raise=True):
-                db_name = os.path.basename(file).split(".db")[0]
-                db_path = os.path.abspath(file)
+            db_path = os.path.abspath(file)
+            db_type = utils.get_db_type(db_path)
+
+            if db_type == 'contigs':
+                contigs_db = ContigsDatabase(db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+                db_name = contigs_db.meta['project_name_str']
                 ext_genomes_dict[db_name] = {}
                 ext_genomes_dict[db_name]['contigs_db_path'] = db_path
 

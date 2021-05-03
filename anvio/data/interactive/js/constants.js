@@ -580,7 +580,7 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     if (layer.substring(0, 5) == "hmmx_") {
         if (attribute == 'height') return '30';
         if (attribute == 'norm')   return 'none';
-        if (attribute == 'color')  return '#882222'
+        if (attribute == 'color')  return '#882222';
     }
 
     /* Some ad-hoc manipulation of special hmms_ single hmm layers */
@@ -602,7 +602,11 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
             if (attribute == 'color')  return '#444444';
             if (attribute == 'color-start')  return '#DDDDDD';
         }
+    }
 
+    if (layer.substring(0, 6) == "motif_") {
+        if (attribute == 'norm')   return 'none';
+        if (attribute == 'color')  return '#222288';
     }
 
     if (layer in named_layers)
