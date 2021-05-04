@@ -97,11 +97,15 @@ At the bottom of the settings panel there is a section with tiny controls that a
         - __Selections__ settings to adjust __height__, __grid__ and/or __shade__ display, as well as selection __name__ settings. 
         - __Layers__ display and label settings
         - __Performance__ -minded settings. 
-        <!-- ^^WHAT DOES THIS DO -->
+
+![an anvi'o main tab](../images/png/interactive_interface/interactive-settings-display-additional-settings.png){:.center-img}
 - Layers
     - This section is where users can adjust individual layer attributes like __color__, display __type__, __height__  and __min/max__ values. 
     - Users can click + drag each layer to rearrange how layers are ordered. 
     - Users can also __edit attributes for multiple layers__ as well. 
+
+![an anvi'o settings layers](../images/png/interactive_interface/interactive-settings-layers.png){:.center-img}
+
 
 ## Layers tab 
 Through the layers tab you can,
@@ -111,6 +115,7 @@ Through the layers tab you can,
 - __Customize individual__ layers by switching between different __display modes__ depending on the layer type (i.e., ‘text’ or ‘color’ mode for categorical layers, or ‘bar’ or ‘intensity’ mode for numerical layers), __set normalization__ (i.e., ‘square-root’, or ‘log’ normalization), __minimum, and maximum cutoff__ values for numerical layers, or set __layer height__, and __layer margin__ (i.e., its distance from the previous layer).
 - Use the __multi-selector__ at the bottom to change settings for multiple layers at once.
 
+![an anvi'o layers tab](../images/png/interactive_interface/interactive-settings-layers-tab.png){:.center-img}
 <!-- blog post links to 'working with SVGs blog post, good info, should incorporate? -->
 ## Samples tab 
 Samples tab is for the additional data you provide the interface through a samples database (see samples order and samples infomration sections above). Through this layer you can,
@@ -122,9 +127,15 @@ Anvi’o allows you to create selections of items shown in the display (whether 
 - __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
 - View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
 - __Store a collection of bins__, or __load a previously stored collection.__
+
+![an anvi'o bins tab](../images/png/interactive_interface/interactive-settings-bins-tab.png){:.center-img}
+
 ## Legends tab 
 - The legends tab enables users to easily change individual or batch legend colors for any of their additional data items 
 <!-- grab legend example from infant gut w/ additional data layer -->
+
+![an anvi'o legends tab](../images/png/interactive_interface/interactive-settings-legends-tab.png){:.center-img}
+
 ## Search tab 
 It does what the name suggests. Using this tab you can,
 - __Build expressions to search items__ visualized in the main display.
