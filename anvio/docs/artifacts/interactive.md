@@ -4,7 +4,7 @@ This page describes general properties of anvi'o interactive displays and progra
 
 Anvi'o uses a simple terminology to address various aspects of interactive displays it produces, such as items, layers, views, orders, and so on. The purpose of this section is to provide some insights into these terminology using the figure below:
 
-![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
+![an anvi'o display](../images/png/interactive_interface/anvio_display_template.png){:.center-img}
 
 Even though the figure is a product of %(anvi-display-pan)s, the general terminology does not change across different interfaces, including the default visualizations of %(anvi-interactive)s. Here are the descriptions of numbered areas in the figure:
 
@@ -78,11 +78,15 @@ However, there are more interfaces available in anvi'o than just that one, so le
 The interactive interface has two major areas of interaction: the space for visualization on the right, and the settings panel. The settings panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
 
 # Settings panel
+![an anvi'o settings panel](../images/png/interactive_interface/interactive-settings-panel-tabs.png){:.center-img}
 
 At the bottom of the settings panel there is a section with tiny controls that are available in all tabs. Through these controls you can,
 - __Create or refresh__ the display when necessary using the draw button (some changes require you to do that),
 - __Zoom in, zoom out, and center__ the display.
 - __Download your display as an SVG file.__
+ 
+![settings panel bottom controls](../images/png/interactive_interface/interactive-settings-bottom.png){:.center-img}
+
 
 ## Main tab 
 - Display
