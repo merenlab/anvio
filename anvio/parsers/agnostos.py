@@ -19,8 +19,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Matthew S. Schechter"
+__email__ = "mschechter@uchicago.edu"
 
 
 class Agnostos(Parser):
