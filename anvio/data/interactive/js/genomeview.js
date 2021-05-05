@@ -153,9 +153,9 @@ $(document).ready(function() {
         if (zoom > 20) zoom = 20;
         if (zoom < 0.01) zoom = 0.01;
 
-        scale = canvas.getZoom() // set global scale to new zoom value
+        scale = canvas.getZoom() * 100 // set global scale to new zoom value
         scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value. 
-        scaleCanvas.add((new fabric.Text(`${scale * 100} nts`, {
+        scaleCanvas.add((new fabric.Text(`${scale} nts`, {
           strokeWidth: 1,
           fontSize: 100,
           fontFamily: 'sans-serif',
@@ -392,4 +392,15 @@ function getClassFromKEGGAnnotation(class_str) {
 // https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
+}
+
+function resetScale(){
+  scale = 100
+  canvas.setZoom(1)
+  scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value. 
+  scaleCanvas.add((new fabric.Text(`${scale} nts`, {
+    strokeWidth: 1,
+    fontSize: 100,
+    fontFamily: 'sans-serif',
+    selectable: false})));
 }

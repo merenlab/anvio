@@ -16,7 +16,10 @@
     <body>
         <div class="container">
             <canvas id="myCanvas" width="1200px" height="500px"></canvas>
-            <canvas id="scale" width="1200px" height="300px"></canvas>
+            <div>
+              <nutton id='reset-scale' onclick="resetScale()">reset scale</nutton>
+              <canvas id="scale" width="1200px" height="300px"></canvas>
+            </div>
             <div id='tooltip-body' display='none'></div>
 
             <div id="toggle-panel-settings" onclick="toggleSettingsPanel()">
