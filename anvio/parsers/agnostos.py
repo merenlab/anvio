@@ -34,8 +34,8 @@ class Agnostos(Parser):
         files_expected = {'agnostos_output': input_file_path}
 
         files_structure = {'agnostos_output':
-                                {'col_names': ['gene_callers_id', 'cl_name', 'gene', 'contig', 'gene_x_contig', 'db', 'cl_size', 'category', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign', 'observed', 'mean_proportion', 'pfam'],
-                                 'col_mapping': [int,                 str,     str,     str,         str,        str,   str,        str,        str,    str,       str,            str,           str,                str,        str,         str],
+                                {'col_names': ['gene_callers_id', 'cl_name', 'contig', 'gene_x_contig', 'db', 'cl_size', 'category', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign'],
+                                 'col_mapping': [int,                 str,     str,         str,        str,   str,        str,        str,    str,       str,            str,           str],
                                  'indexing_field': -1,
                                  'separator': '\t'},
                             }
@@ -48,7 +48,7 @@ class Agnostos(Parser):
     def get_dict(self):
         d = self.dicts['agnostos_output']
 
-        self.progress.new('Importing Agnostos clustering into contigs')
+        self.progress.new('Importing Agnostos annotations into contigs')
         self.progress.update('...')
 
         # Parse Agnostos output to make functions_dict
