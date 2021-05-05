@@ -21,6 +21,7 @@
  var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
  var canvas;
+ var scaleCanvas; 
  var genomeMax = 0;
 
  // Settings vars
@@ -44,6 +45,13 @@ $(document).ready(function() {
 
     function loadAll() {
       canvas = new fabric.Canvas('myCanvas');
+      scaleCanvas = new fabric.Canvas('scale') // link canvas element specifically for displaying scale, fill with default below
+      scaleCanvas.add(new fabric.Text(`${scale} nts`, {
+        strokeWidth: 1,
+        fontSize: 100,
+        fontFamily: 'sans-serif',
+        selectable: false}));
+
       $('#tooltip-body').hide() // set initual tooltip hide value
       $('#toggle_label_box').attr("checked", showLabels);
 
@@ -144,6 +152,15 @@ $(document).ready(function() {
         zoom *= 0.999 ** delta;
         if (zoom > 20) zoom = 20;
         if (zoom < 0.01) zoom = 0.01;
+
+        scale = canvas.getZoom() // set global scale to new zoom value
+        scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value. 
+        scaleCanvas.add((new fabric.Text(`${scale * 100} nts`, {
+          strokeWidth: 1,
+          fontSize: 100,
+          fontFamily: 'sans-serif',
+          selectable: false})));
+
         canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
         opt.e.preventDefault();
         opt.e.stopPropagation();
