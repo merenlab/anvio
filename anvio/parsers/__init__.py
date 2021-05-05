@@ -28,8 +28,7 @@ __email__ = "a.murat.eren@gmail.com"
 parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
 parser_modules['taxonomy_layers'] = {"krakenuniq": KrakenUniq}
-parser_modules['functions']       = {"interproscan": InterProScan}
-parser_modules['functions']       = {"agnostos": Agnostos}
+parser_modules['functions']       = {"interproscan": InterProScan, "agnostos": Agnostos}
 parser_modules['search']          = {"hmmer_table_output": HMMERTableOutput, "hmmer_std_output": HMMERStandardOutput}
 parser_modules['collections']     = {"concoct": CONCOCT}
 

@@ -12,7 +12,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
-from anvio.parsers.base import TaxonomyHelper
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -30,31 +29,35 @@ class Agnostos(Parser):
         self.progress = progress
         self.just_do_it = False
 
-        self.input_file_path = input_file_paths[0]
-        files_expected = {'agnostos_output': self.input_file_path}
+        input_file_path = input_file_paths[0]
+        filesnpaths.is_file_exists(input_file_path)
+        files_expected = {'agnostos_output': input_file_path}
 
         files_structure = {'agnostos_output':
-                                {'col_names': ['cl_name', 'gene', 'contig', 'gene_x_contig', 'db', 'cl_size', 'category', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'mg_project', 'norfs', 'coverage', 'niche_breadth_sign', 'observed', 'mean_proportion', 'pfam', 'gene_callers_id'],
-                                 'col_mapping': [str, str, str, int, str, int, str, str, str, str, str, str, int, float, str, float, float, str, int],
+                                {'col_names': ['gene_callers_id', 'cl_name', 'gene', 'contig', 'gene_x_contig', 'db', 'cl_size', 'category', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign', 'observed', 'mean_proportion', 'pfam'],
+                                 'col_mapping': [int,                 str,     str,     str,         str,        str,   str,        str,        str,    str,       str,            str,           str,                str,        str,         str],
+                                 'indexing_field': -1,
                                  'separator': '\t'},
                             }
 
-        # Parser.__init__(self, 'agnostos', input_file_paths, files_expected, files_structure)
+        Parser.__init__(self, 'agnostos', input_file_paths, files_expected, files_structure)
+
+        # This is where I would specific sanity checks for agnostos
 
 
     def get_dict(self):
-        filesnpaths.is_file_exists(self.input_file_path)
+        d = self.dicts['agnostos_output']
 
         self.progress.new('Importing Agnostos clustering into contigs')
         self.progress.update('...')
 
         # Parse Agnostos output to make functions_dict
-        df = pd.read_csv(self.input_file_path, sep="\t", header=0)
+        df = pd.DataFrame.from_dict(d, orient='index')
         df['source'] = "Agnostos"
         df['e_value'] = 0
-        df_subset = df[["gene_callers_id", "source", "cl_name", "db", "e_value"]]
-        df_subset.rename(columns = {'cl_name':'accession'}, inplace = True)
-        df_subset.rename(columns = {'db':'function'}, inplace = True)
-        d = df_subset.to_dict(orient='index')
+        df.rename(columns = {'cl_name':'accession'}, inplace = True)
+        df.rename(columns = {'db':'function'}, inplace = True)
+        df = df.drop_duplicates(subset=['gene_callers_id', 'source', 'accession', 'function'])
+        d = df.to_dict(orient='index')
 
         return d
