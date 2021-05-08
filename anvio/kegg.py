@@ -555,6 +555,12 @@ class KeggSetup(KeggContext):
                                   f"formatting requirements. We're sorry for asking this of you, but it really helps us make "
                                   f"sure everything will go smoothly.")
 
+            file_list = [f for f in glob.glob(os.path.join(path, '*'))]
+            if not file_list:
+                raise ConfigError(f"The folder '{path}' appears to be empty, so we have no data to work with. Please make "
+                                  f"sure that you have provided the correct input directory and formatted it correctly so "
+                                  f"that anvi'o can find your data.")
+
 
     def is_user_database_exists(self):
         """This function checks whether user data has already been set up in the provided input directory."""
