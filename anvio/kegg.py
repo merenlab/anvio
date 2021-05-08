@@ -433,7 +433,7 @@ class KeggSetup(KeggContext):
                               "We thank you for your patience.")
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
-                             f"location: {self.user_input_dir}. The success of this will be determined by how well you "
+                             f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
                              f"followed our formatting guidelines, so keep an eye out for errors below. (By the way, if "
                              f"you provided a value for --kegg-data-dir because you wanted to set up KEGG data, too, you "
                              f"should know that it is not going to happen. If you want KEGG data, you will need to run "
@@ -551,7 +551,7 @@ class KeggSetup(KeggContext):
         for path in [self.user_input_dir, self.user_hmm_data_dir, self.user_module_data_dir]:
             if not os.path.exists(path):
                 raise ConfigError(f"There is a problem with the input directory you provided. The following path does not "
-                                  f"exist: {path}. Please make sure that your input folder exists and that it follows the "
+                                  f"exist: '{path}'. Please make sure that your input folder exists and that it follows the "
                                   f"formatting requirements. We're sorry for asking this of you, but it really helps us make "
                                   f"sure everything will go smoothly.")
 
