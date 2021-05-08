@@ -236,6 +236,7 @@ class KeggContext(object):
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
+        self.user_input_dir = args.user_input_dir
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -418,6 +419,18 @@ class KeggSetup(KeggContext):
 
         # init the base class
         KeggContext.__init__(self, self.args)
+
+        if self.user_input_dir and (self.kegg_snapshot or self.kegg_archive_path or self.download_from_kegg):
+            raise ConfigError("You appear to have requested setup from KEGG as well as setup from user data. Well. Anvi'o cannot "
+                              "multitask like that, so please try again and only provide one setup option (KEGG or USER) at a time. "
+                              "We thank you for your patience.")
+        if self.user_input_dir:
+            self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
+                             f"location: {self.user_input_dir}. The success of this will be determined by how well you "
+                             f"followed our formatting guidelines, so keep an eye out for errors below. (By the way, if "
+                             f"you provided a value for --kegg-data-dir because you wanted to set up KEGG data, too, you "
+                             f"should know that it is not going to happen. If you want KEGG data, you will need to run "
+                             f"this program again with only KEGG options.)")
 
         filesnpaths.is_program_exists('hmmpress')
 
