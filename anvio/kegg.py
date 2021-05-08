@@ -236,7 +236,7 @@ class KeggContext(object):
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = args.user_input_dir
+        self.user_input_dir = args.input_dir
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -551,7 +551,7 @@ class KeggSetup(KeggContext):
         for path in [self.user_input_dir, self.user_hmm_data_dir, self.user_module_data_dir]:
             if not os.path.exists(path):
                 raise ConfigError(f"There is a problem with the input directory you provided. The following path does not "
-                                  f"exist: {path} . Please make sure that your input folder exists and that it follows the "
+                                  f"exist: {path}. Please make sure that your input folder exists and that it follows the "
                                   f"formatting requirements. We're sorry for asking this of you, but it really helps us make "
                                   f"sure everything will go smoothly.")
 
