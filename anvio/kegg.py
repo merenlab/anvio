@@ -878,7 +878,7 @@ class KeggSetup(KeggContext):
         """This function creates the Modules DB from the KEGG Module files."""
 
         try:
-            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1103,7 +1103,7 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1751,7 +1751,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
 
         if not self.estimate_from_json:
             # here we load the contigs DB just for sanity check purposes.
@@ -2887,7 +2887,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = {}
         kofam_hits_superdict = {}
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
@@ -3863,7 +3863,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we need this for metadata
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
         include_zeros = not self.exclude_zero_modules
 
         # module stats that each will be put in separate matrix file
@@ -3945,7 +3945,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.kegg_modules_db.disconnect()
 
 
-class KeggModulesDatabase(KeggContext):
+class ModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
     This DB should be created in the Kegg Data folder during KEGG setup, and will be populated with information from the
@@ -3988,11 +3988,11 @@ class KeggModulesDatabase(KeggContext):
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
-                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
+                raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
             # This is commented out because we are not yet using pathways. But it should be uncommented when we get to the point of using them :)
             # if not self.pathway_dict:
-            #     raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
+            #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
             #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
