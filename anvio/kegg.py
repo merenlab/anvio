@@ -439,50 +439,59 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
-        # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
-        if '/' not in self.kegg_data_dir:
-            self.kegg_data_dir += '/'
-        filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
+        if not self.user_input_dir:
+            # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
+            if '/' not in self.kegg_data_dir:
+                self.kegg_data_dir += '/'
+            filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
-        if not args.reset and not anvio.DEBUG and not skip_init:
-            self.is_database_exists()
+            if not args.reset and not anvio.DEBUG and not skip_init:
+                self.is_database_exists()
 
-        if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
-            filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-            filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
-            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-            filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
-            filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+            if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
+                filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
-        # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
-        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+            # get KEGG snapshot info for default setup
+            self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
+            self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+            self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
-        if self.target_snapshot not in self.snapshot_dict.keys():
-            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
-            available_snapshots = sorted(list(self.snapshot_dict.keys()))
-            for snapshot_name in available_snapshots:
-                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+            if self.target_snapshot not in self.snapshot_dict.keys():
+                self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+                available_snapshots = sorted(list(self.snapshot_dict.keys()))
+                for snapshot_name in available_snapshots:
+                    self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
 
-            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                              "this time pick from the list shown above.")
+                raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                                  "this time pick from the list shown above.")
 
-        # default download path for KEGG snapshot
-        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
-        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+            # default download path for KEGG snapshot
+            self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+            self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
 
-        # download from KEGG option: ftp path for HMM profiles and KO list
-            # for ko list, add /ko_list.gz to end of url
-            # for profiles, add /profiles.tar.gz  to end of url
-        self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-        # dictionary mapping downloaded file name to final decompressed file name or folder location
-        self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
+            # download from KEGG option: ftp path for HMM profiles and KO list
+                # for ko list, add /ko_list.gz to end of url
+                # for profiles, add /profiles.tar.gz  to end of url
+            self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+            # dictionary mapping downloaded file name to final decompressed file name or folder location
+            self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-        # download from KEGG option: module/pathway map htext files and API link
-        self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
-        self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
-        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+            # download from KEGG option: module/pathway map htext files and API link
+            self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+            self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
+            self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+
+        else: # user input setup
+            if '/' not in self.user_input_dir:
+                self.user_input_dir += '/'
+            filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
+
+            if not args.reset and not skip_init:
+                self.is_user_database_exists()
 
 
     def is_database_exists(self):
