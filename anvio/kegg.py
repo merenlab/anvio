@@ -517,6 +517,18 @@ class KeggSetup(KeggContext):
                               % (self.pathway_data_dir, self.kegg_data_dir))
 
 
+    def is_user_database_exists(self):
+        """This function checks whether user data has already been set up in the provided input directory."""
+
+        if os.path.exists(self.user_hmm_file_path):
+            raise ConfigError(f"It seems you already have user HMM profiles installed at '{self.user_hmm_file_path}', "
+                              f"please use the --reset flag or delete this file manually if you want to re-generate it.")
+
+        if os.path.exists(self.user_modules_db_path):
+            raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
+                              f"please use the --reset flag or delete this file manually if you want to re-generate it.")
+
+
     def download_profiles(self):
         """This function downloads the Kofam profiles."""
 
