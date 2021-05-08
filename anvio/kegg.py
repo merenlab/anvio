@@ -492,6 +492,8 @@ class KeggSetup(KeggContext):
                 self.user_input_dir += '/'
             filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
 
+            self.check_user_input_dir_format()
+
             if not args.reset and not skip_init:
                 self.is_user_database_exists()
 
@@ -526,6 +528,22 @@ class KeggSetup(KeggContext):
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
                               % (self.pathway_data_dir, self.kegg_data_dir))
+
+
+    def check_user_input_dir_format(self):
+        """This function checks whether the user input directory exists and contains the required subfolders
+
+        The required subfolders are:
+            HMMs : directory containing the user's HMM profiles that go with their metabolic pathway definitions
+            modules : directory containing the user's metabolic pathway definitions (as text files)
+        """
+
+        for path in [self.user_input_dir, self.user_hmm_data_dir, self.user_module_data_dir]:
+            if not os.path.exists(path):
+                raise ConfigError(f"There is a problem with the input directory you provided. The following path does not "
+                                  f"exist: {path} . Please make sure that your input folder exists and that it follows the "
+                                  f"formatting requirements. We're sorry for asking this of you, but it really helps us make "
+                                  f"sure everything will go smoothly.")
 
 
     def is_user_database_exists(self):
