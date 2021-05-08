@@ -253,6 +253,8 @@ class KeggContext(object):
 
         if self.user_input_dir:
             self.user_hmm_data_dir = os.path.join(self.user_input_dir, "HMMs")
+            self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
+            self.user_orphan_data_dir = os.path.join(self.user_input_dir, "orphan_data")
             self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "User_profiles.hmm")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
