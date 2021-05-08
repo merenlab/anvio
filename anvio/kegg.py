@@ -1107,17 +1107,24 @@ class KeggSetup(KeggContext):
                              "has been kept. You may want to remove it later.")
 
 
-    def setup_data(self):
-        """This is a driver function which executes the KEGG setup process.
+    def setup_user_data(self):
+        """This function sets up user metabolism data from the provided input directory.
 
-        It downloads, decompresses, and hmmpresses the KOfam profiles.
-        It also downloads and processes the KEGG Module files into the MODULES.db.
+        We have to concatenate and hmmpress the provided HMM profiles, and process the user's
+        module files into the USER_MODULES.db.
         """
+        pass
+
+
+    def setup_data(self):
+        """This is a driver function which executes the KEGG setup process."""
 
         if self.kegg_archive_path:
             self.setup_from_archive()
         elif self.download_from_kegg:
             # mostly for developers and the adventurous
+            # this downloads, decompresses, and hmmpresses the KOfam profiles
+            # it also downloads and processes the KEGG Module files into the MODULES.db
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
@@ -1125,6 +1132,8 @@ class KeggSetup(KeggContext):
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
+        elif self.user_input_dir:
+            self.setup_user_data()
         else:
             # the default, set up from frozen KEGG release
             self.setup_kegg_snapshot()
