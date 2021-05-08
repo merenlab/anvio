@@ -497,6 +497,16 @@ class KeggSetup(KeggContext):
             if not args.reset and not skip_init:
                 self.is_user_database_exists()
 
+            if args.reset:
+                self.run.warning("Since you used the --reset flag, anvi'o will get rid of any existing user modules database "
+                                 "and concatenated HMM profiles. Now ye be warned.")
+                for path in [self.user_hmm_file_path, self.user_modules_db_path]:
+                    if os.path.exists(path):
+                        os.remove(path)
+                        self.run.info("Successfully removed", path)
+
+            filesnpaths.gen_output_directory(self.user_orphan_data_dir, delete_if_exists=args.reset)
+
 
     def is_database_exists(self):
         """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
