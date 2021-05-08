@@ -27,15 +27,24 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupI = parser.add_argument_group('POSSIBLE INPUT', "Not required for this program to run, but could be useful. Note "
-                                       "that if you provide no parameters, this program will download the frozen "
-                                       "snapshot of the KEGG databases that is associated with the latest release of anvi'o.")
+    groupI = parser.add_argument_group('KEGG DATA SETUP', "The default action of this program is to set up metabolism "
+                                       "data from the KEGG resource of databases. Note that if you provide no "
+                                       "parameters at all, this program will download the snapshot of KEGG "
+                                       "that is associated with the latest release of anvi'o.")
     groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupI.add_argument(*anvio.A('kegg-archive'), **anvio.K('kegg-archive'))
     groupI.add_argument(*anvio.A('download-from-kegg'), **anvio.K('download-from-kegg'))
     groupI.add_argument(*anvio.A('kegg-snapshot'), **anvio.K('kegg-snapshot'))
-    groupI.add_argument(*anvio.A('reset'), **anvio.K('reset'))
-    groupI.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupU = parser.add_argument_group('USER DATA SETUP', "If you have organized your own metabolism data into a set "
+                                       "of metabolic modules and HMM profiles, you can use this program to set up this "
+                                       "data into the format required for metabolism estimation.")
+    groupU.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where your metabolism data "
+                                                                      "files are kept. It is also the output directory, since "
+                                                                      "the modules database and HMM profiles will be set up in "
+                                                                      "this folder."}))                                  
+    groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
 
