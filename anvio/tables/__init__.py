@@ -268,7 +268,7 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 #
 ####################################################################################################
 
-module_table_name = "kegg_modules"
+module_table_name = "modules"
 module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
 module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
