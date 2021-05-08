@@ -251,6 +251,11 @@ class KeggContext(object):
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
+        if self.user_input_dir:
+            self.user_hmm_data_dir = os.path.join(self.user_input_dir, "HMMs")
+            self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "User_profiles.hmm")
+            self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
+
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if A('reset') and A('kegg_data_dir'):
             raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
