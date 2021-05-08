@@ -255,7 +255,7 @@ class KeggContext(object):
             self.user_hmm_data_dir = os.path.join(self.user_input_dir, "HMMs")
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
             self.user_orphan_data_dir = os.path.join(self.user_input_dir, "orphan_data")
-            self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "User_profiles.hmm")
+            self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "USER_PROFILES.hmm")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
@@ -949,6 +949,34 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
+    def run_hmmpress_user(self):
+        """This function concatenates the user's HMM profiles and runs hmmpress on them."""
+
+        self.progress.new("Preparing user's HMM profiles")
+        self.progress.update('Concatenating HMM profiles into one file...')
+        hmm_list = [k for k in glob.glob(os.path.join(self.user_hmm_data_dir, '*.hmm'))]
+        if not hmm_list:
+            raise ConfigError(f"Whoa there! Your input data directory has no HMM profiles (files that end "
+                              f"in *.hmm). You need to put your HMM profiles in the following folder for "
+                              f"setup to work: {self.user_hmm_data_dir}")
+        utils.concatenate_files(self.user_hmm_file_path, hmm_list, remove_concatenated_files=False)
+
+        self.progress.update('Running hmmpress...')
+        cmd_line = ['hmmpress', self.user_hmm_file_path]
+        log_file_path = os.path.join(self.user_hmm_data_dir, '00_hmmpress_log.txt')
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
+
+        self.progress.end()
+        self.run.info("Prepared user HMM profiles", self.user_hmm_file_path)
+
+
     def setup_modules_db(self):
         """This function creates the Modules DB from the KEGG Module files."""
 
@@ -1119,7 +1147,8 @@ class KeggSetup(KeggContext):
         We have to concatenate and hmmpress the provided HMM profiles, and process the user's
         module files into the USER_MODULES.db.
         """
-        pass
+
+        self.run_hmmpress_user()
 
 
     def setup_data(self):
