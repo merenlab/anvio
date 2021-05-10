@@ -203,7 +203,7 @@ anvi-profile -c $output_dir/CONTIGS.db \
 
 INFO "Adding a default collection to the blank profile"
 anvi-script-add-default-collection -c $output_dir/CONTIGS.db \
-                                   -o $output_dir/BLANK-PROFILE/PROFILE.db \
+                                   -p $output_dir/BLANK-PROFILE/PROFILE.db \
 
 INFO "Importing a collection into the blank profile"
 anvi-import-collection -c $output_dir/CONTIGS.db \
