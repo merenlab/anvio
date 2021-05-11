@@ -6,7 +6,9 @@
 #main-content {
     width: 60vw;
     height: 100vh;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 * {
