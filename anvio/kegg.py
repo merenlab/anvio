@@ -980,6 +980,19 @@ class KeggSetup(KeggContext):
 
     def setup_modules_db(self):
         """This function creates the Modules DB from the KEGG Module files."""
+    def create_user_modules_dict(self):
+        """This function establishes the self.module_dict parameter for user modules.
+
+        It is essentially a replacement for the process_module_file() function.
+        Since users will not have a modules file to process, we simply create the dictionary from the
+        file names they provide for their module definitions. We don't add any dictionary values,
+        but we won't need them (we hope).
+        """
+
+        user_module_list = hmm_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
+        self.module_dict = {key: {} for key in user_module_list}
+
+
 
         try:
             mod_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
