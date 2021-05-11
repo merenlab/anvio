@@ -12,25 +12,25 @@
 // */
 
 let ERROR_COUNT = 0
-let FAILED_DEPENDENCIES = []
+let ERROR_REASONS = []
 
 function alertDependencyError(dependencyError, isFinalDependency){
 
     if(dependencyError){
         ERROR_COUNT += 1
-        FAILED_DEPENDENCIES.push(dependencyError)
     }
     
     if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
-        ERROR_COUNT === 1 ? 
-        alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
-        :
-        alert(`${ERROR_COUNT} dependencies failed to load :(. These are the culprits: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
-
-        window.open('error-landing.html', '_blank')
+        displayAlert('dependencies')
     }
 }
 
-errorLandingContext = () => {
-    document.querySelector('#content-div').innerHTML = '<p> this can be programmatically changed based on current issue</p>'
+function displayAlert(reason){
+    alert(`Anvi'o has encountered an error, possibly related to ${reason}. Anvi'o would like to offer some guidance in a new browser tab. Please make sure popups are enabled :)`)
+    window.open('error-landing.html', '_blank')
+    ERROR_REASONS.push(reason)
+}
+
+function errorLandingContext(){
+    document.querySelector('#content-div').innerHTML += '<p> this can be programmatically changed based on current issue</p>'
 }
