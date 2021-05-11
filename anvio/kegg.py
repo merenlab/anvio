@@ -258,6 +258,11 @@ class KeggContext(object):
             self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "USER_PROFILES.hmm")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
+            # if inheriting class is the modules database, we need to override the default path with the user one
+            if self.__class__.__name__ in ['ModulesDatabase']:
+                self.module_data_dir = self.user_module_data_dir
+                ## WARNING: this might work for setup but break downstream; needs testing
+
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if A('reset') and A('kegg_data_dir'):
             raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
