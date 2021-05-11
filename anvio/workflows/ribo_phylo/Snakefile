@@ -659,6 +659,22 @@ rule filter_for_nt_seqs_for_mapping:
                                     -o {output} \
                                     -I {input.headers}"
 
+rule make_fasta_txt:
+    """
+    """
+
+    version: 1.0
+    output:
+        os.path.join("RIBO_PHYLO_WORKFLOW", "fasta.txt")
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    run:
+        fastas = [os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_scgs_for_mapping.fna') for r in M.SCG_protein_list]
+        external_gene_calls = [os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_all_renamed.tsv') for r in M.SCG_protein_list]
+
+        list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.SCG_protein_list, fastas, external_gene_calls)]
+
+        shell('echo -e "name\tpath\texternal_gene_calls" > {output}')
+        shell('echo -e "%s" >> {output}' % ''.join(list_of_strings))
 
 if M.run_iqtree == True:
   rule iqtree:

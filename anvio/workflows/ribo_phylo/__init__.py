@@ -220,6 +220,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
+            # Get fasta.txt of the SCGs for profiling
+            tail_path = "fasta.txt"
+            target_file = os.path.join("RIBO_PHYLO_WORKFLOW", tail_path)
+            target_files.append(target_file)
+
             # The FINAL trees :)
             # For iq-tree
             if self.run_iqtree == True:
