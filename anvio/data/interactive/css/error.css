@@ -1,0 +1,31 @@
+#body {
+    display: flex;
+    justify-content: center;
+}
+
+#main-content {
+    width: 60vw;
+    height: 100vh;
+    display: block;
+}
+
+* {
+    font-family: 'PT Serif',serif;
+}
+
+h1,h2{
+    text-align: center;
+    border-bottom: black;
+    border-bottom-style: solid;
+    width: fit-content;
+}
+
+.issue-header{
+    font-size: 40;
+}
+
+.issue-text{
+    font-size: 20;
+    width: 40vw;
+
+}
