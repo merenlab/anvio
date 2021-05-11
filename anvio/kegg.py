@@ -978,8 +978,6 @@ class KeggSetup(KeggContext):
         self.run.info("Prepared user HMM profiles", self.user_hmm_file_path)
 
 
-    def setup_modules_db(self):
-        """This function creates the Modules DB from the KEGG Module files."""
     def create_user_modules_dict(self):
         """This function establishes the self.module_dict parameter for user modules.
 
@@ -993,9 +991,11 @@ class KeggSetup(KeggContext):
         self.module_dict = {key: {} for key in user_module_list}
 
 
+    def setup_modules_db(self, db_path):
+        """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1163,6 +1163,8 @@ class KeggSetup(KeggContext):
         """
 
         self.run_hmmpress_user()
+        self.create_user_modules_dict()
+        self.setup_modules_db(db_path=self.user_modules_db_path)
 
 
     def setup_data(self):
@@ -1180,7 +1182,7 @@ class KeggSetup(KeggContext):
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db()
+            self.setup_modules_db(db_path=self.kegg_modules_db_path)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
