@@ -3381,6 +3381,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         return dict_to_append
 
     # this is here for backward compatibility.
+    failed_lines = list(set(failed_lines)) # confirming we are not printing multiple instances of the same line
     if return_failed_lines:
         return d, failed_lines
 
