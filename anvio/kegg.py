@@ -500,7 +500,8 @@ class KeggSetup(KeggContext):
             if args.reset:
                 self.run.warning("Since you used the --reset flag, anvi'o will get rid of any existing user modules database "
                                  "and concatenated HMM profiles. Now ye be warned.")
-                for path in [self.user_hmm_file_path, self.user_modules_db_path]:
+                paths_to_remove = [f for f in glob.glob(self.user_hmm_file_path + '*')] + [self.user_modules_db_path]
+                for path in paths_to_remove:
                     if os.path.exists(path):
                         os.remove(path)
                         self.run.info("Successfully removed", path)
