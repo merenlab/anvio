@@ -86,7 +86,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
             'anvi_get_sequences_for_hmm_hits_SCGs': {'threads': 5, '--hmm-source': 'Bacteria_71'},
             'join_renamed_fasta_with_misc_data': {'threads': 5},
-            'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 1},
+            'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
             'align_muscle': {'threads': 5},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'get_gap_count_distribution': {'threads': 5},
