@@ -39,17 +39,11 @@ M.init()
 
 dirs_dict = M.dirs_dict
 
-
-# NOTE: user should run workflow until the rule get_gap_count_distribution. This can be done by running the command:
-# $ anvi-run-workflow -w ribo_phylo -c config.json -A --until cat_misc_data_to_one_file
-# This will allow the user to explore the gap distribution of the SCG MSA and decide an appropriate threshold. Currently,
-# the threshold is fixed at 1.5*IQR. After the user has decided on a threshold they can add it to the config file
-
 rule ribo_phylo_workflow_target_rule:
     input: M.target_files
 
 rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
-    """Extract all ribosomal proteins listed in SCG_protein_list.txt from metagenomes and genomes in samples.txt."""
+    """Extract all SCG AA sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
@@ -68,7 +62,7 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
                                              -o {output} 2> {log}"
 
 rule anvi_get_sequences_for_hmm_hits_SCGs_nt:
-    """Extract all ribosomal proteins listed in SCG_protein_list.txt from metagenomes and genomes in samples.txt."""
+    """Extract all SCG NT sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
@@ -86,8 +80,7 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_nt:
                                            -o {output} 2> {log}"
 
 rule get_external_gene_calls_file:
-    """
-    """
+    """Extract external_gene_calls table from all samples"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
@@ -108,8 +101,7 @@ rule get_external_gene_calls_file:
           """
 
 rule cat_external_gene_calls_file:
-    """
-    """
+    """Cat all external_gene_calls files from all samples into one file"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
@@ -122,8 +114,7 @@ rule cat_external_gene_calls_file:
         "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all}"
 
 rule rename_and_filter_external_gene_calls_file_all:
-    """
-    """
+    """"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{ribosomal_protein_name}.log")
@@ -139,7 +130,7 @@ rule rename_and_filter_external_gene_calls_file_all:
         "scripts/rename_external_gene_calls_file.py"
 
 rule anvi_estimate_scg_taxonomy_for_SCGs:
-    """Retrieve SCG taxonomy from extracted ribosomal proteins"""
+    """Get SCG taxonomy for SCGs in SCG_protein_list.txt"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{sample_name}_{ribosomal_protein_name}.log")
@@ -159,7 +150,7 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
                                           -o {output} 2> {log}')
 
 rule simplify_names_from_scg_hits_nt:
-    """Clean up fasta headers for tree calculation."""
+    """Clean up fasta headers for tree calculation"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{sample_name}_{ribosomal_protein_name}.log")
@@ -176,7 +167,7 @@ rule simplify_names_from_scg_hits_nt:
                               -o {output.fasta} >> {log} 2>&1"
 
 rule simplify_names_from_scg_hits_aa:
-    """Clean up fasta headers for tree calculation."""
+    """Clean up fasta headers for tree calculation"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{sample_name}_{ribosomal_protein_name}.log")
@@ -193,6 +184,8 @@ rule simplify_names_from_scg_hits_aa:
                               -o {output.fasta} >> {log} 2>&1"
 
 def join_fastas(contig_db_type, input_report_file, input_taxonomy, output, sample_name, ribosomal_protein_name):
+  """Function to create SCG taxonomy metadata file with reformated names"""
+
   # Import fasta header index
   #----------------------------
   reformat_report = pd.read_csv(input_report_file, \
@@ -240,6 +233,7 @@ rule join_renamed_fastas_with_taxonomy_data_text:
         external_genomes = M.external_genomes
     threads: M.T('join_renamed_fasta_with_misc_data')
     run:
+        """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
         if M.mode == "both":
             if wildcards.sample_name in M.external_genomes_names_list:
               join_fastas(contig_db_type = 'genome',
@@ -279,7 +273,7 @@ rule join_renamed_fastas_with_taxonomy_data_text:
 
 rule cat_scgs_to_one_fasta_nt:
     """
-    Cat all ribosomal sequences from seperate metagenomes into one fasta
+    Cat all SCG sequences from seperate metagenomes into one fasta
 
     FIXME: the "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fasta" can be removed because only the renamed
     version of the fasta file is referenced for the rest of the workflow
@@ -287,19 +281,18 @@ rule cat_scgs_to_one_fasta_nt:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{ribosomal_protein_name}.log")
-    input: 
+    input:
         fasta = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{ribosomal_protein_name}}_hmm_hits_renamed.fna"), sample_names = M.names_list, ribosomal_protein_names = M.SCG_protein_list),
-        # fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{{sample_name}}", "{{sample_name}_{ribosomal_protein_name}_hmm_hits_renamed.fna"),
-    output: 
+    output:
         fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fna"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
-    shell: 
+    shell:
         "cat {input.fasta} >> {output.fasta_all}"
 
 rule cat_reformat_files_nt:
     """
-    Cat all ribosomal sequences from seperate metagenomes into one fasta
-    
+    Cat all SCG reformat files from seperate metagenomes into one fasta
+
     FIXME: the "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fasta" can be removed because only the renamed
     version of the fasta file is referenced for the rest of the workflow
     """
@@ -316,8 +309,8 @@ rule cat_reformat_files_nt:
 
 rule cat_scgs_to_one_fasta_aa:
     """
-    Cat all ribosomal sequences from seperate metagenomes into one fasta
-    
+    Cat all SCG AA sequences from seperate metagenomes into one fasta
+
     FIXME: the "{ribosomal_protein_name}/{ribosomal_protein_name}_all.fasta" can be removed because only the renamed
     version of the fasta file is referenced for the rest of the workflow
     """
@@ -331,7 +324,10 @@ rule cat_scgs_to_one_fasta_aa:
         "cat {input} >> {output.fasta}"
 
 rule cluster_X_percent_sim_mmseqs:
-    """Remove redundant ribosomal sequences with mmseqs"""
+    """
+    mmseqs: cluster SCG NT sequences to remove redundant SCG sequences and precent non-specific read recruitment
+    and read recruitment dilution.  
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{ribosomal_protein_name}.log")
@@ -350,8 +346,7 @@ rule cluster_X_percent_sim_mmseqs:
                              --min-seq-id {params.min_seq_id} >> {log} 2>&1"
 
 rule get_headers:
-    """
-    """
+    """Extract sequence headers"""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
     input:
@@ -399,16 +394,9 @@ rule cat_misc_data_to_one_file:
 
 rule add_header_to_misc_file:
     """
-    CARBON COPY IN CASE I BLOW THIS
-    Adding header to misc data file.
-
-    See rule cat_misc_data_to_one_file for why this sucks
-
     FIXME: replace with sed when running on linux
 
     # grep -v "header" {input} | sed -i '1s|^|header\tsample_name\tProject\tt_domain\tt_phylum\tt_class\tt_order\tt_family\tt_genus\tt_species\n|' > {output}
-
-    FIXME: the tmp misc_data files before *_all_misc_data_final.tsv could be removed from the final output
     """
 
     version: 1.0
@@ -459,34 +447,7 @@ rule align_muscle:
 #         "scripts/odseq_remove_outliers.R --msa {input} --output"
 
 rule trim_alignment:
-    """trim alignment
-
-
-    FIXME: rant on ordering of trimming and sequence removal steps, need to think about this deeper, not conclusive:
-
-    I think that trimming twice may not be optimal. Here is my logic:
-    Trimal is all about removing MSA positions (columns) that contain a threshold proportion of gaps
-    i.e. trimming "horizontally". Positions with a lot of gaps are removed because they are
-    phylogenetically uninformative. If we trimm before removing all sequences we might be
-    making sequences seem more aligned because we have just removed gaps.
-
-    I think trimming should be the very last step in the MSA curation.
-    for example:
-    (1) cluster at 100%
-    (2) calculate MSA
-    (3) remove sequences based on gap distribution (anvi-script-reformat-fasta)
-    (4) remove positions with a lot of gaps (trimal)
-
-    Another thing to consider is calculating a tree based on representative sequences from a
-    clustered dataset. I already need to do this when I pick representative for the mapping
-    steps. Why not just use that set to calculate the tree? Also, the over MSA might be
-    higher quality because there is less noise with similar sequences.
-    for example:
-    (1) cluster at 90%
-    (2) calculate MSA
-    (3) remove sequences with a lot of gaps (anvi-script-reformat-fasta)
-    (4) remove positions with a lot of gaps (trimal)
-    """
+    """Trim alignment with trimal"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{ribosomal_protein_name}.log")
@@ -503,7 +464,7 @@ rule trim_alignment:
                 {params.additional_params} 2> {log}'
 
 rule remove_sequences_with_X_percent_gaps:
-    """Removing sequences that have > X% gaps"""
+    """Removing sequences that have Z > X% gaps"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
@@ -563,9 +524,7 @@ rule remove_sequences_with_X_percent_gaps:
 
 rule count_num_sequences_filtered:
     """
-    This rule will count the number of Ribosomal sequences filtered at each step of the workflow.
-
-    FIXME: for some reason and cannot prepend the file with headers and I have no idea why...
+    This rule will count the number of SCG sequences filtered at each step of the workflow.
     """
 
     version: 1.0
@@ -597,6 +556,10 @@ rule count_num_sequences_filtered:
         echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
         """
 
+# Here we add metadata that indentifies if there were SCGs from isolate genomes
+# that were clustered with metagenome derived SCGs but were not selected as the
+# representative. I think users will want to know where their isolate genomes SCGs
+# ended up so this is for them.
 
 if M.external_genomes:
     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
@@ -632,8 +595,7 @@ else:
             "scripts/add_layer_for_reps_no_external_genomes.py"
 
 rule get_headers_for_mapping:
-    """
-    """
+    """Subset the SCG sequence headers that will be used for read recruitment later"""
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
     input:
@@ -644,8 +606,7 @@ rule get_headers_for_mapping:
     script: "scripts/get_sequence_headers_for_mapping.py"
 
 rule filter_for_nt_seqs_for_mapping:
-    """
-    """
+    """Filter for SCG NT sequences what will be used for read recruitment later"""
 
     version: 1.0
     input:
@@ -660,8 +621,7 @@ rule filter_for_nt_seqs_for_mapping:
                                     -I {input.headers}"
 
 rule make_fasta_txt:
-    """
-    """
+    """Output fasta.txt that will be used with the metagenomics workflow"""
 
     version: 1.0
     output:
@@ -699,7 +659,7 @@ if M.run_iqtree == True:
 
 elif M.run_fasttree == True:
   rule fasttree:
-      """Fasttree"""
+      """Want to go faster?? Then Fasttree"""
 
       version: 1.0
       log: os.path.join(dirs_dict['LOGS_DIR'], "fasttree_{ribosomal_protein_name}.log")
@@ -712,12 +672,3 @@ elif M.run_fasttree == True:
       threads: M.T('fasttree')
       shell:
           "FastTree -fastest {input} > {output}"
-
-
-
-
-# FIXME: Need to concatenate all the SCG reps together into one reference file for mapping,
-# this should be faster than re-mapping all metagenomes to every SCG that is being used. I 
-# will then need to be able to parse out that data back to the misc data for each SCG experiment.
-# To do this, I will have to add the SCG name to the simplified names of each SCG experiment so 
-# there is a unique element to each and I will be able to parse it out.             

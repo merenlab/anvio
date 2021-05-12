@@ -5,8 +5,11 @@ import numpy as np
 import glob
 import os.path
 
+# This script checks if there is a genomic SCG in a cluster
+# and takes note of it in the misc data file
+
 # Import
-#----------------------------
+#-------
 misc_data = pd.read_csv(snakemake.input.misc_data, \
                   sep="\t", \
                   index_col=False)
@@ -16,7 +19,6 @@ cluster_rep_index = pd.read_csv(snakemake.params.cluster_rep_index, \
                   index_col=False, \
                   names=["representative", "cluster_members"])
 
-print(misc_data)
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
 for seq_record in SeqIO.parse(snakemake.input.final_list_of_sequences_for_tree_calculation, "fasta"):
@@ -26,11 +28,10 @@ for seq_record in SeqIO.parse(snakemake.input.final_list_of_sequences_for_tree_c
 # -----
 cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
 seq_in_tree_list = fasta_df.header.to_list()
-
 misc_data['has_genomic_SCG_in_cluster'] = 'no'
 
 # Export
-#------------------------------------------------------------------
+#-------
 misc_data.to_csv(snakemake.output.misc_data_final, \
            sep="\t", \
            index=None, \
