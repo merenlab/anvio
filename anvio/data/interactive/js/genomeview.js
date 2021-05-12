@@ -21,13 +21,16 @@
  var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
  var canvas;
- var scaleCanvas; 
+ var scaleCanvas;
+ var genomeLabelsCanvas;
  var genomeMax = 0;
 
  // Settings vars
 
  var spacing = 30; // genome spacing
  var showLabels = true; // show genome labels?
+ var labelSpacing = 30;  // spacing default for genomeLabel canvas
+ var draggableGridUnits = 50; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
  var scale = 100; // nt scale intervals
 
@@ -45,7 +48,9 @@ $(document).ready(function() {
 
     function loadAll() {
       canvas = new fabric.Canvas('myCanvas');
+      genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
       scaleCanvas = new fabric.Canvas('scale') // link canvas element specifically for displaying scale, fill with default below
+
       scaleCanvas.add(new fabric.Text(`${scale} nts`, {
         strokeWidth: 1,
         fontSize: 100,
@@ -73,6 +78,14 @@ $(document).ready(function() {
       canvas.on('mouse:out', (event) => {
         $('#tooltip-body').html('').hide()
       })
+
+      genomeLabelsCanvas.on('object:moving', function(options) { 
+        console.log(options)
+        options.target.set({
+          left: Math.round(options.target.left / draggableGridUnits) * draggableGridUnits,
+          top: Math.round(options.target.top / draggableGridUnits) * draggableGridUnits
+        });
+      });
 
       function showToolTip(event){
         $('#tooltip-body').show().append(`
@@ -204,6 +217,8 @@ $(document).ready(function() {
         let genome = genomeData.genomes[genomeID].genes.gene_calls;
         let label = genome[0].contig;
         addGenome(label, genome, genomeID, y)
+        drawGenomeLabels(label)
+        labelSpacing += 30
         y++;
       }
 
@@ -404,3 +419,16 @@ function resetScale(){
     fontFamily: 'sans-serif',
     selectable: false})));
 }
+
+function drawGenomeLabels(label){
+  console.log(label)
+  genomeLabelsCanvas.add(new fabric.Text(label, {
+    top : labelSpacing,
+    fontSize : 15,
+    fontFamily: 'sans-serif', 
+    fontWeight: 'bold',
+    selectable : true,
+    lockMovementX : true 
+  }))
+}
+

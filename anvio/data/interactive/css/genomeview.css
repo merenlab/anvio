@@ -128,3 +128,8 @@ a{
     color: #722;
     text-decoration: none;
 }
+
+#labelAndMainContainer{
+    display: flex;
+    flex-direction: row;
+}
