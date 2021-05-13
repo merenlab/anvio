@@ -4327,8 +4327,13 @@ class ModulesDatabase(KeggContext):
         # the only exception is that sometimes there is nothing in the data definition field (REFERENCE lines sometimes do this)
         if len(fields) > 1:
             data_vals = fields[1]
-            # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
+
+            if self.data_source == 'KEGG':
+                # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
+                vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
+            else:
+                # TODO: USER data sanity check
+                vals_are_okay = True # for now we always assume USER data is formatted properly
 
             if vals_are_okay and len(fields) > 2: # not all lines have a definition field
                 data_def = fields[2]
