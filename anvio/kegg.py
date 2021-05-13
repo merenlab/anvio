@@ -258,11 +258,6 @@ class KeggContext(object):
             self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "USER_PROFILES.hmm")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
-            # if inheriting class is the modules database, we need to override the default path with the user one
-            if self.__class__.__name__ in ['ModulesDatabase']:
-                self.module_data_dir = self.user_module_data_dir
-                ## WARNING: this might work for setup but break downstream; needs testing
-
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if A('reset') and A('kegg_data_dir'):
             raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
@@ -996,11 +991,11 @@ class KeggSetup(KeggContext):
         self.module_dict = {key: {} for key in user_module_list}
 
 
-    def setup_modules_db(self, db_path):
+    def setup_modules_db(self, db_path, module_data_directory):
         """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1169,7 +1164,7 @@ class KeggSetup(KeggContext):
 
         self.run_hmmpress_user()
         self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path)
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir)
 
 
     def setup_data(self):
@@ -1187,7 +1182,7 @@ class KeggSetup(KeggContext):
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path)
+            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.module_data_dir)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
@@ -1237,7 +1232,7 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args)
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1885,7 +1880,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args, quiet=self.quiet)
 
         if not self.estimate_from_json:
             # here we load the contigs DB just for sanity check purposes.
@@ -3021,7 +3016,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = {}
         kofam_hits_superdict = {}
 
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
@@ -3997,7 +3992,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we need this for metadata
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args)
         include_zeros = not self.exclude_zero_modules
 
         # module stats that each will be put in separate matrix file
@@ -4086,9 +4081,10 @@ class ModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, module_data_directory, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
+        self.module_data_directory = module_data_directory
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
         self.run = run
@@ -4374,7 +4370,7 @@ class ModulesDatabase(KeggContext):
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-        if not os.path.exists(self.module_data_dir) or len(self.module_dict.keys()) == 0:
+        if not os.path.exists(self.module_data_directory) or len(self.module_dict.keys()) == 0:
             raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
@@ -4394,7 +4390,7 @@ class ModulesDatabase(KeggContext):
         line_number = 0
         for mnum in self.module_dict.keys():
             self.progress.update("Parsing KEGG Module %s" % mnum)
-            mod_file_path = os.path.join(self.module_data_dir, mnum)
+            mod_file_path = os.path.join(self.module_data_directory, mnum)
             f = open(mod_file_path, 'rU')
 
             prev_data_name_field = None
