@@ -17,7 +17,7 @@ anvi-run-hmms -c %(contigs-db)s \
               --hmm-domain-tblout-path hmmsearch
 {{ codestop }}
 
-Then you can filter out hits using query or target coverage! Here's an example where we can filter out hmm_hits with a target-coverage less than 90%
+Then you can filter out hits using query or target coverage! Here's an example where we can filter out hmm_hits with a target-coverage less than 90%%:
 
 {{ codestart }}
 anvi-script-filter-hmm-hit-table -c %(contigs-db)s \

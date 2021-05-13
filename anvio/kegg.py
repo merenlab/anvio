@@ -27,7 +27,7 @@ from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
@@ -1531,6 +1531,7 @@ class KeggEstimatorArgs():
         self.matrix_include_metadata = True if A('include_metadata') else False
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
+        self.add_coverage = True if A('add_coverage') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -1617,14 +1618,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.database_name = A('database_name')
         self.multi_mode = True if A('multi_mode') else False
 
+        # This can be initialized later if necessary using init_gene_coverage()
+        self.profile_db = None
+
         KeggEstimatorArgs.__init__(self, self.args)
 
         self.name_header = None
         if self.metagenome_mode:
             self.name_header = 'contig_name'
-        elif self.profile_db_path and not self.metagenome_mode:
+        elif self.profile_db_path and self.collection_name and not self.metagenome_mode:
             self.name_header = 'bin_name'
-        elif not self.profile_db_path and not self.metagenome_mode:
+        else:
             self.name_header = 'genome_name'
 
         # update available modes and headers with appropriate genome/bin/metagenome identifier
@@ -1660,8 +1664,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
 
-        if not self.metagenome_mode and self.profile_db_path and not self.collection_name:
-            raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
+        if self.profile_db_path and not (self.collection_name or self.add_coverage or self.metagenome_mode):
+            raise ConfigError("If you provide a profile DB, you should also provide either a collection name (to estimate metabolism "
+                              "on a collection of bins) or use the --add-coverage flag (so that coverage info goes into the output "
+                              "files), or both. Otherwise the profile DB is useless.")
 
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
@@ -1672,6 +1678,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+        if self.add_coverage and not self.profile_db_path:
+            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
+            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                              "values, so the --add-coverage flag will not work.")
+        elif self.add_coverage:
+            self.add_gene_coverage_to_headers_list()
 
         # output options sanity checks
         if anvio.DEBUG:
@@ -1766,7 +1780,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if not self.quiet:
             self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
                              "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
@@ -1913,6 +1927,85 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         modules = self.kegg_modules_db.get_all_modules_as_list()
         for m in modules:
             self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
+
+
+    def init_gene_coverage(self, gcids_for_kofam_hits):
+        """This function initializes gene coverage/detection values from the provided profile DB.
+
+        The profile DB should be already initialized for this to work (currently add_gene_coverage_to_headers_list()
+        handles this). The reason we split the initalization of the profile db from the initialization of gene
+        coverage/detection values is so that we only work on the set of gene calls with KOfam hits rather than all
+        genes in the contigs DB.
+
+        PARAMETERS
+        ==========
+        gcids_for_kofam_hits : set
+            The gene caller ids for all genes with KOfam hits in the contigs DB
+        """
+
+        if not self.profile_db:
+            raise ConfigError("A profile DB has not yet been initialized, so init_gene_coverage() will not work. "
+                              "If you are a programmer, you should probably either 1) call this function after "
+                              "add_gene_coverage_to_headers_list() or 2) extend this function so that it initializes "
+                              "the profile db. If you are not a programmer, you should probably find one :) ")
+        self.run.info_single("Since the --add-coverage flag was provided, we are now loading the relevant "
+                             "coverage information from the provided profile database.")
+        self.profile_db.init_gene_level_coverage_stats_dicts(gene_caller_ids_of_interest=gcids_for_kofam_hits)
+
+
+    def add_gene_coverage_to_headers_list(self):
+        """Updates the headers lists for relevant output modes with coverage and detection column headers.
+
+        The profile DB is initialized in this function in order to get access to the sample names that will
+        be part of the available coverage/detection headers.
+        """
+
+        if not self.profile_db:
+            self.args.skip_consider_gene_dbs = True
+            self.profile_db = ProfileSuperclass(self.args)
+
+        # first we get lists of all the headers we will need to add.
+        # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
+        kofam_hits_coverage_headers = []
+        kofam_hits_detection_headers = []
+        modules_coverage_headers = []
+        modules_detection_headers = []
+
+        samples_in_profile_db = self.profile_db.p_meta['samples']
+        for s in samples_in_profile_db:
+            # we update the available header list so that these additional headers pass the sanity checks
+            kofam_hits_coverage_headers.append(s + "_coverage")
+            self.available_headers[s + "_coverage"] = {'cdict_key': None,
+                                                       'mode_type': 'kofam_hits_in_modules',
+                                                       'description': f"Mean coverage of gene with KOfam hit in sample {s}"
+                                                       }
+            kofam_hits_detection_headers.append(s + "_detection")
+            self.available_headers[s + "_detection"] = {'cdict_key': None,
+                                                        'mode_type': 'kofam_hits_in_modules',
+                                                        'description': f"Detection of gene with KOfam hit in sample {s}"
+                                                        }
+            modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
+            self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
+                                                             'mode_type': 'modules',
+                                                             'description': f"Comma-separated coverage values for each gene in module in sample {s}"
+                                                             }
+            self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
+                                                           'mode_type': 'modules',
+                                                           'description': f"Average coverage of all genes in module in sample {s}"
+                                                           }
+            modules_detection_headers.extend([s + "_gene_detection", s + "_avg_detection"])
+            self.available_headers[s + "_gene_detection"] = {'cdict_key': None,
+                                                             'mode_type': 'modules',
+                                                             'description': f"Comma-separated detection values for each gene in module in sample {s}"
+                                                             }
+            self.available_headers[s + "_avg_detection"] = {'cdict_key': None,
+                                                            'mode_type': 'modules',
+                                                            'description': f"Average detection of all genes in module in sample {s}"
+                                                            }
+
+        # we update the header list for the affected modes
+        self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
@@ -2262,6 +2355,73 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return now_complete
 
 
+    def add_module_coverage(self, mod, meta_dict_for_bin):
+        """This function updates the metabolism dictionary with coverage values for the given module.
+
+        It must be called after init_gene_coverage() or add_gene_coverage_to_headers_list() so that
+        the self.profile_db attribute is established.
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "genes_to_coverage"             dictionary of mean coverage in each sample for each gene
+                                        coverage = meta_dict_for_bin[module]["genes_to_coverage"][sample][gcid]
+        "genes_to_detection"            dictionary of detection in each sample for each gene
+                                        detection = meta_dict_for_bin[module]["genes_to_detection"][sample][gcid]
+        "average_coverage_per_sample"   dictionary of average mean coverage of all genes in module, per sample
+                                        avg_coverage = meta_dict_for_bin[module]["average_coverage_per_sample"][sample]
+        "average_detection_per_sample"  dictionary of average detection of all genes in module, per sample
+                                        avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
+        """
+
+        if not self.profile_db:
+            raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
+                              "profile database.")
+
+        if self.custom_output_headers:
+            # determine the specific set of samples we are interested in so we don't make the dictionary huge
+            sample_set = set()
+            for h in self.custom_output_headers:
+                if 'coverage' in h or 'detection' in h:
+                    if '_gene_coverages' in h:
+                        sample = h.replace('_gene_coverages', '')
+                    elif '_avg_coverage' in h:
+                        sample = h.replace('_avg_coverage', '')
+                    elif '_gene_detection' in h:
+                        sample = h.replace('_gene_detection', '')
+                    elif '_avg_detection' in h:
+                        sample = h.replace('_avg_detection', '')
+                    sample_set.add(sample)
+            self.coverage_sample_list = list(sample_set)
+        else:
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
+
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+
+        num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
+        for s in self.coverage_sample_list:
+            meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
+            meta_dict_for_bin[mod]["genes_to_detection"][s] = {}
+            coverage_sum = 0
+            detection_sum = 0
+            for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
+                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                coverage_sum += cov
+                detection_sum += det
+                meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
+                meta_dict_for_bin[mod]["genes_to_detection"][s][g] = det
+
+            if num_genes == 0:
+                meta_dict_for_bin[mod]["average_coverage_per_sample"][s] = 0
+                meta_dict_for_bin[mod]["average_detection_per_sample"][s] = 0
+            else:
+                meta_dict_for_bin[mod]["average_coverage_per_sample"][s] = coverage_sum / num_genes
+                meta_dict_for_bin[mod]["average_detection_per_sample"][s] = detection_sum / num_genes
+
+
     def estimate_for_list_of_splits(self, metabolism_dict_for_list_of_splits, bin_name=None):
         """This is the atomic metabolism estimator function, which builds up the metabolism completeness dictionary for an arbitrary list of splits.
 
@@ -2304,6 +2464,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mods_with_unassociated_ko.append(mod)
             if defined_by_modules:
                 mods_def_by_modules.append(mod)
+
+            if self.add_coverage:
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
 
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
@@ -2741,9 +2904,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             kofam_hits_info = self.init_hits_and_splits()
             self.init_paths_for_modules()
 
-            if self.profile_db_path and not self.metagenome_mode:
+            if self.add_coverage:
+                self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+
+            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-            elif not self.profile_db_path and not self.metagenome_mode:
+            elif not self.collection_name and not self.metagenome_mode:
                 self.genome_mode = True
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
             elif self.metagenome_mode:
@@ -2832,11 +2998,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "contig_name", "kegg_module", "db_name",
-                                     "kofam_hits_in_module", "gene_caller_ids_in_module"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
         remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
@@ -2899,6 +3064,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "contig" in headers_to_include:
                                     d[self.modules_unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
 
+                                # add gene coverage if requested
+                                if self.add_coverage:
+                                    for s in self.coverage_sample_list:
+                                        sample_cov_header = s + "_coverage"
+                                        d[self.modules_unique_id][sample_cov_header] = c_dict["genes_to_coverage"][s][gc_id]
+                                        sample_det_header = s + "_detection"
+                                        d[self.modules_unique_id][sample_det_header] = c_dict["genes_to_detection"][s][gc_id]
+
                                 # repeated information for each hit
                                 # path specific info
                                 if "path_id" in headers_to_include:
@@ -2944,12 +3117,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
+                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+                                # gene call list should be in same order as KO list
+                                gcids_in_mod = []
+                                if kos_in_mod:
+                                    for ko in kos_in_mod:
+                                        gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                                 if "kofam_hits_in_module" in headers_to_include:
-                                    kos_in_mod = c_dict['kofam_hits'].keys()
                                     d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
                                 if "gene_caller_ids_in_module" in headers_to_include:
-                                    gcids_in_mod = c_dict['genes_to_contigs'].keys()
-                                    gcids_in_mod = [str(x) for x in gcids_in_mod]
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
                                 # everything else at c_dict level
@@ -3008,13 +3184,35 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["module_intermediates"] = "None"
 
                     # comma-separated lists of KOs and gene calls in module
+                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+                    # gene call list should be in same order as KO list
+                    gcids_in_mod = []
+                    if kos_in_mod:
+                        for ko in kos_in_mod:
+                            gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                     if "kofam_hits_in_module" in headers_to_include:
-                        kos_in_mod = c_dict['kofam_hits'].keys()
                         d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
                     if "gene_caller_ids_in_module" in headers_to_include:
-                        gcids_in_mod = c_dict['genes_to_contigs'].keys()
-                        gcids_in_mod = [str(x) for x in gcids_in_mod]
                         d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
+                    # add coverage if requested
+                    if self.add_coverage:
+                        for s in self.coverage_sample_list:
+                            sample_cov_header = s + "_gene_coverages"
+                            sample_det_header = s + "_gene_detection"
+                            sample_avg_cov_header = s + "_avg_coverage"
+                            sample_avg_det_header = s + "_avg_detection"
+
+                            gene_coverages_in_mod = []
+                            gene_detection_in_mod = []
+                            for gc in gcids_in_mod:
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc])
+
+                            d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
+                            d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
+                            d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
+                            d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
 
                     # everything else at c_dict level
                     for h in remaining_headers:
@@ -3320,7 +3518,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         if not self.quiet:
             self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Muto et al (doi:10.1021/ci3005379). When you publish your findings, "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
                              "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
@@ -4825,8 +5023,7 @@ class KeggModuleEnrichment(KeggContext):
                                f"are: {col_list}")
 
         required_groups_txt_headers = ['sample', 'group']
-        sample_groups_dict = utils.get_TAB_delimited_file_as_dictionary(self.groups_txt, expected_fields=required_groups_txt_headers)
-        samples_to_groups_dict = {samp : sample_groups_dict[samp]['group'] for samp in sample_groups_dict.keys()}
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
 
         # make sure the samples all have a group
         samples_with_none_group = []
@@ -4855,7 +5052,7 @@ class KeggModuleEnrichment(KeggContext):
 
         # sanity check for mismatch between modules-txt and groups-txt
         sample_names_in_modules_txt = set(modules_df[self.sample_header_in_modules_txt].unique())
-        sample_names_in_groups_txt = set(sample_groups_dict.keys())
+        sample_names_in_groups_txt = set(samples_to_groups_dict.keys())
         samples_missing_in_groups_txt = sample_names_in_modules_txt.difference(sample_names_in_groups_txt)
         samples_missing_in_modules_txt = sample_names_in_groups_txt.difference(sample_names_in_modules_txt)
         if anvio.DEBUG:
@@ -4987,35 +5184,19 @@ class KeggModuleEnrichment(KeggContext):
 
         self.progress.update('Converting modules mode output into input for enrichment script')
         enrichment_input_path = filesnpaths.get_temp_file_path()
+
         if anvio.DEBUG:
             self.progress.reset()
             self.run.info("Temporary input file for enrichment script", enrichment_input_path)
+
         self.get_enrichment_input(enrichment_input_path)
 
-        cmd = f"anvi-script-enrichment-stats --input {enrichment_input_path} --output {self.output_file_path}"
-        log_file_path = filesnpaths.get_temp_file_path()
-
-        self.progress.update("Running Amy's enrichment")
-        utils.run_command(cmd, log_file_path)
         self.progress.end()
-        if not filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
-            raise ConfigError("It looks like something went wrong during the enrichment analysis. "
-                              f"We don't know what happened, but this log file could contain some clues: {log_file_path}")
 
-        if filesnpaths.is_file_empty(self.output_file_path):
-            raise ConfigError("It looks like something went wrong during the functional enrichment analysis. "
-                              "An output file was created, but it is empty "
-                              f"We don't know why this happened, but this log file could contain some clues: {log_file_path}")
+        # run the enrichment analysis
+        enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
+                                                                 self.output_file_path,
+                                                                 run=self.run,
+                                                                 progress=self.progress)
 
-
-        self.run.info('Enrichment results', self.output_file_path)
-
-        if not anvio.DEBUG:
-            # get rid of the temporary files now that we are done
-            os.remove(enrichment_input_path)
-            os.remove(log_file_path)
-        else:
-            self.run.info('Enrichment log file:', log_file_path)
-            self.run.warning("Because you ran this script with the --debug flag, the temporary files are kept. Please "
-                             "consider cleaning them up when you are done taking a look at them. Here they are: "
-                             f"{enrichment_input_path}, {log_file_path}")
+        return enrichment_stats

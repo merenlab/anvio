@@ -103,7 +103,7 @@ def print_for_internal_or_external_genomes():
     run = terminal.Run(verbose=False if args.concise else True)
 
     g = genomedescriptions.GenomeDescriptions(args, run=terminal.Run(verbose=False))
-    g.load_genomes_descriptions()
+    g.load_genomes_descriptions(skip_sanity_check=True)
     genomes = g.genomes
 
     missing_hmms = [genome_name for genome_name in genomes if not genomes[genome_name]['hmms_for_scgs_were_run']]

@@ -199,7 +199,7 @@ class GenomeDescriptions(object):
         return hmm_sources_in_all_genomes
 
 
-    def load_genomes_descriptions(self, skip_functions=False, init=True):
+    def load_genomes_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load genome descriptions from int/ext genome dictionaries"""
 
         # start with a sanity check to make sure name are distinct
@@ -293,7 +293,8 @@ class GenomeDescriptions(object):
         self.initialized = True
 
         # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name, requested_source_list=None, return_only_functions=False):
@@ -418,7 +419,7 @@ class GenomeDescriptions(object):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
                                      "functional annotation sources that are common to all of your genomes, and they will be used whenever "
-                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
+                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
                                             (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
@@ -666,10 +667,6 @@ class GenomeDescriptions(object):
         Based on similar function for pangenomes in summarizer.py - Credits to Alon
         """
 
-        # sanity check for R packages
-        package_dict = utils.get_required_packages_for_enrichment_test()
-        utils.check_R_packages_are_installed(package_dict)
-
         # output wrangling
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
@@ -680,54 +677,18 @@ class GenomeDescriptions(object):
             # if no output was requested it means a programmer is calling this function
             # in that case, we will use a tmp file for the enrichment output
             enrichment_file_path = filesnpaths.get_temp_file_path()
-        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError(f"The file {enrichment_file_path} already exists and anvi'o doesn't want to overwrite it "
-                               "without express permission. If you think overwriting it is okay, then please `rm` the "
-                               "existing file before you run this program again.")
 
         # this is a hack (credits to Alon) which will make the functional occurrence method print to the tmp file
         # (we need this because the functional occurrence method prints to the args.output_file)
         self.args.output_file = tmp_functional_occurrence_file
-        self.run.info("Temporary functional occurrence file: ", tmp_functional_occurrence_file)
 
         # get functional occurrence input file
         self.functional_occurrence_stats()
 
         # run enrichment script
-        cmd = 'anvi-script-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
-                                                                                      output_file_path)
-        log_file = filesnpaths.get_temp_file_path()
-        self.run.info("Enrichment script log file", log_file)
-        self.progress.new('Functional enrichment analysis')
-        self.progress.update("Running Amy's enrichment")
-        utils.run_command(cmd, log_file)
-        self.progress.end()
+        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
 
-        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError("Something went wrong during the functional enrichment analysis. "
-                              f"We don't know what happened, but this log file could contain some clues: {log_file}")
-
-        if filesnpaths.is_file_empty(enrichment_file_path):
-            raise ConfigError("Something went wrong during the functional enrichment analysis. "
-                              "An output file was created, but it is empty... We don't know why this happened, "
-                              f"but this log file could contain some clues: {log_file}")
-
-        # if everything went okay, we remove the log file
-        if anvio.DEBUG:
-            self.run.warning("Just so you know, because you ran with --debug, we are keeping some temporary files around "
-                             f"for you to look at - the enrichment script's log file at {log_file} and the functional "
-                             f"occurrence output at {tmp_functional_occurrence_file}. You may want to remove them once you "
-                             "are done with them.", lc='green', header="JUST FYI")
-        else:
-            self.run.warning("The temporary files generated by this program have been removed from your system. If something "
-                             "seems strange and you want to take a look at those, please re-run this program with --debug flag.",
-                             lc='green', header="JUST FYI")
-            os.remove(log_file)
-            os.remove(tmp_functional_occurrence_file)
-
-        if not output_file_path:
-            # if a programmer called this function then we return a dict
-            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
+        return enrichment_stats
 
 
     def functional_occurrence_stats(self):
@@ -761,14 +722,14 @@ class GenomeDescriptions(object):
             sys.exit()
 
         if not functional_annotation_source:
-            raise ConfigError("You haven't provided a functional annotation source to make sense of functional "
-                              "occurrence stats in your genomes. These are the available annotation sources "
+            raise ConfigError(f"You haven't provided a functional annotation source to make sense of functional "
+                              f"occurrence stats in your genomes. These are the available annotation sources "
                               f"that are common to all genomes, so pick one: {self.function_annotation_sources}.")
 
         if functional_annotation_source not in self.function_annotation_sources:
             sources_string = ", ".join(self.function_annotation_sources)
             raise ConfigError(f"Your favorite functional annotation source '{functional_annotation_source}' does not seem to be "
-                              "among one of the sources that are available to you. Here are the ones you should choose from: "
+                              f"among one of the sources that are available to you. Here are the ones you should choose from: "
                               f"{sources_string}.")
 
         # get the groups
@@ -795,10 +756,9 @@ class GenomeDescriptions(object):
             groups_to_genomes_dict[grp] = set([genome for genome in genomes_to_groups_dict.keys() if str(genomes_to_groups_dict[genome]) == grp])
 
         # give the user some info before we continue
-        if not anvio.QUIET:
-            self.run.info('Functional annotation source', functional_annotation_source)
-            self.run.info('Groups', ', '.join(groups))
-            self.run.info('Include ungrouped', include_ungrouped)
+        self.run.info('Functional annotation source', functional_annotation_source)
+        self.run.info('Groups', ', '.join(groups))
+        self.run.info('Include ungrouped', include_ungrouped)
 
         self.progress.new('Functional occurrence analysis')
         self.progress.update('Getting functions from database')
@@ -832,9 +792,9 @@ class GenomeDescriptions(object):
         if groups_few_genomes:
             self.progress.reset()
             groups_string = ", ".join(groups_few_genomes)
-            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
-                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
-                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+            self.run.warning(f"Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             f"The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             f"but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
                              f"{groups_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
@@ -878,13 +838,13 @@ class GenomeDescriptions(object):
     def get_occurrence_of_functions_in_genomes(self, genome_to_func_summary_dict):
         """Here we convert a dictionary of function annotations in each genome to a dictionary of counts per function.
 
-        PARAMETERS
+        Parameters
         ==========
         genome_to_func_summary_dict : multi-level dict
             The format of this dictionary is
             (accession, annotation, e_value) = genome_to_func_summary_dict[genome_name][gene_caller_id][annotation_source]
 
-        RETURNS
+        Returns
         =======
         func_occurrence_dict :
             dictionary of function annotation counts in each genome. Its format is
@@ -974,7 +934,7 @@ class MetagenomeDescriptions(object):
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
-    def load_metagenome_descriptions(self, skip_functions=False, init=True):
+    def load_metagenome_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
         """Load metagenome descriptions"""
 
         # start with a sanity check to make sure name are distinct
@@ -1013,8 +973,8 @@ class MetagenomeDescriptions(object):
             for key in contigs_db.meta:
                 g[key] = contigs_db.meta[key]
 
-        # make sure it is OK to go with self.genomes
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def get_metagenome_hash(self, entry):
@@ -1060,11 +1020,11 @@ class AggregateFunctions:
 
     One fancy function in AggregateFunctions is `report_functions_per_group_stats`. For
     instance, one could initiate the class in the following way to get a functions per
-    group stats output file for functioanl enrichment analysis:
+    group stats output file for functional enrichment analysis:
 
         >>> import argparse
         >>> import anvio.genomedescriptions as g
-        >>> args = argparse.Namespace(external_genomes=external_genmes_path, annotation_source='KOfam')
+        >>> args = argparse.Namespace(external_genomes=external_genomes_path, annotation_source='KOfam')
         >>> groups = {'adoles': ['B_adolescentis', 'B_adolescentis_1_11', 'B_adolescentis_22L', 'B_adolescentis_6', 'B_adolescentis_ATCC_15703'],
                       'lactis': ['B_animalis', 'B_lactis_AD011', 'B_lactis_ATCC_27673', 'B_lactis_B420', 'B_lactis_BB_12', 'B_lactis_BF052'],
                       'longum': ['B_longum', 'B_longum_AH1206', 'B_longum_BBMN68', 'B_longum_BORI', 'B_longum_CCUG30698', 'B_longum_GT15']}
@@ -1101,6 +1061,7 @@ class AggregateFunctions:
         self.aggregate_based_on_accession = A('aggregate_based_on_accession') or False
         self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
         self.layer_groups_input_file_path = A('groups_txt') or False
+        self.print_genome_names_and_quit = A('print_genome_names_and_quit') or False
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1149,6 +1110,12 @@ class AggregateFunctions:
         self.layer_names_from_internal_genomes = []
         self.layer_names_from_external_genomes = []
         self.layer_names_from_genomes_storage = []
+
+        # if there are 'groups' defined through the `layer_groups` variable
+        # or through a `self.layer_groups_input_file_path`, this class will
+        # automatically perform a functional enrichment analysis and will report
+        # its output in the following dictionary.
+        self.functional_enrichment_stats_dict = None
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
 
         # this will summarize what happened in a text form.
@@ -1172,31 +1139,19 @@ class AggregateFunctions:
                                   "both :/")
 
             if self.layer_groups_input_file_path:
-                filesnpaths.is_file_tab_delimited(self.layer_groups_input_file_path, expected_number_of_fields=2)
-                self.layer_groups = {}
-
-                if 'group' not in utils.get_columns_of_TAB_delim_file(self.layer_groups_input_file_path):
-                    raise ConfigError("The second column of the groups file must have a header `group`.")
-
-                layer_groups_d = utils.get_TAB_delimited_file_as_dictionary(self.layer_groups_input_file_path)
-
-                for layer_name in layer_groups_d:
-                    group_name = layer_groups_d[layer_name]['group']
-
-                    if not group_name in self.layer_groups:
-                        self.layer_groups[group_name] = []
-
-                    self.layer_groups[group_name].append(layer_name)
+                self.layer_name_to_group_name, self.layer_groups = utils.get_groups_txt_file_as_dict(self.layer_groups_input_file_path)
             elif layer_groups:
                 self.layer_groups = layer_groups
 
-            # Finally, last AND least, a small helper dictionary we will use if there are gorups defined
-            # by the user:
+                # Finally, last AND least, a small helper dictionary we will use if there are groups defined
+                # by the user:
+                if self.layer_groups:
+                    for group_name in self.layer_groups:
+                        for layer_name in self.layer_groups[group_name]:
+                            self.layer_name_to_group_name[layer_name] = group_name
+
             if self.layer_groups:
                 self.layer_groups_defined = True
-                for group_name in self.layer_groups:
-                    for layer_name in self.layer_groups[group_name]:
-                        self.layer_name_to_group_name[layer_name] = group_name
 
             group_names = sorted(list(self.layer_groups.keys()))
             self.run.info('Groups found and parsed', ', '.join(group_names))
@@ -1224,6 +1179,12 @@ class AggregateFunctions:
         # populate main dictionaries
         self._init_functions_from_int_ext_genomes()
         self._init_functions_from_genomes_storage()
+
+        # show the user what genome names are being consdiered for this analysis
+        if self.print_genome_names_and_quit:
+            self.run.info(f"Genome names found (n={len(self.layer_names_considered)})", ' '.join(self.layer_names_considered))
+            sys.exit()
+
         self._populate_group_dicts() # <-- this has to be called after all genomes are initialized
 
         if self.min_occurrence:
@@ -1261,10 +1222,12 @@ class AggregateFunctions:
                             for accession in accessions:
                                 self.accession_id_to_function_dict.pop(accession)
 
-
                 self.run.warning(f"As per your request, anvi'o removed {len(keys_to_remove)} {self.K()}s found in"
                                  f"{self.function_annotation_source} from downstream analyses since they occurred "
                                  f"in less than {self.min_occurrence} genomes.")
+
+        if self.layer_groups:
+            self.do_functional_enrichment_analysis()
 
         self.update_summary_markdown()
 
@@ -1287,18 +1250,27 @@ class AggregateFunctions:
             raise ConfigError(f"What do you have in mind when you say I want my functions to occur in at least {self.min_occurrence} genomes?")
 
         if self.layer_groups_defined:
+            groups_with_single_layers = set([])
+
             if not len(self.layer_groups) > 1:
                 raise ConfigError("Layer groups must have two or more groups.")
 
             for layer_group in self.layer_groups:
                 if not isinstance(self.layer_groups[layer_group], list):
-                    raise ConfigError(f"Each layer group must be composed list of layer names :(")
+                    raise ConfigError("Each layer group must be composed list of layer names :(")
 
                 if not len(self.layer_groups[layer_group]) > 1:
-                    raise ConfigError(f"Each layer group must at least have two layer names. Group '{layer_group}' does not.")
+                    groups_with_single_layers.add(layer_group)
 
                 if len(set(self.layer_groups[layer_group])) != len(self.layer_groups[layer_group]):
                     raise ConfigError("Items in each layer group must be unique :/")
+
+            if len(groups_with_single_layers):
+                self.run.warning(f"In an ideal world, each group would describe at least two layer names. It is not "
+                                 f"the case for {P('this group', len(groups_with_single_layers), alt='these groups')}: "
+                                 f"{', '.join(groups_with_single_layers)}. That is OK and anvi'o will continue with this "
+                                 f"analysis, but if something goes wrong with your stats or whatever, you will remember "
+                                 f"this moment and go like, \"Hmm. That's why my adjusted q-values are like one point zero 🤔\".")
 
             # sanity check 3000 -- no joker shall pass:
             list_of_layer_names_lists = list(self.layer_groups.values())
@@ -1472,8 +1444,43 @@ class AggregateFunctions:
                                   f"\n\n**External genomes** ({P('layer', len(self.layer_names_from_external_genomes))}):\n\n{G(self.layer_names_from_external_genomes)}"
                                   f"\n\n**Genomes storage** ({P('layer', len(self.layer_names_from_genomes_storage))}):\n\n{G(self.layer_names_from_genomes_storage)}")
 
+        if self.layer_groups:
+            self.summary_markdown += (f"\n\n### Functional enrichment analysis\nAnvi'o also performed a functional enrichment analysis based on {len(self.layer_groups)} "
+                                      f"groups defined by the user. The results of this analysis is shown in your view with the these additional layers: "
+                                      f"'enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'. You can learn more about the "
+                                      f"details of the meaning of these columns [here](https://merenlab.org/software/anvio/help/main/artifacts/functional-enrichment-txt/). "
+                                      f"Here is how those groups were defined:")
+            for group_name in self.layer_groups:
+                self.summary_markdown += (f"\n\n**Group '{group_name}'** ({P('layer', len(self.layer_groups[group_name]))}):\n\n{G(self.layer_groups[group_name])}")
 
-    def report_functions_per_group_stats(self, output_file_path):
+
+    def do_functional_enrichment_analysis(self):
+        """Performs functional enrichment analysis if user defined layer groups.
+
+        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        the downstream analyses can use it to do fancy things.
+        """
+
+        if not self.layer_groups:
+            raise ConfigError("Functional enrichment analysis requires the `self.layer_groups` to be "
+                              "initialized. But someone called this function without first intializing "
+                              "groups :/ ")
+
+        output_directory = filesnpaths.get_temp_directory_path()
+        functional_occurrence_stats_file_path = os.path.join(output_directory, 'FUNC_OCCURENCE_STATS.txt')
+        output_file_path = os.path.join(output_directory, 'FUNC_ENRICHMENT_OUTPUT.txt')
+
+        # get functions per group stats file
+        self.report_functions_per_group_stats(functional_occurrence_stats_file_path, quiet=True)
+
+        # run the enrichment analysis
+        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_file_path,
+                                                                                      output_file_path,
+                                                                                      run=self.run,
+                                                                                      progress=self.progress)
+
+
+    def report_functions_per_group_stats(self, output_file_path, quiet=False):
         """A function to summarize functional occurrence for groups of genomes"""
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -1508,4 +1515,5 @@ class AggregateFunctions:
 
         utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
 
-        self.run.info('Functions per group stats file', output_file_path)
+        if not quiet:
+            self.run.info('Functions per group stats file', output_file_path)

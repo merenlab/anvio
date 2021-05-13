@@ -357,7 +357,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                               "titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
 
         fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
-        bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
+        try:
+            bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
+        except Exception as e:
+            raise ConfigError(f"The format of your samples txt file does not seem to be working for anvi'o. This is "
+                              f"what the downstream processes had to say: '{e}'. Please double-check columns in "
+                              f"your samples txt.")
         if bad_fastq_names:
             run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' "
                         "or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first "

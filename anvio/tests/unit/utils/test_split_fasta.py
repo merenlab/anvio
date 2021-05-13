@@ -92,9 +92,9 @@ class SplitFastaTestCase(ut.TestCase):
 
     def test_custom_prefix(self):
         parts = 1
-        prefix = os.path.join(self.this_dir, 'silly')
+        file_name_prefix = 'silly'
 
-        out_files = split_fasta(self.five_seq_fasta, parts=parts, prefix=prefix)
+        out_files = split_fasta(self.five_seq_fasta, parts=parts, file_name_prefix=file_name_prefix, output_dir=self.this_dir)
         expected_out_files = [os.path.join(self.this_dir, 'silly.0')]
 
         self.assertEqual(out_files, expected_out_files)
