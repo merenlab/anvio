@@ -1,6 +1,7 @@
 # -*- coding: utf-8
 import os
 import glob
+import json
 import os.path
 import argparse
 
@@ -677,6 +678,33 @@ rule make_fasta_txt:
 
         shell('echo -e "name\tpath\texternal_gene_calls" > {output}')
         shell('echo -n "%s" >> {output}' % ''.join(list_of_strings))
+
+rule make_metagenomics_config_file:
+    """Make a metagenomics_config.json customized for ribo_phylo workflow"""
+
+    version: 1.0
+    output:
+        config = os.path.join("RIBO_PHYLO_WORKFLOW/PROFILE_SCGs", "metagenomics_config.json")
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    run:
+
+        shell('anvi-run-workflow -w metagenomics --get-default-config {output.config}')
+
+        config = open(output.config)
+        config_dict = json.load(config)
+        config_dict['fasta_txt'] = 'RIBO_PHYLO_WORKFLOW/fasta.txt'
+        config_dict['references_mode'] = True
+        config_dict['anvi_run_hmms']['run'] = False
+        config_dict['anvi_run_kegg_kofams']['run'] = False
+        config_dict['anvi_run_ncbi_cogs']['run'] = False
+        config_dict['anvi_run_scg_taxonomy']['run'] = False
+        config_dict['anvi_run_trna_scan']['run'] = False
+        config_dict['anvi_run_scg_taxonomy']['run'] = False
+        config_dict['anvi_profile']['--min-contig-length'] = 0
+        config_dict['bowtie']['threads'] = 5
+
+        with open(output.config, "w") as outfile:
+          json.dump(config_dict, outfile, indent=4)
 
 if M.run_iqtree == True:
   rule iqtree:
