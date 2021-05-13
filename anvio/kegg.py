@@ -4380,7 +4380,7 @@ class ModulesDatabase(KeggContext):
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
-        mod_table = KeggModulesTable(self.module_table_name)
+        mod_table = ModulesTable(self.module_table_name)
 
         # keep track of errors encountered while parsing
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
@@ -5001,7 +5001,7 @@ class ModulesDatabase(KeggContext):
         return alt_path_list
 
 
-class KeggModulesTable:
+class ModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
     def __init__(self, mod_table_name = None):
@@ -5012,7 +5012,7 @@ class KeggModulesTable:
         if mod_table_name:
             self.module_table_name = mod_table_name
         else:
-            raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
+            raise ConfigError("Beep Beep. Warning. ModulesTable was initialized without knowing its own name.")
 
 
     def append_and_store(self, db, module_num, data_name, data_value, data_definition=None, line_num=None):
