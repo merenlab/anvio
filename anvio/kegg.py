@@ -4114,7 +4114,7 @@ class ModulesDatabase(KeggContext):
 
             if not self.quiet:
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-                self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+                self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
@@ -4367,12 +4367,12 @@ class ModulesDatabase(KeggContext):
 
         self.touch()
 
-        self.progress.new("Loading %s KEGG modules into Modules DB..." % len(self.module_dict.keys()))
+        self.progress.new("Loading %s modules into Modules DB..." % len(self.module_dict.keys()))
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
         if not os.path.exists(self.module_data_directory) or len(self.module_dict.keys()) == 0:
-            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The "
+            raise ConfigError("Appparently, the module data files were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
                               "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
@@ -4390,7 +4390,7 @@ class ModulesDatabase(KeggContext):
         num_modules_parsed = 0
         line_number = 0
         for mnum in self.module_dict.keys():
-            self.progress.update("Parsing KEGG Module %s" % mnum)
+            self.progress.update("Parsing Module %s" % mnum)
             mod_file_path = os.path.join(self.module_data_directory, mnum)
             f = open(mod_file_path, 'rU')
 
@@ -4434,13 +4434,13 @@ class ModulesDatabase(KeggContext):
 
         # warn user about parsing errors
         if anvio.DEBUG:
-            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. "
+            self.run.warning("Several parsing errors were encountered while building the Modules DB. "
                              "Below you will see which modules threw each type of parsing error. Note that modules which "
                              "threw multiple errors will occur in the list as many times as it threw each error.")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
             self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
         else: # less verbose
-            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
+            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the Modules DB. "
                              "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                              "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
                              "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
@@ -4454,7 +4454,7 @@ class ModulesDatabase(KeggContext):
 
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-        self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
+        self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
@@ -4528,8 +4528,8 @@ class ModulesDatabase(KeggContext):
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
         if not data_values_to_ret:
-            self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s "
-                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
+            self.run.warning("Just so you know, we tried to fetch data from the Modules database for the data_name field %s "
+                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
                              "cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
@@ -4564,8 +4564,8 @@ class ModulesDatabase(KeggContext):
                 data_defs_to_ret.append(dict_from_mod_table[key]['data_definition'])
 
         if not data_defs_to_ret and anvio.DEBUG:
-            self.run.warning("Just so you know, we tried to fetch data definitions from the KEGG Modules database for the data_name field %s "
-                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
+            self.run.warning("Just so you know, we tried to fetch data definitions from the Modules database for the data_name field %s "
+                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
                              "cause errors down the line, and if so we're very sorry for that.")
 
         return data_defs_to_ret
