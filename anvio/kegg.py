@@ -991,11 +991,11 @@ class KeggSetup(KeggContext):
         self.module_dict = {key: {} for key in user_module_list}
 
 
-    def setup_modules_db(self, db_path, module_data_directory):
+    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
         """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1164,7 +1164,7 @@ class KeggSetup(KeggContext):
 
         self.run_hmmpress_user()
         self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir)
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER')
 
 
     def setup_data(self):
@@ -4081,12 +4081,13 @@ class ModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, module_data_directory, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, module_data_directory, args, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_data_directory = module_data_directory
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
+        self.data_source = data_source
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -4460,6 +4461,7 @@ class ModulesDatabase(KeggContext):
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
+        self.db.set_meta_value('data_source', self.data_source)
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
