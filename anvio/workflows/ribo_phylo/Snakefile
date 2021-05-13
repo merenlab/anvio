@@ -72,7 +72,6 @@ rule filter_hmm_hits_by_query_coverage:
         contigsDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"))
-        # contigsDB_filtered = touch(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs-contigsDB_filtered.done"))
     params:
         hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_SCGs', '--hmm-source')
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
@@ -88,10 +87,8 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        # contigsDB_filtered = touch(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs-contigsDB_filtered.done")),
         done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"),
         contigsDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
-        # contigDBs = os.path.join(M.input_dirs_dict["{sample_name}"], "{sample_name}-contigs.db")
     output:
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.faa")
     params:
@@ -109,7 +106,6 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_nt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        # expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
         done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"),
         contigsDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
     output:
@@ -128,8 +124,6 @@ rule get_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        # contigDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
-        # contigDB = os.path.join(M.input_dirs_dict["{sample_name}"], "{sample_name}-contigs.db")
         done_file= os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"),
         contigsDB = lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
     output:
@@ -181,7 +175,6 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        # expand(os.path.join("{dataset}", "{{sample_name}}-contigs.db"), dataset=M.names_dirs)
         lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db")
     output:
         taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_estimate_scg_taxonomy_results.tsv")
