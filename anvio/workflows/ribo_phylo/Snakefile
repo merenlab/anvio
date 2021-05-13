@@ -73,13 +73,14 @@ rule filter_hmm_hits_by_query_coverage:
     output:
         touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"))
     params:
-        hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_SCGs', '--hmm-source')
+        hmm_source = M.get_rule_param('filter_hmm_hits_by_query_coverage', '--hmm-source'),
+        query_coverage = M.get_rule_param('filter_hmm_hits_by_query_coverage', '--query-coverage')
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
     shell:
           "anvi-script-filter-hmm-hits-table -c {input.contigsDB} \
                                              --domtblout {input.domtblout} \
-                                             --hmm-source Bacteria_71 \
-                                             --query-coverage 0.8"
+                                             --hmm-source {params.hmm_source} \
+                                             --query-coverage {params.query_coverage}"
 
 rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
     """Extract all SCG AA sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
