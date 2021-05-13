@@ -67,7 +67,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['-I']
-        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage']
+        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage', 'additional_params']
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
@@ -87,7 +87,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             'SCG_protein_list': 'SCG_protein_list.txt',
             'MSA_gap_threshold': '',
             'anvi_run_hmms_hmmsearch': {'threads': 5, '-I': 'Bacteria_71'},
-            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
+            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
