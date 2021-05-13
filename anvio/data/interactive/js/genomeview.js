@@ -79,8 +79,9 @@ $(document).ready(function() {
         $('#tooltip-body').html('').hide()
       })
 
-      genomeLabelsCanvas.on('object:moving', function(options) { 
-        console.log(options)
+      genomeLabelsCanvas.on('object:moving', function(options) {
+        // console.log(genomeLabelsCanvas.getBoundingRect())
+        // console.log(options.target.getBoundingRect())
         options.target.set({
           left: Math.round(options.target.left / draggableGridUnits) * draggableGridUnits,
           top: Math.round(options.target.top / draggableGridUnits) * draggableGridUnits
@@ -428,6 +429,7 @@ function drawGenomeLabels(label){
     fontFamily: 'sans-serif', 
     fontWeight: 'bold',
     selectable : true,
+    hasControls : false, 
     lockMovementX : true 
   }))
 }
