@@ -86,6 +86,10 @@ $(document).ready(function() {
           left: Math.round(options.target.left / draggableGridUnits) * draggableGridUnits,
           top: Math.round(options.target.top / draggableGridUnits) * draggableGridUnits
         });
+        let labelsArr = genomeLabelsCanvas.getObjects()
+        console.log('pre sort ==>', labelsArr)
+        labelsArr.sort((a,b) => (a.top > b.top) ? 1 : -1)
+        console.log('after sort ==>', labelsArr)
       });
 
       function showToolTip(event){
