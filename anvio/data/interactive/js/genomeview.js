@@ -29,6 +29,7 @@
 
  var spacing = 30; // genome spacing
  var showLabels = true; // show genome labels?
+ var showGeneLabels = true; // show gene labels?
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
  var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
@@ -189,7 +190,7 @@ function loadAll() {
     if (zoom < 0.01) zoom = 0.01;
 
     scale = canvas.getZoom() * 100 // set global scale to new zoom value
-    scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value. 
+    scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value.
     scaleCanvas.add((new fabric.Text(`${scale} nts`, {
       strokeWidth: 1,
       fontSize: 100,
@@ -208,9 +209,9 @@ function loadAll() {
     }
   });
   document.body.addEventListener("keydown", function(ev) {
-      if(ev.which == 83 && !$('#geneClusterInput').is(':focus')) { // S = 83
-        toggleSettingsPanel();
-      }
+    if(ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
+      toggleSettingsPanel();
+    }
   });
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
@@ -232,6 +233,10 @@ function draw() {
     let genome = genomeData.genomes[genomeID].genes.gene_calls;
     let g = genome[Object.keys(genome).length-1].stop;
     if(g > genomeMax) genomeMax = g;
+  }
+
+  if(showGeneLabels) {
+    spacing += 30;
   }
 
   var y = 1;
@@ -331,6 +336,22 @@ function addGenome(label, gene_list, genomeID, y) {
       geneObj.left += offsetX;
     }
     canvas.add(geneObj);
+    if(showGeneLabels) {
+      var label = new fabric.IText("geneID: "+geneID,{
+        top: -30+spacing*y,
+        left: 200+gene.start,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        angle:-10,
+        hasControls:false,
+        lockMovementX: true,
+        lockMovementY: true,
+        lockScaling: true,
+        hoverCursor:'text',
+        selectionColor:'rgba(128,128,128,.2)'
+      });
+      canvas.add(label);
+    }
   }
   //canvas.add(geneGroup.set('scaleX',canvas.getWidth()/genomeMax/3));
   //geneGroup.destroy();
@@ -416,7 +437,7 @@ function getKeyByValue(object, value) {
 function resetScale(){
   scale = 100
   canvas.setZoom(1)
-  scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value. 
+  scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value.
   scaleCanvas.add((new fabric.Text(`${scale} nts`, {
     strokeWidth: 1,
     fontSize: 100,
@@ -429,11 +450,10 @@ function drawGenomeLabels(label){
   genomeLabelsCanvas.add(new fabric.Text(label, {
     top : labelSpacing,
     fontSize : 15,
-    fontFamily: 'sans-serif', 
+    fontFamily: 'sans-serif',
     fontWeight: 'bold',
     selectable : true,
-    hasControls : false, 
-    lockMovementX : true 
+    hasControls : false,
+    lockMovementX : true
   }))
 }
-
