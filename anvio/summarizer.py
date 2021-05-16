@@ -365,7 +365,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         include_ungrouped = A('include_ungrouped')
 
-
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 

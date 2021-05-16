@@ -1,0 +1,89 @@
+{
+    "version": "3",
+    "tree-type": "circlephylogram",
+    "order-by": ">> associated_groups",
+    "current-view": "presence_absence_view",
+    "samples-order": "COG20_FUNCTION_FREQUENCY_VIEW",
+    "angle-min": "0",
+    "angle-max": "180",
+    "layers": {
+        "adjusted_q_value": {
+            "color": "#edc0c0",
+            "height": "180",
+            "margin": "15",
+            "type": "intensity",
+            "color-start": "#3d7a00"
+        },
+        "associated_groups": {
+            "color": "#000000",
+            "height": "220",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#DDDDDD"
+        },
+        "enrichment_score": {
+            "color": "#005675",
+            "height": "180",
+            "margin": "15",
+            "type": "intensity",
+            "color-start": "#ededed"
+        },
+        "unadjusted_p_value": {
+            "color": "#edc0c0",
+            "height": "180",
+            "margin": "15",
+            "type": "intensity",
+            "color-start": "#3d7a00"
+        }
+    },
+    "views": {
+        "presence_absence_view": {
+            "unadjusted_p_value": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.05",
+                    "disabled": false
+                }
+            },
+            "adjusted_q_value": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.05",
+                    "disabled": false
+                }
+            }
+        },
+        "frequency_view": {
+            "unadjusted_p_value": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.05",
+                    "disabled": false
+                }
+            },
+            "adjusted_q_value": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.05",
+                    "disabled": false
+                }
+            }
+        }
+    }
+}
