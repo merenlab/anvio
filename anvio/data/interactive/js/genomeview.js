@@ -27,7 +27,7 @@
 
  // Settings vars
 
- var spacing = 30; // genome spacing
+ var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
  var showGeneLabels = true; // show gene labels?
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
@@ -36,6 +36,8 @@
  var scale = 100; // nt scale intervals
 
  var alignToGC = null;
+
+ var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon
 
  var color_db;
  var cog_annotated = true, kegg_annotated = false;
@@ -219,6 +221,12 @@ function loadAll() {
       draw();
       $(this).blur();
   });
+  $('#arrow_style').on('change', function() {
+      arrowStyle = parseInt($(this).val());
+      canvas.clear();
+      draw();
+      $(this).blur();
+  });
   $('#toggle_label_box').on('change', function() {
     showLabels = !showLabels;
     alignToGC = null;
@@ -235,8 +243,8 @@ function draw() {
     if(g > genomeMax) genomeMax = g;
   }
 
-  if(showGeneLabels) {
-    spacing += 30;
+  if(showGeneLabels && arrowStyle != 3) {
+    spacing = 60;
   }
 
   var y = 1;
@@ -328,7 +336,7 @@ function addGenome(label, gene_list, genomeID, y) {
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
     //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
-    var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y,genomeID);
+    var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y,genomeID,arrowStyle);
     if(showLabels) {
       geneObj.left += 120;
     }
@@ -336,20 +344,34 @@ function addGenome(label, gene_list, genomeID, y) {
       geneObj.left += offsetX;
     }
     canvas.add(geneObj);
+
     if(showGeneLabels) {
-      var label = new fabric.IText("geneID: "+geneID,{
-        top: -30+spacing*y,
-        left: 200+gene.start,
-        scaleX: 0.5,
-        scaleY: 0.5,
-        angle:-10,
+      var label = new fabric.IText("geneID: "+geneID, {
         hasControls:false,
         lockMovementX: true,
         lockMovementY: true,
         lockScaling: true,
-        hoverCursor:'text',
-        selectionColor:'rgba(128,128,128,.2)'
+        hoverCursor:'text'
       });
+
+      if(arrowStyle == 3) {
+        label.set({
+          top: -10+spacing*y,
+          left: 150+gene.start,
+          scaleX: 0.25,
+          scaleY: 0.25,
+          selectionColor:'rgba(128,128,128,.5)'
+        });
+      } else {
+        label.set({
+          scaleX: 0.5,
+          scaleY: 0.5,
+          top: -30+spacing*y,
+          left: 200+gene.start,
+          angle: -10,
+          selectionColor:'rgba(128,128,128,.2)'
+        });
+      }
       canvas.add(label);
     }
   }
@@ -357,7 +379,7 @@ function addGenome(label, gene_list, genomeID, y) {
   //geneGroup.destroy();
 }
 
-function geneArrow(gene, geneID, functions, y, genomeID) {
+function geneArrow(gene, geneID, functions, y, genomeID, style) {
   var cag = null;
   var color = 'gray';
   if(functions) {
@@ -386,18 +408,34 @@ function geneArrow(gene, geneID, functions, y, genomeID) {
   /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
   var length = gene.stop-gene.start;
-  var arrow = new fabric.Path('M 0 0 L ' + length + ' 0 L ' + length + ' 10 L 0 10 M ' + length + ' 0 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z');
+
+  var arrowPathStr;
+  switch(style) {
+    case 2: // thicker arrows
+      arrowPathStr = 'M 0 -5 L ' + length + ' -5 L ' + length + ' 15 L 0 15 M ' + length + ' -5 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z';
+      break;
+    case 3: // pentagon arrows
+      arrowPathStr = 'M 0 0 L ' + (length-25) + ' 0 L ' + length + ' 20 L ' + (length-25) + ' 40 L 0 40 L 0 0 z';
+      break;
+    default: // 'inspect page' arrows
+      arrowPathStr = 'M 0 0 L ' + length + ' 0 L ' + length + ' 10 L 0 10 M ' + length + ' 0 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z';
+      break;
+  }
+
+  var arrow = new fabric.Path(arrowPathStr);
   arrow.set({
     id: 'arrow',
     selectable: false,
     gene: gene,
     geneID: geneID,
     genomeID: genomeID,
-    top: -11+spacing*y,
+    top: style == 3 ? -14+spacing*y : -11+spacing*y,
     left: 1.5+gene.start,
     scaleX: 0.5,
     scaleY: 0.5,
     fill: color,
+    stroke: 'gray',
+    strokeWidth: style == 3 ? 3 : 1.5,
     zoomX: 0.2,
     zoomY: 0.2
   });
