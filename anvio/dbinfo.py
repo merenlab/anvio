@@ -185,6 +185,12 @@ class DBInfo(ABC):
             return database.get_meta_value('version', return_none_if_not_in_table=True)
 
 
+    @property
+    def project_name(self):
+        with self.load_db() as database:
+            return database.get_meta_value('project_name', return_none_if_not_in_table=True)
+
+
     def load_db(self):
         return DB(self.path, None, ignore_version=True)
 
