@@ -7,8 +7,9 @@ import anvio
 import anvio.workflows as w
 import anvio.terminal as terminal
 
-from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
+from anvio.workflows.contigs import ContigsDBWorkflow
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -93,7 +94,8 @@ rule anvi_script_reformat_fasta_prefix_only:
         prefix = M.get_rule_param("anvi_script_reformat_fasta", "--prefix"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
         exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
-        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names")
+        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
+        seq_type = M.get_rule_param("anvi_script_reformat_fasta", "--seq-type")
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
@@ -102,7 +104,8 @@ rule anvi_script_reformat_fasta_prefix_only:
                                              {params.prefix} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
-                                             {params.simplify_names} >> {log} 2>&1""")
+                                             {params.simplify_names} \
+                                             {params.seq_type} >> {log} 2>&1""")
 
 
 rule anvi_script_reformat_fasta:
@@ -118,10 +121,12 @@ rule anvi_script_reformat_fasta:
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+        seq_type = M.get_rule_param("anvi_script_reformat_fasta", "--seq-type"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
+                                             {params.seq_type} \
                                              {params.min_len} >> {log} 2>&1""")
 
 
@@ -212,7 +217,8 @@ rule anvi_gen_contigs_database:
                                           {params.skip_predict_frame} \
                                           {params.skip_gene_calling} \
                                           {params.prodigal_translation_table} \
-                                          {params.description} >> {log} 2>&1")
+                                          {params.description} \
+                                          -T {threads} >> {log} 2>&1")
 
 
 rule reformat_external_functions:
@@ -351,10 +357,12 @@ rule anvi_run_kegg_kofams:
     params:
         kegg_data_dir = M.get_rule_param('anvi_run_kegg_kofams', '--kegg-data-dir'),
         hmmer_program = M.get_rule_param('anvi_run_kegg_kofams', '--hmmer-program'),
-        keep_all_hits = M.get_rule_param('anvi_run_kegg_kofams', '--keep-all-hits')
+        keep_all_hits = M.get_rule_param('anvi_run_kegg_kofams', '--keep-all-hits'),
+        log_bitscores = M.get_rule_param('anvi_run_kegg_kofams', '--log-bitscores'),
+        just_do_it = M.get_rule_param('anvi_run_kegg_kofams', '--just-do-it')
     threads: M.T('anvi_run_kegg_kofams')
     resources: nodes = M.T('anvi_run_kegg_kofams')
-    shell: "anvi-run-kegg-kofams -c {input} {params.kegg_data_dir} {params.hmmer_program} {params.keep_all_hits} -T {threads} >> {log} 2>&1"
+    shell: "anvi-run-kegg-kofams -c {input} {params.kegg_data_dir} {params.hmmer_program} {params.keep_all_hits} {params.log_bitscores} -T {threads} {params.just_do_it} >> {log} 2>&1"
 
 
 rule anvi_run_ncbi_cogs:
@@ -464,22 +472,25 @@ rule anvi_script_run_eggnog_mapper:
         shell("rm {input.eggnog_output}.temp 2>{log}")
 
 
-# generate external genomes storage
+# generate external genomes storage using `project_description` as name for contigs.
 # this rule is only used when this workflow is inherited (e.g. by pangenomics or phylogenomics workflows)
 rule gen_external_genome_file:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
     input:
         annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=M.group_names),
-        contigs_dbs = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
+        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
     output: M.external_genomes_file
     threads: M.T("gen_external_genome_file")
     resources: nodes = M.T("gen_external_genome_file")
     run:
+        contigs_db_project_names = [ContigsDatabase(contigs_db_path).meta["project_name"] for contigs_db_path in input.contigs_db_paths]
+        contigs_db_name_path_tuples = zip(contigs_db_project_names, input.contigs_db_paths)
         with open(output[0], 'w') as f:
             f.write("name\tcontigs_db_path\n")
-            for c in input.contigs_dbs:
-                f.write("%s\t%s\n" % (c.split(".")[0].split("/")[-1].replace('-','_'), c))
+            for name, path in contigs_db_name_path_tuples:
+                name = name.replace('.', '_').replace('-', '_').replace(' ', '_')
+                f.write("%s\t%s\n" % (name, path))
 
 
 if 'workflows/contigs' in workflow.included[0]:

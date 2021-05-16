@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['gene-calls-txt']
-__description__ = "Export gene calls from an anvi'o contigs database."
+__description__ = "Export gene calls from an anvi'o contigs database"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -87,9 +87,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             help = "By default, exported gene calls have an amino acid sequences column in the output. "
                    "Turn this behavior off with this flag")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

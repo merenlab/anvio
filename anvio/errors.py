@@ -20,6 +20,9 @@ __status__ = "Development"
 
 
 def remove_spaces(text):
+    if not text:
+        return ""
+
     while True:
         if text.find("  ") > -1:
             text = text.replace("  ", " ")
@@ -59,10 +62,26 @@ class AnvioError(Exception, object):
         return '%s: %s' % (self.error_type, self.e)
 
 
+class CommandError(AnvioError):
+    """Use this when a command (e.g., something run with utils.run_command) fails."""
+
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Command Error'
+        AnvioError.__init__(self)
+
+
 class ConfigError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Config Error'
+        AnvioError.__init__(self)
+
+
+class StupidHMMError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Stupid HMM Error'
         AnvioError.__init__(self)
 
 
@@ -139,4 +158,11 @@ class ModellerScriptError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Modeller Script Error'
+        AnvioError.__init__(self)
+
+
+class TRNAIdentifierError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'tRNA Identifier Error'
         AnvioError.__init__(self)

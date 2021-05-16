@@ -19,15 +19,15 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db', 'genomes-storage-db',]
-__provides__ = ['functions-txt',]
-__description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one "
-                   "or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates "
-                   "multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes "
-                   "with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs "
-                   "in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also "
-                   "request a much more comprehensive report, which gives you anything you might need to know, including the matching "
-                   "gene caller id, functional annotation source, and full function name for each hit and serach term.")
+__requires__ = ['contigs-db', 'genomes-storage-db']
+__provides__ = ['functions-txt']
+__description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program "
+                   "searches for one or more search terms you define in functional annotations of "
+                   "genes in an anvi'o contigs database, and generates multiple reports. The "
+                   "default report simply tells you which contigs contain genes with functions "
+                   "matching to serach terms you used, useful for viewing in the interface. You "
+                   "can also request a much more comprehensive report, which gives you anything "
+                   "you might need to know for each hit and serach term")
 
 
 run = terminal.Run()
@@ -160,9 +160,9 @@ class SearchResultReporter(object):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         SearchResultReporter(args).process()

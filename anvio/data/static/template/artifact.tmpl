@@ -1,8 +1,9 @@
 ---
-layout: post
+layout: page
 title: {{ artifact.name }} [artifact]
 categories: [anvio]
 comments: false
+redirect_from: /{{ meta.version_short_identifier }}/{{ artifact.name }}
 image:
   featurerelative: ../../../images/header.png
   display: true
@@ -14,7 +15,7 @@ image:
 
 <img src="{{artifact.icon}}" alt="{{ artifact.type }}" style="width:100px; border:none" />
 
-A {{ artifact.type }}-type anvi'o artifact. This artifact {% if artifact.provided_by_anvio and not artifact.provided_by_user %}is typically generated, used, and/or exported **by anvi'o** (and not provided by the user).{% elif not artifact.provided_by_anvio and artifact.provided_by_user %}is typically provided **by the user** for anvi'o to import into its databases, process, and/or use{% else %}can be generated, used, and/or exported **by anvi'o**. It can also be provided **by the user** for anvi'o to import into its databases, process, and/or use.{% endif %}.
+A {{ artifact.type }}-type anvi'o artifact. This artifact {% if artifact.provided_by_anvio and not artifact.provided_by_user %}is typically generated, used, and/or exported **by anvi'o** (and not provided by the user).{% elif not artifact.provided_by_anvio and artifact.provided_by_user %}is typically provided **by the user** for anvi'o to import into its databases, process, and/or use{% else %}can be generated, used, and/or exported **by anvi'o**. It can also be provided **by the user** for anvi'o to import into its databases, process, and/or use{% endif %}.
 
 Back to the **[main page](../../)** of anvi'o programs and artifacts.
 
@@ -23,12 +24,16 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 {% if artifact.provided_by %}
 <p style="text-align: left" markdown="1">{% for name, path in artifact.provided_by %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% else %}
-Most likely provided by the user.
+There are no anvi'o tools that generate this artifact, which means it is most likely provided to the anvi'o ecosystem by the user.
 {% endif %}
 
 ## Required or used by
 
+{% if artifact.required_by %}
 <p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% else %}
+There are no anvi'o tools that use or require this artifact directly, which means it is most likely an end-product for the user.
+{% endif %}
 
 ## Description
 {% if artifact.description %}

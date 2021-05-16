@@ -13,7 +13,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
-from math import floor
+import pandas as pd
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -32,7 +32,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db')
+        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db', 'genes_db')
 
         # FIXME This is a first-come, first-serve business. As of now, it is the programmer's
         # responsibility to ensure they are not passing more inputs than they need.
@@ -68,11 +68,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
+        self.skip_check_names = A('skip_check_names')
         self.target_data_group = self.target_data_group_set_by_user or 'default'
 
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
-                              "contain any database path :/ Even though any of the following would "
+                              "contain any database :/ Even though any of the following argument names would "
                               "have worked: %s :(" % ', '.join(["'%s'" % x for x in acceptable_db_inputs]))
 
         if not self.table_name:
@@ -113,6 +114,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                'float': 0,
                                'stackedbar': 0,
                                'unknown': None}
+
+        self.df = None
 
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
@@ -378,6 +381,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     if key not in data_dict[data_name]:
                         raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is "
                                           "missing any data for the key '%s'." % (data_name, key))
+
+
+    def init_table_as_dataframe(self):
+        """Init the raw table as a dataframe"""
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.df = database.get_table_as_dataframe(self.table_name, error_if_no_data=False)
+        database.disconnect()
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -649,7 +660,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         Returns
         =======
-        output : (additional_data_keys, additional_data_dict)
+        (additional_data_keys, additional_data_dict) : tuple
         """
 
         if not self.target_data_group:
@@ -741,7 +752,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_dict : dict
             A dictionary for items or layers additional should follow this format:
 
-                d = {
+                data_dict = {
                         'item_or_layer_name_01': {'data_key_01': value,
                                                   'data_key_02': value,
                                                   'data_key_03': value
@@ -755,6 +766,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_keys_list : list
             A list of keys one or more of which should appear for each item in `data_dict`.
         """
+
         if self.target_table not in ['items', 'layers', 'nucleotides', 'amino_acids']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
@@ -802,7 +814,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                   "and watch anvi'o make an exception just for you and complain about nothin' for this "
                                   "once.")
 
-        if skip_check_names:
+        if skip_check_names or self.skip_check_names:
             self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s "
                              "between your additional data and the %s database you are attempting to update. So be it. "
                              "Anvi'o will not check anything, but if things don't look the way you expected them to look, "
@@ -904,6 +916,20 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
 
         items_in_db = utils.get_all_item_names_from_the_database(self.db_path)
         items_in_data = set(data_dict.keys())
+
+        # this step is essential for genes database, where item naems are actually
+        # gene caller ids that are meant to be integers:
+        try:
+            items_in_db = set([int(i) for i in items_in_db])
+        except:
+            pass
+
+        if not len(items_in_db):
+            raise ConfigError("No item names found in your target database. This is normal if you are working with "
+                              "a blank profile database. But in that case, you need to include `skip_check_names=True` "
+                              "in your `args` instance. This message is meant for a developer since this part of the "
+                              "code only accessible thorugh API calls, if you are a user and seeing this please get in "
+                              "touch with anvi'o developers.")
 
         items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
         if len(items_in_data_but_not_in_db):
@@ -1043,7 +1069,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
         # A dict of {<contig_name>: <contig_length>, ...}
         contig_lengths = dict(database.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length'))
 
-        is_format_good = lambda key: len(key.split('::')) == 2
+        is_format_good = lambda key: len(key.split(':')) == 2
 
         not_in_db = set()
 
@@ -1052,12 +1078,12 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
         for i, data_key in enumerate(data_dict):
             if not is_format_good(data_key):
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
-                                  "have the format <contig_name>::<position_in_contig>, e.g. "
-                                  "contig_000001::125 would be an entry for contig_000001 at the "
+                                  "have the format <contig_name>:<position_in_contig>, e.g. "
+                                  "contig_000001:125 would be an entry for contig_000001 at the "
                                   "125th position of the sequence (The first letter in the sequence "
                                   "has the position 0, not 1)." % (data_key, i+1))
 
-            contig, pos = data_key.split('::')
+            contig, pos = data_key.split(':')
             pos = int(pos)
 
             if contig not in contig_lengths:
@@ -1078,10 +1104,10 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
                                                           len(data_dict),
                                                           self.db_type,
                                                           example,
-                                                          example.split('::')[0]))
+                                                          example.split(':')[0]))
 
             if self.just_do_it:
-                self.run.warning(msg + ".. But since you asked anvi'o to keep its mouth shut, it removed the ones that "
+                self.run.warning(msg + "... But since you asked anvi'o to keep its mouth shut, it removed the ones that "
                                  "were not in your database from your input data, hoping that the rest of your "
                                  "probably very dubious operation will go just fine :/")
 
@@ -1108,61 +1134,174 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         AdditionalDataBaseClass.__init__(self, args)
 
 
+    def get_multigene_dataframe(self, gene_caller_ids=set([]), keys_of_interest=set([]), group_name=None):
+        """Fetches and pivots table data specific to a group of gene_callers_ids
+
+        Parameters
+        ==========
+        gene_caller_ids : set
+            If empty, all are assumed.
+
+        Returns
+        =======
+        output : pd.DataFrame
+            Outputs a dataframe that looks like this:
+
+                gene_callers_id  codon_order_in_gene   MG                SM_               UDP
+                1                149                  NaN    0.0349008254091               NaN
+                1                150                  NaN    0.0116165975232               NaN
+                1                167                  NaN    0.1009224794937   0.1127902398775
+                1                168                  NaN    0.0110966620296  0.03150767340385
+                1                169                  NaN     0.435271159751   0.4638648995855
+                1                171                  NaN    0.0239539337947  0.03150767340385
+                1                172                  NaN    0.0347266126837               NaN
+                1                173                  NaN     0.244954708876   0.1630916348525
+                1                174                  NaN    0.5049807590385    0.604658463037
+                1                175                  NaN    0.0237121180997  0.06609853613995
+                1                176                  NaN    0.0359138454456  0.10012280860365
+                1                177                  NaN    0.0252309121402   0.0691817254722
+                1                178                  NaN   0.02856525986075  0.03150767340385
+                1                179                  NaN   0.01191453799525               NaN
+                ...              ...                  ...               ...                ...
+
+            Only keys that had at least one non-NaN value for the genes are included
+        """
+
+        if self.df is None:
+            self.init_table_as_dataframe()
+
+        if not len(gene_caller_ids):
+            df = self.df
+        elif len(gene_caller_ids) == 1:
+            df = self.df[self.df['gene_callers_id'] == gene_caller_ids.pop()]
+        else:
+            df = self.df[self.df['gene_callers_id'].isin(gene_caller_ids)]
+
+        if group_name:
+            df = df[df['data_group'] == group_name]
+
+        if len(keys_of_interest):
+            df = df[df['data_key'].isin(set(keys_of_interest))]
+
+        # Assumes a data_key can possess only 1 data_type
+        dtypes_convert = {
+            'str': str,
+            'int': int,
+            'float': float,
+            'stackedbar': str,
+            'unknown': str,
+        }
+
+        dtypes = {}
+        for data_key, subset in df.groupby('data_key'):
+            dtypes[data_key] = dtypes_convert[subset['data_type'].iloc[0]]
+
+        if df.empty:
+            return pd.DataFrame({}, columns=('codon_order_in_gene',))
+
+        pivot_gene_df = df.pipe(
+            utils.multi_index_pivot,
+            index=['gene_callers_id', 'codon_order_in_gene'],
+            columns='data_key',
+            values='data_value'
+        ).astype(dtypes).reset_index()
+
+        return pivot_gene_df
+
+
+    def get_gene_dataframe(self, gene_callers_id, keys_of_interest=set([]), group_name=None):
+        """Fetches and pivots table data specific to a gene_callers_id
+
+        Returns
+        =======
+        output : pd.DataFrame
+            Outputs a dataframe that looks like this:
+
+                codon_order_in_gene               MG                SM_               UDP
+                149                              NaN    0.0349008254091               NaN
+                150                              NaN    0.0116165975232               NaN
+                167                              NaN    0.1009224794937   0.1127902398775
+                168                              NaN    0.0110966620296  0.03150767340385
+                169                              NaN     0.435271159751   0.4638648995855
+                171                              NaN    0.0239539337947  0.03150767340385
+                172                              NaN    0.0347266126837               NaN
+                173                              NaN     0.244954708876   0.1630916348525
+                174                              NaN    0.5049807590385    0.604658463037
+                175                              NaN    0.0237121180997  0.06609853613995
+                176                              NaN    0.0359138454456  0.10012280860365
+                177                              NaN    0.0252309121402   0.0691817254722
+                178                              NaN   0.02856525986075  0.03150767340385
+                179                              NaN   0.01191453799525               NaN
+                ...                              ...                ...               ...
+
+            Only keys that had at least one non-NaN value for the gene are included
+        """
+
+        pivot_gene_df = self.get_multigene_dataframe(set([gene_callers_id]))
+
+        if not pivot_gene_df.empty:
+            pivot_gene_df.drop('gene_callers_id', axis=1, inplace=True)
+
+        return pivot_gene_df
+
+
+    def init_table_as_dataframe(self):
+        """Call AdditionalAndOrderDataBaseClass.init_table_as_dataframe and split `item_name`
+
+        Splits the item_name column (format <gene_callers_id>:<codon_order_in_gene>) into two
+        separate columns, `gene_callers_id` and `codon_order_in_gene`, thereby recovering this
+        information for parseability, etc.
+        """
+
+        super(AdditionalDataBaseClass, self).init_table_as_dataframe()
+
+        if self.df.empty:
+            self.df['gene_callers_id'] = None
+            self.df['codon_order_in_gene'] = None
+            return
+
+        self.df[['gene_callers_id', 'codon_order_in_gene']] = self.df['item_name'].str.split(':', expand=True)
+        self.df['gene_callers_id'] = self.df['gene_callers_id'].astype(int)
+        self.df['codon_order_in_gene'] = self.df['codon_order_in_gene'].astype(int)
+
+
     def check_names(self, data_dict):
         """Compares data key values found in the data dict to the ones in the db
 
         FIXME This is an unforgiving function, i.e. --just-do-it does nothing
         """
 
-        def get_gene_lengths(source):
-            """Return dict of gene_caller_id: length pairs for a given source"""
-            return {
-                k: floor((v['stop'] - v['start']) / 3)
-                for k, v in database.get_some_rows_from_table_as_dict(
-                    t.genes_in_contigs_table_name,
-                    where_clause="source = '%s'" % source
-                ).items()
-            }
-
-        gene_lengths_by_source = {}
-
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        gene_lengths = database.get_table_as_dataframe(
+            t.genes_in_contigs_table_name,
+            columns_of_interest=('gene_callers_id', 'start', 'stop'),
+        )
+        gene_lengths = dict(zip(gene_lengths['gene_callers_id'], gene_lengths['stop'] - gene_lengths['start']))
 
-        is_format_good = lambda key: len(key.split('::')) == 3
+        is_format_good = lambda key: len(key.split(':')) == 2
 
         # These tables could be millions of entries. We do not bother compiling a prettified list of
         # their badly formatted table. If it's wrong we complain immediately.
         for i, data_key in enumerate(data_dict):
             if not is_format_good(data_key):
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
-                                  "have the format <gene_caller>::<gene_callers_id>::<codon_order_in_gene>, "
-                                  "e.g. prodigal::1248::122 would be an entry for the 122nd amino acid "
-                                  "(0-indexed) in gene 1248 of gene set identified with prodigal." % \
-                                  (data_key, i+1))
+                                  "have the format <gene_callers_id>:<codon_order_in_gene>, "
+                                  "e.g. 1248:122 would be an entry for the 122nd amino acid "
+                                  "(0-indexed) in gene 1248." % (data_key, i+1))
 
-            gene_caller, gene_callers_id, codon_order_in_gene = data_key.split('::')
+            gene_callers_id, codon_order_in_gene = data_key.split(':')
             gene_callers_id = int(gene_callers_id)
             codon_order_in_gene = int(codon_order_in_gene)
 
-            if gene_caller not in gene_lengths_by_source:
-                try:
-                    gene_lengths_by_source[gene_caller] = get_gene_lengths(gene_caller)
-                except ConfigError:
-                    raise ConfigError("At least one of your data entries in your additional data specifies a gene "
-                                      "caller that is absent in your contigs database... For example, "
-                                      "the data key '%s' (entry #%d) corresponds to the gene caller '%s', "
-                                      "which is non-existent in this database..." % \
-                                      (data_key, i+1, gene_caller))
-
-            if gene_callers_id not in gene_lengths_by_source[gene_caller]:
+            if gene_callers_id not in gene_lengths:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies gene callers "
-                                  "ID %d, which does not exist for this gene source." % \
+                                  "ID %d, which does not exist." % \
                                   (data_key, i+1, gene_callers_id))
 
-            if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths_by_source[gene_caller][gene_callers_id]:
+            if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths[gene_callers_id]:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies codon_order_in_gene "
                                   "%d, which falls outside of gene %d (its length is %d)." % \
-                                  (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths_by_source[gene_caller][gene_callers_id]))
+                                  (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths[gene_callers_id]))
 
         database.disconnect()
 

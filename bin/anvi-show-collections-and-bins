@@ -21,8 +21,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["pan-db", "profile-db"]
-__provides__ = ["collection"]
-__description__ = "A script to display collections stored in an anvi'o profile or pan database."
+__description__ = "A script to display collections stored in an anvi'o profile or pan database"
 
 
 run = terminal.Run()
@@ -53,12 +52,12 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

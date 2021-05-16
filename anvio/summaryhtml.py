@@ -26,8 +26,6 @@ try:
     }
 
     try:
-        # Django 1.10+ will use TEMPLATES variable instead of TEMPLATE_DIRS.
-        from django.template.backends.django import DjangoTemplates
         local_settings.update({
             'TEMPLATES': [
                 {
@@ -103,7 +101,8 @@ class SummaryHTMLOutput:
 
     def copy_files(self):
         self.progress.update('...')
-        shutil.copytree(html_content_dir, os.path.join(self.summary_dict['meta']['output_directory'], '.html'))
+        destination_dir = os.path.join(self.summary_dict['meta']['output_directory'], '.html')
+        shutil.copytree(html_content_dir, destination_dir, ignore=shutil.ignore_patterns('.git*'))
 
 
     def render(self, quick=False):

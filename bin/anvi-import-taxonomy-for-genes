@@ -21,7 +21,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'gene-taxonomy-txt',]
 __provides__ = ['gene-taxonomy',]
-__description__ = "Import gene-level taxonomy into an anvi'o contigs database."
+__description__ = "Import gene-level taxonomy into an anvi'o contigs database"
 
 
 run = terminal.Run()
@@ -56,11 +56,11 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
     taxonomy_gene_parsers = parsers.get_parser_names('taxonomy_genes')
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                                 process that you generate before running anvio. Please see the documentation for details.')
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

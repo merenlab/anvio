@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
+
+from anvio.errors import ConfigError, FilesNPathsError
 
 SOME_GENOME_SIZE = 42
 
@@ -19,7 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "A program to estimate the size of the actual population genome to which a MAG belongs."
+__description__ = "A program to estimate the size of the actual population genome to which a MAG belongs"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -34,9 +33,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY INPUT', "An anvi'o contigs database that hopefully contains a MAG.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
     groupD.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

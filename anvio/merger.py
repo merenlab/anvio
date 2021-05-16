@@ -112,7 +112,7 @@ class MultipleRuns:
                               "criterion. So there is nothing really to merge here. Yes?")
 
         if improper:
-            self.run.warning("Pleae read carefuly. You sent %d profile databases to anvi'o merger to be merged. However, not "
+            self.run.warning("Please read carefuly. You sent %d profile databases to anvi'o merger to be merged. However, not "
                              "all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge "
                              "only the remaining %d. At the end of this warning you will find a list of paths to those databases "
                              "anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong. "
@@ -295,7 +295,7 @@ class MultipleRuns:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
-                    self.run.warning("Anvio'o found out that %s is not identical across all your profiles, but since you "
+                    self.run.warning("Anvi'o found out that %s is not identical across all your profiles, but since you "
                                      "have used the `--force` flag, it will continue with the merge. This is very "
                                      "dangerous, and even if merging finishes succesfully, it does not mean you can trust "
                                      "your results to be error free. We believe you are prepared to deal with potential "
@@ -488,7 +488,7 @@ class MultipleRuns:
             self.skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
-            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
+            self.run.warning("Because you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
                              "to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
@@ -540,7 +540,7 @@ class MultipleRuns:
         self.run.info('merged_sample_ids', sample_ids_list)
         self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
-        self.run.info('cmd_line', utils.get_cmd_line())
+        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
 
         self.merge_split_coverage_data()

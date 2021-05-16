@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 
 class TableForGeneClusters(Table):
-    """A class to populte gene clusters table in a given pan db.
+    """A class to populate gene clusters table in a given pan db.
 
       Here is an example:
 

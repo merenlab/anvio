@@ -3,7 +3,7 @@
 """Collapses variation for a given list of gene caller ids"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.variabilityops as variabilityops
@@ -18,11 +18,13 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["profile-db", "contigs-db"]
+__provides__ = ["genes-fasta"]
 __description__ = "Collapse variability for a set of genes across samples"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
@@ -61,11 +63,11 @@ if __name__ == '__main__':
                               consenus sequence for each gene/contig will be output.")
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         c = variabilityops.ConsensusSequences(args)
-        c.process()
+        c.process(exit_if_data_empty=False)
         c.report()
     except ConfigError as e:
         print(e)

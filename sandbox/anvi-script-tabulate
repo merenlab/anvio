@@ -23,13 +23,16 @@ def main(args):
     for line in sys.stdin:
         lines.append(line.strip('\n').split('\t'))
 
-    anvio.TABULATE(lines[1:], lines[0])
+    anvio.TABULATE(lines[1:], lines[0], max_width=args.max_width)
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
-    args = anvio.get_args(parser)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
+    parser.add_argument('--max-width', type=int, default=120, help="Maximum number of characters to be displayed in the output "
+                                        "table. The default is %(default)d to make sure tables will fit to most displays. Set "
+                                        "to 0 to see the entire table.")
+    args = parser.get_args(parser)
 
     try:
         main(args)

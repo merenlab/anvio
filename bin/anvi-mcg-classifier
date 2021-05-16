@@ -69,8 +69,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
     group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply a merged profile db (along with a matching contigs db)")
     group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
     groupC.add_argument(*anvio.A('outliers-threshold'), **anvio.K('outliers-threshold'))
     groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

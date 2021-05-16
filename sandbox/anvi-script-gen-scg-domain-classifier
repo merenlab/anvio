@@ -26,9 +26,9 @@ __description__ = "Train a classifier for SCG domain prediction"
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--genomes-dir', help = "This should be a directory that contains a directory per domain for \
                                                  single-copy core gene collections a given version of anvi'o knows about.\
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default = "domain.classifier", help = "Output file name for the classifier.",
                         metavar='PATH')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         c = Train(args)

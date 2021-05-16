@@ -17,10 +17,12 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mike Lee"
 __email__ = "michael.lee0517@gmail.com"
+__provides__ = ["contigs-fasta", "external-gene-calls", "functions-txt"]
+__requires__ = ["genbank-file"]
 __description__ = ("This script takes a GenBank file, and outputs a FASTA file, as well as two "
                    "additional TAB-delimited output files for external gene calls and gene "
                    "functions that can be used with the programs `anvi-gen-contigs-database` "
-                   "and `anvi-import-functions`.")
+                   "and `anvi-import-functions`")
 
 
 run = terminal.Run()
@@ -28,9 +30,9 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
 
     groupA = parser.add_argument_group('INPUT', 'Give us the preciousss...')
@@ -50,7 +52,7 @@ if __name__ == '__main__':
     groupC.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
                              source version to be stored in the database (default: "v4.6")')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         genbank_to_anvio = GenbankToAnvio(args)

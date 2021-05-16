@@ -20,8 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['genes-db', 'pan-db', 'profile-db']
-__provides__ = ['misc-data-item-orders-txt', 'dendrogram', 'phylogeny']
+__requires__ = ['pan-db', 'profile-db']
+__provides__ = ['misc-data-items-order-txt', 'dendrogram', 'phylogeny']
 __description__ = "Export an item order from an anvi'o database"
 
 run = terminal.Run()
@@ -81,9 +81,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('INPUT', 'The database and the items order of interest')
     groupI.add_argument('-p', '--db-path', metavar = 'DB PATH', help = "An appropriate anvi'o database.")
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     groupZ = parser.add_argument_group('OUPUT', 'Output file name and stuff')
     groupZ.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

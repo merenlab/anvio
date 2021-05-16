@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <title id="window-title"></title>
         <meta charset="UTF-8" />
         <meta http-equiv="cache-control" content="max-age=0" />
         <meta http-equiv="cache-control" content="no-cache" />
@@ -14,8 +15,9 @@
         <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
         <link rel="stylesheet" type="text/css" href="css/popover.css" />
         <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+        <link rel="shortcut icon" href="#" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
-        <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->	
+        <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->
          <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
         <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
@@ -24,6 +26,7 @@
         <script type="text/javascript" src="js/charts.js"></script>
         <script type="text/javascript" src="js/inspectionutils.js"></script>
         <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+        <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js"></script>
         <script type="text/javascript" src="js/constants.js"></script>
     </head>
     <body onload="loadAll();">
@@ -36,12 +39,19 @@
         <div class="container">
             <header>
                 <h1 id="header"></h1>
+                <div class="alert-box snvs-disabled"></div>
+                <div class="alert-box indels-disabled"></div>
             </header>
 
+            <div class="settings-info-line">Press <b>'s'</b> to show/hide the settings panel.</div>
+
+            <div id="split-settings"></div>
 
             <section class="main">
                 <div id="chart-container"></div>
                 <div id="context-container"></div>
+                <div id="highlight-boxes"></div>
+                <div id="SNV-boxes"></div>
             </section>
 
             <div class="modal fade" id="setMaxValuesDialog" role="dialog" style="display: none;">
@@ -88,41 +98,182 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="GCContentOverlayDialog" role="dialog" style="display: none;">
-                <div class="modal-dialog modal-md">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal">&times;</button>
-                            <h3 class="modal-title" style="color: black;"><b>Overlay GC Content</b></h3>
-                        </div>
-                        <div class="modal-body">
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Window Size:</label>  
-                                <div class="col-md-8">
-                                    <input type="text" id="gc_window_size" value="100">
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Step Size:</label>  
-                                <div class="col-md-8">
-                                    <input type="text" id="gc_step_size" value="20">
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color:</label>
-                                <div class="col-md-8">
-                                    <div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div>
-                                </div>
-                            </div>
-                            <div class="clearfix"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" onclick="applyOverlayGCContent();" class="btn btn-primary" data-dismiss="modal">Apply</button>
-                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+	    <div id="toggle-panel-settings" onclick="toggleSettingsPanel()");">
+        <span id="toggle-panel-settings-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
+
+	    <div id="settings-panel">
+            <div id="sidebar">
+                  <div class="tab-content"></div>
+
+                  <span class="settings-header">Get Sequence for a Range or Selection</span>
+                  <p class="settings-section-info">Using your mouse, you can make regional selections through the panel at the bottom of the inspection screen. Through this section you can make more precise selections by explicitly defining a range, and can get sequences for the selected region or for the entire split.</p>
+
+                  <div id="range-box"></div>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\n' + sequence);">Get the entire split sequence</button><br />
+                  <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button><br />
+
+
+                  <span class="settings-header">Overlay GC Content</span>
+                  <p class="settings-section-info">GC content may explain some variation in coverage (<a href="http://merenlab.org/2016/12/14/coverage-variation/" target="_blank">more info on wavy coverage patterns</a>). Using this section you can overlay GC content signal on your mapping results. The GC content of the reference sequence calculated as the moving average of a 'sliding window' sampled every 'step size'.</p>
+                  <table id="gc-overlay" style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr>
+                        <td>Sliding window size (nt):</td>
+                        <td><input type="text" class="form-control input-sm" id="gc_window_size" value="100"></td>
+                      </tr>
+                      <tr>
+                        <td>Step size:</td>
+                        <td><input type="text" class="form-control input-sm" id="gc_step_size" value="20"></td>
+                      </tr>
+                      <tr>
+                        <td>Color:</td>
+                        <td><div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <button type="button" class="btn btn-primary btn-xs" onclick="applyOverlayGCContent();">Apply overlay</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();">Reset overlay</button>
+
+
+                  <span class="settings-header">Set/Reset Maximum Values</span>
+                  <p class="settings-section-info">The y-axis on the left hand-side of each plot is automatically sclaed per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
+
+
+                  <span class="settings-header">SNVs and IN/DELS</span>
+                  <p class="settings-section-info">Show or hide single-nucleotide variant information and/or insertion/deletions anvi'o identified during the profiling of read recruitment. IN/DELs reaching the specified min sequence length will be marked in red. <a href="http://merenlab.org/2015/07/20/analyzing-variability/" target="_blank">See this</a> for more information on how to study microbial population genetics in anvi'o beyond displaying them in the context of reference sequences.</p>
+                  <p class="settings-section-info" id="settings-section-info-SNV-warning"></p>
+                  <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr id="snv_picker">
+                        <td><div style="width: 20px;"><input id="toggle_snv_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show SNVs</td>
+                      </tr>
+                      <tr id="indels_picker">
+                        <td><div style="width: 20px;"><input id="toggle_indel_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show IN/DELs</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <table id="indels" style="margin-bottom: 20px;">
+                    <tbody>
+                      <!-- <tr>
+                        <td>Min coverage of IN/DELS to show: </td>
+                        <td><input id="minIndelInput" class="form-control input-sm" type="text" value="" size="4"></td>
+                      </tr> -->
+                      <tr>
+                        <td>Mark IN/DELs greater than sequence length: </td>
+                        <td><input id="largeIndelInput" class="form-control input-sm" type="text" value="" size="4"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+
+                  <span class="settings-header">Dynamic display features</span>
+                  <p class="settings-section-info">If you zoom in enough on a region, nucleotide and codon information will appear at the bottom of your screen when applicable. Here you can toggle that feature and/or disable vertical lines that highlight the position of your mouse on the screen.</p>
+                  <table style="margin-bottom: 20px;">
+                    <tbody>
+                      <tr>
+                        <td><div style="width: 20px;"><input id="toggle_nucl_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show nucleotides for selected sequence</td>
+                      </tr>
+                      <tr>
+                        <td><div style="width: 20px;"><input id="toggle_highlight_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Show vertical mouse-over highlight box</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+
+                  <span class="settings-header">Genes</span>
+                  <p class="settings-section-info">Change colors of genes based on their functional annotations. You can also manually color genes temporarily. First, righ-click on a gene. It will add the gene into the list below with a default color. Then, you can use the color picker next to it to set a color manually. To see the effect of changing colors, you need to press the 'Redraw Gene Arrows' button.</p>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="toggleShowCagsInSplit()" class="btn btn-outline-primary">Show only categories in this split</button>
+
+                  <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+                    <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
+                    <div class="col-md-8">
+                      <select id="gene_color_order" stsyle="margin-bottom: 10px" class="form-control input-xs"></select>
+                    </div>
+                  </div>
+
+                  <div id="table_function_colors_container" style="margin-top: 20px; color:black">
+                    <table id="table_function_colors">
+                      <thead id="thead_function_colors">
+                        <td></td>
+                        <td data-help="function-color"><div style="width: 32px;"><b>Color</b></div></td>
+                        <td data-help="function-category"><b>Category</b></td>
+                      </thead>
+                      <tbody id="tbody_function_colors"></tbody>
+                    </table>
+                  </div>
+
+                  <br><br>
+        </div>
+
+        <div class="btn-group sidebar-footer" role="group" style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px;">
+          <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+          <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+        </div>
+      </div>
+
+      <!-- LOAD STATE -->
+      <div class="modal fade" id="modLoadState">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                      <h4 class="modal-title">Load State</h4>
+                  </div>
+
+                  <div class="modal-body">
+                      <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();" onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+                      <br />
+                      <div id="loadState_lastmodified">Last modified: n/a</div>
+                  </div>
+
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+                      <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- SAVE STATE -->
+      <div class="modal fade" id="modSaveState">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                      <h4 class="modal-title">Save State</h4>
+                  </div>
+
+                  <div class="modal-body">
+                      <div class="form-group">
+                          <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
+                      </div>
+                      <div class="form-group">
+                              <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>
+                              <div class="col-md-10">
+                                  <input type="text" id="saveState_name" class="form-control" />
+                              </div>
+                      </div>
+                  </div>
+
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                      <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
     </body>
 </html>

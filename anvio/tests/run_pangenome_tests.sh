@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Setting up the pan analysis directory"
@@ -17,9 +17,14 @@ cp $files/mock_data_for_pangenomics/group-information.txt     $output_dir/pan_te
 cd $output_dir/pan_test
 
 INFO "Generating contigs databases for external genomes"
-anvi-script-FASTA-to-contigs-db 01.fa
-anvi-script-FASTA-to-contigs-db 02.fa
-anvi-script-FASTA-to-contigs-db 03.fa
+anvi-gen-contigs-database -f 01.fa -o 01.db
+anvi-gen-contigs-database -f 02.fa -o 02.db
+anvi-gen-contigs-database -f 03.fa -o 03.db
+
+INFO "Running HMMs (quietly)"
+anvi-run-hmms -c 01.db --quiet
+anvi-run-hmms -c 02.db --quiet
+anvi-run-hmms -c 03.db --quiet
 
 INFO "Importing functions into the contigs database"
 anvi-import-functions -c 01.db -i 01-functions.txt
@@ -65,12 +70,14 @@ anvi-import-misc-data -p TEST/TEST-PAN.db \
                       group-information.txt
 
 INFO "Estimating enriched functions per pan group"
-anvi-get-enriched-functions-per-pan-group -p TEST/TEST-PAN.db \
+anvi-compute-functional-enrichment -p TEST/TEST-PAN.db \
                                           -g TEST-GENOMES.db \
                                           --category group \
                                           --annotation-source COG_FUNCTION \
                                           -o functions-enrichment.txt \
                                           -F functional-occurence.txt
+SHOW_FILE functions-enrichment.txt
+SHOW_FILE functional-occurence.txt
 
 INFO "Exporting concatenated amino acid sequences for some gene clusters for phylogenomics"
 anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa --concatenate-gene-clusters
@@ -98,7 +105,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-id GC_00000001 \
                                       -o gene_cluster_homogeneity_results.txt
-cat -t gene_cluster_homogeneity_results.txt
+SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for a list of gene clusters"
 echo -e "GC_00000001\nGC_00000003" > gene_clusters_for_homogeneity.txt
@@ -106,7 +113,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-ids gene_clusters_for_homogeneity.txt \
                                       -o gene_cluster_homogeneity_results.txt
-cat -t gene_cluster_homogeneity_results.txt
+SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for gene clusters in a bin"
 anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
@@ -115,14 +122,20 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -b GENE_CLUSTER_BIN_2_G01_G02 \
                                       -o gene_cluster_homogeneity_results.txt \
                                       --num-threads 2
-cat -t gene_cluster_homogeneity_results.txt
+SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
 anvi-import-state -p TEST/ANOTHER_TEST-PAN.db -s default-state.json -n default
 
 INFO "Displaying the initial pangenome analysis results"
-anvi-display-pan -p TEST/TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis"
+anvi-display-pan -p TEST/TEST-PAN.db \
+                 -g TEST-GENOMES.db \
+                 --title "A mock pangenome analysis" \
+                 $dry_run_controller
 
 INFO "Displaying the second pangenome analysis results"
-anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis (with --min-occurrence 2)"
+anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db \
+                 -g TEST-GENOMES.db \
+                 --title "A mock pangenome analysis (with --min-occurrence 2)" \
+                 $dry_run_controller

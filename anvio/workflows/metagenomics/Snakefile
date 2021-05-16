@@ -783,17 +783,17 @@ if sample_name != M.default_config['anvi_profile']['--sample-name'] and sample_n
 
 def get_cluster_contigs_param(wildcards):
     """ helper function to sort out whether to cluster contigs for a single profile database"""
-    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']):
+    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']) is not "":
         run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you '
                     'choose to, but just so you know, if you don\'t provide a value then '
                     'the workflow would automatically cluster contigs for profile databases '
-                    'that are not merged (i.e. profiles that belong to groups of size 1).' \
+                    'that will be merged (i.e. profiles that belong to groups of size greater than 1).' \
                     % M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']))
         cluster_contigs = M.get_rule_param('anvi_profile', '--cluster-contigs')
     else:
         # if profiling to individual assembly then clustering contigs
         # see --cluster-contigs in the help manu of anvi-profile
-        cluster_contigs = '--cluster-contigs' if M.group_sizes[wildcards.group] == 1 else ''
+        cluster_contigs = '--cluster-contigs' if M.group_sizes[wildcards.group] > 1 else ''
     return cluster_contigs
 
 

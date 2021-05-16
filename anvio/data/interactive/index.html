@@ -13,29 +13,31 @@
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
     <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
+    <script type="text/javascript" src="js/error.js"></script>
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
-    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/core.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/button.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/position.js"></script>
-    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
-    <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
-    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
-    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js"></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
-    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js"></script>
+
+    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+    <script type="text/javascript" src="lib/randomColor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
+    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
+    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js" onerror='alertDependencyError("md5")'></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("col-picker")'></script>
+    <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -57,18 +59,17 @@
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/collapse-node.js"></script>
     <script type="text/javascript" src="js/dialogs/save-tree.js"></script>
-    <script type="text/javascript" src="js/dialogs/bigsi.js"></script>
     <script type="text/javascript" src="js/migrations.js"></script>
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")'></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="lib/marked/lib/marked.js"></script>
+    <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
     <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js"></script>
+    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
@@ -136,7 +137,7 @@
                         <ul class="dropdown-menu multi-level" role="menu">
                           <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
                           <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
-                          <li><a href="http:/merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
+                          <li><a href="http://merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
                           <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
                           <li><a href="http://merenlab.org/people/">Contact us</a></li>
                           <li role="separator" class="divider"></li>
@@ -148,7 +149,8 @@
                 </div>
             </div>
 
-            <div id="sidebar">
+            <div id="sidebar" onload="{$('#support_value_params').hide()}">
+                <!-- this hide function needs to happen upon initial render, currently only called onchange -->
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
@@ -216,6 +218,83 @@
                                         </div>
                                 </div>
 
+                            <span class="settings-header" >Branch Support</span>
+                               <div id="max_branch_support_value_seen_is_zero_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                   You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                   tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
+                               </div>
+
+                                <div class="form-group form-margin" >
+                                    <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
+                                    <div class="col-md-8">
+                                        <input type="checkbox"
+                                                onclick="checkMaxSupportValueSeen();"
+                                                onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
+                                                id="support_value_checkbox"
+                                                value="true"
+                                                >
+                                        </input>
+                                    </div>
+                                </div>
+                                <div id="support_value_params">
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to
+                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox"
+                                                   id="support_display_symbol"
+                                                   style="float: left;"
+                                                   name="show-symbol"
+                                                   onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
+                                                   >
+                                        </div>
+                                    </div>
+                                    <div class='form-group form-margin' id='show_symbol_options'>
+                                        <div class="form-group form-margin" id="support_symbol">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                            <div class="col-md-8">
+                                                <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                            <div class="col-md-8">
+                                                <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
+                                            <div class="col-md-8">
+                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox"
+                                                   id="support_display_number"
+                                                   style="float: left;"
+                                                   name="show-number"
+                                                   onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                   >
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id='show_font_size'>
+                                        <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
@@ -254,6 +333,25 @@
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
+                                        <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shade: </Label>
+                                        <div class="col-md-8">
+                                            <input type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
+                                            <span class="shade_details" style="display: float; margin-left:5px; float-left;">Shade opacity:        
+                                                <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="shade_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
+                                            </span>
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin" id="invert_shade_div">
+                                    <Label class="col-md-4 settings-label" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </Label>
+                                    <div class="col-md-8">
+                                        <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color').show(); } else { $('.inverse_details, #inverse_color').hide(); }" style="float: left;" unchecked>
+                                        <div id="inverse_color"onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #000" color="#000"></div>
+                                        <span class="inverse_details" style="display: float; margin-left:5px; float-left;">Opacity:        
+                                            <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
+                                        </span> 
+                                    </div>
+                                </div>
+                                <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="begins_from_branch" data-help="begins-from-branch">Begins from branch:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="begins_from_branch" name="checkbox" value="value" onchange="emit('bin-settings-changed')" style="float: left;">
@@ -283,7 +381,7 @@
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
                                         <div class="col-md-8">
-                                            <input type="text" value="0.3" size="4" id="background_opacity" class="form-control input-xs">
+                                            <input type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <span class="settings-header">Layer Labels</span>

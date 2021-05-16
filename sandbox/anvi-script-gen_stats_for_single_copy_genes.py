@@ -11,11 +11,12 @@ any later version.
 
 Please read the COPYING file.
 """
-
-__description__ = "A simple script to generate info from search tables"
+# __requires__ = ["contigs-db"]
+__provides__ = ["genes-stats"]
+__description__ = "A simple script to generate info from search tables, given a contigs-db"
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio.tables as t
 import anvio.dbops as dbops
@@ -26,7 +27,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
                         help = 'Contigs database to read from.')
     parser.add_argument('--list-sources', action='store_true', default=False,

@@ -19,9 +19,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['pan-db', 'profile-db']
+__requires__ = ['pan-db', 'profile-db', 'state']
 __provides__ = ['state-json',]
-__description__ = "Export an anvi'o state into a profile database."
+__description__ = "Export an anvi'o state into a profile database"
 
 
 run = terminal.Run()
@@ -61,9 +61,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
@@ -71,7 +71,7 @@ if __name__ == '__main__':
                         help = "The state name to export.")
     parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

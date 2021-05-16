@@ -3,7 +3,7 @@
 """Fetches information from the variable positions table"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -19,19 +19,20 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
-__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt']
+__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt', 'splits-txt']
 __provides__ = ['fixation-index-matrix']
 __resources__ = [
     (
         "Utilizing fixation index to study SAR11 population structure",
         "http://merenlab.org/data/sar11-saavs/#generating-distance-matrices-from-fixation-index-for-saavs-and-snvs-data"
     ),
+    ("Measuring Distances Between Genomes in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst")
 ]
 __description__ = "Generate a pairwise matrix of a fixation indices between samples"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")
@@ -76,7 +77,7 @@ if __name__ == '__main__':
                                 0 so the results are reflective of a standard distance metric. \
                                 Provide this flag if you would prefer otherwise.')
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         if args.engine not in variability_engines:

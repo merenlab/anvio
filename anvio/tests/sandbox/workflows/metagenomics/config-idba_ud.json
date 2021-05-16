@@ -17,7 +17,7 @@
         "MERGE_DIR": "06_MERGED_idba_ud",
         "LOGS_DIR": "00_LOGS_idba_ud"
     },
-    "config_version": "1",
+    "config_version": "2",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },

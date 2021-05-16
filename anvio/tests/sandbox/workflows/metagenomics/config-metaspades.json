@@ -21,7 +21,7 @@
         "TAXONOMY_DIR": "07_TAXONOMY_metaspades",
         "LOGS_DIR": "00_LOGS_metaspades"
     },
-    "config_version": "1",
+    "config_version": "2",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },

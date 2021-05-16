@@ -133,6 +133,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              -o test-output/variability_CDN.txt \
                              --gene-caller-ids 0 \
                              --quince-mode \
+                             --include-site-pnps \
                              --engine CDN
 
 head test-output/variability_CDN.txt
@@ -166,12 +167,33 @@ cat test-output/fixation_NT_external.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
 rm -rf test-output/pn_ps_ratio_output
-anvi-script-calculate-pn-ps-ratio -a test-output/variability_AA.txt \
-                                  -b test-output/variability_CDN.txt \
+anvi-get-pn-ps-ratio -V test-output/variability_CDN.txt \
+                     -c test-output/single_contig.db \
+                     -o test-output/pn_ps_ratio_output \
+                     -m 10 \
+                     -i 3
+
+INFO "anvi-gen-gene-consensus-sequences for gene mode"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
                                   -c test-output/single_contig.db \
-                                  -o test-output/pn_ps_ratio_output \
-                                  -m 10 \
-                                  -i 3
+                                  -o test-output/consensus_sequence_gene.fa \
+                                  --gene-caller-ids 0
+cat test-output/consensus_sequence_gene.fa
+
+INFO "anvi-gen-gene-consensus-sequences for gene mode compressed samples"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/consensus_sequence_gene_compressed.fa \
+                                  --gene-caller-ids 0 \
+                                  --compress
+cat test-output/consensus_sequence_gene_compressed.fa
+
+INFO "anvi-gen-gene-consensus-sequences for contigs mode"
+anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/consensus_sequence_contig.fa \
+                                  --contigs-mode
+cat test-output/consensus_sequence_contig.fa
 
 INFO "Do you want the interactive interface? Run the following:"
 

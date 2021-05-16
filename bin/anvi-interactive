@@ -6,7 +6,7 @@ The massage of the data is being taken care of in the interactive module,
 and this file implements the bottle callbacks."""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -39,7 +39,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with and without\
                                                           anvi'o databases. The default use assumes you have your\
@@ -80,6 +80,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
     groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
     groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupE.add_argument(*anvio.A('show-all-layers'), **anvio.K('show-all-layers'))
     groupE.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
     groupE.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
     groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
@@ -97,6 +98,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
     groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupF.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
     groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
                                     'The distance metric for the hierarchical clustering. Only relevant if you are running\
                                      the interactive interface in "collection" mode. The default is "%(default)s".'}))
@@ -114,7 +116,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
         d = interactive.Interactive(args)

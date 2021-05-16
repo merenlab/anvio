@@ -44,7 +44,7 @@ Explicitly defining amino acid sequences could be particularly useful when worki
 
 ### Gene start/stop positions
 
-Anvi'o follows the convention of string indexing and splicing that is identical to the way one does it in Python or C. This means that the index of the first nucleotide in any contig should be `0`. In other words, for a gene call that starts at the position `x`th position and ends at position `y`th position, we start counting from `x-1`, and not from `x` (but we still end at `y`. The `start` and `stop` positions in the input file should comply with this criterion. Here is an example gene in a contig:
+Anvi'o follows the convention of string indexing and splicing that is identical to the way one does it in Python or C. This means that the index of the first nucleotide in any contig should be `0`. In other words, for a gene call that starts at the position `x`th position and ends at position `y`th position, we start counting from `x-1`, and not from `x` (but we still end at `y`). The `start` and `stop` positions in the input file should comply with this criterion. Here is an example gene in a contig:
 
 ``` bash
                  1         2         3
@@ -67,7 +67,7 @@ This is a feature added after anvi'o `v6.2`. If you are using anvi'o `v6.2` or e
 
 The column `call_type` declares the nature of the call. It can take one of the following three integer values:
 
-* `1`, indicates that the gene call is for a CODING gene. For gene calls marked as CODING genes, anvi'o will try to predict the proper coding frame when `anvi-gen-contigs-database` is run using Markov model trained on a large number of protein sequences and was first described in this [pull request](https://github.com/merenlab/anvio/pull/1428). This is the default behavior for CODING sequences regardless of whether the gene call is partial or not. However, there are two ways the user can change this: (1) by providing an amino acid sequence for the call in the `aa_sequence` column or (2) by asking `anvi-gen-contigs-database` to `--skip-predict-frame`.
+* `1`, indicates that the gene call is for a CODING gene. For gene calls marked as CODING genes, anvi'o will try to predict the proper coding frame when %(anvi-gen-contigs-database)s is run using Markov models trained on a large number of protein sequences and was first described in this [pull request](https://github.com/merenlab/anvio/pull/1428). This is the default behavior for CODING sequences regardless of whether the gene call is partial or not. However, there are two ways the user can change this: (1) by providing an amino acid sequence for the call in the `aa_sequence` column or (2) by asking %(anvi-gen-contigs-database)s to `--skip-predict-frame`.
 
 * `2`, indicates that the gene call is for a NONCODING gene. This is used for non-coding RNAs (transfer RNAs or ribosomal RNAs). For gene calls marked as NONCODING, anvi'o will not attempt to predict an amino acid sequence (nor it will tolerate entries in the `aa_sequence` column).
 

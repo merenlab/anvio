@@ -23,6 +23,8 @@ default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/
 default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
 
+default_interacdome_data_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Interacdome')
+
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
 
@@ -51,12 +53,57 @@ default_scgs_for_taxonomy = ['Ribosomal_S2',
                              'Ribosomal_L27A']
 default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
+default_trna_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/TRNA_TAXONOMY')
+default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'ACG', 'ACT', 'AGA', 'AGC',
+                                   'AGG', 'AGT', 'ATA', 'ATC', 'ATG', 'ATT', 'CAA', 'CAC', 'CAG', 'CAT',
+                                   'CCA', 'CCC', 'CCG', 'CCT', 'CGA', 'CGC', 'CGG', 'CGT', 'CTC', 'CTG',
+                                   'CTT', 'GAA', 'GAC', 'GAG', 'GAT', 'GCA', 'GCC', 'GCG', 'GCT', 'GGA',
+                                   'GGC', 'GGG', 'GGT', 'GTA', 'GTC', 'GTG', 'GTT', 'TAA', 'TAC', 'TAG',
+                                   'TAT', 'TCC', 'TCG', 'TCT', 'TGA', 'TGC', 'TGG', 'TGT', 'TTC', 'TTG',
+                                   'TTT']
+default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
+
+# The following block of constants are used in the tRNA-seq workflow.
+THREEPRIME_VARIANTS = ['CCA', 'CC', 'C',
+                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
+                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
+                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
+                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
+                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
+TRNA_FEATURE_NAMES = ['trna_his_position_0',
+                      'acceptor_stem',
+                      'fiveprime_acceptor_stem_sequence',
+                      'position_8',
+                      'position_9',
+                      'd_arm',
+                      'd_stem',
+                      'fiveprime_d_stem_sequence',
+                      'd_loop',
+                      'threeprime_d_stem_sequence',
+                      'position_26',
+                      'anticodon_arm',
+                      'anticodon_stem',
+                      'fiveprime_anticodon_stem_sequence',
+                      'anticodon_loop',
+                      'threeprime_anticodon_stem_sequence',
+                      'v_loop',
+                      't_arm',
+                      't_stem',
+                      'fiveprime_t_stem_sequence',
+                      't_loop',
+                      'threeprime_t_stem_sequence',
+                      'threeprime_acceptor_stem_sequence',
+                      'discriminator',
+                      'threeprime_terminus']
+TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
+
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
 blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default = "presence-absence"
+trnaseq_default = "cov"
 
 default_gene_caller = "prodigal"
 
@@ -124,12 +171,18 @@ levels_of_taxonomy_unknown = {"t_domain": 'Unknown_domains',
                               "t_genus": 'Unknown_genera',
                               "t_species": 'Unknown_species'}
 
-for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
-    run_type, default_config = run_type_and_default_config_tuples
+for run_type, default_config in [('single', single_default),
+                                 ('merged', merged_default),
+                                 ('trnaseq', trnaseq_default),
+                                 ('blank', blank_default)]:
     if not os.path.exists(os.path.join(clustering_configs_dir, run_type, default_config)):
-        print("Error: The default clustering configuration file for %s runs, '%s',\n\
-       is missing from data/clusterconfigs dir! I don't know how this happened,\n\
-       but I can't fix this! Anvi'o needs an adult :(" % (run_type, default_config))
+        print()
+        print(f"Error: Although there is a run type defined in the anvi'o constants for \n"
+              f"       '{run_type}', the default clustering configuration file for it, namely \n"
+              f"       '{default_config}', is missing from the 'anvio/data/clusterconfigs' dir. \n"
+              f"       If you are a developer and getting this error, please make sure the file \n"
+              f"       is in anvi'o distribution. If you are a user and getting this error, it \n"
+              f"       something went terribly wrong with your installation :(\n")
         sys.exit()
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
@@ -145,6 +198,20 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 
 unambiguous_nucleotides = set(list('ATCG'))
 nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
+
+WC_BASE_PAIRS = {
+    'A': 'T',
+    'T': 'A',
+    'C': 'G',
+    'G': 'C'
+}
+# In tRNA, wobble base pairing, including G/U, is common
+WC_PLUS_WOBBLE_BASE_PAIRS = {
+    'A': ('T', ),
+    'T': ('A', 'G'),
+    'C': ('G', ),
+    'G': ('C', 'T')
+}
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
@@ -239,22 +306,22 @@ codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'TAC': 'Tyr', 'TAT': 'Tyr', 'TAA': 'STP', 'TAG': 'STP',
                        'TGC': 'Cys', 'TGT': 'Cys', 'TGA': 'STP', 'TGG': 'Trp'})
 
-codon_to_AA_RC = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile',
-                          'ACA': 'Cys', 'ACC': 'Gly', 'ACG': 'Arg', 'ACT': 'Ser',
-                          'AGA': 'Ser', 'AGC': 'Ala', 'AGG': 'Pro', 'AGT': 'Thr',
-                          'ATA': 'Tyr', 'ATC': 'Asp', 'ATG': 'His', 'ATT': 'Asn',
-                          'CAA': 'Leu', 'CAC': 'Val', 'CAG': 'Leu', 'CAT': 'Met',
-                          'CCA': 'Trp', 'CCC': 'Gly', 'CCG': 'Arg', 'CCT': 'Arg',
-                          'CGA': 'Ser', 'CGC': 'Ala', 'CGG': 'Pro', 'CGT': 'Thr',
-                          'CTA': 'STP', 'CTC': 'Glu', 'CTG': 'Gln', 'CTT': 'Lys',
-                          'GAA': 'Phe', 'GAC': 'Val', 'GAG': 'Leu', 'GAT': 'Ile',
-                          'GCA': 'Cys', 'GCC': 'Gly', 'GCG': 'Arg', 'GCT': 'Ser',
-                          'GGA': 'Ser', 'GGC': 'Ala', 'GGG': 'Pro', 'GGT': 'Thr',
-                          'GTA': 'Tyr', 'GTC': 'Asp', 'GTG': 'His', 'GTT': 'Asn',
-                          'TAA': 'Leu', 'TAC': 'Val', 'TAG': 'Leu', 'TAT': 'Ile',
-                          'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
-                          'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
-                          'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
+anticodon_to_AA = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile',
+                           'ACA': 'Cys', 'ACC': 'Gly', 'ACG': 'Arg', 'ACT': 'Ser',
+                           'AGA': 'Ser', 'AGC': 'Ala', 'AGG': 'Pro', 'AGT': 'Thr',
+                           'ATA': 'Tyr', 'ATC': 'Asp', 'ATG': 'His', 'ATT': 'Asn',
+                           'CAA': 'Leu', 'CAC': 'Val', 'CAG': 'Leu', 'CAT': 'Met',
+                           'CCA': 'Trp', 'CCC': 'Gly', 'CCG': 'Arg', 'CCT': 'Arg',
+                           'CGA': 'Ser', 'CGC': 'Ala', 'CGG': 'Pro', 'CGT': 'Thr',
+                           'CTA': 'STP', 'CTC': 'Glu', 'CTG': 'Gln', 'CTT': 'Lys',
+                           'GAA': 'Phe', 'GAC': 'Val', 'GAG': 'Leu', 'GAT': 'Ile',
+                           'GCA': 'Cys', 'GCC': 'Gly', 'GCG': 'Arg', 'GCT': 'Ser',
+                           'GGA': 'Ser', 'GGC': 'Ala', 'GGG': 'Pro', 'GGT': 'Thr',
+                           'GTA': 'Tyr', 'GTC': 'Asp', 'GTG': 'His', 'GTT': 'Asn',
+                           'TAA': 'Leu', 'TAC': 'Val', 'TAG': 'Leu', 'TAT': 'Ile',
+                           'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
+                           'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
+                           'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
 
 codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'ATT',
                              'ACA': 'TGT', 'ACC': 'GGT', 'ACG': 'CGT', 'ACT': 'AGT',
@@ -376,5 +443,5 @@ codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
 codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
 
 
-# KEGG setup constant - used to warn user that the KEGG MODULES.db data may need to be updated
-KEGG_SETUP_INTERVAL = 90 # days since last MODULES.db creation
+# anvi'o news stuff
+anvio_news_url = "https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md"

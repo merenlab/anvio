@@ -3,7 +3,7 @@
 """A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 
@@ -17,13 +17,13 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
-__requires__ = ['external-genomes', 'internal-genomes', 'fasta']
+__requires__ = ['external-genomes', 'internal-genomes', 'fasta', 'genome-similarity']
 __provides__ = ['fasta']
-__description__ = ("Identify redundant (highly similar) genomes.")
+__description__ = ("Identify redundant (highly similar) genomes")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
@@ -96,7 +96,8 @@ if __name__ == '__main__':
                         based on a simple greedy algorithm. Let's say your similarity threshold is 0.90. If genome A\
                         is 0.95 similar to B, and B is 0.95 similar to C, and C is 0.95 similar to D, then {A,B,C,D}\
                         will form a cluster. This is *even though* D may share a similarity to A of merely 0.80,\
-                        which is below similarity threshold. You want better alternatives? Contact the developers.",
+                        which is below similarity threshold. You want better alternatives? Contact the developers with\
+                        your ideas.",
                         choices=['simple_greedy'])
     groupG.add_argument('--representative-method', default='centrality', type=str, help="After genomes are grouped into\
                         redundancy clusters, you can define how anvi'o picks the representative genome from the\
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupH.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         derep = Dereplicate(args)

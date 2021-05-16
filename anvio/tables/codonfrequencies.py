@@ -33,10 +33,18 @@ class TableForCodonFrequencies(Table):
 
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
-        self.num_entries = 0
+        self.num_entries = self.get_num_entries()
         self.db_entries = []
 
         self.max_num_entries_in_storage_buffer = 15000
+
+
+    def get_num_entries(self):
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        num_entries = database.get_row_counts_from_table(t.variable_codons_table_name)
+        database.disconnect()
+
+        return num_entries
 
 
     def append_entry(self, entry):

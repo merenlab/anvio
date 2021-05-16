@@ -3,7 +3,7 @@
 
 import sys
 import anvio
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio.terminal as terminal
 import anvio.structureops as structops
@@ -27,7 +27,7 @@ __provides__ = ['structure-db']
 __description__ = ("Identifies genes in your contigs database that encode proteins that are "
                    "homologous to proteins with solved structures. If sufficiently similar "
                    "homologs are identified, they are used as structural templates to predict "
-                   "the 3D structure of proteins in your contigs database.")
+                   "the 3D structure of proteins in your contigs database")
 
 
 @terminal.time_program
@@ -37,7 +37,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -67,12 +67,12 @@ if __name__ == '__main__':
                         --num-models is high, since more of the solution space is searched. It
                         should be kept in mind that the largest determinant of a model's accuracy is
                         determined by the protein templates used, so no need to go overboard with an
-                        excessively large --num-models. The default is 1.""")
+                        excessively large --num-models. The default is %(default)d.""")
     groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
                         """Deviation (angstroms)""")
     groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help = \
                         """Which database do you want to search the structures of? Default is
-                        "pdb_95". If you have your own database it must have either the extension
+                        "%(default)s". If you have your own database it must have either the extension
                         .bin or .pir. If you don't have a database or don't know what this
                         means, don't worry, we will both inform you and take care of you.""")
     groupM.add_argument("--scoring-method", "-b", type=str, default="DOPE_score", help = \
@@ -81,25 +81,25 @@ if __name__ == '__main__':
                         where a good model will have a score near 1.0, whereas anything below 0.6
                         can be considered bad. DOPE and molpdf scores are relative energy measures,
                         where lower scores are better. DOPE has been generally shown to be a better
-                        distinguisher between good and bad models than molpdf. By default, DOPE
-                        is used. To learn more see the MODELLER tutorial:
+                        distinguisher between good and bad models than molpdf. The default is %(default)s.
+                        To learn more see the MODELLER tutorial:
                         https://salilab.org/modeller/tutorial/basic.html.""")
     groupM.add_argument("--very-fast", action = 'store_true', help = \
                         """If provided, a very fast optimization is done for each model at the cost
                         of accuracy. It is recommended to use a --num-models of 1, since the
                         optimization is so crude that all models will likely converge to the same
                         solution.""")
-    groupM.add_argument("--percent-identical-cutoff", "-p", type=float, default=30, help = \
-                        """If a protein in the database has a proper percent identity to the gene of
-                        interest that is greater than or equal to --percent-identical-cutoff, then
-                        it is used as a template. Otherwise it is not. Here we define proper percent
-                        identity as the percentage of amino acids in the gene of interest that are
-                        identical to an entry in the database given the sequence length of the gene
-                        of interest. For example, if there is 100%% identity between the gene of
-                        interest and the template over the length of the alignment, but the
-                        alignment length is only half of the gene of interest sequence length, then
-                        the proper percent identical is 50%%. (This helps us avoid the inflation of
-                        identity scores due to only partially good matches). The default is 30.""")
+    groupM.add_argument("--percent-cutoff", "-p", type=float, default=30, help = \
+                        """If a protein in the database has a percent identity to the gene of
+                        interest that is less than this parameter, then
+                        it is not considered as a template. The default is %(default)f.""")
+    groupM.add_argument("--alignment-fraction-cutoff", "-a", type=float, default=0.80, help = \
+                        """If a protein in the database aligns to a fraction of the gene of interest
+                        that is less than this parameter, the template is not considered. For example,
+                        if --alignment-cutoff is set to 0.90, and the fraction of the gene of interest
+                        that is covered by a potential template is 0.80 in their alignment, the template
+                        does not align to enough of the gene of interest to be considered. The default
+                        is %(default)f.""")
     groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help = \
                         """Generally speaking it is best to use as many templates as possible given
                         that they have high proper percent identity to the gene of interest. Taken
@@ -115,7 +115,7 @@ if __name__ == '__main__':
                         [43,44]. In general, it is frequently beneficial to include in the modeling
                         process all the templates that differ substantially from each other, if they
                         share approximately the same overall similarity to the target sequence.' The
-                        default is 5.""")
+                        default is %(default)d.""")
 
     groupE = parser.add_argument_group('EXTRA', 'Everything else.')
     groupE.add_argument("--skip-DSSP", action = "store_true", help = \
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     }
     groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

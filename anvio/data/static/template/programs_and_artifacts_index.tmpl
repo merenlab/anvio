@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: page
 title: Help pages for anvi'o programs and artifacts
 categories: [anvio]
 comments: false
@@ -10,16 +10,12 @@ redirect_from:
     - /help
 ---
 
-On this page you will find a complete list of anvi'o programs and artifacts.
+Here you will find a list of all anvi'o programs and artifacts that enable constructing workflows for integrated multi 'omics investigations.
 
-{:.notice}
-Visit <a href="http://merenlab.org/2019/10/07/getting-help/">this page</a> to learn <b>how to get help from the anvi'o community</b>.
-
-{:.notice}
-Visit <a href="http://merenlab.org/software/anvio/vignette/">this page</a> to see a complete <b>list of anvi'o programs and their command line arguments</b>.
+If you need an introduction to the terminology used in 'omics research or in anvi'o, please take a look at <a href="http://merenlab.org/vocabulary/">our vocabulary page</a>. The anvi'o community is with you! If you have practical, technical, or science questions <a href="http://merenlab.org/2019/10/07/getting-help/">this page</a> to learn about resources available to you. If you are feeling overwhelmed, you can always scream towards the anvi'o Slack channel.
 
 {% verbatim %}
-{% include _project-anvio-version.html %}
+{% include _join-anvio-slack.html %}
 {% endverbatim %}
 
 <a href="/software/anvio/network/" target="_blank"><img src="/images/anvio-network.png" width="100%" /></a>
@@ -28,25 +24,51 @@ Visit <a href="http://merenlab.org/software/anvio/vignette/">this page</a> to se
 The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o version **{{ meta|lookup:"version" }}**.
 
 {% verbatim %}
+{% include _project-anvio-version.html %}
 {% include _toc.html %}
-{% include _join-anvio-slack.html %}
 {% endverbatim %}
 
----
 
-## Programs
+## Anvi'o artifacts
 
-Listed below a total of {{ programs|length }} programs.
+Anvi'o artifacts represent **concepts, file types, or data types** anvi'o programs can work with. A given anvi'o artifact can be provided by the user (such as a FASTA file), produced by anvi'o (such as a profile database), or both (such as phylogenomic trees). Anvi'o artifacts link anvi'o programs to each other to build novel workflows.
+
+Listed below **a total of {{ artifacts|length }} artifacts**.
+
+<table class="artifacts-table">
+{% for artifact_type in artifact_types %}
+{% if forloop.first %}<tr style="border:none;">{% else %}<tr>{% endif %}
+<td><div class="artifact-icon-div"><img src="images/icons/{{artifact_type}}.png" class="artifact-icon" /></div></td><td class="artifact-list-td">{% for artifact in artifact_types|lookup:artifact_type %}<span class="artifact-n" markdown="1">[{{artifact}}]({{artifacts|lookup:artifact|lookup:"path"}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</td>
+</tr>
+{% endfor %}
+</table>
+
+## Anvi'o programs
+
+Anvi'o programs perform atomic tasks that can be weaved together to implement complete 'omics workflows. Please note that there may be programs that are not listed on this page. You can type 'anvi-' in your terminal, and press the TAB key twice to see the full list of programs available to you on your system, and type `anvi-program-name --help` to read the full list of command line options.
+
+Listed below **a total of {{ programs|length }} programs**.
 
 {% for program_name, url, desc in programs %}
-* **[{{program_name}}]({{url}})**: {{desc}}.
-<span>**Provides**: {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %} / 
-<span>**Requires**: {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}.</span>
-
+<div style="width:100%;">
+<table class="programs-table">
+<tbody>
+<tr style="border:none;">
+    <td class="program-td">
+        <span class="artifact-emoji">🔥</span> <span markdown="1">**[{{program_name}}]({{url}})**</span>. <span markdown="1">{{desc}}</span>.
+    </td>
+</tr>
+<tr>
+    <td class="artifact-r-td">
+    <span class="artifact-emoji">🧀</span> {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    </td>
+</tr>
+<tr>
+    <td class="artifact-p-td">
+    <span class="artifact-emoji">🍕</span> {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    </td>
+</tr>
+</tbody>
+</table>
+</div>
 {% endfor %}
-
-## Artifacts
-
-A total of {{ artifacts|length }} artifacts.
-
-* <span style="line-height: 25px;">{% for name, path in artifacts %}<span class="artifact-n">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}.</span>

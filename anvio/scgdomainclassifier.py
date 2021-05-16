@@ -159,7 +159,7 @@ class Train(SCGDomainClassifier):
 
         self.progress.update("Learning about the number of contigs databases in each domain subdirectory")
         for domain in self.SCG_domains:
-            self.contigs_dbs[domain] = glob.glob(os.path.join(D(domain), '*')) 
+            self.contigs_dbs[domain] = glob.glob(os.path.join(D(domain), '*.db'))
 
             if len(self.contigs_dbs[domain]) == 0:
                 self.progress.end()

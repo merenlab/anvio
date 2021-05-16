@@ -237,7 +237,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('profile_db', self.profile_db_path, display_only=True)
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
-        self.run.info('cmd_line', utils.get_cmd_line())
+        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
         self.run.info('merged', False)
         self.run.info('blank', self.blank)
         self.run.info('split_length', self.a_meta['split_length'])
@@ -347,7 +347,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         for contig in self.contigs:
             for split in contig.splits:
-                for entry in split.indels_profiles.values():
+                for entry in split.INDEL_profiles.values():
                     self.indels_table.append([self.sample_id] + list(entry.values()))
 
         self.indels_table.store()
@@ -659,9 +659,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig = contigops.Contig(contig_name)
         contig.length = contig_length
         contig.split_length = self.a_meta['split_length']
-        contig.min_coverage_for_variability = self.min_coverage_for_variability
         contig.skip_SNV_profiling = self.skip_SNV_profiling
-        contig.report_variability_full = self.report_variability_full
         timer.make_checkpoint('Initialization done')
 
         # populate contig with empty split objects
@@ -692,7 +690,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       profile_SCVs=self.profile_SCVs,
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
-                                                      min_coverage=self.min_coverage_for_variability,
+                                                      min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity)
 
@@ -800,8 +798,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+            self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
+
+        if not self.skip_INDEL_profiling:
+            self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
+            self.layer_additional_keys.append('num_INDELs_reported')
+            self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if self.profile_SCVs:
+            self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
+            self.layer_additional_keys.append('num_SCVs_reported')
+            self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
         if self.total_reads_kept != self.num_reads_mapped:
             # Num reads in profile do not equal num reads in bam
@@ -929,8 +938,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+            self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
+
+        if not self.skip_INDEL_profiling:
+            self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
+            self.layer_additional_keys.append('num_INDELs_reported')
+            self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if self.profile_SCVs:
+            self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
+            self.layer_additional_keys.append('num_SCVs_reported')
+            self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
         if self.total_reads_kept != self.num_reads_mapped:
             # Num reads in profile do not equal num reads in bam
@@ -1012,7 +1032,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              "rest of the parameters you may have declred. Most of them will not matter.")
 
             if not self.output_directory:
-                raise ConfigError("If you want to generate a blank profile, you need to declare an output diretory path.")
+                raise ConfigError("If you want to generate a blank profile, you need to declare an output directory path.")
             if not self.sample_id:
                 raise ConfigError("Mock profiles require a sample name to be declared. Because :/")
             return

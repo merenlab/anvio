@@ -1,79 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""A program to learn about functional occurrence in genome
-   groups in a pan genome"""
 
 import sys
 
-import anvio
-import anvio.terminal as terminal
-import anvio.summarizer as summarizer
-
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = []
-__license__ = "GPL 3.0"
-__version__ = anvio.__version__
-__maintainer__ = "Alon Shaiber"
-__email__ = "alon.shaiber@gmail.com"
-__resources__ = [("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/"),
-                 ("An older version of this program was used in this publication by Benjamin Tully", "https://www.nature.com/articles/s41467-018-07840-4")]
-__tags__ = ["pangenomics", "functions"]
-__requires__ = ['misc-data-layers-category', 'pan-db', 'genomes-storage-db',]
-__provides__ = ['functional-enrichment-txt',]
-__description__ = ("A program that takes a pangenome, and a categorical layers additional data item, and "
-                   "generates the input for anvi-get-enriched-functions-per-pan-group. If requested a "
-                   "functional occurrence table across genomes is also generated.")
+__description__ = ("This program has been superseded by `anvi-compute-functional-enrichment`")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
-def main(args):
-    s = summarizer.PanSummarizer(args, lazy_init=True)
-    s.functional_enrichment_stats()
-
+def main():
+    raise ConfigError(__description__)
 
 if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(description=__description__)
-
-    groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
-
-    groupB = parser.add_argument_group('CATEGORY VARIABLE AND FUNCTIONAL ANNOTATION SOURCE', "This is the layers additional data item\
-                                        in which your genomes are split into multiple groups. So anvi'o can figure out what functions\
-                                        are specific to each group of genomes in your pangenomic analysis. If this is not making any\
-                                        sense, please take a look at the online tutorial for pangenomics \
-                                        (http://merenlab.org/2016/11/08/pangenomics-v2/).")
-    groupB.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
-    groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
-    groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
-    groupB.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
-
-    groupC = parser.add_argument_group('REPORTING', "Output and stuff.")
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-    groupC.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
-
-    groupD = parser.add_argument_group('OPTIONAL PARAMETERS', "Parameters to help you filter the output.")
-    groupD.add_argument(*anvio.A('exclude-ungrouped'), **anvio.K('exclude-ungrouped'))
-
-    groupE = parser.add_argument_group('MORE OPTIONAL THINGS', "Parameters that are there for you to help you in any way they can.")
-    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    args = anvio.get_args(parser)
-
     try:
-        main(args)
+        main()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)

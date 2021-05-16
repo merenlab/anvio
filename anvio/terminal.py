@@ -65,6 +65,74 @@ def remove_spaces(text):
     return text
 
 
+def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
+    """Pluralize a given word mindfully.
+
+    We often run into a situation where the word of choice depends on the number of items
+    it descripes and it can take a lot of extra space in the code. For instance, take this:
+
+    >>> f"You have {num_sequences_in_fasta_file} sequences in your FASTA file."
+
+    This will print "You have 1 seqeunces in your FASTA file" like an idiot when there is only
+    one sequence. An alternative is to do something more elaborate:
+
+    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'seqeunces'}"
+
+    Even though this will work beautifully, it works at the expense of the readability of the code
+    for a minor inconvenience.
+
+    THE PURPOSE of this function is to fix this problem in a more elegant fashion. The following call is
+    equivalent to the second example:
+
+    >>> f"You have {pluralize('sequence', num_sequences_in_fasta_file)} in your FASTA file."
+
+    Alternatively, you can provide this function an `alt`, in which case it would return `word` for singular
+    and `alt` for plural cases:
+
+    >>> f"{pluralize('these do not', number, alt='this does not')}."
+
+    Voila.
+
+
+    Parameters
+    ==========
+    word: str
+        The word to conditionally plurlize
+    number: int
+        The number of items the word intends to describe
+    sfp: str, 's'
+        Suffix for plural. The character that needs to be added to the end of the
+        `word` if plural.
+    sfs: str, None
+        Suffix for singular. The same for `sfp` for singular case.
+    pfs: str, None
+        Prefix for singular. `pfs` will replace `1` in the final output (common
+        parameters could be `pfs="a single" or pfs="only one"`).
+    alternative: str, None
+        If you provide an alternative, pluralize will discard every other parameter
+        and will simply return `word` for singular, and `alt` for plural case.
+    """
+
+    plural = number != 1
+
+    if plural:
+        if alt:
+            return alt
+        else:
+            return f"{pretty_print(number)} {word}{sfp}"
+    else:
+        if alt:
+            return word
+        else:
+            if sfs:
+                return f"{pretty_print(number)} {word}{sfs}"
+            else:
+                if pfs:
+                    return f"{pfs} {word}"
+                else:
+                    return f"{number} {word}"
+
+
 class Progress:
     def __init__(self, verbose=True):
         self.pid = None
@@ -87,10 +155,12 @@ class Progress:
 
 
     def get_terminal_width(self):
-        # FIXME Program flow here is not clear. When does try fail?
         try:
-            self.terminal_width = max(get_terminal_size()[0], 120)
+            self.terminal_width = max(get_terminal_size()[0], 60)
         except:
+            # Getting the terminal size failed. It could be for many reasons: they may not have a
+            # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
+            # width so that if they can see it at all, it truncates only the longest update messages.
             self.terminal_width = 120
 
 
@@ -262,7 +332,8 @@ class Run:
         self.verbose = verbose
         self.width = width
 
-        self.single_line_prefixes = {1: '* ',
+        self.single_line_prefixes = {0: '',
+                                     1: '* ',
                                      2: '    - ',
                                      3: '        > '}
 
@@ -290,12 +361,45 @@ class Run:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
+    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan',
+             mc='yellow', progress=None, align_long_values=True):
+        """
+        This function prints information nicely to the terminal in the form:
+        key ........: value
+
+        PARAMETERS
+        ==========
+        key : str
+            what to print before the dots
+        value : str
+            what to print after the dots
+        quiet : boolean
+            the standard anvi'o quiet parameter which, if True, suppresses some output
+        display_only : boolean
+            if False, the key value pair is also stored in the info dictionary
+        overwrite_verbose : boolean
+            if True, downstream quiet parameters (though not the global --quiet) are ignored to produce more verbose output
+        nl_before : int
+            number of lines to print before the key-value line
+        nl_after : int
+            number of lines to print after the key-value line
+        lc : color str
+            the color of the label (key)
+        mc : color str
+            the color of the value
+        progress : Progress instance
+            provides the Progress bar to use
+        align_long_values : boolean
+            if True, values that are longer than the terminal width will be broken up into different lines that
+            align nicely
+        """
         if not display_only:
             self.info_dict[key] = value
 
-        if isinstance(value, bool):
-            pass
+        if value is None:
+            value = "None"
+        elif isinstance(value, bool) or isinstance(value, float) or isinstance(value, list):
+            value = "%s" % value
         elif isinstance(value, str):
             value = remove_spaces(value)
         elif isinstance(value, int):
@@ -306,6 +410,20 @@ class Run:
         info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
+        if align_long_values:
+            terminal_width = get_terminal_size()[0]
+            wrap_width = terminal_width - self.width - 3
+            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
+            if len(wrapped_value_lines) == 0:
+                aligned_value_str = value
+            else:
+                aligned_value_str = wrapped_value_lines[0]
+                for line in wrapped_value_lines[1:]:
+                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                             '.' * (self.width - len(label)),
+                                             c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.clear()
@@ -916,3 +1034,10 @@ def get_terminal_size():
         except:
             cr = (25, 80)
     return int(cr[1]), int(cr[0])
+
+
+class Logger:
+    """Utility class that makes it easier to use Anvio's nice logging in command runners."""
+    def __init__(self, run=Run(), progress=Progress()):
+        self.run = run
+        self.progress = progress

@@ -18,9 +18,10 @@ __maintainer__ = "Alon Shaiber"
 __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-workflows/")]
 __tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics"]
 __email__ = "alon.shaiber@gmail.com"
-__description__ = ("Execute, manage, parallelize, and troubleshoot entire \'omics workflows which "
-                   "chain together anvi\'o and 3rd party programs.")
-
+__description__ = ("Execute, manage, parallelize, and troubleshoot entire 'omics workflows and "
+                   "chain together anvi'o and third party programs")
+__requires__ = ["samples-txt", "fasta-txt", "workflow-config"]
+__provides__ = ["contigs-workflow", "metagenomics-workflow", "pangenomics-workflow", "phylogenomics-workflow", "trnaseq-workflow"]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -55,8 +56,8 @@ if __name__ == '__main__':
     run.warning('If you publish results from this workflow, please do not forget to cite snakemake '
                 '(doi:10.1093/bioinformatics/bts480)', lc = 'yellow')
 
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('ESSENTIAL INPUTS', "Things you must provide or this won't work")
     groupA.add_argument(*anvio.A("workflow"), **anvio.K("workflow"))
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A("save-workflow-graph"), **anvio.K("save-workflow-graph"))
     groupB.add_argument(*anvio.A("additional-params"), **anvio.K("additional-params"))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

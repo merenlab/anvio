@@ -3,7 +3,7 @@
 """Allows you to merge multiple bins in a collection"""
 
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
@@ -20,6 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["pan-db", "profile-db", "collection", "bin"]
+__provides = ["bin"]
 __description__ = "Merge a given set of bins in an anvi'o collection"
 
 
@@ -72,7 +74,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("DB AND COLLECTION", "Simple enough. This guy needs a pan or profile database\
                                         and a collection name. You can get a list of available collections with another\
@@ -91,7 +93,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupC.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -23,13 +23,13 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin', 'bam-file']
 __provides__ = ['short-reads-fasta']
 __description__ = ("Get short reads back from a BAM file with options for compression, splitting of "
-                   "forward and reverse reads, etc.")
+                   "forward and reverse reads, etc")
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('input_bams', metavar = 'BAM FILE[S]', nargs='+',
                         help = 'BAM file(s) to access to recover short reads')
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('gzip-output'), **anvio.K('gzip-output'))
     parser.add_argument(*anvio.A('split-R1-and-R2'), **anvio.K('split-R1-and-R2'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         r = GetReadsFromBAM(args)

@@ -4,8 +4,8 @@
 import sys
 
 import anvio
-import anvio.scgtaxonomyops as scgtaxonomyops
 import anvio.terminal as terminal
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -23,7 +23,7 @@ __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxono
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to "
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database, "
                    "or contigs described in collections as bins). For this, it uses single-copy core "
-                   "gene sequences and the GTDB database. ")
+                   "gene sequences and the GTDB database")
 
 
 run = terminal.Run()
@@ -41,9 +41,9 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT #1', "The minimum you must provide this program is a contigs database. In which case\
                                                     anvi'o will attempt to estimate taxonomy for all contigs in it, assuming that\
@@ -71,6 +71,7 @@ if __name__ == '__main__':
                                                                  program, anvi'o may ask you to use an 'output file prefix' rather than an 'output \
                                                                  file path'.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('per-scg-output-file'), **anvio.K('per-scg-output-file'))
     groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level', {'default': None}))
     groupD.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want the reports to look like sparse matrices whenever "
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     groupG = parser.add_argument_group('BORING', "Options that you will likely never need.")
     groupG.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

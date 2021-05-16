@@ -3,7 +3,7 @@
 
 import sys
 import anvio
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio.terminal as terminal
 import anvio.structureops as structops
@@ -19,7 +19,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ['pdb-db']
-__description__ = ("Setup or update an offline database of representative PDB structures clustered at 95%.")
+__description__ = ("Setup or update an offline database of representative PDB structures clustered at 95%")
 
 
 @terminal.time_program
@@ -29,7 +29,7 @@ def main(args):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('pdb-database-path'), **anvio.K('pdb-database-path'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument('--update', action='store_true',
@@ -41,7 +41,7 @@ if __name__ == '__main__':
                              "database, use this flag.")
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

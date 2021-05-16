@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Initializing raw BAM files"
@@ -46,7 +46,6 @@ do
     echo
 done
 
-
 INFO "Merging profiles"
 # merge samples
 anvi-merge $output_dir/SAMPLE-*/PROFILE.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
@@ -76,7 +75,8 @@ anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                 -c $output_dir/CONTIGS.db
+                 -c $output_dir/CONTIGS.db \
+                 $dry_run_controller
 
 INFO "Summarizing CONCOCT results"
 anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT' --init-gene-coverages

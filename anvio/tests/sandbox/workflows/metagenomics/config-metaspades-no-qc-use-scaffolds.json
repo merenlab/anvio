@@ -21,7 +21,7 @@
         "TAXONOMY_DIR": "07_TAXONOMY_metaspades_no_qc",
         "LOGS_DIR": "00_LOGS_metaspades_no_qc"
     },
-    "config_version": "1",
+    "config_version": "2",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },

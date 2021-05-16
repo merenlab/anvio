@@ -5,13 +5,15 @@
 
 import os
 import sys
+import ssl
+import yaml
 import gzip
-import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
+import tarfile
 import hashlib
 import textwrap
 import linecache
@@ -21,10 +23,10 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
-import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
+import itertools as it
 
 from numba import jit
 from collections import Counter
@@ -37,9 +39,10 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+from anvio.dbinfo import DBInfo as dbi
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
 with SuppressAllOutput():
     from ete3 import Tree
@@ -218,10 +221,33 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     items = [x[key] for x in d.values()]
 
-    if(set(items) == set([None])):
-        # all items is of type None.
+    if not items:
+        # there is nothing to see here
         return None
 
+    try:
+        if(set(items) == set([None])):
+            # all items is of type None.
+            return None
+    except TypeError:
+        # this means we are working with an unhashable type.
+        # it is either list or dict. we will go through items
+        # and return the type of first item that is not None:
+        for item in items:
+            if item == None:
+                continue
+            else:
+                return type(item)
+
+        # the code should never come to this line since if everything
+        # was None that would have been captured by the try block and the
+        # exception would have never been thrown, but here is a final line
+        # just to be sure we are not moving on with the rest of the code
+        # if we entered into this block:
+        return None
+
+    # if we are here, it means not all items are None, and they are not of
+    # unhashable types (so they must be atomic types such as int, float, or str)
     not_float = False
     for item in items:
         try:
@@ -431,6 +457,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         The command to be run, e.g. "echo hello" or ["echo", "hello"]
     log_file_path : str or Path-like
         All stdout from the command is sent to this filepath
+
+    Raises ConfigError if ret_val < 0, or on OSError.  Does NOT raise if program terminated with exit code > 0.
     """
     cmdline = format_cmdline(cmdline)
 
@@ -453,6 +481,7 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
         log_file.close()
 
+        # This can happen in POSIX due to signal termination (e.g., SIGKILL).
         if ret_val < 0:
             raise ConfigError("Command failed to run. What command, you say? This: '%s'" % ' '.join(cmdline))
         else:
@@ -519,6 +548,25 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
+def multi_index_pivot(df, index = None, columns = None, values = None):
+    # https://github.com/pandas-dev/pandas/issues/23955
+    output_df = df.copy(deep = True)
+    if index is None:
+        names = list(output_df.index.names)
+        output_df = output_df.reset_index()
+    else:
+        names = index
+    output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
+    if isinstance(columns, list):
+        output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
+        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
+        output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
+    else:
+        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
+    output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
+    return output_df
+
+
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
     """ Stores a pandas DataFrame as a tab-delimited file.
 
@@ -556,7 +604,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -576,6 +624,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         The header for the first column ('key' if None)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
+    do_not_close_file_obj: boolean
+        If True, file object will not be closed after writing the dictionary to the file
 
     Returns
     =======
@@ -604,7 +654,13 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
         header_text = '\t'.join(headers)
-    f.write('%s\n' % header_text)
+
+    if anvio.AS_MARKDOWN:
+        tab = '\t'
+        f.write(f"|{header_text.replace(tab, '|')}|\n")
+        f.write(f"|{':--|' + '|'.join([':--:'] * (len(headers[1:])))}|\n")
+    else:
+        f.write(f"{header_text}\n")
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -636,9 +692,14 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
-        f.write('%s\n' % '\t'.join(line))
+        if anvio.AS_MARKDOWN:
+            f.write(f"|{'|'.join(map(str, line))}|\n")
+        else:
+            f.write('%s\n' % '\t'.join(line))
 
-    f.close()
+    if not do_not_close_file_obj:
+        f.close()
+
     return output_path
 
 
@@ -735,12 +796,49 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
-    if not prefix:
-        prefix = os.path.abspath(input_file_path)
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+    """Splits a given FASTA file into multiple parts.
 
-    filesnpaths.is_file_exists(input_file_path)
+    Please note that this function will not clean after itself. You need to take care of the
+    output files in context.
+
+    Parameters
+    ==========
+    input_file_path : str
+        FASTA-formatted flat text file to be split
+    parts : int
+        Number of parts the input file to be split into
+    file_name_prefix : str
+        Preferably a single-word prefix for the output files
+    shuffle : bool
+        Whether input sequences should be randomly shuffled (so the input sequences
+        randomly distribute across output files)
+    output_dir : str, path
+        Output directory. By default, anvi'o will store things in a new directory under
+        the system location for temporary files
+
+    Returns
+    =======
+    output_file_paths : list
+        Array with `parts` number of elements where each item is an output file path
+
+    """
+    if not file_name_prefix:
+        file_name_prefix = os.path.basename(input_file_path)
+    else:
+        if '/' in file_name_prefix:
+            raise ConfigError("File name prefix for split fasta can't contain slash characters. It is not "
+                              "supposed to be a path after all :/")
+
+    # check input
     filesnpaths.is_file_fasta_formatted(input_file_path)
+
+    # check output
+    if not output_dir:
+        output_dir = filesnpaths.get_temp_directory_path()
+    else:
+        filesnpaths.gen_output_directory(output_dir)
+        filesnpaths.is_output_dir_writable(output_dir)
 
     source = u.ReadFasta(input_file_path, quiet=True)
     length = len(source.ids)
@@ -750,23 +848,25 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
 
     chunk_size = length // parts
 
-    output_files = []
+    output_file_paths = []
+
+    GET_OUTPUT_FILE_PATH = lambda p: os.path.join(output_dir, ".".join([file_name_prefix, str(p)]))
 
     if shuffle:
-        output_files = [f'{prefix}.{part_no}' for part_no in range(parts)]
-        output_fastas = [u.FastaOutput(file_name) for file_name in output_files]
+        output_file_paths = [f'{GET_OUTPUT_FILE_PATH(part_no)}' for part_no in range(parts)]
+        output_fastas = [u.FastaOutput(file_name) for file_name in output_file_paths]
 
         # The first sequence goes to the first outfile, the second seq to the second outfile, and so on.
         for seq_idx, (seq_id, seq) in enumerate(zip(source.ids, source.sequences)):
             which = seq_idx % parts
             output_fastas[which].write_id(seq_id)
             output_fastas[which].write_seq(seq)
-            
+
         for output_fasta in output_fastas:
             output_fasta.close()
     else:
         for part_no in range(parts):
-            output_file = prefix + '.' + str(part_no)
+            output_file = GET_OUTPUT_FILE_PATH(part_no)
 
             output_fasta = u.FastaOutput(output_file)
 
@@ -782,11 +882,11 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
                 output_fasta.write_seq(source.sequences[i])
 
             output_fasta.close()
-            output_files.append(output_file)
+            output_file_paths.append(output_file)
 
     source.close()
 
-    return output_files
+    return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -1007,6 +1107,94 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
+def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None, run=run, progress=progress):
+    """This function runs the enrichment analysis implemented by Amy Willis.
+
+    Since the enrichment analysis is an R script, we interface with that program by
+    producing a compatible input file first, and then calling this function from various
+    places in the anvi'o code.
+
+    Parameters
+    ==========
+    functional_occurrence_stats_input_file_path, str file path
+        This is the primary input file for the R script, `anvi-script-enrichment-stats`.
+        For the most up-do-date file header, please see the header section of the R
+        script.
+    enrichment_output_file_path, str file path
+        An optional output file path for the enrichment analysis.
+
+    Returns
+    =======
+    enrichment_output: dict
+        The enrichment analysis results
+    """
+
+    # sanity check for R packages
+    package_dict = get_required_packages_for_enrichment_test()
+    check_R_packages_are_installed(package_dict)
+
+    # make sure the input file path is a TAB delmited file that exists.
+    filesnpaths.is_file_tab_delimited(functional_occurrence_stats_input_file_path)
+
+    if not enrichment_output_file_path:
+        enrichment_output_file_path = filesnpaths.get_temp_file_path()
+    elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
+                           "Please either delete the existing file, or provide another file path before re-running this "
+                           "program again.")
+
+    log_file_path = filesnpaths.get_temp_file_path()
+
+    run.warning(None, header="AMY's ENRICHMENT ANALYSIS 🚀", lc="green")
+    run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
+    run.info("Functional enrichment output file path: ", enrichment_output_file_path)
+    run.info("Temporary log file (use `--debug` to keep): ", log_file_path, nl_after=2)
+
+    # run enrichment script
+    progress.new('Functional enrichment analysis')
+    progress.update("Running Amy's enrichment")
+    run_command(['anvi-script-enrichment-stats',
+                 '--input', f'{functional_occurrence_stats_input_file_path}',
+                 '--output', f'{enrichment_output_file_path}'], log_file_path)
+    progress.end()
+
+    if not filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( We don't "
+                          f"know what happened, but this log file could contain some clues: {log_file_path}")
+
+    if filesnpaths.is_file_empty(enrichment_output_file_path):
+        raise ConfigError(f"Something went wrong during the functional enrichment analysis :( "
+                          f"An output file was created, but it was empty... We hope that this "
+                          f"log file offers some clues: {log_file_path}")
+
+    # if everything went okay, we remove the log file
+    if anvio.DEBUG:
+        run.warning(f"Due to the `--debug` flag, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
+    else:
+        os.remove(log_file_path)
+
+    enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
+
+    # here we will naively try to cast every column that matches `p_*` to float, and every
+    # column that matches `N_*` to int.
+    column_names = list(enrichment_stats.values())[0].keys()
+    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'adjusted_q_value', 'enrichment_score']] + \
+                           [(c, float) for c in column_names if c.startswith('p_')] + \
+                           [(c, int) for c in column_names if c.startswith('N_')]
+    for entry in enrichment_stats:
+        for column_name, to_cast in column_names_to_cast:
+            try:
+                enrichment_stats[entry][column_name] = to_cast(enrichment_stats[entry][column_name])
+            except:
+                raise ConfigError(f"Something sad happened :( Anvi'o expects the functional enrichment output to contain "
+                                  f"values for the column name `{column_name}` that can be represented as `{to_cast}`. Yet, the "
+                                  f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
+                                  f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
+                                  f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
+
+    return enrichment_stats
+
+
 def get_required_packages_for_enrichment_test():
     ''' Return a dict with the packages as keys and installation instrucstions as values'''
     packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
@@ -1018,6 +1206,52 @@ def get_required_packages_for_enrichment_test():
                                  "conda install -c conda-forge r-optparse"]
 
     return dict(zip(packages,installation_instructions))
+
+
+def check_R_packages_are_installed(required_package_dict):
+    """Checks if R and the provided R packages are installed on the user's system.
+    If not, raises an error with installation instructions for any missing packages.
+
+    Credits to Ryan Moore (https://github.com/mooreryan) for this solution!
+    (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
+
+    Parameters
+    ==========
+    required_package_dict, dictionary
+        keys should be R package names, values should be the corresponding installation instruction for the package
+        See get_required_packages_for_enrichment_test() for an example
+    """
+
+    is_program_exists('Rscript')
+
+    missing_packages = []
+    log_file = filesnpaths.get_temp_file_path()
+    for lib in required_package_dict:
+        ret_val = run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
+        if ret_val != 0:
+            missing_packages.append(lib)
+
+    if missing_packages:
+        raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                          "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                          "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                          "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                          "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                          "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                          "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                          "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                          "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                          "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                          "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                          "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                          "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                          "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                          "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
+                                                                  {'missing': ', '.join(missing_packages),
+                                                                   'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
+                                                                   'example': missing_packages[0]})
+    else:
+        os.remove(log_file)
 
 
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
@@ -1210,6 +1444,16 @@ def remove_sequences_with_only_gaps_from_fasta(input_file_path, output_file_path
     return total_num_sequences, num_sequences_removed
 
 
+def get_num_sequences_in_fasta(input_file):
+    fasta = u.SequenceSource(input_file)
+    num_sequences = 0
+
+    while next(fasta):
+        num_sequences += 1
+
+    return num_sequences
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
@@ -1218,6 +1462,51 @@ def get_all_ids_from_fasta(input_file):
         ids.append(fasta.id)
 
     return ids
+
+
+def check_fasta_id_formatting(fasta_path):
+    fasta = u.SequenceSource(fasta_path)
+
+    while next(fasta):
+        characters_anvio_doesnt_like = [
+            c for c in set(fasta.id) if c not in constants.allowed_chars]
+
+        if len(characters_anvio_doesnt_like):
+            raise ConfigError(
+                "At least one of the deflines in your FASTA file "
+                "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                "You can either use the script, `anvi-script-reformat-fasta`, "
+                "to take care of this issue, or read this section in the tutorial "
+                "to understand the reason behind this requirement "
+                "(Anvi'o is very upset for making you do this): %s"
+                % "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file")
+
+        try:
+            int(fasta.id)
+            is_int = True
+        except:
+            is_int = False
+        if is_int:
+            raise ConfigError(
+                "At least one of the deflines in your FASTA file "
+                "(well, this one to be precise: '%s') looks like a number. "
+                "For reasons we can't really justify, "
+                "Anvi'o does not like those numeric names, "
+                "and hereby asks you to make sure every tRNA-seq name "
+                "contains at least one alphanumeric character :/ "
+                "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                "your endless patience with such eccentric requests. "
+                "You the real MVP." % fasta.id)
+
+    fasta.close()
+
+
+def check_fasta_id_uniqueness(fasta_path):
+    all_ids_in_FASTA = get_all_ids_from_fasta(fasta_path)
+    total_num_seqs = len(all_ids_in_FASTA)
+    if total_num_seqs != len(set(all_ids_in_FASTA)):
+        raise ConfigError(
+            "Every sequence in the input FASTA file must have a unique ID. You know...")
 
 
 def get_ordinal_from_integer(num):
@@ -1401,6 +1690,47 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
             os.remove(f)
 
     return dest_file
+
+
+def get_chunk(stream, separator, read_size=4096):
+    """Read from a file chunk by chunk based on a separator substring
+
+    This utility of this function is to avoid reading in the entire contents of a file all at once.
+    Instead, you can read in a chunk, process it, then read in the next chunk, and repeat this until
+    the EOF.
+
+    Parameters
+    ==========
+    stream : _io.TextIOWrapper
+        A file handle, e.g. stream = open('<path_to_file>', 'r')
+
+    separator : str
+        Each value returned will be the string from the last `separator` to the next `separator`
+
+    read_size : int, 4096
+        How big should each read size be? Bigger means faster reading, but higher memory usage. This
+        has no effect on what is returned, but can greatly influence speed. Default is 4MB.
+
+    References
+    ==========
+    https://stackoverflow.com/questions/47927039/reading-a-file-until-a-specific-character-in-python
+    """
+
+    contents_buffer = ''
+    while True:
+        chunk = stream.read(read_size)
+        if not chunk:
+            yield contents_buffer
+            break
+
+        contents_buffer += chunk
+        while True:
+            try:
+                part, contents_buffer = contents_buffer.split(separator, 1)
+            except ValueError:
+                break
+            else:
+                yield part
 
 
 def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
@@ -1824,9 +2154,10 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     Parameters
     ==========
     contig_sequences_dict : dict
-        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
-        ContigsSuperClass.init_contig_sequences)
+        An object that looks like that ContigsSuperclass.contig_sequences (initialized with
+        ContigsSuperclass.init_contig_sequences)
     """
+
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
@@ -1957,7 +2288,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         model = np.load(default_model_path)
 
     order = len(model.shape)
-    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    null_prob = null_prob if null_prob is not None else np.median(model)
     stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
 
     aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
@@ -2282,7 +2613,7 @@ def check_collection_name(collection_name):
 
 
 
-def is_this_name_OK_for_database(variable_name, content, stringent=True):
+def is_this_name_OK_for_database(variable_name, content, stringent=True, additional_chars_allowed=''):
     if not content:
         raise ConfigError("But the %s is empty? Come on :(" % variable_name)
 
@@ -2294,6 +2625,9 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
         allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
     else:
         allowed_chars = constants.allowed_chars.replace('.', '')
+
+    if len(additional_chars_allowed):
+        allowed_chars += additional_chars_allowed
 
     if len([c for c in content if c not in allowed_chars]):
         raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters "
@@ -2322,6 +2656,8 @@ def check_contig_names(contig_names, dont_raise=False):
 
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
+
+    from anvio.summarizer import ArgsTemplateForSummarizerClass, ProfileSummarizer, Bin
 
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
@@ -2367,7 +2703,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
         # when we are here, all we have are interanl genomes as genome subsets.
         for genome_subset in genome_subsets.values():
-            args = anvio.summarizer.ArgsTemplateForSummarizerClass()
+            args = ArgsTemplateForSummarizerClass()
             args.contigs_db = genome_subset['contigs_db_path']
             args.profile_db = genome_subset['profile_db_path']
             args.collection_name = genome_subset['collection_id']
@@ -2376,7 +2712,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
             # note that we're initializing the summary class only for once for a given
             # genome subset
-            summary = anvio.summarizer.ProfileSummarizer(args, r=Run(verbose=False))
+            summary = ProfileSummarizer(args, r=Run(verbose=False))
             summary.init()
 
             for genome_name, bin_name in genome_subset['genome_name_bin_name_tpl']:
@@ -2388,7 +2724,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
                 file_paths.add(path)
                 name_to_path[genome_name] = path
 
-                bin_summary = anvio.summarizer.Bin(summary, bin_name)
+                bin_summary = Bin(summary, bin_name)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
@@ -2511,6 +2847,13 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
 
 def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
+    """FIXME <A one line descriptor here>
+
+    Notes
+    =====
+    - Assumes outfmt has `qseqid` and `sseqid` as 1st and 2nd columns, respectively
+    """
+
     new_search_output_path = tabular_output_path + '.ununiqued'
     new_tabular_output = open(new_search_output_path, 'w')
 
@@ -2532,8 +2875,12 @@ def ununique_BLAST_tabular_output(tabular_output_path, names_dict):
 def get_BLAST_tabular_output_as_dict(tabular_output_path, target_id_parser_func=None, query_id_parser_func=None):
     """Takes a BLAST output, returns a dict where each query appears only once!!
 
-       If there are multiple hits for a given query, the one with lower e-value.
-       remains in the dict.
+    If there are multiple hits for a given query, the one with lower e-value.
+    remains in the dict.
+
+    Notes
+    =====
+    - Works only for the default "-outfmt 6"
     """
 
     results_dict = {}
@@ -2768,6 +3115,106 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
+def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
+    "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    expected_columns = ['sample', 'r1', 'r2']
+    possible_columns = expected_columns + ['group']
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+    extra_columns = set(columns_found).difference(set(possible_columns))
+
+    if not set(expected_columns).issubset(set(columns_found)):
+        raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+
+    if len(extra_columns):
+        run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
+                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
+                    f"business, but we wanted you to be aware of the fact that your input file does not "
+                    f"fully match anvi'o expectations from this file type.")
+
+    samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    samples_with_missing_files = []
+    samples_with_identical_r1_r2_files = []
+    for sample_name in samples_txt:
+        check_sample_id(sample_name)
+
+        if not os.path.exists(samples_txt[sample_name]['r1']) or not os.path.exists(samples_txt[sample_name]['r2']):
+            samples_with_missing_files.append(sample_name)
+
+        if samples_txt[sample_name]['r1'] == samples_txt[sample_name]['r2']:
+            samples_with_identical_r1_r2_files.append(sample_name)
+
+    if len(samples_with_missing_files):
+        raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
+                          f"({', '.join(samples_with_missing_files)}) with missing files (by which we mean that the "
+                          f"r1/r2 paths are there, but the files they point to are not).")
+
+    if len(samples_with_identical_r1_r2_files):
+        raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
+                          f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
+
+
+    return samples_txt
+
+
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+    """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
+
+    Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
+    header - let's call these the items) and the 'group' column of the file. Then it will return the following:
+
+    Returns
+    =======
+    item_to_group_dict : dict
+        Dictionary in which keys are items and values are groups
+    group_to_item_dict : dict
+        Dictionary in which keys are groups and values are lists of items in that group
+    """
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if 'group' not in columns_found:
+        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+
+    if len(columns_found) < 2:
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+
+    item_column = columns_found[0]
+    if item_column == 'group':
+        raise ConfigError("The first column in your groups-txt file appears to be called 'group'. Sadly, anvi'o rather rigidly "
+                          "expects the first column to have item names, not group names, so you will have to re-format it. Sorry "
+                          "for any inconvenience.")
+
+    groups_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    group_to_item_dict = {}
+    item_to_group_dict = {}
+    for item in groups_txt:
+        group_name = groups_txt[item]['group']
+
+        if item in item_to_group_dict:
+            raise ConfigError(f"Uh oh. The item {item} occurs more than once in your groups-txt file. This could explode things "
+                              f"downstream, so we will stop you right there. Please remove all duplicate items from this file. :)")
+        item_to_group_dict[item] = group_name
+
+        if not group_name in group_to_item_dict:
+            group_to_item_dict[group_name] = []
+        group_to_item_dict[group_name].append(item)
+
+    if len(group_to_item_dict.keys()) < 2:
+        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+                          "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
+                          "working in should allow for only one group in this file, please feel free to let us know.")
+
+    return item_to_group_dict, group_to_item_dict
+
+
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
@@ -2934,6 +3381,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         return dict_to_append
 
     # this is here for backward compatibility.
+    failed_lines = list(set(failed_lines)) # confirming we are not printing multiple instances of the same line
     if return_failed_lines:
         return d, failed_lines
 
@@ -2959,6 +3407,7 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
 
 def anvio_hmm_target_term_to_alphabet_and_context(target):
     """Alphabet and context recovery from the target term in anvi'o HMM source directories."""
+
     alphabet = None
     context = None
     fields = target.split(':')
@@ -3099,19 +3548,17 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             source = source[:-1]
 
         if not PROPER(os.path.basename(source)):
-            raise ConfigError("One of the search database directories ('%s') contains characters in its name "
-                               "anvio does not like. Directory names should be at least three characters long "
-                               "and must not contain any characters but ASCII letters, digits and "
-                               "underscore" % os.path.basename(source))
+            raise ConfigError(f"One of the search database directories ({os.path.basename(source)}) contains characters "
+                               "in its name anvio does not like. Directory names should be at least three characters long "
+                               "and must not contain any characters but ASCII letters, digits and underscore")
 
         expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
 
         missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
         if missing_files:
-            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to "
-                              "be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it "
-                              "should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
-                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+            raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
+                              f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
+                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
@@ -3233,19 +3680,17 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
+def get_db_type_and_variant(db_path, dont_raise=False):
+    database = dbi(db_path, dont_raise=dont_raise)
+    return (database.db_type, database.variant)
+
+
 def get_db_type(db_path):
-    filesnpaths.is_file_exists(db_path)
-    database = db.DB(db_path, None, ignore_version=True)
+    return get_db_type_and_variant(db_path)[0]
 
-    tables = database.get_table_names()
-    if 'self' not in tables:
-        database.disconnect()
-        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
 
-    db_type = database.get_meta_value('db_type')
-    database.disconnect()
-
-    return db_type
+def get_db_variant(db_path):
+    return get_db_type_and_variant(db_path)[1]
 
 
 def get_required_version_for_db(db_path):
@@ -3358,60 +3803,107 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
                           "anvi-gen-variability-profile." % table_path)
 
 
-def is_contigs_db(db_path):
-    filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'contigs':
-        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+def is_contigs_db(db_path, dont_raise=False):
+    dbi(db_path, expecting='contigs', dont_raise=dont_raise)
+    return True
+
+
+def is_trnaseq_db(db_path):
+    dbi(db_path, expecting='trnaseq')
     return True
 
 
 def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
-    ok_db_types = ['pan', 'profile']
-
-    if genes_db_is_also_accepted:
-        ok_db_types += ['genes']
-
-    db_type = get_db_type(db_path)
-
-    if db_type not in ok_db_types:
-        if genes_db_is_also_accepted:
-            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this "
-                              "'%s' database is not it." % (db_path, db_type))
-        else:
-            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' "
-                               "being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
-
+    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else [])
+    dbi(db_path, expecting=ok_db_types)
     return True
 
 
 def is_profile_db(db_path):
-    if get_db_type(db_path) != 'profile':
-        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+    dbi(db_path, expecting='profile')
     return True
 
 
 def is_structure_db(db_path):
-    if get_db_type(db_path) != 'structure':
-        raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
-    return True
-
-
-def is_modules_db(db_path):
-    filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'modules':
-        raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
+    dbi(db_path, expecting='structure')
     return True
 
 
 def is_blank_profile(db_path):
-    if get_db_type(db_path) != 'profile':
+    database = dbi(db_path, dont_raise=True)
+
+    if database.db_type != 'profile':
         return False
 
-    database = db.DB(db_path, None, ignore_version=True)
-    blank = int(database.get_meta_value('blank'))
-    database.disconnect()
+    return database.blank
 
-    return True if blank == 1 else False
+
+def is_pan_db(db_path):
+    dbi(db_path, expecting='pan')
+    return True
+
+
+def is_genome_storage(db_path):
+    dbi(db_path, expecting='genomestorage')
+    return True
+
+
+def is_genes_db(db_path):
+    dbi(db_path, expecting='genes')
+    return True
+
+
+def is_gene_caller_id(gene_caller_id, raise_if_fail=True):
+    """Test whether a given `gene_caller_id` looks like a legitimate anvi'o gene caller id"""
+    try:
+        assert(int(gene_caller_id) >= 0)
+    except:
+        if raise_if_fail:
+            raise ConfigError(f"Anvi'o gene caller ids are represented by integers between 0 and infinity. "
+                              f"and what you provided ('{gene_caller_id}') doesn't look like one :/")
+        else:
+            return False
+
+    return True
+
+
+def is_kegg_modules_db(db_path):
+    dbi(db_path, expecting='modules')
+    return True
+
+
+def is_profile_db_merged(profile_db_path):
+    return dbi(profile_db_path, expecting='profile').merged
+
+
+def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
+    pdb = dbi(profile_db_path)
+    cdb = dbi(contigs_db_path)
+
+    if cdb.hash != pdb.hash:
+        raise ConfigError('The contigs database and the profile database does not '
+                          'seem to be compatible. More specifically, this contigs '
+                          'database is not the one that was used when %s generated '
+                          'this profile database (%s != %s).'\
+                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
+    return True
+
+
+def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path):
+    sdb = dbi(structure_db_path)
+    cdb = dbi(contigs_db_path)
+
+    if cdb.hash != sdb.hash:
+        raise ConfigError('The contigs and structure databases do not seem compatible. '
+                          'More specifically, the contigs database is not the one that '
+                          'was used when the structure database was created (%s != %s).'\
+                               % (cdb.hash, sdb.hash))
+
+    return True
+
+
+# # FIXME
+# def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
 
 def get_enriched_groups(props, reps):
@@ -3428,90 +3920,31 @@ def get_enriched_groups(props, reps):
     return props > overall_portion
 
 
-def is_pan_db(db_path):
-    if get_db_type(db_path) != 'pan':
-        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
-    return True
+def get_yaml_as_dict(file_path):
+    """YAML parser"""
+
+    filesnpaths.is_file_plain_text(file_path)
+
+    try:
+        return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
 
 
-def is_genes_db(db_path):
-    if get_db_type(db_path) != 'genes':
-        raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
-    return True
-
-def is_kegg_modules_db(db_path):
-    if get_db_type(db_path) != 'modules':
-        raise ConfigError("'%s' is not an anvi'o KEGG modules database." % db_path)
-    return True
-
-
-def is_profile_db_merged(profile_db_path):
-    is_profile_db(profile_db_path)
-
-    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
-    merged = int(profile_db.get_meta_value('merged'))
-    profile_db.disconnect()
-
-    return merged
-
-
-def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    is_profile_db(profile_db_path)
-    is_contigs_db(contigs_db_path)
-
-    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
-    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
-
-    p_hash = profile_db.get_meta_value('contigs_db_hash')
-    a_hash = contigs_db.get_meta_value('contigs_db_hash')
-    merged = int(profile_db.get_meta_value('merged'))
-
-    profile_db.disconnect()
-    contigs_db.disconnect()
-
-    if a_hash != p_hash:
-        raise ConfigError('The contigs database and the profile database does not '
-                          'seem to be compatible. More specifically, this contigs '
-                          'database is not the one that was used when %s generated '
-                          'this profile database (%s != %s).'\
-                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
-
-    return True
-
-
-def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path):
-    is_structure_db(structure_db_path)
-    is_contigs_db(contigs_db_path)
-
-    structure_db = db.DB(structure_db_path, get_required_version_for_db(structure_db_path))
-    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
-
-    p_hash = structure_db.get_meta_value('contigs_db_hash')
-    a_hash = contigs_db.get_meta_value('contigs_db_hash')
-
-    structure_db.disconnect()
-    contigs_db.disconnect()
-
-    if a_hash != p_hash:
-        raise ConfigError('The contigs and structure databases do not seem compatible. '
-                          'More specifically, the contigs database is not the one that '
-                          'was used when the structure database was created (%s != %s).'\
-                               % (a_hash, p_hash))
-
-    return True
-
-# # FIXME
-# def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
-
-
-def download_file(url, output_file_path, progress=progress, run=run):
+def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
-        response = urllib.request.urlopen(url)
+        if check_certificate:
+            response = urllib.request.urlopen(url)
+        else:
+            response = urllib.request.urlopen(url, context=ssl._create_unverified_context())
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the "
-                           "problem: '%s'" % e)
+        raise ConfigError(f"Something went wrong with your download attempt. Here is the "
+                          f"problem for the url {url}: '{e}'")
 
     file_size = 0
     if 'Content-Length' in response.headers:
@@ -3523,6 +3956,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     progress.update('...')
 
     downloaded_size = 0
+    counter = 0
     while True:
         buffer = response.read(10000)
 
@@ -3530,12 +3964,15 @@ def download_file(url, output_file_path, progress=progress, run=run):
             downloaded_size += len(buffer)
             f.write(buffer)
 
-            if file_size:
-                progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
-            else:
-                progress.update('%s' % human_readable_file_size(downloaded_size))
+            if counter % 500 == 0:
+                if file_size:
+                    progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+                else:
+                    progress.update('%s' % human_readable_file_size(downloaded_size))
         else:
             break
+
+        counter += 1
 
     f.close()
 
@@ -3543,11 +3980,14 @@ def download_file(url, output_file_path, progress=progress, run=run):
     run.info('Downloaded successfully', output_file_path)
 
 
-def get_remote_file_content(url, gzipped=False):
+def get_remote_file_content(url, gzipped=False, timeout=None):
     import requests
     from io import BytesIO
 
-    remote_file = requests.get(url)
+    if timeout:
+        remote_file = requests.get(url, timeout=timeout)
+    else:
+        remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
         raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
@@ -3558,6 +3998,45 @@ def get_remote_file_content(url, gzipped=False):
         return fg.read().decode('utf-8')
 
     return remote_file.content.decode('utf-8')
+
+
+def get_anvio_news():
+    """Reads news from anvi'o repository.
+
+    The format of the news file is expected to be like this:
+
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+        ***
+        # Title with spaces (01.01.1970) #
+        Lorem ipsum, dolor sit amet
+
+    Returns
+    =======
+    news : list
+        A list of dictionaries per news item
+    """
+
+    try:
+        news = get_remote_file_content(constants.anvio_news_url, timeout=1)
+    except Exception as e:
+        raise ConfigError(f"Something went wrong reading the anvi'o news :/ This is what the "
+                          f"downstream library had to say: {e}")
+
+    news_items = []
+    for news_item in news.split('***'):
+        if len(news_item) < 5:
+            # too short to parse, just skip it
+            continue
+
+        news_items.append({'date': news_item.split("(")[1].split(")")[0].strip(),
+                           'title': news_item.split("#")[1].split("(")[0].strip(),
+                           'content': news_item.split("#\n")[1].strip()})
+
+    return news_items
 
 
 def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
@@ -3589,12 +4068,17 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
 
     pdb_list = PDB.PDBList()
 
+    # NOTE This path is determined by Biopython's fn `pdb_list.retive_pdb_file`. If the logic in
+    #      that function that determines the path name is changed, `download_protein_structure` will
+    #      break because `temp_output_path` will be wrong.
+    temp_output_path = os.path.join(output_dir, f"pdb{protein_code.lower()}.ent")
+
     try:
         with SuppressAllOutput():
             # We suppress output that looks like this:
             # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
             # >>> Downloading PDB structure '5w6y'...
-            temp_output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+            pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
     except:
         pass
 
@@ -3713,10 +4197,11 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
-                          "The reason why the standard anvi'o installation did not install module is complicated, "
-                          "and really unimportant. If you run `pip install h5py` in your Python virtual environmnet "
-                          "for anvi'o, and try running the migration program again things should be alright.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
+                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
+                          "anvi'o environment. The reason why the standard anvi'o package does not include "
+                          "this module is both complicated and really unimportant. Re-running the migration "
+                          "after `h5py` is installed will make things go smootly.")
 
 
 def RepresentsInt(s):

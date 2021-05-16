@@ -3,6 +3,7 @@ layout: page
 title: {{ program.name }} [program]
 categories: [anvio]
 comments: false
+redirect_from: /{{ meta.version_short_identifier }}/{{ program.name }}
 image:
   featurerelative: ../../../images/header.png
   display: true
@@ -10,7 +11,7 @@ image:
 
 {{ program.description }}.
 
-See **[program help menu](../../../vignette#{{ program.name }})** or go back to the **[main page](../../)** of anvi'o programs and artifacts.
+See **[program help menu](../../../../vignette#{{ program.name }})** or go back to the **[main page](../../)** of anvi'o programs and artifacts.
 
 {% verbatim %}
 {% include _toc.html %}
@@ -20,13 +21,13 @@ See **[program help menu](../../../vignette#{{ program.name }})** or go back to 
 {% include _project-anvio-graph.html %}
 {% endverbatim %}
 
-## Provides
+## Can provide
 
-<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
-## Requires or uses
+## Can consume
 
-<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Usage
 

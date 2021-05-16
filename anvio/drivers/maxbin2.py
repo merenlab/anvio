@@ -2,7 +2,6 @@
 """Interface to MaxBin2."""
 import os
 import glob
-import shutil
 
 import anvio
 import anvio.utils as utils
@@ -68,11 +67,13 @@ class MaxBin2:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, work_dir, threads=1):
+    def cluster(self, input_files, args, work_dir, threads=1, log_file_path=None):
         J = lambda p: os.path.join(work_dir, p)
 
         output_file_prefix = J('MAXBIN_')
-        log_path = J('logs.txt')
+
+        if not log_file_path:
+            log_file_path = J('logs.txt')
 
         cmd_line = [self.program_name,
             '-contig', input_files.contigs_fasta,
@@ -84,13 +85,13 @@ class MaxBin2:
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
-        utils.run_command(cmd_line, log_path)
+        utils.run_command(cmd_line, log_file_path)
         self.progress.end()
 
         output_file_paths = glob.glob(J(output_file_prefix + '*.fasta'))
         if not len(output_file_paths):
             raise ConfigError("Some critical output files are missing. Please take a look at the "
-                              "log file: %s" % (log_path))
+                              "log file: %s" % (log_file_path))
 
         clusters = {}
         bin_count = 0

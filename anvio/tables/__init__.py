@@ -2,8 +2,9 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codons, nucleotides, essential_genome_info
+from anvio.constants import codons, nucleotides, essential_genome_info, TRNA_FEATURE_NAMES, THREEPRIME_VARIANTS
 
+import itertools
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -13,14 +14,15 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "18"
-profile_db_version = "34"
+contigs_db_version = "20"
+profile_db_version = "35"
 genes_db_version = "6"
 pan_db_version = "14"
 auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
-workflow_config_version = "1"
+trnaseq_db_version = "2"
+workflow_config_version = "2"
 metabolic_modules_db_version = "2"
 
 versions_for_db_types = {'contigs': contigs_db_version,
@@ -30,6 +32,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
+                         'trnaseq': trnaseq_db_version,
                          'config': workflow_config_version,
                          'modules': metabolic_modules_db_version}
 
@@ -65,7 +68,7 @@ splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,
 splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
 
-# following tables deal with open reading frames found in contis by a gene caller (such as prodigal), and their functional annotations and stuff.
+# following tables deal with open reading frames found in contigs by a gene caller (such as prodigal), and their functional annotations and stuff.
 
 genes_in_contigs_table_name             = 'genes_in_contigs'
 genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'call_type', 'source', 'version']
@@ -110,6 +113,10 @@ hmm_hits_splits_table_types            = [     'numeric'    ,  'text',       'nu
 scg_taxonomy_table_name                = 'scg_taxonomy'
 scg_taxonomy_table_structure           = ['gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 scg_taxonomy_table_types               = [    'numeric'    ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
+
+trna_taxonomy_table_name                = 'trna_taxonomy'
+trna_taxonomy_table_structure           = ['gene_callers_id', 'amino_acid', 'anticodon', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+trna_taxonomy_table_types               = [    'numeric'    ,    'text'   ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
@@ -166,8 +173,8 @@ variable_nts_table_structure         = ['sample_id', 'split_name',   'pos'  , 'p
 variable_nts_table_types             = [   'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 indels_table_name                    = 'indels'
-indels_table_structure               = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']
-indels_table_types                   = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' ]
+indels_table_structure               = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'sequence', 'length' , 'count'  , 'coverage']
+indels_table_types                   = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text'    , 'integer', 'integer', 'integer']
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
@@ -244,8 +251,8 @@ pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
 pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
 templates_table_name       = 'templates'
-templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
-templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real']
+templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'proper_percent_similarity', 'percent_similarity', 'align_fraction']
+templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real',                      'real',               'real']
 
 models_table_name       = 'models'
 models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
@@ -268,6 +275,40 @@ module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      
 pathway_table_name = "kegg_pathway_maps"
 pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
 pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE TRNASEQ DB
+#
+####################################################################################################
+
+trnaseq_sequences_table_name            = 'sequences'
+trnaseq_sequences_table_structure       = ['name', 'read_count', 'id_info', 'sequence']
+trnaseq_sequences_table_types           = ['str' , 'numeric'   , 'str'    , 'str']
+
+trnaseq_feature_table_name              = 'feature'
+trnaseq_feature_table_structure         = ['name', 'has_complete_feature_set', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_fiveprime' , 'acceptor_length'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES], [f + '_stop' for f in TRNA_FEATURE_NAMES]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+trnaseq_feature_table_types             = ['str' , 'bool'                    , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'        ] + ['str'] * len(TRNA_FEATURE_NAMES) * 2                                                                              + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
+trnaseq_unconserved_table_name          = 'unconserved'
+trnaseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
+trnaseq_unconserved_table_types         = ['str' , 'numeric', 'str'                , 'str']
+
+trnaseq_unpaired_table_name             = 'unpaired'
+trnaseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
+trnaseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
+
+trnaseq_trimmed_table_name              = 'trimmed'
+trnaseq_trimmed_table_structure         = ['name', 'unique_seq_count', 'read_count', 'id_info', 'sequence', 'normalized_seq_representation', 'fiveprime_unique_seq_count', 'fiveprime_read_count', 'threeprime_termini', 'threeprime_terminus_read_counts']
+trnaseq_trimmed_table_types             = ['str' , 'numeric'         , 'numeric'   , 'str'    , 'str'     , 'numeric'                      , 'numeric'                   , 'numeric'             , 'str'               , 'str']
+
+trnaseq_normalized_table_name           = 'normalized'
+trnaseq_normalized_table_structure      = ['name', 'trimmed_seq_count', 'id_info', 'mean_specific_coverage', 'mean_nonspecific_coverage', 'specific_coverages', 'nonspecific_coverages', 'modified_seq_representation', 'specific_read_count', 'nonspecific_read_count', 'count_of_specific_reads_with_extra_fiveprime', 'count_of_nonspecific_reads_with_extra_fiveprime', 'specific_mapped_read_count', 'nonspecific_mapped_read_count', 'specific_longer_fiveprime_extensions', 'specific_longer_fiveprime_extension_read_counts', 'nonspecific_longer_fiveprime_extensions', 'nonspecific_longer_fiveprime_extension_read_counts', 'specific_threeprime_termini', 'specific_threeprime_terminus_read_counts', 'nonspecific_threeprime_termini', 'nonspecific_threeprime_terminus_read_counts']
+trnaseq_normalized_table_types          = ['str' , 'numeric'          , 'str'    , 'numeric'               , 'numeric'                  , 'str'               , 'str'                  , 'numeric'                    , 'numeric'            , 'numeric'               , 'numeric'                                     , 'numeric'                                        , 'numeric'                   , 'numeric'                      , 'str'                                 , 'str'                                            , 'str'                                    , 'str'                                               , 'str'                        , 'str'                                     , 'str'                           , 'str']
+
+trnaseq_modified_table_name             = 'modified'
+trnaseq_modified_table_structure        = ['name', 'mean_specific_coverage', 'mean_nonspecific_coverage', 'specific_coverages', 'nonspecific_coverages', 'substitution_positions', 'substitution_A_specific_coverage', 'substitution_C_specific_coverage', 'substitution_G_specific_coverage', 'substitution_T_specific_coverage', 'substitution_A_nonspecific_coverage', 'substitution_C_nonspecific_coverage', 'substitution_G_nonspecific_coverage', 'substitution_T_nonspecific_coverage', 'deletion_positions', 'deletion_specific_coverage', 'deletion_nonspecific_coverage', 'consensus_sequence', 'count_of_normalized_seqs_without_dels', 'names_of_normalized_seqs_without_dels', 'count_of_normalized_seqs_with_dels', 'names_of_normalized_seqs_with_dels', 'specific_read_count', 'nonspecific_read_count', 'count_of_specific_reads_without_extra_fiveprime', 'count_of_specific_reads_with_extra_fiveprime', 'specific_mapped_read_count', 'nonspecific_mapped_read_count', 'specific_longer_fiveprime_extensions', 'specific_longer_fiveprime_extension_read_counts', 'nonspecific_longer_fiveprime_extensions', 'nonspecific_longer_fiveprime_extension_read_counts', 'specific_threeprime_termini', 'specific_threeprime_terminus_read_counts', 'nonspecific_threeprime_termini', 'nonspecific_threeprime_terminus_read_counts']
+trnaseq_modified_table_types            = ['str' , 'numeric'               , 'numeric'                  , 'str'               , 'str'                  , 'str'                   , 'str'                             , 'str'                             , 'str'                             , 'str'                             , 'str'                                , 'str'                                , 'str'                                , 'str'                                , 'str'               , 'str'                       , 'str'                          , 'str'               , 'numeric'                              , 'str'                                  , 'numeric'                           , 'str'                               , 'numeric'            , 'numeric'               , 'numeric'                                        , 'numeric'                                     , 'numeric'                   , 'numeric'                      , 'str'                                 , 'str'                                            , 'str'                                    , 'str'                                               , 'str'                        , 'str'                                     , 'str'                           , 'str']
 
 ####################################################################################################
 #
@@ -314,11 +355,19 @@ requires_unique_entry_id = {
     'variable_amino_acid_frequencies': False,
     'gene_protein_sequences': False,
     'genes_in_splits_summary': False,
+    'gene_coverages': False,
+    'mean_coverage_Q1Q3_splits': False,
+    'mean_coverage_Q1Q3_contigs': False,
+    'portion_covered_contigs': False,
+    'portion_covered_splits': False,
+    'frequency_view': False,
+    'presence_absence_view': False,
     pan_gene_clusters_table_name: True,
     genes_in_splits_table_name: True,
     gene_function_calls_table_name: True,
     hmm_hits_splits_table_name: True,
     scg_taxonomy_table_name: True,
+    trna_taxonomy_table_name: True,
     nucleotide_additional_data_table_name: True,
     amino_acid_additional_data_table_name: True,
     gene_level_coverage_stats_table_name: True,
@@ -357,4 +406,11 @@ requires_unique_entry_id = {
     pdb_data_table_name: False,
     module_table_name: False,
     pathway_table_name: False,
+    trnaseq_sequences_table_name: False,
+    trnaseq_feature_table_name: False,
+    trnaseq_unconserved_table_name: False,
+    trnaseq_unpaired_table_name: False,
+    trnaseq_trimmed_table_name: False,
+    trnaseq_normalized_table_name: False,
+    trnaseq_modified_table_name: False
 }

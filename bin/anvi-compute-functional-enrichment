@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A program that computes enrichment scores and group associations for annotated
+   entities across groups of genomes or samples"""
+
+import sys
+
+import anvio
+import anvio.kegg as kegg
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+import anvio.genomedescriptions as genomedescriptions
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__resources__ = [("A description of the enrichment script run by this program can be found in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w"),
+                  ("An example of pangenome functional enrichment in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
+__tags__ = ["pangenomics", "functions", "metabolism"]
+__requires__ = ['kegg-metabolism', 'groups-txt', 'misc-data-layers', 'pan-db', 'genomes-storage-db', 'external-genomes', 'internal-genomes', 'functions']
+__provides__ = ['functional-enrichment-txt',]
+__description__ = ("This is a driver program for `anvi-script-enrichment-stats`, a script that computes enrichment scores "
+                   "and group associations for annotated entities (ie, functions, KEGG Modules) across groups of genomes or "
+                   "samples.")
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+def main(args):
+
+    # sanity check for multiple input options
+    if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt or args.external_genomes)) \
+    or ((args.modules_txt or args.groups_txt) and (args.external_genomes)):
+        raise ConfigError("Confused anvi'o is confused. You appear to have selected multiple input options. "
+                          "For obvious reasons, this will not work, so please go pick one option. ")
+
+    # sanity checks for including all required inputs (for inputs that are not sanity checked downstream)
+    if (args.pan_db and not args.genomes_storage) or (args.genomes_storage and not args.pan_db):
+        raise ConfigError("For input option #1, you must provide both a genomes storage db (-g) and a pan db (-p).")
+    if (args.modules_txt and not args.groups_txt) or (args.groups_txt and not args.modules_txt):
+        raise ConfigError("For input option #2, you must provide both a modules-txt file and a groups-txt file.")
+
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                     "You can find more information about it in the following paper: Shaiber et al (https://doi.org/10.1186/s13059-020-02195-w). "
+                     "When you publish your findings, please do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
+    if args.pan_db:
+        s = summarizer.PanSummarizer(args, lazy_init=True)
+        s.functional_enrichment_stats()
+    elif args.modules_txt:
+        e = kegg.KeggModuleEnrichment(args)
+        e.run_enrichment_stats()
+    elif args.external_genomes or args.internal_genomes:
+        g = genomedescriptions.GenomeDescriptions(args)
+        g.load_genomes_descriptions()
+        g.functional_enrichment_stats()
+    else:
+        raise ConfigError("Anvi'o is not sure what you hope to accomplish by not providing any of the suggested input options.")
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT OPTION #1: PANGENOME',
+                                        "Estimating enriched functions across pangenome groups. You must provide a pan db and its "
+                                        "genomes storage db, as well as the category variable to use for establishing groups and the "
+                                        "annotation source which provides your functions of interest.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
+    groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
+    groupA.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupA.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
+
+    groupB = parser.add_argument_group('INPUT OPTION #2: ESTIMATED METABOLISM',
+                                        "Estimating enriched modules across groups of samples. You must have 'modules mode' output from "
+                                        "`anvi-estimate-metabolism` to serve as input for this option, as well as a separate file to "
+                                        "specify which group each sample belongs to.")
+    groupB.add_argument(*anvio.A('modules-txt'), **anvio.K('modules-txt'))
+    groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
+    groupB.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
+    groupB.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
+                                {'help': "This threshold defines the percent completeness score at which we consider a KEGG module to be 'present'"
+                                         "in a given sample. That is, if a module's completeness in a sample is less than this value, then we say "
+                                         "the module is not present in that sample, and this will affect the module's enrichment score. "
+                                         "By extension, if a module's completeness is less than this value in all samples, it will have "
+                                         "a very very low enrichment score (ie, it will not be considered enriched at all, because it doesn't occur in "
+                                         "any groups). Note that the closer this number is to 0, the more meaningless this whole enrichment analysis is... "
+                                         "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
+                                         "if you wish. The default threshold is %(default)g."}))
+    groupB.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
+
+    groupC = parser.add_argument_group('INPUT OPTION #3: GROUPS OF GENOMES',
+                                        "Estimating enriched functions across groups of genomes. You must provide an external genomes "
+                                        "file and/or an internal genomes file which include a 'group' column. You also have to indicate "
+                                        "which functional annotation source to use with --annotation-source (see OPTION #1 for details on "
+                                        "that parameter).")
+    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'help': "A three-column TAB-delimited flat text file that "
+                        "lists anvi'o contigs databases. The first item in the header line should read 'name', the second should read "
+                        "'contigs_db_path', and the third should read 'group'. Each line in the file should describe a single entry, "
+                        "where the first column is the name of the genome (or MAG), the second column is the anvi'o contigs database "
+                        "generated for this genome, and the third is the group that this genome belongs to."}))
+    groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes', {'help': "A six-column TAB-delimited flat text file. "
+                        "The header line must contain these columns: 'name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path', "
+                        "'group'. Each line should list a single entry, where 'name' can be any name to describe the anvi'o bin identified "
+                        "as 'bin_id' that is stored in a collection. The 'group' column should indicate which group the bin belongs to."}))
+
+    groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
+    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupO.add_argument(*anvio.A('include-ungrouped'), **anvio.K('include-ungrouped'))
+
+    groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR FUNCTIONAL ENRICHMENT', "Reporting options that only make sense for input option #1 or #3.")
+    groupOP.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
+
+    groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

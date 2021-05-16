@@ -9,6 +9,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.hmmhits import TablesForHMMHits
+from anvio.dbops import ContigsDatabase
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -18,7 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Remove HMM hits from an anvi'o contigs database."
+__requires__ = ["contigs-db", "hmm-source", "hmm-hits"]
+__description__ = "Remove HMM hits from an anvi'o contigs database"
 
 
 run = terminal.Run()
@@ -33,7 +35,8 @@ def main(args):
         sys.exit()
 
     if args.list_hmm_sources:
-        hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
+        ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+        sys.exit()
 
     if not args.hmm_source and not args.just_do_it:
         raise ConfigError("But you should give this program an HMM souce to remove from the database :/ If you "
@@ -65,15 +68,15 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

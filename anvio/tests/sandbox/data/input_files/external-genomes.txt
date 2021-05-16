@@ -1,0 +1,4 @@
+name	contigs_db_path
+P_marinus	P_marinus_CCMP1375.db
+B_thetaiotamicron	B_thetaiotamicron_VPI-5482.db
+S_islandicus	S_islandicus_LS215.db

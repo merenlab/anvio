@@ -3,10 +3,13 @@
 
 import sys
 
+import pandas as pd
+
 import anvio
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -55,6 +58,19 @@ def reformat_FASTA(args):
     else:
         keep_ids = set([])
 
+    if args.seq_type is not None:
+        replace_chars = True
+        if args.seq_type == 'AA':
+            acceptable_chars = set(constants.amino_acids)
+            replacement = 'X'
+        else:
+            acceptable_chars = set(constants.nucleotides)
+            replacement = 'N'
+    else:
+        replace_chars = False
+
+    if args.export_gap_counts_table:
+        gaps_info_list = []
 
     output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
@@ -67,14 +83,24 @@ def reformat_FASTA(args):
     total_num_nucleotides = 0
     total_num_contigs = 0
     total_num_nucleotides_removed = 0
+    total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
     while next(fasta):
-
         l = len(fasta.seq)
 
         total_num_nucleotides += l
         total_num_contigs += 1
+
+        if replace_chars:
+            seq = []
+            for char in fasta.seq:
+                if char not in acceptable_chars:
+                    seq.append(replacement)
+                    total_num_nucleotides_modified += 1
+                else:
+                    seq.append(char)
+            fasta.seq = ''.join(seq)
 
         if keep_ids and fasta.id.split()[0] not in keep_ids:
             total_num_nucleotides_removed += l
@@ -91,8 +117,17 @@ def reformat_FASTA(args):
             total_num_contigs_removed += 1
             continue
 
-        percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
+        num_gaps = fasta.seq.count('-')
+        if args.export_gap_counts_table:
+            gaps_info_list.append([fasta.id, num_gaps])
+
+        percentage_of_gaps = num_gaps * 100.0 / l
         if percentage_of_gaps >= args.max_percentage_gaps:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
+
+        if num_gaps >= args.max_gaps:
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
@@ -111,6 +146,10 @@ def reformat_FASTA(args):
         else:
             output.store(fasta, split = False)
 
+    if args.export_gap_counts_table:
+        df = pd.DataFrame(gaps_info_list, columns=["header", "num_gaps"])
+        df.to_csv(args.export_gap_counts_table + ".tsv", sep='\t', index=False)
+
     if report_file:
         report_file.close()
 
@@ -121,12 +160,13 @@ def reformat_FASTA(args):
     run.info('Total num nucleotides', total_num_nucleotides)
     run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
     run.info('Nucleotides removed', '%d (%.2f%% of all)' % (total_num_nucleotides_removed, total_num_nucleotides_removed * 100.0 / total_num_nucleotides), mc='green')
+    run.info('Nucleotides modified', '%d (%.2f%% of all)' % (total_num_nucleotides_modified, total_num_nucleotides_modified * 100.0 / total_num_nucleotides), mc='green')
     run.info('Deflines simplified', args.simplify_names, mc='green')
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('contigs_fasta', metavar='FASTA FILE')
     parser.add_argument('-l', '--min-len', type=int, default=0, metavar='MIN_LENGTH',
@@ -137,10 +177,17 @@ if __name__ == '__main__':
                         help="Maximum fraction of gaps in a sequence (any sequence with \
                               more gaps will be removed from the output FASTA file). The \
                               default is %(default)f.")
+    parser.add_argument('-M','--max-gaps', type=float, default=1000000,
+                        help="Maximum amount of gaps allowed per sequence in the alignment. \
+                              Don't know which threshold to pick? Use --export-gap-counts-table \
+                              to explore the gap counts per sequence distribution!")
     parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")
-    parser.add_argument('-I', '--keep-ids', required=False, metavar='TXT FILE',
+    parser.add_argument('--export-gap-counts-table', required=False, metavar='TSV FILE',
+                        help="Export a table with the number of gaps per sequence. \
+                              Please provide a prefix to name the file.")
+    parser.add_argument('-I', '--keep-ids', type=str, required=False, metavar='TXT FILE',
                         help="If provided, all IDs not in this file will be excluded from the\
                               reformatted FASTA file. Any additional filters (such as --min-len)\
                               will still be applied to the IDs in this file. You cannot provide both\
@@ -153,13 +200,18 @@ if __name__ == '__main__':
                         help="Use this parameter if you would like to add a prefix to your contig\
                               names while simplifying them. The prefix must be a single word (you\
                               can use underscor character, but nothing more!).")
+    parser.add_argument('--seq-type', default=None, metavar="SEQ TYPE", choices={'AA', 'NT'},
+                        help=("Supply either 'NT' or 'AA' (if you want). If 'NT', any characters besides {A,C,T,G} will "
+                              "by replaced with 'N'. If 'AA', any characters that are not 1-letter amino acid "
+                              "characters will be replaced with 'X'. If you don't supply anything, no charaters will be "
+                              "modified."))
     parser.add_argument('-r', '--report-file', required=False, metavar='REPORT FILE',
                         help="Report file path. When you run this program with `--simplify-names`\
                               flag, all changes to deflines will be reported in this file\
                               in case you need to go back to this information later. It is not\
                               mandatory to declare one, but it is a very good idea to have it.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         reformat_FASTA(args)

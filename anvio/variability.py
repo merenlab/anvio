@@ -21,32 +21,36 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class VariablityTestFactory:
-    def __init__(self, params={'b': 3, 'm': 1.45, 'c': 0.05}):
+    def __init__(self, params={'b': 2, 'm': 1.45, 'c': 0.05}):
         self.params = params
 
+        if self.params:
+            self.b, self.m, self.c = self.params['b'], self.params['m'], self.params['c']
+        else:
+            self.b, self.m, self.c = None, None, None
 
-    def get_min_acceptable_departure_from_consensus(self, coverage):
+
+    def get_min_acceptable_departure_from_reference(self, coverage):
         """Get minimum allowable departure from consensus
 
         Notes
         =====
         - 0 returned if self.params is None
-        - https://www.desmos.com/calculator/qwocua4zi5
-        - https://i.imgur.com/zd04pui.png
+        - https://i.imgur.com/oVoDcbT.png (b=2, m=1.45, c=0.05)
+        - https://www.desmos.com/calculator/qwocua4zi5 (interactive plot to tune b, m , and c)
         """
+
         if self.params is None:
             if hasattr(coverage, '__len__'):
                 return np.zeros(len(coverage))
             else:
                 return 0
 
-        b, m, c = self.params['b'], self.params['m'], self.params['c']
-
-        return (1 / b) ** (coverage ** (1 / b) - m) + c
+        return (1 / self.b) ** (coverage ** (1 / self.b) - self.m) + self.c
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, sequence_as_index=None, min_coverage=1, test_class=None, additional_per_position_data={}):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, sequence_as_index=None, min_coverage_for_variability=1, test_class=None, additional_per_position_data={}):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -72,7 +76,7 @@ class ProcessAlleleCounts:
             the sequence as an index, be sure you provide it here. If you don't provide anything, it
             will be calculated at high cost
 
-        min_coverage : int, 1
+        min_coverage_for_variability : int, 1
             positions below this coverage value will be filtered out
 
         test_class : VariablityTestFactory, None
@@ -101,8 +105,7 @@ class ProcessAlleleCounts:
         for key in self.d:
             if len(self.d[key]) != allele_counts.shape[1]:
                 raise ConfigError("ProcessAlleleCounts :: key '%s' in your passed data dictionary \
-                                   has %d positions, but sequence has %d." \
-                                   % (key, len(sequence), len(self.d[key])))
+                                   has %d positions, but sequence has %d." % (key, len(self.d[key]), len(sequence)))
 
         if len(sequence) != allele_counts.shape[1]:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
@@ -112,7 +115,7 @@ class ProcessAlleleCounts:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d rows, but the allele_to_array_index dictionary has %d." \
                               % (allele_counts.shape[0], len(allele_to_array_index)))
 
-        self.min_coverage = min_coverage
+        self.min_coverage_for_variability = min_coverage_for_variability
         self.test_class = test_class
 
         # dictionaries to convert to/from array-row-index and allele
@@ -129,8 +132,8 @@ class ProcessAlleleCounts:
         else:
             self.sequence_as_index_provided = False
 
-        if self.min_coverage < 1:
-            raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
+        if self.min_coverage_for_variability < 1:
+            raise ConfigError("ProcessAlleleCounts :: self.min_coverage_for_variability must be at least 1, currently %d" % self.min_coverage_for_variability)
 
 
     def process(self, skip_competing_items=False):
@@ -150,7 +153,7 @@ class ProcessAlleleCounts:
         self.d['coverage'] = self.get_coverage()
 
         # Filter if some positions are not well-covered
-        indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage)
+        indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage_for_variability)
         self.filter_or_dont(indices_to_keep)
         if self.get_data_length() == 0:
             return False
@@ -298,7 +301,7 @@ class ProcessAlleleCounts:
             coverage = self.get_coverage()
 
         if threshold is None:
-            threshold = self.min_coverage
+            threshold = self.min_coverage_for_variability
 
         return np.where(coverage >= threshold)[0]
 
@@ -309,7 +312,7 @@ class ProcessAlleleCounts:
         if not self.test_class:
             return worth_reporting
 
-        threshold = self.test_class.get_min_acceptable_departure_from_consensus(coverage)
+        threshold = self.test_class.get_min_acceptable_departure_from_reference(coverage)
 
         return np.where(departure_from_reference >= threshold)[0]
 
@@ -329,34 +332,6 @@ class ProcessNucleotideCounts(ProcessAlleleCounts):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
 
     def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_nts')
-
-
-class ProcessAminoAcidCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_aas')
-
-
-class ProcessCodonCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
-        ProcessAlleleCounts.process(self, *args, **kwargs)
-        self.rename_key('competing_items', 'competing_codons')
-        self.rename_key('pos', 'codon_order_in_gene')
-
-# FIXME: it seems the following classes are redundant and should be removed? Ping @evan
-class ProcessNucleotideCounts(ProcessAlleleCounts):
-    def __init__(self, *args, **kwargs):
-        ProcessAlleleCounts.__init__(self, *args, **kwargs)
-
-    def process(self, *args, **kwargs):
         p = ProcessAlleleCounts.process(self, *args, **kwargs)
         self.rename_key('competing_items', 'competing_nts')
         return p
@@ -381,5 +356,116 @@ class ProcessCodonCounts(ProcessAlleleCounts):
         self.rename_key('competing_items', 'competing_codons')
         self.rename_key('pos', 'codon_order_in_gene')
         return p
+
+
+class ProcessIndelCounts(object):
+    def __init__(self, indels, coverage, min_indel_fraction=0, test_class=None, min_coverage_for_variability=1):
+        """A class to process raw variability information for a given allele counts array
+
+        Creates self.d, a dictionary of equal-length arrays that describes information related to
+        variability.
+
+        Parameters
+        ==========
+        indels : dictionary
+            A dictionary that looks like this:
+
+                {
+                    6279666787066445523: OrderedDict([
+                        ('split_name', 'IGD_000000000532_split_00001'),
+                        ('pos', 2),
+                        ('pos_in_contig', 2),
+                        ('corresponding_gene_call', 25396),
+                        ('in_noncoding_gene_call', 0),
+                        ('in_coding_gene_call', 1),
+                        ('base_pos_in_codon', 3),
+                        ('codon_order_in_gene', 0),
+                        ('cov_outlier_in_split', 1),
+                        ('cov_outlier_in_contig', 1),
+                        ('reference', 'T'),
+                        ('type', 'INS'),
+                        ('sequence', 'CTGACGGCT'),
+                        ('length', 9),
+                        ('count', 1)
+                    ]),
+                    -5035942137885303221: OrderedDict([
+                        ('split_name', 'IGD_000000000532_split_00001'),
+                        ('pos', 0),
+                        ('pos_in_contig', 0),
+                        ('corresponding_gene_call', 25396),
+                        ('in_noncoding_gene_call', 0),
+                        ('in_coding_gene_call', 1),
+                        ('base_pos_in_codon', 1),
+                        ('codon_order_in_gene', 0),
+                        ('cov_outlier_in_split', 1),
+                        ('cov_outlier_in_contig', 1),
+                        ('reference', 'G'),
+                        ('type', 'INS'),
+                        ('sequence', 'CTCACGG'),
+                        ('length', 7),
+                        ('count', 1)
+                    ]),
+                    ...
+                }
+
+            The keys are unique identifiers. The OrderedDicts should have at least the key `pos`,
+            but there are no restrictions on what other keys it may have.
+
+        coverage : array
+            What is the coverage for the sequence this is for? This should have length equal to sequence
+
+        test_class : VariablityTestFactory, None
+            If not None, indels will be filtered out if they are deemed not worth reporting
+
+        min_coverage_for_variability : int, 1
+            positions below this coverage value will be filtered out
+        """
+
+        self.indels = indels
+        self.coverage = coverage
+        self.test_class = test_class if test_class is not None else VariablityTestFactory(params=None)
+        self.min_coverage_for_variability = min_coverage_for_variability
+
+
+    def process(self):
+        """Modify self.indels"""
+
+        indel_hashes_to_remove = set()
+        for indel_hash in self.indels:
+
+            indel = self.indels[indel_hash]
+            pos = indel['pos']
+
+            # Calculate coverage
+            if indel['type'] == 'INS':
+                if pos == len(self.coverage)-1:
+                    # This is the last position in the sequence. so coverage based off only the
+                    # NT left of the indel
+                    cov = self.coverage[pos]
+                else:
+                    # The coverage is the average of the coverage left and right of the
+                    # insertion
+                    cov = (self.coverage[pos] + self.coverage[pos+1])/2
+            else:
+                # The coverage is the average of the NT coverages that the deletion occurs over
+                cov = np.mean(self.coverage[pos:pos+indel['length']])
+
+            # Filter the entry if need be
+            if cov < self.min_coverage_for_variability:
+                # coverage of corresponding position is not high enough
+                indel_hashes_to_remove.add(indel_hash)
+                continue
+
+            # NOTE We call get_min_acceptable_departure_from_reference, yet the threshold value it
+            # spits out is being compared to count/coverage, since there is no "departure from
+            # reference" for indels.
+            if indel['count']/cov < self.test_class.get_min_acceptable_departure_from_reference(cov):
+                # indel count is not high enough compared to coverage value
+                indel_hashes_to_remove.add(indel_hash)
+                continue
+
+            self.indels[indel_hash]['coverage'] = cov
+
+        self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
 
 

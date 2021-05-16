@@ -65,7 +65,7 @@ class BAMFileObject(pysam.AlignmentFile):
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
         """Returns an read iterator that trims overhanging reads
 
-        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
+        Like pysam.AlignmentFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop.
         """
 
@@ -942,8 +942,15 @@ class GetReadsFromBAM:
                             # from has_unknown_mate since its mate is now known.
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
-                            short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
-                            short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
+
+                            # rev_comp either R1 or R2 to match the original short reads orientation 
+                            if read.is_reverse:
+                                short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
+                                short_reads_for_splits_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
+                            else:
+                                short_reads_for_splits_dict[mate_DIRECTION][defline] = utils.rev_comp(has_unknown_mate[defline])
+                                short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
+
                             del has_unknown_mate[defline]
 
                         else:
@@ -983,8 +990,8 @@ class GetReadsFromBAM:
                 self.run.info('Output file for %s' % read_type, output_file_path, progress=self.progress)
 
             self.progress.end()
-            self.run.info('Num paired-end reads stored',pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
-            self.run.info('Num unpaired reads stored',pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
+            self.run.info('Num paired-end reads stored', pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
+            self.run.info('Num unpaired reads stored', pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
         else:
             output_file_path = self.output_file_path or 'short_reads.fa'
             utils.store_dict_as_FASTA_file(short_reds_for_splits_dict['all'], output_file_path)
@@ -1049,6 +1056,7 @@ class ReadsMappingToARange:
 
     def process_range(self, input_bam_paths, contig_name, start, end):
         if end <= start:
+            progress.reset()
             raise ConfigError("The end of range cannot be equal or smaller than the start of it :/")
 
         data = []

@@ -2,6 +2,7 @@
 """Interface to NCBI's BLAST."""
 
 import os
+import glob
 import tempfile
 
 import anvio
@@ -41,6 +42,7 @@ class BLAST:
 
         self.num_threads = num_threads
         self.evalue = 1e-05
+        self.min_pct_id = 0.0
         self.overwrite_output_destinations = overwrite_output_destinations
 
         self.tmp_dir = tempfile.gettempdir()
@@ -50,8 +52,6 @@ class BLAST:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
-        elif self.target_db_path:
-            self.target_fasta = self.target_db_path
 
         self.search_program = search_program
         self.search_output_path = 'blast-search-results.txt'
@@ -90,38 +90,45 @@ class BLAST:
 
 
     def check_output(self, expected_output, process='blast'):
-        if not os.path.exists(expected_output):
+        if not len(glob.glob(expected_output)):
             self.progress.end()
             raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing. "
                               "Please check the log file here: '%s'" % (process, self.run.log_file_path))
 
 
-    def makedb(self, output_db_path=None):
+    def makedb(self, output_db_path=None, dbtype='prot'):
+        if dbtype not in ['prot', 'nucl']:
+            raise ConfigError("The `makedb` function in `BLAST` does not know about dbtype '%s' :(" % dbtype)
+
         self.progress.new('BLAST')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
         cmd_line = ['makeblastdb',
                     '-in', self.target_fasta,
-                    '-dbtype', 'prot',
+                    '-dbtype', dbtype,
                     '-out', output_db_path or self.target_fasta]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        expected_output = (output_db_path or self.target_fasta) + '.phr'
+        if dbtype == 'prot':
+            expected_output = (output_db_path or self.target_fasta) + '*.phr'
+        elif dbtype == 'nucl':
+            expected_output = (output_db_path or self.target_fasta) + '*.nhr'
+
         self.check_output(expected_output, 'makeblastdb')
 
         self.run.info('blast makeblast cmd', cmd_line, quiet=True)
         self.run.info('BLAST search db', self.target_fasta)
 
 
-    def blast(self):
+    def blast(self, outputfmt='6'):
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
                     '-db', self.target_fasta,
                     '-evalue', self.evalue,
-                    '-outfmt', '6',
+                    '-outfmt', str(outputfmt),
                     '-out', self.search_output_path,
                     '-num_threads', self.num_threads]
 
@@ -143,6 +150,33 @@ class BLAST:
             self.ununique_search_results()
 
         self.run.info('BLAST results', self.search_output_path)
+
+
+    def blast_stdin(self, multisequence):
+        cmd_line = [self.search_program,
+                    '-db', self.target_fasta,
+                    '-evalue', self.evalue,
+                    '-outfmt', '6',
+                    '-num_threads', self.num_threads]
+
+        if self.max_target_seqs:
+            cmd_line += ['-max_target_seqs', self.max_target_seqs]
+
+        if self.min_pct_id:
+            cmd_line += ['-perc_identity', self.min_pct_id]
+
+        self.run.info('NCBI %s stdin cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('BLAST')
+        self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
+
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence, remove_log_file_if_exists=False)
+
+        self.progress.end()
+
+        self.run.info('BLAST results', '%d lines were returned from STDIN call' % len(output))
+
+        return(output)
 
 
     def ununique_search_results(self):

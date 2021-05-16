@@ -8,11 +8,51 @@
     padding: 20px 30px;
 }
 
+#chart-container {
+  position: absolute;
+  z-index: 1;
+}
+
 #context-container {
   position: fixed;
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.fulljustify {
+    	text-align:justify;
+    }
+    .fulljustify:after {
+        content: "";
+        display: inline-block;
+        width: 100%;
+    }
+    #DNA_sequence {
+        height: 80px;
+        overflow: hidden;
+        line-height: 80px; /* vert-center */
+    }
+
+[id^="gene_"], [id^="AA_"] {
+  pointer-events: all;
+}
+
+#highlight-boxes {
+  z-index: 2;
+  position: relative;
+}
+
+#SNV-boxes {
+  z-index: 3;
+  position: absolute;
+  pointer-events: none;
+}
+
+.SNV_text, .indels_text {
+  pointer-events: all;
 }
 
 #display-container h2 {
@@ -24,6 +64,86 @@
     font-size: 24px;
 }
 
+#toggle-panel-settings {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(40%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#settings-panel {
+  	display: none;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.9;
+    width: 420px;
+    padding: 20px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    overflow-y: scroll;
+    z-index: 999;
+    color: black;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+.settings-section-info {
+    background: #e7f3381a;
+    padding: 3px 6px 5px 10px;
+    border: 1px dashed #a9a9a9;
+    border-radius: 9px;
+    font-size: 12px;
+}
+
+#settings-section-info-SNV-warning {
+  display: none;
+  color: red;
+}
+
+#settings-panel code {
+	padding: 1.4px 2px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f3f3f3;
+    border-radius: 2px;
+}
+
+.settings-info-line {
+    text-align: center;
+    border: 1px dashed #c5c5c5;
+    background: #f3f3f3;
+    width: 40%;
+    margin: auto;
+    border-radius: 7px;
+    font-style: italic;
+}
+
+#toggleSNVIndelTable {
+  margin-top: 20px;
+  float: left;
+  display: block;
+  width: 100%;
+  color: black;
+}
+
 svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
@@ -31,7 +151,7 @@ svg {
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
 }
 
-text.country-title {
+text.sample-title {
     font-size: 20px;
 }
 
@@ -62,6 +182,7 @@ g.context g.axis line {
 g.context rect.background{
     fill: rgb(200,200,255);
     visibility: visible !important;
+    pointer-events: all;
 }
 
 
@@ -165,4 +286,56 @@ a{
 .search-results {
     padding: 20px;
     font-size: 12px;
+}
+
+.toggle-panel-settings-pos {
+    right: 420px !important;
+}
+
+.alert-box {
+  	padding: 15px;
+    margin-top: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+.snvs-disabled, .indels-disabled {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+    display: none;
+}
+
+.noselect {
+   -webkit-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+   pointer-events: none;
+}
+
+.highlightbox:hover {
+  fill-opacity: 0.25;
+}
+
+.highlightbox:mouseleave {
+  fill-opacity: 0;
+}
+
+
+.sidebar-footer {
+    position: fixed;
+    background-color: white;
+    width: 420px;
+    bottom: -0px;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
+}
+
+#settings-panel .btn {
+    margin-bottom: 5px !important;
+}
+
+.sidebar-footer > .btn {
+    width: 50%;
 }

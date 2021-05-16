@@ -6,12 +6,12 @@
  *  Copyright 2017, The anvio Project
  *
  * This file is part of anvi'o (<https://github.com/meren/anvio>).
- * 
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
@@ -67,7 +67,7 @@ function drawLegend() {
     var top = _bbox.y + _bbox.height;
     var left = _bbox.x;
     var line_end = _bbox.x + _bbox.width;
-    
+
     var _left = left;
     var line_height = (line_end - _left) / 80;
     var gap = line_height / 2;
@@ -98,7 +98,7 @@ function drawLegend() {
             } else {
                 color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
             }
-            
+
             var rect = drawRectangle(bin_id, _left, _top, line_height, line_height, color, 1, 'black',
                 null,
                 function() {
@@ -126,7 +126,7 @@ function drawLegend() {
         }
         drawText(bin_id, {
             'x': left - line_height,
-            'y': (_top + top + line_height) / 2 
+            'y': (_top + top + line_height) / 2
         }, legend['name'], 2*line_height + 'px', 'right');
 
         _top = _top + 3 * line_height + gap;
@@ -148,7 +148,7 @@ function drawBinLegend(bins_to_draw, top, left) {
     top = top + 28;
     drawText('bin_legend', {'x': left, 'y': top }, 'Color', '10px');
     drawText('bin_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
-    
+
     if (mode == 'pan') {
         drawText('bin_legend', {'x': left + 170, 'y': top}, 'PCs', '10px');
         drawText('bin_legend', {'x': left + 230, 'y': top}, 'Gene Calls', '10px');
@@ -179,7 +179,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
     // legend border
     drawRectangle('layer_legend', left - 10, top - 20,20 + (_layer_order.length + 2.5) * 20, 300, 'white', 1, 'black');
-    
+
     // legend title
     drawText('layer_legend', {
         'x': left,
@@ -196,7 +196,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
     drawText('layer_legend', {'x': left + 245, 'y': top}, 'Max', '10px');
 
     // table items
-    for (var i = 0; i < _layer_order.length; i++) 
+    for (var i = 0; i < _layer_order.length; i++)
     {
         var pindex = _layer_order[i];
 
@@ -209,7 +209,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
         top = top + 20;
 
         // color
-        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined') 
+        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined')
             drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
 
         // name
@@ -217,7 +217,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
         // normalization
         if (layer_view.hasOwnProperty('normalization') && typeof layer_view['normalization'] != 'undefined') {
-            var _norm = layer_view['normalization'];   
+            var _norm = layer_view['normalization'];
         } else {
             var _norm = "-";
         }
@@ -231,14 +231,14 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
             var _min = layer_view['min']['value'];
             var _max = layer_view['max']['value'];
 
-            // normalize floating numbers 
+            // normalize floating numbers
             if (_min % 1 !== 0)
                 _min = parseFloat(_min).toFixed(4);
             if (_max % 1 !== 0)
                 _max = parseFloat(_max).toFixed(4);
         } else {
             var _min = "-";
-            var _max = "-"; 
+            var _max = "-";
         }
         drawText('layer_legend', {'x': left + 200, 'y': top}, _min, '12px');
         drawText('layer_legend', {'x': left + 245, 'y': top}, _max, '12px');
@@ -246,10 +246,65 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
+function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
+
+    function checkInRange(){ // check to see if SV data point is within user specified range
+        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
+            return true
+        } else {
+            return false
+        }
+    }
+
+    if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
+        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+    }
+    if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
+        drawSymbol()
+    }
+
+    function drawSymbol(){
+        let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        let radius
+        let maxRadius = supportValueData.maxRadius
+
+        function calculatePercentile(){ // calculate percentile of data point in range
+            return (p.branch_support - parseInt(supportValueData.numberRange[0])) / (parseInt(supportValueData.numberRange[1]) - parseInt(supportValueData.numberRange[0]))
+        }
+
+        function setDetails(percentile){
+            if(percentile > .67){
+                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
+            } else if (percentile < .67 && percentile > .33){
+                radius = maxRadius * .7
+            } else {
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
+            }
+
+        }
+
+        function makeCircle(){ // time to make the gravy
+            setDetails(calculatePercentile())
+
+            circle.setAttribute('cx', p0.x)
+            circle.setAttribute('cy', p0.y)
+            circle.setAttribute('r', radius)
+            circle.setAttribute('id', p.id)
+            circle.setAttribute('fill', supportValueData.symbolColor )
+            circle.setAttribute('opacity', .6)
+
+            var svg = document.getElementById(svg_id);
+            svg.appendChild(circle);
+            return circle;
+        }
+        return makeCircle()
+    }
+}
+
 function drawLine(svg_id, p, p0, p1, isArc) {
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-    if (isArc) 
+    if (isArc)
     {
         line.setAttribute('id', 'arc' + p.id);
     }
@@ -269,7 +324,7 @@ function drawLine(svg_id, p, p0, p1, isArc) {
 
 
 //--------------------------------------------------------------------------------------------------
-function drawText(svg_id, p, string, font_size, align, color, baseline) {
+function drawText(svg_id, p, string, font_size, align, color, baseline, supportClickable) {
 
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
@@ -280,13 +335,18 @@ function drawText(svg_id, p, string, font_size, align, color, baseline) {
     if (typeof baseline === 'undefined')
         baseline = 'middle';
 
-
     text.setAttribute('style', 'alignment-baseline:' + baseline + '; font-size:' + font_size);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('text-rendering', 'optimizeLegibility');
     text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
+
+    text.setAttribute('onclick', function(event){
+        console.log(event)
+    })
+
+
 
     switch (align) {
         case 'left':
@@ -412,7 +472,7 @@ function drawGuideLine(svg_id, id, angle, start_radius, end_radius) {
     line.setAttribute('x1', ax);
     line.setAttribute('y1', ay);
     line.setAttribute('x2', bx);
-    line.setAttribute('y2', by); 
+    line.setAttribute('y2', by);
 
     line.setAttribute('stroke', LINE_COLOR);
     line.setAttribute('stroke-opacity', '0.2');
@@ -427,7 +487,7 @@ function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius,
     var pie = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
     if (start_angle > end_angle) {
-        // swap 
+        // swap
         var t = end_angle;
         end_angle = start_angle;
         start_angle = t;
@@ -485,7 +545,7 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opa
     rect.setAttribute('fill-opacity', fill_opacity);
 
     rect.setAttribute('x', x);
-    rect.setAttribute('y', y - height / 2); 
+    rect.setAttribute('y', y - height / 2);
     rect.setAttribute('width', width);
     rect.setAttribute('height', height);
 
@@ -535,6 +595,10 @@ function circeArcPath(p0, p1, radius, large_arc_flag) {
 }
 
 function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
+
+    // responsible for mapping the circular arc at each branch bifurcation
+    // change fill attribute to 'red' to visualize arc path
+
     var arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     arc.setAttribute('id', 'arc' + p.id);
 
@@ -626,5 +690,5 @@ function getGradientColor(start_color, end_color, percent) {
    if( diff_blue.length == 1 )
      diff_blue = '0' + diff_blue
 
-   return '#' + diff_red + diff_green + diff_blue;
+     return '#' + diff_red + diff_green + diff_blue;
  };

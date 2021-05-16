@@ -4,7 +4,7 @@
 import os
 import sys
 import copy
-import argparse
+from anvio.argparse import ArgumentParser
 import shutil
 
 import anvio
@@ -17,7 +17,10 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi'o database or config file to a newer version."
+__description__ = "Migrate an anvi'o database or config file to a newer version"
+__requires__ = ["contigs-db", "profile-db", "pan-db", "genes-db", "genomes-storage-db", "structure-db", "modules-db", "workflow-config"]
+__provides__ = []
+
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -203,7 +206,7 @@ class Migrater(object):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUTS', "You will literally give us any anvi'o database.")
     groupA.add_argument('input', metavar = 'DATABASE(S)', nargs='+', help = "Anvi'o database or config file for migration. You "
@@ -216,7 +219,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('migrate-dbs-safely'), **anvio.K('migrate-dbs-safely'))
     groupB.add_argument(*anvio.A('migrate-dbs-quickly'), **anvio.K('migrate-dbs-quickly'))
 
-    groupC = parser.add_argument_group('PARAMATERS OF CONVENIENCE', "This is how anvi'o spoils you.")
+    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "This is how anvi'o spoils you.")
     groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupC.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()

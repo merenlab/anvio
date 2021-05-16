@@ -985,7 +985,7 @@ basic_plot <- function(dat, opts) {
     ## Add xlim. FIXME xlim is parsed on the fly right here, but it should be checked before this point
     if (!is.null(opts[['xlim']])) {
       xlims <- lapply(unlist(strsplit(opts$xlim[[1]], ',')), as.integer)
-      cov_plot <- cov_plot + xlim(xlims[[1]], xlims[[2]])
+      cov_plot <- cov_plot + coord_cartesian(xlim = c(xlims[[1]], xlims[[2]]))
     }
 
     ## Tweak the theme.

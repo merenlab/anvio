@@ -44,6 +44,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
@@ -88,7 +89,6 @@ class ArgsTemplateForSummarizerClass:
         self.pan_db = None
         self.contigs_db = None
         self.collection_name = None
-        self.taxonomic_level = 't_genus'
         self.list_collections = None
         self.list_bins = None
         self.debug = None
@@ -137,7 +137,6 @@ class SummarizerSuperClass(object):
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
-        self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.report_DNA_sequences = A('report_DNA_sequences')
@@ -319,41 +318,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             Compute functional enrichment.
 
             To learn more refer to the docummentation:
-                anvi-get-enriched-functions-per-pan-group -h
+                anvi-compute-functional-enrichment -h
         '''
-        # Before we do anything let's make sure the user has R installed
-        utils.is_program_exists('Rscript')
-
-        # Let's make sure all the required packages are installed
-        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
-        missing_packages = []
-        log_file = filesnpaths.get_temp_file_path()
-        package_dict = utils.get_required_packages_for_enrichment_test()
-        for lib in package_dict:
-            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
-            if ret_val != 0:
-                missing_packages.append(lib)
-
-        if missing_packages:
-            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                              "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                      {'missing': ', '.join(missing_packages),
-                                                                       'conda': ', '.join(['"%s"' % package_dict[i] for i in missing_packages]),
-                                                                       'example': missing_packages[0]})
-
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
         tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
@@ -369,36 +335,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # the functional enrichment (if we will want that at some point)
         self.args.output_file = tmp_functional_occurrence_file
 
-        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            if not self.just_do_it:
-                raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
-
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
 
-        cmd = 'anvi-script-run-functional-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
-                                                                                      output_file_path)
+        # run enrichment script. this uses the output saved from the previous step.
+        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
 
-        log_file = filesnpaths.get_temp_file_path()
-        self.progress.new('Functional enrichment analysis')
-        self.progress.update('Running enrichment analysis')
-        utils.run_command(cmd, log_file)
-        self.progress.end()
-        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
-                              'We don\'t know what happened, but this log file could contain some clues: %s' % log_file)
-
-        if filesnpaths.is_file_empty(enrichment_file_path):
-            raise ConfigError('It looks like something went wrong during the functional enrichment analysis. '
-                              'An output file was created, but it is empty '
-                              'We don\'t know why this happened, but this log file could contain some clues: %s' % log_file)
-
-        run.info('Functional enrichment summary log file:', log_file)
-        run.info('Functional enrichment summary', output_file_path)
-
-        if not output_file_path:
-            # if a programmer called this function then we return a dict
-            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
+        return enrichment_stats
 
 
     def functional_occurrence_stats(self):
@@ -410,7 +353,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             If self.args.output_file_path exists then an output file is created.
 
-            To learn more about how this works refer to the docummentation:
+            To learn more about how this works refer to the documentation:
                 anvi-get-functional-occurrence-summary-per-pan-group -h
         """
 
@@ -420,7 +363,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
-        exclude_ungrouped = A('exclude_ungrouped')
+        include_ungrouped = A('include_ungrouped')
 
 
         if output_file_path:
@@ -476,7 +419,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
-        self.run.info('Exclude ungrouped', exclude_ungrouped)
+        self.run.info('Include ungrouped', include_ungrouped)
 
         occurrence_frequency_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
@@ -501,7 +444,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # unique names of categories
         categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
-                            (categories_dict[g][category_variable] is not None or not exclude_ungrouped)])
+                            (categories_dict[g][category_variable] is not None or include_ungrouped)])
 
         categories_to_genomes_dict = {}
         for c in categories:
@@ -511,9 +454,21 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
+        categories_few_genomes = []
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
+            if function_occurrence_table[c]['N'] < 8:
+                categories_few_genomes.append(c)
+
+        # warn user if they have a low number of genomes per group
+        if categories_few_genomes:
+            self.progress.reset()
+            categories_string = ", ".join(categories_few_genomes)
+            self.run.warning("Some of your groups have very few genomes in them, so if you are running functional enrichment, the statistical test may not be very reliable. "
+                             "The minimal number of genomes in a group for the test to be reliable depends on a number of factors, "
+                             "but we recommend proceeding with great caution because the following groups have fewer than 8 genomes: "
+                             f"{categories_string}.")
 
         self.progress.update("Generating the input table for functional enrichment analysis")
         for f in functions_names:
@@ -523,7 +478,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
             functional_occurrence_summary_dict[f] = {}
             functional_occurrence_summary_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-            functional_occurrence_summary_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            functional_occurrence_summary_dict[f]["accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
@@ -539,7 +494,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids', 'associated_groups']
+            columns = [functional_annotation_source, 'accession', 'gene_clusters_ids', 'associated_groups']
             columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
             functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
@@ -755,8 +710,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if self.gene_level_coverage_stats_dict:
             self.gene_level_coverage_stats_available = True
 
-        self.init_splits_taxonomy(self.taxonomic_level)
-
         self.collection_dict = {}
         self.bins_info_dict = {}
         self.initialized = False
@@ -782,6 +735,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # load gene functions from contigs db superclass
         self.init_functions()
 
+        # get an instance of SCG taxonomy:
+        if self.a_meta['scg_taxonomy_was_run']:
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.contigs_db_path))
+        else:
+            self.scg_taxonomy = None
+
         # set up the initial summary dictionary
         self.summary['meta'] = {'quick': self.quick,
                                 'summary_type': self.summary_type,
@@ -804,31 +763,60 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
                                 }
 
+        # FIXME: mistune had an API change, and is not behaving correctly
+        # this is the part where we try to initialize
+        markdown = None
+        try:
+            # this is for mistune `0.8.4` and earlier
+            renderer = mistune.Renderer(escape=False)
+            markdown = mistune.Markdown(renderer=renderer)
+        except AttributeError:
+            # this is for mistune `2.0.0rc1` and later
+            try:
+                markdown = mistune.create_markdown(escape=False)
+            except Exception as e:
+                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the the error "
+                                  f"we got from the downstream library: '{e}'. Probably this needs a developer "
+                                  f"to take a look. Meanwhile, we are turning off the rendering of markdown "
+                                  f"descriptions. Things will look ugly in some places in the interface and "
+                                  f"summary, but at least things will work from a functional standpoint :/")
+
         # I am not sure whether this is the best place to do this,
+        T = lambda x: 'True' if x else 'False'
+
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
-                                                     ('Minimum contig length', pretty(self.p_meta['min_contig_length'])),
                                                      ('Number of contigs', pretty(int(self.p_meta['num_contigs']))),
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
+                                                     ('Contig length cutoff min', pretty(self.p_meta['min_contig_length'])),
+                                                     ('Contig length cutoff max', pretty(self.p_meta['max_contig_length'])),
+                                                     ('Samples in profile', ', '.join(self.p_meta['samples'])),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
-                                                     ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
+                                                     ('SNVs profiled', T(self.p_meta['SNVs_profiled'])),
+                                                     ('SCVs profiled', T(self.p_meta['SCVs_profiled'])),
+                                                     ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
+                                                     ('Report variability full', T(self.p_meta['report_variability_full'])),
+                                                     ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
                                                     ],
                                          'contigs': [
-                                                        ('Created on', self.p_meta['creation_date']),
+                                                        ('Project name', self.a_meta['project_name']),
+                                                        ('Created on', self.a_meta['creation_date']),
                                                         ('Version', self.a_meta['version']),
-                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
                                                         ('Number of contigs', pretty(int(self.a_meta['num_contigs']))),
                                                         ('Number of splits', pretty(int(self.a_meta['num_splits']))),
-                                                        ('Total nucleotides', humanize_n(int(self.a_meta['total_length']))),
+                                                        ('Genes are called', T(self.a_meta['genes_are_called'])),
+                                                        ('External gene calls', T(self.a_meta['external_gene_calls'])),
+                                                        ('External amino acid sequences', T(self.a_meta['external_gene_amino_acid_seqs'])),
                                                         ('K-mer size', self.a_meta['kmer_size']),
-                                                        ('Genes are called', self.a_meta['genes_are_called']),
-                                                        ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
+                                                        ('Split length', pretty(int(self.a_meta['split_length']))),
+                                                        ('Splits consider gene calls', T(self.a_meta['splits_consider_gene_calls'])),
+                                                        ('SCG taxonomy was run', T(self.a_meta['scg_taxonomy_was_run'])),
                                                         ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
                                                         ('Summary reformatted contig names', self.reformat_contig_names),
                                                     ],
-                                        'description': mistune.markdown(self.p_meta['description']),
+                                        'description': markdown(self.p_meta['description']) if markdown else self.p_meta['description'],
                                         }
 
         self.summary['max_shown_header_items'] = 10
@@ -887,9 +875,13 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         if not self.quick:
             # generate a TAB-delimited text output file for bin summaries
             summary_of_bins = {}
-            properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
+            properties = ['total_length', 'num_contigs', 'N50', 'GC_content']
+
             if self.completeness_data_available:
                 properties += ['percent_completion', 'percent_redundancy']
+
+            if self.scg_taxonomy:
+                properties += constants.levels_of_taxonomy
 
             for bin_name in self.summary['collection']:
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
@@ -985,10 +977,14 @@ class ContigSummarizer(SummarizerSuperClass):
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
+        if split_names:
+            args.split_names_of_interest = set(split_names)
+
         run = terminal.Run()
         progress = terminal.Progress()
         run.verbose = False
         progress.verbose = False
+
         c = ContigsSuperclass(args, r=run, p=progress)
 
         info_dict = {'path': self.contigs_db_path,
@@ -999,10 +995,15 @@ class ContigSummarizer(SummarizerSuperClass):
             info_dict[key] = c.a_meta[key]
 
         gene_calls_from_other_gene_callers = Counter()
+        impossible_gene_calls_missing_from_contigs_db = set([])
 
         # Two different strategies here depending on whether we work with a given set if split ids or
         # everything in the contigs database.
         def process_gene_call(g):
+            if g not in c.genes_in_contigs_dict:
+                impossible_gene_calls_missing_from_contigs_db.add(g)
+                return
+
             gene_caller = c.genes_in_contigs_dict[g]['source']
             if gene_caller == gene_caller_to_use:
                 info_dict['gene_caller_ids'].add(g)
@@ -1012,7 +1013,7 @@ class ContigSummarizer(SummarizerSuperClass):
         if split_names:
             split_names = set(split_names)
             c.init_split_sequences()
-            seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
+            seq = ''.join([c.split_sequences[split_name]['sequence'] for split_name in split_names])
             for e in list(c.genes_in_splits.values()):
                 if e['split'] in split_names:
                     process_gene_call(e['gene_callers_id'])
@@ -1034,6 +1035,18 @@ class ContigSummarizer(SummarizerSuperClass):
                                                                 % (sum(gene_calls_from_other_gene_callers.values()), \
                                                                    gene_caller_to_use, \
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
+
+        if len(impossible_gene_calls_missing_from_contigs_db):
+            self.progress.reset()
+            self.run.warning(f"SOMETHING IMPOSSIBLE HAS HAPPENED: splits in your contigs database contains gene calls that "
+                             f"are not found in the gene calls table. This really should not happen under any circumstance "
+                             f"yet there were {len(impossible_gene_calls_missing_from_contigs_db)} of them in your database."
+                             f"Anvi'o ignored those gene calls and is going to continue processing your data, but what you "
+                             f"should be doing is to remove this contigs database, and start everything from scratch. There is "
+                             f"something quite wrong with it. If you are curious, here are the gene calls in question: "
+                             f"{', '.join([str(g) for g in impossible_gene_calls_missing_from_contigs_db])}", overwrite_verbose=True)
+
+
 
         info_dict['gene_calls_from_other_gene_callers'] = gene_calls_from_other_gene_callers
         info_dict['gc_content'] = seqlib.Composition(seq).GC_content
@@ -1118,6 +1131,7 @@ class ContigSummarizer(SummarizerSuperClass):
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
         summary['gene_hit_counts_per_hmm_source'] = hmm.get_gene_hit_counts_per_hmm_source()
+        summary['hmm_sources_for_SCGs'] = sorted([s for s in hmm.hmm_hits_info if hmm.hmm_hits_info[s]['search_type'] == 'singlecopy'])
         summary['num_genomes_per_SCG_source_dict'] = hmm.get_num_genomes_from_SCG_sources_dict()
 
         self.progress.end()
@@ -1280,7 +1294,7 @@ class Bin:
 
         self.compute_basic_stats()
 
-        self.set_taxon_calls()
+        self.recover_scg_taxonomy()
 
         self.store_genes_basic_info()
 
@@ -1469,9 +1483,16 @@ class Bin:
             d[gene_callers_id] = {}
             # add sample independent information into `d`;
             for header in headers:
+                if gene_callers_id not in self.summary.genes_in_contigs_dict:
+                    progress.reset()
+                    raise ConfigError("Bad news :( A very very rare error has occurred. A gene caller id found in your splits table "
+                                      "is not occurring in the genes in contigs table of your contigs database. This is due to a "
+                                      "rare migration error we discovered thanks to the following issue Jon Sanders filed: "
+                                      "https://github.com/merenlab/anvio/issues/1596. If you are seeing this error please "
+                                      "get in touch with us so we can help you recover from this.")
+
                 d[gene_callers_id][header] = self.summary.genes_in_contigs_dict[gene_callers_id][header]
 
-            self.progress.update('Sorting out functions ...')
             # add functions if there are any:
             if len(self.summary.gene_function_call_sources):
                 for source in self.summary.gene_function_call_sources:
@@ -1529,7 +1550,7 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet, bin_name=self.bin_id)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         if self.summary.reformat_contig_names:
@@ -1627,7 +1648,7 @@ class Bin:
 
                 sequence = ''
                 for split_order in sequential_block:
-                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]
+                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]['sequence']
 
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
@@ -1645,40 +1666,30 @@ class Bin:
         return output
 
 
-    def set_taxon_calls(self):
-        self.progress.update('Filling in taxonomy info ...')
+    def recover_scg_taxonomy(self):
+        self.bin_info_dict['scg_taxonomy'] = None
+        self.bin_info_dict['scg_taxonomy_simple'] = None
 
-        self.bin_info_dict['taxon_calls'] = []
-        self.bin_info_dict['taxon'] = 'Unknown'
-
-        if not self.summary.a_meta['gene_level_taxonomy_source']:
+        if self.summary.quick or not self.summary.a_meta['scg_taxonomy_was_run']:
             return
 
-        taxon_calls_counter = Counter()
-        for split_id in self.split_names:
-            if split_id in self.summary.splits_taxonomy_dict:
-                taxon_calls_counter[self.summary.splits_taxonomy_dict[split_id]] += 1
-            else:
-                taxon_calls_counter['None'] += 1
+        self.progress.update('Filling in taxonomy info ...')
 
-        taxon_calls = sorted([list(tc) for tc in list(taxon_calls_counter.items())], key=lambda x: int(x[1]), reverse=True)
+        scg_taxonomy_dict = self.summary.scg_taxonomy.estimate_for_list_of_splits(self.split_names, bin_name=self.bin_id)
+        self.bin_info_dict['scg_taxonomy_dict'] = scg_taxonomy_dict
 
-        self.bin_info_dict['taxon_calls'] = taxon_calls
+        self.bin_info_dict['scg_taxonomy_simple'] = 'N/A'
+        for level in constants.levels_of_taxonomy[::-1]:
+            if scg_taxonomy_dict['consensus_taxonomy'][level]:
+                self.bin_info_dict['scg_taxonomy_simple'] = scg_taxonomy_dict['consensus_taxonomy'][level]
+                break
 
-        # taxon_calls = [(None, 129), ('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        l = [tc for tc in taxon_calls if tc[0]]
-        num_calls = sum(taxon_calls_counter.values())
+        for level in constants.levels_of_taxonomy:
+            self.bin_info_dict[level] = scg_taxonomy_dict['consensus_taxonomy'][level]
 
-        # l = [('Propionibacterium avidum', 120), ('Propionibacterium acnes', 5)]
-        if l and l[0][1] > num_calls / 4.0:
-            # if l[0] is associated with more than 25 percent of splits:
-            self.bin_info_dict['taxon'] = l[0][0]
-        else:
-            self.bin_info_dict['taxon'] = 'Unknown'
-
-        # convert to percents..
-        for tc in taxon_calls:
-            tc[1] = tc[1] * 100.0 / num_calls
+        scg_taxonomy_output_headers = ['gene_callers_id', 'gene_name', 'percent_identity', 'supporting_consensus'] + constants.levels_of_taxonomy
+        scg_taxonomy_output = self.get_output_file_handle('scg_taxonomy_details.txt', just_the_path=True)
+        utils.store_dict_as_TAB_delimited_file(scg_taxonomy_dict['scgs'], scg_taxonomy_output, headers=scg_taxonomy_output_headers)
 
 
     def compute_basic_stats(self):
@@ -1691,7 +1702,7 @@ class Bin:
         self.store_data_in_file('GC_content.txt', '%.4f' % self.bin_info_dict['GC_content'])
 
 
-    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None):
+    def get_output_file_handle(self, prefix='output.txt', overwrite=False, key=None, just_the_path=False):
         file_path = os.path.join(self.output_directory, '%s-%s' % (self.bin_id, prefix))
 
         if os.path.exists(file_path) and not overwrite:
@@ -1702,14 +1713,10 @@ class Bin:
 
         self.bin_info_dict['files'][key] = file_path[len(self.summary.output_directory):].strip('/')
 
-        return open(file_path, 'w')
+        return file_path if just_the_path else open(file_path, 'w')
 
 
     def store_data_in_file(self, output_file_name_posfix, content):
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
-
-
-
-

@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-"""Lots of under-the-rug, operational garbage in here. Run. Run away.."""
+"""Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
 import os
 import sys
@@ -15,15 +15,42 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '6.2-master'
-anvio_codename = 'esther'
+anvio_version = '7-dev'
+anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
+                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
+
+anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
+AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
+TMP_DIR = None
+
+# if the user wants to use a non-default tmp directory, we set it here
+if '--tmp-dir' in sys.argv:
+    try:
+        idx = sys.argv.index('--tmp-dir')
+        TMP_DIR = os.path.abspath(sys.argv[idx+1])
+
+        if not os.path.exists(TMP_DIR):
+            parent_dir = os.path.dirname(TMP_DIR)
+            if os.access(parent_dir, os.W_OK):
+                os.makedirs(TMP_DIR)
+            else:
+                raise OSError(f"You do not have permission to generate a directory in '{parent_dir}'")
+        if not os.path.isdir(TMP_DIR):
+            raise OSError(f"The path provided to --tmp-dir, {TMP_DIR}, is not a directory...")
+        if not os.access(TMP_DIR, os.W_OK):
+            raise OSError(f"You do not have permission to generate files in '{TMP_DIR}'")
+
+        os.environ['TMPDIR'] = TMP_DIR
+    except Exception as e:
+        print("OSError: ", e)
+        sys.exit()
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -34,11 +61,20 @@ def P(d, dont_exit=False):
         sys.exit()
 
 
-def TABULATE(table, header):
+def TABULATE(table, header, numalign="right", max_width=0):
     """Encoding-safe `tabulate`"""
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
-    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign="right"))
+    table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
+
+    if max_width:
+        # let's don't print everything if things need to be cut.
+        prefix = " // "
+        lines_in_table = table.split('\n')
+        if len(lines_in_table[0]) + len(prefix) + 2 > max_width:
+            table = '\n'.join([l[:max_width - len(prefix)] + prefix + l[-2:] for l in lines_in_table])
+
+    print(table)
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -51,29 +87,6 @@ except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
-def get_args(parser):
-    """A helper function to parse args anvi'o way.
-
-       This function allows us to make sure some ad hoc parameters such as `--debug`
-       can be used with any anvi'o program spontaneously even if they are not explicitly
-       defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
-       to see can still be sorted out.
-    """
-
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress']
-
-    args, unknown = parser.parse_known_args()
-
-    # if there are any args in the unknown that we do not expect to find
-    # we we will make argparse complain about those.
-    if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
-        for f in allowed_ad_hoc_flags:
-            parser.add_argument(f, action='store_true')
-        parser.parse_args()
-
-    return args
-
-
 import anvio.constants as constants
 
 
@@ -84,6 +97,12 @@ D = {
             {'metavar': "PROFILE_DB",
              'required': True,
              'help': "Anvi'o profile database"}
+                ),
+    'genes-db': (
+            ['--genes-db'],
+            {'metavar': "GENES_DB",
+             'required': True,
+             'help': "Anvi'o genes database"}
                 ),
     'pan-db': (
             ['-p', '--pan-db'],
@@ -132,7 +151,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you only have contig sequences, but no mapping data (i.e., you found a genome and would like to "
-                     "take a look from it), this flag will become very hand. After creating a contigs database for your "
+                     "take a look from it), this flag will become very handy. After creating a contigs database for your "
                      "contigs, you can create a blank anvi'o profile database to use anvi'o interactive "
                      "interface with that contigs database without any mapping data."}
                 ),
@@ -152,7 +171,7 @@ D = {
             ['--description'],
             {'metavar': 'TEXT_FILE',
              'required': False,
-             'help': "A plain text file that contains some description about the project. You can use Markdwon syntax. "
+             'help': "A plain text file that contains some description about the project. You can use Markdown syntax. "
                      "The description text will be rendered and shown in all relevant interfaces, including the "
                      "anvi'o interactive interface, or anvi'o summary outputs."}
                 ),
@@ -168,6 +187,11 @@ D = {
                 ),
     'fasta-file': (
             ['-f', '--fasta-file'],
+            {'metavar': 'FASTA',
+             'help': "A FASTA-formatted input file"}
+                ),
+    'dna-sequence': (
+            ['--dna-sequence'],
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
@@ -403,7 +427,7 @@ D = {
              'action': 'store_true',
              'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
                      "insertions or deletions relative to the reference. Anvi'o normally stores this information in the "
-                     "profile database since the time taken and extra storage do not amount to much, but if insist on not "
+                     "profile database since the time taken and extra storage do not amount to much, but if you insist on not "
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
@@ -446,6 +470,16 @@ D = {
                      "mere suggestion. When this flag is used, anvi'o does what the user wants and creates splits at "
                      "desired lengths (although some functionality may become unavailable for the projects that rely on "
                      "a contigs database that is initiated this way)."}
+                ),
+    'db-variant': (
+            ['--db-variant'],
+            {'metavar': 'VARIANT',
+             'required': False,
+             'default': 'unknown',
+             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers "
+                     "Please leave this blank unless you are certain that you need to set a db variant since it may influence "
+                     "downstream processes. In an ideal world a varainat would be a single-word, without any capitalized letters "
+                     "or special characters."}
                 ),
     'contigs-fasta': (
             ['-f', '--contigs-fasta'],
@@ -510,13 +544,26 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'exclude-ungrouped': (
-            ['--exclude-ungrouped'],
+    'include-ungrouped': (
+            ['--include-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to ignore genomes with no value set for the catergory variable "
-                     "(which you specified using --category-variable). By default all variables with no value will be "
-                     "considered as a single group when preforming the statistical analysis."}
+             'help': "Use this flag if you want anvi'o to include genomes/samples with no group in the analysis. (For pangenomes, this means "
+                     "the genome has no value set for the category variable which you specified using --category-variable. "
+                     "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
+                     "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
+                     "variables with no value will be ignored, but if you apply this flag, they will instead be considered as "
+                     "a single group (called 'UNGROUPED' when performing the statistical analysis."}
+                ),
+    'include-samples-missing-from-groups-txt': (
+            ['--include-samples-missing-from-groups-txt'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
+                    "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
+                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
+                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
+                    "group together samples that are not supposed to be friends."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -561,6 +608,14 @@ D = {
                      "searches that were performed against non-singlecopy gene HMM profiles into "
                      "their own layer. Please see the documentation for details."}
                 ),
+    'show-all-layers': (
+            ['--show-all-layers'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, this flag tells the interface to show every additional layer even if "
+                     "there are no hits. By default, anvi'o doesn't show layers if there are no hits for "
+                     "any of your items."}
+                ),
     'taxonomic-level': (
             ['--taxonomic-level'],
             {'default': 't_genus',
@@ -592,6 +647,42 @@ D = {
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'anticodon-for-metagenome-mode': (
+            ['-S','--anticodon-for-metagenome-mode'],
+            {'default': None,
+             'type': str,
+             'metavar': 'ANTICODON',
+             'help': "When running in metagenome mode, anvi'o automatically chooses the most frequent anticodon "
+                     "to estimate the taxonomic composition within a contigs database. If you have a "
+                     "different preference you can use this parameter to communicate that."}
+                ),
+    'per-anticodon-output-file': (
+            ['--per-anticodon-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "A more detailed output file that will describe taxonomy of each anticodon in a single bin. "
+                     "When consensus taxonomy is generated per bin or genome, taxonomy for each underlying item "
+                     "is not reported. This additional optional output file will elucidate things."}
+                ),
+    'per-scg-output-file': (
+            ['--per-scg-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "A more detailed output file that will describe taxonomy of each scg in a single bin. "
+                     "When consensus taxonomy is generated per bin or genome, taxonomy for each underlying item "
+                     "is not reported. This additional optional output file will elucidate things."}
+                ),
+    'all-hits-output-file': (
+            ['--all-hits-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "If this flag is declared, anvi'o will store a comprehensive list of hits that led to the "
+                     "determination of the consensus hit per sequence (which is the only piece of information that "
+                     "is stored in the contigs database)."}
+                ),
     'report-scg-frequencies': (
             ['--report-scg-frequencies'],
             {'default': None,
@@ -599,6 +690,15 @@ D = {
              'metavar': 'FILE_PATH',
              'help': "Report SCG frequencies in a TAB-delimited file and quit. This is a great way to decide which "
                      "SCG name to use in metagenome mode (we often wish to use the most frequent SCG to increase the "
+                     "detection of taxa)."}
+                ),
+    'report-anticodon-frequencies': (
+            ['--report-anticodon-frequencies'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Report anticodon frequencies in a TAB-delimited file and quit. This is a great way to decide which "
+                     "anticodon to use in metagenome mode (we often wish to use the most frequent anticodon to increase the "
                      "detection of taxa)."}
                 ),
     'simplify-taxonomy-information': (
@@ -616,6 +716,13 @@ D = {
              'action': 'store_true',
              'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
                      "statistics of single-copy core genes for which we have taxonomy information."}
+                ),
+    'compute-anticodon-coverages': (
+            ['--compute-anticodon-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
+                     "statistics of tRNA genes used for taxonomy."}
                 ),
     'update-profile-db-with-taxonomy': (
             ['--update-profile-db-with-taxonomy'],
@@ -651,18 +758,28 @@ D = {
                      "If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-scg-taxonomy`) "
                      "you will have to use this parameter to tell those programs where your data are."}
                 ),
-    'scgs-taxonomy-remote-database-url': (
-            ['--scgs-taxonomy-remote-database-url'],
+    'trna-taxonomy-data-dir': (
+            ['--trna-taxonomy-data-dir'],
             {'default': None,
              'type': str,
-             'metavar': 'URL',
-             'help': "Anvi'o will always try to download the latest release, but if there is a problem with "
-                     "the latest release, feel free to run setup using a different URL. Just to note, anvi'o "
-                     "will expect to find the following files in the URL provided here: 'VERSION', "
-                     "'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', "
-                     "and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work "
-                     "if teh server in which these databases are maintained is still online: "
-                     "https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
+             'metavar': 'PATH',
+             'help': "The directory for tRNA taxonomy data to be stored (or read from, depending on the context). "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "(or try to read things from) a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your databases. "
+                     "If you are using a program (such as `anvi-run-trna-taxonomy` or `anvi-estimate-trna-taxonomy`) "
+                     "you will have to use this parameter to tell those programs where your data are."}
+                ),
+    'gtdb-release': (
+            ['--gtdb-release'],
+            {'default': None,
+             'type': str,
+             'metavar': 'RELEASE_NUM',
+             'help': "If you are particularly intersted an earlier release anvi'o knows about, you can set it here "
+                     "Otherwise anvi'o will always use the latest release it knows about."}
                 ),
     'reset': (
             ['--reset'],
@@ -687,6 +804,16 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
                 ),
+    'cog-version': (
+            ['--cog-version'],
+            {'default': None,
+             'type': str,
+             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
+                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
+                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
+                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
+                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
+                ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
             {'default': None,
@@ -707,6 +834,33 @@ D = {
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your database."}
                 ),
+    'interacdome-data-dir': (
+            ['--interacdome-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the interacdome data to be stored. "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your data."}
+                ),
+    'interacdome-dataset': (
+            ['--interacdome-dataset'],
+            {'default': 'representable',
+             'type': str,
+             'choices': ['representable', 'confident'],
+             'help': "Choose 'representable' to include Pfams that correspond to domain-ligand interactions that had "
+                     "nonredundant instances across three or more distinct PDB structures. InteracDome"
+                     "authors recommend using this collection to learn more about domain binding properties. Choose "
+                     "'confident' to include Pfams that correspond to domain-ligand interactions "
+                     "that had nonredundant instances across three or more distinct PDB entries and "
+                     "achieved a cross-validated precision of at least 0.5. We recommend using this "
+                     "collection to annotate potential ligand-binding positions in protein "
+                     "sequences. The default is '%(default)s'."}
+                ),
     'kegg-data-dir': (
             ['--kegg-data-dir'],
             {'default': None,
@@ -719,9 +873,34 @@ D = {
             ['--kegg-archive'],
             {'default': None,
              'type': str,
-             'help': "The path to an archived KEGG directory. If you provide this parameter, anvi'o will set up "
-                     "the KEGG data directory from the archive rather than downloading and building it from "
-                     "the KEGG website."}
+             'help': "The path to an archived (.tar.gz) KEGG directory (which you have downloaded from figshare or from "
+                     "a collaborator who has a KEGG data directory generated by anvi'o). If you provide this parameter, "
+                     "anvi'o will set up the KEGG data directory from the archive you specify rather than downloading "
+                     "and setting up our default KEGG archive."}
+                ),
+    'download-from-kegg': (
+            ['-D', '--download-from-kegg'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This flag is for those people who always need the latest data. You know who you are :) "
+                     "By default, this program will set up a snapshot of the KEGG databases, which will be "
+                     "dated to the time of the anvi'o release that you are currently working with. The pros of "
+                     "this are that the KEGG data will be the same for everyone (which makes sharing your KEGG-annotated "
+                     "datasets easy), and you will not have to worry about updating your datasets with new annotations "
+                     "every time that KEGG updates. However, KEGG updates regularly, so the con of this is that "
+                     "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
+                     "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
+                     "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
+                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                ),
+    'kegg-snapshot': (
+            ['--kegg-snapshot'],
+            {'default': None,
+             'type': str,
+             'metavar': 'RELEASE_NUM',
+             'help': "If you are particularly interested in an earlier snapshot of KEGG that anvi'o knows about, you can set it here. "
+                     "Otherwise anvi'o will always use the latest snapshot it knows about, which is likely to be the one associated with "
+                     "the current release of anvi'o."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
@@ -791,6 +970,36 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'aggregate-based-on-accession': (
+            ['--aggregate-based-on-accession'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is important. When anvi'o aggregates functions for functional enrichment analyses "
+                     "or to display them, it uses by default the 'function text' as keys. This is because "
+                     "multiple accession IDs in various databases may correspond to the same function, and "
+                     "when you are doing a functional enrichment analysis, you most likely would like to "
+                     "avoid over-splitting of functions due to this. But then how can we know if you are "
+                     "doing something that requires things to be aggregated based on accession ids for "
+                     "functions rather than actual functions? We can't. But we have this flag here so you can "
+                     "instruct anvi'o to listen to you and not to us."}
+                ),
+    'aggregate-using-all-hits': (
+            ['--aggregate-using-all-hits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This program will aggregate functions based on best hits only, and this flag will change that "
+                     "behavior. In some cases a gene may be annotated with multiple functions. This is a decision often "
+                     "made at the level of function annotation tool. For instance, when you run `anvi-run-ncbi-cogs`, "
+                     "you may end up having two COG annotations for a single gene because the gene hit both of them "
+                     "with significance scores that were above the default noise cutoff. While this can be useful when "
+                     "one visualizes functions or works with an `anvi-summarize` output where things should be most "
+                     "comprehensive, having some genes annotated with multiple functions and others with one function "
+                     "may over-split them (since in this scenario a gene with COGXXX and COGXXX;COGYYY would end up in "
+                     "different bins). Thus, when working on functional enrichment analyses or displaying functions "
+                     "anvi'o will only use the best hit for any gene that has multiple hits by default. But you can turn "
+                     "that behavior off explicitly and show anvi'o who is the boss by using this flag."}
+                ),
+
     'include-gc-identity-as-function': (
             ['--include-gc-identity-as-function'],
             {'default': False,
@@ -1148,6 +1357,15 @@ D = {
                      "your short reads, as well as the length of the gene you are targeting. "
                      "The default is %(default)d nts."}
                 ),
+    'flank-length': (
+            ['--flank-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Extend sequences for gene calls with additional nucleotides from both ends. If the seqeunce for "
+                     "a target gene is between nucleotide positions START and STOP, using a flank lenght of M will give "
+                     "you a sequence that starts at START - M and ends at STOP + M."}
+              ),
     'split-R1-and-R2': (
             ['-Q', '--split-R1-and-R2'],
             {'default': False,
@@ -1240,6 +1458,14 @@ D = {
             {'metavar': 'FILE',
              'help': "A file with samples names. There should be only one column in the file, and each line "
                      "should correspond to a unique sample name (without a column header)."}
+                ),
+    'samples-txt': (
+            ['--samples-txt'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with columns ['sample', 'r1', 'r2'] or ['sample', 'group', 'r1', 'r2'] "
+                     "where `r1` and `r2` columns are paths to compressed or flat FASTQ files for each `sample` and "
+                     "`group` is an optional column for relevant applications where samples are affiliated with one-word "
+                     "categorical variables that define to which group they are assigned."}
                 ),
     'genes-of-interest': (
             ['--genes-of-interest'],
@@ -1447,6 +1673,23 @@ D = {
              'help': "Use this flag if you would like split names for each variable position to be included in the "
                      "output file as a column."}
                 ),
+    'include-additional-data': (
+            ['--include-additional-data'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like to append data stored in the `amino_acid_additional_data` table as "
+                     "additional columns to your output. NOTE: This is not yet implemented for the `nucleotide_additional_data` "
+                     "table."}
+                ),
+    'include-site-pnps': (
+            ['--include-site-pnps'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
+                     "will be calculate with respect to the reference, with respect to the consenus, and with respect to the "
+                     "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
+                     "added columns. This flag will be ignored if --engine is not CDN."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
@@ -1454,19 +1697,43 @@ D = {
              'type': str,
              'help': "Variability engine. The default is '%(default)s'."}
                 ),
+    'min-binding-frequency': (
+            ['-m', '--min-binding-frequency'],
+            {'metavar': 'FLOAT',
+             'default': 0.2,
+             'type': float,
+             'help': "InteracDome has associated binding 'frequencies', which can be considered scores between 0 to 1 that "
+                     "quantify how likely a position is to be involved in binding. Use this parameter to filter out low frequencies. "
+                     "The default is %(default)f. Warning, your contigs database size will grow massively if this is set to 0.0, but "
+                     "you're the boss."}
+                ),
+    'min-hit-fraction': (
+            ['-f', '--min-hit-fraction'],
+            {'metavar': 'FLOAT',
+             'default': 0.5,
+             'type': float,
+             'help': "Any hits where the hit length--relative to the HMM profile--divided by the total HMM profile length, is less than this value, "
+                     "it will be removed from the results and will not contribute to binding frequencies. The default is %(default)s"}
+                ),
+    'information-content-cutoff': (
+            ['-t', '--information-content-cutoff'],
+            {'metavar': 'FLOAT',
+             'default': 4.0,
+             'type': float,
+             'help': "This parameter can be used to control for low-quality domain hits. Each domain is composed of positions (match states) "
+                     "with varying degrees of conservancy, which can be quantified with information content (IC). High IC means highly conserved. "
+                     "For example, IC = 4 corresponds to 95%% of the members of the Pfam sharing the same amino acid at that position. "
+                     "By default, anvi'o demands that for an alignment of a user's gene with a Pfam HMM, the gene sequence must match with the "
+                     "consensus amino acid of each match state that has IC > %(default)f. For context, it is common for a Pfam to not even have a "
+                     "position with an IC > 4, so these represent truly very conserved positions. You can modify this with this parameter. For example, "
+                     "if you think this is dumb, you can set this to 10000, and then no domain hits will be removed for this reason."}
+                ),
     'driver': (
             ['--driver'],
             {'metavar': 'DRIVER',
              'type': str,
              'required': True,
              'help': "Automatic binning drivers. Available options '%(choices)s'."}
-                ),
-    'skip-synonymity': (
-            ['--skip-synonymity'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Computing synonymity can be an expensive operation for large data sets. Provide this flag to skip "
-                     "computing synonymity. It only makes sense to provide this flag when using --engine CDN."}
                 ),
     'transpose': (
             ['--transpose'],
@@ -1479,6 +1746,12 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "For debugging purposes. You should never really need it."}
+                ),
+    'skip-news': (
+            ['--skip-news'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't try to read news content from upstream."}
                 ),
     'experimental-org-input-dir': (
             ['-i', '--input-directory'],
@@ -1523,7 +1796,7 @@ D = {
                      "anymore, and you would have to leave anvi'o right now."}
                 ),
     'input-dir': (
-            ['-i', '--input-dir'],
+            ['--input-dir'],
             {'metavar': 'DIR_PATH',
              'type': str,
              'help': "Directory path for input files"}
@@ -1580,7 +1853,7 @@ D = {
              'type': str,
              'help': "If you don't provide anything here, this program will come up with a temporary "
                      "directory path by itself to store intermediate files, and clean it later. If you "
-                     "want to have full control over this, you can use this flag to define one.."}
+                     "want to have full control over this, you can use this flag to define one."}
                 ),
     'output-file-prefix': (
             ['-O', '--output-file-prefix'],
@@ -1622,6 +1895,13 @@ D = {
              'help': "Don't do a dry run. Just start the workflow! Useful when your job is so big it takes "
                      "hours to do a dry run."}
                 ),
+    'no-interactive': (
+            ['--no-interactive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't show anything interactive (if possible)."}
+                ),
+
     'verbose': (
             ['--verbose'],
             {'default': False,
@@ -1731,6 +2011,13 @@ D = {
              'help': "Minimum significance score of an HMM find to be considered as a valid hit. "
                      "Default is %(default)g."}
                 ),
+    'max-num-target-sequences': (
+            ['--max-num-target-sequences'],
+            {'metavar': 'NUMBER',
+             'default': 20,
+             'type': float,
+             'help': "Maximum number of target sequences to request from BLAST or DIAMOND searches. The default is %(default)g%%."}
+                ),
     'min-percent-identity': (
             ['--min-percent-identity'],
             {'metavar': 'PERCENT_IDENTITY',
@@ -1834,8 +2121,8 @@ D = {
             {'metavar': 'NAME',
              'help': "It is important to set a sample name (using only ASCII letters and digits "
                      "and without spaces) that is unique (considering all others). If you do not "
-                     "provide one, anvi'o will try to make up one for you based on other information, "
-                     "although, you should never let the software to decide these things)."}
+                     "provide one, anvi'o will try to make up one for you based on other information "
+                     "(although, you should never let the software decide these things)."}
                 ),
     'project-name': (
             ['-n', '--project-name'],
@@ -1914,14 +2201,17 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "One of the things anvi-profile does is to store information about variable "
-                     "nucleotide positions. Usually it does not report every variable position, since "
+                     "nucleotide positions (SNVs). Usually it does not report every variable position, since "
                      "not every variable position is genuine variation. Say, if you have 1,000 coverage, "
                      "and all nucleotides at that position are Ts and only one of them is a C, the "
                      "confidence of that C being a real variation is quite low. anvi'o has a simple "
                      "algorithm in place to reduce the impact of noise. However, using this flag "
                      "you can disable it and ask profiler to report every single variation (which "
                      "may result in very large output files and millions of reports, but you are the "
-                     "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter"}
+                     "boss). Do not forget to take a look at '--min-coverage-for-variability' parameter. "
+                     "Also note that this flag controls indel reporting: normally '--min-coverage-for-variability' "
+                     "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
+                     "flag all indels are reported."}
                 ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
@@ -1948,9 +2238,33 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'domtblout': (
+            ['-F', '--domtblout'],
+            {'metavar': 'HMM OUTPUT FORMAT',
+             'type': str,
+             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
+                     "The output file will contain the suffix '_domtable.txt'."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
-            {'metavar': 'HMM PROFILE NAME'}
+            {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'hmmer-output-dir': (
+            ['--hmmer-output-dir'],
+            {'metavar': 'OUTPUT DIRECTORY PATH',
+             'help': "If you provide a path with this parameter, then the HMMER output file(s) will be saved "
+                     "in this directory. Please note that this will only work if you are running on only one "
+                     "profile using the -I flag."}
+                ),
+    'get-domtable-output': (
+            ['--get-domtable-output'],
+            {'default': False,
+             'type': str,
+             'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
+                     "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
+                     "--tblout file will be stored in the specified directory. Please note that even if you use "
+                     "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
+                     "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -1991,7 +2305,9 @@ D = {
              'type': int,
              'help': "Minimum coverage of a nucleotide position to be subjected to SNV profiling. By default, anvi'o will "
                      "not attempt to make sense of variation in a given nucleotide position if it is covered less than "
-                     "%(default)dX. You can change that minimum using this parameter."}
+                     "%(default)dX. You can change that minimum using this parameter. This parameter also controls the minimum "
+                     "coverage for reporting indels. If an indel is observed at a position, yet the coverage of the position "
+                     "in the contig where the indel starts is less than this parameter, the indel will be discarded."}
                 ),
     'contigs-and-positions': (
             ['--contigs-and-positions'],
@@ -2016,7 +2332,9 @@ D = {
                      "all contigs do not scale well when you wish to work with a single bin in the refine mode. For "
                      "this reason, the default behavior of anvi-refine is to ignore min/max values set in the default "
                      "state. This flag is your way of telling anvi'o to not do that, and load the state stored in the "
-                     "profile database as is."}
+                     "profile database as is. Please note that this variable has no influence on the `detection` view. "
+                     "For the `detection` view, anvi'o will always load the global detection settings as if you have "
+                     "used this flag."}
                 ),
     'state': (
             ['-s', '--state'],
@@ -2097,6 +2415,13 @@ D = {
              'help': "When declared, only reads that cover all positions will be reported. It is necessary to use this "
                      "flag if you want to perform oligotyping-like analyses on matching reads."}
                 ),
+    'add-coverage': (
+            ['--add-coverage'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
+                     "output files. You must provide the profile database corresonding to your contigs db for this to work."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -2146,8 +2471,8 @@ D = {
             {'default': 500,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is "
-                     "%(default)d. The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
+             'help': "How many items should be kept in memory before they are written to the disk. The default is "
+                     "%(default)d. The larger the buffer size, the less frequently the program will access the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
                      "to the disk. The default buffer size will likely work for most cases, but if "
                      "you feel you need to reduce it, we trust you. Please keep an eye on the memory "
@@ -2351,8 +2676,8 @@ D = {
     'store-json-without-estimation': (
             ['--store-json-without-estimation'],
             {'default': False,
-            'action': 'store_true',
-            'help': "This flag is used to control what is stored in the JSON-formatted metabolism data dictionary. When this flag is provided alongside the "
+             'action': 'store_true',
+             'help': "This flag is used to control what is stored in the JSON-formatted metabolism data dictionary. When this flag is provided alongside the "
                     "--get-raw-data-as-json flag, the JSON file will be created without running metabolism estimation, and "
                     "that file will consequently include only information about KOfam hits and gene calls. The idea is that you can "
                     "then modify this file as you like and re-run this program using the flag --estimate-from-json."}
@@ -2360,51 +2685,579 @@ D = {
     'estimate-from-json': (
             ['--estimate-from-json'],
             {'default': None,
-            'metavar': 'FILE_PATH',
-            'type': str,
-            'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
-                    "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
-                    "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
+             'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
+                     "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
+                     "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
     'kegg-output-modes': (
             ['--kegg-output-modes'],
             {'default': None,
-            'metavar': 'MODES',
-            'type': str,
-            'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
-                    "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
-                    "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
-                    "'complete_modules'. To see a list of available output modes, run this script with the flag "
-                    "--list-available-modes."}
+             'metavar': 'MODES',
+             'type': str,
+             'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
+                     "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
+                     "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
+                     "'complete_modules'. To see a list of available output modes, run this script with the flag "
+                     "--list-available-modes."}
                 ),
     'list-available-modes': (
             ['--list-available-modes'],
             {'default': False,
-            'action': 'store_true',
-            'help': "Use this flag to see the available output modes and their descriptions."}
+             'action': 'store_true',
+             'help': "Use this flag to see the available output modes and their descriptions."}
                 ),
     'custom-output-headers': (
             ['--custom-output-headers'],
             {'default': None,
-            'metavar': 'HEADERS',
-            'type': str,
-            'help': "For use with the 'custom' output mode. Provide a comma-separated list of headers to include "
-                    "in the output matrix. To see a list of available headers, run this script with the flag "
-                    "--list-available-output-headers."}
+             'metavar': 'HEADERS',
+             'type': str,
+             'help': "For use with the 'custom' output mode. Provide a comma-separated list of headers to include "
+                     "in the output matrix. To see a list of available headers, run this script with the flag "
+                     "--list-available-output-headers."}
                 ),
     'list-available-output-headers': (
             ['--list-available-output-headers'],
             {'default': False,
-            'action': 'store_true',
-            'help': "Use this flag to see the available output headers."}
+             'action': 'store_true',
+             'help': "Use this flag to see the available output headers."}
                 ),
     'keep-all-hits': (
             ['--keep-all-hits'],
             {'default': False,
-            'action': 'store_true',
-            'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
-                    "are below the score threshold."}
+             'action': 'store_true',
+             'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
+                     "are below the score threshold."}
                 ),
+    'log-bitscores': (
+            ['--log-bitscores'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
+                     "of every KOfam hit that is put in the contigs database."}
+                ),
+    'heuristic-e-value': (
+            ['-E', '--heuristic-e-value'],
+            {'default': 1.0e-5,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with e-values <= this number. (This is X.)"}
+                ),
+    'heuristic-bitscore-fraction': (
+            ['-H', '--heuristic-bitscore-fraction'],
+            {'default': 0.75,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When considering hits that didn't quite make the bitscore cut-off for a gene, we "
+                     "will only look at hits with bitscores > the KEGG threshold * this number. (This is Y.) "
+                     "It should be a fraction between 0 and 1 (inclusive)."}
+                ),
+    'skip-bitscore-heuristic':(
+            ['--skip-bitscore-heuristic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you just want annotations from KOfam hits that are above the KEGG bitscore "
+                     "threshold, use this flag to skip the mumbo-jumbo we do here to relax those thresholds. "}
+                ),
+    'include-metadata': (
+            ['--include-metadata'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "When asking for --matrix-format, you can use this flag to make sure the output matrix files include "
+                    "columns with metadata for each KEGG Module or KO (like the module name and category for example) before "
+                    "the sample columns."}
+                ),
+    'only-complete': (
+            ['--only-complete'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Choose this flag if you want only modules over the module completeness threshold to be included "
+                    "in any output files."}
+                ),
+    'include-zeros': (
+            ['--include-zeros'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you use this flag, output files will include modules with 0 percent completeness score, "
+                    "and in the case of --matrix-format, output matrices will include rows with 0s in every sample. "}
+                ),
+    'module-specific-matrices': (
+            ['--module-specific-matrices'],
+            {'default': None,
+            'metavar': 'MODULE_LIST',
+            'help': "Provide a comma-separated list of module numbers to this parameter, and then you will get "
+                    "a KO hits matrix for each module in the list."}
+
+                ),
+    'no-comments': (
+            ['--no-comments'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you are requesting --module-specific-matrices but you don't want those matrices to include "
+                    "comment lines in them (for example, perhaps you want to use them for clustering), you can use "
+                    "this flag. Otherwise, by default these specific matrices will include comments delineating "
+                    "which KOs are in each step of the module."}
+                ),
+    'modules-txt': (
+            ['-M', '--modules-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
+                    "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
+                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                ),
+    'groups-txt': (
+            ['-G', '--groups-txt'],
+            {'default': None,
+            'metavar': 'TEXT_FILE',
+            'help': "A tab-delimited text file specifying which group each item belongs to. "
+                    "Depending on the context, items here may be individual samples or genomes. "
+                    "The first column must contain item names matching to those that are in your "
+                    "input data. A different column should have the header 'group' and contain the "
+                    "group name for each item. Each item should be associated with a single "
+                    "group. It is always a good idea to define groups using single words without any fancy "
+                    "characters. For instance, `HIGH_TEMPERATURE` or `LOW_FITNESS` are good group names. "
+                    "`my group #1` or `IS-THIS-OK?`, are not good group names."}
+                ),
+    'sample-header': (
+            ['--sample-header'],
+            {'default': 'db_name',
+            'help': "The header of the column containing your sample names in the modules-txt input file. By "
+                    "default this is 'db_name' because we are assuming you got your modules mode output by "
+                    "running `anvi-estimate-metabolism` in multi mode (on multiple genomes or metagenomes), but "
+                    "just in case you got it a different way, this is how you can tell anvi'o which column to "
+                    "look at. The values in this column should correspond to those in the 'sample' column in "
+                    "the groups-txt input file."}
+                ),
+    'trnaseq-fasta': (
+            ['-f', '--trnaseq-fasta'],
+            {'metavar': 'FASTA',
+             'required': False,
+             'help': "The FASTA file containing merged (quality-controlled) tRNA-seq reads from a sample. "
+                     "We recommend generating this file via `anvi-run-workflow -w trnaseq` "
+                     "to ensure proper merging of read pairs that may be partially or fully overlapping, "
+                     "and to automatically produce anvi'o-compliant simple deflines. "
+                     "If there is a problem, anvi'o will gracefully complain about it."}
+                ),
+    'treatment': (
+            ['--treatment'],
+            {'default': 'untreated',
+             'help': "The type of treatment applied during tRNA-seq sample preparation. "
+                     "The values which are currently known to anvi'o are \"untreated\" and \"demethylase\", "
+                     "as tRNA-seq samples are commonly split for these treatments. "
+                     "Anvi'o will warn you if you do not choose one of these known options, but it will not affect data processing. "
+                     "Treatment type is stored for further reference in the output tRNA-seq database, "
+                     "and can be used in anvi-convert-trnaseq-database "
+                     "to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
+                ),
+    'write-checkpoints': (
+            ['--write-checkpoints'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to write pickle files of intermediate results at key points in anvi-trnaseq. "
+                     "If anvi'o crashes for some reason, the argument, --load-checkpoint, with the associated checkpoint name "
+                     "can be used to restart the program from the given checkpoint. "
+                     "This can be useful for saving time if anvi'o crashes "
+                     "or in comparing the results of different advanced program parameterizations "
+                     "involved in later stages of the analytical pipeline after the checkpoint, "
+                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
+                     "This flag will overwrite existing intermediate files in the output directory as needed."}
+                ),
+    'load-checkpoint': (
+            ['--load-checkpoint'],
+            {'choices': ['profile', 'normalize', 'map_fragments'],
+             'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
+                     "This can be useful for saving time if anvi'o crashed "
+                     "or in comparing the results of different advanced program parameterizations "
+                     "involved in later stages of the analytical pipeline after the checkpoint, "
+                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
+                     "Use of this option requires that anvi-trnaseq was previously run with the flag, "
+                     "--write-checkpoints, so that intermediate files were generated. "
+                     "Checkpoint \"profile\" restarts after tRNA have been profiled and dereplicated. "
+                     "\"normalize\" restarts after trimming and normalizing tRNA. "
+                     "\"map_fragment\" restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
+                     "To overwrite subsequent checkpoints after loading a checkpoint "
+                     "(e.g., to overwrite \"map_fragment\" intermediate files after loading from \"normalize\"), "
+                     "remember to also use the flag, --write-checkpoints."}
+                ),
+    'feature-param-file': (
+            ['--feature-param-file'],
+            {'metavar': 'FILE',
+             'type': str,
+             'help': "A .ini file can be provided to set tRNA feature parameters "
+                     "used in de novo profiling/identification of tRNA sequences from the 3' end. "
+                     "Generate the default file with the command, `anvi-trnaseq --default-feature-param-file`. "
+                     "Dashes in the default file show parameters that cannot be changed, "
+                     "because they do not exist or are set in stone. "
+                     "For instance, the program only detects base pairing in stems, "
+                     "so only stem features are parameterized with a maximum allowed number of unpaired nucleotides, "
+                     "while every other feature has a dash in the \"Number allowed unpaired\" column. "
+                     "Two quotes in the default file show parameters that are not currently set. "
+                     "To lift a constraint, a parameter value can be replaced by \"\". "
+                     "For instance, the conserved purine at D loop/position 21 indicated by the value, 0,R, "
+                     "can be replaced by \"\" to prevent the program from seeking a conserved nucleotide there. "
+                     "Conserved nucleotides in a feature are set by pairs of zero-based indices and nucleotide symbols. "
+                     "The index indicates the conserved position in the feature, relative to the 5' end of the feature. "
+                     "The nucleotide symbol can be A, C, G, T (U in cDNA), R (purine), or Y (pyrimidine). "
+                     "The index is separated from the symbol by a comma. "
+                     "Multiple conserved positions in a feature are separted by a semicolon. "
+                     "Feature profiling of a sequence halts when the number of allowed unconserved nucleotides in a feature "
+                     "or the number of allowed unpaired positions in a stem is exceeded. "
+                     "The default allowed number of unconserved nucleotides in the D loop, for example, is 1, "
+                     "so 4 of the 5 conserved positions must be found for the D loop to be positively identified. "
+                     "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
+                     "in each of the 4 stems; the user could, for instance, "
+                     "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
+                     "There are 3 variable-length sections of tRNA. The user could, for example, "
+                     "change the allowed lengths of the V loop from a discontinuous range, \"4-5,9-23\", to a continuous range, \"4-23\"."}
+                ),
+    'threeprime-termini': (
+            ['--threeprime-termini'],
+            {'default': 'CCA,CC,C,CCAN,CCANN',
+             'type': str,
+             'help': "Termini represent the subsequences (in the 5'->3' orientation) "
+                     "to expect at the 3' end of a tRNA read adjacent to the discriminator nucleotide. "
+                     "tRNA feature profiling from the 3' end seeks a valid terminus prior to the discriminator and more 5' features. "
+                     "3' terminal sequences can include the nucleotides, A, C, G, and T, and N, symbolizing any nucleotide. "
+                     "A single underscore, \"_\", can be included in lieu of a sequence, "
+                     "symbolizing the absence of a terminus such that the tRNA feature profile may end with the discriminator. "
+                     "If \"_\" is not included, tRNA sequences ending in the discriminator will still be sought as *fragments* of profiled tRNA. "
+                     "The order of sequences in the argument is the order of consideration in profiling. "
+                     "For example, if CCA is the first 3' terminus considered, "
+                     "and it produces a complete profile with no unconserved or unpaired nucleotides, then the other possible termini are not considered. "
+                     "Other termini are only considered with the possibility of \"improvement\" in the feature profile."}
+                ),
+    'min-length-long-fiveprime': (
+            ['--min-length-long-fiveprime'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "tRNA reads often extend beyond the 5' end of a mature tRNA sequence. "
+                     "This can be biological in origin when the read is from pre-tRNA; artifactual in origin "
+                     "when the reverse transcriptase runs off the end of the template, adding a small number ofs random bases; "
+                     "or artifactual when the read is a chimera of tRNA at the 3' end and another, potentially non-tRNA, transcript at the 5' end. "
+                     "Longer 5' extensions are more likely to be biological than artifactual due to the exclusion of runoff bases. "
+                     "This parameter sets the minimum length of 5' sequence extensions "
+                     "that are recorded in the tRNA-seq database output for further analysis."}
+                ),
+    'min-trna-fragment-size': (
+            ['--min-trna-fragment-size'],
+            {'default': 25,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o profiles a sequence as tRNA by identifying tRNA features from the 3' end of the sequence. "
+                     "tRNA-seq datasets can include a significant number of tRNA fragments "
+                     "that are not from the 3' end of the sequence ending in a recognized terminus, e.g., CCA. "
+                     "These \"interior\" and 5' fragments can be of significant biological interest. "
+                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs that have their 3' termini trimmed off. "
+                     "This parameter sets the minimum length of unprofiled reads searched in this manner. "
+                     "The choice of %(default)d as the default value is motivated by considerations "
+                     "of false positive matches and computational performance with a shorter minimum sequence length. "
+                     "Since unprofiled reads are mapped to every unique profiled tRNA sequence, "
+                     "a shorter minimum sequence length can make mapping take a very long time "
+                     "and return too many alignments to store in memory for datasets of millions of reads. "
+                     "Pay attention to python memory usage if you adjust this parameter downwards."}
+                ),
+    'agglomeration-max-mismatch-freq': (
+            ['--agglomeration-max-mismatch-freq'],
+            {'default': 2/71,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "Anvi'o finds potential tRNA modifications by first agglomerating sequences "
+                     "differing from one or more other sequences in the cluster by mismatches at a certain fraction of nucleotides. "
+                     "This parameter sets the maximum mismatch fraction that is allowed, by default 2/71. "
+                     "This number represents 2 mismatches in a full-length tRNA of length 74, not 71, "
+                     "as 3' sequence variants, including the canonical 3'-CCA, are trimmed off prior to sequences being agglomerated. "
+                     "(Average non-mitochondrial tRNAs range in length from 74-95.) "
+                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 70, D. "
+                     "If A differs from B by a substitution at position 1, and C differs from B at positions 10 and 20, "
+                     "such that C differs from A by 3 substitutions, then A, B, and C will still agglomerate into a single cluster, "
+                     "as each differs by no more than 2 substitutions from some other sequence in the cluster. "
+                     "In contrast, sequence D differs from B at positions 30 and 40, "
+                     "exceeding the 2/71 fraction required to agglomerate (2/70 > 2/71), "
+                     "so D forms its own cluster and is not consolidated into a single modified sequence with the others."}
+                ),
+    'fiveprimemost-deletion-start': (
+            ['--fiveprimemost-deletion-start'],
+            {'default': -2,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
+                     "The default value of -2 means deletions can start at most 2 nucleotides 5' of a modification. "
+                     "Logically, the parameter value must be less than or equal to the value of --threeprimemost-deletion-start "
+                     "and less than or equal to the value of --fiveprimemost-deletion-stop."}
+                ),
+    'threeprimemost-deletion-start': (
+            ['--threeprimemost-deletion-start'],
+            {'default': 0,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
+                     "The default value of 0 means the 3'-most start position of a deletion is the modification site itself. "
+                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
+                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
+                ),
+    'fiveprimemost-deletion-stop': (
+            ['--fiveprimemost-deletion-stop'],
+            {'default': -1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
+                     "The default value of -1 means deletions can end at most 1 nucleotide 5' of a modification. "
+                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
+                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
+                ),
+    'threeprimemost-deletion-stop': (
+            ['--threeprimemost-deletion-stop'],
+            {'default': 0,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
+                     "The default value of 0 means the 3'-most stop position of a deletion is the modification site itself. "
+                     "Logically, the parameter value must be greater than or equal to the value of --threeprimemost-deletion-start "
+                     "and greater than or equal to the value of --fiveprimemost-deletion-stop."}
+                ),
+    'max-distinct-deletions': (
+            ['--max-distinct-deletions'],
+            {'default': 2,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of distinct deletions -- which can be of varying size -- "
+                     "that can be introduced around potential modifications in the search for deletions. "
+                     "Higher values of this parameter may lead to identification of more deletions (at the expense of runtime). "
+                     "For example, with the default value of 2 and a sequence containing 3 potential substitutions positions, "
+                     "then some in silico template sequences will be produced containing deletions around the first position; "
+                     "others will be produced containing deletions at the first and second positions; "
+                     "the first and third positions; the second position; the second and third; and the third."}
+                ),
+    'min-distance-between-deletions': (
+            ['--min-distance-between-deletions'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The minimum number of nucleotides that must exist between distinct deletions "
+                     "introduced around potential modifications in the search for deletions. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "In silico deletions introduced around nearby substitutions in this smear "
+                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
+                     "Separation of in silico deletions using this parameter quashes this problem. "
+                     "The default value was determined by inspection of deletions predicted from large datasets. "
+                     "It is hard to envision a case where the user would adjust this parameter downward."}
+                ),
+    'max-deletion-configurations': (
+            ['--max-deletion-configurations'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
+                     "that can be generated from a single sequence with potential modifications. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
+                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
+                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
+                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
+                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
+                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
+                     "is decremented for the sequence and in silico deletions are again introduced."}
+                ),
+    'skip-fasta-check': (
+            ['--skip-fasta-check'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't check the input FASTA file for such things as proper defline formatting to speed things up."}
+                ),
+    'profiling-chunk-size': (
+            ['--profiling-chunk-size'],
+            {'default': 500000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o manages memory consumption during tRNA feature profiling by chunking the unique input sequences. "
+                     "This parameter sets the maximum number of sequences in each chunk. "
+                     "Adjustment of this parameter has little effect on speed."}
+                ),
+    'alignment-target-chunk-size': (
+            ['--alignment-target-chunk-size'],
+            {'default': 25000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o sequence alignment manages memory consumption by chunking the list of alignment targets, "
+                     "so that queries are aligned to the first chunk of targets, then the second chunk, and so on. "
+                     "This parameter sets the maximum number of target sequences in each chunk. "
+                     "Memory management becomes important when aligning short queries to a large number of targets, "
+                     "which involves searching queries against a massive number of k-mers "
+                     "(equal in length to the shortest query) that have been extracted from targets. "
+                     "Adjust this parameter downward if your system runs out of memory during alignment; "
+                     "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
+                     "Ideally, we would set this parameter using a heuristic function "
+                     "parameterized with the numbers and lengths of query and target sequences..."}
+                ),
+    'fragment-mapping-query-chunk-length': (
+            ['--fragment-mapping-query-chunk-length'],
+            {'default': 20,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Mapping potential tRNA fragments to profiled tRNA can generate massive data structures. "
+                     "To manage memory consumption, the fragment queries are chunked and run as separate alignment tasks. "
+                     "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
+                     "This parameter sets the sequence length interval used to chunk queries. "
+                     "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
+                     "and a maximum unprofiled query length of, say, 170, "
+                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
+                     "Adjust this parameter downward if your system runs out of memory during alignment; "
+                     "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
+                     "Ideally, we would set this parameter using a heuristic function "
+                     "parameterized with the numbers and lengths of query and target sequences..."}
+                ),
+    'profiling-progress-interval': (
+            ['--profiling-progress-interval'],
+            {'default': 500000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress in the tRNA feature profiling of unique input sequences "
+                     "is reported after a certain number of sequences have been processed."}
+                ),
+    'alignment-progress-interval': (
+            ['--alignment-progress-interval'],
+            {'default': 500000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress is reported after a certain number of queries have been processed "
+                     "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
+                     "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
+                ),
+    'modification-progress-interval': (
+            ['--modification-progress-interval'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
+                     "Progress is reported in two distinct stages of this process, "
+                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
+                ),
+    'default-feature-param-file': (
+            ['--default-feature-param-file'],
+            {'metavar': 'OUTPUT_FILENAME',
+             'type': str,
+             'help': "Writes a tab-delimited .ini file containing default tRNA feature parameterizations "
+                     "used in de novo profiling/identification of tRNA sequences from the 3' end. "
+                     "Parameters can be modified by the user and the file fed back into anvi-trnaseq "
+                     "through the --feature-param-file argument, the help description of which explains the file format."}
+                ),
+    'print-default-feature-params': (
+            ['--print-default-feature-params'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Prints to standard output a nicely formatted table of the default tRNA feature parameterizations "
+                     "(which can be written to a tab-delimited .ini file by the option, --default-feature-param-file)."}
+                ),
+    'max-reported-trna-seeds': (
+            ['--max-reported-trna-seeds'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "This parameter limits the number of tRNA seed sequences reported in the contigs database, "
+                     "as anvi-interactive can have trouble displaying large numbers of items. "
+                     "To remove the limit on reported seeds, specify a value of -1."}
+                ),
+    'feature-threshold': (
+            ['--feature-threshold'],
+            {'default': 'anticodon_loop',
+             'type': str,
+             'choices': constants.TRNA_SEED_FEATURE_THRESHOLD_CHOICES,
+             'help': "This option prevents formation of tRNA seed sequences from input sequences "
+                     "that did not reach the threshold feature in anvi-trnaseq profiling from the 3' end. "
+                     "The more stringent the threshold, the fewer spurious seeds are formed "
+                     "from rare chimeric and other inaccurate tRNA predictions. "
+                     "The most stringent threshold is \"acceptor_stem\", the most 5' feature, "
+                     "resulting in seeds formed only from tRNAs with a complete feature set "
+                     "(with the exception of the extra 5'-G in tRNA-His)."}
+                ),
+    'preferred-treatment': (
+            ['--preferred-treatment'],
+            {'type': str,
+             'help': "tRNA-seq databases recorded as employing the preferred treatment are given preference "
+                     "in setting nucleotides at predicted modification positions in tRNA seed sequences. "
+                     "By default, equal preference is given to all of the input databases. "
+                     "The reason for this parameter is that paired untreated and enzymatically treated splits "
+                     "can assist in the identification of underlying modified nucleotides. "
+                     "For example, splits treated with a demethylase can be compared to untreated splits "
+                     "to probe which nucleotides are methylated."}
+                ),
+    'nonspecific-output': (
+            ['--nonspecific-output'],
+            {'default': 'nonspecific_db,combined_db',
+             'type': str,
+             'help': "A significant fraction of tRNA-seq reads can be from tRNA fragments. "
+                     "These can be real biomolecules or artifactual 3' fragments "
+                     "produced as a result of incomplete reverse transcription of the tRNA template to cDNA. "
+                     "Rather than randomly assigning fragments to a single target, "
+                     "as in metagenomic read recruitment by Bowtie, "
+                     "anvi-trnaseq tracks all of the longer sequences containing each fragment. "
+                     "This results in two categories of coverage: "
+                     "'specific' for reads that are only found in one seed "
+                     "and 'nonspecific' for reads found in multiple seeds. "
+                     "Specific coverages are always reported in a separate profile database. "
+                     "Nonspecific coverages can be reported in three types of database, as specified by this parameter. "
+                     "'nonspecific_db' produces a profile database only containing nonspecific coverages. "
+                     "'combined_db' produces a database containing separate specific and nonspecific layers. "
+                     "'summed_db' produces a database containing summed specific and nonspecific coverages. "
+                     "To produce multiple types of databases, separate the database types with commas (no spaces). "
+                     "For example, all three databases are produced with the argument, 'nonspecific_db,combined_db,summed_db'."}
+                ),
+    'min-variation': (
+            ['--min-variation'],
+            {'default': 0.01,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "When more than 2 nucleotides are found at a position in a tRNA, "
+                     "a modification-induced mutation (substitution) is considered rather than a single nucleotide variant. "
+                     "This parameter sets a key criterion for the prediction of a modification, "
+                     "the minimum fraction of specific coverage at a position with more than 2 nucleotides "
+                     "that must be contributed by nucleotides beside the most abundant nucleotide. "
+                     "For example, if A, C, and G are found at position 20 of a tRNA, "
+                     "and A is represented by 95 reads, C by 3 reads, and G by 1 read, then with a parameter value of 0.05, "
+                     "the site would be 1 C, G, or T short of meeting the threshold for prediction of a modification."}
+                ),
+    'min-third-fourth-nt': (
+            ['--min-third-fourth-nt'],
+            {'default': 0.002,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This parameter sets a key criterion for the prediction of a modification, "
+                     "the minimum fraction of specific coverage at a position with more than 2 nucleotides "
+                     "that must be contributed by nucleotides beside the 2 most abundant nucleotides. "
+                     "Unlike --min-variation, this criterion only needs to be met for 1 sample "
+                     "to permit modification of the position in all samples of the experiment. "
+                     "For example, consider an experiment with 2 samples and a parameter value of 0.01. "
+                     "In Sample 1, A, C, and G are found at position 20 of a tRNA, "
+                     "and A is represented by 95 reads, C by 4 reads, and G by 1 read. "
+                     "The default parameter value of 0.01 is exactly met at the position thanks to G. "
+                     "In Sample 2, A, C, G, and T are found at position 20 of the same tRNA seed, "
+                     "and A is represented by 1000 reads, C by 100 reads, G by 2 reads, and T by 2 reads. "
+                     "The third and fourth nucleotides don't meet the coverage threshold of 0.01, "
+                     "but this is irrelevant for calling the modification, since Sample 1 met the criterion. "
+                     "There is an important consideration due to the way this threshold is currently imposed. "
+                     "Potential modification sites that do not meet the threshold "
+                     "are not treated like single nucleotide variants in anvi-trnaseq: "
+                     "they do not cause the seed sequence to be split "
+                     "such that no seed contains a variant that was not deemed to be a modification. "
+                     "Rather, candidate modification positions that do not meet this threshold "
+                     "are retained in the seed BUT NOT REPORTED. "
+                     "Therefore, we recommend rerunning this command with a parameter value of 0 "
+                     "to inspect seeds for undisplayed variants (possible SNVs) "
+                     "with a low level of third and fourth nucleotides."}
+                ),
+    'min-deletion-fraction': (
+            ['--min-deletion-fraction'],
+            {'default': 0.002,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "
+                     "Coverage of a deletion in a sample must meet the minimum fraction of specific coverage. "
+                     "Deletion coverages are calculated separately for specific, nonspecific, and summed coverages."}
+    )
 }
 
 # two functions that works with the dictionary above.
@@ -2441,7 +3294,8 @@ def set_version():
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
            t.structure_db_version, \
-           t.metabolic_modules_db_version
+           t.metabolic_modules_db_version, \
+           t.trnaseq_db_version
 
 
 def get_version_tuples():
@@ -2453,18 +3307,20 @@ def get_version_tuples():
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Structure DB version", __structure__version__),
-            ("KEGG Modules DB version", __kegg_modules_version__)]
+            ("KEGG Modules DB version", __kegg_modules_version__),
+            ("tRNA-seq DB version", __trnaseq__version__)]
 
 
 def print_version():
-    run.info("Anvi'o version", "%s (v%s)" % (__codename__, __version__), mc='green')
-    run.info("Profile DB version", __profile__version__)
-    run.info("Contigs DB version", __contigs__version__)
-    run.info("Pan DB version", __pan__version__)
-    run.info("Genome data storage version", __genomes_storage_version__)
-    run.info("Auxiliary data storage version", __auxiliary_data_version__)
-    run.info("Structure DB version", __structure__version__)
-    run.info("Kegg Modules DB version", __kegg_modules_version__)
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    run.info("Profile database", __profile__version__)
+    run.info("Contigs database", __contigs__version__)
+    run.info("Pan database", __pan__version__)
+    run.info("Genome data storage", __genomes_storage_version__)
+    run.info("Auxiliary data storage", __auxiliary_data_version__)
+    run.info("Structure database", __structure__version__)
+    run.info("Metabolic modules database", __kegg_modules_version__)
+    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
 
 
 __version__, \
@@ -2476,7 +3332,8 @@ __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
 __structure__version__, \
-__kegg_modules_version__ = set_version()
+__kegg_modules_version__, \
+__trnaseq__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:

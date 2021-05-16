@@ -22,14 +22,14 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'NETWORK.json'}))
     parser.add_argument('-p', '--program-names-to-focus', default=None, help="Comma-spearated list of program names to focus\
                          Mostly for debugging purposes.")
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         network = programs.ProgramsNetwork(args)

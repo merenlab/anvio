@@ -256,7 +256,7 @@ class TablesForGeneCalls(Table):
 
         if predict_frame:
             # Preload the markov model to predict frames and assign null codon and stop codon transition probabilities
-            model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+            model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/MM_GC_0-39.npy')
             if not filesnpaths.is_file_exists(model_path, dont_raise=True):
                 raise ConfigError("The task at hand calls for the use of the anvi'o Markov model to predict proper open reading "
                                   "frames for external gene calls when necessary, but the model does not seem to be in the right "
@@ -383,7 +383,7 @@ class TablesForGeneCalls(Table):
                 except ConfigError as non_divisible_by_3_error:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
                                       "anvi'o is willing to strike you a deal, but it will require you to trust her a bit more and give her "
-                                      "the power power to modify the external gene calls you provided. In your external gene calls file you "
+                                      "the power to modify the external gene calls you provided. In your external gene calls file you "
                                       "have at least one gene call for which you did not provide an amino acid sequence, and marked it as a "
                                       "CODING type gene call. But becasue YOU ELECTED TO SKIP anvi'o frame prediction to estimate a proper amino "
                                       "acid sequence, anvi'o simply tried to translate your DNA sequence from the start to the end. But as you "
@@ -483,7 +483,10 @@ class TablesForGeneCalls(Table):
         remove_fasta_after_processing = False
 
         if not self.contigs_fasta:
-            self.contigs_fasta = self.export_sequences_table_in_db_into_FASTA_file()
+            self.contigs_fasta = filesnpaths.get_temp_file_path()
+            utils.export_sequences_from_contigs_db(self.contigs_db_path,
+                                                   output_file_path=self.contigs_fasta,
+                                                   run=self.run)
             remove_fasta_after_processing = True
 
         if self.debug:
@@ -531,7 +534,7 @@ class TablesForGeneCalls(Table):
         db_entries = [tuple([gene_callers_id] + [gene_calls_dict[gene_callers_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
 
-        db_entries = [tuple([gene_callers_id, amino_acid_sequences[gene_callers_id]]) for gene_callers_id in gene_calls_dict]
+        db_entries = [tuple([gene_callers_id, amino_acid_sequences[gene_callers_id] if gene_callers_id in amino_acid_sequences else '']) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_amino_acid_sequences_table_name, db_entries)
 
         self.progress.end()

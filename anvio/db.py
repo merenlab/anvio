@@ -43,8 +43,10 @@ def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
 
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, skip_rowid_prepend=False, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, read_only=False, skip_rowid_prepend=False,
+                 run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
+        self.read_only = read_only
         self.version = None
 
         self.run = run
@@ -65,12 +67,24 @@ class DB:
         if new_database and os.path.exists(self.db_path):
             os.remove(self.db_path)
 
-        self.check_if_db_writable()
+        if self.read_only and new_database:
+            raise ConfigError("One cannot create a new database that is read-only.")
 
-        self.conn = sqlite3.connect(self.db_path)
+        if not self.read_only:
+            self.check_if_db_writable()
+
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+        except Exception as e:
+            raise ConfigError(f"This one time someone was not happy with '{self.db_path}' and '{e}', they said.")
+
         self.conn.text_factory = str
 
         self.cursor = self.conn.cursor()
+
+        self.table_names_in_db = self.get_table_names()
+
+        self.db_connected = True
 
         if new_database:
             self.create_self()
@@ -85,11 +99,11 @@ class DB:
                                       "your anvi'o :(" % self.db_path)
                 else:
                     progress.reset()
-                    raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to "
-                                      "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
-                                               % (self.db_path, self.version, client_version))
+                    raise ConfigError(f"The database at '{self.db_path}' is outdated (this database is v{self.version} and your anvi'o installation "
+                                      f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
+                                      f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
@@ -97,6 +111,23 @@ class DB:
                                   "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
                                   "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
                                   "dictionary." % (', '.join(bad_tables)))
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, *args):
+        self.disconnect()
+
+
+    def _not_if_read_only(func):
+        def inner(self, *args, **kwargs):
+            if self.read_only:
+                raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
+            else:
+                return func(self, *args, **kwargs)
+        return inner
 
 
     def get_version(self):
@@ -130,15 +161,18 @@ class DB:
             raise ConfigError("Database is not writable.")
 
 
+    @_not_if_read_only
     def create_self(self):
         self._exec('''CREATE TABLE self (key text, value text)''')
 
 
+    @_not_if_read_only
     def drop_table(self, table_name):
         """Delete a table in the database if it exists"""
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
+    @_not_if_read_only
     def create_table(self, table_name, fields, types):
         if len(fields) != len(types):
             raise ConfigError("create_table: The number of fields and types has to match.")
@@ -146,29 +180,35 @@ class DB:
         db_fields = ', '.join(['%s %s' % (t[0], t[1]) for t in zip(fields, types)])
         self._exec('''CREATE TABLE %s (%s)''' % (table_name, db_fields))
         self.commit()
+        self.table_names_in_db = self.get_table_names()
 
 
+    @_not_if_read_only
     def set_version(self, version):
         self.set_meta_value('version', version)
         self.commit()
 
 
+    @_not_if_read_only
     def set_meta_value(self, key, value):
         self.remove_meta_key_value_pair(key)
         self._exec('''INSERT INTO self VALUES(?,?)''', (key, value,))
         self.commit()
 
 
+    @_not_if_read_only
     def remove_meta_key_value_pair(self, key):
         self._exec('''DELETE FROM self WHERE key="%s"''' % key)
         self.commit()
 
 
+    @_not_if_read_only
     def update_meta_value(self, key, value):
         self.remove_meta_key_value_pair(key)
         self.set_meta_value(key, value)
 
 
+    @_not_if_read_only
     def copy_paste(self, table_name, source_db_path, append=False):
         """Copy `table_name` data from another database (`source_db_path`) into yourself
 
@@ -250,11 +290,25 @@ class DB:
 
 
     def disconnect(self):
-        self.conn.commit()
-        self.conn.close()
+        if self.db_connected:
+            self.conn.commit()
+            self.conn.close()
+            self.db_connected = False
+        else:
+            # it is already disconnected
+            pass
 
 
     def _exec(self, sql_query, value=None):
+        """Execute an arbitrary sql statement
+
+        Notes
+        =====
+        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
+          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
+          to the DB using this method, even with self.read_only = True
+        """
+
         if value:
             ret_val = self.cursor.execute(sql_query, value)
         else:
@@ -265,6 +319,15 @@ class DB:
 
 
     def _exec_many(self, sql_query, values):
+        """Execute many sql statements
+
+        Notes
+        =====
+        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
+          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
+          to the DB using this method, even with self.read_only = True
+        """
+
         chunk_counter = 0
         for chunk in get_list_in_chunks(values):
             if anvio.DEBUG:
@@ -280,17 +343,20 @@ class DB:
         return True
 
 
+    @_not_if_read_only
     def insert(self, table_name, values=()):
         query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(values)))
         return self._exec(query, values)
 
 
+    @_not_if_read_only
     def insert_many(self, table_name, entries=None):
         if len(entries):
             query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(entries[0])))
             return self._exec_many(query, entries)
 
 
+    @_not_if_read_only
     def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True):
         """Insert rows from a dataframe
 
@@ -333,11 +399,7 @@ class DB:
             return next_available_id
         """
 
-        if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name %s does "
-                              "not exist in the database you requested. %s are the tables "
-                              "existent in the database" \
-                               % (table_name, ", ".join(self.get_table_names())))
+        self.is_table_exists(table_name)
 
         if not list(dataframe.columns) and not raise_if_no_columns:
             # if the dataframe has no colums, we just return
@@ -362,32 +424,55 @@ class DB:
         self.insert_many(table_name, entries=entries)
 
 
+    def is_table_exists(self, table_name):
+        if table_name not in self.table_names_in_db:
+            raise ConfigError(f"The database at {self.db_path} does not seem to have a table named `{table_name}` :/ "
+                              f"Here is a list of table names this database knows: {', '.join(self.table_names_in_db)}")
+
+
     def get_all_rows_from_table(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
         return response.fetchall()
 
 
     def get_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
+        where_clause = where_clause.replace('"', "'")
+
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause=None):
+    def get_row_counts_from_table(self, table_name, where_clause=None):
+        self.is_table_exists(table_name)
+
         if where_clause:
-            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+            where_clause = where_clause.replace('"', "'")
+            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table_name, where_clause))
         else:
-            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table))
+            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
         return response.fetchall()[0][0]
 
 
+    @_not_if_read_only
     def remove_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
+        where_clause = where_clause.replace('"', "'")
+
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
 
 
     def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
@@ -395,7 +480,10 @@ class DB:
 
 
     def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
@@ -403,23 +491,101 @@ class DB:
 
 
     def get_frequencies_of_values_from_a_column(self, table_name, column_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
         return response.fetchall()
 
 
     def get_table_column_types(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
 
 
+    def get_table_columns_and_types(self, table_name):
+        self.is_table_exists(table_name)
+
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+
     def get_table_structure(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT * FROM %s''' % table_name)
         return [t[0] for t in response.description]
 
 
     def get_table_as_list_of_tuples(self, table_name, table_structure=None):
         return self.get_all_rows_from_table(table_name)
+
+
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None, omit_parent_column=False):
+        """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
+
+        If the user is interested in only some of the data, they can build a where clause
+        and use `get_some_rows_from_table_as_dict`. If the user is interested in the entire
+        table data, then they would call `get_table_as_dict`. But in situations where it is
+        not certain whether there will be a where clause, the if/else statements clutter the
+        code. Here is an example:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                if items_of_interest:
+                    where_clause = 'column_name IN (%s)' % (','.join(['"%s"' % item for item in items_of_interest]))
+                    d = get_some_rows_from_table_as_dict(table_name, where_clause=where_clause)
+                else:
+                    d = get_table_as_dict(table_name)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        This function cleans up this mess as this call is equivalent to the example code above:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                smart_get(table_name, column_name, items_of_interest)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        Paremeters
+        ==========
+        table_name: str
+            The anvi'o data table name
+        column: str
+            The column name that will be used to select from table
+        data: set
+            A set of item names of interest. If the set is empty, the function will return the entire content of `table_name`
+        """
+
+        table_columns_and_types = self.get_table_columns_and_types(table_name)
+
+        if column not in table_columns_and_types:
+            raise ConfigError(f"The column name `{column}` is not in table `{table_name}` :/")
+
+        if column and data:
+            if table_columns_and_types[column] in ["numeric", "integer"]:
+                items = ','.join([str(d) for d in data])
+            else:
+                items = ','.join(['"%s"' % d for d in data])
+
+            if progress:
+                progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
+
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+        else:
+            if progress:
+                progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
+
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
 
 
     def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
@@ -519,18 +685,18 @@ class DB:
                                     "errors and you wish to contact us for that, please don't forget to mention that you did try "
                                     "to fix your sad tables.", mc="green")
                 else:
-                    raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems "
-                                      "to be something wrong with the table '%s' that you are trying to read from. While there "
-                                      "are %d items in this table, there are only %d unique keys, which means some of them are "
-                                      "going to be overwritten when this function creates a final dictionary of data to return. "
-                                      "This often happens when the user runs multiple processes in parallel that tries to write "
-                                      "to the same table. For instance, running a separate instance of `anvi-run-hmms` on the same "
-                                      "contigs database with different HMM profiles. Anvi'o is very sad for not handling this "
-                                      "properly, but such database tables need fixin' before things can continue :( If you would "
-                                      "like anvi'o to try to fix this, please run the same command you just run with the flag "
-                                      "`--fix-sad-tables`. If you do that it is a great idea to backup your original database "
-                                      "and then very carefully check the results to make sure things do not look funny." \
-                                                    % (table_name, len(rows), len(unique_keys)))
+                    raise ConfigError(f"This is one of the core functions of anvi'o you never want to hear from, but there seems "
+                                      f"to be something wrong with the table {table_name} (in the database at '{self.db_path}') "
+                                      f"that you are trying to read from. While there are {len(rows)} items in this table, there "
+                                      f"are only {len(unique_keys)} unique keys, which means some of them are going to be overwritten "
+                                      f"when this function creates a final dictionary of data to return. This only happens when the "
+                                      f"user (or their fancy workflow) runs multiple instances of `anvi-run-hmms` on the same "
+                                      f"contigs database with different HMM profiles. Anvi'o is very sad for not handling this "
+                                      f"properly, but such database tables need fixin' before things can continue :( If you would "
+                                      f"like anvi'o to try to fix this, please run the same command you just run with the flag "
+                                      f"`--fix-sad-tables`. If you do that it is a great idea to backup your original database "
+                                      f"and then very carefully check the results to make sure things do not look funny. If you want "
+                                      f"things to go parallel and fast, please consider using the anvi'o snakemake workflows.")
 
         #
         # SAD TABLES END
@@ -596,10 +762,13 @@ class DB:
         else:
             table_structure = self.get_table_structure(table_name)
 
-        if not columns_of_interest:
+        if columns_of_interest:
+            columns_of_interest = list(columns_of_interest)
+        else:
             columns_of_interest = table_structure
 
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             results_df = pd.read_sql('''SELECT %s FROM "%s" WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause), self.conn, columns=table_structure)
         else:
             results_df = pd.read_sql('''SELECT %s FROM "%s"''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name), self.conn, columns=table_structure)
@@ -620,7 +789,7 @@ class DB:
         return results_df[columns_of_interest]
 
 
-    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False, omit_parent_column=False):
         """This is similar to get_table_as_dict, but much less general.
 
         get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -642,6 +811,8 @@ class DB:
         row_num_as_key: bool
              added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
              first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
+        omit_parent_column: bool
+             removes __parent__ column from the data to be returned if __parent__ exists in table structure.
 
         Returns
         =======
@@ -651,10 +822,15 @@ class DB:
 
         results_dict = {}
 
+        where_clause = where_clause.replace('"', "'")
+
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
             table_structure = self.get_table_structure(table_name)
+
+        if omit_parent_column and '__parent__' in table_structure:
+            table_structure.remove('__parent__')
 
         columns_to_return = list(range(0, len(table_structure)))
 

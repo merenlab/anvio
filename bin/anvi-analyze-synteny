@@ -15,12 +15,12 @@ See anvio/docs/programs/anvi-analyze-synteny.md for more information and how to 
 """
 
 import sys
-import argparse
 
 import anvio
 import anvio.terminal as terminal
 
 from anvio.synteny import NGram
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -40,10 +40,12 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
+    # FIXME: add optional input where user can just provide list of contigsDBs
+
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
     groupA.add_argument(*anvio.A('ngram-window-range'), **anvio.K('ngram-window-range', {"required": False}))
     groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": False}))
@@ -62,7 +64,12 @@ if __name__ == '__main__':
                         help="Provide this flag if you want anvi-analyze-synteny to report "
                               'Ngrams that contain gene calls that have no annotation.')
     groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {"required": False}))
-    args = anvio.get_args(parser)
+    groupC.add_argument('--first-functional-hit-only',action="store_true",
+                        help="Use this flag if you want to use on the first functional annotation when making ngrams and assigning annotations. "
+                             "In some cases, anvio reports more than one annotation when there are multiple good hits to the gene. "
+                             "When this happens, all annotations will be reported in order of alignment score and delimited by '!!!' e.g. 'COG123!!!COG456!!!COG789'. "
+                             "This flag will report 'COG123!!!COG456!!!COG789' as 'COG123'.")
+    args = parser.get_args(parser)
 
     try:
         ngram = NGram(args)

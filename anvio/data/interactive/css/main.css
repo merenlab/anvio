@@ -45,8 +45,8 @@ h4 {
     margin-top: 10px;
 }
 
-#sidebar::-webkit-scrollbar { 
-    display: none; 
+#sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .no-link {
@@ -590,11 +590,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 #search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 
 #divzoom {
-    position: absolute; 
-    width:0px; 
+    position: absolute;
+    width:0px;
     height:0px;
-    pointer-events: none; 
-    background-color: rgba(0,0,255,0.4); 
+    pointer-events: none;
+    background-color: rgba(0,0,255,0.4);
     border-style: dashed;
     border-width: 1px;
     border-color: rgb(0,0,255);
@@ -645,7 +645,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .nav-tabs {
     background-position: top right;
-    padding-top: 5px; 
+    padding-top: 5px;
 }
 
 

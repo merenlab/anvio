@@ -32,14 +32,16 @@ gen_var_profile2() {
 }
 display_structure1() {
     anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
-                           -c test-output/one_contig_five_genes.db \
-                           -s test-output/STRUCTURE.db \
-                           --gene-caller-ids 2,4
+              -c test-output/one_contig_five_genes.db \
+              -s test-output/STRUCTURE.db \
+              --gene-caller-ids 2,4 \
+              --debug
 }
 display_structure2() {
     anvi-display-structure -V test-output/variability_AA.txt \
-                           -c test-output/one_contig_five_genes.db \
-                           -s test-output/STRUCTURE.db
+              -c test-output/one_contig_five_genes.db \
+              -s test-output/STRUCTURE.db \
+              --debug
 }
 
 
@@ -112,7 +114,7 @@ then
     INFO "anvi-gen-variability-profile --engine CDN"
     gen_var_profile2
 
-    INFO "anvi-display-structure with profile and contigs databases"
+    INFO "anvi-display-structure with profile database"
     display_structure1
 
     INFO "anvi-display-structure with variability"
@@ -156,7 +158,7 @@ then
     INFO "anvi-gen-variability-profile --engine CDN"
     gen_var_profile2
 
-    INFO "anvi-display-structure with profile and contigs databases"
+    INFO "anvi-display-structure with profile database"
     display_structure1
 
     INFO "anvi-display-structure with variability"

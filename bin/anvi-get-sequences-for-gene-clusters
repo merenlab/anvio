@@ -4,7 +4,7 @@
 
 import os
 import sys
-import argparse
+from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
@@ -24,7 +24,8 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['pan-db', 'genomes-storage-db']
-__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
+__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta', 'misc-data-items']
+__resources__ = [("In action in the Anvi'o pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#scrutinizing-phylogenomics")]
 __description__ = "Do cool stuff with gene clusters in anvi'o pan genomes"
 
 
@@ -115,7 +116,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
@@ -167,7 +168,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

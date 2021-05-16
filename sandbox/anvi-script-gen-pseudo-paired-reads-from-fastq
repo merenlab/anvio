@@ -17,11 +17,15 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
-__description__ =  ("Take a FASTQ file and convert it into 2 FASTQ files. Each read from the "
-                    "original FASTQ file halved, where one half is put in the R1 FASTQ and "
-                    "the other half is reverse complemented and put in the R2 FASTQ. If you've "
-                    "ended up here, things have clearly not gone very well for you, and as I "
-                    "write this sentence, I wholeheartedly sympathize.")
+__requires__ = ["short-reads-fasta"]
+__provides__ = ["short-reads-fasta"]
+__description__ =  ("A script that takes a FASTQ file that is not paired-end (i.e., R1 alone) and converts "
+                    "it into two FASTQ files that are paired-end (i.e., R1 and R2). This is a quick-and-dirty "
+                    "workaround that halves each read from the original FASTQ and puts one half in "
+                    "the FASTQ file for R1 and puts the reverse-complement of the second half in the "
+                    "FASTQ file for R2. If you've ended up here, things have clearly not gone very well "
+                    "for you, and Evan, who battled similar battles and ended up implementing this "
+                    "solution wholeheartedly sympathizes")
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -81,7 +85,6 @@ def gen_paired_end_reads_from_fastq(args):
             progress.increment(i)
             progress.update('%d / %d' % (i, fastq.num_reads))
 
-        read_len = len(read.seq)
         read1_len = len(read.seq)//2
 
         read1_seq = read.seq[:read1_len]
@@ -112,15 +115,15 @@ def gen_paired_end_reads_from_fastq(args):
 
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description=__description__)
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-f', '--fastq', required=True)
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'help': \
                         'If you want final FASTQs with the format myfastq_1.fastq and myfastq_2.fastq, '
                         'then this parameter should be set to myfastq'}))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         gen_paired_end_reads_from_fastq(args)

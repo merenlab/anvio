@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1
+SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
 INFO "Initializing raw BAM files"
@@ -62,6 +62,12 @@ anvi-export-contigs -c $output_dir/CONTIGS.db \
                     -o $output_dir/exported_split_sequences.fa \
                     --splits-mode
 
+INFO "Searching for sequence motifs in the contigs database"
+anvi-search-sequence-motifs -c $output_dir/CONTIGS.db \
+                            --motifs ATCG,TAAAT \
+                            --output-file $output_dir/sequence-motifs-in-contigs.txt
+SHOW_FILE $output_dir/sequence-motifs-in-contigs.txt
+
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db \
                                -p centrifuge \
@@ -79,10 +85,32 @@ INFO "Populating HMM hits tables in the latest contigs database using a mock HMM
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $files/external_hmm_profile
 
+INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
+anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
+                                              -O $output_dir/ADHOC_HMMs
+
+INFO "Running the HMMs in the ad hoc user directory"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -H $output_dir/ADHOC_HMMs
+
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
-              -I Ribosomal_RNAs \
+              -I Ribosomal_RNA_16S \
               --just-do-it
+
+INFO "Rerunning HMMs with hmmsearch"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -I Bacteria_71 \
+              --hmmer-program hmmsearch \
+              --hmmer-output-dir $output_dir \
+              --get-domtable-output $output_dir \
+              --just-do-it
+
+INFO "Filtering hmm_hits using target coverage"
+anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
+                                  --domtblout $output_dir/hmm.domtable \
+                                  --hmm-source Bacteria_71 \
+                                  --target-coverage 0.9
 
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
@@ -116,6 +144,14 @@ anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_interpro_output.tsv \
                       -p interproscan
 
+INFO "Listing all available function call sources in the contigs database"
+anvi-export-functions -c $output_dir/CONTIGS.db \
+                      --list-annotation-sources
+
+INFO "Deleting gene functions that do not exist along with those that do"
+anvi-delete-functions -c $output_dir/CONTIGS.db \
+                      --annotation-sources PRINTS,XXX,PIRSF,YYY
+
 INFO "Importing gene function calls INCREMENTALLY using a TAB-delimited default input matrix"
 anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_gene_functions_input_matrix.txt
@@ -125,13 +161,10 @@ anvi-import-functions -c $output_dir/CONTIGS.db \
                       -i $files/example_gene_functions_input_matrix.txt \
                       --drop-previous-annotations
 
-INFO "Listing all available function call sources in the contigs database"
-anvi-export-functions -c $output_dir/CONTIGS.db \
-                      --list-annotation-sources
-
 INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_all_sources.txt
+SHOW_FILE $output_dir/exported_functions_from_all_sources.txt
 
 INFO "Export genomic locus using functional annotation search"
 anvi-export-locus -c $output_dir/CONTIGS.db \
@@ -168,6 +201,10 @@ anvi-profile -c $output_dir/CONTIGS.db \
              -S BLANK \
              --blank-profile
 
+INFO "Adding a default collection to the blank profile"
+anvi-script-add-default-collection -c $output_dir/CONTIGS.db \
+                                   -p $output_dir/BLANK-PROFILE/PROFILE.db \
+
 INFO "Importing a collection into the blank profile"
 anvi-import-collection -c $output_dir/CONTIGS.db \
                        -p $output_dir/BLANK-PROFILE/PROFILE.db \
@@ -195,6 +232,17 @@ do
                                     --parser krakenuniq
 done
 
+# Run anvi-profile on one of the samples using the multi-process routine, just to make sure it does
+# not crash. FIXME Ideally, this step would compare the identicalness of
+# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db 
+INFO "Profiling sample SAMPLE-01 with --force-multi"
+anvi-profile -i $output_dir/SAMPLE-01.bam \
+             -o $output_dir/MULTI-THREAD-SAMPLE-01 \
+             -c $output_dir/CONTIGS.db \
+             --cluster \
+             --profile-SCVs \
+             --force-multi
+rm -rf $output_dir/MULTI-THREAD-SAMPLE-01
 
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
@@ -214,7 +262,7 @@ anvi-import-collection -c $output_dir/CONTIGS.db \
 
 INFO "Update the description in the merged profile"
 anvi-update-db-description $output_dir/SAMPLES-MERGED/PROFILE.db \
-                            --description $files/example_description.md
+                           --description $files/example_description.md
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db \
@@ -231,6 +279,15 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                          -o $output_dir/split_coverages_in_Bin_1.txt \
                          -C CONCOCT \
                          -b Bin_1
+SHOW_FILE $output_dir/split_coverages_in_Bin_1.txt
+
+INFO "Generating per-nt position coverage values for a single gene with its 20nt flanks across samples"
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                         -c $output_dir/CONTIGS.db \
+                         -o $output_dir/gene_caller_id_5_coverages.txt \
+                         --gene-caller-id 5 \
+                         --flank-length 20
+SHOW_FILE $output_dir/gene_caller_id_5_coverages.txt
 
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
@@ -330,7 +387,6 @@ anvi-rename-bins -c $output_dir/CONTIGS.db \
                  --collection-to-read "cmdline_concoct" \
                  --collection-to-write "cmdline_concoct_RENAMED" \
                  --report-file $output_dir/renaming-report.txt
-
 SHOW_FILE $output_dir/renaming-report.txt
 
 INFO "Requesting collection info"
@@ -361,6 +417,7 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -b PSAMPLES_Bin_00001 \
                              -o $output_dir/variability_PSAMPLES_Bin_00001.txt \
                              --quince-mode
+SHOW_FILE $output_dir/variability_PSAMPLES_Bin_00001.txt
 
 INFO "Generate a SNV profile for PSAMPLES_Bin_00001 using genes of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
@@ -368,6 +425,7 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --genes-of-interest $files/example_genes_of_interest.txt \
                              -o $output_dir/variability_PSAMPLES_Bin_00001_ALT_GENES_of_INTEREST.txt \
                              --engine NT
+SHOW_FILE $output_dir/variability_PSAMPLES_Bin_00001_ALT_GENES_of_INTEREST.txt
 
 INFO "Generate a SNV profile for PSAMPLES_Bin_00001 using split names of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
@@ -375,6 +433,7 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --splits-of-interest $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/PSAMPLES_Bin_00001/PSAMPLES_Bin_00001-original_split_names.txt \
                              -o $output_dir/variability_PSAMPLES_Bin_00001_ALT_SPLITS_of_INTEREST.txt \
                              --engine NT
+SHOW_FILE $output_dir/variability_PSAMPLES_Bin_00001_ALT_SPLITS_of_INTEREST.txt
 
 INFO "Generate a SCV profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
@@ -384,6 +443,7 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -o $output_dir/variability_CDN_PSAMPLES_Bin_00001.txt \
                              --quince-mode \
                              --engine CDN
+SHOW_FILE $output_dir/variability_CDN_PSAMPLES_Bin_00001.txt
 
 INFO "Generate a SAAV profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
@@ -401,10 +461,18 @@ anvi-gen-gene-level-stats-databases -c $output_dir/CONTIGS.db \
                                     -b EVERYTHING \
                                     --inseq-stats
 
+INFO "Searching for sequence motifs in the profile database"
+anvi-search-sequence-motifs -c $output_dir/CONTIGS.db \
+                            -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                            --motifs ATCG,TAAAT \
+                            --output-file $output_dir/sequence-motifs-in-profile.txt
+SHOW_FILE $output_dir/sequence-motifs-in-profile.txt
+
 INFO "Generating normalized codon frequencies for all genes in the contigs database"
 anvi-get-codon-frequencies -c $output_dir/CONTIGS.db \
                            -o $output_dir/CODON_frequencies_for_the_contigs_db.txt \
                            --merens-codon-normalization
+SHOW_FILE $output_dir/CODON_frequencies_for_the_contigs_db.txt
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
@@ -423,10 +491,24 @@ anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
                                   --export-gff3 \
                                   -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
+INFO "Getting back the sequence for gene call 3 with flank-length of 50 nucleotides"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
+                                  --gene-caller-ids 3 \
+                                  --flank-length 50 \
+                                  -o $output_dir/Sequence_for_gene_caller_id_3_50nt.fa
+
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                         -c $output_dir/CONTIGS.db \
                                         -O $output_dir/MERGED
+
+INFO "Export gene coverage and detection data for a single gene"
+anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                                        -c $output_dir/CONTIGS.db \
+                                        --gene-caller-id 1 \
+                                        -O $output_dir/MERGED-GENE-01
+SHOW_FILE $output_dir/MERGED-GENE-01-GENE-COVERAGES.txt
+SHOW_FILE $output_dir/MERGED-GENE-01-GENE-DETECTION.txt
 
 INFO "Show all available HMM sources"
 anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db \
@@ -485,7 +567,7 @@ anvi-export-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 INFO "Remove a single data key from items additional data"
 anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                       --target-data-table items \
-                      --keys "Özcan's_column"
+                      --keys "test_column"
 
 INFO "Remove all data in items additional data"
 anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -506,6 +588,15 @@ anvi-report-linkmers --contigs-and-positions $files/adjacent_positions_for_linkm
 INFO "Oligotype linkmers report generated for adjacent nucleotide positions"
 anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt \
                         -o $output_dir/
+
+INFO "Running anvi'o script to correct homopolymer INDELs in --test-run mode"
+anvi-script-fix-homopolymer-indels --test-run
+
+INFO "Running anvi'o script to correct homopolymer INDELs with real files"
+anvi-script-fix-homopolymer-indels --input $files/single_contig_with_INDEL_errors.fa \
+                                   --reference $files/single_contig.fa \
+                                   --output $output_dir/single_contig_INDEL_errors_FIXED.fa \
+                                   --verbose
 
 INFO "Search for functions to get split names with matching genes"
 anvi-search-functions -c $output_dir/CONTIGS.db \
@@ -689,8 +780,16 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --gene-mode \
                  --dry-run
 
+INFO "A dry run to fill in anvi'o dbs"
+curdir=`pwd`
+cd $output_dir
+anvi-interactive --dry-run
+anvi-display-pan --dry-run
+cd $curdir
+
 INFO "Firing up the interactive interface to display the contigs db stats"
-anvi-display-contigs-stats $output_dir/CONTIGS.db
+anvi-display-contigs-stats $output_dir/CONTIGS.db \
+                           $dry_run_controller
 
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -698,27 +797,36 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -A $files/additional_view_data.txt \
                  -t $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt \
                  -V $files/additional_view.txt \
-                 --split-hmm-layers
+                 --split-hmm-layers \
+                 $dry_run_controller
+
 
 INFO "Firing up the interface to display the split bin, Bin_1"
 anvi-interactive -c $output_dir/CONCOCT_BINS_SPLIT/Bin_1/CONTIGS.db \
                  -p $output_dir/CONCOCT_BINS_SPLIT/Bin_1/PROFILE.db \
-                 --title "Split bin, Bin_1"
+                 --title "Split bin, Bin_1" \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface with the blank profile"
 anvi-interactive -c $output_dir/CONTIGS.db \
-                 -p $output_dir/BLANK-PROFILE/PROFILE.db
+                 -p $output_dir/BLANK-PROFILE/PROFILE.db \
+                 $dry_run_controller
+
 
 INFO "Firing up the interactive interface in 'COLLECTION' mode"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
-                 -C CONCOCT
+                 -C CONCOCT \
+                 $dry_run_controller
 
 INFO "Firing up the interactive interface to refine a bin"
 anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
             -c $output_dir/CONTIGS.db \
             -C CONCOCT \
-            -b Bin_1
+            -b Bin_1 \
+            $dry_run_controller
+
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
@@ -733,4 +841,5 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
                  -C CONCOCT \
                  -b Bin_1 \
-                 --gene-mode
+                 --gene-mode \
+                 $dry_run_controller

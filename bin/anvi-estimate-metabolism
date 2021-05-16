@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
-__requires__ = ["contigs-db", "kegg-db", "kegg-functions", "profile-db", "collection", "bin",
+__requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
                 "external-genomes", "internal-genomes", "metagenomes"]
 __provides__ = ["kegg-metabolism",]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
@@ -39,11 +39,12 @@ def main(args):
         m.estimate_metabolism()
 
 if __name__ == '__main__':
-    import argparse
+    from anvio.argparse import ArgumentParser
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = ArgumentParser(description=__description__)
 
-    groupI = parser.add_argument_group('INPUT #1', "The minimum you must provide this program is a contigs database. In which case "
+    groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
+                                                   "The minimum you must provide this program is a contigs database. In which case "
                                                    "anvi'o will attempt to estimate metabolism for all contigs in it, assuming that "
                                                    "the contigs database represents a single genome. If the contigs database is actually "
                                                    "a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
     groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
 
-    groupP = parser.add_argument_group('INPUT #2', "If you also provide a profile database AND a collection name, anvi'o will "
+    groupP = parser.add_argument_group('INPUT #2 - ESTIMATION ON BINS', "If you also provide a profile database AND a collection name, anvi'o will "
                                                    "estimate metabolism separately for each bin in your collection. You can also limit "
                                                    "those estimates to a specific bin or set of bins in the collection using the parameters "
                                                    "`--bin-id` or `--bin-ids-file`, respectively.")
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupP.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
-    groupM = parser.add_argument_group('INPUT #3', "If you have multiple contigs databases to work with, you can put them all into a file. "
+    groupM = parser.add_argument_group('INPUT #3 - MULTI-MODE', "If you have multiple contigs databases to work with, you can put them all into a file. "
                                                    "Then anvi'o will run estimation separately on each database and generate a single output file for all. "
                                                    "There are 3 types of input files to choose from depending on whether you have single genomes (external), "
                                                    "genomes in collections (internal), or metagenomes in your contigs DBs.")
@@ -68,18 +69,30 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
 
-    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output. The output will be TAB-delimited files which by "
-                                                 "default are prefixed with 'kegg-metabolism', but you can of course change that name here.")
+    groupC = parser.add_argument_group('OUTPUT - GENERAL OPTIONS', "Parameters for controlling estimation output of any type. The output will be "
+                                                 "TAB-delimited files which by default are prefixed with 'kegg-metabolism', but you can of course "
+                                                 "change that name here.")
     groupC.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold'))
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupC.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))
-    groupC.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
-    groupC.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
-    groupC.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
-    groupC.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want to generate the output in several sparse matrices instead "
+    groupC.add_argument(*anvio.A('include-zeros'), **anvio.K('include-zeros'))
+    groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
+
+    groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
+    groupL.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))
+    groupL.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
+    groupL.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
+    groupL.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
+    groupL.add_argument(*anvio.A('add-coverage'), **anvio.K('add-coverage'))
+
+    groupM = parser.add_argument_group('OUTPUT - MATRIX OPTIONS', "Parameters for controlling matrix output. Use --matrix-format to request this "
+                                                    "type of output.")
+    groupM.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want to generate the output in several sparse matrices instead "
                                                                                    "of one file, use this flag. In each matrix, contigs DBs will be arranged in "
                                                                                    "columns and KEGG modules in rows. This output option is especially "
                                                                                    "appropriate for input option #3."}))
+    groupM.add_argument(*anvio.A('include-metadata'), **anvio.K('include-metadata'))
+    groupM.add_argument(*anvio.A('module-specific-matrices'), **anvio.K('module-specific-matrices'))
+    groupM.add_argument(*anvio.A('no-comments'), **anvio.K('no-comments'))
 
     groupD = parser.add_argument_group('DEBUG', "Parameters to use if you think something fishy is going on or otherwise want to exert more control. Go for it.")
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
@@ -87,7 +100,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = anvio.get_args(parser)
+    args = parser.get_args(parser)
 
     try:
         main(args)

@@ -1,0 +1,6 @@
+gene	accession	hmmsource
+5S_rRNA_arc	None	barrnap
+5S_rRNA_euk	None	barrnap
+5S_rRNA_bac	None	barrnap
+5_8S_rRNA_euk	None	barrnap
+5_8S_rRNA_arc	None	barrnap
