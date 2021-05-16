@@ -31,17 +31,21 @@ __description__ = "Generate an external genomes or internal genomes file"
 
 
 def main(args):
+    if not args.input_dir or args.profile_db:
+        raise ConfigError("You must provide either an input directory (for an external genomes file) or a "
+                          "profile db/contigs db/collection name set (for an internal genomes file). Also, "
+                          "just so you don't forget, we also need an output file path in either case.")
 
     if args.profile_db:
         if not (args.contigs_db and args.collection_name):
             raise ConfigError("Since you provided a profile db, we think you want an internal genomes file, but "
                               "anvi'o needs the corresponding contigs db and a collection name, as well.")
-        if not args.internal_genomes:
+        if not args.output_file:
             raise ConfigError("Please provide an output file path for your internal genomes file using the -i parameter.")
 
-        if filesnpaths.is_file_exists(args.internal_genomes, dont_raise=True):
-            raise ConfigError(f"The internal genomes file path that you provided already exists, and anvi'o will not overwrite "
-                              f"it. Please either remove the existing file or provide a different file path.")
+        if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+            raise ConfigError("The internal genomes file path that you provided already exists, and anvi'o will not overwrite "
+                              "it. Please either remove the existing file or provide a different file path.")
 
         utils.is_pan_or_profile_db(args.profile_db)
 
@@ -61,7 +65,7 @@ def main(args):
 
         if args.collection_name not in collections.collections_dict:
             raise ConfigError(f"The collection you requested, {args.collection_name}, does not appear to be a "
-                              "valid collection in this profile database.")
+                              f"valid collection in this profile database.")
 
         contig_db_path = os.path.abspath(args.contigs_db)
         profile_db_path = os.path.abspath(args.profile_db)
@@ -74,20 +78,20 @@ def main(args):
             int_genomes_dict[bin_name]['profile_db_path'] = profile_db_path
             int_genomes_dict[bin_name]['contigs_db_path'] = contig_db_path
 
-        utils.store_dict_as_TAB_delimited_file(int_genomes_dict, args.internal_genomes, key_header='name')
+        utils.store_dict_as_TAB_delimited_file(int_genomes_dict, args.output_file, key_header='name')
 
-        run.info("Internal genomes file", args.internal_genomes)
+        run.info("Internal genomes file", args.output_file)
 
     elif args.input_dir:
-        if not args.external_genomes:
+        if not args.output_file:
             raise ConfigError("Please provide an output file path for your external genomes file using the -e parameter.")
 
         if not filesnpaths.is_file_exists(args.input_dir, dont_raise=True):
             raise ConfigError("The directory you provided does not exist :/")
 
-        if filesnpaths.is_file_exists(args.external_genomes, dont_raise=True):
-            raise ConfigError(f"The external genomes file path that you provided already exists, and anvi'o will not overwrite "
-                              f"it. Please either remove the existing file or provide a different file path.")
+        if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+            raise ConfigError("The external genomes file path that you provided already exists, and anvi'o will not overwrite "
+                              "it. Please either remove the existing file or provide a different file path.")
 
         ext_genomes_dict = {}
         for file in glob.glob(os.path.join(args.input_dir, '*.db')):
@@ -103,33 +107,29 @@ def main(args):
         if not ext_genomes_dict:
             raise ConfigError("No contigs databases were found in the provided input directory.")
 
-        utils.store_dict_as_TAB_delimited_file(ext_genomes_dict, args.external_genomes, key_header='name')
+        utils.store_dict_as_TAB_delimited_file(ext_genomes_dict, args.output_file, key_header='name')
 
-        run.info("External genomes file", args.external_genomes)
+        run.info("External genomes file", args.output_file)
 
-    else:
-        raise ConfigError("You must provide either an input directory (for an external genomes file) or a "
-                          "profile db/contigs db/collection name set (for an internal genomes file). Also, "
-                          "just so you don't forget, we also need an output file path in either case.")
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
 
-    groupE = parser.add_argument_group("EXTERNAL GENOMES FILE", "Provide a directory, and anvi'o will provide an external genomes "
-                                                                "file containing all contigs dbs in that directory.")
-    groupE.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir'))
-    groupE.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'help': "The desired output file path for "
-                                                                "the external genomes file."}))
+    groupA = parser.add_argument_group("EXTERNAL GENOMES", "Provide a directory, and anvi'o will provide an external genomes "
+                                                           "file containing all contigs dbs in that directory.")
+    groupA.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir'))
 
-    groupI = parser.add_argument_group("INTERNAL GENOMES FILE", "Provide a contigs db, profile db, and collection name and anvi'o "
-                                                                "will bestow upon you an internal genomes file for that collection.")
-    groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupI.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupI.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupI.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes', {'help': "The desired output file path for "
-                                                                "the internal genomes file."}))
+    groupB = parser.add_argument_group("INTERNAL GENOMES", "Provide a contigs db, profile db, and collection name and anvi'o "
+                                                           "will bestow upon you an internal genomes file for that collection.")
+    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+
+
+    groupC = parser.add_argument_group("OUTPUT", "Path for your internal or external genomes file")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = parser.get_args(parser)
 
