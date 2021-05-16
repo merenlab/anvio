@@ -2537,6 +2537,12 @@ D = {
                      "By providing a directory for this parameter you will get, in addition to the structure "
                      "database, a directory containing the raw output for everything."}
                 ),
+    'include-subdirs': (
+            ['--include-subdirs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Also search subdirectories for files."}
+                ),
     'workflow': (
             ['-w', '--workflow'],
             {'required': False,
