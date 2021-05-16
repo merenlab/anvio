@@ -1,4 +1,4 @@
-![anvio](https://github.com/merenlab/anvio/raw/master/anvio/data/interactive/images/logo-fancy.png)
+<p align="center"><img src="https://github.com/merenlab/anvio/raw/master/anvio/data/interactive/images/logo-fancy.png" height="256" /></p>
 
 ### Releases
 

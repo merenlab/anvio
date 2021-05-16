@@ -2867,7 +2867,7 @@ D = {
                 ),
     'load-checkpoint': (
             ['--load-checkpoint'],
-            {'choices': ['profile', 'fragment_mapping'],
+            {'choices': ['profile', 'normalize', 'map_fragments'],
              'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
                      "This can be useful for saving time if anvi'o crashed "
                      "or in comparing the results of different advanced program parameterizations "
@@ -2875,10 +2875,11 @@ D = {
                      "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
                      "Use of this option requires that anvi-trnaseq was previously run with the flag, "
                      "--write-checkpoints, so that intermediate files were generated. "
-                     "The checkpoint, profile, restarts after tRNA have been profiled and dereplicated. "
-                     "The checkpoint, fragment_mapping, restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
+                     "Checkpoint \"profile\" restarts after tRNA have been profiled and dereplicated. "
+                     "\"normalize\" restarts after trimming and normalizing tRNA. "
+                     "\"map_fragment\" restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
                      "To overwrite subsequent checkpoints after loading a checkpoint "
-                     "(i.e., overwrite the fragment_mapping checkpoint files after loading the profile checkpoint), "
+                     "(e.g., to overwrite \"map_fragment\" intermediate files after loading from \"normalize\"), "
                      "remember to also use the flag, --write-checkpoints."}
                 ),
     'feature-param-file': (
@@ -2909,10 +2910,24 @@ D = {
                      "By default, 1 position is allowed to be unpaired (no Watson-Crick or G-T wobble base pair) "
                      "in each of the 4 stems; the user could, for instance, "
                      "lift this constraint on the acceptor stem by changing the value from 1 to \"\". "
-                     "There are 4 variable-length sections of tRNA. The user could, for whatever strange reason, "
-                     "prevent the program from considering D stems of length 3 as well as 4 "
-                     "by changing the allowed lengths of the distal section of the D stem, positions 13 and 22, from 0-1 to 1-1. "
-                     "(Logically, the allowed length range of both paired positions in the stem, 13 and 22, must be changed here.)"}
+                     "There are 3 variable-length sections of tRNA. The user could, for example, "
+                     "change the allowed lengths of the V loop from a discontinuous range, \"4-5,9-23\", to a continuous range, \"4-23\"."}
+                ),
+    'threeprime-termini': (
+            ['--threeprime-termini'],
+            {'default': 'CCA,CC,C,CCAN,CCANN',
+             'type': str,
+             'help': "Termini represent the subsequences (in the 5'->3' orientation) "
+                     "to expect at the 3' end of a tRNA read adjacent to the discriminator nucleotide. "
+                     "tRNA feature profiling from the 3' end seeks a valid terminus prior to the discriminator and more 5' features. "
+                     "3' terminal sequences can include the nucleotides, A, C, G, and T, and N, symbolizing any nucleotide. "
+                     "A single underscore, \"_\", can be included in lieu of a sequence, "
+                     "symbolizing the absence of a terminus such that the tRNA feature profile may end with the discriminator. "
+                     "If \"_\" is not included, tRNA sequences ending in the discriminator will still be sought as *fragments* of profiled tRNA. "
+                     "The order of sequences in the argument is the order of consideration in profiling. "
+                     "For example, if CCA is the first 3' terminus considered, "
+                     "and it produces a complete profile with no unconserved or unpaired nucleotides, then the other possible termini are not considered. "
+                     "Other termini are only considered with the possibility of \"improvement\" in the feature profile."}
                 ),
     'min-length-long-fiveprime': (
             ['--min-length-long-fiveprime'],
@@ -2934,10 +2949,9 @@ D = {
              'type': int,
              'help': "Anvi'o profiles a sequence as tRNA by identifying tRNA features from the 3' end of the sequence. "
                      "tRNA-seq datasets can include a significant number of tRNA fragments "
-                     "that are not from the 3' end of the sequence ending in a recognized acceptor tail (CCA, CC, C, CCAN, CCANN). "
+                     "that are not from the 3' end of the sequence ending in a recognized terminus, e.g., CCA. "
                      "These \"interior\" and 5' fragments can be of significant biological interest. "
-                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs "
-                     "that have their 3' acceptor variants trimmed off. "
+                     "Fragments are identified by mapping unprofiled reads to profiled tRNAs that have their 3' termini trimmed off. "
                      "This parameter sets the minimum length of unprofiled reads searched in this manner. "
                      "The choice of %(default)d as the default value is motivated by considerations "
                      "of false positive matches and computational performance with a shorter minimum sequence length. "
@@ -3018,20 +3032,59 @@ D = {
                      "others will be produced containing deletions at the first and second positions; "
                      "the first and third positions; the second position; the second and third; and the third."}
                 ),
+    'min-distance-between-deletions': (
+            ['--min-distance-between-deletions'],
+            {'default': 4,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The minimum number of nucleotides that must exist between distinct deletions "
+                     "introduced around potential modifications in the search for deletions. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "In silico deletions introduced around nearby substitutions in this smear "
+                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
+                     "Separation of in silico deletions using this parameter quashes this problem. "
+                     "The default value was determined by inspection of deletions predicted from large datasets. "
+                     "It is hard to envision a case where the user would adjust this parameter downward."}
+                ),
+    'max-deletion-configurations': (
+            ['--max-deletion-configurations'],
+            {'default': 10000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
+                     "that can be generated from a single sequence with potential modifications. "
+                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
+                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
+                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
+                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
+                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
+                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
+                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
+                     "is decremented for the sequence and in silico deletions are again introduced."}
+                ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
             {'default': False,
              'action': 'store_true',
              'help': "Don't check the input FASTA file for such things as proper defline formatting to speed things up."}
                 ),
-    'alignment-target-chunk-size': (
-            ['--alignment-target-chunk-size'],
-            {'default': 20000,
+    'profiling-chunk-size': (
+            ['--profiling-chunk-size'],
+            {'default': 500000,
              'metavar': 'INT',
              'type': int,
-             'help': "The anvi'o sequence aligner manages memory consumption by chunking the list of alignment targets, "
+             'help': "Anvi'o manages memory consumption during tRNA feature profiling by chunking the unique input sequences. "
+                     "This parameter sets the maximum number of sequences in each chunk. "
+                     "Adjustment of this parameter has little effect on speed."}
+                ),
+    'alignment-target-chunk-size': (
+            ['--alignment-target-chunk-size'],
+            {'default': 25000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Anvi'o sequence alignment manages memory consumption by chunking the list of alignment targets, "
                      "so that queries are aligned to the first chunk of targets, then the second chunk, and so on. "
-                     "This parameter sets the maximum number of target sequences in each chunk (by default %(default)d). "
+                     "This parameter sets the maximum number of target sequences in each chunk. "
                      "Memory management becomes important when aligning short queries to a large number of targets, "
                      "which involves searching queries against a massive number of k-mers "
                      "(equal in length to the shortest query) that have been extracted from targets. "
@@ -3050,28 +3103,38 @@ D = {
                      "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
                      "This parameter sets the sequence length interval used to chunk queries. "
                      "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
-                     "and a maximum unprofiled query length of, say, 170, the default length interval of %(default)d would result in 8 chunks. "
+                     "and a maximum unprofiled query length of, say, 170, "
+                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
                      "Adjust this parameter downward if your system runs out of memory during alignment; "
                      "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
-    'alignment-progress-interval': (
-            ['--alignment-progress-interval'],
-            {'default': 100000,
+    'profiling-progress-interval': (
+            ['--profiling-progress-interval'],
+            {'default': 500000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress is reported after a certain number of queries have been processed (by default %(default)d) "
+             'help': "Progress in the tRNA feature profiling of unique input sequences "
+                     "is reported after a certain number of sequences have been processed."}
+                ),
+    'alignment-progress-interval': (
+            ['--alignment-progress-interval'],
+            {'default': 500000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress is reported after a certain number of queries have been processed "
                      "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
                      "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
                 ),
-    'agglomeration-progress-interval': (
-            ['--agglomeration-progress-interval'],
+    'modification-progress-interval': (
+            ['--modification-progress-interval'],
             {'default': 10000,
              'metavar': 'INT',
              'type': int,
-             'help': "Progress in sequence agglomeration, a stage in the identification of modifications, "
-                     "is reported after a certain number of sequences have been processed."}
+             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
+                     "Progress is reported in two distinct stages of this process, "
+                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
@@ -3186,9 +3249,9 @@ D = {
                      "to inspect seeds for undisplayed variants (possible SNVs) "
                      "with a low level of third and fourth nucleotides."}
                 ),
-    'min-del-fraction': (
-            ['--min-del-fraction'],
-            {'default': 0.01,
+    'min-deletion-fraction': (
+            ['--min-deletion-fraction'],
+            {'default': 0.002,
              'metavar': 'FLOAT',
              'type': float,
              'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "

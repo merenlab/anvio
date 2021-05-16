@@ -943,6 +943,33 @@ class ContigsSuperclass(object):
         return output
 
 
+    def get_gene_amino_acid_sequence(self, gene_caller_ids):
+        """A much faster way to get back amino acid sequences for genes.
+
+        Paremeters
+        ==========
+        gene_caller_ids : list
+            A list of one or more gene caller ids.
+        """
+
+        if not isinstance(gene_caller_ids, list):
+            raise ConfigError("Anvi'o is disappoint. Gene caller ids sent to this function must "
+                              "be of type `list`.")
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        d = contigs_db.db.smart_get(t.gene_amino_acid_sequences_table_name, 'gene_callers_id', gene_caller_ids)
+        contigs_db.disconnect()
+
+        sequences = {}
+        for gene_callers_id in gene_caller_ids:
+            if gene_callers_id in d:
+                sequences[gene_callers_id] = d[gene_callers_id]['sequence']
+            else:
+                sequences[gene_callers_id] = None
+
+        return sequences
+
+
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
                                            output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
 
@@ -2662,10 +2689,17 @@ class ProfileSuperclass(object):
 
         utils.is_profile_db(self.profile_db_path)
 
+        # NOTE for programmers. The next few lines are quite critical for the flexibility of ProfileSuper.
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
         if not hasattr(self, 'split_names_of_interest'):
+            self.split_names_of_interest = set([])
+        elif hasattr(self, 'collection_name') and self.collection_name:
+            # if self.split_names_of_interest is defined upstream somewhere,
+            # but if we ALSO have a collection name here, we want to recover those
+            # split names relevant to the collection name later. so in this case,
+            # we will OVERWRITE this variable, which is kind of dangerous.
             self.split_names_of_interest = set([])
 
         if A('split_names_of_interest'):

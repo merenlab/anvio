@@ -582,7 +582,7 @@ class HMMERTableOutput(Parser):
         fixed_hmmer_table_txt =  self.fix_sad_hmmer_table_output(hmmer_table_txt, col_names)
         files_expected = {'hits': fixed_hmmer_table_txt}
 
-        Parser.__init__(self, 'HMMScan', [fixed_hmmer_table_txt], files_expected, files_structure)
+        Parser.__init__(self, self.program, [fixed_hmmer_table_txt], files_expected, files_structure)
 
 
     def get_col_info_for_GENE_context(self):
