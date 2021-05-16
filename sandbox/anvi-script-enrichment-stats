@@ -133,8 +133,8 @@ for (column_name in c("accession", "associated_groups")) {
 
 # make sure associated_groups column includes group names.
 unique_group_names <- unique(df_in[!is.na(df_in[,"associated_groups"]), ]$associated_groups)
-if (length(unique_group_names) < 2) {
-    stop(sprintf("You have less than two unique associated group names in this input file :/."))
+if (length(unique_group_names) < 1) {
+    stop(sprintf("You have no group associations in your data. Which means, nothing is differentially occurring across your groups :/"))
 }
 
 # Set up functions to run

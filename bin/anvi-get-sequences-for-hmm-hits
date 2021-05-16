@@ -158,13 +158,17 @@ def main(args):
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
     CHK()
 
-    run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+
+    run.info('Sources', f"{', '.join(hmm_sources)}")
+    run.info('Hits', '%d HMM hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
     if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
         gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
     else:
         gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+
+    run.info('Genes of interest', f"{', '.join(gene_names) if gene_names else None}")
 
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
