@@ -1139,9 +1139,9 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     if not enrichment_output_file_path:
         enrichment_output_file_path = filesnpaths.get_temp_file_path()
     elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
-        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
-                           "Please either delete the existing file, or provide another file path before re-running this "
-                           "program again.")
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/ "
+                          f"Please either delete the existing file, or provide another file path before re-running this "
+                          f"program again.")
 
     log_file_path = filesnpaths.get_temp_file_path()
 

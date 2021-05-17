@@ -1792,7 +1792,8 @@ class TRNASeqDataset(object):
 
         start_time = time.time()
 
-        self.progress.new("Profiling tRNA features in reads")
+        pid = "Profiling tRNA features in reads"
+        self.progress.new(pid)
         self.progress.update("...")
 
         # Count the number of reads and unique read sequences that have been added to the
@@ -1843,6 +1844,7 @@ class TRNASeqDataset(object):
 
                 if fetched_profile_count % profiling_progress_interval == 0:
                     # Periodically report the number of unique sequences that have been profiled.
+                    self.progress.update_pid(pid)
                     self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
 
             interval_start = interval_stop
@@ -1871,8 +1873,8 @@ class TRNASeqDataset(object):
 
     def unique_reads(self):
         """Dereplicate input reads."""
-        self.progress.new("Finding replicate reads")
-        self.progress.update("Loading reads")
+        self.progress.new("Loading reads")
+        self.progress.update("...")
 
         fasta = fastalib.SequenceSource(self.input_fasta_path)
         names = []
@@ -1885,7 +1887,11 @@ class TRNASeqDataset(object):
         fasta.close()
         self.read_count = read_count
 
-        self.progress.update("Dereplicating")
+        self.progress.end()
+
+
+        self.progress.new("Dereplicating reads")
+        self.progress.update("...")
         uniq_reads = []
         for cluster in Dereplicator(names, seqs).full_length_dereplicate():
             uniq_reads.append((cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names)))
@@ -1959,7 +1965,8 @@ class TRNASeqDataset(object):
         Trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         """
         start_time = time.time()
-        self.progress.new("Dereplicating trimmed tRNA seqs from the 3' end")
+        pid = "Dereplicating trimmed tRNA seqs from the 3' end"
+        self.progress.new(pid)
         self.progress.update("...")
 
         # Prefix dereplicate trimmed sequences from the 3' end.
@@ -2001,6 +2008,7 @@ class TRNASeqDataset(object):
         # the cluster is assigned a wrong complete or incomplete profile, but all of the shorter
         # sequences in the cluster are assigned correct incomplete profiles -- presumably a rare
         # inaccuracy that goes unchecked.
+        self.progress.update_pid(pid)
         self.progress.update("Inspecting normalized seq clusters")
 
         norm_trna_seq_dict = self.norm_trna_seq_dict
@@ -2542,7 +2550,8 @@ class TRNASeqDataset(object):
         """
         start_time = time.time()
 
-        self.progress.new("Mapping unprofiled reads to profiled tRNA")
+        pid = "Mapping unprofiled reads to profiled tRNA"
+        self.progress.new(pid)
         uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
 
         self.progress.update("Getting queries from unprofiled reads")
@@ -2579,6 +2588,7 @@ class TRNASeqDataset(object):
                 query_name_chunks.append(query_names)
                 query_seq_chunks.append(query_seqs)
 
+        self.progress.update_pid(pid)
         self.progress.update("Getting targets from profiled tRNAs")
         # Non-tRNA sequences are mapped to normalized tRNA sequences with extra 5' bases added when
         # present in underlying unique tRNA sequences. Multiple targets for each normalized sequence
@@ -2626,7 +2636,8 @@ class TRNASeqDataset(object):
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
         norm_trna_seq_dict = self.norm_trna_seq_dict
         for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            self.progress.new(f"Mapping {pp(len(query_names))} unprofiled {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} nt reads to profiled tRNA")
+            pid = f"Mapping {pp(len(query_names))} unprofiled {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} nt reads to profiled tRNA"
+            self.progress.new(pid)
 
             aligned_query_dict, aligned_target_dict = Aligner(
                 query_names,
@@ -2641,6 +2652,7 @@ class TRNASeqDataset(object):
             del aligned_target_dict # aligned_target_dict is not used for anything and can be big
             gc.collect()
 
+            self.progress.update_pid(pid)
             self.progress.update("Processing alignments")
 
             # Process each unique sequence query, each of which can match more than one normalized
@@ -2733,7 +2745,8 @@ class TRNASeqDataset(object):
     def find_substitutions(self):
         """Find sites of potential modification-induced substitutions."""
         start_time = time.time()
-        self.progress.new("Finding modification-induced substitutions")
+        pid = "Finding modification-induced substitutions"
+        self.progress.new(pid)
 
         # Cluster normalized tRNA sequences. Clusters agglomerate sequences that differ from at
         # least one other sequence in the cluster by no more than 2 substitutions per 71 aligned
@@ -2765,6 +2778,7 @@ class TRNASeqDataset(object):
 
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
+        self.progress.update_pid(pid)
         self.progress.update("Decomposing clusters, separating 3-4 nt from 2 nt variants")
 
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
@@ -2777,6 +2791,7 @@ class TRNASeqDataset(object):
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
             if num_processed_refs % decomposition_progress_interval == 0:
                 next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
+                self.progress.update_pid(pid)
                 self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}/{total_ref_count}")
             num_processed_refs += 1
 
@@ -2989,9 +3004,10 @@ class TRNASeqDataset(object):
         different cDNA sequences, with some containing a deletion, and others, representing a
         different tRNA, not containing a deletion."""
         start_time = time.time()
-        self.progress.new("Finding seqs with modification-induced dels")
+        pid = "Finding seqs with mod-induced dels"
+        self.progress.new(pid)
 
-        self.progress.update("Generating modified seqs with in silico dels")
+        self.progress.update("Generating mod seqs with in silico dels")
         # A "child" here is a modified sequence with in silico deletions, M'.
         mod_seq_child_names = []
         mod_seq_child_reversed_seq_strings = []
@@ -3005,7 +3021,8 @@ class TRNASeqDataset(object):
                 mod_seq_child_index += 1
 
 
-        self.progress.update("Gathering normalized seqs with truncated feature profiles")
+        self.progress.update_pid(pid)
+        self.progress.update("Gathering norm seqs with trunc profiles")
         norm_trunc_seq_names = []
         norm_trunc_seq_reversed_seq_strings = []
         norm_trunc_seq_extras = []
@@ -3014,7 +3031,8 @@ class TRNASeqDataset(object):
             norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
             norm_trunc_seq_extras.append(norm_trunc_seq)
 
-        self.progress.update("3'-dereplicating seqs with in silico dels and truncated profiles")
+        self.progress.update_pid(pid)
+        self.progress.update("3'-derep seqs with in silico dels & seqs with trunc profiles")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
                                                                norm_trunc_seq_reversed_seq_strings,
                                                                norm_trunc_seq_extras,
@@ -3023,11 +3041,13 @@ class TRNASeqDataset(object):
                                                                mod_seq_child_extras)
 
         if clusters:
-            self.progress.update("Searching normalized seqs with truncated feature profiles")
+            self.progress.update_pid(pid)
+            self.progress.update("Searching norm seqs with trunc profiles")
             self.process_deletion_clusters(clusters, 'trunc')
 
 
-        self.progress.update("Gathering normalized seqs with full feature profiles")
+        self.progress.update_pid(pid)
+        self.progress.update("Gathering norm seqs with full profiles")
         norm_trna_seq_names = []
         norm_trna_seq_reversed_seq_strings = []
         norm_trna_seq_extras = []
@@ -3037,7 +3057,8 @@ class TRNASeqDataset(object):
                 norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
                 norm_trna_seq_extras.append(norm_trna_seq)
 
-        self.progress.update("3'-dereplicating seqs with in silico dels and full profiles")
+        self.progress.update_pid(pid)
+        self.progress.update("3'-derep seqs with in silico dels and seqs with full profiles")
         clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
                                                                norm_trna_seq_reversed_seq_strings,
                                                                norm_trna_seq_extras,
@@ -3046,12 +3067,13 @@ class TRNASeqDataset(object):
                                                                mod_seq_child_extras)
 
         if clusters:
-            self.progress.update("Searching normalized seqs with full feature profiles")
+            self.progress.update_pid(pid)
+            self.progress.update("Searching norm seqs with full profiles")
             self.process_deletion_clusters(clusters, 'trna')
 
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed finding modification-induced dels (min)",
+            f.write(self.get_summary_line("Time elapsed finding mod-induced dels (min)",
                                           time.time() - start_time,
                                           is_time_value=True))
 
@@ -3264,10 +3286,14 @@ class TRNASeqDataset(object):
         seed M' may also be part of these clusters. Clusters seeded by N are produced. Only M' are
         3' subsequences in these clusters, as N have already been dereplicated. No cluster, seeded
         either by M' or N, can contain more than one N."""
+        pid = "Finding seqs with mod-induced dels"
         hashed_norm_seq_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings]
         hashed_mod_seq_child_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings]
 
-        # Find N and other M' in M'.
+        # FIND N and other M' in M'.
+        ############################
+        self.progress.update_pid(pid)
+        self.progress.update("Finding seqs without in silico dels in seqs with them")
         # Make an `AlignedTarget` object for each M' target that is hit, and add info on matching N
         # or M' queries to its alignment attribute. Store these objects in the following dict.
         mod_seq_child_aligned_target_dict = {}
@@ -3281,10 +3307,11 @@ class TRNASeqDataset(object):
         chunk_stop = target_chunk_size
         while chunk_start < len(mod_seq_child_names):
 
-            # Generate a dict mapping M' target 3' prefix k-mers to target info. This is like a
-            # `sequence.Kmerizer` method that uses multiple k-mer sizes and doesn't generate
-            # `AlignedTarget` objects for each target. To speed up lookup, create a nested dict,
-            # with the outer dict keyed by k-mer length.
+            # GENERATE A DICT mapping M' target 3' prefix k-mers to target info.
+            ####################################################################
+            # This is like a `sequence.Kmerizer` method that uses multiple k-mer sizes and doesn't
+            # generate `AlignedTarget` objects for each target. To speed up lookup, create a nested
+            # dict, with the outer dict keyed by k-mer length.
             kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
             for name, seq_string, target_extra in zip(mod_seq_child_names[chunk_start: chunk_stop],
                                                       mod_seq_child_reversed_seq_strings[chunk_start: chunk_stop],
@@ -3303,7 +3330,9 @@ class TRNASeqDataset(object):
                     except KeyError:
                         kmer_dict[kmer_size][hashed_kmer] = [target_info]
 
-            # Search for N queries in M' targets.
+
+            # SEARCH for N queries in M' targets.
+            #####################################
             for hashed_norm_seq_string, norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra in zip(hashed_norm_seq_strings,
                                                                                                            norm_seq_names,
                                                                                                            norm_seq_reversed_seq_strings,
@@ -3329,7 +3358,9 @@ class TRNASeqDataset(object):
                     target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
                     matched_norm_seq_names.add(norm_seq_name)
 
-            # Search for M' queries in M' targets.
+
+            # SEARCH for M' queries in M' targets.
+            ######################################
             for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
                                                                                                                                mod_seq_child_names,
                                                                                                                                mod_seq_child_reversed_seq_strings,
@@ -3361,7 +3392,7 @@ class TRNASeqDataset(object):
             chunk_start = chunk_stop
             chunk_stop += target_chunk_size
 
-        # Find N that did not match any M' to use as targets in the next search.
+        # Find N that DID NOT MATCH any M' to use as targets in the next search.
         matched_norm_seq_names = list(matched_norm_seq_names)
         unmatched_norm_seq_names = []
         unmatched_norm_seq_reversed_seq_strings = []
@@ -3380,7 +3411,10 @@ class TRNASeqDataset(object):
         del(norm_seq_extras)
         gc.collect()
 
-        # Find M' in unmatched N.
+        # FIND M' in unmatched N.
+        #########################
+        self.progress.update_pid(pid)
+        self.progress.update("Find seqs with in silico dels in seqs without them")
         # Make an `AlignedTarget` object for each N target that is hit, and add info on matching M'
         # queries to its alignment attribute. Store these objects in the following dict.
         norm_seq_aligned_target_dict = {}
@@ -3391,7 +3425,8 @@ class TRNASeqDataset(object):
         while chunk_start < len(unmatched_norm_seq_names):
             chunk_norm_seq_lengths = sorted(set([len(seq_string) for seq_string in unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop]]))
 
-            # Generate a dict mapping N target 3' prefix k-mers to target info.
+            # GENERATE A DICT mapping N target 3' prefix k-mers to target info.
+            ###################################################################
             kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
             for name, seq_string, target_extra in zip(unmatched_norm_seq_names[chunk_start: chunk_stop],
                                                       unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop],
@@ -3408,6 +3443,9 @@ class TRNASeqDataset(object):
                     except KeyError:
                         kmer_dict[kmer_size][hashed_kmer] = [target_info]
 
+
+            # SEARCH for M' queries in N targets.
+            #####################################
             for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
                                                                                                                                mod_seq_child_names,
                                                                                                                                mod_seq_child_reversed_seq_strings,
@@ -3435,7 +3473,10 @@ class TRNASeqDataset(object):
         gc.collect()
 
         clusters = []
-        # Create a cluster object for each M' containing an N.
+        # CREATE CLUSTER objects for each M' containing an N.
+        #####################################################
+        self.progress.update_pid(pid)
+        self.progress.update("Creating clusters seeded by seqs with in silico dels")
         for mod_seq_child_target in mod_seq_child_aligned_target_dict.values():
             norm_seq_added = False
             if mod_seq_child_target.alignments:
@@ -3461,7 +3502,10 @@ class TRNASeqDataset(object):
                     cluster.member_extras.insert(0, extra)
                     clusters.append(cluster)
 
-        # Create cluster objects for each N containing but not contained by an M'.
+        # CREATE CLUSTER objects for each N containing but not contained by an M'.
+        ##########################################################################
+        self.progress.update_pid(pid)
+        self.progress.update("Creating clusters seeded by seqs without in silico dels")
         for norm_seq_target in norm_seq_aligned_target_dict.values():
             if norm_seq_target.alignments:
                 cluster = Cluster()

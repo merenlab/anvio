@@ -9,6 +9,7 @@ import anvio
 import anvio.kegg as kegg
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -33,10 +34,9 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-
     # sanity check for multiple input options
     if ((args.pan_db or args.genomes_storage) and (args.modules_txt or args.groups_txt or args.external_genomes)) \
-    or ((args.modules_txt or args.groups_txt) and (args.external_genomes)):
+      or ((args.modules_txt or args.groups_txt) and (args.external_genomes)):
         raise ConfigError("Confused anvi'o is confused. You appear to have selected multiple input options. "
                           "For obvious reasons, this will not work, so please go pick one option. ")
 
@@ -46,9 +46,18 @@ def main(args):
     if (args.modules_txt and not args.groups_txt) or (args.groups_txt and not args.modules_txt):
         raise ConfigError("For input option #2, you must provide both a modules-txt file and a groups-txt file.")
 
+    # make sure the output files is not going to overwrite anything
+    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing for overwriting existing files. "
+                          f"Please remove the exiting file first, or give a different output file name to this program.")
+
+    # make sure we can write to the output file
+    filesnpaths.is_output_file_writable(args.output_file)
+
     run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
-                     "You can find more information about it in the following paper: Shaiber et al (https://doi.org/10.1186/s13059-020-02195-w). "
-                     "When you publish your findings, please do not forget to properly credit this work. :)", lc='green', header="CITATION")
+                "You can find more information about it in the following paper: Shaiber, Willis et al (https://doi.org/10.1186/s13059-020-02195-w). "
+                "When you publish your findings, please do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
 
     if args.pan_db:
         s = summarizer.PanSummarizer(args, lazy_init=True)

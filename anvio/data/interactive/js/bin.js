@@ -809,12 +809,22 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
     let nodes_for_inversion = [] 
+    let calculatedRectX = 0
         
     for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
             nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
         }
     }
+
+    nodes_for_inversion.map((node, idx) => { 
+        // map through each node, use the highest 'x' value for all nodes in subsequent rect phylogram render
+        // addresses bug of rect shades starting from their relative position in tree 
+        let p = node[0];
+        if(p){
+            p.xy.x > calculatedRectX ? calculatedRectX = p.xy.x : null 
+        }
+    })
 
     nodes_for_inversion.map((node, idx) => {
 
@@ -850,7 +860,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
         } else {
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
-                p.xy.x, 
+                calculatedRectX, // new variable calculated above 
                 p.xy.y,
                 p.size, 
                 rect_width,
