@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import os
-import random
 import pandas as pd
 
 import anvio
@@ -29,8 +28,8 @@ class Agnostos(Parser):
         self.progress = progress
         self.just_do_it = False
 
-        input_file_path = input_file_paths[0]
-        filesnpaths.is_file_exists(input_file_path)
+        input_file_path = self.fix_input_file(input_file_paths[0])
+
         files_expected = {'agnostos_output': input_file_path}
 
         files_structure = {'agnostos_output':
@@ -40,16 +39,31 @@ class Agnostos(Parser):
                                  'separator': '\t'},
                             }
 
-        Parser.__init__(self, 'agnostos', input_file_paths, files_expected, files_structure)
+        Parser.__init__(self, 'agnostos', [input_file_path], files_expected, files_structure)
 
         # This is where I would specific sanity checks for agnostos
 
+    def fix_input_file(self, input_file_path):
+        """Select columns for anvio and remove duplicate rows"""
+        self.progress.new('Making agnostos output anvio friendly')
+        self.progress.update('...')
+
+        temp_file_path = filesnpaths.get_temp_file_path()
+
+
+        df = pd.read_csv(input_file_path, sep='\t')
+        df = df[["gene_callers_id", "cl_name", "contig", "gene_x_contig", "db", "cl_size", "category", "is.HQ", "is.LS", "lowest_rank", "lowest_level", "niche_breadth_sign"]]
+        df = df.drop_duplicates(subset=["gene_callers_id"])
+
+        df.to_csv(temp_file_path, sep = '\t', index = False, na_rep = 'NA')
+
+        return temp_file_path
+
+        self.progress.end()
 
     def get_dict(self):
+        """Convert angostos output into functions dict"""
         d = self.dicts['agnostos_output']
-
-        self.progress.new('Importing Agnostos annotations into contigs')
-        self.progress.update('...')
 
         # Parse Agnostos output to make functions_dict
         df = pd.DataFrame.from_dict(d, orient='index')
