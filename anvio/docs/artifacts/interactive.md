@@ -85,7 +85,7 @@ At the bottom of the settings panel there is a section with tiny controls that a
 - __Zoom in, zoom out, and center__ the display.
 - __Download your display as an SVG file.__
  
-![settings panel bottom controls](../images/png/interactive_interface/interactive-settings-bottom.png){:.center-img}
+![settings panel bottom controls](../../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
 
 
 ## Main tab 
