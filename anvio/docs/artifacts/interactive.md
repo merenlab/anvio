@@ -4,7 +4,7 @@ This page describes general properties of anvi'o interactive displays and progra
 
 Anvi'o uses a simple terminology to address various aspects of interactive displays it produces, such as items, layers, views, orders, and so on. The purpose of this section is to provide some insights into these terminology using the figure below:
 
-![an anvi'o display](../images/png/interactive_interface/anvio_display_template.png){:.center-img}
+![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
 
 Even though the figure is a product of %(anvi-display-pan)s, the general terminology does not change across different interfaces, including the default visualizations of %(anvi-interactive)s. Here are the descriptions of numbered areas in the figure:
 
@@ -50,7 +50,7 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
      https://merenlab.org/2017/05/08/anvio-views/
 -->
-- Settings Panel 
+<!-- - Settings Panel 
     - Main
     - Layers
     - Bins
@@ -71,21 +71,21 @@ However, there are more interfaces available in anvi'o than just that one, so le
     - accessed from context menu and terminal 
 
 - Glossary of keyboard shortcuts 
-- Glossry of helpful hints
+- Glossry of helpful hints -->
 
 # An overview of the display
 
 The interactive interface has two major areas of interaction: the space for visualization on the right, and the settings panel. The settings panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
 
-# Settings panel (TEST)
-![an anvi'o settings panel](../images/png/interactive_interface/interactive-settings-panel-tabs.png){:.center-img}
+# Settings panel
+![an anvi'o settings panel](../../images/interactive_interface/interactive-settings-panel-tabs.png){:.center-img}
 
 At the bottom of the settings panel there is a section with tiny controls that are available in all tabs. Through these controls you can,
 - __Create or refresh__ the display when necessary using the draw button (some changes require you to do that),
 - __Zoom in, zoom out, and center__ the display.
 - __Download your display as an SVG file.__
  
-![settings panel bottom controls](../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
+![settings panel bottom controls](../../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
 
 
 ## Main tab 
@@ -98,13 +98,13 @@ At the bottom of the settings panel there is a section with tiny controls that a
         - __Layers__ display and label settings
         - __Performance__ -minded settings. 
 
-![an anvi'o main tab](../images/png/interactive_interface/interactive-settings-display-additional-settings.png){:.center-img}
+![an anvi'o main tab](../../images/interactive_interface/interactive-settings-display-additional-settings.png){:.center-img}
 - Layers
     - This section is where users can adjust individual layer attributes like __color__, display __type__, __height__  and __min/max__ values. 
     - Users can click + drag each layer to rearrange how layers are ordered. 
     - Users can also __edit attributes for multiple layers__ as well. 
 
-![an anvi'o settings layers](../images/png/interactive_interface/interactive-settings-layers.png){:.center-img}
+![an anvi'o settings layers](../../images/interactive_interface/interactive-settings-layers.png){:.center-img}
 
 
 ## Layers tab 
@@ -115,7 +115,7 @@ Through the layers tab you can,
 - __Customize individual__ layers by switching between different __display modes__ depending on the layer type (i.e., ‘text’ or ‘color’ mode for categorical layers, or ‘bar’ or ‘intensity’ mode for numerical layers), __set normalization__ (i.e., ‘square-root’, or ‘log’ normalization), __minimum, and maximum cutoff__ values for numerical layers, or set __layer height__, and __layer margin__ (i.e., its distance from the previous layer).
 - Use the __multi-selector__ at the bottom to change settings for multiple layers at once.
 
-![an anvi'o layers tab](../images/png/interactive_interface/interactive-settings-layers-tab.png){:.center-img}
+![an anvi'o layers tab](../../images/interactive_interface/interactive-settings-layers-tab.png){:.center-img}
 <!-- blog post links to 'working with SVGs blog post, good info, should incorporate? -->
 ## Samples tab 
 Samples tab is for the additional data you provide the interface through a samples database (see samples order and samples infomration sections above). Through this layer you can,
@@ -128,13 +128,13 @@ Anvi’o allows you to create selections of items shown in the display (whether 
 - View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
 - __Store a collection of bins__, or __load a previously stored collection.__
 
-![an anvi'o bins tab](../images/png/interactive_interface/interactive-settings-bins-tab.png){:.center-img}
+![an anvi'o bins tab](../../images/interactive_interface/interactive-settings-bins-tab.png){:.center-img}
 
 ## Legends tab 
 - The legends tab enables users to easily change individual or batch legend colors for any of their additional data items 
 <!-- grab legend example from infant gut w/ additional data layer -->
 
-![an anvi'o legends tab](../images/png/interactive_interface/interactive-settings-legends-tab.png){:.center-img}
+![an anvi'o legends tab](../../images/interactive_interface/interactive-settings-legends-tab.png){:.center-img}
 
 ## Search tab 
 It does what the name suggests. Using this tab you can,
