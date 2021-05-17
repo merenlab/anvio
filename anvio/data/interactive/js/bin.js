@@ -863,7 +863,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
                 calculatedRectX, // new variable calculated above 
                 p.xy.y,
                 p.size, 
-                rect_width
+                rect_width,
                 inverse_color,
                 inverse_fill_opacity,
                 true
