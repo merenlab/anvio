@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupF.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = parser.get_args(parser)
+    args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
         args.mode = 'pan'

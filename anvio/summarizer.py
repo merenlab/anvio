@@ -365,7 +365,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         include_ungrouped = A('include_ungrouped')
 
-
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
@@ -763,10 +762,27 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
                                 }
 
+        # FIXME: mistune had an API change, and is not behaving correctly
+        # this is the part where we try to initialize
+        markdown = None
+        try:
+            # this is for mistune `0.8.4` and earlier
+            renderer = mistune.Renderer(escape=False)
+            markdown = mistune.Markdown(renderer=renderer)
+        except AttributeError:
+            # this is for mistune `2.0.0rc1` and later
+            try:
+                markdown = mistune.create_markdown(escape=False)
+            except Exception as e:
+                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the the error "
+                                  f"we got from the downstream library: '{e}'. Probably this needs a developer "
+                                  f"to take a look. Meanwhile, we are turning off the rendering of markdown "
+                                  f"descriptions. Things will look ugly in some places in the interface and "
+                                  f"summary, but at least things will work from a functional standpoint :/")
+
         # I am not sure whether this is the best place to do this,
         T = lambda x: 'True' if x else 'False'
-        renderer = mistune.Renderer(escape=False)
-        markdown = mistune.Markdown(renderer=renderer)
+
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
@@ -799,7 +815,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                         ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
                                                         ('Summary reformatted contig names', self.reformat_contig_names),
                                                     ],
-                                        'description': markdown(self.p_meta['description']),
+                                        'description': markdown(self.p_meta['description']) if markdown else self.p_meta['description'],
                                         }
 
         self.summary['max_shown_header_items'] = 10
@@ -996,7 +1012,7 @@ class ContigSummarizer(SummarizerSuperClass):
         if split_names:
             split_names = set(split_names)
             c.init_split_sequences()
-            seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
+            seq = ''.join([c.split_sequences[split_name]['sequence'] for split_name in split_names])
             for e in list(c.genes_in_splits.values()):
                 if e['split'] in split_names:
                     process_gene_call(e['gene_callers_id'])
@@ -1631,7 +1647,7 @@ class Bin:
 
                 sequence = ''
                 for split_order in sequential_block:
-                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]
+                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]['sequence']
 
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)

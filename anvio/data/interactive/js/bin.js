@@ -79,7 +79,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
                        <td data-value="${name}">
-                            <input type="text" class="bin-name" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
+                            <input type="text" class="bin-name" oninput="this.value = event.target.value.replaceAll(' ', '_');" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
                         </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
@@ -995,7 +995,7 @@ Bins.prototype.RedrawBins = function() {
                         'x': bin_label_px, 
                         'y': bin_label_py, 
                     },
-                    $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
+                    $('#bin_name_' + bins_to_draw[i][2]).val().replaceAll("_", " "),
                     (autorotate_bin_labels) ? new_angle : bin_labels_angle,
                     align,
                     bin_labels_font_size + "px",

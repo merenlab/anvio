@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import datetime
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -34,13 +33,7 @@ def main(args):
     filesnpaths.is_file_json_formatted(args.state)
     utils.is_this_name_OK_for_database('--name parameter', args.name)
 
-    states_table = TablesForStates(args.pan_or_profile_db)
-
-    name = args.name
-    content = open(args.state).read()
-    last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-
-    states_table.store_state(name, content, last_modified)
+    TablesForStates(args.pan_or_profile_db).store_state(args.name, open(args.state).read())
 
     run.info('Done', 'State "%s" is added to the database' % args.name)
 

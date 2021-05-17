@@ -192,6 +192,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.split_names_of_interest.update(split_names)
 
             progress.end()
+        elif self.inspect_split_name:
+            self.split_names_of_interest = set([self.inspect_split_name])
 
         if self.contigs_db_path:
             self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
@@ -215,6 +217,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'trnaseq'
             else:
                 self.mode = 'full'
+
+        if self.mode in ['full', 'collection', 'trnaseq', 'gene'] and not self.profile_db_path:
+            raise ConfigError("You must declare a profile database for this to work :(")
 
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
@@ -912,6 +917,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
+        # everything we need is in the database now. time to add a mini state:
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read()
+        TablesForStates(self.profile_db_path).store_state('default', mini_state)
+
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
 
@@ -1537,6 +1546,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for split_name in splits_to_remove:
             self.items_additional_data_dict.pop(split_name)
 
+        # if you remove all splits from the additional data dict (say because you are in)
+        # collection mode and your `items` are bin names and not split names), make sure
+        # the items additional data keys variable reflects that fact (reported by
+        # Florentin Constancias / @fconstancias in #1705):
+        if not len(self.items_additional_data_dict):
+            self.items_additional_data_keys = []
+
         self.progress.end()
 
 
@@ -1727,20 +1743,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.ids_for_already_refined_bins = set([])
 
         if anvio.DEBUG:
-            run.info('collection from db', collection_dict)
-            run.info('bins info from db', bins_info_dict)
+            run.info('collection from db', f"{collection_dict}")
+            run.info('bins info from db', f"{bins_info_dict}")
             run.info_single('')
 
-            run.info('incoming collection data', refined_bin_data)
-            run.info('incoming bins info', refined_bins_info_dict)
+            run.info('incoming collection data', f"{refined_bin_data}")
+            run.info('incoming bins info', f"{refined_bins_info_dict}")
             run.info_single('')
 
         for bin_id in refined_bin_data:
             self.ids_for_already_refined_bins.add(bin_id)
 
         if anvio.DEBUG:
-            run.info('resulting collection', collection_dict)
-            run.info('resulting bins info', bins_info_dict)
+            run.info('resulting collection', f"{collection_dict}")
+            run.info('resulting bins info', f"{bins_info_dict}")
             run.info_single('')
 
         collections.append(self.collection_name, refined_bin_data, refined_bins_info_dict, drop_collection=False)

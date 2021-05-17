@@ -254,6 +254,7 @@ function removeGeneChart() {
 
 
 function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
+    info("Drawing gene arrows");
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);

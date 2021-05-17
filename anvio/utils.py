@@ -39,8 +39,9 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Composition
+from anvio.dbinfo import DBInfo as dbi
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.sequence import Composition
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
 with SuppressAllOutput():
@@ -795,12 +796,49 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
-    if not prefix:
-        prefix = os.path.abspath(input_file_path)
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+    """Splits a given FASTA file into multiple parts.
 
-    filesnpaths.is_file_exists(input_file_path)
+    Please note that this function will not clean after itself. You need to take care of the
+    output files in context.
+
+    Parameters
+    ==========
+    input_file_path : str
+        FASTA-formatted flat text file to be split
+    parts : int
+        Number of parts the input file to be split into
+    file_name_prefix : str
+        Preferably a single-word prefix for the output files
+    shuffle : bool
+        Whether input sequences should be randomly shuffled (so the input sequences
+        randomly distribute across output files)
+    output_dir : str, path
+        Output directory. By default, anvi'o will store things in a new directory under
+        the system location for temporary files
+
+    Returns
+    =======
+    output_file_paths : list
+        Array with `parts` number of elements where each item is an output file path
+
+    """
+    if not file_name_prefix:
+        file_name_prefix = os.path.basename(input_file_path)
+    else:
+        if '/' in file_name_prefix:
+            raise ConfigError("File name prefix for split fasta can't contain slash characters. It is not "
+                              "supposed to be a path after all :/")
+
+    # check input
     filesnpaths.is_file_fasta_formatted(input_file_path)
+
+    # check output
+    if not output_dir:
+        output_dir = filesnpaths.get_temp_directory_path()
+    else:
+        filesnpaths.gen_output_directory(output_dir)
+        filesnpaths.is_output_dir_writable(output_dir)
 
     source = u.ReadFasta(input_file_path, quiet=True)
     length = len(source.ids)
@@ -810,11 +848,13 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
 
     chunk_size = length // parts
 
-    output_files = []
+    output_file_paths = []
+
+    GET_OUTPUT_FILE_PATH = lambda p: os.path.join(output_dir, ".".join([file_name_prefix, str(p)]))
 
     if shuffle:
-        output_files = [f'{prefix}.{part_no}' for part_no in range(parts)]
-        output_fastas = [u.FastaOutput(file_name) for file_name in output_files]
+        output_file_paths = [f'{GET_OUTPUT_FILE_PATH(part_no)}' for part_no in range(parts)]
+        output_fastas = [u.FastaOutput(file_name) for file_name in output_file_paths]
 
         # The first sequence goes to the first outfile, the second seq to the second outfile, and so on.
         for seq_idx, (seq_id, seq) in enumerate(zip(source.ids, source.sequences)):
@@ -826,7 +866,7 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
             output_fasta.close()
     else:
         for part_no in range(parts):
-            output_file = prefix + '.' + str(part_no)
+            output_file = GET_OUTPUT_FILE_PATH(part_no)
 
             output_fasta = u.FastaOutput(output_file)
 
@@ -842,11 +882,11 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
                 output_fasta.write_seq(source.sequences[i])
 
             output_fasta.close()
-            output_files.append(output_file)
+            output_file_paths.append(output_file)
 
     source.close()
 
-    return output_files
+    return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -1099,9 +1139,9 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     if not enrichment_output_file_path:
         enrichment_output_file_path = filesnpaths.get_temp_file_path()
     elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
-        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
-                           "Please either delete the existing file, or provide another file path before re-running this "
-                           "program again.")
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/ "
+                          f"Please either delete the existing file, or provide another file path before re-running this "
+                          f"program again.")
 
     log_file_path = filesnpaths.get_temp_file_path()
 
@@ -2114,9 +2154,10 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     Parameters
     ==========
     contig_sequences_dict : dict
-        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
-        ContigsSuperClass.init_contig_sequences)
+        An object that looks like that ContigsSuperclass.contig_sequences (initialized with
+        ContigsSuperclass.init_contig_sequences)
     """
+
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
@@ -3340,6 +3381,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         return dict_to_append
 
     # this is here for backward compatibility.
+    failed_lines = list(set(failed_lines)) # confirming we are not printing multiple instances of the same line
     if return_failed_lines:
         return d, failed_lines
 
@@ -3638,30 +3680,9 @@ def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
-def get_db_type_and_variant(db_path):
-    filesnpaths.is_file_exists(db_path)
-
-    try:
-        database = db.DB(db_path, None, ignore_version=True)
-    except Exception as e:
-        raise ConfigError(f"Someone downstream doesn't like your so called database, '{db_path}'. They say "
-                          f"\"{e}\". Awkward :(")
-
-    tables = database.get_table_names()
-    if 'self' not in tables:
-        database.disconnect()
-        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
-
-    db_type = database.get_meta_value('db_type')
-
-    try:
-        db_variant = database.get_meta_value('db_variant')
-    except:
-        db_variant = None
-
-    database.disconnect()
-
-    return (db_type, db_variant)
+def get_db_type_and_variant(db_path, dont_raise=False):
+    database = dbi(db_path, dont_raise=dont_raise)
+    return (database.db_type, database.variant)
 
 
 def get_db_type(db_path):
@@ -3782,95 +3803,53 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
                           "anvi-gen-variability-profile." % table_path)
 
 
-def is_contigs_db(db_path):
-    if get_db_type(db_path) != 'contigs':
-        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+def is_contigs_db(db_path, dont_raise=False):
+    dbi(db_path, expecting='contigs', dont_raise=dont_raise)
     return True
 
 
 def is_trnaseq_db(db_path):
-    if get_db_type(db_path) != 'trnaseq':
-        raise ConfigError("'%s' is not an anvi'o trnaseq database." % db_path)
+    dbi(db_path, expecting='trnaseq')
     return True
 
 
 def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
-    ok_db_types = ['pan', 'profile']
-
-    if genes_db_is_also_accepted:
-        ok_db_types += ['genes']
-
-    db_type = get_db_type(db_path)
-
-    if db_type not in ok_db_types:
-        if genes_db_is_also_accepted:
-            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this "
-                              "'%s' database is not it." % (db_path, db_type))
-        else:
-            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' "
-                               "being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
-
+    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else [])
+    dbi(db_path, expecting=ok_db_types)
     return True
 
 
 def is_profile_db(db_path):
-    if get_db_type(db_path) != 'profile':
-        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+    dbi(db_path, expecting='profile')
     return True
 
 
 def is_structure_db(db_path):
-    if get_db_type(db_path) != 'structure':
-        raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
-    return True
-
-
-def is_modules_db(db_path):
-    if get_db_type(db_path) != 'modules':
-        raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
+    dbi(db_path, expecting='structure')
     return True
 
 
 def is_blank_profile(db_path):
-    if get_db_type(db_path) != 'profile':
+    database = dbi(db_path, dont_raise=True)
+
+    if database.db_type != 'profile':
         return False
 
-    database = db.DB(db_path, None, ignore_version=True)
-    blank = int(database.get_meta_value('blank'))
-    database.disconnect()
-
-    return True if blank == 1 else False
-
-
-def get_enriched_groups(props, reps):
-    '''
-        Accepts a vector of proportions and number of replicates per group and
-        returns a boolean vector where each group that has proportion above
-        the "expected" (i.e. the overall proportion) is True and the rest are False.
-    '''
-    # if the function doesn't occur at all then test_statistic is zero and p-value is 1
-    if not np.count_nonzero(props):
-        return np.zeros(len(props))
-    overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
-
-    return props > overall_portion
+    return database.blank
 
 
 def is_pan_db(db_path):
-    if get_db_type(db_path) != 'pan':
-        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
+    dbi(db_path, expecting='pan')
     return True
 
 
 def is_genome_storage(db_path):
-    if get_db_type(db_path) != 'genomestorage':
-        raise ConfigError("'%s' is not an anvi'o genome storage." % db_path)
+    dbi(db_path, expecting='genomestorage')
     return True
 
 
 def is_genes_db(db_path):
-    if get_db_type(db_path) != 'genes':
-        raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
+    dbi(db_path, expecting='genes')
     return True
 
 
@@ -3889,69 +3868,56 @@ def is_gene_caller_id(gene_caller_id, raise_if_fail=True):
 
 
 def is_kegg_modules_db(db_path):
-    if get_db_type(db_path) != 'modules':
-        raise ConfigError("'%s' is not an anvi'o KEGG modules database." % db_path)
+    dbi(db_path, expecting='modules')
     return True
 
 
 def is_profile_db_merged(profile_db_path):
-    is_profile_db(profile_db_path)
-
-    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
-    merged = int(profile_db.get_meta_value('merged'))
-    profile_db.disconnect()
-
-    return merged
+    return dbi(profile_db_path, expecting='profile').merged
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    is_profile_db(profile_db_path)
-    is_contigs_db(contigs_db_path)
+    pdb = dbi(profile_db_path)
+    cdb = dbi(contigs_db_path)
 
-    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
-    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
-
-    p_hash = profile_db.get_meta_value('contigs_db_hash')
-    a_hash = contigs_db.get_meta_value('contigs_db_hash')
-    merged = int(profile_db.get_meta_value('merged'))
-
-    profile_db.disconnect()
-    contigs_db.disconnect()
-
-    if a_hash != p_hash:
+    if cdb.hash != pdb.hash:
         raise ConfigError('The contigs database and the profile database does not '
                           'seem to be compatible. More specifically, this contigs '
                           'database is not the one that was used when %s generated '
                           'this profile database (%s != %s).'\
-                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
-
+                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
     return True
 
 
 def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path):
-    is_structure_db(structure_db_path)
-    is_contigs_db(contigs_db_path)
+    sdb = dbi(structure_db_path)
+    cdb = dbi(contigs_db_path)
 
-    structure_db = db.DB(structure_db_path, get_required_version_for_db(structure_db_path))
-    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
-
-    p_hash = structure_db.get_meta_value('contigs_db_hash')
-    a_hash = contigs_db.get_meta_value('contigs_db_hash')
-
-    structure_db.disconnect()
-    contigs_db.disconnect()
-
-    if a_hash != p_hash:
+    if cdb.hash != sdb.hash:
         raise ConfigError('The contigs and structure databases do not seem compatible. '
                           'More specifically, the contigs database is not the one that '
                           'was used when the structure database was created (%s != %s).'\
-                               % (a_hash, p_hash))
+                               % (cdb.hash, sdb.hash))
 
     return True
 
 
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
+
+
+def get_enriched_groups(props, reps):
+    '''
+        Accepts a vector of proportions and number of replicates per group and
+        returns a boolean vector where each group that has proportion above
+        the "expected" (i.e. the overall proportion) is True and the rest are False.
+    '''
+    # if the function doesn't occur at all then test_statistic is zero and p-value is 1
+    if not np.count_nonzero(props):
+        return np.zeros(len(props))
+    overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
+
+    return props > overall_portion
 
 
 def get_yaml_as_dict(file_path):
