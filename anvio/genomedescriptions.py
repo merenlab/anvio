@@ -1062,6 +1062,8 @@ class AggregateFunctions:
         self.aggregate_using_all_hits = A('aggregate_using_all_hits') or False
         self.layer_groups_input_file_path = A('groups_txt') or False
         self.print_genome_names_and_quit = A('print_genome_names_and_quit') or False
+        self.functional_occurrence_table_output_path = A('functional_occurrence_table_output')
+        self.functional_enrichment_output_path = A('output-file')
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1235,6 +1237,12 @@ class AggregateFunctions:
 
 
     def sanity_check(self):
+        if self.functional_occurrence_table_output_path:
+            filesnpaths.is_output_file_writable(self.functional_occurrence_table_output_path)
+
+        if self.functional_enrichment_output_path:
+            filesnpaths.is_output_file_writable(self.functional_enrichment_output_path)
+
         if not self.function_annotation_source:
             raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
                               "an annotation source to be used for aggregating all the information from all "
@@ -1466,16 +1474,22 @@ class AggregateFunctions:
                               "initialized. But someone called this function without first intializing "
                               "groups :/ ")
 
+        # FIXME: this is kind of a stupid design. we create this directory even if the user has declared output file names
+        #        for both teh functional occurrence table output and functional enrichment output.
         output_directory = filesnpaths.get_temp_directory_path()
-        functional_occurrence_stats_file_path = os.path.join(output_directory, 'FUNC_OCCURENCE_STATS.txt')
-        output_file_path = os.path.join(output_directory, 'FUNC_ENRICHMENT_OUTPUT.txt')
+
+        if not self.functional_occurrence_table_output_path:
+            self.functional_occurrence_table_output_path = os.path.join(output_directory, 'FUNC_OCCURENCE_STATS.txt')
+
+        if not self.functional_enrichment_output_path:
+            self.functional_enrichment_output_path = os.path.join(output_directory, 'FUNC_ENRICHMENT_OUTPUT.txt')
 
         # get functions per group stats file
-        self.report_functions_per_group_stats(functional_occurrence_stats_file_path, quiet=True)
+        self.report_functions_per_group_stats(self.functional_occurrence_table_output_path, quiet=True)
 
         # run the enrichment analysis
-        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_file_path,
-                                                                                      output_file_path,
+        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_input_file_path=self.functional_occurrence_table_output_path,
+                                                                                      enrichment_output_file_path=self.functional_enrichment_output_path,
                                                                                       run=self.run,
                                                                                       progress=self.progress)
 
