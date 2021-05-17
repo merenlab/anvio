@@ -77,7 +77,7 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 The interactive interface has two major areas of interaction: the space for visualization on the right, and the settings panel. The settings panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
 
-# Settings panel
+# Settings panel (TEST)
 ![an anvi'o settings panel](../images/png/interactive_interface/interactive-settings-panel-tabs.png){:.center-img}
 
 At the bottom of the settings panel there is a section with tiny controls that are available in all tabs. Through these controls you can,
@@ -85,7 +85,7 @@ At the bottom of the settings panel there is a section with tiny controls that a
 - __Zoom in, zoom out, and center__ the display.
 - __Download your display as an SVG file.__
  
-![settings panel bottom controls](../../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
+![settings panel bottom controls](../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
 
 
 ## Main tab 
