@@ -112,12 +112,17 @@ if (file.access(opts$input) == -1) {
 }
 
 # read in data
-df_in <- readr::read_tsv(file = opts$input)
+df_in <- readr::read_tsv(file = opts$input, col_types = cols())
+
+if (nrow(df_in) < 2) {
+    stop(sprintf("Your input file contains less than two lines :/ Not OK."))
+}
 
 # Find number of groups
 # Be smart about finding number of header rows
 n_columns_before_data <- (names(df_in) %>% startsWith("p_") %>% which %>% min) - 1
 num_groups <- (ncol(df_in) - n_columns_before_data) / 2
+
 # check if the input file makes sense
 if (num_groups %% 1 != 0) {
   stop(sprintf("The input file '%s' does not contain an even number of 'p_' and 'N_' columns.", opts$input))
@@ -141,9 +146,11 @@ run_test_no_spread <- function(df) {
         family = binomial(link = "logit")) %>%
     anova(test="Rao")
 }
+
 get_enrichment_score <- function(anova_output) {
   anova_output$Rao[2]
 }
+
 get_unadjusted_p_value <- function(anova_output) {
   ifelse(!is.na(anova_output$`Pr(>Chi)`[2]),
          anova_output$`Pr(>Chi)`[2],
