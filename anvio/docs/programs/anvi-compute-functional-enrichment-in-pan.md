@@ -1,5 +1,6 @@
 This program computes functional enrichment within a pangenome and returns a %(functional-enrichment-txt)s file.
 
+{:.warning}
 For its sister programs, see %(anvi-compute-metabolic-enrichment)s and %(anvi-compute-functional-enrichment-across-genomes)s.
 
 {:.notice}
@@ -32,11 +33,11 @@ Check out [Alon's behind the scenes post](http://merenlab.org/2016/11/08/pangeno
 Here is the simplest way to run of this program:
 
 {{ codestart }}
-anvi-compute-functional-enrichment -p %(pan-db)s\
-                                   -g %(genomes-storage-db)s \
-                                   -o %(functional-enrichment-txt)s \
-                                   --category-variable CATEGORY \
-                                   --annotation-source FUNCTION_SOURCE
+anvi-compute-functional-enrichment-in-pan -p %(pan-db)s\
+                                          -g %(genomes-storage-db)s \
+                                          -o %(functional-enrichment-txt)s \
+                                          --category-variable CATEGORY \
+                                          --annotation-source FUNCTION_SOURCE
 {{ codestop }}
 
 The %(pan-db)s must contain at least one categorical data layer in %(misc-data-layers)s, and you must choose one of these categories to define your pan-groups with the `--category-variable` parameter. You can see available variables with %(anvi-show-misc-data)s program with the parameters `-t layers --debug`.
@@ -50,21 +51,21 @@ The %(genomes-storage-db)s must have at least one functional annotation source, 
 By default, gene clusters with the same functional annotation will be merged. But if you provide the `--include-gc-identity-as-function` parameter and set the annotation source to be 'IDENTITY', anvi'o will treat gene cluster names as functions and enable you to investigate enrichment of each gene cluster independently. This is how you do it:
 
 {{ codestart }}
-anvi-compute-functional-enrichment -p %(pan-db)s\
-                                   -g %(genomes-storage-db)s \
-                                   -o %(functional-enrichment-txt)s \
-                                   --category-variable CATEGORY \
-                                   --annotation-source IDENTITY \
-                                   --include-gc-identity-as-function
+anvi-compute-functional-enrichment-in-pan -p %(pan-db)s\
+                                          -g %(genomes-storage-db)s \
+                                          -o %(functional-enrichment-txt)s \
+                                          --category-variable CATEGORY \
+                                          --annotation-source IDENTITY \
+                                          --include-gc-identity-as-function
 {{ codestop }}
 
 To output a functional occurrence table, which describes the number of times each of your functional associations occurs in each genome you're looking at, use the `--functional-occurrence-table-output` parameter, like so:
 
 {{ codestart }}
-anvi-compute-functional-enrichment -p %(pan-db)s\
-                                   -g %(genomes-storage-db)s \
-                                   -o %(functional-enrichment-txt)s \
-                                   --category-variable CATEGORY \
-                                   --annotation-source FUNCTION_SOURCE \
-                                   --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
+anvi-compute-functional-enrichment-in-pan -p %(pan-db)s\
+                                          -g %(genomes-storage-db)s \
+                                          -o %(functional-enrichment-txt)s \
+                                          --category-variable CATEGORY \
+                                          --annotation-source FUNCTION_SOURCE \
+                                          --functional-occurrence-table-output FUNC_OCCURRENCE.TXT
 {{ codestop }}
