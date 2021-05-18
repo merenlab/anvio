@@ -39,6 +39,10 @@ def main(args):
     # make sure we can write to the output file
     filesnpaths.is_output_file_writable(args.output_file)
 
+    if not args.annotation_source and not args.list_annotation_sources:
+        raise ConfigError("You must declare a function annotation source with `--annotation-source` parameter to be used for the "
+                          "functional enrichment analysis (well, obviously). If you don't know what is available, you can use "
+                          "`--list-annotation-sources` flag to find out what is there.")
 
     s = summarizer.PanSummarizer(args, lazy_init=True)
     s.functional_enrichment_stats()
