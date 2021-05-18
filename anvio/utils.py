@@ -1129,6 +1129,11 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         The enrichment analysis results
     """
 
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                "You can find more information about it in the following paper: Shaiber, Willis et al "
+                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
+                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
     # sanity check for R packages
     package_dict = get_required_packages_for_enrichment_test()
     check_R_packages_are_installed(package_dict)
