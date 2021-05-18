@@ -4,6 +4,7 @@
 import os
 import sys
 import random
+import argparse
 
 import anvio
 import anvio.tables as t
@@ -95,12 +96,13 @@ class AdHocRunGenerator:
         profile_db_path = self.get_output_file_path('profile.db')
         self.run.info('Profile database', profile_db_path)
 
-        args = lambda: None
+        args = argparse.Namespace()
         args.profile_db = profile_db_path
         args.manual_mode = True
         args.dry_run = True
         args.view_data = view_data_path
         args.tree = tree_path
+        args.title = None
         interactive.Interactive(args)
 
         self.populate_additional_data(profile_db_path)
@@ -110,16 +112,15 @@ class AdHocRunGenerator:
 
 
     def populate_additional_data(self, profile_db_path):
-        args = lambda: None
-        args.profile_db = profile_db_path
-
-        table = t.miscdata.TableForItemAdditionalData(args)
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=profile_db_path))
         table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
 
-        table = t.miscdata.TableForLayerOrders(args)
+        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=profile_db_path))
         layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
         table.add({'default': {'data_type': 'newick', 'data_value': layer_newick}})
 
+        # put a default state while you're at it
+        t.states.TablesForStates(profile_db_path).store_state('default', '{"version": "3"}')
 
 
 def main(args):
