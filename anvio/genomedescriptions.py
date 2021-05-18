@@ -1244,9 +1244,8 @@ class AggregateFunctions:
             filesnpaths.is_output_file_writable(self.functional_enrichment_output_path)
 
         if not self.function_annotation_source:
-            raise ConfigError("When you think about it, this mode can be useful only if someone requests a "
-                              "an annotation source to be used for aggregating all the information from all "
-                              "the genomes. Someoen didn't specify any function annotation source :/")
+            raise ConfigError("Someone didn't specify any function annotation source and ended up in a bad "
+                              "place. Aggregating functions require a source for functional annotations.")
 
         if not self.external_genomes_path and not self.internal_genomes_path and not self.genomes_storage_path:
             raise ConfigError("You must provide at least one source of genomes to this class :/")
