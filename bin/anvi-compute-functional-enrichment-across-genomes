@@ -36,8 +36,11 @@ def main(args):
     # make sure we can write to the output file
     filesnpaths.is_output_file_writable(args.output_file)
 
+    if not args.groups_txt:
+        raise ConfigError("You must have a groups file for this to work. Please see the help menu.")
 
-    facc = AggregateFunctions(args, r=run, p=progress)
+    # how disturbingly simple is this? :(
+    AggregateFunctions(args, r=run, p=progress)
 
 
 if __name__ == '__main__':
@@ -54,7 +57,7 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('RELATIONSHIPS BETWEEN GENOMES', "Here you need to provide a groups file so anvi'o can understand which "
                                         "genome is in which group.")
-    groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt'))
+    groupB.add_argument(*anvio.A('groups-txt'), **anvio.K('groups-txt', {'required': True}))
 
     groupC = parser.add_argument_group('FUNCTION ANNOTATION SOURCE', "Here you tell anvi'o which function annotation source to use. Obviously, "
                                         "any given function annotation source will have to be common to all genomes. You can see what you have "
