@@ -7,9 +7,7 @@ import sys
 import anvio
 import anvio.kegg as kegg
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -38,12 +36,6 @@ def main(args):
 
     # make sure we can write to the output file
     filesnpaths.is_output_file_writable(args.output_file)
-
-    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
-                "You can find more information about it in the following paper: Shaiber, Willis et al "
-                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
-                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
-
 
     e = kegg.KeggModuleEnrichment(args)
     e.run_enrichment_stats()
