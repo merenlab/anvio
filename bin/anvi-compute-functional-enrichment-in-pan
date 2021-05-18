@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A program that computes functional enrichment in a pangenome"""
+
+import sys
+
+import anvio
+import anvio.kegg as kegg
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
+import anvio.genomedescriptions as genomedescriptions
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__resources__ = [("A description of the enrichment script run by this program can be found in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w"),
+                  ("An example of pangenome functional enrichment in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
+__tags__ = ["pangenomics", "functions"]
+__requires__ = ['misc-data-layers', 'pan-db', 'genomes-storage-db', 'functions']
+__provides__ = ['functional-enrichment-txt']
+__description__ = ("A program that computes functional enrichment within a pangenome.")
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+def main(args):
+    # make sure the output files is not going to overwrite anything
+    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing for overwriting existing files. "
+                          f"Please remove the exiting file first, or give a different output file name to this program.")
+
+    # make sure we can write to the output file
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                "You can find more information about it in the following paper: Shaiber, Willis et al "
+                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
+                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
+    s = summarizer.PanSummarizer(args, lazy_init=True)
+    s.functional_enrichment_stats()
+
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('CRITICAL INPUTS', "Estimating enriched functions within a pangenome. For this mode, you must provide a pan db and its "
+                                                          "genomes storage db, as well as the category variable to use for establishing groups and the "
+                                                          "annotation source which provides your functions of interest.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+    groupA.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
+    groupA.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
+
+    groupC = parser.add_argument_group('FUNCTION ANNOTATION SOURCE', "Here you tell anvi'o which function annotation source to use.")
+    groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
+    groupC.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    groupO = parser.add_argument_group('OUTPUT OPTIONS', "What comes out the other end. (Please provide at least the output file name.)")
+    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
+    groupOP = parser.add_argument_group('OUTPUT OPTIONS FOR FUNCTIONAL ENRICHMENT', "Reporting options that only make sense for input option #1 or #3.")
+    groupOP.add_argument(*anvio.A('functional-occurrence-table-output'), **anvio.K('functional-occurrence-table-output'))
+
+    groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
