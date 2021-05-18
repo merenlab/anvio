@@ -322,6 +322,7 @@ class Vmatch(object):
             p.join()
 
         # Load the concatenated chunked output and clip query lengths from query names.
+        self.progress.update("Finalizing matches")
         output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name'])
         output_df.loc[:, 'query_name'] = output_df['query_name'].apply(lambda name: '_'.join(name.split('_')[: -1]))
 
