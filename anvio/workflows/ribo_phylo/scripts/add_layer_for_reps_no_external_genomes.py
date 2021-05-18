@@ -30,6 +30,11 @@ cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_me
 seq_in_tree_list = fasta_df.header.to_list()
 misc_data['has_genomic_SCG_in_cluster'] = 'no'
 
+# Make split name column for mapping
+misc_data['split_name'] = misc_data['new_header'].astype(str) + '_split_00001'
+first_column = misc_data.pop('split_name')
+misc_data.insert(0, 'split_name', first_column)
+
 # Export
 #-------
 misc_data.to_csv(snakemake.output.misc_data_final, \

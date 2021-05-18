@@ -19,6 +19,8 @@ opt <- parse_args(OptionParser(option_list=option_list))
 ####
 
 replace_tree_names <- function(SCG, ribophylopath, profilepath){
+  
+  print(opt$SCG)
   # make paths
   #-----------
   # misc data
@@ -39,6 +41,10 @@ replace_tree_names <- function(SCG, ribophylopath, profilepath){
   tree_path_suffix <- stringr::str_c(SCG, ".nwk")
   tree_path <-  path(ribophylopath, "06_TREES/", SCG, tree_path_suffix)
   
+  # external-gene-calls
+  external_gene_calls_path_suffix <- stringr::str_c(SCG, "_external_gene_calls_all_renamed.tsv")
+  external_gene_calls_path <-  path(ribophylopath, "03_NR_FASTAS/", SCG, external_gene_calls_path_suffix)
+  
   # Output file
   outfile_path_suffix <- stringr::str_c(SCG, "_all_misc_data_final_coverage.tsv")
   outfile_path <- path(ribophylopath, "07_MISC_DATA/", SCG, outfile_path_suffix)
@@ -47,31 +53,37 @@ replace_tree_names <- function(SCG, ribophylopath, profilepath){
   tree_path_out_suffix <- stringr::str_c(SCG, "_renamed.nwk")
   tree_path_out <- path(ribophylopath, "06_TREES/", SCG, tree_path_out_suffix)
   
-  # # Output file
-  # outfile_path_suffix <- stringr::str_c(opt$SCG, "_all_misc_data_final_1.tsv")
-  # outfile_path <- path(opt$ribophylopath, "07_MISC_DATA/", opt$SCG, outfile_path_suffix)
-  
   # Load data
   #----------
+  
+  ######
+  # misc_data_path <- "RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv"
+  # reformat_file_path <- "METAGENOMICS_WORKFLOW/02_FASTA/Ribosomal_L16/Ribosomal_L16-reformat-report.txt"
+  # gene_calls_path <- "METAGENOMICS_WORKFLOW/07_SUMMARY/Ribosomal_L16/bin_by_bin/EVERYTHING/EVERYTHING-gene_calls.txt"
+  # mapping_data_path <- "METAGENOMICS_WORKFLOW/07_SUMMARY/Ribosomal_L16/bin_by_bin/EVERYTHING/EVERYTHING-gene_coverages.txt"
+  # tree_path <- "RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.nwk"
+  # external_gene_calls_path <- "RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_external_gene_calls_all_renamed.tsv"
+  #####
+  
   misc_data <- read_tsv(misc_data_path)
-  reformat_file <- read_tsv(reformat_file_path, col_names = FALSE) %>% rename(contig = X1, name = X2)
   gene_calls <- read_tsv(gene_calls_path)
   mapping_data <- read_tsv(mapping_data_path)
   tree <- read.tree(tree_path)
+  external_gene_calls <- read_tsv(external_gene_calls_path)
   
   # Make index of names
   #--------------------
   index <- mapping_data %>%
-    left_join(gene_calls) %>%
-    left_join(reformat_file) %>%
-    select(gene_callers_id, contig, name)
+    # left_join(gene_calls) %>%
+    # left_join(reformat_file) %>%
+    left_join(external_gene_calls) %>%
+    select(gene_callers_id, contig)
   
   # convert
   index$contig_new <- paste(index$contig, "_split_00001", sep="")
   
   # replace tips
-  
-  dat <- index %>% select(name, contig_new) %>% as.data.frame()
+  dat <- index %>% select(contig, contig_new) %>% filter(contig %in% tree$tip.label)%>% as.data.frame()
   ntree <- phylotools::sub.taxa.label(tree, dat) # Bless this persons heart: https://rdrr.io/cran/phylotools/man/sub.taxa.label.html
   
   # Export tree with new tip names
@@ -79,27 +91,16 @@ replace_tree_names <- function(SCG, ribophylopath, profilepath){
   write.tree(ntree, file = tree_path_out)
   # gold: https://tbradley1013.github.io/2018/06/19/subsetting-phylogenetic-trees/
   
-  # misc path
-  #----------
-  
-  # convert
-  index <- mapping_data %>%
-    inner_join(gene_calls) %>%
-    left_join(reformat_file) %>%
-    select(gene_callers_id, contig, name)
-  
-  index$contig_new <- paste(index$contig, "_split_00001", sep="")
-  
-  # Make final table
+  # # Make final table
   final <- misc_data %>%
-    rename(name = new_header) %>%
+    rename(contig = new_header) %>%
     left_join(index) %>%
     # inner_join(mapping_data) %>%
     select(-gene_callers_id) %>%
-    rename(orig_name = name, name = contig_new) %>%
+    rename(orig_name = contig, name = contig_new) %>%
     relocate(name) %>%
     filter(!is.na(name))
-  
+
   final %>%
     write_tsv(outfile_path)
 }

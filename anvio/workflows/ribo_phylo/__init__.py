@@ -234,7 +234,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
             # Get metagenomics_config.json for metagenomics workflow
             tail_path = "metagenomics_config.json"
-            target_file = os.path.join("RIBO_PHYLO_WORKFLOW/PROFILE_SCGs", tail_path)
+            target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
             target_files.append(target_file)
 
             # The FINAL trees :)

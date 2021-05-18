@@ -59,7 +59,7 @@ rule anvi_run_hmms_hmmsearch:
                          --hmmer-program hmmsearch \
                          --hmmer-output-dir %s \
                          -I Bacteria_71 \
-                         --get-domtable-output \
+                         --get-domtable-output asdf \
                          --just-do-it \
                          -T {threads} 2> {log}" % hmmer_output_dir)
 
@@ -619,7 +619,7 @@ if M.external_genomes:
             cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_mmseqs_NR_cluster.tsv")
         threads: M.T('join_renamed_fasta_with_misc_data')
         script:
-            "scripts/add_layer_for_reps.py"
+          "scripts/add_layer_for_reps.py"
 
 else:
     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
@@ -684,7 +684,7 @@ rule make_metagenomics_config_file:
 
     version: 1.0
     output:
-        config = os.path.join("RIBO_PHYLO_WORKFLOW/PROFILE_SCGs", "metagenomics_config.json")
+        config = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_config.json")
     threads: M.T('join_renamed_fasta_with_misc_data')
     run:
 
@@ -692,9 +692,10 @@ rule make_metagenomics_config_file:
 
         config = open(output.config)
         config_dict = json.load(config)
-        config_dict['fasta_txt'] = 'RIBO_PHYLO_WORKFLOW/fasta.txt'
+        config_dict['fasta_txt'] = '../RIBO_PHYLO_WORKFLOW/fasta.txt'
         config_dict['references_mode'] = True
         config_dict['anvi_run_hmms']['run'] = False
+        config_dict["anvi_script_reformat_fasta"]['run'] = False
         config_dict['anvi_run_kegg_kofams']['run'] = False
         config_dict['anvi_run_ncbi_cogs']['run'] = False
         config_dict['anvi_run_scg_taxonomy']['run'] = False
