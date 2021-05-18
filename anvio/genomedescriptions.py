@@ -1495,7 +1495,11 @@ class AggregateFunctions:
 
 
     def report_functions_per_group_stats(self, output_file_path, quiet=False):
-        """A function to summarize functional occurrence for groups of genomes"""
+        """A function to summarize functional occurrence for groups of genomes.
+
+        Please note that this function will not report functions that are associated
+        with ALL groups.
+        """
 
         filesnpaths.is_output_file_writable(output_file_path)
 
@@ -1504,17 +1508,26 @@ class AggregateFunctions:
 
         group_names = sorted(list(self.layer_groups.keys()))
 
+        num_groups = len(group_names)
+
         group_counts = dict([(g, len(self.layer_groups[g])) for g in group_names])
 
         d = {}
 
         for key_hash in self.functions_across_groups_presence_absence:
-            d[key_hash] = {}
+            # learn which groups are associated with this function
+            associated_groups = [g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]]
+
+            # if the function is associated with all groups, simply skip that entry
+            if len(associated_groups) == num_groups:
+                continue
+
             function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
+
+            d[key_hash] = {}
             d[key_hash]['function'] = function
             d[key_hash]['accession'] = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
-
-            d[key_hash]['associated_groups'] = ','.join([g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]])
+            d[key_hash]['associated_groups'] = ','.join(associated_groups)
 
             for group_name in group_names:
                 d[key_hash][f"N_{group_name}"] = group_counts[group_name]
@@ -1522,6 +1535,11 @@ class AggregateFunctions:
                     d[key_hash][f"p_{group_name}"] = self.functions_across_groups_presence_absence[key_hash][group_name] / group_counts[group_name]
                 else:
                     d[key_hash][f"p_{group_name}"] = 0
+
+        if not len(d):
+            raise ConfigError("Something weird is happening here :( It seems every single function across your genomes "
+                              "is associated with all groups you have defined. There is nothing much anvi'o can work with "
+                              "here. If you think this is a mistake, please let us know.")
 
         static_column_names = ['key', 'function', 'accession', 'associated_groups']
         dynamic_column_names = []
