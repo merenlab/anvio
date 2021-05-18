@@ -307,7 +307,7 @@ class Vmatch(object):
             if num_unparsed_chunks:
                 try:
                     output_queue.get(False)
-                    # Make room for another vmake job.
+                    # Make room for another vmatch job.
                     num_unparsed_chunks -= 1
                 except queue.Empty:
                     pass
