@@ -88,8 +88,6 @@ if (length(matches[[1]]) == 0) {
   ver_major <- matches[[1]][[2]]
 
   if (strtoi(ver_major) >= 1) {
-    message("tidyr major version >= 1.  Using nest_legacy.")
-
     ## Need to use nest_legacy if using tidyr version >= 1.
     nest <- nest_legacy
   }
