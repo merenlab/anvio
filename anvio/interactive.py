@@ -888,7 +888,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # let's get a layer's order, too, and immediately add it to the database:
             layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
             args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{facc.function_annotation_source}_{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
             self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
