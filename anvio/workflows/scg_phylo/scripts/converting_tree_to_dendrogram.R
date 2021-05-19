@@ -1,3 +1,5 @@
+# This script binds the SCG taxonomy misc data with the SCG read recruitment data
+
 packages <- c("tidyverse", "ape", "fs", "phylotools", "optparse")
 suppressMessages(lapply(packages, library, character.only = TRUE))
 
@@ -18,7 +20,7 @@ opt <- parse_args(OptionParser(option_list=option_list))
 # profilepath = "PROFILE_SCGs_competitive_90"
 ####
 
-replace_tree_names <- function(SCG, ribophylopath, profilepath){
+bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
   
   print(opt$SCG)
   # make paths
@@ -105,5 +107,5 @@ replace_tree_names <- function(SCG, ribophylopath, profilepath){
     write_tsv(outfile_path)
 }
 
-replace_tree_names(SCG = opt$SCG, ribophylopath = opt$ribophylopath, profilepath = opt$profilepath)
+bind_taxa_coverage(SCG = opt$SCG, ribophylopath = opt$ribophylopath, profilepath = opt$profilepath)
 
