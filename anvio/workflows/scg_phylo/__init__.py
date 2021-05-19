@@ -29,10 +29,10 @@ run = terminal.Run()
 
 
 # class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
-class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
+class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='ribo_phylo')
+        self.init_workflow_super_class(args, workflow_name='scg_phylo')
 
         # MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
@@ -109,15 +109,15 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         self.dirs_dict = {directory: 'METAGENOMICS_WORKFLOW/' + dir_path for directory,dir_path in self.dirs_dict.items()}
 
         # Adding directories specific to Ribo_phylo workflow
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'RIBO_PHYLO_WORKFLOW/01_SCG_HMM_HITS'})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "RIBO_PHYLO_WORKFLOW/02_SCG_TAXONOMY"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "RIBO_PHYLO_WORKFLOW/03_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "RIBO_PHYLO_WORKFLOW/04_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "RIBO_PHYLO_WORKFLOW/06_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "RIBO_PHYLO_WORKFLOW/07_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "RIBO_PHYLO_WORKFLOW/08_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "RIBO_PHYLO_WORKFLOW/9_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'SCG_WORKFLOW/01_SCG_HMM_HITS'})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "SCG_WORKFLOW/02_SCG_TAXONOMY"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "SCG_WORKFLOW/03_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "SCG_WORKFLOW/04_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "SCG_WORKFLOW/05_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "SCG_WORKFLOW/06_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "SCG_WORKFLOW/07_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "SCG_WORKFLOW/08_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "SCG_WORKFLOW/9_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
@@ -126,7 +126,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
         super().init()
         # WorkflowSuperclass().init()
 
-        self.dirs_dict.update({"LOGS_DIR": "RIBO_PHYLO_WORKFLOW/00_LOGS"})
+        self.dirs_dict.update({"LOGS_DIR": "SCG_WORKFLOW/00_LOGS"})
         try:
             os.rmdir("00_LOGS")
         except:
@@ -229,7 +229,7 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
 
             # Get fasta.txt of the SCGs for profiling
             tail_path = "fasta.txt"
-            target_file = os.path.join("RIBO_PHYLO_WORKFLOW", tail_path)
+            target_file = os.path.join("SCG_WORKFLOW", tail_path)
             target_files.append(target_file)
 
             # Get metagenomics_config.json for metagenomics workflow
@@ -238,8 +238,8 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get state.json file for final visualization 
-            tail_path = "%s_RIBO_PHYLO_WORKFLOW_state.json" % (ribosomal_protein_name)
-            target_file = os.path.join("RIBO_PHYLO_WORKFLOW", tail_path)
+            tail_path = "%s_SCG_WORKFLOW_state.json" % (ribosomal_protein_name)
+            target_file = os.path.join("SCG_WORKFLOW", tail_path)
             target_files.append(target_file)
 
             # The FINAL trees :)
