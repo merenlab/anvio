@@ -731,21 +731,15 @@ rule make_SCG_WORKFLOW_state_file:
         num_SCGs = num_tree_tips.shape[0]
         num_metagenomes = len(M.input_dirs_dict)
 
-        if 0 < num_metagenomes <= 25:
+
+        X = 1
+        Y = 20
+        if num_SCGs < 50:
             state_dict['tree-height'] = '0'
             state_dict['tree-width'] = '0'
-        if 26 < num_metagenomes <= 50:
-            state_dict['tree-height'] = '4000'
-            state_dict['tree-width'] = '15000'
-        if 51 < num_metagenomes <= 75:
-            state_dict['tree-height'] = '8000'
-            state_dict['tree-width'] = '30000'
-        if 76 < num_metagenomes <= 100:
-            state_dict['tree-height'] = '12000'
-            state_dict['tree-width'] = '38000'
-        if num_metagenomes > 100:
-            state_dict['tree-height'] = '12000'
-            state_dict['tree-width'] = '38000'
+        else:
+            state_dict['tree-height'] = X * num_SCGs
+            state_dict['tree-width'] = Y * num_SCGs
 
         # layer-orders
         first_layers = ["__parent__", "length", "gc_content"]
@@ -757,30 +751,6 @@ rule make_SCG_WORKFLOW_state_file:
 
         # layers
         layers_dict = {}
-
-        parent = {
-          "color": "#414141",
-          "height": "0",
-          "margin": "15",
-          "type": "bar",
-          "color-start": "#FFFFFF"
-        }
-
-        length = {
-          "color": "#414141",
-          "height": "180",
-          "margin": "15",
-          "type": "bar",
-          "color-start": "#FFFFFF"
-        }
-
-        gc_content = {
-          "color": "#004a0f",
-          "height": "180",
-          "margin": "15",
-          "type": "bar",
-          "color-start": "#FFFFFF"
-        }
 
         metagenome_layers_dict = {}
 
@@ -808,9 +778,6 @@ rule make_SCG_WORKFLOW_state_file:
         for layer in last_layers:
             last_layers_dict[str(layer)] = layer_attributes
 
-        layers_dict['length'] = length
-        layers_dict['gc_content'] = gc_content
-        layers_dict['parent'] = parent
         layers_dict.update(metagenome_layers_dict)
         layers_dict.update(last_layers_dict)
 
