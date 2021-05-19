@@ -73,7 +73,7 @@ class Diamond:
             self.makedb()
             force_blastp, force_view = True, True
 
-        if os.path.exists(self.search_output_path + '.daa') and not force_blastp:
+        if os.path.exists(self.tabular_output_path) and not force_blastp:
             self.run.warning("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!")
         else:
             self.blastp()
