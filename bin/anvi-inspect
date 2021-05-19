@@ -21,7 +21,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin']
-__provides__ = ['interactive']
+__provides__ = ['interactive', 'contig-inspection']
 __description__ = "Start an anvi'o inspect interactive interface"
 __resources__ = [("Visualizing contig coverages", "https://merenlab.org/2019/11/25/visualizing-coverages/")]
 

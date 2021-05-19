@@ -38,41 +38,6 @@ However, there are more interfaces available in anvi'o than just that one, so le
 - %(anvi-interactive)s displays the information in a %(profile-db)s. It lets you view the distribution of your contigs across your samples, manually bin metagenomic data into MAGSs (and refine those bins with %(anvi-refine)s), and much more. You can also use this to look at your genes instead of your contigs or [examine the genomes after a phylogenomic anlysis](http://merenlab.org/2017/06/07/phylogenomics/). Just look at that program page for a glimpse of this program's amazingness.
 
 - %(anvi-script-snvs-to-interactive)s lets you view a comprehensive summary of the SNVs, SCVs, and SAAVs within your contigs.
-
-<!-- wireframe of documentation layout 
-     each subtopic should link to relevant tutorials/workflows that highlight focused portion of the interactive interface
-
-     pull in content from 
-     https://merenlab.org/2016/02/27/the-anvio-interactive-interface/
-     https://merenlab.org/tutorials/interactive-interface/
-
-     https://merenlab.org/software/anvio/help/main/programs/anvi-inspect/ 
-
-     https://merenlab.org/2017/05/08/anvio-views/
--->
-<!-- - Settings Panel 
-    - Main
-    - Layers
-    - Bins
-    - Legends
-    - Search 
-    - hamburger dropdown menu 
-    - Bottom Left
-        - State stuff 
-        - zoom, download, upload 
-
-- Mouse Context Menu
-    - layers
-    - tree 
-
-- Mouse Panel 
-
-- Inspect Page 
-    - accessed from context menu and terminal 
-
-- Glossary of keyboard shortcuts 
-- Glossry of helpful hints -->
-
 # An overview of the display
 
 The interactive interface has two major areas of interaction: the space for visualization on the right, and the settings panel. The settings panel gives access to various controls to work with the data visualized, and improve the presentataion of it.
