@@ -788,30 +788,6 @@ rule make_SCG_WORKFLOW_state_file:
 
         state_dict['layers'] = layers_dict
 
-        # views
-        views_dict = {}
-
-        minimum = {
-            "value": "0.25",
-            "disabled": False
-        }
-
-        maximum = {
-            "value": "1",
-            "disabled": False
-        }
-
-        views_attributes = {
-          "normalization": "none",
-          "min": minimum,
-          "max": maximum,
-        }
-
-        for metagenome in metagenomes:
-            views_dict[str(metagenome)] = views_attributes
-
-        state_dict['views'] = views_dict
-
         with open(output.state_file, "w") as outfile:
                   json.dump(state_dict, outfile, indent=4)
 
