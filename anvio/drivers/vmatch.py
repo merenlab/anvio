@@ -38,7 +38,7 @@ class Vmatch(object):
         # Vmatch also can run in all-against-all search mode, but this is not supported yet by the driver.
         self.supported_search_modes = ('query', )
         # In the match mode, "exact_query_substring", the query names should end in
-        # "_<query length>", e.g., "c_000000000001_75".
+        # "-<query length>", e.g., "c_000000000001-75".
         self.supported_match_modes = ('exact_query_substring', )
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -359,8 +359,8 @@ def parse_exact_query_substrings(output_df):
     """Parse queries that are exact substrings of one or more targets. The closest option that
     Vmatch provides, `-complete`, only retains queries that are the same as targets."""
     t = time.time()
-    output_df.loc[:, 'query_length'] = output_df['query_name'].apply(lambda name: int(name.split('_')[-1]))
-    output_df.loc[:, 'unalign_length'] = output_df['query_length'] - output_df.loc[:, 'query_align_length']
+    output_df.loc[:, 'query_length'] = output_df['query_name'].apply(lambda name: int(name.split('-')[-1]))
+    output_df.loc[:, 'unalign_length'] = output_df['query_length'] - output_df['query_align_length']
 
     # A full match is indicated by an alignment spanning the entire query with an edit distance
     # of zero.
