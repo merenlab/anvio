@@ -1531,8 +1531,11 @@ class TRNASeqDataset(object):
 
             # "Finalize" normalized tRNA sequence objects now that all of the trimmed tRNA sequences
             # found through various means have been added to them.
+            self.progress.new("Finalizing normalized tRNA sequences")
+            self.progress.update("...")
             for norm_seq in self.norm_trna_seq_dict.values():
                 norm_seq.init()
+            self.progress.end()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('map_fragments')
