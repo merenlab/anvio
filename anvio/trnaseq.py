@@ -94,6 +94,7 @@ import anvio.trnaidentifier as trnaidentifier
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.drivers.vmatch import Vmatch
 from anvio.agglomeration import Agglomerator
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
@@ -1377,6 +1378,7 @@ class TRNASeqDataset(object):
 
         # Argument group 1E: PROGRESS
         self.profiling_progress_interval = A('profiling_progress_interval')
+        self.fragment_filter_progress_interval = A('fragment_filter_progress_interval')
         self.alignment_progress_interval = A('alignment_progress_interval')
         self.mod_progress_interval = A('modification_progress_interval')
 
@@ -2550,196 +2552,192 @@ class TRNASeqDataset(object):
         """
         start_time = time.time()
 
-        pid = "Mapping unprofiled reads to profiled tRNA"
+        pid = "Set up search of unprofiled reads to profiled tRNA"
         self.progress.new(pid)
-        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
 
         self.progress.update("Getting queries from unprofiled reads")
-        query_length_intervals = []
-        max_query_length = max(map(len, [uniq_seq.seq_string for uniq_seq in uniq_nontrna_seq_dict.values()]))
-        # Chunk the non-tRNA queries by length to speed up the search.
-        # By default, avoid sequences shorter than 25 nucleotides, the default minimum length of a
-        # profiled 3' fragment of tRNA.
-        frag_mapping_query_chunk_length = self.frag_mapping_query_chunk_length
+        temp_dir_path = filesnpaths.get_temp_directory_path()
+        query_fasta_path = os.path.join(temp_dir_path, 'query.fa')
+
+        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
         min_trna_frag_size = self.min_trna_frag_size
-        interval_start_length = min_trna_frag_size
-        interval_stop_length = interval_start_length + frag_mapping_query_chunk_length
-        if interval_stop_length + self.frag_mapping_query_chunk_length > max_query_length:
-            interval_stop_length = max_query_length + 1
-        query_length_intervals.append((interval_start_length, interval_stop_length))
-        query_names = []
-        query_seqs = []
-        query_name_chunks = [query_names]
-        query_seq_chunks = [query_seqs]
-        for uniq_seq in sorted([uniq_seq for uniq_seq in uniq_nontrna_seq_dict.values()
-                                if len(uniq_seq.seq_string) >= min_trna_frag_size],
-                               key=lambda uniq_seq: len(uniq_seq.seq_string)):
-            if len(uniq_seq.seq_string) < interval_stop_length:
-                query_names.append(uniq_seq.represent_name)
-                query_seqs.append(uniq_seq.seq_string)
-            else:
-                interval_start_length = interval_stop_length
-                interval_stop_length = interval_stop_length + frag_mapping_query_chunk_length
-                if interval_stop_length + frag_mapping_query_chunk_length > max_query_length:
-                    interval_stop_length = max_query_length + 1
-                query_length_intervals.append((interval_start_length, interval_stop_length))
-                query_names = [uniq_seq.represent_name]
-                query_seqs = [uniq_seq.seq_string]
-                query_name_chunks.append(query_names)
-                query_seq_chunks.append(query_seqs)
+        with open(query_fasta_path, 'w') as query_fasta:
+            for uniq_seq in [uniq_seq for uniq_seq in uniq_nontrna_seq_dict.values()
+                             if len(uniq_seq.seq_string) >= min_trna_frag_size]:
+                # Include the length of the sequence in the defline for the purposes of parsing
+                # vmatch output.
+                query_fasta.write(f">{uniq_seq.represent_name}-{len(uniq_seq.seq_string)}\n"
+                                  f"{uniq_seq.seq_string}\n")
+
 
         self.progress.update_pid(pid)
         self.progress.update("Getting targets from profiled tRNAs")
         # Non-tRNA sequences are mapped to normalized tRNA sequences with extra 5' bases added when
         # present in underlying unique tRNA sequences. Multiple targets for each normalized sequence
         # are therefore produced for different 5' sequence extensions.
-        target_names = []
-        target_seqs = []
-        for norm_seq in self.norm_trna_seq_dict.values():
-            norm_seq_string = norm_seq.seq_string
-            # The longest trimmed sequence (the first in the list) is by design the only one of the
-            # profiled trimmed sequences forming the normalized sequence that may have extra 5'
-            # bases.
-            longest_trimmed_seq = norm_seq.trimmed_seqs[0]
-            if longest_trimmed_seq.uniq_with_extra_fiveprime_count > 0:
-                fiveprime_seq_string_set = set()
-                for uniq_seq in longest_trimmed_seq.uniq_seqs:
-                    if uniq_seq.extra_fiveprime_length > 0:
-                        fiveprime_seq_string_set.add(uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length])
+        target_fasta_path = os.path.join(temp_dir_path, 'target.fa')
+        with open(target_fasta_path, 'w') as target_fasta:
+            for norm_seq in self.norm_trna_seq_dict.values():
+                norm_seq_string = norm_seq.seq_string
+                # The longest trimmed sequence (the first in the list) is by design the only one of the
+                # profiled trimmed sequences forming the normalized sequence that may have extra 5'
+                # bases.
+                longest_trimmed_seq = norm_seq.trimmed_seqs[0]
+                if longest_trimmed_seq.uniq_with_extra_fiveprime_count > 0:
+                    fiveprime_seq_string_set = set()
+                    for uniq_seq in longest_trimmed_seq.uniq_seqs:
+                        if uniq_seq.extra_fiveprime_length > 0:
+                            fiveprime_seq_string_set.add(uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length])
 
-                # Avoid creating superfluous target sequences that are subsequences of other target
-                # sequences due to a 5' extension of a normalized sequence being a subsequence of a
-                # longer 5' extension of the same normalized sequence.
-                fiveprime_seq_strings = sorted(fiveprime_seq_string_set, key=lambda s: -len(s))
-                fiveprime_seq_string_additions = [fiveprime_seq_strings[0]]
-                for fiveprime_seq_string in fiveprime_seq_strings[1: ]:
-                    fiveprime_seq_string_length = len(fiveprime_seq_string)
-                    for fiveprime_seq_string_addition in fiveprime_seq_string_additions:
-                        if fiveprime_seq_string == fiveprime_seq_string_addition[-fiveprime_seq_string_length: ]:
-                            break
-                    else:
-                        fiveprime_seq_string_additions.append(fiveprime_seq_string)
+                    # Avoid creating superfluous target sequences that are subsequences of other target
+                    # sequences due to a 5' extension of a normalized sequence being a subsequence of a
+                    # longer 5' extension of the same normalized sequence.
+                    fiveprime_seq_strings = sorted(fiveprime_seq_string_set, key=lambda s: -len(s))
+                    fiveprime_seq_string_additions = [fiveprime_seq_strings[0]]
+                    for fiveprime_seq_string in fiveprime_seq_strings[1: ]:
+                        fiveprime_seq_string_length = len(fiveprime_seq_string)
+                        for fiveprime_seq_string_addition in fiveprime_seq_string_additions:
+                            if fiveprime_seq_string == fiveprime_seq_string_addition[-fiveprime_seq_string_length: ]:
+                                break
+                        else:
+                            fiveprime_seq_string_additions.append(fiveprime_seq_string)
 
-                for fiveprime_index, fiveprime_seq_string in enumerate(fiveprime_seq_strings):
-                    # Use an index to distinguish otherwise equivalent targets with different 5'
-                    # extensions of the same length.
-                    target_names.append((norm_seq.represent_name, len(fiveprime_seq_string), fiveprime_index))
-                    target_seqs.append(fiveprime_seq_string + norm_seq_string)
-            else:
-                target_names.append((norm_seq.represent_name, 0, 0)) # No extra 5' bases
-                target_seqs.append(norm_seq_string)
-
+                    for fiveprime_index, fiveprime_seq_string in enumerate(fiveprime_seq_strings):
+                        # Use an index to distinguish otherwise equivalent targets with different 5'
+                        # extensions of the same length.
+                        target_fasta.write(f">{norm_seq.represent_name}-{len(fiveprime_seq_string)}-{fiveprime_index}\n"
+                                           f"{fiveprime_seq_string}{norm_seq_string}\n")
+                else:
+                    target_fasta.write(f">{norm_seq.represent_name}-0-0\n" # no extra 5' bases
+                                       f"{norm_seq_string}\n")
         self.progress.end()
 
 
-        interval_index = 0
+        match_df = Vmatch(argparse.Namespace(search_mode='query',
+                                             match_mode='exact_query_substring',
+                                             fasta_db_file=target_fasta_path,
+                                             fasta_query_file=query_fasta_path,
+                                             num_threads=self.num_threads,
+                                             min_align_length=min_trna_frag_size,
+                                             align_seed_length=min_trna_frag_size,
+                                             exdrop=1,
+                                             min_ident=100)).search_queries()
+
+        pid = f"Filtering matches"
+        self.progress.new(pid)
+        self.progress.update("...")
+
+        self.restructure_fragment_match_table(match_df)
+
+        # Process each unique sequence match. Each unique sequence can match more than one
+        # normalized sequence.
+        match_gb = match_df.groupby('query_name')
+        del match_df
+        gc.collect()
+
+        total_matched_queries = len(match_gb)
+        filtered_query_count = 0
+        fragment_filter_progress_interval = self.fragment_filter_progress_interval
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
         norm_trna_seq_dict = self.norm_trna_seq_dict
-        for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            pid = f"Mapping {pp(len(query_names))} unprofiled {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} nt reads to profiled tRNA"
-            self.progress.new(pid)
+        for uniq_seq_name, query_match_df in match_gb:
+            if filtered_query_count % fragment_filter_progress_interval == 0:
+                self.progress.update_pid(pid)
+                self.progress.update(f"Queries {filtered_query_count + 1}-{min(filtered_query_count + 1 + fragment_filter_progress_interval, total_matched_queries)}/{total_matched_queries}")
 
-            aligned_query_dict, aligned_target_dict = Aligner(
-                query_names,
-                query_seqs,
-                target_names,
-                target_seqs,
-                num_threads=self.num_threads,
-                progress=self.progress
-            ).align(max_mismatch_freq=0,
-                    target_chunk_size=self.alignment_target_chunk_size,
-                    query_progress_interval=self.alignment_progress_interval)
-            del aligned_target_dict # aligned_target_dict is not used for anything and can be big
-            gc.collect()
+            # Each unique sequence with a validated match will yield a `UniqueMappedSequence` and
+            # `TrimmedMappedSequence`.
+            uniq_trna_seq = None
+            trimmed_seq = None
 
-            self.progress.update_pid(pid)
-            self.progress.update("Processing alignments")
+            for norm_seq_name, target_fiveprime_length, query_start, uniq_seq_length in zip(query_match_df['target_name'],
+                                                                                            query_match_df['fiveprime_length'],
+                                                                                            query_match_df['query_start'],
+                                                                                            query_match_df['query_length']):
+                query_stop = query_start + uniq_seq_length
+                trimmed_seq_stop_in_norm_seq = query_stop - target_fiveprime_length
 
-            # Process each unique sequence query, each of which can match more than one normalized
-            # sequence.
-            trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-            for uniq_seq_represent_name, aligned_query in aligned_query_dict.items():
-                if len(aligned_query.alignments) == 0:
+                if trimmed_seq_stop_in_norm_seq <= 0:
+                    # Ignore queries that align entirely to extra 5' bases. Sequences mapping
+                    # exclusively to the 5' extension that are long enough to fulfill the minimum
+                    # length requirement may be mapping to an artifactual chimeric sequence.
                     continue
 
-                # Each unique sequence will yield a `UniqueMappedSequence` and a
-                # `TrimmedMappedSequence`.
-                uniq_trna_seq = None
-                trimmed_trna_seq = None
+                norm_seq = norm_trna_seq_dict[norm_seq_name]
 
-                for alignment in aligned_query.alignments:
-                    ref_alignment_start = alignment.target_start
-                    ref_alignment_stop = alignment.target_start + alignment.alignment_length
+                if not uniq_trna_seq:
+                    # Enter this block the first time the unique sequence query validly matches a
+                    # normalized sequence.
+                    uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_name)
 
-                    norm_seq_represent_name, ref_fiveprime_length, fiveprime_index = alignment.aligned_target.name
-
-                    norm_seq_stop_pos = ref_alignment_stop - ref_fiveprime_length
-                    if norm_seq_stop_pos <= 0:
-                        # Ignore queries that align entirely to extra 5' bases. Sequences mapping
-                        # exclusively to the 5' extension that are long enough to fulfill the
-                        # minimum length requirement may be mapping to an artifactual chimeric
-                        # sequence.
-                        continue
-
-                    norm_seq = norm_trna_seq_dict[norm_seq_represent_name]
-
-                    if not uniq_trna_seq:
-                        # Enter this block the first time the unique sequence query validly matches
-                        # a normalized sequence.
-                        uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
-
-                        # Assume that 5' extensions are the same for the query regardless of the reference.
-                        # This could be false in the cases of
-                        # 1. tRNA profiling erroneously identifying the end of the acceptor stem
-                        # or 2. the query mapping to different places at the end of the acceptor stem in different tRNAs.
-                        if ref_fiveprime_length - ref_alignment_start > 0:
-                            extra_fiveprime_length = ref_fiveprime_length - ref_alignment_start
-                            norm_seq_start_pos = 0
-                        else:
-                            extra_fiveprime_length = 0
-                            norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
-
-                        uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
-                                                             uniq_seq_represent_name,
-                                                             uniq_nontrna_seq.read_count,
-                                                             extra_fiveprime_length=extra_fiveprime_length)
-                        uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
-
-                        trimmed_trna_seq = TrimmedMappedSequence(uniq_trna_seq)
-                        norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                        trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                        norm_seq.start_positions.append(norm_seq_start_pos)
-                        norm_seq.stop_positions.append(norm_seq_stop_pos)
-                        trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_trna_seq
+                    # Assume that 5' extensions are the same for the query regardless of the reference.
+                    # This could be false when
+                    # 1. tRNA profiling erroneously identified the end of the acceptor stem
+                    # or 2. the query mapped to different places at the end of the acceptor stem in different tRNAs.
+                    if target_fiveprime_length - query_start > 0:
+                        query_fiveprime_length = target_fiveprime_length - query_start
+                        trimmed_seq_start_in_norm_seq = 0
                     else:
-                        for prev_trimmed_seq in norm_seq.trimmed_seqs[::-1]:
-                            # Ensure that the trimmed sequence maps to the normalized sequence only
-                            # once. Multiple targets can be created from the same normalized
-                            # sequence for different 5' extensions. Trimmed mapped sequences are
-                            # added after trimmed profiled sequences to the normalized sequence's
-                            # list of trimmed sequences.
-                            if trimmed_trna_seq.represent_name == prev_trimmed_seq.represent_name:
-                                break
+                        query_fiveprime_length = 0
+                        trimmed_seq_start_in_norm_seq = query_start - target_fiveprime_length
 
-                            if not isinstance(prev_trimmed_seq, TrimmedMappedSequence):
-                                norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                                trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                                if ref_fiveprime_length - ref_alignment_start > 0:
-                                    norm_seq_start_pos = 0
-                                else:
-                                    norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
-                                norm_seq.start_positions.append(norm_seq_start_pos)
-                                norm_seq.stop_positions.append(norm_seq_stop_pos)
-                                break
-            interval_index += 1
+                    uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
+                                                         uniq_seq_name,
+                                                         uniq_nontrna_seq.read_count,
+                                                         extra_fiveprime_length=query_fiveprime_length)
+                    uniq_trna_seq_dict[uniq_seq_name] = uniq_trna_seq
 
-            del aligned_query_dict
-            gc.collect()
+                    trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
+                    norm_seq.trimmed_seqs.append(trimmed_seq)
+                    trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
+                    norm_seq.start_positions.append(trimmed_seq_start_in_norm_seq)
+                    norm_seq.stop_positions.append(trimmed_seq_stop_in_norm_seq)
+                    trimmed_trna_seq_dict[uniq_seq_name] = trimmed_seq
+                else:
+                    for prev_trimmed_seq in norm_seq.trimmed_seqs[::-1]:
+                        # Ensure that the trimmed sequence maps to the normalized sequence only
+                        # once. Multiple targets can be created from the same normalized sequence
+                        # for different 5' extensions. Trimmed mapped sequences are added after
+                        # trimmed profiled sequences to the normalized sequence's list of trimmed
+                        # sequences.
+                        if trimmed_seq.represent_name == prev_trimmed_seq.represent_name:
+                            break
 
-            self.progress.end()
+                        if not isinstance(prev_trimmed_seq, TrimmedMappedSequence):
+                            norm_seq.trimmed_seqs.append(trimmed_seq)
+                            trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
+                            if target_fiveprime_length - query_start > 0:
+                                trimmed_seq_start_in_norm_seq = 0
+                            else:
+                                trimmed_seq_start_in_norm_seq = query_start - target_fiveprime_length
+                            norm_seq.start_positions.append(trimmed_seq_start_in_norm_seq)
+                            norm_seq.stop_positions.append(trimmed_seq_stop_in_norm_seq)
+                            break
+            filtered_query_count += 1
+        self.progress.end()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)", time.time() - start_time, is_time_value=True))
+
+
+    def restructure_fragment_match_table(self, match_df):
+        """Helper method for `map_fragments`."""
+        uniq_seq_names = []
+        for query_name in match_df['query_name']:
+            # Sequence names in anvi'o cannot contain a hyphen.
+            uniq_seq_name, uniq_seq_length = query_name.split('-')
+            uniq_seq_names.append(uniq_seq_name)
+        match_df.loc[:, 'query_name'] = uniq_seq_names
+
+        norm_seq_names = []
+        fiveprime_lengths = []
+        for target_name in match_df['target_name']:
+            norm_seq_name, fiveprime_length, fiveprime_index = target_name.split('-')
+            norm_seq_names.append(norm_seq_name)
+            fiveprime_lengths.append(int(fiveprime_length))
+        match_df.loc[:, 'target_name'] = norm_seq_names
+        match_df['fiveprime_length'] = fiveprime_lengths
 
 
     def find_substitutions(self):

@@ -3124,6 +3124,15 @@ D = {
              'help': "Progress in the tRNA feature profiling of unique input sequences "
                      "is reported after a certain number of sequences have been processed."}
                 ),
+    'fragment-filter-progress-interval': (
+            ['--fragment-filter-progress-interval'],
+            {'default': 50000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Progress is reported after a certain number of unprofiled sequence queries have been processed "
+                     "during the filtering of matches between these sequences and profiled tRNA. "
+                     "This filtering step is part of the search for biological tRNA fragments."}
+                ),
     'alignment-progress-interval': (
             ['--alignment-progress-interval'],
             {'default': 500000,

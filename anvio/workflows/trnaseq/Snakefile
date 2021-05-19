@@ -200,6 +200,7 @@ rule anvi_trnaseq:
         alignment_target_chunk_size = M.get_rule_param('anvi_trnaseq', '--alignment-target-chunk-size'),
         fragment_mapping_query_chunk_length = M.get_rule_param('anvi_trnaseq', '--fragment-mapping-query-chunk-length'),
         profiling_progress_interval = M.get_rule_param('anvi_trnaseq', '--profiling-progress-interval'),
+        fragment_filter_progress_interval = M.get_rule_param('anvi_trnaseq', '--fragment-filter-progress-interval'),
         alignment_progress_interval = M.get_rule_param('anvi_trnaseq', '--alignment-progress-interval'),
         mod_progress_interval = M.get_rule_param('anvi_trnaseq', '--modification-progress-interval'),
         skip_INDEL_profiling = M.get_rule_param('anvi_trnaseq', '--skip-INDEL-profiling'),
@@ -232,7 +233,7 @@ rule anvi_trnaseq:
         out_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
         treatment = M.treatments[library_num]
-        shell("anvi-trnaseq --trnaseq-fasta %s --sample-name {wildcards.sample_name} --output-dir %s --treatment %s {params.overwrite_output_destinations} {params.description} {params.write_checkpoints} {params.load_checkpoint} {params.feature_param_file} {params.threeprime_termini} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.skip_INDEL_profiling} {params.fiveprimemost_del_start} {params.threeprimemost_del_start} {params.fiveprimemost_del_stop} {params.threeprimemost_del_stop} {params.max_distinct_dels} {params.min_dist_between_dels} {params.max_del_configs} {params.skip_fasta_check} {params.profiling_chunk_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.profiling_progress_interval} {params.alignment_progress_interval} {params.mod_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, out_dir, treatment))
+        shell("anvi-trnaseq --trnaseq-fasta %s --sample-name {wildcards.sample_name} --output-dir %s --treatment %s {params.overwrite_output_destinations} {params.description} {params.write_checkpoints} {params.load_checkpoint} {params.feature_param_file} {params.threeprime_termini} {params.min_length_long_fiveprime} {params.min_trna_fragment_size} {params.agglomeration_max_mismatch_freq} {params.skip_INDEL_profiling} {params.fiveprimemost_del_start} {params.threeprimemost_del_start} {params.fiveprimemost_del_stop} {params.threeprimemost_del_stop} {params.max_distinct_dels} {params.min_dist_between_dels} {params.max_del_configs} {params.skip_fasta_check} {params.profiling_chunk_size} {params.alignment_target_chunk_size} {params.fragment_mapping_query_chunk_length} {params.profiling_progress_interval} {params.fragment_filter_progress_interval} {params.alignment_progress_interval} {params.mod_progress_interval} -T {threads} >> {log} 2>&1" % (decompressed_fasta, out_dir, treatment))
         if (M.fasta_paths and input[0].endswith('.gz')) or M.gzip_iu_merge_pairs_output:
             os.remove(decompressed_fasta)
 
