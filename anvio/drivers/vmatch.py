@@ -66,9 +66,9 @@ class Vmatch(object):
         self.min_ident = A('min_ident')
 
         self.quiet = A('quiet')
-
-        self.temp_dir = filesnpaths.get_temp_directory_path()
-        self.log_path = os.path.join(self.temp_dir, '00_log.txt')
+        self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
+        self.keep_temp_dir = A('keep_temp_dir') or False
+        self.log_path = A('log_path') or os.path.join(self.temp_dir, '00_log.txt')
 
         self.run = run or terminal.Run(verbose=(not self.quiet))
         self.progress = progress or terminal.Progress(verbose=(not self.quiet))
@@ -171,7 +171,7 @@ class Vmatch(object):
                    '-tis', '-suf', '-sti1', '-lcp', '-bck', # index tables, excluding some optional tables -- all tables can be produced with "-allout" instead
                    '-v']
 
-        ret_val = utils.run_command(command, self.log_path)
+        ret_val = utils.run_command(command, self.log_path, remove_log_file_if_exists=False)
 
         if int(ret_val):
             raise ConfigError("vmktree returned with non-zero exit code, there may be some errors. "
@@ -327,7 +327,7 @@ class Vmatch(object):
 
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
-        else:
+        elif not self.keep_temp_dir:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
 
