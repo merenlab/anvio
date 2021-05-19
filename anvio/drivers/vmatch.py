@@ -149,8 +149,6 @@ class Vmatch(object):
                                  f"'{', '.join(list(self.tested_versions))}'")
 
             setattr(self, attr_name, version_found)
-        # Add a blank line after version information.
-        print()
 
         if self.installed_index_program_version != self.installed_search_program_version:
             self.run.warning("For some hopefully good reason, the Vmatch commands, "
