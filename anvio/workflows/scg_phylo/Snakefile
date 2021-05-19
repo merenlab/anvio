@@ -841,7 +841,6 @@ rule make_SCG_WORKFLOW_state_file:
         }
 
         for metagenome in metagenomes:
-            print(metagenome)
             views_dict[str(metagenome)] = views_attributes
 
         state_dict['views'] = views_dict
