@@ -237,6 +237,11 @@ class RibosomalPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
             target_files.append(target_file)
 
+            # Get state.json file for final visualization 
+            tail_path = "%s_RIBO_PHYLO_WORKFLOW_state.json" % (ribosomal_protein_name)
+            target_file = os.path.join("RIBO_PHYLO_WORKFLOW", tail_path)
+            target_files.append(target_file)
+
             # The FINAL trees :)
             # For iq-tree
             if self.run_iqtree == True:

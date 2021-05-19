@@ -707,6 +707,148 @@ rule make_metagenomics_config_file:
         with open(output.config, "w") as outfile:
           json.dump(config_dict, outfile, indent=4)
 
+
+rule make_SCG_WORKFLOW_state_file:
+    """Make a state file customized for ribo_phylo workflow interactive interface"""
+
+    version: 1.0
+    input:
+        num_tree_tips = rules.rename_and_filter_external_gene_calls_file_all.output.external_gene_calls_renamed
+    output:
+        state_file = os.path.join("RIBO_PHYLO_WORKFLOW", "{ribosomal_protein_name}_RIBO_PHYLO_WORKFLOW_state.json")
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    run:
+        state_dict = {}
+
+        # basics
+        state_dict['version'] = '3'
+        state_dict['tree-type'] = 'phylogram'
+
+        # height and width
+        num_tree_tips = pd.read_csv(input.num_tree_tips, \
+                  sep="\t", \
+                  index_col=None)
+        num_SCGs = num_tree_tips.shape[0]
+        num_metagenomes = len(M.input_dirs_dict)
+
+        if 0 < num_metagenomes <= 25:
+            state_dict['tree-height'] = '0'
+            state_dict['tree-width'] = '0'
+        if 26 < num_metagenomes <= 50:
+            state_dict['tree-height'] = '4000'
+            state_dict['tree-width'] = '15000'
+        if 51 < num_metagenomes <= 75:
+            state_dict['tree-height'] = '8000'
+            state_dict['tree-width'] = '30000'
+        if 76 < num_metagenomes <= 100:
+            state_dict['tree-height'] = '12000'
+            state_dict['tree-width'] = '38000'
+        if num_metagenomes > 100:
+            state_dict['tree-height'] = '12000'
+            state_dict['tree-width'] = '38000'
+
+        # layer-orders
+        first_layers = ["__parent__", "length", "gc_content"]
+        metagenomes = ["AUS0002", "AUS0004"]
+        last_layers = ["contig_db_type", "has_genomic_SCG_in_cluster", "orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
+        layer_order = first_layers + metagenomes + last_layers
+
+        state_dict['layer-order'] = layer_order
+
+        # layers
+        layers_dict = {}
+
+        parent = {
+          "color": "#414141",
+          "height": "0",
+          "margin": "15",
+          "type": "bar",
+          "color-start": "#FFFFFF"
+        }
+
+        length = {
+          "color": "#414141",
+          "height": "180",
+          "margin": "15",
+          "type": "bar",
+          "color-start": "#FFFFFF"
+        }
+
+        gc_content = {
+          "color": "#004a0f",
+          "height": "180",
+          "margin": "15",
+          "type": "bar",
+          "color-start": "#FFFFFF"
+        }
+
+        metagenome_layers_dict = {}
+
+        metagenome_attributes = {
+          "color": "#000000",
+          "height": "180",
+          "margin": "15",
+          "type": "bar",
+          "color-start": "#FFFFFF"
+        }
+
+        for metagenome in metagenomes:
+            metagenome_layers_dict[str(metagenome)] = metagenome_attributes
+
+        last_layers_dict = {}
+
+        layer_attributes = {
+          "color": "#000000",
+          "height": "180",
+          "margin": "15",
+          "type": "color",
+          "color-start": "#FFFFFF"
+        }
+
+        for layer in last_layers:
+            last_layers_dict[str(layer)] = layer_attributes
+
+        layers_dict['length'] = length
+        layers_dict['gc_content'] = gc_content
+        layers_dict['parent'] = parent
+        layers_dict.update(metagenome_layers_dict)
+        layers_dict.update(last_layers_dict)
+
+        # I would LIKE to makes these heights 0 but for some reason all 'height' values go to 0
+        # layers['orig_name']['height'] = 0
+        # layers['sample']['height'] = 0
+        # layers['split_name']['height'] = 0
+
+        state_dict['layers'] = layers_dict
+
+        # views
+        views_dict = {}
+
+        minimum = {
+            "value": "0.25",
+            "disabled": False
+        }
+
+        maximum = {
+            "value": "1",
+            "disabled": False
+        }
+
+        views_attributes = {
+          "normalization": "none",
+          "min": minimum,
+          "max": maximum,
+        }
+
+        for metagenome in metagenomes:
+            print(metagenome)
+            views_dict[str(metagenome)] = views_attributes
+
+        state_dict['views'] = views_dict
+
+        with open(output.state_file, "w") as outfile:
+                  json.dump(state_dict, outfile, indent=4)
+
 if M.run_iqtree == True:
   rule iqtree:
       """Calculate a phylogenetic tree using iqtree"""
