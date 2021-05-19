@@ -321,10 +321,10 @@ class Vmatch(object):
             p.terminate()
             p.join()
 
-        # Load the concatenated chunked output and clip query lengths from query names.
+        # Load the concatenated chunked output.
         self.progress.update("Finalizing matches")
-        output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name'])
-        output_df.loc[:, 'query_name'] = output_df['query_name'].apply(lambda name: '_'.join(name.split('_')[: -1]))
+        output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start', 'query_length'])
+        self.progress.end()
 
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
@@ -332,7 +332,6 @@ class Vmatch(object):
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
 
-        self.progress.end()
         return output_df
 
 
@@ -367,4 +366,4 @@ def parse_exact_query_substrings(output_df):
     output_df = output_df[(output_df['unalign_length'] == 0) & (output_df['distance'] == 0)].copy()
 
     # Only the query and target names are needed.
-    return output_df[['query_name', 'target_name']]
+    return output_df[['query_name', 'target_name', 'query_start', 'query_length']]
