@@ -65,7 +65,6 @@ class Vmatch(object):
         self.exdrop = A('exdrop')
         self.min_ident = A('min_ident')
 
-        self.progress_interval = A('progress_interval')
         self.quiet = A('quiet')
 
         self.temp_dir = filesnpaths.get_temp_directory_path()
