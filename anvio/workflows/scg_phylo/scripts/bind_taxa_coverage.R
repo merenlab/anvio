@@ -104,7 +104,7 @@ bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
     # inner_join(mapping_data) %>%
     select(-gene_callers_id) %>%
     rename(orig_name = contig, name = contig_new) %>%
-    relocate(name) %>%
+    select(name, orig_name, sample, contig_db_type, t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, has_genomic_SCG_in_cluster) %>%
     filter(!is.na(name))
 
   final %>%
