@@ -923,6 +923,31 @@ class Pangenome(object):
         # work with gene cluster homogeneity index
         self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
 
+        # let people know if they have too much data for their own comfort
+        if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
+            if len(gene_clusters_dict) > 20000 and len(self.genomes) > 150:
+                _ = "gene clusters and genomes"
+            elif len(gene_clusters_dict) > 20000:
+                _ = "gene clusters"
+            else:
+                _ = "genomes"
+
+            self.run.warning(f"It seems you have a lot of {_} in this pan database :) It is all good! But please be aware that you may "
+                             f"run into performance issues when you try to interactively visaulize these data using `anvi-display-pan`. "
+                             f"In some cases it may even be impossible to do it, in fact. This is largely because the part of the "
+                             f"anvi'o workflow to offer interactive access to a pangenomes is not designed to accommodate very"
+                             f" large number of {_}, but rather enable in-depth exploratory analyses of pangenomes interactively. You still "
+                             f"can work with large pangenomes via the command line utilities and do a lot of science with them. If you "
+                             f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
+                             f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
+                             f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
+                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Slack "
+                             f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
+                             f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
+
         # done
-        self.run.info('log file', self.run.log_file_path)
+        self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
+                             f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
+
+
         self.run.quit()
