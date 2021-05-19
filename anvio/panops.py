@@ -274,6 +274,8 @@ class Pangenome(object):
 
 
     def gen_mcl_input(self, blastall_results):
+        self.run.warning(None, header="MCL INPUT", lc="green")
+
         self.progress.new('Processing search results')
         self.progress.update('...')
 
@@ -390,6 +392,7 @@ class Pangenome(object):
         mcl_input.close()
 
         self.progress.end()
+
         self.run.info('Filtered search results', '%s edges stored' % pp(num_edges_stored))
         self.run.info('MCL input', '%s' % mcl_input_file_path)
 
@@ -487,7 +490,7 @@ class Pangenome(object):
                                         table_types=table_types,
                                         view_name = 'gene_cluster_presence_absence')
 
-        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args)
+        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
@@ -530,7 +533,7 @@ class Pangenome(object):
 
             order_name = 'Forced synteny <> %s' % genome_name
 
-            dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(gene_clusters_order_based_on_genome_synteny), order_data_type_newick=False, run=self.run)
+            dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(gene_clusters_order_based_on_genome_synteny), order_data_type_newick=False, run=terminal.Run(verbose=False))
 
         gene_cluster_gene_cluster_edges = []
         # network description of gene_cluster-gene_cluster relationships given the gene synteny.
@@ -582,7 +585,7 @@ class Pangenome(object):
 
             dbops.do_hierarchical_clustering_of_items(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
                                                       input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
-                                                      distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+                                                      distance=self.distance, linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
@@ -594,7 +597,7 @@ class Pangenome(object):
             self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
             return
 
-        pan = dbops.PanSuperclass(args=self.args, r=self.run, p=self.progress)
+        pan = dbops.PanSuperclass(args=self.args, r=terminal.Run(verbose=False), p=self.progress)
         gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
         d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
@@ -604,7 +607,7 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'], skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
@@ -650,8 +653,8 @@ class Pangenome(object):
 
         self.progress.end()
 
-        miscdata.TableForLayerOrders(self.args).add(layer_orders_data_dict)
-        miscdata.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
+        miscdata.TableForLayerOrders(self.args, r=terminal.Run(verbose=False)).add(layer_orders_data_dict)
+        miscdata.TableForLayerAdditionalData(self.args, r=terminal.Run(verbose=False)).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
     def sanity_check(self):
@@ -704,8 +707,6 @@ class Pangenome(object):
         pan_db.db.set_meta_value('num_gene_clusters', len(gene_clusters_dict))
         pan_db.db.set_meta_value('num_genes_in_gene_clusters', num_genes_in_gene_clusters)
         pan_db.disconnect()
-
-        self.run.info('gene clusters info', '%d gene_clusters stored in the database' % len(gene_clusters_dict))
 
 
     def gen_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
