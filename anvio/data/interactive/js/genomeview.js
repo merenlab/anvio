@@ -101,7 +101,7 @@ function loadAll() {
     // 2) pan to new x coordinate, a percentile of total sequence length 
     // 3) set zoom back to original value, centering on new x coordinate
     canvas.setZoom(.009) 
-    canvas.absolutePan({x: moveTo.x, y: 0})
+    canvas.absolutePan({x: moveTo.x, y: moveTo.y})
     canvas.setZoom(1)
   })
 
