@@ -16,7 +16,15 @@
     <body>
         <div class="container">
             <div id='labelAndMainContainer'>
-              <canvas id='genomeLabels' width="200px" height='500px'></canvas>
+              <div id='labelAndDropdownContainer'>
+                <select>
+                    <option disabled selected value> -- Genome Order -- </option>
+                    <option>Alphabetical</option>
+                    <option>Some Other Order</option>
+                    <option>A Third One</option>
+                </select>
+                <canvas id='genomeLabels' width="200px" height='500px'></canvas>
+              </div>
               <canvas id="myCanvas" width="1200px" height="500px"></canvas>
             </div>
             <div>
