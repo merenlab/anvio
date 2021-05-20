@@ -71,11 +71,19 @@ function loadAll() {
   genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
   scaleCanvas = new fabric.Canvas('scale') // link canvas element specifically for displaying scale, fill with default below
 
-  scaleCanvas.add(new fabric.Text(`${scale} nts`, {
-    strokeWidth: 1,
-    fontSize: 100,
-    fontFamily: 'sans-serif',
-    selectable: false}));
+  // scaleCanvas.add(new fabric.Text(`${scale} nts`, {
+  //   strokeWidth: 1,
+  //   fontSize: 100,
+  //   fontFamily: 'sans-serif',
+  //   selectable: false}));
+  scaleCanvas.add(new fabric.Rect({
+    width: 1200, 
+    height : 200, 
+    fill : 'pink',
+    opacity : .6,
+    selectable : false, 
+    
+  }))
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#toggle_label_box').attr("checked", showLabels);
