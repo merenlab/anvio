@@ -69,13 +69,7 @@ function initData() {
 function loadAll() {
   canvas = new fabric.Canvas('myCanvas');
   genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
-  scaleCanvas = new fabric.Canvas('scale') // link canvas element specifically for displaying scale, fill with default below
-
-  // scaleCanvas.add(new fabric.Text(`${scale} nts`, {
-  //   strokeWidth: 1,
-  //   fontSize: 100,
-  //   fontFamily: 'sans-serif',
-  //   selectable: false}));
+  scaleCanvas = new fabric.Canvas('scale') 
   scaleCanvas.add(new fabric.Rect({
     width: 1200, 
     height : 200, 
@@ -90,6 +84,7 @@ function loadAll() {
   scaleCanvas.on('mouse:down', (event) => {
     scaleDragStartingX = event.pointer.x
   })
+
   scaleCanvas.on('mouse:up', (event) => {
     let scaleDragEndingX = event.pointer.x // click + drag ending x position
     totalScaleX = event.target.aCoords.tr.x // total x axis length 
@@ -105,8 +100,6 @@ function loadAll() {
     // need a way to calculate pixel length of entire sequence so we can move 
     // to location at cooresponding percentile from drag event. 
   })
-
-
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#toggle_label_box').attr("checked", showLabels);
@@ -221,14 +214,6 @@ function loadAll() {
     zoom *= 0.999 ** delta;
     if (zoom > 20) zoom = 20;
     if (zoom < 0.01) zoom = 0.01;
-
-    // scale = canvas.getZoom() * 100 // set global scale to new zoom value
-    // scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value.
-    // scaleCanvas.add((new fabric.Text(`${scale} nts`, {
-    //   strokeWidth: 1,
-    //   fontSize: 100,
-    //   fontFamily: 'sans-serif',
-    //   selectable: false})));
 
     canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
     opt.e.preventDefault();
