@@ -96,9 +96,13 @@ function loadAll() {
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
 
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
+    // process for contextual zooming based on drag event from scale canvas. 
+    // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length 
+    // 2) pan to new x coordinate, a percentile of total sequence length 
+    // 3) set zoom back to original value, centering on new x coordinate
+    canvas.setZoom(.009) 
     canvas.absolutePan({x: moveTo.x, y: 0})
-    // need a way to calculate pixel length of entire sequence so we can move 
-    // to location at cooresponding percentile from drag event. 
+    canvas.setZoom(1)
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
