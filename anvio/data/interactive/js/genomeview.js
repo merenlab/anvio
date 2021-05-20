@@ -82,8 +82,22 @@ function loadAll() {
     fill : 'pink',
     opacity : .6,
     selectable : false, 
-    
+
   }))
+  let scaleDragStartingX; 
+  scaleCanvas.on('mouse:down', function(event){
+    scaleDragStartingX = event.pointer.x
+  })
+  scaleCanvas.on('mouse:up', function(event){
+    let scaleDragEndingX = event.pointer.x // click + drag ending x position
+    let totalScaleX = event.target.aCoords.tr.x // total x axis length 
+
+    if(scaleDragStartingX === scaleDragEndingX){ //account for accidental drag, click and release
+      return 
+    }
+  })
+
+
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#toggle_label_box').attr("checked", showLabels);
