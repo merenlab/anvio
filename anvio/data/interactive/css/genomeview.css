@@ -140,3 +140,10 @@ a{
     padding: 15px;
     margin: 5px;
 }
+
+#scaleContainer{
+    border-style: solid;
+    border-width: 1;
+    padding: 15px;
+    margin: 5px;
+}
