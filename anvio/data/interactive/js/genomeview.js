@@ -85,16 +85,20 @@ function loadAll() {
 
   }))
   let scaleDragStartingX; 
+  let totalScaleX
+
   scaleCanvas.on('mouse:down', function(event){
     scaleDragStartingX = event.pointer.x
   })
   scaleCanvas.on('mouse:up', function(event){
     let scaleDragEndingX = event.pointer.x // click + drag ending x position
-    let totalScaleX = event.target.aCoords.tr.x // total x axis length 
+    totalScaleX = event.target.aCoords.tr.x // total x axis length 
 
     if(scaleDragStartingX === scaleDragEndingX){ //account for accidental drag, click and release
       return 
     }
+    let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
+    console.log(percentileStart, percentileEnd)
   })
 
 
