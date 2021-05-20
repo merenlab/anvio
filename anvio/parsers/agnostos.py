@@ -70,7 +70,7 @@ class Agnostos(Parser):
         df['source'] = "Agnostos"
         df['e_value'] = 0
         df.rename(columns = {'cl_name':'accession'}, inplace = True)
-        df.rename(columns = {'db':'function'}, inplace = True)
+        df.rename(columns = {'db':'category'}, inplace = True)
         df = df.drop_duplicates(subset=['gene_callers_id', 'source', 'accession', 'function'])
         d = df.to_dict(orient='index')
 
