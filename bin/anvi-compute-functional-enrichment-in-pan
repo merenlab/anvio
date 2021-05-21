@@ -33,7 +33,7 @@ progress = terminal.Progress()
 def main(args):
     # make sure the output files is not going to overwrite anything
     if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
-        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing for overwriting existing files. "
+        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
                           f"Please remove the exiting file first, or give a different output file name to this program.")
 
     # make sure we can write to the output file
