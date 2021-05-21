@@ -67,6 +67,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('load-full-state'), **anvio.K('load-full-state'))
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupC.add_argument(*anvio.A('annotation-source-for-per-split-summary'), **anvio.K('annotation-source-for-per-split-summary'))
 
     groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                            the interface.")
