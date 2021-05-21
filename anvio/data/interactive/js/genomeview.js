@@ -493,14 +493,7 @@ function getKeyByValue(object, value) {
 }
 
 function resetScale(){
-  scale = 100
   canvas.setZoom(1)
-  scaleCanvas.clear() // clear previous value from scale canvas, populate with updated value.
-  scaleCanvas.add((new fabric.Text(`${scale} nts`, {
-    strokeWidth: 1,
-    fontSize: 100,
-    fontFamily: 'sans-serif',
-    selectable: false})));
 }
 
 function drawGenomeLabels(label){
