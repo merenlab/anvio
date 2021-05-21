@@ -5,20 +5,20 @@ For its sister programs, see %(anvi-compute-functional-enrichment-in-pan)s and %
 
 ## Module enrichment
 
-To run this program, you must already have estimated the completeness of metabolic modules in your genomes using the program %(anvi-estimate-metabolism)s and obtained a "modules" mode output file (which is the default output mode of it). In addition to that, you will need to provide a %(groups-txt)s file to declare which genome belongs to which group for enrichment analysis to consider.
+To run this program, you must already have estimated the completeness of metabolic modules in your genomes using the program %(anvi-estimate-metabolism)s and obtained a "modules" mode output file (which is the default output mode of that program). In addition to that, you will need to provide a %(groups-txt)s file to declare which genome belongs to which group for enrichment analysis to consider.
 
 ### How does it work?
 
 1. **Determine the presence of modules**. Each module in the "modules" mode output has a completeness score associated with it in each genome, and any module with a completeness score over a given threshold (set by `--module-completion-threshold`) will be considered to be *present* in that genome.
 
-2. **Quantify the distribution of modules in each group of genomes**. The distribution of a given module across genomes in each groups will determine its enrichment. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(functional-enrichment-txt)s file.
+2. **Quantify the distribution of modules in each group of genomes**. The distribution of a given module across genomes in each group will determine its enrichment. This is done by fitting a generalized linear model (GLM) with a logit linkage function in `anvi-script-enrichment-stats`, and it produces a %(functional-enrichment-txt)s file.
 
 {:.notice}
 The script `anvi-script-enrichment-stats` was implemented by [Amy Willis](https://github.com/adw96), and described first in [this paper](https://doi.org/10.1186/s13059-020-02195-w).
 
 ### Basic usage
 
-See %(kegg-metabolism)s for more information on how to generate a "modules" mode output format from %(anvi-estimate-metabolism)s. Please note that the genome names in the modules file must match those you will mention in the %(groups-txt)s file.
+See %(kegg-metabolism)s for more information on how to generate a "modules" mode output format from %(anvi-estimate-metabolism)s. Please note that the genome names in the modules file must match those that you will mention in the %(groups-txt)s file.
 
 {{ codestart }}
 anvi-compute-metabolic-enrichment -M MODULES.TXT \
