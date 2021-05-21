@@ -1433,6 +1433,11 @@ D = {
             {'metavar': 'SPLIT_NAME',
              'help': "Split name."}
                 ),
+    'contig-name': (
+            ['--contig-name'],
+            {'metavar': 'CONTIG_NAME',
+             'help': "Contig name."}
+                ),
     'program': (
             ['--program'],
             {'metavar': 'PROGRAM_NAME',
