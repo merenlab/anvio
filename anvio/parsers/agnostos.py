@@ -57,9 +57,10 @@ class Agnostos(Parser):
 
         df.to_csv(temp_file_path, sep = '\t', index = False, na_rep = 'NA')
 
+        self.progress.end()
+
         return temp_file_path
 
-        self.progress.end()
 
     def get_dict(self):
         """Convert angostos output into functions dict"""
