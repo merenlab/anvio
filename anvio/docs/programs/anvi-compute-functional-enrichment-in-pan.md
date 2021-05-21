@@ -11,9 +11,9 @@ Please also see %(anvi-display-functions)s which can both calculate functional e
 For this to run, you must provide a %(pan-db)s and %(genomes-storage-db)s pair, as well as a %(misc-data-layers)s that associates genomes in your pan database with categorical data. The program will then find functions that are enriched in each group (i.e., functions that are associated with gene clusters that are characteristic of the genomes in that group). 
 
 {:.notice}
-Note that your %(genomes-storage-db)s must have at least one function annotation source for this to work.
+Note that your %(genomes-storage-db)s must have at least one functional annotation source for this to work.
 
-This analysis will help you identify functions that are associated with a specific group of genoes in a pangenome and determine the functional core of your pangenome. For example, in the *Prochlorococcus* pangenome (the one used in [the pangenomics tutorial, where you can find more info about this program](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)), this program finds that `Exonuclease VII` is enriched in the `low-light` genomes and not in `high-light` genomes. The output file provides various statistics about how confident the program is in making this association.
+This analysis will help you identify functions that are associated with a specific group of genomes in a pangenome and determine the functional core of your pangenome. For example, in the *Prochlorococcus* pangenome (the one used in [the pangenomics tutorial, where you can find more info about this program](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)), this program finds that `Exonuclease VII` is enriched in the `low-light` genomes and not in `high-light` genomes. The output file provides various statistics about how confident the program is in making this association.
 
 ### How does it work?
 
@@ -30,7 +30,7 @@ Check out [Alon's behind the scenes post](http://merenlab.org/2016/11/08/pangeno
 
 ### Basic usage
 
-Here is the simplest way to run of this program:
+Here is the simplest way to run this program:
 
 {{ codestart }}
 anvi-compute-functional-enrichment-in-pan -p %(pan-db)s\
