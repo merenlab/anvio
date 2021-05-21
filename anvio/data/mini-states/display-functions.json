@@ -3,7 +3,7 @@
     "tree-type": "circlephylogram",
     "order-by": ">> associated_groups",
     "current-view": "presence_absence_view",
-    "samples-order": "COG20_FUNCTION_FREQUENCY_VIEW",
+    "samples-order": "FREQUENCY_VIEW",
     "angle-min": "0",
     "angle-max": "180",
     "layers": {
