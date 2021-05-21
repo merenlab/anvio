@@ -39,9 +39,13 @@ class Agnostos(Parser):
                                  'separator': '\t'},
                             }
 
+        self.progress.new('Initializing the parser')
+        self.progress.update('...')
         Parser.__init__(self, 'agnostos', [input_file_path], files_expected, files_structure)
+        self.progress.end()
 
         # This is where I would specific sanity checks for agnostos
+
 
     def fix_input_file(self, input_file_path):
         """Select columns for anvio and remove duplicate rows"""
