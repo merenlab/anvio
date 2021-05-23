@@ -76,13 +76,15 @@ class BLAST:
 
         if os.path.exists(self.target_fasta + '.phr') and os.path.exists(self.target_fasta + '.pin')\
                                                 and os.path.exists(self.target_fasta + '.psq') and not force_makedb:
-            self.run.warning("Notice: A BLAST database is found in the output directory, and will be used!")
+            self.run.warning("Notice: A BLAST database is found in the output directory, and will be used!",
+                             header="DATA FROM A PREVIOUS RUN 🎊", lc="green")
         else:
             self.makedb()
             force_blast = True
 
         if os.path.exists(self.search_output_path) and not force_blast:
-            self.run.warning("Notice: A BLAST search result is found in the output directory: skipping BLASTP!")
+            self.run.warning("Notice: A BLAST search result is found in the output directory: skipping BLASTP!",
+                             header="DATA FROM A PREVIOUS RUN 🎉", lc="green")
         else:
             self.blast()
 
@@ -97,6 +99,7 @@ class BLAST:
 
 
     def makedb(self, output_db_path=None, dbtype='prot'):
+        self.run.warning(None, header="NCBI BLAST MAKEDB", lc="green")
         if dbtype not in ['prot', 'nucl']:
             raise ConfigError("The `makedb` function in `BLAST` does not know about dbtype '%s' :(" % dbtype)
 
@@ -124,6 +127,7 @@ class BLAST:
 
 
     def blast(self, outputfmt='6'):
+        self.run.warning(None, header="NCBI BLAST SEARCH", lc="green")
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
                     '-db', self.target_fasta,
@@ -153,6 +157,7 @@ class BLAST:
 
 
     def blast_stdin(self, multisequence):
+        self.run.warning(None, header="NCBI BLAST SEARCH STDIN", lc="green")
         cmd_line = [self.search_program,
                     '-db', self.target_fasta,
                     '-evalue', self.evalue,
@@ -165,7 +170,7 @@ class BLAST:
         if self.min_pct_id:
             cmd_line += ['-perc_identity', self.min_pct_id]
 
-        self.run.info('NCBI %s stdin cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+        self.run.info('%s command line' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
         self.progress.new('BLAST')
         self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
@@ -174,7 +179,7 @@ class BLAST:
 
         self.progress.end()
 
-        self.run.info('BLAST results', '%d lines were returned from STDIN call' % len(output))
+        self.run.info('Search results', '%d lines were returned from STDIN call' % len(output))
 
         return(output)
 

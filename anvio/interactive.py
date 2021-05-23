@@ -888,7 +888,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # let's get a layer's order, too, and immediately add it to the database:
             layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
             args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{facc.function_annotation_source}_{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
             self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
@@ -916,6 +916,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # here we will read the items additional data back so it is both in there for future `anvi-interactive` ops,
         # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+
+        # everything we need is in the database now. time to add a mini state:
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read()
+        TablesForStates(self.profile_db_path).store_state('default', mini_state)
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)

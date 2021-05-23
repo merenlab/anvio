@@ -1155,6 +1155,11 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         The enrichment analysis results
     """
 
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                "You can find more information about it in the following paper: Shaiber, Willis et al "
+                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
+                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
     # sanity check for R packages
     package_dict = get_required_packages_for_enrichment_test()
     check_R_packages_are_installed(package_dict)
@@ -1165,9 +1170,9 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     if not enrichment_output_file_path:
         enrichment_output_file_path = filesnpaths.get_temp_file_path()
     elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
-        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
-                           "Please either delete the existing file, or provide another file path before re-running this "
-                           "program again.")
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/ "
+                          f"Please either delete the existing file, or provide another file path before re-running this "
+                          f"program again.")
 
     log_file_path = filesnpaths.get_temp_file_path()
 

@@ -77,5 +77,3 @@ class TablesForStates(Table):
 
     def remove_state(self, state_id):
         self.delete_entries_for_key('name', state_id, [t.states_table_name])
-
-
