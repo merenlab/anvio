@@ -290,6 +290,7 @@ class Vmatch(object):
                                    f'-q {query_chunk_path} '
                                    '-complete '
                                    f'-h {self.max_hamming_dist} '
+                                   f'-identity {self.min_ident} '
                                    '-nodist -noevalue -noidentity -noscore '
                                    '-showdesc 0 '
                                    f'-s {self.align_output_length} '
