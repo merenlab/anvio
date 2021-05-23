@@ -1426,6 +1426,15 @@ class TRNASeqDataset(object):
                 'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
                 'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
                 'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl")
+            },
+            'substitutions': {
+                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl"),
+                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-SUBSTITUTIONS_CHECKPOINT.pkl")
             }
         }
         self.intermed_file_label_dict = {
@@ -1485,7 +1494,8 @@ class TRNASeqDataset(object):
             # database.
             self.report_profiling_parameters()
             self.report_fragment_mapping_parameters()
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_deletion_analysis_parameters()
 
             # Profile each (unique) read for tRNA features.
             self.profile_trna()
@@ -1495,10 +1505,12 @@ class TRNASeqDataset(object):
         elif self.load_checkpoint == 'profile':
             self.load_checkpoint_files('profile')
             self.report_fragment_mapping_parameters()
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_deletion_analysis_parameters()
 
 
-        if not self.load_checkpoint or self.load_checkpoint == 'profile':
+        if (self.load_checkpoint == 'profile'
+            or not self.load_checkpoint):
             # Do the steps between the "profile" and "normalize" checkpoints.
 
             # Trim 5' and 3' ends of profiled tRNA.
@@ -1517,9 +1529,14 @@ class TRNASeqDataset(object):
                 self.write_checkpoint_files('normalize')
         elif self.load_checkpoint == 'normalize':
             self.load_checkpoint_files('normalize')
+            self.report_fragment_mapping_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_deletion_analysis_parameters()
 
 
-        if not self.load_checkpoint == 'map_fragments':
+        if (self.load_checkpoint == 'normalize'
+            or self.load_checkpoint == 'profile'
+            or not self.load_checkpoint):
             # Do the steps between the "normalize" and "map_fragments" checkpoints.
 
             if '' not in self.threeprime_termini:
@@ -1539,15 +1556,28 @@ class TRNASeqDataset(object):
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('map_fragments')
-        else:
+        elif self.load_checkpoint == 'map_fragments':
             self.load_checkpoint_files('map_fragments')
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_deletion_analysis_parameters()
 
 
-        # Do the steps after the "map_fragments" checkpoint.
+        if (self.load_checkpoint == 'map_fragments'
+            or self.load_checkpoint == 'normalized'
+            or self.load_checkpoint == 'profile'
+            or not self.load_checkpoint):
+            # Do the steps between the "map_fragments" and "substitutions" checkpoints.
 
-        # Find modified nucleotides, grouping normalized sequences into modified sequences.
-        self.find_substitutions()
+            # Find modified nucleotides, grouping normalized sequences into modified sequences.
+            self.find_substitutions()
+
+            if self.write_checkpoints:
+                self.write_checkpoint_files('substitutions')
+        elif self.load_checkpoint == 'substitutions':
+            self.load_checkpoint_files('substitutions')
+            self.report_deletion_analysis_parameters()
+
+        # Do the steps after the "substitutions" checkpoint.
         if not self.skip_INDEL_profiling:
             self.find_deletions()
         for mod_seq in self.mod_trna_seq_dict.values():
@@ -1753,11 +1783,22 @@ class TRNASeqDataset(object):
             f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
 
 
-    def report_modification_analysis_parameters(self):
-        """Add modification analysis parameters to the database."""
+    def report_substitution_analysis_parameters(self):
+        """Add modification-induced substitution analysis parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         db = trnaseq_db.db
         db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
+        trnaseq_db.disconnect()
+
+        get_summary_line = self.get_summary_line
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
+
+
+    def report_deletion_analysis_parameters(self):
+        """Add modification-induced deletion analysis parameters to the database."""
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        db = trnaseq_db.db
         db.set_meta_value('fiveprimemost_deletion_start', self.fiveprimemost_del_start)
         db.set_meta_value('threeprimemost_deletion_start', self.threeprimemost_del_start)
         db.set_meta_value('fiveprimemost_deletion_stop', self.fiveprimemost_del_stop)
@@ -1769,7 +1810,6 @@ class TRNASeqDataset(object):
 
         get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
             f.write(get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
             f.write(get_summary_line("5'-most del start", self.fiveprimemost_del_start))
             f.write(get_summary_line("3'-most del start", self.threeprimemost_del_start))
