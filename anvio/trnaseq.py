@@ -2613,10 +2613,14 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
+        # Use a 10x bigger query chunk size than the Vmatch default, as the default is rather
+        # conservative for searches with mismatches/indels that take longer to process each chunk
+        # and that may generate more alignments per chunk.
         match_df = Vmatch(argparse.Namespace(match_mode='exact_query_substring',
                                              fasta_db_file=target_fasta_path,
                                              fasta_query_file=query_fasta_path,
                                              num_threads=self.num_threads,
+                                             query_chunk_size=1000000 // self.num_threads,
                                              temp_dir=temp_dir_path)).search_queries()
 
         pid = f"Filtering matches"
