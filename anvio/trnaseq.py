@@ -2748,8 +2748,8 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         # Cluster normalized tRNA sequences. Clusters agglomerate sequences that differ from at
-        # least one other sequence in the cluster by no more than 2 substitutions per 71 aligned
-        # positions (by default) in a gapless end-to-end alignment.
+        # least one other sequence in the cluster by no more than 3 nucleotides in 100 (by default)
+        # in a gapless end-to-end alignment with no clipping.
         norm_trna_seq_dict = self.norm_trna_seq_dict
         norm_seq_represent_names = []
         norm_seq_strings = []
