@@ -187,7 +187,8 @@ class Vmatch(object):
         if make_index:
             self.make_index()
 
-        self.progress.new("Vmatch")
+        pid = "Vmatch"
+        self.progress.new(pid)
         self.progress.update(f"Setting up search")
 
         query_chunk_size = self.query_chunk_size * 2 # convert sequences to FASTA lines
@@ -257,6 +258,7 @@ class Vmatch(object):
         query_file = open(self.fasta_query_path)
         output_dfs = []
         if unprocessed_chunk_dict:
+            self.progress.update_pid(pid)
             self.progress.update(f"Queuing queries 1-{total_lines}/{total_lines}")
         while True:
             # Stay in the loop while there are chunks to be processed. Fill up as many available
@@ -298,6 +300,7 @@ class Vmatch(object):
                     subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
                     unprocessed_chunk_dict[unprocessed_chunk_num]['subprocess'] = subprocess
 
+                    self.progress.update_pid(pid)
                     self.progress.update(f"Queuing queries {next_chunk_start - query_chunk_size + 1}-{next_chunk_start}/{total_lines}")
                     # When query sequences are chunked, the maximum value of `next_chunk_start` is
                     # `total_lines`. In the absence of chunking, `next_chunk_start` exceeds
@@ -345,6 +348,7 @@ class Vmatch(object):
             p.join()
 
         # Load the concatenated chunked output.
+        self.progress.update_pid(pid)
         self.progress.update("Finalizing matches")
         if self.match_mode == 'exact_query_substring':
             output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start_in_target', 'query_length'])
