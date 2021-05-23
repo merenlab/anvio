@@ -35,14 +35,9 @@ class Vmatch(object):
         self.search_program_name = 'vmatch'
 
         self.tested_versions = ('2.3.0', )
-        # Vmatch also can run in all-against-all search mode, but this is not supported yet by the driver.
-        self.supported_search_modes = ('query', )
-        # In the match mode, "exact_query_substring", the query names should end in
-        # "-<query length>", e.g., "c_000000000001-75".
-        self.supported_match_modes = ('exact_query_substring', )
+        self.supported_match_modes = ('exact_query_substring', 'query_substring_with_mismatches')
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.search_mode = A('search_mode')
         self.match_mode = A('match_mode')
         self.fasta_db_path = A('fasta_db_file')
         self.fasta_query_path = A('fasta_query_file')
@@ -57,13 +52,12 @@ class Vmatch(object):
         # regularly deleted.
         self.query_chunk_size = A('query_chunk_size') or 100000 // self.num_threads
 
-        self.min_align_length = A('min_align_length')
-        self.align_seed_length = A('align_seed_length')
-        # When extending a seed in both directions, allowing both mismatches and indels, this is the
-        # maximum drop in alignment score allowed before extension stops. Mismatches are scored as
-        # -1 and indels as -2.
-        self.exdrop = A('exdrop')
-        self.min_ident = A('min_ident')
+        self.max_hamming_dist = A('max_hamming_dist')
+        self.min_ident = A('min_ident') or 100
+
+        # With this option, sequence alignments are included in the output. They are wrapped to the
+        # given length on each line.
+        self.align_output_length = A('align_output_length')
 
         self.quiet = A('quiet')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
@@ -81,44 +75,39 @@ class Vmatch(object):
         """Do basic checks before proceeding."""
         self.check_programs()
 
-        for name, variable in (("the search mode", self.search_mode),
-                               ("the match mode", self.match_mode),
+        for name, variable in (("the match mode", self.match_mode),
+                               ("the query sequence FASTA file path", self.fasta_db_path),
                                ("the target sequence FASTA file path", self.fasta_db_path),
-                               ("the minimum alignment length", self.min_align_length),
-                               ("the alignment seed length", self.align_seed_length),
-                               ("the exdrop", self.exdrop),
                                ("the minimum identity", self.min_ident)):
             if not variable:
                 raise ConfigError(f"A proper instance of the anvi'o Vmatch driver must have {name} variable set.")
-
-        if self.search_mode not in self.supported_search_modes:
-            raise ConfigError(f"The supported Vmatch search modes are: {', '.join(self.supported_search_modes)}. "
-                              f"No mode named {self.search_mode} is allowed.")
 
         if self.match_mode not in self.supported_match_modes:
             raise ConfigError(f"The supported Vmatch match modes are: {', '.join(self.supported_match_modes)}. "
                               f"No mode named {self.match_mode} is allowed.")
 
+        if self.match_mode == 'exact_query_substring':
+            if self.max_hamming_dist is not None:
+                raise ConfigError("The match mode, 'exact_query_substring', is incompatible with the maximum Hamming distance argument.")
+
+            if self.align_output_length is not None:
+                raise ConfigError("The match mode, 'exact_query_substring', is incompatible with the alignment output length argument.")
+        else:
+            if self.max_hamming_dist is None:
+                raise ConfigError("The match mode, 'query_substring_with_mismatches', requires the maximum Hamming distance argument.")
+
+            if self.max_hamming_dist % 1 != 0 or self.max_hamming_dist <= 1:
+                raise ConfigError("The maximum allowed Hamming distance must be a positive integer.")
+
+            if not self.align_output_length:
+                raise ConfigError("The match mode, 'query_substring_with_mismatches', requires the argument, 'align_output_length'.")
+
         filesnpaths.is_file_exists(self.fasta_db_path)
         self.index_path = os.path.join(self.temp_dir, 'index')
-
-        if self.min_align_length < self.align_seed_length:
-            raise ConfigError("The seed from which the sequence alignment is found cannot be longer than the minimum alignment length. "
-                              f"The provided seed length was {self.align_seed_length} and the minimum alignment length was {self.min_align_length}.")
-
-        if self.exdrop < 1:
-            raise ConfigError("Exdrop must have an integer value of at least 1. "
-                              f"The provided value was {self.exdrop}.")
 
         if self.min_ident % 1 != 0:
             raise ConfigError("The minimum identity of an alignment must be an integer between 1 and 100. "
                               f"The provided value was {self.min_ident}.")
-
-        # Check variables specific to the "query" search mode.
-        if self.search_mode == 'query':
-            for name, variable in (("the query sequence FASTA file path", self.fasta_db_path), ):
-                if not variable:
-                    raise ConfigError(f"A proper instance of the anvi'o Vmatch driver in query search mode must have {name} variable set.")
 
 
     def check_programs(self, quiet=False):
@@ -162,15 +151,30 @@ class Vmatch(object):
     def make_index(self):
         self.progress.new("Vmatch vmktree")
         self.progress.update(f"Creating a persistent index from {self.fasta_db_path}")
-
-        command = ['mkvtree',
-                   '-db', self.fasta_db_path,
-                   '-dna',
-                   '-indexname', self.index_path,
-                   '-pl', # sequence suffixes are placed into buckets by their prefix length, here automatically determined
-                   '-tis', '-suf', '-sti1', '-lcp', '-bck', # index tables, excluding some optional tables -- all tables can be produced with "-allout" instead
-                   '-v']
-
+        if self.match_mode == 'exact_query_substring':
+            # `-pl` means that sequence suffixes are placed into buckets by their prefix length,
+            # here automatically determined.
+            # `-tis -suf -sti1 -lcp -bck` are necessary index tables.
+            # `-v` produces verbose commented output.
+            command = ('mkvtree '
+                       f'-db {self.fasta_db_path} '
+                       '-dna '
+                       f'-indexname {self.index_path} '
+                       '-pl '
+                       f'-tis -suf -sti1 -lcp -bck '
+                       '-v'
+                       ).split(' ')
+        else:
+            # `-ois` produces an index table of original sequences and is needed to output sequence alignments.
+            # `-skp` produces an index table used in finding whole queries with mismatches.
+            command = ('mkvtree '
+                       f'-db {self.fasta_db_path} '
+                       '-dna '
+                       f'-indexname {self.index_path} '
+                       '-pl '
+                       f'-tis -suf -sti1 -lcp -bck -ois -skp '
+                       '-v'
+                       ).split(' ')
         ret_val = utils.run_command(command, self.log_path, remove_log_file_if_exists=False)
 
         if int(ret_val):
@@ -196,23 +200,34 @@ class Vmatch(object):
                 pass
         total_lines = line_num
 
+        match_mode = self.match_mode
         if next_chunk_start >= total_lines:
             # All query sequences fit in one chunk, so use the original query file as vmatch input.
             query_chunk_path = self.fasta_query_path
             unprocessed_chunk_dict[unprocessed_chunk_num]['query_path'] = query_chunk_path
-            output_chunk_path = 'output.txt'
+            output_chunk_path = os.path.join(self.temp_dir, 'output.txt')
             unprocessed_chunk_dict[unprocessed_chunk_num]['output_path'] = output_chunk_path
 
-            command = ['vmatch',
-                       '-q', query_chunk_path,
-                       '-l', self.min_align_length,
-                       '-seedlength', self.align_seed_length,
-                       '-exdrop', self.exdrop,
-                       '-identity', self.min_ident,
-                       '-noevalue', '-noidentity', '-noscore', # do not include alignment E-value, identity and score in the output, but include the alignment distance
-                       '-showdesc', 0, # query and target sequence names included in the output
-                       '-v', # verbose commented output
-                       self.index_path]
+            if match_mode == 'exact_query_substring':
+                command = ('vmatch '
+                           f'-q {query_chunk_path} '
+                           '-complete '
+                           '-identity 100 '
+                           '-nodist -noevalue -noidentity -noscore ' # do not include alignment distance, E-value, identity and score in the output, but include the alignment distance
+                           '-showdesc 0 ' # query and target sequence names included in the output
+                           '-v ' # verbose commented output
+                           f'{self.index_path}').split(' ')
+            elif match_mode == 'query_substring_with_mismatches':
+                command = ('vmatch '
+                           f'-q {query_chunk_path} '
+                           '-complete '
+                           f'-h {self.max_hamming_dist} '
+                           f'-identity {self.min_ident} '
+                           '-nodist -noevalue -noidentity -noscore '
+                           '-showdesc 0 '
+                           f'-s {self.align_output_length} '
+                           '-v '
+                           f'{self.index_path}').split(' ')
             output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
             unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
             subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
@@ -233,7 +248,7 @@ class Vmatch(object):
         full_output_path = os.path.join(self.temp_dir, 'parsed_output.tsv')
         lock = mp.Lock()
         parsing_processes = [mp.Process(target=parsing_worker,
-                                        args=(input_queue, output_queue, self.match_mode, full_output_path, lock))
+                                        args=(input_queue, output_queue, self.align_output_length, self.match_mode, full_output_path, lock))
                              for _ in range(self.num_threads)]
         for p in parsing_processes:
             p.start()
@@ -259,16 +274,25 @@ class Vmatch(object):
                     output_chunk_path = os.path.join(self.temp_dir, 'output_' + str(unprocessed_chunk_num) + '.txt')
                     unprocessed_chunk_dict[unprocessed_chunk_num]['output_path'] = output_chunk_path
 
-                    command = ['vmatch',
-                               '-q', query_chunk_path,
-                               '-l', self.min_align_length,
-                               '-seedlength', self.align_seed_length,
-                               '-exdrop', self.exdrop,
-                               '-identity', self.min_ident,
-                               '-noevalue', '-noidentity', '-noscore', # do not include alignment E-value, identity and score in the output, but include the alignment distance
-                               '-showdesc', 0, # query and target sequence names included in the output
-                               '-v', # verbose commented output
-                               self.index_path]
+                    if match_mode == 'exact_query_substring':
+                        command = ('vmatch '
+                                   f'-q {query_chunk_path} '
+                                   '-complete '
+                                   '-identity 100'
+                                   '-nodist -noevalue -noidentity -noscore '
+                                   '-showdesc 0 '
+                                   '-v '
+                                   f'{self.index_path}').split(' ')
+                    elif match_mode == 'query_substring_with_mismatches':
+                        command = ('vmatch '
+                                   f'-q {query_chunk_path} '
+                                   '-complete '
+                                   f'-h {self.max_hamming_dist} '
+                                   '-nodist -noevalue -noidentity -noscore '
+                                   '-showdesc 0 '
+                                   f'-s {self.align_output_length} '
+                                   '-v '
+                                   f'{self.index_path}').split(' ')
                     output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
                     unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
                     subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
@@ -322,7 +346,10 @@ class Vmatch(object):
 
         # Load the concatenated chunked output.
         self.progress.update("Finalizing matches")
-        output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start', 'query_length'])
+        if self.match_mode == 'exact_query_substring':
+            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start_in_target', 'query_length'])
+        elif self.match_mode == 'query_substring_with_mismatches':
+            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start_in_target', 'mismatch_positions'])
         self.progress.end()
 
         if anvio.DEBUG:
@@ -334,35 +361,95 @@ class Vmatch(object):
         return output_df
 
 
-def parsing_worker(input_queue, output_queue, match_mode, full_output_path, lock):
+def parsing_worker(input_queue, output_queue, align_output_length, match_mode, full_output_path, lock):
     """This worker is called from `Vmatch.search_queries` to parse chunked vmatch output. It is
     located outside `Vmatch` to allow multiprocessing."""
     while True:
         output_path = input_queue.get()
-        output_df = pd.read_csv(output_path,
-                                delim_whitespace=True, # there is a variable number of spaces between fields, and there are spaces at the beginning of each line
-                                comment='#', # remove comment lines at the beginning of the file
-                                header=None,
-                                usecols=[0, 1, 2, 4, 5, 6, 7], # disregard the fourth column, indicating a direct match, "D", or palindromic match, "P", as the latter does not occur here
-                                names=['target_align_length', 'target_name', 'target_start', 'query_align_length', 'query_name', 'query_start', 'distance'])
-        os.remove(output_path)
         if match_mode == 'exact_query_substring':
-            output_df = parse_exact_query_substrings(output_df)
+            output_df = parse_exact_query_substrings(output_path)
+        elif match_mode == 'query_substring_with_mismatches':
+            output_df = parse_query_substrings_with_mismatches(output_path, align_output_length)
+
         with lock:
+            # Sending the DataFrame through the multiprocessing pipe is much slower than writing
+            # to file.
             output_df.to_csv(full_output_path, mode='a', sep='\t', index=False, header=False)
+
+        os.remove(output_path)
         output_queue.put(True)
 
 
-def parse_exact_query_substrings(output_df):
-    """Parse queries that are exact substrings of one or more targets. The closest option that
-    Vmatch provides, `-complete`, only retains queries that are the same as targets."""
-    t = time.time()
-    output_df.loc[:, 'query_length'] = output_df['query_name'].apply(lambda name: int(name.split('-')[-1]))
-    output_df.loc[:, 'unalign_length'] = output_df['query_length'] - output_df['query_align_length']
+def parse_exact_query_substrings(output_path):
+    """Parse queries that are exact substrings of one or more targets. All this method does to the
+    output is remove commented lines and extraneous columns."""
+    output_df = pd.read_csv(output_path,
+                            delim_whitespace=True, # there is a variable number of spaces between fields, and there are spaces at the beginning of each line
+                            comment='#', # remove comment lines at the beginning of the file
+                            header=None,
+                            usecols=[0, 1, 2, 4, 5, 6], # disregard the fourth column, indicating a direct match, "D", or palindromic match, "P", as the latter does not occur here
+                            names=['target_align_length', 'target_name', 'query_start_in_target', 'query_length', 'query_name', 'align_start_in_query'])
 
-    # A full match is indicated by an alignment spanning the entire query with an edit distance
-    # of zero.
-    output_df = output_df[(output_df['unalign_length'] == 0) & (output_df['distance'] == 0)].copy()
+    return output_df[['query_name', 'target_name', 'query_start_in_target', 'query_length']]
 
-    # Only the query and target names are needed.
-    return output_df[['query_name', 'target_name', 'query_start', 'query_length']]
+
+def parse_query_substrings_with_mismatches(output_path, align_output_length):
+    """Parse queries that are fully contained by targets and that contain mismatches but not gaps.
+    Exact matches without any mismatches are not retained! Finding the positions of mismatches
+    requires parsing actual sequence alignments in addition to rows of summary data."""
+    align_records = []
+    output_file = open(output_path)
+    for line in output_file:
+        if line[0] != '#':
+            # Ignore comment lines at the beginning of the file.
+            break
+    # The first non-comment line contains summary data for the first alignment.
+    align_record = line.rstrip().split()
+
+    # The following is True when the alignment lines are being parsed.
+    parsing_align = True
+    # The first line of the alignment is (part of) the subject sequence.
+    prev_line_was_subject = False
+    # Alignments longer than the determined width occur are split up with a blank line between
+    # sections. A second blank line signifies the end of the alignment record.
+    prev_line_was_blank_after_align = False
+    align_index = 0
+    mismatch_positions = []
+    for line in output_file:
+        if parsing_align:
+            if line[0] == 'S':
+                prev_line_was_blank_after_align = False
+                prev_line_was_subject = True
+            elif line[0] == 'Q':
+                if prev_line_was_subject:
+                    prev_line_was_subject = False
+                    # If the query line comes immediately after the subject line, then this section
+                    # of the alignment has no mismatches.
+                    align_index += align_output_length
+            elif prev_line_was_subject:
+                # A line between the subject and query is under consideration. Its existence means
+                # there is a mismatch in this section of the alignment.
+                for section_index, char in enumerate(line[7: 7 + align_output_length]):
+                    if char == '!':
+                        mismatch_positions.append(str(align_index + section_index))
+                prev_line_was_subject = False
+                align_index += align_output_length
+            elif prev_line_was_blank_after_align:
+                # A second blank line has now been encountered, indicating the end of a record.
+                if mismatch_positions:
+                    # Retain the query name, target name, query start in target, and mismatch positions in the query.
+                    align_records.append((align_record[5], align_record[1], align_record[2], ','.join(mismatch_positions)))
+                parsing_align = False
+                prev_line_was_blank_after_align = False
+                align_index = 0
+                mismatch_positions = []
+                continue
+            else:
+                prev_line_was_blank_after_align = True
+                continue
+        else:
+            align_record = line.rstrip().split()
+            parsing_align = True
+    output_file.close()
+
+    return pd.DataFrame(align_records, columns=['query_name', 'target_name', 'query_start_in_target', 'mismatch_positions'])
