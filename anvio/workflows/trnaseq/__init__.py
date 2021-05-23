@@ -90,7 +90,6 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--alignment-target-chunk-size',
             '--profiling-chunk-size',
             '--fragment-mapping-query-chunk-length',
-            '--profiling-progress-interval',
             '--fragment-filter-progress-interval',
             '--alignment-progress-interval',
             '--modification-progress-interval'
@@ -169,7 +168,6 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--profiling-chunk-size': anvio.D['profiling-chunk-size'][1]['default'],
                 '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 '--fragment-mapping-query-chunk-length': anvio.D['fragment-mapping-query-chunk-length'][1]['default'],
-                '--profiling-progress-interval': anvio.D['profiling-progress-interval'][1]['default'],
                 '--fragment-filter-progress-interval': anvio.D['fragment-filter-progress-interval'][1]['default'],
                 '--alignment-progress-interval': anvio.D['alignment-progress-interval'][1]['default'],
                 '--modification-progress-interval': anvio.D['modification-progress-interval'][1]['default'],

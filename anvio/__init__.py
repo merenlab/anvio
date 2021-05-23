@@ -3124,14 +3124,6 @@ D = {
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
-    'profiling-progress-interval': (
-            ['--profiling-progress-interval'],
-            {'default': 500000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress in the tRNA feature profiling of unique input sequences "
-                     "is reported after a certain number of sequences have been processed."}
-                ),
     'fragment-filter-progress-interval': (
             ['--fragment-filter-progress-interval'],
             {'default': 50000,

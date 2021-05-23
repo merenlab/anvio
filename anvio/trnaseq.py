@@ -1378,7 +1378,6 @@ class TRNASeqDataset(object):
         self.frag_mapping_query_chunk_length = A('fragment_mapping_query_chunk_length')
 
         # Argument group 1E: PROGRESS
-        self.profiling_progress_interval = A('profiling_progress_interval')
         self.fragment_filter_progress_interval = A('fragment_filter_progress_interval')
         self.alignment_progress_interval = A('alignment_progress_interval')
         self.mod_progress_interval = A('modification_progress_interval')
@@ -1798,7 +1797,7 @@ class TRNASeqDataset(object):
 
         start_time = time.time()
 
-        pid = "Profiling tRNA features in reads"
+        pid = "Profiling tRNA features in unique reads"
         self.progress.new(pid)
         self.progress.update("...")
 
@@ -1826,9 +1825,11 @@ class TRNASeqDataset(object):
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
         uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
         uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
-        profiling_progress_interval = self.profiling_progress_interval
-        pp_uniq_read_count = pp(len(uniq_reads))
+        pp_total_uniq_count = pp(len(uniq_reads))
         while fetched_profile_count < total_uniq_count:
+            self.progress.update_pid(pid)
+            self.progress.update(f"{pp(input_count + 1)}-{pp(interval_stop)}/{pp_total_uniq_count}")
+
             while input_count < interval_stop:
                 for uniq_read_info in uniq_reads[interval_start: interval_stop]:
                     input_queue.put(uniq_read_info)
@@ -1847,11 +1848,6 @@ class TRNASeqDataset(object):
                         uniq_trunc_seq_dict[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
                     else:
                         uniq_nontrna_seq_dict[name] = UniqueSequence(profile.input_seq, name, read_count)
-
-                if fetched_profile_count % profiling_progress_interval == 0:
-                    # Periodically report the number of unique sequences that have been profiled.
-                    self.progress.update_pid(pid)
-                    self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
 
             interval_start = interval_stop
             interval_stop += profiling_chunk_size if interval_stop + profiling_chunk_size < total_uniq_count else total_uniq_count - interval_stop
