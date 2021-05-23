@@ -2973,22 +2973,25 @@ D = {
                 ),
     'agglomeration-max-mismatch-freq': (
             ['--agglomeration-max-mismatch-freq'],
-            {'default': 2/71,
+            {'default': 0.03,
              'metavar': 'FLOAT',
              'type': float,
              'help': "Anvi'o finds potential tRNA modifications by first agglomerating sequences "
                      "differing from one or more other sequences in the cluster by mismatches at a certain fraction of nucleotides. "
-                     "This parameter sets the maximum mismatch fraction that is allowed, by default 2/71. "
-                     "This number represents 2 mismatches in a full-length tRNA of length 74, not 71, "
+                     "This parameter sets the maximum mismatch fraction that is allowed, by default 0.03. "
+                     "The value of this parameter is rounded to the nearest hundredth. "
+                     "The default approximates 2/71, representing 2 mismatches in a full-length tRNA of length 74, not 71, "
                      "as 3' sequence variants, including the canonical 3'-CCA, are trimmed off prior to sequences being agglomerated. "
                      "(Average non-mitochondrial tRNAs range in length from 74-95.) "
-                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 70, D. "
-                     "If A differs from B by a substitution at position 1, and C differs from B at positions 10 and 20, "
-                     "such that C differs from A by 3 substitutions, then A, B, and C will still agglomerate into a single cluster, "
-                     "as each differs by no more than 2 substitutions from some other sequence in the cluster. "
-                     "In contrast, sequence D differs from B at positions 30 and 40, "
-                     "exceeding the 2/71 fraction required to agglomerate (2/70 > 2/71), "
-                     "so D forms its own cluster and is not consolidated into a single modified sequence with the others."}
+                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 65, D. "
+                     "If A differs from B by a substitution at position 1 when aligned (mismatch frequency of 0.014), "
+                     "and C differs from B at positions 10 and 20 (mismatch frequency of 0.028), "
+                     "such that C differs from A by 3 substitutions (mismatch frequency of 0.042), "
+                     "then A, B, and C will still agglomerate into a single cluster, "
+                     "as each differs by no more than 2 substitutions from *some other sequence* in the cluster. "
+                     "In contrast, sequence D differs from B at positions 30 and 40 (mismatch frequency of 0.031), "
+                     "exceeding the 0.03 limit needed to agglomerate. "
+                     "D forms its own cluster and is not consolidated into a single modified sequence with the others."}
                 ),
     'fiveprimemost-deletion-start': (
             ['--fiveprimemost-deletion-start'],

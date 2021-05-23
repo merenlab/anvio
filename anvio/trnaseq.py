@@ -65,8 +65,8 @@ import gc
 import os
 import sys
 import time
-import shutil
 import random
+import shutil
 import hashlib
 import argparse
 import itertools
@@ -1359,7 +1359,8 @@ class TRNASeqDataset(object):
         TrimmedSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         NormalizedDeletionSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
         self.min_trna_frag_size = A('min_trna_fragment_size')
-        self.agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
+        agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
+        self.agglom_max_mismatch_freq = round(agglom_max_mismatch_freq * 100) / 100
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.fiveprimemost_del_start = A('fiveprimemost_deletion_start')
         self.threeprimemost_del_start = A('threeprimemost_deletion_start')
@@ -2616,15 +2617,11 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-        match_df = Vmatch(argparse.Namespace(search_mode='query',
-                                             match_mode='exact_query_substring',
+        match_df = Vmatch(argparse.Namespace(match_mode='exact_query_substring',
                                              fasta_db_file=target_fasta_path,
                                              fasta_query_file=query_fasta_path,
                                              num_threads=self.num_threads,
-                                             min_align_length=min_trna_frag_size,
-                                             align_seed_length=min_trna_frag_size,
-                                             exdrop=1,
-                                             min_ident=100)).search_queries()
+                                             temp_dir=temp_dir_path)).search_queries()
 
         pid = f"Filtering matches"
         self.progress.new(pid)
@@ -2656,7 +2653,7 @@ class TRNASeqDataset(object):
 
             for norm_seq_name, target_fiveprime_length, query_start, uniq_seq_length in zip(query_match_df['target_name'],
                                                                                             query_match_df['fiveprime_length'],
-                                                                                            query_match_df['query_start'],
+                                                                                            query_match_df['query_start_in_target'],
                                                                                             query_match_df['query_length']):
                 query_stop = query_start + uniq_seq_length
                 trimmed_seq_stop_in_norm_seq = query_stop - target_fiveprime_length
@@ -2748,6 +2745,7 @@ class TRNASeqDataset(object):
         start_time = time.time()
         pid = "Finding modification-induced substitutions"
         self.progress.new(pid)
+        self.progress.update("...")
 
         # Cluster normalized tRNA sequences. Clusters agglomerate sequences that differ from at
         # least one other sequence in the cluster by no more than 2 substitutions per 71 aligned
@@ -2760,9 +2758,9 @@ class TRNASeqDataset(object):
             norm_seq_represent_names.append(represent_name)
             norm_seq_strings.append(norm_seq.seq_string)
             norm_seq_feature_completeness_dict[represent_name] = norm_seq.has_complete_feature_set
+        self.progress.end()
 
-        agglomerator = Agglomerator(norm_seq_represent_names, norm_seq_strings, num_threads=self.num_threads, progress=self.progress)
-
+        agglomerator = Agglomerator(norm_seq_represent_names, norm_seq_strings, num_threads=self.num_threads)
         # Provide a priority function for seeding clusters that favors, in order:
         # 1. normalized sequences with a complete set of tRNA features,
         # 2. longer normalized sequences,
@@ -2776,10 +2774,9 @@ class TRNASeqDataset(object):
                                  alignment_target_chunk_size=self.alignment_target_chunk_size,
                                  alignment_progress_interval=self.alignment_progress_interval,
                                  agglom_progress_interval=self.mod_progress_interval)
-
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
-        self.progress.update_pid(pid)
+        self.progress.new(pid)
         self.progress.update("Decomposing clusters, separating 3-4 nt from 2 nt variants")
 
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
