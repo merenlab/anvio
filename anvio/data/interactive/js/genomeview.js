@@ -78,6 +78,13 @@ function loadAll() {
     selectable : false, 
 
   }))
+
+  scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
+    strokeWidth : 10,
+    stroke : 'black',
+    top : 0,
+    left : 10
+  }))
   let scaleDragStartingX; 
   let totalScaleX
 
@@ -94,12 +101,20 @@ function loadAll() {
     }
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
-
+    
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
     // process for contextual zooming based on drag event from scale canvas. 
     // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length 
     // 2) pan to new x coordinate, a percentile of total sequence length 
     // 3) set zoom back to original value, centering on new x coordinate
+
+    scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed 
+    scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
+      strokeWidth : 10,
+      stroke : 'black',
+      top : 0,
+      left : scaleCanvas.width * percentileStart
+    }))
     canvas.setZoom(.009) 
     canvas.absolutePan({x: moveTo.x, y: moveTo.y})
     canvas.setZoom(1)
@@ -497,7 +512,6 @@ function resetScale(){
 }
 
 function drawGenomeLabels(label){
-  console.log(label)
   genomeLabelsCanvas.add(new fabric.Text(label, {
     top : labelSpacing,
     fontSize : 15,
@@ -507,4 +521,12 @@ function drawGenomeLabels(label){
     hasControls : false,
     lockMovementX : true
   }))
+}
+
+function changeGenomeOrder(event){
+
+  if(event.target.value === "Alphabetical"){
+    console.log(typeof genomeData.genomes)
+
+  }
 }
