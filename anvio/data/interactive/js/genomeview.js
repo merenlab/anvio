@@ -74,13 +74,13 @@ function initData() {
 function loadAll() {
   canvas = new fabric.Canvas('myCanvas');
   genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
-  scaleCanvas = new fabric.Canvas('scale') 
+  scaleCanvas = new fabric.Canvas('scale')
   scaleCanvas.add(new fabric.Rect({
-    width: 1200, 
-    height : 200, 
+    width: 1200,
+    height : 200,
     fill : 'pink',
     opacity : .6,
-    selectable : false, 
+    selectable : false,
 
   }))
 
@@ -92,7 +92,7 @@ function loadAll() {
     opacity : .6, 
     selectable : false 
   }))
-  let scaleDragStartingX; 
+  let scaleDragStartingX;
   let totalScaleX
 
   scaleCanvas.on('mouse:down', (event) => {
@@ -101,22 +101,22 @@ function loadAll() {
 
   scaleCanvas.on('mouse:up', (event) => {
     let scaleDragEndingX = event.pointer.x // click + drag ending x position
-    totalScaleX = event.target.aCoords.tr.x // total x axis length 
+    totalScaleX = event.target.aCoords.tr.x // total x axis length
 
     if(scaleDragStartingX === scaleDragEndingX){ //account for accidental drag, click and release
-      return 
+      return
     }
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
     let percentileToShow = (percentileEnd - percentileStart).toFixed(2)
-    
+ 
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
-    // process for contextual zooming based on drag event from scale canvas. 
-    // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length 
-    // 2) pan to new x coordinate, a percentile of total sequence length 
+    // process for contextual zooming based on drag event from scale canvas.
+    // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length
+    // 2) pan to new x coordinate, a percentile of total sequence length
     // 3) set zoom back to original value, centering on new x coordinate
 
-    scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed 
+    scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed
     scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
       strokeWidth : percentileToShow > .1 ? 1200*percentileToShow : 10,
       stroke : 'green',
@@ -333,6 +333,39 @@ function draw() {
           fontSize: 20,
           fontFamily: 'sans-serif',
           selectable: false}));
+  }
+}
+
+function shadeGeneClusters(geneClusters, colors, y) {
+  for(var i = 0; i < Object.keys(genomeData.genomes).length-1; i++) {
+    let genomeID_A = Object.keys(genomeData.genomes)[i];
+    let genomeID_B = Object.keys(genomeData.genomes)[i+1];
+    //let genomeA = genomeData.genomes[genomeID_A].genes.gene_calls;
+    //let genomeB = genomeData.genomes[genomeID_B].genes.gene_calls;
+
+    for(gc of geneClusters) {
+      let g1 = [], g2 = [];
+      for(geneID of genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID_A]) {
+        let g = genomeData.genomes[genomeID_A].genes.gene_calls[geneID];
+        g1.push(g.start, g.stop);
+      }
+      for(geneID of genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID_B]) {
+        let g = genomeData.genomes[genomeID_B].genes.gene_calls[geneID];
+        g2.push(g.start, g.stop);
+      }
+
+      /* TODO: implementation for multiple genes of the same genome in the same gene cluster */
+      var path = new fabric.Path("M " + g1[0] + " " + y + " L " + g1[1] + " " + y + " L " + g2[1] + " " + (y+spacing) + " L " + g2[0] + " " + (y+spacing) + " z", {
+        fill: colors[gc],
+        opacity: 0.25,
+        scaleX: 0.5,
+        selectable: false
+      });
+      path.left += (showLabels?120:0);
+      path.sendBackwards();
+      canvas.add(path);
+    }
+    y += spacing
   }
 }
 
