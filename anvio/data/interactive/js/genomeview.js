@@ -62,6 +62,11 @@ function initData() {
             genomeData = data;
             console.log("Saved the following data:");
             console.log(data);
+            
+            let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
+            
+            // implementing the following will require a refactor of associated methods
+            // genomeData.genomes = genomes
         }
     });
 }
