@@ -86,9 +86,11 @@ function loadAll() {
 
   scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
     strokeWidth : 10,
-    stroke : 'black',
+    stroke : 'green',
     top : 0,
-    left : 10
+    left : 10,
+    opacity : .6, 
+    selectable : false 
   }))
   let scaleDragStartingX; 
   let totalScaleX
@@ -106,6 +108,7 @@ function loadAll() {
     }
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
+    let percentileToShow = (percentileEnd - percentileStart).toFixed(2)
     
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
     // process for contextual zooming based on drag event from scale canvas. 
@@ -115,14 +118,16 @@ function loadAll() {
 
     scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed 
     scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
-      strokeWidth : 10,
-      stroke : 'black',
+      strokeWidth : percentileToShow > .1 ? 1200*percentileToShow : 10,
+      stroke : 'green',
       top : 0,
-      left : scaleCanvas.width * percentileStart
+      left : scaleCanvas.width * percentileStart,
+      opacity : .6,
+      selectable : false 
     }))
-    canvas.setZoom(.009) 
+    canvas.setZoom(.01) 
     canvas.absolutePan({x: moveTo.x, y: moveTo.y})
-    canvas.setZoom(1)
+    canvas.setZoom(percentileToShow > .1 ? 1 - percentileToShow : 1) //TODO ask someone who knows how to math to make this better :)
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
