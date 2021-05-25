@@ -415,7 +415,7 @@ def parse_query_substrings_with_mismatches(output_path, align_output_length):
     parsing_align = True
     # The first line of the alignment is (part of) the subject sequence.
     prev_line_was_subject = False
-    # Alignments longer than the determined width occur are split up with a blank line between
+    # Alignments longer than the determined width are split up with a blank line between
     # sections. A second blank line signifies the end of the alignment record.
     prev_line_was_blank_after_align = False
     align_index = 0
