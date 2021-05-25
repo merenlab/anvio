@@ -1375,12 +1375,6 @@ class TRNASeqDataset(object):
         self.skip_fasta_check = A('skip_fasta_check')
         self.profiling_chunk_size = A('profiling_chunk_size')
         self.alignment_target_chunk_size = A('alignment_target_chunk_size')
-        self.frag_mapping_query_chunk_length = A('fragment_mapping_query_chunk_length')
-
-        # Argument group 1E: PROGRESS
-        self.fragment_filter_progress_interval = A('fragment_filter_progress_interval')
-        self.alignment_progress_interval = A('alignment_progress_interval')
-        self.mod_progress_interval = A('modification_progress_interval')
 
         if not self.input_fasta_path:
             raise ConfigError("Please specify the path to a FASTA file of tRNA-seq reads using --fasta-file or -f.")
@@ -2663,7 +2657,7 @@ class TRNASeqDataset(object):
                                              query_chunk_size=1000000 // self.num_threads,
                                              temp_dir=temp_dir_path)).search_queries()
 
-        pid = f"Filtering matches"
+        pid = "Filtering matches"
         self.progress.new(pid)
         self.progress.update("...")
 
@@ -2675,16 +2669,19 @@ class TRNASeqDataset(object):
         del match_df
         gc.collect()
 
+        fragment_filter_progress_interval = 25000
         total_matched_queries = len(match_gb)
-        filtered_query_count = 0
-        fragment_filter_progress_interval = self.fragment_filter_progress_interval
+        pp_total_matched_queries = pp(total_matched_queries)
+        num_filtered_queries = -1
         uniq_trna_seq_dict = self.uniq_trna_seq_dict
         trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
         norm_trna_seq_dict = self.norm_trna_seq_dict
         for uniq_seq_name, query_match_df in match_gb:
-            if filtered_query_count % fragment_filter_progress_interval == 0:
+            num_filtered_queries += 1
+            if num_filtered_queries % fragment_filter_progress_interval == 0:
+                pp_progress_interval_end = pp(total_matched_queries if num_filtered_queries + fragment_filter_progress_interval > total_matched_queries else num_filtered_queries + fragment_filter_progress_interval)
                 self.progress.update_pid(pid)
-                self.progress.update(f"Queries {filtered_query_count + 1}-{min(filtered_query_count + 1 + fragment_filter_progress_interval, total_matched_queries)}/{total_matched_queries}")
+                self.progress.update(f"Queries {num_filtered_queries + 1}-{pp_progress_interval_end}/{pp_total_matched_queries}")
 
             # Each unique sequence with a validated match will yield a `UniqueMappedSequence` and
             # `TrimmedMappedSequence`.
@@ -2754,7 +2751,6 @@ class TRNASeqDataset(object):
                             norm_seq.start_positions.append(trimmed_seq_start_in_norm_seq)
                             norm_seq.stop_positions.append(trimmed_seq_stop_in_norm_seq)
                             break
-            filtered_query_count += 1
         self.progress.end()
 
         with open(self.analysis_summary_path, 'a') as f:
@@ -2810,28 +2806,26 @@ class TRNASeqDataset(object):
                                  priority_function=lambda aligned_ref: (-norm_seq_feature_completeness_dict[aligned_ref.name],
                                                                         -len(aligned_ref.seq_string),
                                                                         -len(aligned_ref.alignments),
-                                                                        aligned_ref.name),
-                                 alignment_target_chunk_size=self.alignment_target_chunk_size,
-                                 alignment_progress_interval=self.alignment_progress_interval,
-                                 agglom_progress_interval=self.mod_progress_interval)
+                                                                        aligned_ref.name))
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
+        pid = "Decomposing clusters"
         self.progress.new(pid)
-        self.progress.update("Decomposing clusters, separating 3-4 nt from 2 nt variants")
+        self.progress.update("...")
 
         excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
         represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
         mod_trna_seq_dict = self.mod_trna_seq_dict
-        num_processed_refs = 0
+        num_processed_refs = -1
         total_ref_count = len(agglom_aligned_ref_dict)
-        decomposition_progress_interval = self.mod_progress_interval
-        next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
+        decomposition_progress_interval = 1000
+        pp_total_ref_count = pp(total_ref_count)
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
-            if num_processed_refs % decomposition_progress_interval == 0:
-                next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
-                self.progress.update_pid(pid)
-                self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}/{total_ref_count}")
             num_processed_refs += 1
+            if num_processed_refs % decomposition_progress_interval == 0:
+                pp_progress_interval_end = pp(total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval)
+                self.progress.update_pid(pid)
+                self.progress.update(f"{pp(num_processed_refs + 1)}-{pp_progress_interval_end}/{pp_total_ref_count}")
 
             # A modification requires at least 3 different nucleotides to be detected, and each
             # normalized sequence differs by at least 1 nucleotide (substitution or gap), so for a

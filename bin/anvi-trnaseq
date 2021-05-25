@@ -65,12 +65,6 @@ if __name__ == '__main__':
     group1D.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
     group1D.add_argument(*anvio.A('profiling-chunk-size'), **anvio.K('profiling-chunk-size'))
     group1D.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
-    group1D.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
-
-    group1E = parser.add_argument_group('PROGRESS')
-    group1E.add_argument(*anvio.A('fragment-filter-progress-interval'), **anvio.K('fragment-filter-progress-interval'))
-    group1E.add_argument(*anvio.A('alignment-progress-interval'), **anvio.K('alignment-progress-interval'))
-    group1E.add_argument(*anvio.A('modification-progress-interval'), **anvio.K('modification-progress-interval'))
 
     group2 = parser.add_argument_group('DEFAULTS')
     group2.add_argument(*anvio.A('default-feature-param-file'), **anvio.K('default-feature-param-file'))

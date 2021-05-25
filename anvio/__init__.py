@@ -3107,50 +3107,6 @@ D = {
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
                 ),
-    'fragment-mapping-query-chunk-length': (
-            ['--fragment-mapping-query-chunk-length'],
-            {'default': 20,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Mapping potential tRNA fragments to profiled tRNA can generate massive data structures. "
-                     "To manage memory consumption, the fragment queries are chunked and run as separate alignment tasks. "
-                     "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
-                     "This parameter sets the sequence length interval used to chunk queries. "
-                     "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
-                     "and a maximum unprofiled query length of, say, 170, "
-                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
-                     "Adjust this parameter downward if your system runs out of memory during alignment; "
-                     "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
-                     "Ideally, we would set this parameter using a heuristic function "
-                     "parameterized with the numbers and lengths of query and target sequences..."}
-                ),
-    'fragment-filter-progress-interval': (
-            ['--fragment-filter-progress-interval'],
-            {'default': 50000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress is reported after a certain number of unprofiled sequence queries have been processed "
-                     "during the filtering of matches between these sequences and profiled tRNA. "
-                     "This filtering step is part of the search for biological tRNA fragments."}
-                ),
-    'alignment-progress-interval': (
-            ['--alignment-progress-interval'],
-            {'default': 500000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress is reported after a certain number of queries have been processed "
-                     "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
-                     "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
-                ),
-    'modification-progress-interval': (
-            ['--modification-progress-interval'],
-            {'default': 10000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
-                     "Progress is reported in two distinct stages of this process, "
-                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
-                ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
             {'metavar': 'OUTPUT_FILENAME',
