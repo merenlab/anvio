@@ -853,6 +853,7 @@ elif M.run_fasttree == True:
 
 rule add_default_collection:
     """
+    Make default collection
     """
 
     version: 1.0
@@ -873,6 +874,7 @@ rule add_default_collection:
 
 rule anvi_summarize:
     """
+    Initialize SCG coverage stats
     """
 
     version: 1.0
@@ -897,6 +899,7 @@ rule anvi_summarize:
 
 rule combine_data:
     """
+    Join misc taxonomy data and read recruitment data
     """
 
     version: 1.0
@@ -917,6 +920,7 @@ rule combine_data:
 
 rule anvi_import_state:
     """
+    Import interactive interface states customized for SCG_workflow
     """
 
     version: 1.0
