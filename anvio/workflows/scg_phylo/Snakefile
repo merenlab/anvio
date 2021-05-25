@@ -858,7 +858,7 @@ rule add_default_collection:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{ribosomal_protein_name}.log")
-    input: 
+    input:
         metagenomics_workflow_done = os.path.join("METAGENOMICS_WORKFLOW", "{ribosomal_protein_name}_metagenomics_workflow.done")
     params:
         contigsDB = os.path.join("METAGENOMICS_WORKFLOW/03_CONTIGS", "{ribosomal_protein_name}-contigs.db"),
@@ -878,7 +878,7 @@ rule anvi_summarize:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{ribosomal_protein_name}.log")
-    input: 
+    input:
         done = os.path.join("METAGENOMICS_WORKFLOW", "{ribosomal_protein_name}_add_default_collection.done")
     params:
         contigsDB = os.path.join("METAGENOMICS_WORKFLOW/03_CONTIGS", "{ribosomal_protein_name}-contigs.db"),

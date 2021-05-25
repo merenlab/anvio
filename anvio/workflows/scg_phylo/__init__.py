@@ -238,9 +238,9 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Run metagenomics workflow
-            tail_path = "%s_metagenomics_workflow.done" % (ribosomal_protein_name)
-            target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_metagenomics_workflow.done" % (ribosomal_protein_name)
+            # target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
+            # target_files.append(target_file)
 
             # Run metagenomics workflow
             tail_path = "%s_add_default_collection.done" % (ribosomal_protein_name)
