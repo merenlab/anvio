@@ -218,9 +218,9 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get fasta of nt SCGs for mapping
-            # tail_path = "%s_scgs_for_mapping.fna" % (ribosomal_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            # target_files.append(target_file)
+            tail_path = "%s_scgs_for_mapping.fna" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
 
             # Get external-gene-calls file for fasta of nt SCGs for mapping
             tail_path = "%s_external_gene_calls_all_renamed.tsv" % (ribosomal_protein_name)
@@ -233,13 +233,13 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get metagenomics_config.json for metagenomics workflow
-            # tail_path = "metagenomics_config.json"
-            # target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
-            # target_files.append(target_file)
+            tail_path = "metagenomics_config.json"
+            target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
+            target_files.append(target_file)
 
             # Create state file for interactive interface
             tail_path = "%s_state_imported.done" % (ribosomal_protein_name)
-            target_file = os.path.join("SCG_WORKFLOW", tail_path)
+            target_file = os.path.join(tail_path)
             target_files.append(target_file)
 
             # Get state.json file for final visualization

@@ -687,7 +687,7 @@ rule make_metagenomics_config_file:
     """Make a metagenomics_config.json customized for ribo_phylo workflow"""
 
     version: 1.0
-    input: os.path.join("SCG_WORKFLOW", "fasta_txt.done")
+    input:
     output:
         config = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_config.json")
     threads: M.T('join_renamed_fasta_with_misc_data')
@@ -719,6 +719,7 @@ rule run_metagenomics_workflow:
     version: 1.0
     input:
         config = rules.make_metagenomics_config_file.output.config,
+        done_fasta = rules.make_fasta_txt.output.done
     output:
         touch(os.path.join("METAGENOMICS_WORKFLOW", "{ribosomal_protein_name}_metagenomics_workflow.done"))
     threads: M.T('join_renamed_fasta_with_misc_data')
@@ -906,7 +907,7 @@ rule combine_data:
     log: os.path.join(dirs_dict['LOGS_DIR'], "combine_data_{ribosomal_protein_name}.log")
     input:
         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{ribosomal_protein_name}_summarize.done"),
-    output: touch(os.path.join("SCG_WORKFLOW", "{ribosomal_protein_name}_combined.done"))
+    output: touch(os.path.join("{ribosomal_protein_name}_combined.done"))
     threads: M.T('cat_misc_data_to_one_file')
     shell:
         """
@@ -926,11 +927,11 @@ rule anvi_import_state:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{ribosomal_protein_name}.log")
     input:
-        metagenomics_workflow_done = os.path.join("SCG_WORKFLOW", "{ribosomal_protein_name}_combined.done"),
+        metagenomics_workflow_done = os.path.join("{ribosomal_protein_name}_combined.done"),
     params:
         state_file = os.path.join("SCG_WORKFLOW", "{ribosomal_protein_name}_SCG_WORKFLOW_state.json"),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{ribosomal_protein_name}", "PROFILE.db")
-    output: touch(os.path.join("SCG_WORKFLOW", "{ribosomal_protein_name}_state_imported.done"))
+    output: touch(os.path.join("{ribosomal_protein_name}_state_imported.done"))
     threads: M.T('cat_misc_data_to_one_file')
     shell:
         """
