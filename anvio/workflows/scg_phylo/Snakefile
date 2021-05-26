@@ -168,7 +168,8 @@ rule rename_and_filter_external_gene_calls_file_all:
         reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_reformat_report_all.txt"),
         headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}", "{ribosomal_protein_name}_headers_for_mapping.txt")
     output:
-        external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.tsv")
+        external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.tsv"),
+        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all_renamed.done"))
     threads: 5
     script:
         "scripts/rename_external_gene_calls_file.py"
@@ -667,8 +668,10 @@ rule make_fasta_txt:
     """Output fasta.txt that will be used with the metagenomics workflow"""
 
     version: 1.0
+    input:
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_names}/{ribosomal_protein_names}_external_gene_calls_all_renamed.done"), ribosomal_protein_names = M.SCG_protein_list)
     output:
-        os.path.join("SCG_WORKFLOW", "fasta.txt")
+        fasta_txt = os.path.join("SCG_WORKFLOW", "fasta.txt"),
     threads: M.T('join_renamed_fasta_with_misc_data')
     run:
         fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_scgs_for_mapping.fna') for r in M.SCG_protein_list]
@@ -676,13 +679,15 @@ rule make_fasta_txt:
 
         list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.SCG_protein_list, fastas, external_gene_calls)]
 
-        shell('echo -e "name\tpath\texternal_gene_calls" > {output}')
-        shell('echo -n "%s" >> {output}' % ''.join(list_of_strings))
+        shell('echo -e "name\tpath\texternal_gene_calls" > {output.fasta_txt}')
+        shell('echo -n "%s" >> {output.fasta_txt}' % ''.join(list_of_strings))
 
 rule make_metagenomics_config_file:
     """Make a metagenomics_config.json customized for ribo_phylo workflow"""
 
     version: 1.0
+    input:
+        rules.make_fasta_txt.output.fasta_txt
     output:
         config = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_config.json")
     threads: M.T('join_renamed_fasta_with_misc_data')
@@ -693,6 +698,7 @@ rule make_metagenomics_config_file:
         config = open(output.config)
         config_dict = json.load(config)
         config_dict['fasta_txt'] = '../SCG_WORKFLOW/fasta.txt'
+        config_dict['samples_txt'] = '../samples.txt'
         config_dict['references_mode'] = True
         config_dict['anvi_run_hmms']['run'] = False
         config_dict["anvi_script_reformat_fasta"]['run'] = False
@@ -707,6 +713,17 @@ rule make_metagenomics_config_file:
         with open(output.config, "w") as outfile:
           json.dump(config_dict, outfile, indent=4)
 
+rule run_metagenomics_workflow:
+    """Run metagenomics workflow"""
+
+    version: 1.0
+    input:
+        config = rules.make_metagenomics_config_file.output.config,
+    output:
+        touch(os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
+    threads: M.T('join_renamed_fasta_with_misc_data')
+    run:
+        shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json && cd ..')
 
 rule make_SCG_WORKFLOW_state_file:
     """Make a state file customized for ribo_phylo workflow interactive interface"""
@@ -800,7 +817,9 @@ if M.run_iqtree == True:
       version: 1.0
       log: os.path.join(dirs_dict['LOGS_DIR'], "iqtree_{ribosomal_protein_name}.log")
       input: rules.remove_sequences_with_X_percent_gaps.output
-      output: os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree")
+      output: 
+          tree = os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.iqtree"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}_tree.done"))
       params:
           outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}"),
           model = M.get_param_value_from_config(['iqtree', '-m']),
@@ -821,7 +840,9 @@ elif M.run_fasttree == True:
       version: 1.0
       log: os.path.join(dirs_dict['LOGS_DIR'], "fasttree_{ribosomal_protein_name}.log")
       input: rules.remove_sequences_with_X_percent_gaps.output
-      output: os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.nwk")
+      output:
+          tree = os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.nwk"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}_tree.done"))
       params:
           outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}"),
           model = M.get_param_value_from_config(['fasttree', '-m']),
@@ -836,8 +857,8 @@ rule add_default_collection:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{ribosomal_protein_name}.log")
-    input:
-        metagenomics_workflow_done = os.path.join("METAGENOMICS_WORKFLOW", "{ribosomal_protein_name}_metagenomics_workflow.done")
+    input: 
+        metagenomics_workflow_done = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
     params:
         contigsDB = os.path.join("METAGENOMICS_WORKFLOW/03_CONTIGS", "{ribosomal_protein_name}-contigs.db"),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{ribosomal_protein_name}", "PROFILE.db")
@@ -856,7 +877,7 @@ rule anvi_summarize:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{ribosomal_protein_name}.log")
-    input:
+    input: 
         done = os.path.join("METAGENOMICS_WORKFLOW", "{ribosomal_protein_name}_add_default_collection.done")
     params:
         contigsDB = os.path.join("METAGENOMICS_WORKFLOW/03_CONTIGS", "{ribosomal_protein_name}-contigs.db"),
@@ -913,4 +934,3 @@ rule anvi_import_state:
                           -s {params.state_file} \
                           -n {wildcards.ribosomal_protein_name}
         """
-
