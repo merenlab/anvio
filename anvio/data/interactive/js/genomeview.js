@@ -26,7 +26,8 @@
  var genomeMax = 0;
 
  // Settings vars
-
+ // TODO migrate below variables to kvp in state
+ var state = {}; 
  var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
  var showGeneLabels = true; // show gene labels?
@@ -48,7 +49,8 @@ var genomeData;
 
 $(document).ready(function() {
     initData();
-    loadAll()
+    // loadState(); 
+    loadAll();
 });
 
 function initData() {
@@ -69,6 +71,57 @@ function initData() {
             // genomeData.genomes = genomes
         }
     });
+}
+
+function loadState(){
+  let mockStateData = {};
+
+  var defer = $.Deferred();
+  $('#modLoadState').modal('hide');
+  if ($('#loadState_list').val() == null) {
+      defer.reject();
+      return;
+  }
+
+  var state_name = $('#loadState_list').val();
+  waitingDialog.show('Requesting state data from the server ...',
+      {
+          dialogSize: 'sm',
+          onHide: function() {
+              defer.resolve();
+          },
+          onShow: function() {
+              $.ajax({
+                      type: 'GET',
+                      cache: false,
+                      url: '/data/genome_view/state/get/' + state_name,
+                      success: function(response) {
+                          try{
+                              // processState(state_name, response[0]); process actual response from backend 
+                              processState(state_name, mockStateData); // process mock state data
+                          }catch(e){
+                              console.error("Exception thrown", e.stack);
+                              toastr.error('Failed to parse state data, ' + e);
+                              defer.reject();
+                              return;
+                          }
+                          waitingDialog.hide();
+                      }
+                  });
+          },
+      }
+  );
+
+  return defer.promise();
+}
+
+function processState(stateName, stateData){
+  if(stateData['some-data']){
+    state['some-data'] = stateData['some-data']
+  }
+  if(stateData['some-other-data']){
+    state['some-other-data'] = stateData['some-other-data']
+  }
 }
 
 function loadAll() {
