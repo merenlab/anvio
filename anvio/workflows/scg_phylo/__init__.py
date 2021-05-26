@@ -227,33 +227,14 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
 
-            # Get fasta.txt of the SCGs for profiling
-            tail_path = "fasta.txt"
-            target_file = os.path.join("SCG_WORKFLOW", tail_path)
-            target_files.append(target_file)
-
-            # Get metagenomics_config.json for metagenomics workflow
-            tail_path = "metagenomics_config.json"
-            target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
-            target_files.append(target_file)
-
-            # Run metagenomics workflow
-            # tail_path = "%s_metagenomics_workflow.done" % (ribosomal_protein_name)
-            # target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
-            # target_files.append(target_file)
-
-            # Run metagenomics workflow
-            tail_path = "%s_add_default_collection.done" % (ribosomal_protein_name)
-            target_file = os.path.join("METAGENOMICS_WORKFLOW", tail_path)
-            target_files.append(target_file)
-
-            tail_path = "%s_state_imported.done" % (ribosomal_protein_name)
-            target_file = os.path.join(tail_path)
-            target_files.append(target_file)
-
             # Get state.json file for final visualization
             tail_path = "%s_SCG_WORKFLOW_state.json" % (ribosomal_protein_name)
             target_file = os.path.join("SCG_WORKFLOW", tail_path)
+            target_files.append(target_file)
+
+            # Import anvio interactive state file 
+            tail_path = "%s_state_imported.done" % (ribosomal_protein_name)
+            target_file = os.path.join(tail_path)
             target_files.append(target_file)
 
             # The FINAL trees :)
