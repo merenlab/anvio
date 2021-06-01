@@ -934,3 +934,8 @@ rule anvi_import_state:
                           -s {params.state_file} \
                           -n {wildcards.ribosomal_protein_name}
         """
+
+# FIXME:
+# Suggestions from Iva
+# - the workflow should be able to re-run incomplete rules and start from any point in the workflow. Maybe the function ancient() can do the trick?
+# - Some rules output print to stdout which should be captured by the log file! e.g. "ML-NNI round 4: LogLk = -6408.501 NNIs 3 max delta 0.43 Time 0.81 (final)" and "Optimize all lengths: LogLk = -6407.806 Time 0.87"
