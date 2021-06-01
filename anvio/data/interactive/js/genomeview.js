@@ -131,7 +131,7 @@ function loadAll() {
   scaleCanvas.add(new fabric.Rect({
     width: 1200,
     height : 200,
-    fill : 'pink',
+    fill : 'gray',
     opacity : .6,
     selectable : false,
 
