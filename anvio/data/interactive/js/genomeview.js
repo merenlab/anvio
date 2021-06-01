@@ -116,6 +116,14 @@ function loadState(){
 }
 
 function processState(stateName, stateData){
+  // set genome order options from state
+
+  if(stateData['genome-order-method']){
+    stateData['genome-order-method'].forEach(orderMethod => {
+      $('#genomeOrderSelect').append((new Option(orderMethod, orderMethod))) // set display + value of new select option. 
+    })
+  }
+
   if(stateData['some-data']){
     state['some-data'] = stateData['some-data']
   }
