@@ -74,7 +74,22 @@ function initData() {
 }
 
 function loadState(){
-  let mockStateData = {};
+  let mockStateData = {
+    "state-name" : 'default', 
+    "zoom" : "1.0",
+    "arrow-style" : "1",
+    "color-genes-by" : "Source", 
+    "genome-order-method" : [
+      { 
+        "name" : "some value",
+        "order" : ['genome1', 'genome2', 'genome3']
+      },
+      {
+        "name" : "some other value", 
+        "order" : ['genome2', 'genome1', 'genome3']
+      }
+    ]
+  };
 
   var defer = $.Deferred();
   $('#modLoadState').modal('hide');
@@ -120,7 +135,7 @@ function processState(stateName, stateData){
 
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
-      $('#genomeOrderSelect').append((new Option(orderMethod, orderMethod))) // set display + value of new select option. 
+      $('#genomeOrderSelect').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option. 
     })
   }
 
