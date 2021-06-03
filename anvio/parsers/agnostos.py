@@ -33,8 +33,8 @@ class Agnostos(Parser):
         files_expected = {'agnostos_output': input_file_path}
 
         files_structure = {'agnostos_output':
-                                {'col_names': ['gene_callers_id', 'cl_name', 'contig', 'gene_x_contig', 'db', 'cl_size', 'category', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign'],
-                                 'col_mapping': [int,                 str,     str,         str,        str,   str,        str,        str,    str,       str,            str,           str],
+                                {'col_names': ['gene_callers_id', 'cl_name', 'contig', 'gene_x_contig', 'cl_size', 'category', 'pfam', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign', 'is.singleton'],
+                                 'col_mapping': [int,                 str,     str,         str,         str,        str,        str,    str,    str,       str,            str,           str,                    str],
                                  'indexing_field': -1,
                                  'separator': '\t'},
                             }
@@ -56,7 +56,7 @@ class Agnostos(Parser):
 
 
         df = pd.read_csv(input_file_path, sep='\t')
-        df = df[["gene_callers_id", "cl_name", "contig", "gene_x_contig", "db", "cl_size", "category", "is.HQ", "is.LS", "lowest_rank", "lowest_level", "niche_breadth_sign"]]
+        df = df[["gene_callers_id", "cl_name", "contig", "gene_x_contig", "cl_size", "category", "pfam", "is.HQ", "is.LS", "lowest_rank", "lowest_level", "niche_breadth_sign", "is.singleton"]]
         df = df.drop_duplicates(subset=["gene_callers_id"])
 
         df.to_csv(temp_file_path, sep = '\t', index = False, na_rep = 'NA')
