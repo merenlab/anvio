@@ -22,7 +22,7 @@ __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
 
-class Agnostos(Parser):
+class AGNOSTOS(Parser):
     def __init__(self, input_file_paths, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
@@ -41,7 +41,7 @@ class Agnostos(Parser):
 
         self.progress.new('Initializing the parser')
         self.progress.update('...')
-        Parser.__init__(self, 'agnostos', [input_file_path], files_expected, files_structure)
+        Parser.__init__(self, 'AGNOSTOS', [input_file_path], files_expected, files_structure)
         self.progress.end()
 
         # This is where I would specific sanity checks for agnostos
@@ -49,7 +49,7 @@ class Agnostos(Parser):
 
     def fix_input_file(self, input_file_path):
         """Select columns for anvio and remove duplicate rows"""
-        self.progress.new('Making agnostos output anvio friendly')
+        self.progress.new('Making AGNOSTOS output anvio friendly')
         self.progress.update('...')
 
         temp_file_path = filesnpaths.get_temp_file_path()
@@ -70,9 +70,9 @@ class Agnostos(Parser):
         """Convert angostos output into functions dict"""
         d = self.dicts['agnostos_output']
 
-        # Parse Agnostos output to make functions_dict
+        # Parse AGNOSTOS output to make functions_dict
         df = pd.DataFrame.from_dict(d, orient='index')
-        df['source'] = "Agnostos"
+        df['source'] = "AGNOSTOS"
         df['e_value'] = 0
         df.rename(columns = {'cl_name':'accession'}, inplace = True)
         df.rename(columns = {'category':'function'}, inplace = True)
