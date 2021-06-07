@@ -36,8 +36,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
         # MetagenomicsWorkflow.__init__(self)
         # ribo_phylo Snakemake rules
-        self.rules.extend([
-                           'anvi_run_hmms_hmmsearch',
+        self.rules.extend(['anvi_run_hmms_hmmsearch',
                            'filter_hmm_hits_by_query_coverage',
                            'anvi_get_sequences_for_hmm_hits_SCGs',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
