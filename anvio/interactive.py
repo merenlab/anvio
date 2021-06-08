@@ -110,6 +110,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.skip_news = A('skip_news')
+        self.annotation_source_for_per_split_summary = A('annotation_source_for_per_split_summary')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments "
@@ -734,6 +735,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.title = self.args.title or self.p_meta['sample_id']
 
+        # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
+        self.update_items_additional_data_with_functions_per_split_summary()
+
 
     def cluster_splits_of_interest(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
@@ -1315,6 +1319,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see "
                                          "available states by running this program with --show-states flag." % self.state_autoload)
 
+        # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
+        self.update_items_additional_data_with_functions_per_split_summary()
+
 
     def load_gene_mode(self):
         if not self.skip_init_functions:
@@ -1454,6 +1461,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             else:
                 self.p_meta['item_orders'][clustering_id] = {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
+
+
+    def update_items_additional_data_with_functions_per_split_summary(self):
+        """Adds a layer of stacked bar chart for proportion of functions in split for a given source"""
+
+        if self.annotation_source_for_per_split_summary:
+            self.items_additional_data_dict, self.items_additional_data_keys = \
+                self.get_items_additional_data_for_functions_per_split_summary(self.annotation_source_for_per_split_summary,
+                                                                               split_names_of_interest=self.split_sequences.keys(),
+                                                                               data_dict=self.items_additional_data_dict,
+                                                                               keys_list=self.items_additional_data_keys)
 
 
     def search_for_functions(self, search_terms, requested_sources=None):
