@@ -76,6 +76,11 @@ class WorkflowSuperClass:
             filesnpaths.is_file_json_formatted(self.config_file)
             self.config = json.load(open(self.config_file))
 
+        if 'config_version' not in self.config or 'workflow_name' not in self.config:
+            raise ConfigError(f"You config file '{self.config_file}' is probably too old as it is missing some key varaibles "
+                              f"in it. Please make sure your config includes entries for both `config_version` and "
+                              f"`workflow_name`.")
+
         # If a config exists, check that its current
         if self.config and not self.skip_version_check:
             if self.config['config_version'] != workflow_config_version:
