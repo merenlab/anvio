@@ -33,15 +33,15 @@ class AGNOSTOS(Parser):
         files_expected = {'agnostos_output': input_file_path}
 
         files_structure = {'agnostos_output':
-                                {'col_names': ['gene_callers_id', 'cl_name', 'contig', 'gene_x_contig', 'cl_size', 'category', 'pfam', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign', 'is.singleton'],
-                                 'col_mapping': [int,                 str,     str,         str,         str,        str,        str,    str,    str,       str,            str,           str,                    str],
+                                {'col_names': ['gene_callers_id', 'cl_name', 'contig', 'gene_x_contig', 'cl_size', 'category', 'pfam', 'is.HQ', 'is.LS', 'lowest_rank', 'lowest_level', 'niche_breadth_sign'],
+                                 'col_mapping': [int,                 str,     str,         str,         str,        str,        str,    str,    str,       str,            str,              str           ],
                                  'indexing_field': -1,
                                  'separator': '\t'},
                             }
 
         self.progress.new('Initializing the parser')
         self.progress.update('...')
-        Parser.__init__(self, 'AGNOSTOS', [input_file_path], files_expected, files_structure)
+        Parser.__init__(self, 'agnostos', [input_file_path], files_expected, files_structure)
         self.progress.end()
 
         # This is where I would specific sanity checks for agnostos
@@ -49,14 +49,14 @@ class AGNOSTOS(Parser):
 
     def fix_input_file(self, input_file_path):
         """Select columns for anvio and remove duplicate rows"""
-        self.progress.new('Making AGNOSTOS output anvio friendly')
+        self.progress.new('Making agnostos output anvio friendly')
         self.progress.update('...')
 
         temp_file_path = filesnpaths.get_temp_file_path()
 
 
         df = pd.read_csv(input_file_path, sep='\t')
-        df = df[["gene_callers_id", "cl_name", "contig", "gene_x_contig", "cl_size", "category", "pfam", "is.HQ", "is.LS", "lowest_rank", "lowest_level", "niche_breadth_sign", "is.singleton"]]
+        df = df[["gene_callers_id", "cl_name", "contig", "gene_x_contig", "cl_size", "category", "pfam", "is.HQ", "is.LS", "lowest_rank", "lowest_level", "niche_breadth_sign"]]
         df = df.drop_duplicates(subset=["gene_callers_id"])
 
         df.to_csv(temp_file_path, sep = '\t', index = False, na_rep = 'NA')
