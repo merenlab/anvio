@@ -2273,7 +2273,7 @@ D = {
     'get-domtable-output': (
             ['--get-domtable-output'],
             {'default': False,
-             'type': str,
+             'action': 'store_true',
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
                      "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
                      "--tblout file will be stored in the specified directory. Please note that even if you use "

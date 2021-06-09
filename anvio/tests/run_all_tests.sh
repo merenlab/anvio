@@ -103,7 +103,7 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Bacteria_71 \
               --hmmer-program hmmsearch \
               --hmmer-output-dir $output_dir \
-              --get-domtable-output $output_dir \
+              --get-domtable-output \
               --just-do-it
 
 INFO "Filtering hmm_hits using target coverage"
