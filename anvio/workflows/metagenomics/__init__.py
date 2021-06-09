@@ -154,6 +154,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+
+        if not self.samples_txt_file:
+            if os.path.exists('samples.txt'):
+                self.samples_txt_file = 'samples.txt'
+            else:
+                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
+                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
+                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
+                                  "around either. So please add a `samples.txt` directive.")
+
         filesnpaths.is_file_tab_delimited(self.samples_txt_file)
         try:
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
