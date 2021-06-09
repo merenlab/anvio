@@ -339,6 +339,87 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
+    def get_items_additional_data_for_functions_per_split_summary(self, source, split_names_of_interest, data_dict={}, keys_list=[]):
+        """Get items additional data layers to display the frequency of function names
+           for each split in a given contigs database so it can be shown as a stacked bar
+           chart in the anvi'o interactive interface.
+
+        Parameters
+        ==========
+        source : str
+            A functional annotation source that is in the contigs database.
+        split_names_of_interest : list
+            Split names to be considered.
+        data_dict : dict
+            An optional `items_additional_data_dict` type dictionary to update.
+        keys_list : list
+            An optional `items_additional_data_keys` type list to update.
+
+        Returns
+        =======
+        data_dict : dict
+            An `items_additional_data_dict` type dictionary.
+        keys_list : list
+            An `items_additional_data_keys` type list.
+        """
+
+        if not self.gene_function_calls_initiated:
+            raise ConfigError("For this to work, someone needs to initialize gene functions first :/")
+
+        if source not in self.gene_function_call_sources:
+            raise ConfigError(f"Nice try. Your '{source}' is not a valid function annotation source in this "
+                              f"contigs database. You will need to choose one of these: {', '.join(self.gene_function_call_sources)}")
+
+        if len(data_dict) or len(keys_list):
+            if not len(data_dict) and len(keys_list):
+                raise ConfigError("If you are sending a data dictionary to expand with function summaries "
+                                  "per split, then you also need to send a keys dictionary to be expanded.")
+
+        # learn the number of categories for the function source
+        function_source_categories = set([])
+        for entry in self.gene_function_calls_dict.values():
+            if entry[source]:
+                function_source_category = entry[source][1].split('!!!')[0]
+                function_source_categories.add(function_source_category)
+
+        function_source_categories = sorted(list(function_source_categories))
+
+        # we can't use this strategy if there are many categories for a given
+        # function source
+        if len(function_source_categories) > 10:
+            raise ConfigError(f"The functional annotation source '{source}' has {len(function_source_categories)} "
+                              f"which is way too many to summarize into 'per split' data. If you think this is "
+                              f"a dumb reason to not do this, please let us know and we will try to find a better "
+                              f"solution to this. In the current implementation, any function annotation source "
+                              f"that has up to 10 categories is good.")
+
+        # create a template dictionaries to hold the category frequencies and default entries
+        # for splits with no information
+        _frequency_of_categories = dict([(cat, 0) for cat in function_source_categories])
+
+        for split_name in split_names_of_interest:
+            frequency_of_categories = copy.deepcopy(_frequency_of_categories)
+
+            for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
+                gene_callers_id = self.genes_in_splits[entry_id]['gene_callers_id']
+                if self.gene_function_calls_dict[gene_callers_id][source]:
+                    gene_function = self.gene_function_calls_dict[gene_callers_id][source][1].split('!!!')[0]
+                    frequency_of_categories[gene_function] += 1
+
+            if split_name not in data_dict:
+                data_dict[split_name] = {}
+                for key in keys_list:
+                    data_dict[split_name][key] = None
+
+            for category in function_source_categories:
+                data_dict[split_name][f"{source}!{category}"] = frequency_of_categories[category]
+
+        for category in function_source_categories:
+            keys_list.append(f"{source}!{category}")
+
+        return data_dict, keys_list
+
+
     def init_split_sequences(self, min_contig_length=0, split_names_of_interest=set([])):
         if not len(split_names_of_interest):
             split_names_of_interest = self.split_names_of_interest

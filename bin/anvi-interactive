@@ -69,6 +69,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupC.add_argument(*anvio.A('annotation-source-for-per-split-summary'), **anvio.K('annotation-source-for-per-split-summary'))
 
     groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
     groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))

@@ -32,9 +32,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
-__provides__ = ["contigs-db", "hmm-hits"]
+__provides__ = ["hmm-hits"]
 __requires__ = ["contigs-db","hmm-source", "hmm-hits"]
-__description__ = ("Add or remove entries in a contigDB hmm_hits table.")
+__description__ = ("Filter weak HMM hits from a given contigs database using a domain hits table "
+                   "reported by `anvi-run-hmms`.")
 
 pp = terminal.pretty_print
 
@@ -134,7 +135,7 @@ class FilterHmmHitsTable(object):
             ('env_to',           str),   # from (env coord)
             ('env_from',         str),   # to (env coord)
             ('mean_post_prob',   float), # acc
-            ('description',      str),   # description of target 
+            ('description',      str),   # description of target
         ]
 
         try:
@@ -226,11 +227,9 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-
     parser.add_argument('--domtblout', help="domain-table-output from hmmsearch in anvi-run-hmms")
     parser.add_argument('--target-coverage',
                         help=" (ali_coord_to - ali_coord_from)/target_length")

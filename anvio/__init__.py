@@ -608,6 +608,16 @@ D = {
                      "searches that were performed against non-singlecopy gene HMM profiles into "
                      "their own layer. Please see the documentation for details."}
                 ),
+    'annotation-source-for-per-split-summary': (
+            ['-F', '--annotation-source-for-per-split-summary'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FUNCTION ANNOTATION SOURCE',
+             'help': "Using this parameter with a functional annotation source that (1) is in the contigs database "
+                     "and (2) has a maximum of 10 different function names, will dynamically add a new layer to the "
+                     "intearctive interface where proportions of functions in that source will be shown per split "
+                     "as stacked bar charts."}
+                ),
     'show-all-layers': (
             ['--show-all-layers'],
             {'default': False,
@@ -1432,6 +1442,11 @@ D = {
             ['--split-name'],
             {'metavar': 'SPLIT_NAME',
              'help': "Split name."}
+                ),
+    'contig-name': (
+            ['--contig-name'],
+            {'metavar': 'CONTIG_NAME',
+             'help': "Contig name."}
                 ),
     'program': (
             ['--program'],
