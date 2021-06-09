@@ -1,54 +1,11 @@
 # -*- coding: utf-8
 
+'''Snakemake file for the metagenomics worklfow.
+
+See the online documentation for the jargon, and
+how to use it.
 '''
-    This is a snakemake for the metagenomics workflow in the Meren Lab using
-    anvi'o.
 
-    It includes the following steps:
-    Quality filtering
-    Assembly using megahit
-    Mapping of metagenomes to assemblies using bowtie2
-    generating anvio contigs database (including running hmm profile)
-    generating anvio profile database
-
-    The following files must exist in the working directory:
-    config.json - this file contains essential configuration information for
-    the pipeline.
-
-    samples.txt -
-        TAB-delimited file to describe where samples are. The
-        header line should be "sample", "r1", and "r2". Each
-        row should list the sample name in the first column,
-        and full path for r1 and r2.
-
-
-
-    An example run of this workflow on the barhal server:
-    $ snakemake --snakefile merenlab-metagenomics-pipeline.snakefile \
-                --cluster-config cluster.json --cluster 'clusterize  \
-                -n {threads} -log {log}' --jobs 4 --latency-wait 100 -p
-
-    Or without --cluster-config and on one line:
-
-    $ snakemake $METAPIPE/merenlab-metagenomics-pipeline.snakefile --cluster 'clusterize -n {threads} -log {log}' --jobs 4 --latency-wait 100 -p
-
-    Note on rule order: whenever the order of rule execution was ambiguous
-        mypreferred approach was to use the rule dependencies. See:
-        http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#rule-dependencies
-
-    Note on cluster configuration: because multiple rules require the
-    number of threads as input (for example anvi-profile, megahit), and I
-    couldn't find a way to make the number of threads from the
-    cluster.config file available within rules, then instead I define the
-    number of threads within each rule. I'm aware it's less elegant than
-    having all cluster configuration in the cluster.json file, and would
-    love to learn about an alternative solution if you have one.
-
-    Note on log files: in order for the stdout and stderr to be written
-    into log files, I have added `>> {log} 2>&1` to each shell command. if
-    running on a cluster, I suggested including something like this in
-    your `--cluster` command: `--log {log}`.
-'''
 import os
 import anvio
 import argparse
