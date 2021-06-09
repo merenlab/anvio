@@ -61,7 +61,7 @@ rule anvi_run_hmms_hmmsearch:
                          --hmmer-program hmmsearch \
                          --hmmer-output-dir %s \
                          -I Bacteria_71 \
-                         --get-domtable-output asdf \
+                         --get-domtable-output \
                          --just-do-it \
                          -T {threads} 2> {log}" % hmmer_output_dir)
 
