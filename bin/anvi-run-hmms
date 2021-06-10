@@ -88,7 +88,7 @@ def main(args):
                           "want to keep the HMMER output.")
 
     if args.domain_hits_table and not args.hmmer_output_dir:
-        raise ConfigError("We can see that you have requested --get-domtable-output but you haven't asked us to store "
+        raise ConfigError("We can see that you have requested --domain-hits-table but you haven't asked us to store "
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
 
