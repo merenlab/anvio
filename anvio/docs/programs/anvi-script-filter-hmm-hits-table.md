@@ -5,7 +5,8 @@ For this, you first need to ask %(anvi-run-hmms)s to ask HMMER to report a domai
 {{ codestart }}
 anvi-run-hmms -c %(contigs-db)s \
               -I Bacteria_71 \
-              --hmm-domain-tblout-path DOMTABLE.txt
+              --hmmer-output-dir path/to/DOMTABLE.txt
+              --domain-hits-table
 {{ codestop }}
 
 At the end of this run, your HMM hits will be stored in your contigs database as usual. But with the availability of the domain hits table from this run, you can filter out hits from your contigs database using thresholds for query or target coverage of each hit.
@@ -15,6 +16,6 @@ For instance following the command above, the command below will remove HMM hits
 {{ codestart }}
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \
                                   --hmm-source Bacteria_71 \
-                                  --domtblout DOMTABLE.txt \
+                                  --domain-hits-table path/to/DOMTABLE.txt \
                                   --target-coverage 0.9
 {{ codestop }}

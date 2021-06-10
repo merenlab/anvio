@@ -43,7 +43,7 @@ class FilterHmmHitsTable(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path=A("contigs_db")
-        self.domtblout=A("domtblout")
+        self.domtblout=A("domain_hits_table")
         self.hmm_source=A("hmm_source")
         self.target_coverage=A("target_coverage")
         self.query_coverage=A("query_coverage")
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    parser.add_argument('--domtblout', help="domain-table-output from hmmsearch in anvi-run-hmms")
+    parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
     parser.add_argument('--target-coverage',
                         help=" (ali_coord_to - ali_coord_from)/target_length")
     parser.add_argument('--query-coverage',
