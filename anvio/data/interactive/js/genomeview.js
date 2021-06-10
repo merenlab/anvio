@@ -408,7 +408,7 @@ function draw() {
           selectable: false}));
   }
 
-  shadeGeneClusters(["GC_00000034","GC_00000097"],{"GC_00000034":"green","GC_00000097":"red"},spacing);
+  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
@@ -431,7 +431,6 @@ function shadeGeneClusters(geneClusters, colors, y) {
       var path = new fabric.Path("M " + g1[0] + " " + y + " L " + g1[1] + " " + y + " L " + g2[1] + " " + (y+spacing) + " L " + g2[0] + " " + (y+spacing) + " z", {
         fill: colors[gc],
         opacity: 0.25,
-        scaleX: 0.5,
         selectable: false
       });
       path.left += (showLabels?120:0);
@@ -469,12 +468,12 @@ function addGenome(label, gene_list, genomeID, y) {
 
   // label
   if(showLabels) {
-    canvas.add(new fabric.Text(label, {top: spacing*y-10, selectable: false, fontSize: 15, fontFamily: 'sans-serif', fontWeight: 'bold'}));
+    canvas.add(new fabric.Text(label, {top: spacing*y-5, selectable: false, fontSize: 15, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   // line
   canvas.add(new fabric.Line([0,0,genomeMax,0], {left: offsetX+(showLabels?120:0),
-        top: spacing*y - 4,
+        top: spacing*y + 4,
         stroke: 'black',
         strokeWidth: 2,
         selectable: false}));
@@ -508,10 +507,10 @@ function addGenome(label, gene_list, genomeID, y) {
 
       if(arrowStyle == 3) {
         label.set({
-          top: -10+spacing*y,
+          top: -5+spacing*y,
           left: 150+gene.start,
-          scaleX: 0.25,
-          scaleY: 0.25,
+          scaleX: 0.5,
+          scaleY: 0.5,
           selectionColor:'rgba(128,128,128,.5)'
         });
       } else {
@@ -564,13 +563,13 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
   var arrowPathStr;
   switch(style) {
     case 2: // thicker arrows
-      arrowPathStr = 'M 0 -5 L ' + length + ' -5 L ' + length + ' 15 L 0 15 M ' + length + ' -5 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z';
+      arrowPathStr = 'M ' + (length-25) + ' -5 L 0 -5 L 0 15 L ' + (length-25) + ' 15 L ' + (length-25) + ' 15 L ' + (length-25) + ' 20 L ' + length + ' 5 L ' + (length-25) + ' -10 z';
       break;
     case 3: // pentagon arrows
       arrowPathStr = 'M 0 0 L ' + (length-25) + ' 0 L ' + length + ' 20 L ' + (length-25) + ' 40 L 0 40 L 0 0 z';
       break;
     default: // 'inspect page' arrows
-      arrowPathStr = 'M 0 0 L ' + length + ' 0 L ' + length + ' 10 L 0 10 M ' + length + ' 0 L ' + length + ' 20 L ' + (25+length) + ' 5 L ' + length + ' -10 z';
+      arrowPathStr = 'M ' + (length-25) + ' 0 L 0 0 L 0 10 L ' + (length-25) + ' 10 L ' + (length-25) + ' 10 L ' + (length-25) + ' 20 L ' + length + ' 5 L ' + (length-25) + ' -10 z';
       break;
   }
 
@@ -581,15 +580,11 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
     gene: gene,
     geneID: geneID,
     genomeID: genomeID,
-    top: style == 3 ? -14+spacing*y : -11+spacing*y,
+    top: style == 3 ? -17+spacing*y : -11+spacing*y,
     left: 1.5+gene.start,
-    scaleX: 0.5,
-    scaleY: 0.5,
     fill: color,
     stroke: 'gray',
-    strokeWidth: style == 3 ? 3 : 1.5,
-    zoomX: 0.2,
-    zoomY: 0.2
+    strokeWidth: style == 3 ? 3 : 1.5
   });
   if(gene.direction == 'r') arrow.rotate(180);
 
