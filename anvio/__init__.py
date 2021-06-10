@@ -2253,12 +2253,6 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
-    'domtblout': (
-            ['-F', '--domtblout'],
-            {'metavar': 'HMM OUTPUT FORMAT',
-             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
-                     "The output file will contain the suffix '_domtable.txt'."}
-                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
@@ -2270,8 +2264,8 @@ D = {
                      "in this directory. Please note that this will only work if you are running on only one "
                      "profile using the -I flag."}
                 ),
-    'get-domtable-output': (
-            ['--get-domtable-output'],
+    'domain-hits-table': (
+            ['--domain-hits-table'],
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
