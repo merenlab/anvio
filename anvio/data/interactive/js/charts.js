@@ -1442,7 +1442,7 @@ function serializeSettings() {
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
-    $('#chart-container, #context-container, #highlight-boxes').empty();
+    $('#chart-container, #context-container, #highlight-boxes, #sample-titles').empty();
 
     if (state['current-view'] == "single"){
         // if we are working with a non-merged single profile, we need to do some ugly hacks here,
@@ -1484,6 +1484,14 @@ function createCharts(state){
     $('#SNV-boxes').empty();
     var snvBoxesSvg = d3.select("#SNV-boxes").append("svg")
                             .attr("id", "SNVBoxesSvg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", height + margin.top);
+    $('#SNV-boxes').css("width", (width + 150) + "px");
+    $('#SNV-boxes').css("height", height + "px");
+    $('#SNV-boxes').css("top", (margin.top - 20) + "px");
+
+    var sampleTitles = d3.select("#sample-titles").append("svg")
+                            .attr("id", "sampleTitles")
                             .attr("width", width + margin.left + margin.right)
                             .attr("height", height + margin.top);
     $('#SNV-boxes').css("width", (width + 150) + "px");
@@ -1551,6 +1559,7 @@ function createCharts(state){
                         maxCountOverCoverage: maxCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
+                        samples_svg: sampleTitles,
                         margin: margin,
                         showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
@@ -1717,6 +1726,9 @@ function Chart(options){
     this.maxCountOverCoverage = options.maxCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
+    this.samples_svg = options.samples_svg;
+    console.log("SAMPLES SVG:");
+    console.log(this.samples_svg);
     this.id = options.id;
     this.name = options.name;
     this.margin = options.margin;
@@ -1810,6 +1822,10 @@ function Chart(options){
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.textContainerIndels = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.textContainerSamples = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -2057,7 +2073,8 @@ function Chart(options){
                      .call(this.yAxisLine);
     }
 
-    this.chartContainer.append("text")
+
+    this.textContainerSamples.append("text")
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
                    .text(this.name);
