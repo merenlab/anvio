@@ -2265,7 +2265,7 @@ D = {
                      "profile using the -I flag."}
                 ),
     'domain-hits-table': (
-            ['--get-domtable-output'],
+            ['--domain-hits-table'],
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "

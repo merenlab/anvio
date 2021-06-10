@@ -43,7 +43,7 @@ class FilterHmmHitsTable(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path=A("contigs_db")
-        self.domtblout=A("domtblout")
+        self.domtblout=A("domain-hits-table")
         self.hmm_source=A("hmm_source")
         self.target_coverage=A("target_coverage")
         self.query_coverage=A("query_coverage")
