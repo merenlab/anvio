@@ -61,7 +61,7 @@ rule anvi_run_hmms_hmmsearch:
                          --hmmer-program hmmsearch \
                          --hmmer-output-dir %s \
                          -I Bacteria_71 \
-                         --get-domtable-output \
+                         --domain-hits-table \
                          --just-do-it \
                          -T {threads} 2> {log}" % hmmer_output_dir)
 
@@ -83,7 +83,7 @@ rule filter_hmm_hits_by_query_coverage:
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
     shell:
           "anvi-script-filter-hmm-hits-table -c {input.contigsDB} \
-                                             --domtblout {params.domtblout} \
+                                             --domain-hits-table {params.domtblout} \
                                              --hmm-source {params.hmm_source} \
                                              --query-coverage {params.query_coverage} \
                                              {params.additional_params} 2> {log}"
