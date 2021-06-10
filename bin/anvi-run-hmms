@@ -87,14 +87,14 @@ def main(args):
                           "We are sorry for this, but we humbly request that you run on each source one at a time if you "
                           "want to keep the HMMER output.")
 
-    if args.get_domtable_output and not args.hmmer_output_dir:
+    if args.domain_hits_table and not args.hmmer_output_dir:
         raise ConfigError("We can see that you have requested --get-domtable-output but you haven't asked us to store "
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
 
     search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
                                      hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
-                                     get_domain_table_output=args.get_domtable_output)
+                                     get_domain_table_output=args.domain_hits_table)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
