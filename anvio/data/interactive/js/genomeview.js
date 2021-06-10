@@ -27,7 +27,7 @@
 
  // Settings vars
  // TODO migrate below variables to kvp in state
- var state = {}; 
+ var state = {};
  var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
  var showGeneLabels = true; // show gene labels?
@@ -49,7 +49,7 @@ var genomeData;
 
 $(document).ready(function() {
     initData();
-    // loadState(); 
+    // loadState();
     loadAll();
 });
 
@@ -64,28 +64,26 @@ function initData() {
             genomeData = data;
             console.log("Saved the following data:");
             console.log(data);
-            
+
             let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
-            
-            // implementing the following will require a refactor of associated methods
-            // genomeData.genomes = genomes
+            genomeData.genomes = genomes
         }
     });
 }
 
 function loadState(){
   let mockStateData = {
-    "state-name" : 'default', 
+    "state-name" : 'default',
     "zoom" : "1.0",
     "arrow-style" : "1",
-    "color-genes-by" : "Source", 
+    "color-genes-by" : "Source",
     "genome-order-method" : [
-      { 
+      {
         "name" : "some value",
         "order" : ['genome1', 'genome2', 'genome3']
       },
       {
-        "name" : "some other value", 
+        "name" : "some other value",
         "order" : ['genome2', 'genome1', 'genome3']
       }
     ]
@@ -112,7 +110,7 @@ function loadState(){
                       url: '/data/genome_view/state/get/' + state_name,
                       success: function(response) {
                           try{
-                              // processState(state_name, response[0]); process actual response from backend 
+                              // processState(state_name, response[0]); process actual response from backend
                               processState(state_name, mockStateData); // process mock state data
                           }catch(e){
                               console.error("Exception thrown", e.stack);
@@ -135,7 +133,7 @@ function processState(stateName, stateData){
 
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
-      $('#genomeOrderSelect').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option. 
+      $('#genomeOrderSelect').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   }
 
@@ -165,8 +163,8 @@ function loadAll() {
     stroke : 'green',
     top : 0,
     left : 10,
-    opacity : .6, 
-    selectable : false 
+    opacity : .6,
+    selectable : false
   }))
   let scaleDragStartingX;
   let totalScaleX
@@ -185,7 +183,7 @@ function loadAll() {
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
     let percentileToShow = (percentileEnd - percentileStart).toFixed(2)
- 
+
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
     // process for contextual zooming based on drag event from scale canvas.
     // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length
@@ -199,9 +197,9 @@ function loadAll() {
       top : 0,
       left : scaleCanvas.width * percentileStart,
       opacity : .6,
-      selectable : false 
+      selectable : false
     }))
-    canvas.setZoom(.01) 
+    canvas.setZoom(.01)
     canvas.absolutePan({x: moveTo.x, y: moveTo.y})
     canvas.setZoom(percentileToShow > .1 ? 1 - percentileToShow : 1) //TODO ask someone who knows how to math to make this better :)
   })
@@ -358,10 +356,10 @@ function loadAll() {
 
 function draw() {
   // Find max length genome
-  for(let genomeID in genomeData.genomes) {
-    let genome = genomeData.genomes[genomeID].genes.gene_calls;
-    let g = genome[Object.keys(genome).length-1].stop;
-    if(g > genomeMax) genomeMax = g;
+  for(genome of genomeData.genomes) {
+    genome = genome[1].genes.gene_calls;
+    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
   }
 
   if(showGeneLabels && arrowStyle != 3) {
@@ -369,10 +367,9 @@ function draw() {
   }
 
   var y = 1;
-  for(let genomeID in genomeData.genomes) {
-    let genome = genomeData.genomes[genomeID].genes.gene_calls;
-    let label = genome[0].contig;
-    addGenome(label, genome, genomeID, y)
+  for(genome of genomeData.genomes) {
+    let label = genome[1].genes.gene_calls[0].contig;
+    addGenome(label, genome[1].genes.gene_calls, genome[0], y)
     drawGenomeLabels(label)
     labelSpacing += 30
     y++;
@@ -410,24 +407,24 @@ function draw() {
           fontFamily: 'sans-serif',
           selectable: false}));
   }
+
+  shadeGeneClusters(["GC_00000034","GC_00000097"],{"GC_00000034":"green","GC_00000097":"red"},spacing);
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
-  for(var i = 0; i < Object.keys(genomeData.genomes).length-1; i++) {
-    let genomeID_A = Object.keys(genomeData.genomes)[i];
-    let genomeID_B = Object.keys(genomeData.genomes)[i+1];
-    //let genomeA = genomeData.genomes[genomeID_A].genes.gene_calls;
-    //let genomeB = genomeData.genomes[genomeID_B].genes.gene_calls;
+  for(var i = 0; i < genomeData.genomes.length-1; i++) {
+    let genomeA = genomeData.genomes[i][1].genes.gene_calls;
+    let genomeB = genomeData.genomes[i+1][1].genes.gene_calls;
+    let genomeID_A = genomeData.genomes[i][0];
+    let genomeID_B = genomeData.genomes[i+1][0];
 
     for(gc of geneClusters) {
       let g1 = [], g2 = [];
       for(geneID of genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID_A]) {
-        let g = genomeData.genomes[genomeID_A].genes.gene_calls[geneID];
-        g1.push(g.start, g.stop);
+        g1.push(genomeA[geneID].start, genomeA[geneID].stop);
       }
       for(geneID of genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID_B]) {
-        let g = genomeData.genomes[genomeID_B].genes.gene_calls[geneID];
-        g2.push(g.start, g.stop);
+        g2.push(genomeB[geneID].start, genomeB[geneID].stop);
       }
 
       /* TODO: implementation for multiple genes of the same genome in the same gene cluster */
@@ -490,7 +487,8 @@ function addGenome(label, gene_list, genomeID, y) {
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
     //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
-    var geneObj = geneArrow(gene,geneID,genomeData.genomes[genomeID].genes.functions[geneID],y,genomeID,arrowStyle);
+    var geneIndex = genomeData.genomes.findIndex(g => genomeID == g[0]);
+    var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle);
     if(showLabels) {
       geneObj.left += 120;
     }
