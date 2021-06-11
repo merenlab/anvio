@@ -49,21 +49,22 @@ rule anvi_run_hmms_hmmsearch:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch_{sample_name}.log")
     input:
-        lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
+        #ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
-        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done"))
-#	params:
-#        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch", "hmm.domtable"),
+        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done")),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed")
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
     run:
       hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
-      shell("anvi-run-hmms -c {input} \
+      contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
+      shell("anvi-run-hmms -c %s \
                          --hmmer-program hmmsearch \
                          --hmmer-output-dir %s \
                          -I Bacteria_71 \
                          --domain-hits-table \
                          --just-do-it \
-                         -T {threads} 2> {log}" % hmmer_output_dir)
+                         -T {threads} 2> {log}" % (contigsDB, hmmer_output_dir))
 
 rule filter_hmm_hits_by_query_coverage:
     """Filter hmm_hits table by query coverage"""
@@ -72,29 +73,39 @@ rule filter_hmm_hits_by_query_coverage:
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_query_coverage_{sample_name}.log")
     input:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done"),
-        contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db"))
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
+        fixed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed")
+        #contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
-        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"))
+        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_contigsDB_filtered.done"))
     params:
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch", "hmm.domtable"),
+        #domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch", "hmm.domtable"),
         hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
-    shell:
-          "anvi-script-filter-hmm-hits-table -c {input.contigsDB} \
-                                             --domain-hits-table {params.domtblout} \
-                                             --hmm-source {params.hmm_source} \
-                                             --query-coverage {params.query_coverage} \
-                                             {params.additional_params} 2> {log}"
+    run:
+      contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
+      domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch/hmm.domtable" % wildcards.sample_name)
 
+      shell("anvi-script-filter-hmm-hits-table -c %s \
+                                               --domain-hits-table %s \
+                                               --hmm-source {params.hmm_source} \
+                                               --query-coverage {params.query_coverage} \
+                                               {params.additional_params} 2> {log}" % (contigsDB, domtblout))
+
+      #shell("anvi-script-filter-hmm-hits-table -c {input.contigsDB} \
+      #                                         --domain-hits-table %s \
+      #                                         --hmm-source {params.hmm_source} \ \
+      #                                         --query-coverage {params.query_coverage} \
+      #                                         {params.additional_params} 2> {log}" % (domtblout))
 rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
     """Extract all SCG AA sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"),
+        done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_contigsDB_filtered.done"),
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
         done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.faa.done")),
@@ -133,7 +144,7 @@ rule get_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{ribosomal_protein_name}.log")
     input:
-        done_file= os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-contigsDB_filtered.done"),
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.fna.done"),
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
         external_gene_calls_ed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_external_gene_calls_ed.tsv")
