@@ -226,17 +226,24 @@ function loadAll() {
     $('#tooltip-body').html('').hide()
   })
 
-  genomeLabelsCanvas.on('object:moving', function(options) {
-    // console.log(genomeLabelsCanvas.getBoundingRect())
-    // console.log(options.target.getBoundingRect())
+  genomeLabelsCanvas.on('object:moved', function(options) {
     options.target.set({
       left: Math.round(options.target.left / draggableGridUnits) * draggableGridUnits,
       top: Math.round(options.target.top / draggableGridUnits) * draggableGridUnits
     });
     let labelsArr = genomeLabelsCanvas.getObjects()
-    console.log('pre sort ==>', labelsArr)
-    labelsArr.sort((a,b) => (a.top > b.top) ? 1 : -1)
-    console.log('after sort ==>', labelsArr)
+    labelsArr.sort((a,b) => (a.top > b.top) ? 1 : -1) // sort genomes based on vertical position after drag event
+  
+    let newGenomeOrder = []
+    labelsArr.map(label => {
+      genomeData.genomes.map(genome => {
+         if(label.text == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
+           newGenomeOrder.push(genome)
+         }    
+      }) 
+    })
+    genomeData.genomes = newGenomeOrder
+    draw()
   });
 
   function showToolTip(event){
