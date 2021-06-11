@@ -49,7 +49,6 @@ rule anvi_run_hmms_hmmsearch:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch_{sample_name}.log")
     input:
-        #ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
         touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done")),
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
@@ -75,11 +74,9 @@ rule filter_hmm_hits_by_query_coverage:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done"),
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
         fixed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed")
-        #contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
         touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_contigsDB_filtered.done"))
     params:
-        #domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch", "hmm.domtable"),
         hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
@@ -94,11 +91,6 @@ rule filter_hmm_hits_by_query_coverage:
                                                --query-coverage {params.query_coverage} \
                                                {params.additional_params} 2> {log}" % (contigsDB, domtblout))
 
-      #shell("anvi-script-filter-hmm-hits-table -c {input.contigsDB} \
-      #                                         --domain-hits-table %s \
-      #                                         --hmm-source {params.hmm_source} \ \
-      #                                         --query-coverage {params.query_coverage} \
-      #                                         {params.additional_params} 2> {log}" % (domtblout))
 rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
     """Extract all SCG AA sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
@@ -207,7 +199,7 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
                                           --metagenome-mode \
                                           --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
                                           -T {threads} \
-                                          -o {output} 2> {log}')
+                                          -o {output} &> {log}')
 
 rule simplify_names_from_scg_hits_nt:
     """Clean up fasta headers for tree calculation"""
@@ -408,7 +400,7 @@ rule cluster_X_percent_sim_mmseqs:
 rule get_headers:
     """Extract sequence headers"""
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "get_gene_caller_ids_for_mapping_{ribosomal_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_headers_{ribosomal_protein_name}.log")
     input:
         reps = rules.cluster_X_percent_sim_mmseqs.output,
     output:
@@ -597,9 +589,6 @@ rule count_num_sequences_filtered:
     threads: M.T('trim_alignment_2')
     shell:
         """
-        # Headers (only echos do stdout and I'm not sure why, also this line need to be included for this rule to work... go ahead comment it out and see what happens!)
-        echo -e  "Rule_name\tNum_sequences\trel_path\n > {output}"
-
         # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
         step1=$(grep -c '>' {input.step1})
         echo -e "cat_scgs_to_one_fasta_nt\t$step1\t{input.step1}\n" > {output}
@@ -860,8 +849,6 @@ elif M.run_fasttree == True:
           tree = os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}.nwk"),
           done = touch(os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}_tree.done"))
       params:
-          outfile=os.path.join(dirs_dict['TREES'], "{ribosomal_protein_name}/{ribosomal_protein_name}"),
-          model = M.get_param_value_from_config(['fasttree', '-m']),
           additional_params = M.get_param_value_from_config(['fasttree', 'additional_params'])
       threads: M.T('fasttree')
       shell:
@@ -927,7 +914,7 @@ rule combine_data:
 
         Rscript "$script" --SCG {wildcards.ribosomal_protein_name} \
                           --ribophylopath SCG_WORKFLOW \
-                          --profilepath METAGENOMICS_WORKFLOW
+                          --profilepath METAGENOMICS_WORKFLOW &> {log}
         """
 
 

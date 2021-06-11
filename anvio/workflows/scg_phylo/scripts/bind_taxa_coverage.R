@@ -26,7 +26,6 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
   
-  print(opt$SCG)
   # make paths
   #-----------
   # misc data
@@ -80,8 +79,6 @@ bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
   # Make index of names
   #--------------------
   index <- mapping_data %>%
-    # left_join(gene_calls) %>%
-    # left_join(reformat_file) %>%
     left_join(external_gene_calls) %>%
     select(gene_callers_id, contig)
   
@@ -101,7 +98,6 @@ bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
   final <- misc_data %>%
     rename(contig = new_header) %>%
     left_join(index) %>%
-    # inner_join(mapping_data) %>%
     select(-gene_callers_id) %>%
     rename(orig_name = contig, name = contig_new) %>%
     select(name, orig_name, sample, contig_db_type, t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, has_genomic_SCG_in_cluster) %>%
