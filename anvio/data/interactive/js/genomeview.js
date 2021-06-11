@@ -363,6 +363,9 @@ function loadAll() {
 }
 
 function draw() {
+  genomeLabelsCanvas.clear()
+  canvas.clear() 
+  
   // Find max length genome
   for(genome of genomeData.genomes) {
     genome = genome[1].genes.gene_calls;
