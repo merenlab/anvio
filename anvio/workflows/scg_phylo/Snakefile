@@ -23,17 +23,6 @@ __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
-#slave_mode = False if 'workflows/ribo_phylo' in workflow.included[0] else True
-
-# if not slave_mode:
-#     # it is important that this comes before the include statement since
-#     # M is defined here and will also be used in the contigs workflow
-#     M = RibosomalPhylogeneticsWorkflow(argparse.Namespace(config=config))
-#     M.init()
-#     dirs_dict = M.dirs_dict
-#     # in order to generate the contigs databases we include the snakefile
-#     # for the generation of contigs databases
-#     include: w.get_workflow_snake_file_path('metagenomics')
 
 M = SCGPhylogeneticsWorkflow(argparse.Namespace(config=config))
 M.init()
@@ -463,7 +452,6 @@ rule add_header_to_misc_file:
         cat {input} >> {output}
         """
 
-# Initial alignment, trim, and removal of sequences with 50% gaps or more
 rule align_muscle:
     """Initial alignment with muscle"""
 
@@ -477,26 +465,6 @@ rule align_muscle:
 				    -out {output} \
             -maxiters 2 \
             -verbose 2> {log}"
-
-
-# FIXME: odseq in R will only accept a MSA object from the package MSA
-# The MSA package does have muscle as an option for the alignment 
-# algorithm to use but this would mean a massive MSA calculation in R
-# NOT in the mood to figure our the ramifications of this at the moment
-# but I have a feeling that this will really slow down the workflow.
-# Now that I have the --gappyout parameter in trimal, I should be 
-# doing a smarter job at trimming and subsequently removing sequences that 
-# have a high percentage of gaps. 
-# rule remove_outlier_seqs_odseq:
-#     """Removing sequences that have > 50% gaps"""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{ribosomal_protein_name}.log")
-#     input: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned.fasta")
-#     output: os.path.join(dirs_dict['MSA'], "MSA_1/{ribosomal_protein_name}/{ribosomal_protein_name}_aligned_odseq.fasta")
-#     threads: M.T('remove_gaps')
-#     script:
-#         "scripts/odseq_remove_outliers.R --msa {input} --output"
 
 rule trim_alignment:
     """Trim alignment with trimal"""
@@ -540,9 +508,6 @@ rule remove_sequences_with_X_percent_gaps:
 # * calculate the outlier threshold 1.5*IQR
 # * remove sequences greater than that threshold
 
-# STEPS FOR FILTERING OUT SEQUENCING BASED ON PERCENT GAPS
-# KEEPPPPP MAY WANT TO INCLUDE LATER
-
 # rule get_gap_count_distribution:
 #     """This rule will..."""
 
@@ -572,7 +537,6 @@ rule remove_sequences_with_X_percent_gaps:
 #     threads: M.T('filter_out_outlier_sequences')
 #     script:
 #         "scripts/filter_gap_count_outlier_sequence.py"
-
 
 rule count_num_sequences_filtered:
     """
@@ -604,11 +568,6 @@ rule count_num_sequences_filtered:
         # ACTUALLY adding column names here
         echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
         """
-
-# Here we add metadata that indentifies if there were SCGs from isolate genomes
-# that were clustered with metagenome derived SCGs but were not selected as the
-# representative. I think users will want to know where their isolate genomes SCGs
-# ended up so this is for them.
 
 if M.external_genomes:
     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
@@ -805,11 +764,6 @@ rule make_SCG_WORKFLOW_state_file:
         layers_dict.update(metagenome_layers_dict)
         layers_dict.update(last_layers_dict)
 
-        # I would LIKE to makes these heights 0 but for some reason all 'height' values go to 0
-        # layers['orig_name']['height'] = 0
-        # layers['sample']['height'] = 0
-        # layers['split_name']['height'] = 0
-
         state_dict['layers'] = layers_dict
 
         with open(output.state_file, "w") as outfile:
@@ -855,8 +809,7 @@ elif M.run_fasttree == True:
           "FastTree -fastest {input} 2> {log} 1> {output.tree}"
 
 rule add_default_collection:
-    """
-    """
+    """"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{ribosomal_protein_name}.log")
@@ -875,8 +828,7 @@ rule add_default_collection:
 
 
 rule anvi_summarize:
-    """
-    """
+    """"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{ribosomal_protein_name}.log")
@@ -899,8 +851,7 @@ rule anvi_summarize:
         """
 
 rule combine_data:
-    """
-    """
+    """Joins read recruitment and taxonomy data for interactive interface"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "combine_data_{ribosomal_protein_name}.log")
@@ -919,8 +870,7 @@ rule combine_data:
 
 
 rule anvi_import_state:
-    """
-    """
+    """Import state file for interactive interface"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{ribosomal_protein_name}.log")
@@ -937,8 +887,3 @@ rule anvi_import_state:
                           -s {params.state_file} \
                           -n {wildcards.ribosomal_protein_name}
         """
-
-# FIXME:
-# Suggestions from Iva
-# - the workflow should be able to re-run incomplete rules and start from any point in the workflow. Maybe the function ancient() can do the trick?
-# - Some rules output print to stdout which should be captured by the log file! e.g. "ML-NNI round 4: LogLk = -6408.501 NNIs 3 max delta 0.43 Time 0.81 (final)" and "Optimize all lengths: LogLk = -6407.806 Time 0.87"
