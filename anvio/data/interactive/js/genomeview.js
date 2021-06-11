@@ -239,6 +239,7 @@ function loadAll() {
       genomeData.genomes.map(genome => {
          if(label.text == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
            newGenomeOrder.push(genome)
+           return 
          }    
       }) 
     })
