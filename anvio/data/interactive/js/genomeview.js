@@ -209,7 +209,6 @@ function loadAll() {
 
   // can either set it on the canvas to check for all arrows, or when arrow is created.
   canvas.on('mouse:down', function(options) {
-    console.log(options.absolutePointer.x-120);
     if(options.target && options.target.id == 'arrow') {
       options.target.set('fill', options.target.fill=="red" ? "blue" : 'red');
       var testid = options.target.gene.gene_callers_id;
