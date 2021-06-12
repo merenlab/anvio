@@ -209,6 +209,7 @@ function loadAll() {
 
   // can either set it on the canvas to check for all arrows, or when arrow is created.
   canvas.on('mouse:down', function(options) {
+    console.log(options.absolutePointer.x-120);
     if(options.target && options.target.id == 'arrow') {
       options.target.set('fill', options.target.fill=="red" ? "blue" : 'red');
       var testid = options.target.gene.gene_callers_id;
@@ -233,15 +234,15 @@ function loadAll() {
     });
     let labelsArr = genomeLabelsCanvas.getObjects()
     labelsArr.sort((a,b) => (a.top > b.top) ? 1 : -1) // sort genomes based on vertical position after drag event
-  
+
     let newGenomeOrder = []
     labelsArr.map(label => {
       genomeData.genomes.map(genome => {
          if(label.text == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
            newGenomeOrder.push(genome)
-           return 
-         }    
-      }) 
+           return
+         }
+      })
     })
     genomeData.genomes = newGenomeOrder
     draw()
@@ -365,7 +366,7 @@ function loadAll() {
 function draw() {
   genomeLabelsCanvas.clear()
   canvas.clear()
-  labelSpacing = 30 // reset to default value upon each draw() call 
+  labelSpacing = 30 // reset to default value upon each draw() call
 
   // Find max length genome
   for(genome of genomeData.genomes) {
@@ -458,6 +459,22 @@ function alignToCluster(gc) {
     alignToGC = gc;
     showLabels = !gc; // only show labels if changing to default view
     $('#toggle_label_box').attr("checked", showLabels);
+
+    for(genome of genomeData.genomes) {
+      var genomeGCs = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][alignToGC][genome[0]];
+      if(genomeGCs.length == 0) continue;
+      var targetGeneID = genomeGCs[0]; /* TODO: implementation for multiple matching gene IDs */
+      var targetGene = genome[1].genes.gene_calls[targetGeneID];
+      var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
+      var tmp = canvas.getZoom();
+      resetScale();
+      var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
+      var shift = windowCenter - genePos;
+      canvas.viewportTransform[4] += shift;
+      canvas.setZoom(tmp);
+      break;
+    }
+
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
@@ -466,25 +483,13 @@ function alignToCluster(gc) {
 }
 
 function addGenome(label, gene_list, genomeID, y) {
-  var offsetX = 0;
-  if(alignToGC) { /* TEMPORARILY DISABLED until proper data structure (geneID -> GC) added */
-    var genomeGCs = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][alignToGC][genomeID];
-    var targetGeneID = genomeGCs[0]; /* TODO: implementation for multiple matching gene IDs */
-    var targetGene = gene_list[targetGeneID];
-    var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-    //var windowCenter = fabric.util.transformPoint({x:canvas.getWidth()/2,y:0}, canvas.viewportTransform)['x'];
-    var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
-    offsetX = windowCenter - genePos;
-    console.log('offsetX: ' + offsetX + ', genePos: ' + genePos + ', windowCenter: ' + windowCenter);
-  }
-
   // label
   if(showLabels) {
     canvas.add(new fabric.Text(label, {top: spacing*y-5, selectable: false, fontSize: 15, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   // line
-  canvas.add(new fabric.Line([0,0,genomeMax,0], {left: offsetX+(showLabels?120:0),
+  canvas.add(new fabric.Line([0,0,genomeMax,0], {left: showLabels?120:0,
         top: spacing*y + 4,
         stroke: 'black',
         strokeWidth: 2,
@@ -502,9 +507,6 @@ function addGenome(label, gene_list, genomeID, y) {
     var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle);
     if(showLabels) {
       geneObj.left += 120;
-    }
-    if(alignToGC) {
-      geneObj.left += offsetX;
     }
     canvas.add(geneObj);
 
