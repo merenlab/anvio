@@ -523,7 +523,7 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None, omit_parent_column=False):
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
         """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
 
         If the user is interested in only some of the data, they can build a where clause
@@ -580,15 +580,15 @@ class DB:
             if progress:
                 progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
 
-            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data)
         else:
             if progress:
                 progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
 
-            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
 
 
-    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, error_if_no_data=True, log_norm_numeric_values=False):
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
@@ -598,11 +598,6 @@ class DB:
 
         if columns_of_interest and not isinstance(columns_of_interest, type([])):
             raise ConfigError("The parameter `columns_of_interest` must be of type <list>.")
-
-        if omit_parent_column:
-            if '__parent__' in table_structure:
-                columns_to_return.remove(table_structure.index('__parent__'))
-                table_structure.remove('__parent__')
 
         if columns_of_interest:
             for col in table_structure[1:]:
@@ -789,7 +784,7 @@ class DB:
         return results_df[columns_of_interest]
 
 
-    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False, omit_parent_column=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
         get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -811,8 +806,6 @@ class DB:
         row_num_as_key: bool
              added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
              first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
-        omit_parent_column: bool
-             removes __parent__ column from the data to be returned if __parent__ exists in table structure.
 
         Returns
         =======
@@ -828,9 +821,6 @@ class DB:
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
             table_structure = self.get_table_structure(table_name)
-
-        if omit_parent_column and '__parent__' in table_structure:
-            table_structure.remove('__parent__')
 
         columns_to_return = list(range(0, len(table_structure)))
 
