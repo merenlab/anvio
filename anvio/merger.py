@@ -66,9 +66,7 @@ class MultipleRuns:
         self.profiles = []
         self.num_profile_dbs = None
         self.split_names = None
-        self.split_parents = None
         self.sample_ids_found_in_input_dbs = []
-        self.normalization_multiplier = {}
 
         self.profile_dbs_info_dict = {}
 
@@ -280,7 +278,6 @@ class MultipleRuns:
         # a deal breaker just yet
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
         contigs_db_hash = contigs_db.meta['contigs_db_hash']
-        self.split_parents = contigs_db.db.get_table_as_dict(tables.splits_info_table_name, columns_of_interest=['contig', 'parent'])
         contigs_db.disconnect()
 
         for k, p in [('total_length', 'The number of nucleotides described'),
@@ -427,31 +424,6 @@ class MultipleRuns:
         self.progress.end()
 
 
-    def set_normalization_multiplier(self):
-        # WARNING: here we set normalization values based on total number of reads mapped to each sample.
-        # this is not the best way to do it. a better way probably required all reads obtained from each
-        # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
-
-        smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
-
-        if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
-            self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/ "
-                             "Anvi'o will let this pass, assuming you have some grand plans with these data. But to "
-                             "make sure nothing explode during downstream analyses, it will set the flag "
-                             "`--skip-hierarchical-clustering` to True (so there will be no hierarchical clustering "
-                             "data available in your merged profile database).", header="HIERARCHICAL CLUSTERING WARNING")
-            self.skip_hierarchical_clustering = True
-
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-            self.normalization_multiplier[input_profile_db_path] = (smallest_non_zero_sample_size or 1) * 1.0 / (self.total_reads_mapped_per_sample[sample_id] or (smallest_non_zero_sample_size or 1))
-
-        PRETTY = lambda x: ', '.join(['%s: %.2f' % (self.profile_dbs_info_dict[s]['sample_id'], x[s]) for s in sorted(list(x.keys()))])
-        self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained. "
-                         "This information will only be used to calculate the normalized coverage table. Here are those values: %s" %\
-                                            PRETTY(self.normalization_multiplier))
-
-
     def merge(self):
         self.sanity_check()
         self.set_sample_id()
@@ -498,10 +470,6 @@ class MultipleRuns:
 
         sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
-
-        # we run this now because we change default flags in this function
-        # depending on the number of reads characterized within each single profile.
-        self.set_normalization_multiplier()
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -577,25 +545,6 @@ class MultipleRuns:
         self.run.quit()
 
 
-    def get_normalized_coverage_of_split(self, target, input_profile_db_path, split_name):
-        return self.atomic_data_for_each_run[target][input_profile_db_path][split_name]['mean_coverage_Q2Q3'] * self.normalization_multiplier[input_profile_db_path]
-
-
-    def get_max_normalized_ratio_of_split(self, target, split_name):
-        denominator = float(max(self.normalized_coverages[target][split_name].values()))
-
-        d = {}
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            d[input_profile_db_path] = (self.normalized_coverages[target][split_name][input_profile_db_path] / denominator) if denominator else 0
-
-        return d
-
-
-    def get_relative_abundance_of_split(self, target, sample_id, split_name):
-        denominator = float(sum(self.normalized_coverages[target][split_name].values()))
-        return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
-
-
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
@@ -661,19 +610,7 @@ class MultipleRuns:
         view_table_structure = ['contig'] + self.sample_ids_found_in_input_dbs + auxiliary_fields
         view_table_types = ['text'] + ['numeric'] * len(self.sample_ids_found_in_input_dbs) + ['text']
 
-        # generate a dictionary for normalized coverage of each contig across samples per target
-        self.normalized_coverages = {'contigs': {}, 'splits': {}}
-        for target in ['contigs', 'splits']:
-            for split_name in self.split_names:
-                self.normalized_coverages[target][split_name] = {}
-                for input_profile_db_path in self.profile_dbs_info_dict:
-                    self.normalized_coverages[target][split_name][input_profile_db_path] = self.get_normalized_coverage_of_split(target, input_profile_db_path, split_name)
 
-        # generate a dictionary for max normalized ratio of each contig across samples per target
-        self.max_normalized_ratios = {'contigs': {}, 'splits': {}}
-        for target in ['contigs', 'splits']:
-            for split_name in self.split_names:
-                self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
 
         self.progress.new('Generating view data tables')
         for target in ['contigs', 'splits']:
