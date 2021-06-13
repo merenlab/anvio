@@ -66,6 +66,7 @@ class MultipleRuns:
         self.profiles = []
         self.num_profile_dbs = None
         self.split_names = None
+        self.split_parents = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
 
@@ -279,6 +280,7 @@ class MultipleRuns:
         # a deal breaker just yet
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
         contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        self.split_parents = contigs_db.db.get_table_as_dict(tables.splits_info_table_name, columns_of_interest=['contig', 'parent'])
         contigs_db.disconnect()
 
         for k, p in [('total_length', 'The number of nucleotides described'),
@@ -527,8 +529,6 @@ class MultipleRuns:
         # get view data information for both contigs and splits:
         self.atomic_data_fields, self.atomic_data_for_each_run = self.read_atomic_data_tables()
 
-        self.split_parents = self.get_split_parents()
-
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('output_dir', self.output_directory)
         self.run.info('sample_id', self.sample_id)
@@ -682,7 +682,7 @@ class MultipleRuns:
 
                 data_dict = {}
                 for split_name in self.split_names:
-                    data_dict[split_name] = {'__parent__': self.split_parents[split_name]}
+                    data_dict[split_name] = {'__parent__': self.split_parents[split_name]['parent']}
 
                     for input_profile_db_path in self.profile_dbs_info_dict:
                         sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
@@ -722,14 +722,6 @@ class MultipleRuns:
             dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
                                                       input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
-
-
-    def get_split_parents(self):
-        parents = {}
-        m = list(self.atomic_data_for_each_run['splits'].values())[0]
-        for split in m:
-            parents[split] = m[split]["__parent__"]
-        return parents
 
 
     def read_atomic_data_tables(self):
