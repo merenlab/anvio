@@ -494,9 +494,6 @@ class MultipleRuns:
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
-        # get view data information for both contigs and splits:
-        self.atomic_data_fields, self.atomic_data_for_each_run = self.read_atomic_data_tables()
-
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('output_dir', self.output_directory)
         self.run.info('sample_id', self.sample_id)
@@ -657,29 +654,3 @@ class MultipleRuns:
             dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
                                                       input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
-
-
-    def read_atomic_data_tables(self):
-        """Reads atomic data for contigs and splits from the database into a dict"""
-
-        atomic_data_table_for_each_run = {}
-
-        for target in ['contigs', 'splits']:
-            self.progress.new("Fetching atomic %s tables" % target, progress_total_items=self.num_profile_dbs)
-
-            atomic_data_table_for_each_run[target] = {}
-            target_table = 'atomic_data_%s' % target
-
-            for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-                self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
-                self.progress.increment()
-
-                db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
-                atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
-
-            self.progress.end()
-
-        atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
-        db.disconnect()
-
-        return atomic_data_table_fields, atomic_data_table_for_each_run
