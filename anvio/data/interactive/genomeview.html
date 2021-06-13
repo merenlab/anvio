@@ -39,13 +39,117 @@
                   <div id="sidebar">
                         <div class="tab-content"></div>
 
-                        <tr>
-                          <td>Align to Gene Cluster: </td>
-                          <td><input id="geneClusterInput" class="form-control input-sm" type="text" value="" size="4"></td>
-                        </tr>
+                        <span class="settings-header">Genome Arrangement</span>
+                        <table id="genome-arrangement" style="margin-bottom: 20px;">
+                          <tbody>
+                            <tr>
+                              <td>Genome spacing:</td>
+                              <td><input type="text" class="form-control input-sm" id="genome_spacing" value="30"></td>
+                            </tr>
+                            <tr>
+                              <td>Plot scale:</td>
+                              <td><input type="text" class="form-control input-sm" id="plot_scale" value="(TODO)"></td>
+                            </tr>
+                            <tr>
+                              <td>Align to Gene Cluster: </td>
+                              <td><input id="geneClusterInput" class="form-control input-sm" type="text" value="" size="4"></td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <span class="settings-header">Scale</span>
+                        <table id="scaleTable" style="margin-bottom: 20px;">
+                          <tbody>
+                            <tr id="show_scale">
+                              <td>Show scale</td>
+                              <td style="float: right"><div style="width: 20px;"><input id="show_scale_box" type="checkbox" class="layer_selectors"></div></td>
+                            </tr>
+                            <tr id="scale_interval">
+                              <td>Genome scale interval: </td>
+                              <td><input id="genome_scale_interval" class="form-control input-sm" type="text" value="100" size="4"></td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <span class="settings-header">Gene arrows</span>
+                        <p class="settings-section-info">Change colors of genes based on their functional annotations. You can also manually color genes temporarily. First, right-click on a gene. It will add the gene into the list below with a default color. Then, you can use the color picker next to it to set a color manually.</p>
+                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+                          <label id="arrow_style_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="arrow_style" data-original-title="" title="">Arrow style:</label>
+                          <div class="col-md-8">
+                            <select id="arrow_style" style="margin-bottom: 10px" class="form-control input-xs">
+                              <option value=1>Default</option>
+                              <option value=2>Wide</option>
+                              <option value=3>Pentagon</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+                          <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
+                          <div class="col-md-8">
+                            <select id="gene_color_order" style="margin-bottom: 10px" class="form-control input-xs"></select>
+                          </div>
+                        </div>
+                        <div id="table_function_colors_container" style="margin-top: 20px; color:black">
+                        </div>
+                        <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
+
+                        <span class="settings-header">Gene links</span>
+                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+                          <label id="link_style_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="link_style" data-original-title="" title="">Link style:</label>
+                          <div class="col-md-8">
+                            <select id="link_style" style="margin-bottom: 10px" class="form-control input-xs">
+                              <option value=1>Straight</option>
+                              <option value=2>Curved</option>
+                              <option value=3>Line</option>
+                              <option value=4>None</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+                          <label id="shade_by_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="shade_by" data-original-title="" title="">Shade by:</label>
+                          <div class="col-md-8">
+                            <select id="shade_by" style="margin-bottom: 10px" class="form-control input-xs">
+                              <option value=1>Gene Cluster</option>
+                              <option value=2>COG Category</option>
+                              <option value=3>KEGG Category</option>
+                              <option value=4>Custom</option>
+                            </select>
+                          </div>
+                        </div>
+                        <p>TODO: Color table for shades</p>
+
+                        <span class="settings-header">Labels</span>
+                        <table id="labels-table" style="margin-bottom: 20px;">
+                          <tbody>
+                            <tr id="show_genome_labels">
+                              <td>Show genome labels</td>
+                              <td style="float: right"><div style="width: 20px;"><input id="show_genome_labels_box" type="checkbox" class="layer_selectors"></div></td>
+                            </tr>
+                            <tr>
+                              <td>Genome label size:</td>
+                              <td><input type="text" class="form-control input-sm" id="genome_label" value="15"></td>
+                            </tr>
+                            <tr>
+                              <td>Genome label color:</td>
+                              <td><div class="colorpicker" id="genome_label_color" color="#008000" style="background-color: #008000"></div></td>
+                            </tr>
+                            <tr id="show_gene_labels">
+                              <td>Show gene labels</td>
+                              <td style="float: right"><div style="width: 20px;"><input id="show_gene_labels_box" type="checkbox" class="layer_selectors"></div></td>
+                            </tr>
+                            <tr>
+                              <td>Gene label size:</td>
+                              <td><input type="text" class="form-control input-sm" id="gene_label" value="40"></td>
+                            </tr>
+                            <tr>
+                              <td>Gene label color:</td>
+                              <td><div class="colorpicker" id="gene_label_color" color="#008000" style="background-color: #008000"></div></td>
+                            </tr>
+                          </tbody>
+                        </table>
 
                         <span class="settings-header">Get Sequence for a Range or Selection</span>
-                        <p class="settings-section-info">Using your mouse, you can make regional selections through the panel at the bottom of the inspection screen. Through this section you can make more precise selections by explicitly defining a range, and can get sequences for the selected region or for the entire split.</p>
+                        <p class="settings-section-info">Using your mouse, you can make regional selections through the panel at the bottom of the genome view screen. Through this section you can make more precise selections by explicitly defining a range, and can get sequences for individual genomes within the selected region or for the entire genome.</p>
 
                         <div id="range-box"></div>
                         <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\n' + sequence);">Get the entire split sequence</button><br />
@@ -58,7 +162,7 @@
                           <tbody>
                             <tr>
                               <td>Sliding window size (nt):</td>
-                              <td><input type="text" class="form-control input-sm" id="gc_window_size" value="100"></td>
+                              <td><input type="text" class="form-control input-sm" id="gc_window_size" value="30"></td>
                             </tr>
                             <tr>
                               <td>Step size:</td>
@@ -74,84 +178,12 @@
                         <button type="button" class="btn btn-primary btn-xs" onclick="applyOverlayGCContent();">Apply overlay</button>
                         <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();">Reset overlay</button>
 
-
                         <span class="settings-header">Set/Reset Maximum Values</span>
                         <p class="settings-section-info">The y-axis on the left hand-side of each plot is automatically sclaed per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
                         <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
                         <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
 
-
-                        <span class="settings-header">SNVs and IN/DELS</span>
-                        <p class="settings-section-info">Show or hide single-nucleotide variant information and/or insertion/deletions anvi'o identified during the profiling of read recruitment. IN/DELs reaching the specified min sequence length will be marked in red. <a href="http://merenlab.org/2015/07/20/analyzing-variability/" target="_blank">See this</a> for more information on how to study microbial population genetics in anvi'o beyond displaying them in the context of reference sequences.</p>
-                        <p class="settings-section-info" id="settings-section-info-SNV-warning"></p>
-                        <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
-                          <tbody>
-                            <tr id="snv_picker">
-                              <td><div style="width: 20px;"><input id="toggle_label_box" type="checkbox" class="layer_selectors"></div></td>
-                              <td>Show Labels</td>
-                            </tr>
-                            <tr id="indels_picker">
-                              <td><div style="width: 20px;"><input id="toggle_indel_box" type="checkbox" class="layer_selectors"></div></td>
-                              <td>Show IN/DELs</td>
-                            </tr>
-                          </tbody>
-                        </table>
-
-                        <table id="indels" style="margin-bottom: 20px;">
-                          <tbody>
-                            <!-- <tr>
-                              <td>Min coverage of IN/DELS to show: </td>
-                              <td><input id="minIndelInput" class="form-control input-sm" type="text" value="" size="4"></td>
-                            </tr> -->
-                            <tr>
-                              <td>Mark IN/DELs greater than sequence length: </td>
-                              <td><input id="largeIndelInput" class="form-control input-sm" type="text" value="" size="4"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-
-
-                        <span class="settings-header">Dynamic display features</span>
-                        <p class="settings-section-info">If you zoom in enough on a region, nucleotide and codon information will appear at the bottom of your screen when applicable. Here you can toggle that feature and/or disable vertical lines that highlight the position of your mouse on the screen.</p>
-                        <table style="margin-bottom: 20px;">
-                          <tbody>
-                            <tr>
-                              <td><div style="width: 20px;"><input id="toggle_nucl_box" type="checkbox" class="layer_selectors"></div></td>
-                              <td>Show nucleotides for selected sequence</td>
-                            </tr>
-                            <tr>
-                              <td><div style="width: 20px;"><input id="toggle_highlight_box" type="checkbox" class="layer_selectors"></div></td>
-                              <td>Show vertical mouse-over highlight box</td>
-                            </tr>
-                          </tbody>
-                        </table>
-
-
-                        <span class="settings-header">Genes</span>
-                        <p class="settings-section-info">Change colors of genes based on their functional annotations. You can also manually color genes temporarily. First, righ-click on a gene. It will add the gene into the list below with a default color. Then, you can use the color picker next to it to set a color manually. To see the effect of changing colors, you need to press the 'Redraw Gene Arrows' button.</p>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="toggleShowCagsInSplit()" class="btn btn-outline-primary">Show only categories in this split</button>
-
-                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                          <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
-                          <div class="col-md-8">
-                            <select id="gene_color_order" style="margin-bottom: 10px" class="form-control input-xs"></select>
-                          </div>
-                        </div>
-
-                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                          <label id="arrow_style_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="arrow_style" data-original-title="" title="">Arrow style:</label>
-                          <div class="col-md-8">
-                            <select id="arrow_style" style="margin-bottom: 10px" class="form-control input-xs">
-                              <option value=1>Default</option>
-                              <option value=2>Wide</option>
-                              <option value=3>Pentagon</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <br><br><br><br>
+                        <br><br>
               </div>
 
               <div class="btn-group sidebar-footer" role="group" style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px;">

@@ -30,7 +30,9 @@
  var state = {};
  var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
+ var genomeLabelSize = 15; // font size of genome labels
  var showGeneLabels = true; // show gene labels?
+ var geneLabelSize = 40; // font size of gene labels
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
  var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
@@ -205,7 +207,9 @@ function loadAll() {
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
-  $('#toggle_label_box').attr("checked", showLabels);
+  $('#show_genome_labels_box').attr("checked", showLabels);
+  $('#show_gene_labels_box').attr("checked", showGeneLabels);
+  $('#show_scale_box').attr("checked", showScale);
 
   // can either set it on the canvas to check for all arrows, or when arrow is created.
   canvas.on('mouse:down', function(options) {
@@ -246,6 +250,11 @@ function loadAll() {
     genomeData.genomes = newGenomeOrder
     draw()
   });
+
+  if(showGeneLabels && arrowStyle != 3) {
+    spacing = 60;
+    $("#genome_spacing").val(spacing);
+  }
 
   function showToolTip(event){
     $('#tooltip-body').show().append(`
@@ -342,22 +351,51 @@ function loadAll() {
       toggleSettingsPanel();
     }
   });
+  $('#genome_spacing').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      setGenomeSpacing($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#gene_label').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      setGeneLabelSize($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#genome_label').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      setGenomeLabelSize($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#genome_scale_interval').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      setScale($(this).val());
+      $(this).blur();
+    }
+  });
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
-      canvas.clear();
       draw();
       $(this).blur();
   });
   $('#arrow_style').on('change', function() {
       arrowStyle = parseInt($(this).val());
-      canvas.clear();
       draw();
       $(this).blur();
   });
-  $('#toggle_label_box').on('change', function() {
+  $('#show_genome_labels_box').on('change', function() {
     showLabels = !showLabels;
     alignToGC = null;
-    canvas.clear();
+    draw();
+  });
+  $('#show_gene_labels_box').on('change', function() {
+    showGeneLabels = !showGeneLabels;
+    draw();
+  });
+  $('#show_scale_box').on('change', function() {
+    showScale = !showScale;
     draw();
   });
 }
@@ -374,10 +412,6 @@ function draw() {
     if(genomeEnd > genomeMax) genomeMax = genomeEnd;
   }
 
-  if(showGeneLabels && arrowStyle != 3) {
-    spacing = 60;
-  }
-
   var y = 1;
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
@@ -387,40 +421,43 @@ function draw() {
     y++;
   }
 
-  if(showScale) {
-    for(var w = 0; w < genomeMax; w+=scale) {
-      canvas.add(new fabric.Line([0,0,0,20], {left: w+(showLabels?120:0),
-            top: y*(spacing)-24,
-            stroke: 'black',
-            strokeWidth: 1,
-            fontSize: 10,
-            fontFamily: 'sans-serif',
-            selectable: false}));
+  drawScale(y);
+  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
+}
 
-      canvas.add(new fabric.Text(w/1000 + " kB", {left: w+5+(showLabels?120:0),
-            top: y*(spacing)-24,
-            stroke: 'black',
-            strokeWidth: .25,
-            fontSize: 15,
-            fontFamily: 'sans-serif',
-            selectable: false}));
-    }
+function drawScale(y) {
+  if(!showScale) return;
 
-    canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0),
-          top: y*(1.25*spacing)-4,
-          stroke: 'black',
-          strokeWidth: 2,
-          selectable: false}));
-    canvas.add(new fabric.Text("100 nts", {left: 15+(showLabels?120:0),
-          top: y*(1.25*spacing)-4,
+  for(var w = 0; w < genomeMax; w+=scale) {
+    canvas.add(new fabric.Line([0,0,0,20], {left: w+(showLabels?120:0),
+          top: y*(spacing)-24,
           stroke: 'black',
           strokeWidth: 1,
-          fontSize: 20,
+          fontSize: 10,
+          fontFamily: 'sans-serif',
+          selectable: false}));
+
+    canvas.add(new fabric.Text(w/1000 + " kB", {left: w+5+(showLabels?120:0),
+          top: y*(spacing)-24,
+          stroke: 'black',
+          strokeWidth: .25,
+          fontSize: 15,
           fontFamily: 'sans-serif',
           selectable: false}));
   }
 
-  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
+  canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0),
+        top: y*(1.25*spacing)-4,
+        stroke: 'black',
+        strokeWidth: 2,
+        selectable: false}));
+  canvas.add(new fabric.Text("100 nts", {left: 15+(showLabels?120:0),
+        top: y*(1.25*spacing)-4,
+        stroke: 'black',
+        strokeWidth: 1,
+        fontSize: 20,
+        fontFamily: 'sans-serif',
+        selectable: false}));
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
@@ -456,8 +493,6 @@ function shadeGeneClusters(geneClusters, colors, y) {
 function alignToCluster(gc) {
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
     alignToGC = gc;
-    showLabels = !gc; // only show labels if changing to default view
-    $('#toggle_label_box').attr("checked", showLabels);
 
     for(genome of genomeData.genomes) {
       var genomeGCs = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][alignToGC][genome[0]];
@@ -477,14 +512,56 @@ function alignToCluster(gc) {
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
-  canvas.clear();
   draw();
 }
 
+function setGenomeSpacing(newSpacing) {
+  if(isNaN(newSpacing)) return;
+  newSpacing = parseInt(newSpacing);
+  if(newSpacing < 0 || newSpacing > 1000) {
+    alert(`Invalid value, genome spacing must be in range 0-1000.`);
+    return;
+  }
+  spacing = newSpacing;
+  draw();
+}
+
+function setScale(newScale) {
+  if(isNaN(newScale)) return;
+  newScale = parseInt(newScale);
+  if(newScale < 50) {
+    alert(`Invalid value, scale interval must be >=50.`);
+    return;
+  }
+  scale = newScale;
+  draw();
+}
+
+function setGeneLabelSize(newSize) {
+  if(isNaN(newSize)) return;
+  newSize = parseInt(newSize);
+  if(newSize < 0 || newSize > 1000) {
+    alert(`Invalid value, gene label size must be in range 0-1000.`);
+    return;
+  }
+  geneLabelSize = newSize;
+  if(showGeneLabels) draw();
+}
+
+function setGenomeLabelSize(newSize) {
+  if(isNaN(newSize)) return;
+  newSize = parseInt(newSize);
+  if(newSize < 0 || newSize > 1000) {
+    alert(`Invalid value, genome label size must be in range 0-1000.`);
+    return;
+  }
+  genomeLabelSize = newSize;
+  if(showLabels) draw();
+}
+
 function addGenome(label, gene_list, genomeID, y) {
-  // label
   if(showLabels) {
-    canvas.add(new fabric.Text(label, {top: spacing*y-5, selectable: false, fontSize: 15, fontFamily: 'sans-serif', fontWeight: 'bold'}));
+    canvas.add(new fabric.Text(label, {top: spacing*y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   // line
@@ -511,6 +588,7 @@ function addGenome(label, gene_list, genomeID, y) {
 
     if(showGeneLabels) {
       var label = new fabric.IText("geneID: "+geneID, {
+        fontSize:geneLabelSize,
         hasControls:false,
         lockMovementX: true,
         lockMovementY: true,
