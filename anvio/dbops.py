@@ -3599,10 +3599,18 @@ class ProfileSuperclass(object):
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
 
-            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress, omit_parent_column=omit_parent_column)
+            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress)
+
+            if omit_parent_column:
+                header = profile_db.db.get_table_structure(table_name)[1:]
+            else:
+                # add '__parent__' information to the view data, if necessary
+                for split_name in data:
+                    data[split_name]['__parent__'] = self.splits_basic_info[split_name]['parent']
+                header = profile_db.db.get_table_structure(table_name)[1:] + ['__parent__']
 
             self.views[view] = {'table_name': table_name,
-                                'header': profile_db.db.get_table_structure(table_name)[1:],
+                                'header': header,
                                 'dict': data}
 
         self.progress.end()
