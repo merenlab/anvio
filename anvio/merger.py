@@ -545,7 +545,7 @@ class MultipleRuns:
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
+        essential_fields = tables.atomic_data_table_structure[2:]
 
         # initialize views.
         args = argparse.Namespace(profile_db = self.merged_profile_db_path)
@@ -600,14 +600,7 @@ class MultipleRuns:
 
 
     def gen_view_data_tables_from_atomic_data(self):
-        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
-        auxiliary_fields = [f for f in self.atomic_data_fields if constants.IS_AUXILIARY_FIELD(f)]
-
-        # setting standard view table structure and types
-        view_table_structure = ['contig'] + self.sample_ids_found_in_input_dbs + auxiliary_fields
-        view_table_types = ['text'] + ['numeric'] * len(self.sample_ids_found_in_input_dbs) + ['text']
-
-
+        essential_fields = tables.atomic_data_table_structure[2:]
 
         self.progress.new('Generating view data tables')
         for target in ['contigs', 'splits']:

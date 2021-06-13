@@ -186,6 +186,10 @@ views_table_types                    = [  'str'  ,      'str'    ]
 atomic_data_table_structure          = ['contig', 'sample_id', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability']
 atomic_data_table_types              = [ 'text' ,    'text'  ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,   'numeric' ,  'numeric' ,   'numeric'  ]
 
+# anvi-merge converts individual columns of the atomic data tables in single profiles to their own tables
+# in the merged profile databases following this simple structure:
+view_table_structure = ['contig', 'sample' ,  'value' ]
+view_table_types     = [ 'text' , 'numeric', 'numeric']
 
 
 ####################################################################################################
