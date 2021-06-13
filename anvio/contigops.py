@@ -65,15 +65,15 @@ def get_atomic_data_dicts(sample_id, contigs):
         contig_atomic_data = contig.get_atomic_data_dict()
 
         for split in contig.splits:
-            atomic_data_contigs[split.name] = {'contig': contig.name}
-            for atomic_data_field in t.atomic_data_table_structure[1:]:
+            atomic_data_contigs[split.name] = {'contig': contig.name, 'sample_id': sample_id}
+            for atomic_data_field in t.atomic_data_table_structure[2:]:
                 atomic_data_contigs[split.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
             split_atomic_data = split.get_atomic_data_dict()
-            atomic_data_splits[split.name] = {'contig': split.name}
-            for atomic_data_field in t.atomic_data_table_structure[1:]:
+            atomic_data_splits[split.name] = {'contig': split.name, 'sample_id': sample_id}
+            for atomic_data_field in t.atomic_data_table_structure[2:]:
                 atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
 
     return atomic_data_splits, atomic_data_contigs
