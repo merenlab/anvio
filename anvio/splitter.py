@@ -622,7 +622,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
         # db, we will also populate the tables dictionary for data migration::
         sample_names = self.summary.p_meta['samples']
         if merged:
-            for table_name in t.atomic_data_table_structure[1:-1]:
+            for table_name in constants.essential_data_fields_for_anvio_profiles:
                 for target in ['splits', 'contigs']:
                     new_table_name = '_'.join([table_name, target])
                     new_table_structure = ['contig'] + sample_names + ['__parent__']

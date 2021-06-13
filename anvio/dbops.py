@@ -3505,7 +3505,7 @@ class ProfileSuperclass(object):
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
 
-        table_names = [] if self.p_meta['blank'] else [table_name for table_name in t.atomic_data_table_structure[1:-1]]
+        table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
@@ -3520,9 +3520,9 @@ class ProfileSuperclass(object):
 
             self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
             if self.p_meta['merged']:
-                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
+                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name)
             else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ], omit_parent_column=True))
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ]))
 
             for bin_id in collection:
                 # populate averages per bin
@@ -3599,15 +3599,31 @@ class ProfileSuperclass(object):
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
 
-            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress)
+            if split_names_of_interest:
+                where_clause = """contig IN ({','.join(split_names_of_interest)})"""
+                d = profile_db.db.get_some_rows_from_table(table_name, where_clause=where_clause)
+            else:
+                d = profile_db.db.get_all_rows_from_table(table_name)
+
+            items  = set([_[0] for _ in d])
+            layers = set([_[1] for _ in d])
+
+            data = {}
+            for item in items:
+                data[item] = {}
+                for layer in layers:
+                    data[item][layer] = None
+
+            for item, layer, value in d:
+                data[item][layer] = value
 
             if omit_parent_column:
-                header = profile_db.db.get_table_structure(table_name)[1:]
+                header = sorted(list(layers))
             else:
                 # add '__parent__' information to the view data, if necessary
                 for split_name in data:
                     data[split_name]['__parent__'] = self.splits_basic_info[split_name]['parent']
-                header = profile_db.db.get_table_structure(table_name)[1:] + ['__parent__']
+                header = sorted(list(layers)) + ['__parent__']
 
             self.views[view] = {'table_name': table_name,
                                 'header': header,

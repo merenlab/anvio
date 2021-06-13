@@ -545,7 +545,7 @@ class MultipleRuns:
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        essential_fields = tables.atomic_data_table_structure[2:]
+        essential_fields = constants.essential_data_fields_for_anvio_profiles
 
         # initialize views.
         args = argparse.Namespace(profile_db = self.merged_profile_db_path)
@@ -600,18 +600,18 @@ class MultipleRuns:
 
 
     def gen_view_data_tables_from_atomic_data(self):
-        essential_fields = tables.atomic_data_table_structure[2:]
+        essential_fields = constants.essential_data_fields_for_anvio_profiles
 
         self.progress.new('Views')
-        for target, table_name_to_read_from in [('contigs', 'atomic_data_contigs'), ('splits', 'atomic_data_splits')]:
+        for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
-
+                table_name_to_read_from = '_'.join([essential_field, target])
                 for input_profile_db_path in self.profile_dbs_info_dict:
                     sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
                     self.progress.update(f"Reading '{essential_field}' of '{target}' in '{sample_id}'")
 
                     profile_db = dbops.ProfileDatabase(input_profile_db_path)
-                    view_data_for_sample = profile_db.db.get_some_columns_from_table(table_name_to_read_from, ','.join(['contig', 'sample_id', essential_field]))
+                    view_data_for_sample = profile_db.db.get_all_rows_from_table(table_name_to_read_from)
                     profile_db.disconnect()
 
                     self.progress.update(f"Writing '{essential_field}' of '{target}' in '{sample_id}'")

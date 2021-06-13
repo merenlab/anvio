@@ -52,29 +52,25 @@ def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 
-def get_atomic_data_dicts(sample_id, contigs):
-    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data dictionaries"""
+def get_atomic_data(sample_id, contigs, atomic_data_field):
+    """Takes a list of contigops.Contig objects, and returns views for an atomic_data_field"""
 
-    atomic_data_contigs = {}
-    atomic_data_splits = {}
+    atomic_data_contigs = []
+    atomic_data_splits = []
 
     # this loop will get atomic_data information from Contig instanes and store them into the db
     # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
     # although it looks crappy:
     for contig in contigs:
-        contig_atomic_data = contig.get_atomic_data_dict()
+        contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
 
         for split in contig.splits:
-            atomic_data_contigs[split.name] = {'contig': contig.name, 'sample_id': sample_id}
-            for atomic_data_field in t.atomic_data_table_structure[2:]:
-                atomic_data_contigs[split.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
+            atomic_data_contigs.append((split.name, sample_id, contig_atomic_data), )
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
-            split_atomic_data = split.get_atomic_data_dict()
-            atomic_data_splits[split.name] = {'contig': split.name, 'sample_id': sample_id}
-            for atomic_data_field in t.atomic_data_table_structure[2:]:
-                atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
+            split_atomic_data = split.get_atomic_data_dict(atomic_data_field)
+            atomic_data_splits.append((split.name, sample_id, split_atomic_data), )
 
     return atomic_data_splits, atomic_data_contigs
 
@@ -92,18 +88,15 @@ class Contig:
         self.skip_SNV_profiling = False
 
 
-    def get_atomic_data_dict(self):
+    def get_atomic_data_dict(self, atomic_data_field):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
-             'max_normalized_ratio': 1.0,
-             'relative_abundance': 1.0,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None,
-             '__parent__': None}
+             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None}
 
-        return d
+        return d[atomic_data_field]
 
 
     def analyze_coverage(self, bam, min_percent_identity):
@@ -172,18 +165,15 @@ class Split:
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
-    def get_atomic_data_dict(self):
+    def get_atomic_data_dict(self, atomic_data_field):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
-             'max_normalized_ratio': 1.0,
-             'relative_abundance': 1.0,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': self.auxiliary.variation_density if self.auxiliary else None,
-             '__parent__': self.parent}
+             'variability': self.auxiliary.variation_density if self.auxiliary else None}
 
-        return d
+        return d[atomic_data_field]
 
 
 class Auxiliary:

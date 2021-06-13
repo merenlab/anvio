@@ -180,12 +180,6 @@ views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
 views_table_types                    = [  'str'  ,      'str'    ]
 
-# notice that atomic data table doesn't have a table name. because how we use this table is a bit tricky.
-# for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
-# each column of the atomic data table becomes its own table.
-atomic_data_table_structure          = ['contig', 'sample_id', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability']
-atomic_data_table_types              = [ 'text' ,    'text'  ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,   'numeric' ,  'numeric' ,   'numeric'  ]
-
 # anvi-merge converts individual columns of the atomic data tables in single profiles to their own tables
 # in the merged profile databases following this simple structure:
 view_table_structure = ['contig', 'sample' ,  'value' ]
