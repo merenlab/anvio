@@ -43,7 +43,7 @@ config_template = {
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
-                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix'], 'required': 'matrix or dataframe'},
+                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix', 'view'], 'required': 'matrix, view, or dataframe'},
                 'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 0,
                             'required': 'one or more comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
@@ -299,6 +299,21 @@ class ClusteringConfiguration:
                     args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
                     table = TableForItemAdditionalData(args)
                     table_keys_list, table_data_dict = table.get()
+                    store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
+                elif table_form == 'view':
+                    table_data_dict = {}
+
+                    items = set([tpl[0] for tpl in table_rows])
+                    sample_ids = set(tpl[1] for tpl in table_rows)
+
+                    for item in items:
+                        table_data_dict[item] = {}
+                        for sample_id in sample_ids:
+                            table_data_dict[item][sample_id] = 0
+
+                    for item, sample_id, value in table_rows:
+                        table_data_dict[item][sample_id] = value
+
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 else:
                     table_structure = dbc.get_table_structure(table)
