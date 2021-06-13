@@ -686,9 +686,7 @@ class MultipleRuns:
 
                     for input_profile_db_path in self.profile_dbs_info_dict:
                         sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-                        if essential_field == 'normalized_coverage':
-                            data_dict[split_name][sample_id] = self.normalized_coverages[target][split_name][input_profile_db_path]
-                        elif essential_field == 'max_normalized_ratio':
+                        if essential_field == 'max_normalized_ratio':
                             data_dict[split_name][sample_id] = self.max_normalized_ratios[target][split_name][input_profile_db_path]
                         elif essential_field == 'relative_abundance':
                             data_dict[split_name][sample_id] = self.get_relative_abundance_of_split(target, input_profile_db_path, split_name)
