@@ -602,32 +602,27 @@ class MultipleRuns:
     def gen_view_data_tables_from_atomic_data(self):
         essential_fields = tables.atomic_data_table_structure[2:]
 
-        self.progress.new('Generating view data tables')
-        for target in ['contigs', 'splits']:
+        self.progress.new('Views')
+        for target, table_name_to_read_from in [('contigs', 'atomic_data_contigs'), ('splits', 'atomic_data_splits')]:
             for essential_field in essential_fields:
-                self.progress.update('Processing %s for %s ...' % (essential_field, target))
 
-                data_dict = {}
-                for split_name in self.split_names:
-                    data_dict[split_name] = {'__parent__': self.split_parents[split_name]['parent']}
+                for input_profile_db_path in self.profile_dbs_info_dict:
+                    sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
+                    self.progress.update(f"Reading '{essential_field}' of '{target}' in '{sample_id}'")
 
-                    for input_profile_db_path in self.profile_dbs_info_dict:
-                        sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-                        if essential_field == 'max_normalized_ratio':
-                            data_dict[split_name][sample_id] = self.max_normalized_ratios[target][split_name][input_profile_db_path]
-                        elif essential_field == 'relative_abundance':
-                            data_dict[split_name][sample_id] = self.get_relative_abundance_of_split(target, input_profile_db_path, split_name)
-                        else:
-                            data_dict[split_name][sample_id] = self.atomic_data_for_each_run[target][input_profile_db_path][split_name][essential_field]
+                    profile_db = dbops.ProfileDatabase(input_profile_db_path)
+                    view_data_for_sample = profile_db.db.get_some_columns_from_table(table_name_to_read_from, ','.join(['contig', 'sample_id', essential_field]))
+                    profile_db.disconnect()
 
-                # time to store the data for this view in the profile database
-                table_name = '_'.join([essential_field, target])
-                TablesForViews(self.merged_profile_db_path).create_new_view(
-                                                data_dict=data_dict,
-                                                table_name=table_name,
-                                                table_structure=view_table_structure,
-                                                table_types=view_table_types,
-                                                view_name=essential_field if target == 'splits' else None)
+                    self.progress.update(f"Writing '{essential_field}' of '{target}' in '{sample_id}'")
+                    table_name = '_'.join([essential_field, target])
+                    TablesForViews(self.merged_profile_db_path,
+                                   progress=self.progress) \
+                                        .create_new_view(view_data=view_data_for_sample,
+                                                         table_name=table_name,
+                                                         append_mode=True,
+                                                         view_name=essential_field if target == 'splits' else None,
+                                                         skip_sanity_check=True)
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
