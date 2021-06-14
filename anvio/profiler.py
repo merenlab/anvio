@@ -267,13 +267,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_mock_profile()
 
             # creating a null view_data_splits dict:
-            v = constants.essential_data_fields_for_anvio_profiles
-            view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(v, [None] * len(v))))] * len(self.split_names))))
-            TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
-            TablesForViews(self.profile_db_path).create_new_view(
-                                           data_dict=view_data_splits,
-                                           table_name='atomic_data_splits',
-                                           view_name='single')
+            for view in constants.essential_data_fields_for_anvio_profiles:
+                for table_name in [f"{view}_{target}" for target in ['splits', 'contigs']]:
+                    TablesForViews(self.profile_db_path).remove(view, table_names_to_blank=[table_name])
+                    TablesForViews(self.profile_db_path,
+                                   progress=self.progress) \
+                                        .create_new_view(view_data=[],
+                                                         table_name=table_name,
+                                                         skip_sanity_check=True,
+                                                         view_name=None if table_name.endswith('contigs') else view)
         elif self.input_file_path:
             self.init_profile_from_BAM()
             if self.num_threads > 1 or self.args.force_multi:
