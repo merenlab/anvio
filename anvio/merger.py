@@ -610,8 +610,8 @@ class MultipleRuns:
                     sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
                     self.progress.update(f"Reading '{essential_field}' of '{target}' in '{sample_id}'")
 
-                    profile_db = dbops.ProfileDatabase(input_profile_db_path)
-                    view_data_for_sample = profile_db.db.get_all_rows_from_table(table_name_to_read_from)
+                    profile_db = db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
+                    view_data_for_sample = profile_db.get_all_rows_from_table(table_name_to_read_from)
                     profile_db.disconnect()
 
                     self.progress.update(f"Writing '{essential_field}' of '{target}' in '{sample_id}'")
