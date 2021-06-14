@@ -540,7 +540,8 @@ class DB:
         layers = set(self.get_single_column_from_table(view_table_name, 'sample', unique=True))
 
         if split_names_of_interest:
-            where_clause = f"""contig IN ({','.join(split_names_of_interest)})"""
+            split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
+            where_clause = f"""contig IN ({split_names_formatted})"""
             d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
             items = items.intersection(split_names_of_interest)
         else:
