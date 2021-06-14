@@ -3443,40 +3443,27 @@ class ProfileSuperclass(object):
                               "were trying to do with this database will not work :/" % (self.profile_db_path))
 
         if splits_mode and report_contigs:
+            self.progress.reset()
             raise ConfigError("--splits-mode and --report-contigs flags are incompatible. Pick one.")
 
         coverage_data_of_interest = 'mean_coverage_Q2Q3' if use_Q2Q3_coverages else 'mean_coverage'
 
+        table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
+
         profile_db = ProfileDatabase(self.profile_db_path)
-
-        if self.p_meta['merged']:
-            table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
-            split_coverages_dict = profile_db.db.get_table_as_dict(table_name)
-        else:
-            table_name = 'atomic_data' + '_' + ('splits' if splits_mode else 'contigs')
-            d = profile_db.db.get_table_as_dict(table_name, columns_of_interest=[coverage_data_of_interest])
-
-            # converting the raw dictionary read from the atomic data table into a for that is identical
-            # to the one that is read from a merged profile database:
-            split_coverages_dict = dict([(s, dict([(profile_db.meta['samples'], v) for v in list(d[s].values())])) for s in d])
-
+        split_coverages_dict, _ = profile_db.db.get_view_data(table_name)
         profile_db.disconnect()
 
-        # this is one of the shittiest blocks of code in anvi'o :( it is because the atomics_data_contigs table
-        # in single profiles have a 'None' for the __parent__ column in them, even though it is not the case
-        # for atomic_data_splits table (which is essentially identical to the former, except that it keeps
-        # staitstics for individual splits rather than their parents). this tiny tiny design issue creates a
-        # ridiculously complex chain of issues that require us here to use Python's split function to resolve
-        # split names to contig names when the user wants to get back item coverages values for contigs from
-        # single profiles. after literally spending hours on this, meren decided to let it go. the proper
-        # solution is to implement a new table for parent - split name associations in contigs databases,
-        # and remove __parent__ columns from all single and merged profile databases once and for all. it is
-        # quite a bit of refactoring though.
         if report_contigs:
+            # if we are here it means the user is asking for coverages for contigs, not splits. easy peasy.
+            contigs_db = ContigsDatabase(self.contigs_db_path)
+            split_parents = contigs_db.db.get_table_as_dict(t.splits_info_table_name, columns_of_interest=['contig', 'parent'])
+            contigs_db.disconnect()
+
             contig_coverages_dict = {}
 
             for split_name in split_coverages_dict:
-                contig_name = '_split_'.join(split_name.split('_split_')[:-1])
+                contig_name = split_parents[split_name]['parent']
 
                 if contig_name in contig_coverages_dict:
                     continue
