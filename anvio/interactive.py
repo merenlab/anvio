@@ -899,11 +899,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
             view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=self.views[view]['dict'],
+                                            view_data=self.views[view]['dict'],
                                             table_name=f"{view}",
-                                            table_structure=view_table_structure,
-                                            table_types=view_table_types,
-                                            view_name=f"{view}")
+                                            view_name=f"{view}",
+                                            from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
