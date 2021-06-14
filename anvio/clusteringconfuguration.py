@@ -274,18 +274,18 @@ class ClusteringConfiguration:
                 # may help: https://github.com/merenlab/anvio/issues/662
                 table_form = self.get_option(config, section, 'table_form', str)
 
-                if self.row_ids_of_interest:
-                    column_name = dbc.get_table_structure(table)[0]
-                    where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
-                    table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                if table_form == 'view':
+                    table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
                 else:
-                    table_rows = dbc.get_all_rows_from_table(table)
-
-                if self.row_ids_of_interest:
-                    if table_form == 'dataframe':
-                        raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
-                                          "refernced from a clustering recipe is in dataframe form :(")
-                    table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
+                    if self.row_ids_of_interest:
+                        if table_form == 'dataframe':
+                            raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
+                                              "refernced from a clustering recipe is in dataframe form :(")
+                        column_name = dbc.get_table_structure(table)[0]
+                        where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
+                        table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                    else:
+                        table_rows = dbc.get_all_rows_from_table(table)
 
                 if not len(table_rows):
                     raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This "
@@ -301,20 +301,7 @@ class ClusteringConfiguration:
                     table_keys_list, table_data_dict = table.get()
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 elif table_form == 'view':
-                    table_data_dict = {}
-
-                    items = set([tpl[0] for tpl in table_rows])
-                    sample_ids = set(tpl[1] for tpl in table_rows)
-
-                    for item in items:
-                        table_data_dict[item] = {}
-                        for sample_id in sample_ids:
-                            table_data_dict[item][sample_id] = 0
-
-                    for item, sample_id, value in table_rows:
-                        table_data_dict[item][sample_id] = value
-
-                    store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
+                    store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
                 else:
                     table_structure = dbc.get_table_structure(table)
                     columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
