@@ -61,7 +61,16 @@ class TablesForViews(Table):
                               "anvi'o expects :/")
 
 
-    def create_new_view(self, view_data, table_name, view_name=None, append_mode=False, skip_sanity_check=False):
+    def matrix_to_long_form(self, view_data):
+        d = []
+        for item in view_data:
+            for layer in view_data[item]:
+                d.append((item, layer, view_data[item][layer]), )
+
+        return(d)
+
+
+    def create_new_view(self, view_data, table_name, view_name=None, append_mode=False, skip_sanity_check=False, from_matrix_form=False):
         """Creates a new view table, and adds an entry for it into the 'views' table.
 
         Entries in 'views' table appear in various places in the interface. However, we also generate
@@ -77,6 +86,9 @@ class TablesForViews(Table):
 
         If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
         """
+
+        if from_matrix_form:
+            view_data = self.matrix_to_long_form(view_data)
 
         if not skip_sanity_check:
             self.sanity_check(view_data)
