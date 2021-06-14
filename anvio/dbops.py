@@ -3599,31 +3599,9 @@ class ProfileSuperclass(object):
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
 
-            if split_names_of_interest:
-                where_clause = """contig IN ({','.join(split_names_of_interest)})"""
-                d = profile_db.db.get_some_rows_from_table(table_name, where_clause=where_clause)
-            else:
-                d = profile_db.db.get_all_rows_from_table(table_name)
-
-            items  = set([_[0] for _ in d])
-            layers = set([_[1] for _ in d])
-
-            data = {}
-            for item in items:
-                data[item] = {}
-                for layer in layers:
-                    data[item][layer] = None
-
-            for item, layer, value in d:
-                data[item][layer] = value
-
-            if omit_parent_column:
-                header = sorted(list(layers))
-            else:
-                # add '__parent__' information to the view data, if necessary
-                for split_name in data:
-                    data[split_name]['__parent__'] = self.splits_basic_info[split_name]['parent']
-                header = sorted(list(layers)) + ['__parent__']
+            data, header = profile_db.db.get_view_data(table_name,
+                                                       split_names_of_interest=split_names_of_interest,
+                                                       splits_basic_info=(None if omit_parent_column else self.splits_basic_info))
 
             self.views[view] = {'table_name': table_name,
                                 'header': header,
