@@ -523,6 +523,50 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None):
+        """A wrapper function to get view data.
+
+        Anvi'o keeps view data in long format while most tools in it work with view data
+        in NxM matrix format. The purpose of this function is to transform the table data
+        into the convenient data structure.
+
+        In some applications, the view data is required to have information about the parent
+        contig of each split. While anvi'o reports clean view data by default, if the user
+        provides a `splits_basic_info` dictionary, this function will add the `__parent__`
+        key to each item.
+        """
+
+        items = set(self.get_single_column_from_table(view_table_name, 'contig', unique=True))
+        layers = set(self.get_single_column_from_table(view_table_name, 'sample', unique=True))
+
+        if split_names_of_interest:
+            where_clause = f"""contig IN ({','.join(split_names_of_interest)})"""
+            d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
+            items = items.intersection(split_names_of_interest)
+        else:
+            d = self.get_all_rows_from_table(view_table_name)
+
+        data = {}
+        for item in items:
+            data[item] = {}
+            for layer in layers:
+                data[item][layer] = None
+
+        for entry_id, item, layer, value in d:
+            data[item][layer] = value
+
+        # add `__parent__` layer if asked:
+        if splits_basic_info:
+            for split_name in data:
+                data[split_name]['__parent__'] = splits_basic_info[split_name]['parent']
+            header = sorted(list(layers)) + ['__parent__']
+        else:
+            header = sorted(list(layers))
+
+        # fly away, lil birb, flai awai.
+        return (data, header)
+
+
     def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
         """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
 
