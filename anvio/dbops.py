@@ -3509,20 +3509,14 @@ class ProfileSuperclass(object):
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
-        # anonymous function to convert single profile table dicts compatible with merged ones (#155):
-        SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in list(d[s].values())])) for s in d])
-
-        self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
+        self.progress.new(f"Collection profile for '{collection_name}'")
         for table_name in table_names:
             # if SNVs are not profiled, skip the `variability` table
             if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
                 continue
 
-            self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
-            if self.p_meta['merged']:
-                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name)
-            else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ]))
+            self.progress.update(f"Populating view '{table_name}'")
+            table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
                 # populate averages per bin
@@ -3553,10 +3547,7 @@ class ProfileSuperclass(object):
                 self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
-        if self.p_meta['merged']:
-            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
-        else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=["mean_coverage", ], omit_parent_column=True))
+        coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
 
         self.bin_percent_recruitment_per_sample = {}
         if self.p_meta['blank']:
