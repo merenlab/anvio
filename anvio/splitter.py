@@ -371,11 +371,10 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
         # summarizer.PanBin already has updated/pruned views dicts. that's why this loop will work.
         for view_name in ['gene_cluster_frequencies', 'gene_cluster_presence_absence']:
             TablesForViews(self.bin_pan_db_path).create_new_view(
-                                                data_dict=self.views[view_name]['dict'],
+                                                view_data=self.views[view_name]['dict'],
                                                 table_name=self.views[view_name]['table_name'],
-                                                table_structure=table_structure,
-                                                table_types=table_types,
-                                                view_name = view_name)
+                                                view_name = view_name,
+                                                from_matrix_form=True)
 
         # setup the filtering rules for migrating data:
         tables = {

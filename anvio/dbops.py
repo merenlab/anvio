@@ -2522,9 +2522,10 @@ class PanSuperclass(object):
 
         for view in views_table:
             table_name = views_table[view]['target_table']
+            data, header = pan_db.db.get_view_data(table_name, split_names_of_interest=split_names_of_interest)
             self.views[view] = {'table_name': table_name,
-                                'header': pan_db.db.get_table_structure(table_name)[1:],
-                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest)}
+                                'header': header,
+                                'dict': data}
 
         pan_db.disconnect()
 
