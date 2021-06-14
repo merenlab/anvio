@@ -201,9 +201,6 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        # FIXME: need to add target files for metagenomics workflow here!
-        # target_files.extend(list(self.profile_databases.values()))
-
         for ribosomal_protein_name in self.SCG_protein_list:
 
             # Count num sequences removed per step

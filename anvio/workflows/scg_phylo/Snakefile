@@ -41,7 +41,8 @@ rule anvi_run_hmms_hmmsearch:
     output:
         touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done")),
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
-        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed")
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed"),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table")
     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
     run:
       hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
@@ -84,7 +85,7 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_aa:
     """Extract all SCG AA sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_AA_{sample_name}_{ribosomal_protein_name}.log")
     input:
         done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_contigsDB_filtered.done"),
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
@@ -104,7 +105,7 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_nt:
     """Extract all SCG NT sequences listed in SCG_protein_list.txt from metagenomes.txt and external_genomes.txt"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_{sample_name}_{ribosomal_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_NT_{sample_name}_{ribosomal_protein_name}.log")
     input:
         done_file = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{ribosomal_protein_name}_hmm_hits.faa.done"),
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
@@ -152,7 +153,7 @@ rule cat_external_gene_calls_file:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
     shell:
-        "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all}"
+        "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}"
 
 rule rename_and_filter_external_gene_calls_file_all:
     """"""
