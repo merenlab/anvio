@@ -763,7 +763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             clusterings[clustering_id] = {'type': 'newick', 'data': newick}
 
-        run.info('available_clusterings', list(clusterings.keys()))
+        run.info('Available clusterings', list(clusterings.keys()))
 
         return clusterings
 
@@ -961,6 +961,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
+
             default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
             default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
