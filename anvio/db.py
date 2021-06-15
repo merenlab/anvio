@@ -56,7 +56,7 @@ class DB:
         # to its rows read from the database or not. if the first column of a given
         # table does not contain unique variables, anvi'o prepends the ROWID of each
         # column to index 0, unless `skip_rowid_prepend` is True
-        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.requires_unique_entry_id[table_name]
+        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.is_table_requires_unique_entry_id(table_name)
         self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
         if new_database:
@@ -103,14 +103,13 @@ class DB:
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
                                       f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if not tables.is_known_table(table_name)]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
-                                  "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
+                                  "anvio/tables/__init__.py dictionary `table_requires_unique_entry_id` to explicitly define whether anvi'o "
                                   "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
-                                  "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
-                                  "dictionary." % (', '.join(bad_tables)))
+                                  "in this database do not satisfy that: %s." % (', '.join([f"'{t}'" for t in bad_tables])))
 
 
     def __enter__(self):
