@@ -144,7 +144,9 @@ def migrate(db_path):
         ###########################
 
         raise ConfigError("Anvi'o is confuse. Your profile database does not fit into anything we have "
-                          "anticipated to run into here. For full disclosure, ")
+                          "anticipated to run into here. For full disclosure, [the rest of the sentence "
+                          "was left blank intentionally just to drive you mad as you drive anvi'o mad -- "
+                          "eye for an eye].")
 
     # set the version
     profile_db = db.DB(db_path, None, ignore_version = True)
