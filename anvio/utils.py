@@ -3760,7 +3760,7 @@ def get_all_item_names_from_the_database(db_path, run=run):
                         "to not kill your mojo, but whatever you were trying to do will not work :(")
             return set([])
         else:
-            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
+            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':

@@ -42,8 +42,8 @@ class TablesForViews(Table):
 
         if len(view_data[0]) != 3:
             self.progress.reset()
-            raise ConfigError(f"Each item in the view data list must be a list or tuple with three items (contig name, "
-                              f"sample name, and data value). The length of yours is {len(view_data[0])}. Not OK.")
+            raise ConfigError(f"Each item in the view data list must be a list or tuple with three items (item name, "
+                              f"layer name, and data value). The length of yours is {len(view_data[0])}. Not OK.")
 
         data_tuple_lengths = set([len(d) for d in view_data])
         if len(data_tuple_lengths) > 1:

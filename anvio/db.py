@@ -535,12 +535,12 @@ class DB:
         key to each item.
         """
 
-        items = set(self.get_single_column_from_table(view_table_name, 'contig', unique=True))
-        layers = set(self.get_single_column_from_table(view_table_name, 'sample', unique=True))
+        items = set(self.get_single_column_from_table(view_table_name, 'item', unique=True))
+        layers = set(self.get_single_column_from_table(view_table_name, 'layer', unique=True))
 
         if split_names_of_interest:
             split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
-            where_clause = f"""contig IN ({split_names_formatted})"""
+            where_clause = f"""item IN ({split_names_formatted})"""
             d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
             items = items.intersection(split_names_of_interest)
         else:
