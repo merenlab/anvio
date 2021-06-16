@@ -12,8 +12,6 @@ import pandas as pd
 import sqlite3
 import warnings
 
-from collections import Counter
-
 import anvio
 import anvio.tables as tables
 import anvio.terminal as terminal
@@ -524,7 +522,7 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None):
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None, log_norm_numeric_values=False):
         """A wrapper function to get view data.
 
         Anvi'o keeps view data in long format while most tools in it work with view data
@@ -553,7 +551,10 @@ class DB:
             layers.add(layer)
 
         for entry_id, item, layer, value in d:
-            data[item][layer] = value
+            if log_norm_numeric_values:
+                data[item][layer] = math.log10(value + 1)
+            else:
+                data[item][layer] = value
 
         # add `__parent__` layer if asked:
         if splits_basic_info:
