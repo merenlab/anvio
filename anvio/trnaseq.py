@@ -6525,17 +6525,15 @@ class DatabaseConverter(object):
         and splits tables contain the same information since tRNA, unlike a metagenomic contig, is
         not long enough to be split."""
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_contigs',
-            table_structure=['contig'] + self.trnaseq_db_sample_ids + ['__parent__'],
-            table_types=['text'] + ['numeric'] * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=None)
+            view_name=None,
+            from_matrix_form=True)
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_splits',
-            table_structure=['contig'] + self.trnaseq_db_sample_ids + ['__parent__'],
-            table_types=['text'] + ['numeric'] * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=table_basename)
+            view_name=table_basename,
+            from_matrix_form=True)
 
 
     def create_combined_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
@@ -6543,17 +6541,15 @@ class DatabaseConverter(object):
         the same information since tRNA, unlike a metagenomic contig, is not long enough to be
         split."""
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_contigs',
-            table_structure=['contig'] + list(itertools.chain(*[(sample_id + '_specific', sample_id + '_nonspecific') for sample_id in self.trnaseq_db_sample_ids])) + ['__parent__'],
-            table_types=['text'] + ['numeric'] * 2 * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=None)
+            view_name=None,
+            from_matrix_form=True)
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_splits',
-            table_structure=['contig'] + list(itertools.chain(*[(sample_id + '_specific', sample_id + '_nonspecific') for sample_id in self.trnaseq_db_sample_ids])) + ['__parent__'],
-            table_types=['text'] + ['numeric'] * 2 * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=table_basename)
+            view_name=table_basename,
+            from_matrix_form=True)
 
 
 def trnaseq_db_loader(input_queue, output_queue, db_converter):

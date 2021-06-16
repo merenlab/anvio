@@ -3,8 +3,10 @@
 [TNF !CONTIGS.db::kmer_contigs]
 
 [Coverage PROFILE.db::mean_coverage_contigs]
+table_form = view
 
 [Coverage_N PROFILE.db::mean_coverage_Q2Q3_contigs]
+table_form = view
 normalize = False
 log = True
 

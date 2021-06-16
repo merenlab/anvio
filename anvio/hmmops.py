@@ -130,7 +130,7 @@ class SequencesForHMMHits:
                 if self.bin_name:
                     header = f"A WARNING RELATED TO HMMs IN '{self.bin_name}'"
                 else:
-                    header = f"WARNING"
+                    header = "WARNING"
 
                 self.run.warning(f"While anvi'o was trying to finalize HMM hits associated with splits of interest, "
                                  f"it realized that there were one or more HMM hits that spanned through multiple splits "
@@ -172,6 +172,7 @@ class SequencesForHMMHits:
             # there are HMMs but no hits. FINE.
             self.progress.end()
             contigs_db.disconnect()
+            progress.reset()
             self.run.warning(f"SequencesForHMMHits class here. The current database (at {contigs_db_path}) "
                              f"contains 0 HMM hits, at least within the HMM sources or splits that were "
                              f"requested. It might not be a problem for your case, but we just thought you should "

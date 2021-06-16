@@ -70,7 +70,7 @@ anvi-import-misc-data -p TEST/TEST-PAN.db \
                       group-information.txt
 
 INFO "Estimating enriched functions per pan group"
-anvi-compute-functional-enrichment -p TEST/TEST-PAN.db \
+anvi-compute-functional-enrichment-in-pan -p TEST/TEST-PAN.db \
                                           -g TEST-GENOMES.db \
                                           --category group \
                                           --annotation-source COG_FUNCTION \

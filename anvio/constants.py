@@ -19,6 +19,20 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
+# these are the atomic data that are generated for each contig profiled
+# based on read recruitment results. anvio/contigops.py has the details:
+essential_data_fields_for_anvio_profiles = ['std_coverage',
+                                            'mean_coverage',
+                                            'mean_coverage_Q2Q3',
+                                            'detection',
+                                            'abundance',
+                                            'variability']
+
+# this is to distinguish fields that are often useless for clustering ops
+# and other purposes
+IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
+
 default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -190,8 +204,6 @@ for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clusteri
     for config in glob.glob(os.path.join(clustering_configs_dir, dir, '*')):
         clustering_configs[dir][os.path.basename(config)] = config
 
-IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
-IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')

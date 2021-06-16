@@ -763,7 +763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             clusterings[clustering_id] = {'type': 'newick', 'data': newick}
 
-        run.info('available_clusterings', list(clusterings.keys()))
+        run.info('Available clusterings', list(clusterings.keys()))
 
         return clusterings
 
@@ -899,11 +899,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
             view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=self.views[view]['dict'],
+                                            view_data=self.views[view]['dict'],
                                             table_name=f"{view}",
-                                            table_structure=view_table_structure,
-                                            table_types=view_table_types,
-                                            view_name=f"{view}")
+                                            view_name=f"{view}",
+                                            from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
@@ -962,6 +961,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
+
             default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
             default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)

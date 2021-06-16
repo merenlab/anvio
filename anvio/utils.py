@@ -3759,10 +3759,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")
             return set([])
-        elif int(database.get_meta_value('merged')):
-            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
         else:
-            all_items = set(database.get_single_column_from_table('atomic_data_splits', 'contig'))
+            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':
