@@ -416,11 +416,10 @@ function draw() {
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
     addGenome(label, genome[1].genes.gene_calls, genome[0], y)
-    drawGenomeLabels(label)
     labelSpacing += 30
     y++;
   }
-
+  buildGenomesTable(genomeData.genomes)
   drawScale(y);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
 }
@@ -714,8 +713,8 @@ function resetScale(){
   canvas.setZoom(1)
 }
 
-function drawGenomeLabels(label){
-  console.log(label);
+function buildGenomesTable(genomes){
+  console.log(genomes);
 }
 
 function changeGenomeOrder(event){
