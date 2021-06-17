@@ -731,21 +731,19 @@ function buildGenomesTable(genomes, order){
                 '</tr>';
 
   genomes.map(genome => {
-    let genomeLabel= Object.keys(genome[1]['contigs']['info']); // this is genome label
+    let genomeLabel= Object.keys(genome[1]['contigs']['info']); // this is our genome label
+
     template = template.replace(new RegExp('{Parent}', 'g'), genomeLabel)
-                               .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                       .replace(new RegExp('{height}', 'g'), height)
+                       .replace(new RegExp('{margin}', 'g'), margin);
 
-            $('#tbody_genomes').prepend(template);
-    
+    $('#tbody_genomes').prepend(template);
   })
-
 }
 
 function changeGenomeOrder(event){
 
   if(event.target.value === "Alphabetical"){
     console.log(typeof genomeData.genomes)
-
   }
 }
