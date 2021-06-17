@@ -1,6 +1,6 @@
-This program is for filtering a %(hmm-source)s from a %(hmm-hits)s in a %(contigs-db)s using HMM alignment parameters such as query-coverage and target-coverage. Briefly, the program will remove all records from an %(hmm-source)s in the %(hmm-hits)s then import a new %(hmm-hits)s table into the %(contigs-db)s that was filtered to your specifications. At the moment, this tool is only designed to work with `hmmsearch` with protein sequences. The `--domtblout` can be produced from running %(anvi-run-hmms)s with your %(hmm-source)s of interest and using the `--domtblout` parameter AND  `hmmsearch` as the program.
+This program is for filtering a %(hmm-source)s from a %(hmm-hits)s in a %(contigs-db)s using HMM alignment parameters such as query-coverage and target-coverage. Briefly, the program will remove all records from an %(hmm-source)s in the %(hmm-hits)s, then import a new %(hmm-hits)s table into the %(contigs-db)s that was filtered to your specifications.
 
-For this, you first need to ask %(anvi-run-hmms)s to ask HMMER to report a domain hits table by including `--hmm-domain-tblout-path` flag in your command:
+For this, you first need to ask %(anvi-run-hmms)s to ask HMMER to report a domain hits table by including `--domain-hits-table` flag in your command:
 
 {{ codestart }}
 anvi-run-hmms -c %(contigs-db)s \
