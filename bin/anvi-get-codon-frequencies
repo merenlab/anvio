@@ -43,6 +43,7 @@ class ReportCodonFrequencies:
         self.return_AA_frequencies_instead = A('return_AA_frequencies_instead')
         self.percent_normalize = A('percent_normalize')
         self.merens_codon_normalization = A('merens_codon_normalization')
+        self.collapse_genes = A('collapse_genes')
         self.output_file_path = A('output_file')
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -86,8 +87,10 @@ class ReportCodonFrequencies:
         else:
             self.c.init_contig_sequences()
 
-        residue_frequencies = {}
         noncoding_genes_skipped = set([])
+        residue_frequencies = {}
+        if self.collapse_genes:
+            residue_frequencies['all'] = Counter()
 
         F = utils.get_list_of_AAs_for_gene_call if self.return_AA_frequencies_instead else utils.get_list_of_codons_for_gene_call
 
@@ -98,7 +101,12 @@ class ReportCodonFrequencies:
                 noncoding_genes_skipped.add(gene_callers_id)
                 continue
 
-            residue_frequencies[gene_callers_id] = Counter(F(gene_call, self.c.contig_sequences))
+            gene_counts = Counter(F(gene_call, self.c.contig_sequences))
+            if self.collapse_genes:
+                residue_frequencies['all'] += gene_counts
+            else:
+                residue_frequencies[gene_callers_id] = gene_counts
+
 
         if self.percent_normalize:
             for gene_callers_id in residue_frequencies:
