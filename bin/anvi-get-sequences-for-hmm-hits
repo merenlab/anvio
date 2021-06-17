@@ -216,7 +216,17 @@ def main(args):
         hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
         CHK()
 
-        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
+        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple genes' % (len(hmm_sequences_dict)))
+
+    if args.unique_genes:
+        run.warning("You asked anvi'o for each gene that has multiple hits to report only the best hit, which means, if, "
+                    "say, there are multiple models in your HMM source that match to a single gene, only the one with the "
+                    "lowest e-value will be kept, and others will be removed from your final results.")
+
+        hmm_sequences_dict = s.filter_hmm_sequences_dict_to_keep_only_unique_gene_hits(hmm_sequences_dict)
+        CHK()
+
+        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple models' % (len(hmm_sequences_dict)))
 
     if args.separator:
         separator = args.separator
@@ -301,6 +311,7 @@ if __name__ == '__main__':
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
