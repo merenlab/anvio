@@ -419,7 +419,7 @@ function draw() {
     labelSpacing += 30
     y++;
   }
-  buildGenomesTable(genomeData.genomes)
+  buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   drawScale(y);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
 }
@@ -713,7 +713,7 @@ function resetScale(){
   canvas.setZoom(1)
 }
 
-function buildGenomesTable(genomes){
+function buildGenomesTable(genomes, order){
   console.log(genomes);
 }
 
