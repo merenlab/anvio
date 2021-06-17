@@ -714,7 +714,32 @@ function resetScale(){
 }
 
 function buildGenomesTable(genomes, order){
-  console.log(genomes);
+
+  var height = '50';
+  var margin = '15';
+  var template = '<tr>' +
+                '<td><img src="images/drag.gif" /></td>' +
+                '<td> {Parent} </td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td>n/a</td>' +
+                '<td>n/a</td>' +
+                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                '</tr>';
+
+  genomes.map(genome => {
+    let genomeLabel= Object.keys(genome[1]['contigs']['info']); // this is genome label
+    template = template.replace(new RegExp('{Parent}', 'g'), genomeLabel)
+                               .replace(new RegExp('{height}', 'g'), height)
+                               .replace(new RegExp('{margin}', 'g'), margin);
+
+            $('#tbody_genomes').prepend(template);
+    
+  })
+
 }
 
 function changeGenomeOrder(event){
