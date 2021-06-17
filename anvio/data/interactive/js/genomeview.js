@@ -741,6 +741,10 @@ function buildGenomesTable(genomes, order){
   })
   $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).enableSelection();
 
+  $('#table_genomes .drag-icon').on('mousedown', function() {
+    console.log('sorting');
+    // $('#samples_order').val('custom').trigger('change');
+  });
 }
 
 function changeGenomeOrder(event){
