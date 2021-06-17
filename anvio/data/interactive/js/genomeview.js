@@ -739,6 +739,8 @@ function buildGenomesTable(genomes, order){
 
     $('#tbody_genomes').prepend(template);
   })
+  $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).enableSelection();
+
 }
 
 function changeGenomeOrder(event){
@@ -747,3 +749,12 @@ function changeGenomeOrder(event){
     console.log(typeof genomeData.genomes)
   }
 }
+
+var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
+  var $originals = tr.children();
+  var $helper = tr.clone();
+  $helper.children().each(function(index) {
+      $(this).width($originals.eq(index).width());
+  });
+  return $helper;
+};
