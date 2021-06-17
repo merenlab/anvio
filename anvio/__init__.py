@@ -1042,10 +1042,18 @@ D = {
             ['--return-best-hit'],
             {'default': False,
              'action': 'store_true',
-             'help': "A bin may contain more than one hit for a gene name in a given HMM source. For instance, there may "
+             'help': "A bin (or genome) may contain more than one hit for a gene name in a given HMM source. For instance, there may "
                      "be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of "
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'unique-genes': (
+            ['--unique-genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "An HMM source may contain multiple models that can hit the same gene in a given bin or genome. "
+                     "Using this flag, you can ask anvi'o to go through all genes, identify those with multiple hits "
+                     "and report only the most significant hit for each unique gene."}
                 ),
     'max-num-genes-missing-from-bin': (
             ['--max-num-genes-missing-from-bin'],
