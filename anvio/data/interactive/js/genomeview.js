@@ -715,15 +715,7 @@ function resetScale(){
 }
 
 function drawGenomeLabels(label){
-  genomeLabelsCanvas.add(new fabric.Text(label, {
-    top : labelSpacing,
-    fontSize : 15,
-    fontFamily: 'sans-serif',
-    fontWeight: 'bold',
-    selectable : true,
-    hasControls : false,
-    lockMovementX : true
-  }))
+  console.log(label);
 }
 
 function changeGenomeOrder(event){
