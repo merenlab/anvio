@@ -50,6 +50,67 @@
                           </tbody>
                         </table>
 
+                        <span class="settings-header">Genomes</span>
+
+                  <div id="table_layers_container" style="margin-top: 15px;">
+                      <table id="table_layers">
+                          <thead>
+                              <tr>
+                                  <td></td>
+                                  <td data-help="layer-name">Name</td>
+                                  <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                  <td data-help="layer-type">Type</td>
+                                  <td data-help="layer-norm">Norm.</td>
+                                  <td data-help="layer-height">Height</td>
+                                  <td data-help="layer-margin" class="column-margin">Margin</td>
+                                  <td data-help="layer-min">Min</td>
+                                  <td data-help="layer-max">Max</td>
+                              </tr>
+                          </thead>
+                          <tbody id="tbody_layers"></tbody>
+                          <tbody id="tbody_bottom">
+                              <tr style="height: 30px">
+                                  <td colspan="9">
+                                      <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td></td>
+                                  <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
+                                  <td>
+                                      <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                      <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                  </td>
+                                  <td style="width: 50px;">
+                                      <select class="type_multiple" style="width: 50px;" class="type">
+                                          <option value="">Select</option>
+                                          <option value="" disabled>-----Numerical Types-----</option>
+                                          <option value="bar">Bar</option>
+                                          <option value="intensity">Intensity</option>
+                                          <option value="line">Line</option>
+                                          <option value="" disabled>-----Categorical Types-----</option>
+                                          <option value="color">Color</option>
+                                          <option value="text">Text</option>
+                                      </select>
+                                  </td>
+                                  <td>
+                                      <select class="normalization_multiple">
+                                          <option value="">Select</option>
+                                          <option value="none">none</option>
+                                          <option value="sqrt">sqrt</option>
+                                          <option value="log">log</option>
+                                      </select>
+                                  </td>
+                                  <td><input class="input-height-multiple" size="3"></input></td>
+                                  <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
+                                  <td><input class="input-min-multiple" size="4"></input></td>
+                                  <td><input class="input-max-multiple" size="4"></input></td>
+                                  <td><input type="checkbox" class="select_all"></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+
                         <span class="settings-header">Scale</span>
                         <table id="scaleTable" style="margin-bottom: 20px;">
                           <tbody>
