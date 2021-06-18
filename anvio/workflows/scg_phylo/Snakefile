@@ -683,13 +683,14 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile de novo SCG references"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "metagenomics_workflow.log")
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
         touch(os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     threads: M.T('join_renamed_fasta_with_misc_data')
     run:
-        shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json && cd ..')
+        shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json && cd .. >> {log} 2>&1')
 
 rule make_SCG_WORKFLOW_state_file:
     """Make a state file customized for ribo_phylo workflow interactive interface"""
