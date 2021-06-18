@@ -53,8 +53,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
                            'filter_out_outlier_sequences',
                            'anvi_get_sequences_for_gene_calls',
                            'fasttree',
-                           'iqtree',
-                           'run_metagenomics_workflow'
+                           'iqtree'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -181,7 +180,6 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             self.mode = 'external_genomes'
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
-
         # Load Ribosomal protein list
         self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
         filesnpaths.is_file_exists(self.SCG_protein_list_path)
