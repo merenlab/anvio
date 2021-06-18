@@ -618,6 +618,7 @@ rule filter_for_nt_seqs_for_mapping:
     """Filter for SCG NT sequences what will be used for read recruitment later"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "filter_for_nt_seqs_for_mapping_{ribosomal_protein_name}.log")
     input:
         fasta = rules.cat_scgs_to_one_fasta_nt.output,
         headers = rules.get_headers_for_mapping.output.headers
@@ -627,7 +628,7 @@ rule filter_for_nt_seqs_for_mapping:
     shell:
         "anvi-script-reformat-fasta {input.fasta} \
                                     -o {output} \
-                                    -I {input.headers}"
+                                    -I {input.headers} 2> {log}"
 
 rule make_fasta_txt:
     """Output fasta.txt that will be used with the metagenomics workflow"""
@@ -679,7 +680,7 @@ rule make_metagenomics_config_file:
           json.dump(config_dict, outfile, indent=4)
 
 rule run_metagenomics_workflow:
-    """Run metagenomics workflow"""
+    """Run metagenomics workflow to profile de novo SCG references"""
 
     version: 1.0
     input:
@@ -824,7 +825,7 @@ rule add_default_collection:
     shell:
         """
         anvi-script-add-default-collection -c {params.contigsDB} \
-                                           -p {params.profileDB}
+                                           -p {params.profileDB} 2> {log}
         """
 
 
@@ -848,7 +849,7 @@ rule anvi_summarize:
                        -o {params.output_dir} \
                        -C DEFAULT \
                        --init-gene-coverages \
-                       --just-do-it;
+                       --just-do-it 2> {log};
         """
 
 rule combine_data:
@@ -886,5 +887,5 @@ rule anvi_import_state:
         """
         anvi-import-state -p {params.profileDB} \
                           -s {params.state_file} \
-                          -n {wildcards.ribosomal_protein_name}
+                          -n {wildcards.ribosomal_protein_name} 2> {log}
         """
