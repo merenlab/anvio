@@ -37,6 +37,7 @@
  var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
  var scale = 100; // nt scale intervals
+ var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 
  var alignToGC = null;
 
@@ -184,7 +185,7 @@ function loadAll() {
     }
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
-    let percentileToShow = (percentileEnd - percentileStart).toFixed(2)
+    let percentileToShow = Math.abs(percentileEnd - percentileStart).toFixed(2)
 
     let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
     // process for contextual zooming based on drag event from scale canvas.
@@ -203,7 +204,15 @@ function loadAll() {
     }))
     canvas.setZoom(.01)
     canvas.absolutePan({x: moveTo.x, y: moveTo.y})
-    canvas.setZoom(percentileToShow > .1 ? 1 - percentileToShow : 1) //TODO ask someone who knows how to math to make this better :)
+    //canvas.setZoom(percentileToShow > .1 ? 1 - percentileToShow : 1) //TODO ask someone who knows how to math to make this better :)
+    canvas.setZoom(1);
+
+    let ntsToShow = percentileToShow*10000; // 10000 should be changed to genomeMax; but for now we use a smaller value for testing
+    scaleFactor = mainCanvasWidth/ntsToShow;
+    if(scaleFactor > 4) scaleFactor = 4;
+    if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+    $('#genome_scale_interval').val(scale);
+    draw(scaleX=scaleFactor);
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
@@ -248,7 +257,7 @@ function loadAll() {
       })
     })
     genomeData.genomes = newGenomeOrder
-    draw()
+    draw(scaleFactor)
   });
 
   if(showGeneLabels && arrowStyle != 3) {
@@ -297,7 +306,14 @@ function loadAll() {
     }));
   }
 
-  draw();
+  // Find max length genome
+  for(genome of genomeData.genomes) {
+    genome = genome[1].genes.gene_calls;
+    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
+  }
+
+  draw(scaleFactor);
 
   // zooming and panning
   // http://fabricjs.com/fabric-intro-part-5#pan_zoom
@@ -377,58 +393,51 @@ function loadAll() {
   });
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
-      draw();
+      draw(scaleFactor);
       $(this).blur();
   });
   $('#arrow_style').on('change', function() {
       arrowStyle = parseInt($(this).val());
-      draw();
+      draw(scaleFactor);
       $(this).blur();
   });
   $('#show_genome_labels_box').on('change', function() {
     showLabels = !showLabels;
     alignToGC = null;
-    draw();
+    draw(scaleFactor);
   });
   $('#show_gene_labels_box').on('change', function() {
     showGeneLabels = !showGeneLabels;
-    draw();
+    draw(scaleFactor);
   });
   $('#show_scale_box').on('change', function() {
     showScale = !showScale;
-    draw();
+    draw(scaleFactor);
   });
 }
 
-function draw() {
+function draw(scaleX=1) {
   genomeLabelsCanvas.clear()
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
 
-  // Find max length genome
-  for(genome of genomeData.genomes) {
-    genome = genome[1].genes.gene_calls;
-    let genomeEnd = genome[Object.keys(genome).length-1].stop;
-    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
-  }
-
   var y = 1;
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
-    addGenome(label, genome[1].genes.gene_calls, genome[0], y)
+    addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
     labelSpacing += 30
     y++;
   }
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
-  drawScale(y);
+  drawScale(y, scaleFactor);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
 }
 
-function drawScale(y) {
+function drawScale(y, scaleX=1) {
   if(!showScale) return;
 
   for(var w = 0; w < genomeMax; w+=scale) {
-    canvas.add(new fabric.Line([0,0,0,20], {left: w+(showLabels?120:0),
+    canvas.add(new fabric.Line([0,0,0,20], {left: (w+(showLabels?120:0))*scaleX,
           top: y*(spacing)-24,
           stroke: 'black',
           strokeWidth: 1,
@@ -436,7 +445,7 @@ function drawScale(y) {
           fontFamily: 'sans-serif',
           selectable: false}));
 
-    canvas.add(new fabric.Text(w/1000 + " kB", {left: w+5+(showLabels?120:0),
+    canvas.add(new fabric.Text(w/1000 + " kB", {left: (w+5+(showLabels?120:0))*scaleX,
           top: y*(spacing)-24,
           stroke: 'black',
           strokeWidth: .25,
@@ -445,18 +454,32 @@ function drawScale(y) {
           selectable: false}));
   }
 
-  canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0),
+  canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0)*scaleX,
         top: y*(1.25*spacing)-4,
         stroke: 'black',
         strokeWidth: 2,
         selectable: false}));
-  canvas.add(new fabric.Text("100 nts", {left: 15+(showLabels?120:0),
+  canvas.add(new fabric.Text("100 nts", {left: (15+(showLabels?120:0))*scaleX,
         top: y*(1.25*spacing)-4,
         stroke: 'black',
         strokeWidth: 1,
         fontSize: 20,
         fontFamily: 'sans-serif',
         selectable: false}));
+}
+
+function zoomIn() {
+  scaleFactor += (scaleFactor < 0.2 ? .01 : .1);
+  if(scaleFactor > 4) scaleFactor = 4;
+  draw(scaleFactor);
+}
+
+function zoomOut() {
+  scaleFactor -= (scaleFactor < 0.2 ? .01 : .1);
+  if(scaleFactor < 0.01) scaleFactor = 0.01;
+  if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+  $('#genome_scale_interval').val(scale);
+  draw(scaleFactor);
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
@@ -475,13 +498,16 @@ function shadeGeneClusters(geneClusters, colors, y) {
         g2.push(genomeB[geneID].start, genomeB[geneID].stop);
       }
 
+      g1 = g1.map(val => val*scaleFactor);
+      g2 = g2.map(val => val*scaleFactor);
+
       /* TODO: implementation for multiple genes of the same genome in the same gene cluster */
       var path = new fabric.Path("M " + g1[0] + " " + y + " L " + g1[1] + " " + y + " L " + g2[1] + " " + (y+spacing) + " L " + g2[0] + " " + (y+spacing) + " z", {
         fill: colors[gc],
         opacity: 0.25,
         selectable: false
       });
-      path.left += (showLabels?120:0);
+      path.left += (showLabels?120:0)*scaleFactor;
       path.sendBackwards();
       canvas.add(path);
     }
@@ -503,7 +529,7 @@ function alignToCluster(gc) {
       resetScale();
       var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
       var shift = windowCenter - genePos;
-      canvas.viewportTransform[4] += shift;
+      canvas.viewportTransform[4] += (shift*scaleFactor);
       canvas.setZoom(tmp);
       break;
     }
@@ -511,7 +537,7 @@ function alignToCluster(gc) {
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
-  draw();
+  draw(scaleFactor);
 }
 
 function setGenomeSpacing(newSpacing) {
@@ -522,7 +548,7 @@ function setGenomeSpacing(newSpacing) {
     return;
   }
   spacing = newSpacing;
-  draw();
+  draw(scaleFactor);
 }
 
 function setScale(newScale) {
@@ -533,7 +559,7 @@ function setScale(newScale) {
     return;
   }
   scale = newScale;
-  draw();
+  draw(scaleFactor);
 }
 
 function setGeneLabelSize(newSize) {
@@ -544,7 +570,7 @@ function setGeneLabelSize(newSize) {
     return;
   }
   geneLabelSize = newSize;
-  if(showGeneLabels) draw();
+  if(showGeneLabels) draw(scaleFactor);
 }
 
 function setGenomeLabelSize(newSize) {
@@ -555,16 +581,16 @@ function setGenomeLabelSize(newSize) {
     return;
   }
   genomeLabelSize = newSize;
-  if(showLabels) draw();
+  if(showLabels) draw(scaleFactor);
 }
 
-function addGenome(label, gene_list, genomeID, y) {
+function addGenome(label, gene_list, genomeID, y, scaleX=1) {
   if(showLabels) {
     canvas.add(new fabric.Text(label, {top: spacing*y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   // line
-  canvas.add(new fabric.Line([0,0,genomeMax,0], {left: showLabels?120:0,
+  canvas.add(new fabric.Line([0,0,genomeMax*scaleX,0], {left: showLabels?120*scaleX:0,
         top: spacing*y + 4,
         stroke: 'black',
         strokeWidth: 2,
@@ -579,9 +605,9 @@ function addGenome(label, gene_list, genomeID, y) {
     let gene = gene_list[geneID];
     //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
     var geneIndex = genomeData.genomes.findIndex(g => genomeID == g[0]);
-    var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle);
+    var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
     if(showLabels) {
-      geneObj.left += 120;
+      geneObj.left += 120*scaleX;
     }
     canvas.add(geneObj);
 
@@ -598,7 +624,7 @@ function addGenome(label, gene_list, genomeID, y) {
       if(arrowStyle == 3) {
         label.set({
           top: -5+spacing*y,
-          left: 150+gene.start,
+          left: (150+gene.start)*scaleX,
           scaleX: 0.5,
           scaleY: 0.5,
           selectionColor:'rgba(128,128,128,.5)'
@@ -608,7 +634,7 @@ function addGenome(label, gene_list, genomeID, y) {
           scaleX: 0.5,
           scaleY: 0.5,
           top: -30+spacing*y,
-          left: 200+gene.start,
+          left: (200+gene.start)*scaleX,
           angle: -10,
           selectionColor:'rgba(128,128,128,.2)'
         });
@@ -620,7 +646,7 @@ function addGenome(label, gene_list, genomeID, y) {
   //geneGroup.destroy();
 }
 
-function geneArrow(gene, geneID, functions, y, genomeID, style) {
+function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
   var cag = null;
   var color = 'gray';
   if(functions) {
@@ -648,7 +674,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
   }
   /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
-  var length = gene.stop-gene.start;
+  let length = (gene.stop-gene.start)*scaleX;
 
   var arrowPathStr;
   switch(style) {
@@ -671,7 +697,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
     geneID: geneID,
     genomeID: genomeID,
     top: style == 3 ? -17+spacing*y : -11+spacing*y,
-    left: 1.5+gene.start,
+    left: (1.5+gene.start)*scaleX,
     fill: color,
     stroke: 'gray',
     strokeWidth: style == 3 ? 3 : 1.5
