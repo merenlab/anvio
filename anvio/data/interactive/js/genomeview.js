@@ -185,35 +185,32 @@ function loadAll() {
     }
     let mainCanvasWidth = canvas.getWidth()
     let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
-    let percentileToShow = Math.abs(percentileEnd - percentileStart).toFixed(2)
+    let percentileToShow = Math.abs(percentileEnd - percentileStart).toFixed(3)
+    if(percentileToShow < 300/genomeMax) percentileToShow = 300/genomeMax;
 
-    let moveTo = new fabric.Point(mainCanvasWidth * percentileStart, 0)
-    // process for contextual zooming based on drag event from scale canvas.
-    // 1) zoom all the way out so the main canvas theoretically displays the entire sequence length
-    // 2) pan to new x coordinate, a percentile of total sequence length
-    // 3) set zoom back to original value, centering on new x coordinate
+    let moveTo = new fabric.Point((showLabels?120:0) + genomeMax * percentileStart, 0)
 
     scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed
     scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
-      strokeWidth : percentileToShow > .1 ? 1200*percentileToShow : 10,
+      strokeWidth : 1200 * percentileToShow,
       stroke : 'green',
       top : 0,
       left : scaleCanvas.width * percentileStart,
       opacity : .6,
       selectable : false
     }))
-    canvas.setZoom(.01)
-    canvas.absolutePan({x: moveTo.x, y: moveTo.y})
-    //canvas.setZoom(percentileToShow > .1 ? 1 - percentileToShow : 1) //TODO ask someone who knows how to math to make this better :)
-    canvas.setZoom(1);
 
-    let ntsToShow = percentileToShow*10000; // 10000 should be changed to genomeMax; but for now we use a smaller value for testing
+    let ntsToShow = percentileToShow*genomeMax;
     scaleFactor = mainCanvasWidth/ntsToShow;
     if(scaleFactor > 4) scaleFactor = 4;
-    if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+
+    let val = Math.floor(50 / (scale * scaleFactor));
+    scale *= (2**val); // temporary fix for legibility
+
     $('#genome_scale_interval').val(scale);
+
     draw();
-    checkGeneLabels();
+    canvas.absolutePan({x: scaleFactor*moveTo.x, y: moveTo.y});
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
@@ -432,6 +429,7 @@ function draw(scaleX=scaleFactor) {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   drawScale(y, scaleFactor);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
+  checkGeneLabels();
 }
 
 function drawScale(y, scaleX=1) {
@@ -473,7 +471,6 @@ function zoomIn() {
   scaleFactor += (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor > 4) scaleFactor = 4;
   draw();
-  checkGeneLabels();
 }
 
 function zoomOut() {
@@ -482,7 +479,6 @@ function zoomOut() {
   if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
   $('#genome_scale_interval').val(scale);
   draw();
-  checkGeneLabels();
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
