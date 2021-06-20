@@ -212,7 +212,8 @@ function loadAll() {
     if(scaleFactor > 4) scaleFactor = 4;
     if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
     $('#genome_scale_interval').val(scale);
-    draw(scaleX=scaleFactor);
+    draw();
+    checkGeneLabels();
   })
 
   $('#tooltip-body').hide() // set initual tooltip hide value
@@ -257,7 +258,7 @@ function loadAll() {
       })
     })
     genomeData.genomes = newGenomeOrder
-    draw(scaleFactor)
+    draw()
   });
 
   if(showGeneLabels && arrowStyle != 3) {
@@ -313,7 +314,7 @@ function loadAll() {
     if(genomeEnd > genomeMax) genomeMax = genomeEnd;
   }
 
-  draw(scaleFactor);
+  draw();
 
   // zooming and panning
   // http://fabricjs.com/fabric-intro-part-5#pan_zoom
@@ -393,30 +394,30 @@ function loadAll() {
   });
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
-      draw(scaleFactor);
+      draw();
       $(this).blur();
   });
   $('#arrow_style').on('change', function() {
       arrowStyle = parseInt($(this).val());
-      draw(scaleFactor);
+      draw();
       $(this).blur();
   });
   $('#show_genome_labels_box').on('change', function() {
     showLabels = !showLabels;
     alignToGC = null;
-    draw(scaleFactor);
+    draw();
   });
   $('#show_gene_labels_box').on('change', function() {
     showGeneLabels = !showGeneLabels;
-    draw(scaleFactor);
+    draw();
   });
   $('#show_scale_box').on('change', function() {
     showScale = !showScale;
-    draw(scaleFactor);
+    draw();
   });
 }
 
-function draw(scaleX=1) {
+function draw(scaleX=scaleFactor) {
   genomeLabelsCanvas.clear()
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
@@ -471,7 +472,8 @@ function drawScale(y, scaleX=1) {
 function zoomIn() {
   scaleFactor += (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor > 4) scaleFactor = 4;
-  draw(scaleFactor);
+  draw();
+  checkGeneLabels();
 }
 
 function zoomOut() {
@@ -479,7 +481,8 @@ function zoomOut() {
   if(scaleFactor < 0.01) scaleFactor = 0.01;
   if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
   $('#genome_scale_interval').val(scale);
-  draw(scaleFactor);
+  draw();
+  checkGeneLabels();
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
@@ -515,6 +518,13 @@ function shadeGeneClusters(geneClusters, colors, y) {
   }
 }
 
+function checkGeneLabels() {
+  var labels = canvas.getObjects().filter(obj => obj.id == 'geneLabel');
+  for(var i = 0; i < labels.length-1; i++) {
+    labels[i].visible = labels[i+1].visible = !labels[i].intersectsWithObject(labels[i+1]);
+  }
+}
+
 function alignToCluster(gc) {
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
     alignToGC = gc;
@@ -537,7 +547,7 @@ function alignToCluster(gc) {
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
-  draw(scaleFactor);
+  draw();
 }
 
 function setGenomeSpacing(newSpacing) {
@@ -548,7 +558,7 @@ function setGenomeSpacing(newSpacing) {
     return;
   }
   spacing = newSpacing;
-  draw(scaleFactor);
+  draw();
 }
 
 function setScale(newScale) {
@@ -559,7 +569,7 @@ function setScale(newScale) {
     return;
   }
   scale = newScale;
-  draw(scaleFactor);
+  draw();
 }
 
 function setGeneLabelSize(newSize) {
@@ -570,7 +580,7 @@ function setGeneLabelSize(newSize) {
     return;
   }
   geneLabelSize = newSize;
-  if(showGeneLabels) draw(scaleFactor);
+  if(showGeneLabels) draw();
 }
 
 function setGenomeLabelSize(newSize) {
@@ -581,7 +591,7 @@ function setGenomeLabelSize(newSize) {
     return;
   }
   genomeLabelSize = newSize;
-  if(showLabels) draw(scaleFactor);
+  if(showLabels) draw();
 }
 
 function addGenome(label, gene_list, genomeID, y, scaleX=1) {
@@ -613,12 +623,13 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 
     if(showGeneLabels) {
       var label = new fabric.IText("geneID: "+geneID, {
-        fontSize:geneLabelSize,
-        hasControls:false,
+        id: 'geneLabel',
+        fontSize: geneLabelSize,
+        hasControls: false,
         lockMovementX: true,
         lockMovementY: true,
         lockScaling: true,
-        hoverCursor:'text'
+        hoverCursor: 'text'
       });
 
       if(arrowStyle == 3) {
