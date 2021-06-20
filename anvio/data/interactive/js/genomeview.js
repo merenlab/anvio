@@ -178,14 +178,17 @@ function loadAll() {
 
   scaleCanvas.on('mouse:up', (event) => {
     let scaleDragEndingX = event.pointer.x // click + drag ending x position
-    totalScaleX = event.target.aCoords.tr.x // total x axis length
+    totalScaleX = event.target ? event.target.aCoords.tr.x : scaleCanvas.width // total x axis length
+    if(scaleDragEndingX < 0) scaleDragEndingX = 0;
+    if(scaleDragEndingX > totalScaleX) scaleDragEndingX = totalScaleX;
 
     if(scaleDragStartingX === scaleDragEndingX){ //account for accidental drag, click and release
       return
     }
     let mainCanvasWidth = canvas.getWidth()
-    let [percentileStart, percentileEnd] = [scaleDragStartingX/totalScaleX, scaleDragEndingX/totalScaleX]
-    let percentileToShow = Math.abs(percentileEnd - percentileStart).toFixed(3)
+    let [percentileStart, percentileEnd] = [Math.min(scaleDragStartingX,scaleDragEndingX)/totalScaleX,
+                                            Math.max(scaleDragStartingX,scaleDragEndingX)/totalScaleX]
+    let percentileToShow = (percentileEnd - percentileStart).toFixed(3)
     if(percentileToShow < 300/genomeMax) percentileToShow = 300/genomeMax;
 
     let moveTo = new fabric.Point((showLabels?120:0) + genomeMax * percentileStart, 0)
