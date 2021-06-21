@@ -689,8 +689,7 @@ rule run_metagenomics_workflow:
         touch(os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     threads: M.T('join_renamed_fasta_with_misc_data')
     run:
-        shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json && cd .. >> {log} 2>&1')
-
+        shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json && cd ..')
 rule make_SCG_WORKFLOW_state_file:
     """Make a state file customized for ribo_phylo workflow interactive interface"""
 
