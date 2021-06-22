@@ -324,7 +324,6 @@ function loadAll() {
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
-      this.lastPosY = evt.clientY;
     }
   });
   canvas.on('mouse:move', function(opt) {
@@ -332,10 +331,8 @@ function loadAll() {
       var e = opt.e;
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
-      vpt[5] += e.clientY - this.lastPosY;
       this.requestRenderAll();
       this.lastPosX = e.clientX;
-      this.lastPosY = e.clientY;
     }
   });
   canvas.on('mouse:up', function(opt) {
