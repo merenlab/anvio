@@ -538,12 +538,9 @@ function alignToCluster(gc) {
       var targetGeneID = genomeGCs[0]; /* TODO: implementation for multiple matching gene IDs */
       var targetGene = genome[1].genes.gene_calls[targetGeneID];
       var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-      var tmp = canvas.getZoom();
-      resetScale();
       var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
       var shift = windowCenter - genePos;
       canvas.viewportTransform[4] += (shift*scaleFactor);
-      canvas.setZoom(tmp);
       break;
     }
 
