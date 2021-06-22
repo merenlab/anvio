@@ -520,7 +520,13 @@ function shadeGeneClusters(geneClusters, colors, y) {
 function checkGeneLabels() {
   var labels = canvas.getObjects().filter(obj => obj.id == 'geneLabel');
   for(var i = 0; i < labels.length-1; i++) {
-    labels[i].visible = labels[i+1].visible = !labels[i].intersectsWithObject(labels[i+1]);
+    var p = i+1;
+    while(labels[i].intersectsWithObject(labels[p]) && p < labels.length-1) {
+      labels[p].visible = false;
+      p++;
+    }
+    labels[p].visible = true;
+    i = p - 1;
   }
 }
 
