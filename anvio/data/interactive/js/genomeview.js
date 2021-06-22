@@ -343,15 +343,16 @@ function loadAll() {
     this.selection = true;
   });
   canvas.on('mouse:wheel', function(opt) {
-    var delta = opt.e.deltaY;
-    var zoom = canvas.getZoom();
-    zoom *= 0.999 ** delta;
-    if (zoom > 20) zoom = 20;
-    if (zoom < 0.01) zoom = 0.01;
-
-    canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
     opt.e.preventDefault();
     opt.e.stopPropagation();
+
+    var delta = opt.e.deltaY;
+    scaleFactor *= 0.999 ** delta;
+    if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+    $('#genome_scale_interval').val(scale);
+    if (scaleFactor > 4) scaleFactor = 4;
+    if (scaleFactor < 0.01) scaleFactor = 0.01;
+    draw();
   });
 
   $('#geneClusterInput').on('keydown', function(e) {
