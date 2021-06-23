@@ -428,12 +428,12 @@ function draw(scaleX=scaleFactor) {
     y++;
   }
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
-  drawScale(y, scaleFactor);
+  drawScale(y);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
   checkGeneLabels();
 }
 
-function drawScale(y, scaleX=1) {
+function drawScale(y, scaleX=scaleFactor) {
   if(!showScale) return;
 
   for(var w = 0; w < genomeMax; w+=scale) {
@@ -518,6 +518,13 @@ function shadeGeneClusters(geneClusters, colors, y) {
 function checkGeneLabels() {
   var labels = canvas.getObjects().filter(obj => obj.id == 'geneLabel');
   for(var i = 0; i < labels.length-1; i++) {
+    if(arrowStyle == 3) {
+      if(labels[i].width/2 > canvas.getObjects().filter(obj => obj.id == 'arrow')[i].width) {
+        labels[i].visible = false;
+        continue;
+      }
+      labels[i].visible = true;
+    }
     var p = i+1;
     while(labels[i].intersectsWithObject(labels[p]) && p < labels.length-1) {
       labels[p].visible = false;
@@ -600,7 +607,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
   }
 
   // line
-  canvas.add(new fabric.Line([0,0,genomeMax*scaleX,0], {left: showLabels?120*scaleX:0,
+  canvas.add(new fabric.Line([0,0,genomeMax*scaleX,0], {left: (showLabels?120:0),
         top: spacing*y + 4,
         stroke: 'black',
         strokeWidth: 2,
