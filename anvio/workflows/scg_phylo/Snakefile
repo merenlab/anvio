@@ -683,7 +683,6 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "metagenomics_workflow.log")
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
