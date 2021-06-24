@@ -729,8 +729,14 @@ rule make_SCG_WORKFLOW_state_file:
 
         for metagenome in M.input_dirs_dict:
           metagenomes.append(metagenome)
-          
-        last_layers = ["contig_db_type", "has_genomic_SCG_in_cluster", "orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
+
+        
+        if M.mode == "both":
+          last_layers = ["contig_db_type", "has_genomic_SCG_in_cluster", "orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
+
+        else:
+          last_layers = ["orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
+
         layer_order = first_layers + metagenomes + last_layers
 
         state_dict['layer-order'] = layer_order
