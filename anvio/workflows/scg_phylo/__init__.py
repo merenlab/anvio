@@ -34,8 +34,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='scg_phylo')
 
-        # MetagenomicsWorkflow.__init__(self)
-        # ribo_phylo Snakemake rules
+        # SCG_phylo Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
                            'filter_hmm_hits_by_query_coverage',
                            'anvi_get_sequences_for_hmm_hits_SCGs',
@@ -53,7 +52,8 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
                            'filter_out_outlier_sequences',
                            'anvi_get_sequences_for_gene_calls',
                            'fasttree',
-                           'iqtree'
+                           'iqtree',
+                           'run_metagenomics_workflow'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -99,7 +99,8 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             'filter_out_outlier_sequences': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'fasttree': {'run': True, 'threads': 5},
-            'iqtree': {'threads': 5,'-m': "MFP"}
+            'iqtree': {'threads': 5,'-m': "MFP"},
+            'run_metagenomics_workflow': {'threads': 10}
             })
 
         # Workflow directory structure
