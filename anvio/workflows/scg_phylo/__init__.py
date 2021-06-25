@@ -75,6 +75,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -100,7 +101,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'fasttree': {'run': True, 'threads': 5},
             'iqtree': {'threads': 5,'-m': "MFP"},
-            'run_metagenomics_workflow': {'threads': 10}
+            'run_metagenomics_workflow': {'threads': 10, 'clusterize': False}
             })
 
         # Workflow directory structure
@@ -181,6 +182,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             self.mode = 'external_genomes'
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
+
         # Load Ribosomal protein list
         self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
         filesnpaths.is_file_exists(self.SCG_protein_list_path)
@@ -190,9 +192,14 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
         except IndexError as e:
             raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
-
+        # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
+
+        # Decide to clusterize metagenomic workflow
+        self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
+        print(self.clusterize_metagenomics_workflow)
+
 
         if not self.run_iqtree and not self.run_fasttree:
             raise ConfigError("Please choose either iqtree or fasttree in your config file to run your phylogenetic tree.")
