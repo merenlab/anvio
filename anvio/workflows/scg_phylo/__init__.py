@@ -196,13 +196,11 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
 
-        # Decide to clusterize metagenomic workflow
-        self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
-        print(self.clusterize_metagenomics_workflow)
-
-
         if not self.run_iqtree and not self.run_fasttree:
             raise ConfigError("Please choose either iqtree or fasttree in your config file to run your phylogenetic tree.")
+
+        # Decide to clusterize metagenomic workflow
+        self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
 
         self.target_files = self.get_target_files()
 
