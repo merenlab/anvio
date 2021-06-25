@@ -675,6 +675,13 @@ rule make_metagenomics_config_file:
         config_dict['anvi_profile']['--min-contig-length'] = 0
         config_dict['bowtie']['threads'] = 5
 
+        if M.clusterize_metagenomics_workflow == True:
+            config_dict['bowtie']['threads'] = 10
+            config_dict['anvi_profile']['threads'] = 10
+            config_dict['anvi_merge']['threads'] = 10
+        else:
+            pass
+
         with open(output.config, "w") as outfile:
           json.dump(config_dict, outfile, indent=4)
 
