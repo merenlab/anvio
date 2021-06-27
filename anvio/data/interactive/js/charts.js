@@ -100,6 +100,8 @@ function loadAll() {
         state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
     }
 
+    if(state['show_highlights'] == null) state['show_highlights'] = true;
+
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
 
     info("Sending ajax request to gather split data");
@@ -1394,9 +1396,9 @@ function saveState()
   */
 function processState(state_name, state) {
     // set color defaults
-    if(!state['cog-colors']) state['source-colors'] = default_source_colors;
+    if(!state['source-colors']) state['source-colors'] = default_source_colors;
     if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
-    if(!state['cog-colors']) state['kegg-colors'] = default_KEGG_colors;
+    if(!state['kegg-colors']) state['kegg-colors'] = default_KEGG_colors;
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
       state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
@@ -1437,6 +1439,10 @@ function processState(state_name, state) {
       $('#largeIndelInput').val(20);
       //$('#minIndelInput').val(0);
     }
+
+    state['show_highlights'] = $('#toggle_highlight_box').val() == "on";
+    state['show_snvs'] = $('#toggle_snv_box').val() == "on";
+    state['show_indels'] = $('#toggle_indel_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
