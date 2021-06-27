@@ -1519,6 +1519,11 @@ function createCharts(state){
     $('#SNV-boxes').css("height", height + "px");
     $('#SNV-boxes').css("top", (margin.top - 20) + "px");
 
+    var samplesSvg = d3.select("#sample-titles").append("svg")
+                            .attr("id", "samplesSvg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", height + margin.top);
+    $('#sample-titles').css("top", (margin.top - 20) + "px");
 
     charts = [];
 
@@ -1583,6 +1588,7 @@ function createCharts(state){
                         maxCountOverCoverage: maxCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
+                        samples_svg: samplesSvg,
                         margin: margin,
                         showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
@@ -1749,6 +1755,7 @@ function Chart(options){
     this.maxCountOverCoverage = options.maxCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
+    this.samples_svg = options.samples_svg;
     this.id = options.id;
     this.name = options.name;
     this.margin = options.margin;
@@ -1842,6 +1849,10 @@ function Chart(options){
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.textContainerIndels = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -2091,7 +2102,7 @@ function Chart(options){
                      .call(this.yAxisLine);
     }
 
-    this.chartContainer.append("text")
+    this.sampleTextContainer.append("text")
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
                    .text(this.name);
