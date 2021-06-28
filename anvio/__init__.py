@@ -2878,20 +2878,20 @@ D = {
                 ),
     'load-checkpoint': (
             ['--load-checkpoint'],
-            {'choices': ['profile', 'normalize', 'map_fragments'],
-             'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
-                     "This can be useful for saving time if anvi'o crashed "
-                     "or in comparing the results of different advanced program parameterizations "
-                     "involved in later stages of the analytical pipeline after the checkpoint, "
-                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
-                     "Use of this option requires that anvi-trnaseq was previously run with the flag, "
-                     "--write-checkpoints, so that intermediate files were generated. "
-                     "Checkpoint \"profile\" restarts after tRNA have been profiled and dereplicated. "
-                     "\"normalize\" restarts after trimming and normalizing tRNA. "
-                     "\"map_fragment\" restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
-                     "To overwrite subsequent checkpoints after loading a checkpoint "
-                     "(e.g., to overwrite \"map_fragment\" intermediate files after loading from \"normalize\"), "
-                     "remember to also use the flag, --write-checkpoints."}
+            {'choices': constants.TRNASEQ_CHECKPOINTS,
+             'help': "This option restarts `anvi-trnaseq` from the specified checkpoint. "
+                     "It can be useful for saving time if anvi'o crashed after the checkpoint. "
+                     "It can also be useful in comparing the results of different advanced program parameterizations "
+                     "that are only involved in stages of the analytical pipeline after the checkpoint. "
+                     "`anvi-trnaseq` must previously have been run with the flag, "
+                     "`--write-checkpoints`, so that intermediate checkpoint files were generated. "
+                     "Checkpoint \"profile\" restarts after tRNA profiling. "
+                     "\"normalize\" restarts after sequence trimming and normalization. "
+                     "\"map_fragments\" restarts after non-3' fragments have been mapped to normalized tRNA sequences. "
+                     "\"substitutions\" restarts after potential modification-induced substitutions have been found. "
+                     "\"indels\" restarts after modification-induced indels have been found, the last step in tRNA identification. "
+                     "If `--write-checkpoints` is used in conjunction with `--load-checkpoint` "
+                     "then all existing intermediate files from checkpoints following the one being loaded will be overwritten."}
                 ),
     'feature-param-file': (
             ['--feature-param-file'],
