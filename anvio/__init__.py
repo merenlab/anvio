@@ -2993,88 +2993,40 @@ D = {
                      "exceeding the 0.03 limit needed to agglomerate. "
                      "D forms its own cluster and is not consolidated into a single modified sequence with the others."}
                 ),
-    'fiveprimemost-deletion-start': (
-            ['--fiveprimemost-deletion-start'],
-            {'default': -2,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
-                     "The default value of -2 means deletions can start at most 2 nucleotides 5' of a modification. "
-                     "Logically, the parameter value must be less than or equal to the value of --threeprimemost-deletion-start "
-                     "and less than or equal to the value of --fiveprimemost-deletion-stop."}
+    'max-indel-freq': (
+            ['--max-indel-freq'],
+            {'default': 0.05,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "The maximum indel frequency constrains the number and length of modification-induced indels that can be found. "
+                     "The value of this parameter is rounded to the nearest hundredth. "
+                     "Anvi'o identifies tRNAs with potential modification-induced substitutions before finding indels. "
+                     "tRNAs with substitutions are aligned with other sequences to find sequences differing only by indels. "
+                     "The default parameter value of 0.05 allows 1 indel of length 3 to be found in a modified sequence of length 71. "
+                     "(Modified sequences have the canonical 3'-CCA trimmed off, "
+                     "so a sequence of length 71 represents the low end of the non-mitochondrial tRNA length range of 74-95.) "
+                     "The default equivalently allows 2 indels of lengths 1 and 2 or 3 indels of length 1 in a sequence of length 71. "
+                     "An indel of length 4 would result in a frequency of 0.056 and so would not be considered."}
                 ),
-    'threeprimemost-deletion-start': (
-            ['--threeprimemost-deletion-start'],
-            {'default': 0,
+    'left-indel-buffer': (
+            ['--left-indel-buffer'],
+            {'default': 3,
              'metavar': 'INT',
              'type': int,
-             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
-                     "The default value of 0 means the 3'-most start position of a deletion is the modification site itself. "
-                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
-                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
+             'help': "This parameter sets the distance an indel must lie from the left end of a sequence alignment "
+                     "in the search for modification-induced indels."
+                     "The default buffer of 3 matches was chosen to prevent nontemplated and variant nucleotides "
+                     "at the 5' end of tRNA reads from being mistakenly identified as indels."}
                 ),
-    'fiveprimemost-deletion-stop': (
-            ['--fiveprimemost-deletion-stop'],
-            {'default': -1,
+    'right-indel-buffer': (
+            ['--right-indel-buffer'],
+            {'default': 3,
              'metavar': 'INT',
              'type': int,
-             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
-                     "The default value of -1 means deletions can end at most 1 nucleotide 5' of a modification. "
-                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
-                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
-                ),
-    'threeprimemost-deletion-stop': (
-            ['--threeprimemost-deletion-stop'],
-            {'default': 0,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
-                     "The default value of 0 means the 3'-most stop position of a deletion is the modification site itself. "
-                     "Logically, the parameter value must be greater than or equal to the value of --threeprimemost-deletion-start "
-                     "and greater than or equal to the value of --fiveprimemost-deletion-stop."}
-                ),
-    'max-distinct-deletions': (
-            ['--max-distinct-deletions'],
-            {'default': 2,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The maximum number of distinct deletions -- which can be of varying size -- "
-                     "that can be introduced around potential modifications in the search for deletions. "
-                     "Higher values of this parameter may lead to identification of more deletions (at the expense of runtime). "
-                     "For example, with the default value of 2 and a sequence containing 3 potential substitutions positions, "
-                     "then some in silico template sequences will be produced containing deletions around the first position; "
-                     "others will be produced containing deletions at the first and second positions; "
-                     "the first and third positions; the second position; the second and third; and the third."}
-                ),
-    'min-distance-between-deletions': (
-            ['--min-distance-between-deletions'],
-            {'default': 4,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The minimum number of nucleotides that must exist between distinct deletions "
-                     "introduced around potential modifications in the search for deletions. "
-                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
-                     "In silico deletions introduced around nearby substitutions in this smear "
-                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
-                     "Separation of in silico deletions using this parameter quashes this problem. "
-                     "The default value was determined by inspection of deletions predicted from large datasets. "
-                     "It is hard to envision a case where the user would adjust this parameter downward."}
-                ),
-    'max-deletion-configurations': (
-            ['--max-deletion-configurations'],
-            {'default': 10000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
-                     "that can be generated from a single sequence with potential modifications. "
-                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
-                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
-                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
-                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
-                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
-                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
-                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
-                     "is decremented for the sequence and in silico deletions are again introduced."}
+             'help': "This parameter sets the distance an indel must lie from the right end of a sequence alignment "
+                     "in the search for modification-induced indels. "
+                     "The default buffer of 3 matches was chosen to prevent variant nucleotides "
+                     "at the 3' end of tRNA reads from being mistakenly identified as indels."}
                 ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
@@ -3220,14 +3172,14 @@ D = {
                      "to inspect seeds for undisplayed variants (possible SNVs) "
                      "with a low level of third and fourth nucleotides."}
                 ),
-    'min-deletion-fraction': (
-            ['--min-deletion-fraction'],
-            {'default': 0.002,
+    'min-indel-fraction': (
+            ['--min-indel-fraction'],
+            {'default': 0.001,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "
-                     "Coverage of a deletion in a sample must meet the minimum fraction of specific coverage. "
-                     "Deletion coverages are calculated separately for specific, nonspecific, and summed coverages."}
+             'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
+                     "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
+                     "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
     )
 }
 
