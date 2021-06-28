@@ -6813,30 +6813,32 @@ class DatabaseConverter(object):
             profile_db.db.commit()
 
         if db_cov_type == 'specific' or db_cov_type == 'nonspecific' or db_cov_type == 'summed':
-            for attr, table_basename in [
-                ('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
-                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
-                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
-                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
-                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
+                                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
+                                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
+                                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
-            variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
+
             self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
                                      getattr(self, db_cov_type + '_indels_table_entries'))
         elif db_cov_type == 'combined':
-            for specific_attr, nonspecific_attr, table_basename in [
-                ('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
-                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
-                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
-                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
-                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
+                                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
+                                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
+                                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for specific_attr, nonspecific_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
-            variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
+
             self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             combined_indels_table_entries = []
