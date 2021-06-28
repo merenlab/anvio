@@ -2840,7 +2840,7 @@ class TRNASeqDataset(object):
         run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nc, 1))
         run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nc, 1))
         run.info("Mean specific reads per seq", round(mean_spec_reads_Nc, 1))
-        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1))
+        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2)
 
 
     def write_checkpoint_files(self, checkpoint_name):
@@ -3262,7 +3262,7 @@ class TRNASeqDataset(object):
         nonspec_long_5prime_Nf = len(set(nonspec_long_5prime_Nf_names))
 
         run = self.run
-        run.info_single("Results of fragment mapping (subject to change -- see summary output file for final results)", nl_after=1)
+        run.info_single("Results of fragment mapping (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
 
         run.info_single("Normalized seqs with tRNA profile")
         run.info("With specific mapping", count_spec_Nf)
@@ -3372,7 +3372,7 @@ class TRNASeqDataset(object):
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nc, 2))
         run.info("Max specific coverage", round(max_spec_cov_Nc, 2))
         run.info("Max nonspecific coverage", round(max_nonspec_cov_Nc, 2))
-        run.info("Max total coverage", round(max_total_cov_Nc, 2))
+        run.info("Max total coverage", round(max_total_cov_Nc, 2), nl_after=2)
 
 
     def find_substitutions(self):
@@ -3613,7 +3613,7 @@ class TRNASeqDataset(object):
         mean_sub_per_nt = total_sub_count / total_length_M
 
         run = self.run
-        run.info_single("Results of substitution search", nl_before=1)
+        run.info_single("Results of substitution search", nl_before=2)
         run.info("Modified seqs", count_M)
         run.info("Mean (*potential*) subs per modified seq", round(mean_sub_per_seq, 1))
         run.info("Mean subs per nt in modified seq", round(mean_sub_per_nt, 3), nl_after=2)
@@ -3653,7 +3653,9 @@ class TRNASeqDataset(object):
         others, representing a different tRNA, not containing it."""
         start_time = time.time()
         pid = "Finding seqs with mod-induced indels"
-        self.progress.new(pid)
+        progress = self.progress
+        run = self.run
+        progress.new(pid)
 
         # Write FASTA files of queries and targets to a temp dir used in running Vmatch. Do not
         # allow the Vmatch driver to automatically remove the dir, as the FASTA file of Nq is used
@@ -3665,11 +3667,11 @@ class TRNASeqDataset(object):
         fasta_path_Nqf = os.path.join(temp_dir_path, 'Nqf.fa')
 
         # Write a FASTA file of Nb.
-        self.progress.update("Writing FASTA of norm tRNA seqs with mod-induced subs")
+        progress.update("Writing FASTA of norm tRNA seqs with mod-induced subs")
         count_Nb, max_length_M = self.write_fasta_Nb(fasta_path_Nb)
 
         # Write a FASTA file of Nqf.
-        self.progress.update("Writing FASTA of norm tRNA seqs without mod-induced subs")
+        progress.update("Writing FASTA of norm tRNA seqs without mod-induced subs")
         count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
         # Search Nqf against Nb.
@@ -3691,12 +3693,15 @@ class TRNASeqDataset(object):
         results_dict = {}
         # The following method updates `results_dict`.
         count_Nqf_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, False)
+        progress.end()
+        run.info_single("Completed indel search stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2)
 
 
         # Search Nb against Nqf.
+        progress.new(pid)
         if count_Nqf_with_indels:
             # Indels were found in some Nqf, so rewrite the FASTA file of Nqf to exclude these.
-            self.progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
+            progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
             count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
@@ -3715,10 +3720,13 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nqf_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, True)
+        progress.end()
+        run.info_single("Completed indel search stage 2/4: mod tRNA seqs within norm tRNA seqs")
 
 
         # Write a FASTA file of Nc.
-        self.progress.update("Writing FASTA of norm trunc seqs")
+        progress.new(pid)
+        progress.update("Writing FASTA of norm trunc seqs")
         fasta_path_Nc = os.path.join(temp_dir_path, 'Nc.fa')
         count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
@@ -3739,12 +3747,15 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nc_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, False)
+        progress.end()
+        run.info_single("Completed indel search stage 3/4: trunc tRNA seqs within mod tRNA seqs")
 
 
         # Search Nb against Nc.
+        progress.new(pid)
         if count_Nc_with_indels:
             # Indels were found in some Nc, so rewrite the FASTA file of Nc to exclude these.
-            self.progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
+            progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
             count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
@@ -3763,10 +3774,15 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nc_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, True)
+        progress.end()
+        run.info_single("Completed indel search stage 4/4: mod tRNA seqs within trunc tRNA seqs")
+
 
         # Consolidate Nq differing by 5' and 3' extensions into a new Ni object.
+        progress.new(pid)
+        progress.update("Finalizing norm seqs with indels")
         self.add_Ni_to_M(results_dict)
-        self.progress.end()
+        progress.end()
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         set_meta_value = trnaseq_db.db.set_meta_value
@@ -4418,7 +4434,7 @@ class TRNASeqDataset(object):
                     count_indel_M += 1
 
         run = self.run
-        run.info_single("Final results of modification analysis", nl_after=1)
+        run.info_single("Final results of modification analysis", nl_before=2, nl_after=1)
 
         run.info_single("Modified seqs")
         run.info("Specific reads", spec_read_count_M)
@@ -4445,840 +4461,7 @@ class TRNASeqDataset(object):
             count_Nc_with_indels = get_meta_value('count_Nc_with_indels')
             trnaseq_db.disconnect()
             run.info("Normalized tRNA seqs found to have indels", count_Nqf_with_indels)
-            run.info("Normalized trunc seqs found to have indels", count_Nc_with_indels)
-
-
-    # def find_deletions(self):
-    #     """Find potential modification-induced deletions. First, in silico "test" deletions are
-    #     introduced at and around substitution sites in sequences with potential modification-induced
-    #     substitutions. Notate such modified sequences with in silico deletions as *M'*. M' are
-    #     searched against two pools of sequence targets:
-    #     1. normalized tRNA sequences not assigned to modified sequences, notated *Nf*, for
-    #        normalized sequences with a full feature profile, and
-    #     2. normalized "non-tRNA" sequences with truncated tRNA profiles, notated *Nt*.
-
-    #     Why these two pools?
-    #     1. Why are Nf considered at all, when they have been successfully profiled, and therefore,
-    #        presumably, do not have deletions interrupting the profile? Deletions can be erroneously
-    #        accommodated by flexibility in feature lengths. For example, a deletion associated with a
-    #        modification in the D loop can cause the variable-length alpha or beta sections of the D
-    #        loop to be assigned one fewer nucleotide than is correct in order to optimize the
-    #        profile.
-    #     2. Why not all "non-tRNAs," why just those with a truncated feature profile (Nt)? Deletions
-    #        can cause truncation of the profile. "Non-tRNAs" without even a truncated profile
-    #        (sequences that were not profiled past the minimum length threshold of the T arm) also
-    #        have fewer opportunities for modification-induced mutations.
-
-    #     Normalized sequences rather than trimmed or unique sequences are searched for the sake of
-    #     speed and simplicity. Ideally, normalized sequences found to have deletions would be further
-    #     processed, finding which of their constituent trimmed and unique sequences actually contain
-    #     the deletions. However, *nonspecific* trimmed and unique sequences are, by definition, in
-    #     other normalized sequences, creating the possible ambiguity that the trimmed sequence would
-    #     be marked as having a deletion in one but not another normalized sequence. This would not
-    #     necessarily be an error, as identical underlying reads could theoretically originate from
-    #     different cDNA sequences, with some containing a deletion, and others, representing a
-    #     different tRNA, not containing a deletion."""
-    #     start_time = time.time()
-    #     pid = "Finding seqs with mod-induced dels"
-    #     self.progress.new(pid)
-
-    #     self.progress.update("Generating mod seqs with in silico dels")
-    #     # A "child" here is a modified sequence with in silico deletions, M'.
-    #     mod_seq_child_names = []
-    #     mod_seq_child_reversed_seq_strings = []
-    #     mod_seq_child_extras = []
-    #     for mod_seq in self.mod_trna_seq_dict.values():
-    #         mod_seq_child_index = 0
-    #         for seq_string_with_del, del_config in self.get_sequences_with_deletions(mod_seq):
-    #             mod_seq_child_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
-    #             mod_seq_child_reversed_seq_strings.append(seq_string_with_del[::-1])
-    #             mod_seq_child_extras.append((del_config, mod_seq))
-    #             mod_seq_child_index += 1
-
-
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Gathering norm seqs with trunc profiles")
-    #     norm_trunc_seq_names = []
-    #     norm_trunc_seq_reversed_seq_strings = []
-    #     norm_trunc_seq_extras = []
-    #     for norm_trunc_seq_name, norm_trunc_seq in self.norm_trunc_seq_dict.items():
-    #         norm_trunc_seq_names.append(norm_trunc_seq_name)
-    #         norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
-    #         norm_trunc_seq_extras.append(norm_trunc_seq)
-
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("3'-derep seqs with in silico dels & seqs with trunc profiles")
-    #     clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
-    #                                                            norm_trunc_seq_reversed_seq_strings,
-    #                                                            norm_trunc_seq_extras,
-    #                                                            mod_seq_child_names,
-    #                                                            mod_seq_child_reversed_seq_strings,
-    #                                                            mod_seq_child_extras)
-
-    #     if clusters:
-    #         self.progress.update_pid(pid)
-    #         self.progress.update("Searching norm seqs with trunc profiles")
-    #         self.process_deletion_clusters(clusters, 'trunc')
-
-
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Gathering norm seqs with full profiles")
-    #     norm_trna_seq_names = []
-    #     norm_trna_seq_reversed_seq_strings = []
-    #     norm_trna_seq_extras = []
-    #     for norm_trna_seq_name, norm_trna_seq in self.norm_trna_seq_dict.items():
-    #         if not norm_trna_seq.mod_seqs:
-    #             norm_trna_seq_names.append(norm_trna_seq_name)
-    #             norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
-    #             norm_trna_seq_extras.append(norm_trna_seq)
-
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("3'-derep seqs with in silico dels and seqs with full profiles")
-    #     clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
-    #                                                            norm_trna_seq_reversed_seq_strings,
-    #                                                            norm_trna_seq_extras,
-    #                                                            mod_seq_child_names,
-    #                                                            mod_seq_child_reversed_seq_strings,
-    #                                                            mod_seq_child_extras)
-
-    #     if clusters:
-    #         self.progress.update_pid(pid)
-    #         self.progress.update("Searching norm seqs with full profiles")
-    #         self.process_deletion_clusters(clusters, 'trna')
-
-
-    #     with open(self.analysis_summary_path, 'a') as f:
-    #         f.write(self.get_summary_line("Time elapsed finding mod-induced dels (min)",
-    #                                       time.time() - start_time,
-    #                                       is_time_value=True))
-
-    #     self.progress.end()
-
-
-    # def get_sequences_with_deletions(self, mod_seq):
-    #     """Generate in silico modified sequences with deletions, *M'*, at and/or around substitution
-    #     sites. This method is called by `find_deletions`.
-
-    #     This method first introduces in silico nucleotide *substitutions* at possible substitution
-    #     sites to create template sequences. Substitutions are only allowed to the nucleotides
-    #     observed in the normalized sequences comprising the modified sequence, i.e., if 3
-    #     nucleotides are observed at a substitution site, then 3 are introduced in silico, rather
-    #     than the maximum 4. For each template sequence produced, `introduce_deletions` is called to
-    #     introduce deletions of different lengths at the possible configurations of substitution
-    #     sites. This may produce redundant sequences from the different templates, which are removed
-    #     in the present method.
-
-    #     Returns
-    #     =======
-    #     del_set : set
-    #         A set of tuples, each with 2 elements. The first element is a sequence string containing
-    #         deletions. The second element is a tuple of the indices of these deletions in the input
-    #         sequence.
-    #     """
-    #     longest_norm_seq_string = mod_seq.norm_seqs_without_dels[0].seq_string
-    #     mod_seq_length = len(longest_norm_seq_string)
-    #     sub_positions = mod_seq.sub_positions
-
-    #     # Record the configurations of nucleotides at the substitution positions found in the
-    #     # normalized sequences comprising the modified sequence. For normalized sequences shorter
-    #     # than the modified sequence (shorter than its longest normalized sequence) that do not
-    #     # include certain substitution positions nearer the 5' end of the modified sequence, use the
-    #     # nucleotides at the missing substitution positions from the representative longest
-    #     # normalized sequence in the substitution configuration.
-    #     longest_norm_seq_sub_nts = tuple([longest_norm_seq_string[sub_pos] for sub_pos in sub_positions])
-    #     sub_nt_config_set = set([longest_norm_seq_sub_nts])
-    #     for norm_seq in mod_seq.norm_seqs_without_dels[1: ]:
-    #         norm_seq_string = norm_seq.seq_string
-    #         norm_seq_start_in_mod_seq = mod_seq_length - len(norm_seq_string)
-    #         norm_seq_sub_nts = []
-    #         for sub_num, sub_pos in enumerate(sub_positions):
-    #             if sub_pos < norm_seq_start_in_mod_seq:
-    #                 norm_seq_sub_nts.append(longest_norm_seq_sub_nts[sub_num])
-    #             else:
-    #                 norm_seq_sub_nts.append(norm_seq_string[sub_pos - norm_seq_start_in_mod_seq])
-    #         sub_nt_config_set.add(tuple(norm_seq_sub_nts))
-
-    #     # Make template sequences (without deletions) from the substitution configurations.
-    #     seq_strings_without_dels = []
-    #     for sub_nt_config in sub_nt_config_set:
-    #         altered_seq_string = longest_norm_seq_string
-    #         for sub_nt, sub_pos in zip(sub_nt_config, sub_positions):
-    #             altered_seq_string = altered_seq_string[: sub_pos] + sub_nt + altered_seq_string[sub_pos + 1: ]
-    #         seq_strings_without_dels.append(altered_seq_string)
-
-    #     del_set = set()
-    #     for max_distinct_dels in range(self.max_distinct_dels, 0, -1):
-    #         # Introduce deletions into each template sequence, potentially producing a number of new
-    #         # sequences.
-    #         del_dict = {}
-    #         for seq_string in seq_strings_without_dels:
-    #             del_dict_for_seq = self.introduce_deletions(seq_string, sub_positions, max_distinct_dels=max_distinct_dels)
-    #             # The same sequence with deletions may sometimes be generated from different
-    #             # template normalized sequences. In case of redundancy, favor the deletion
-    #             # configuration closest to the substitution site around which deletions were
-    #             # introduced, with equally close configurations resolved by favoring more 5' over
-    #             # more 3' configurations.
-    #             for seq_string_with_del, del_pos_info in del_dict_for_seq.items():
-    #                 if seq_string_with_del in del_dict:
-    #                     if del_pos_info[1] >= del_dict[seq_string_with_del][1]:
-    #                         continue
-    #                 del_dict[seq_string_with_del] = del_pos_info
-    #         # Nota bene: Generated sequences may be 3' subsequences of each other. These are
-    #         # 3'-dereplicated in `find_deletions`, which calls the present method.
-    #         del_set = set([(seq_string_with_del, del_pos_info[0]) for seq_string_with_del, del_pos_info in del_dict.items()])
-    #         if len(del_set) <= self.max_del_configs:
-    #             # A very large number of sequences with in silico deletions was generated,
-    #             # potentially preventing processing in a reasonable time, so decrement the number of
-    #             # distinct sites at which deletions can be introduced in a single template sequence.
-    #             break
-    #     return del_set
-
-
-    # def introduce_deletions(self, seq_string, sub_positions, max_distinct_dels):
-    #     """Generate in silico sequences with deletions at and/or around substitution sites in the
-    #     input sequence. This method is called by `get_sequences_with_deletions`.
-
-    #     Parameters
-    #     ==========
-    #     seq_string : str
-    #         The sequence in which deletions will be introduced
-
-    #     sub_positions : list-like
-    #         Where substitutions are located in the input sequence
-
-    #     Returns
-    #     =======
-    #     del_dict : dict
-    #         Each dict key is a sequence string resulting from the introduction of deletions in the
-    #         input sequence. Each dict value is a length-two tuple. The first element of the tuple is
-    #         another tuple of the deletion positions in the input. The second element is a score used
-    #         to measure the distance of the deletions from the substitution loci of the input
-    #         sequence.
-    #     """
-    #     del_ranges = self.del_ranges
-    #     min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
-    #     min_dist_between_dels = self.min_dist_between_dels
-    #     # Find all the ways deletions can be introduced into the sequence given the
-    #     # parameterization.
-    #     del_pos_configs = []
-    #     seq_string_length = len(seq_string)
-    #     # Deletions of different sizes can be situated at each substitution site. Deletions may be
-    #     # found at one or multiple sites, if multiple substititutions are present. Call each
-    #     # deletion site a "locus".
-    #     for num_del_loci in range(1, max_distinct_dels + 1):
-    #         # Example: `num_del_loci` of 2 means deletions will be introduced in 2 places.
-    #         del_range_configs = product(*[del_ranges for _ in range(num_del_loci)])
-    #         for del_locus_config in combinations(sub_positions, num_del_loci):
-    #             # Example: `del_locus_config` of (10, 20) means deletions will be introduced around
-    #             # the substitutions at positions 10 and 20 in the input sequence.
-    #             for del_range_config in del_range_configs:
-    #                 # Example: `del_range_config` of (range(-2, 0), range(0, 1)) means the 2
-    #                 # nucleotides 5' of the first substitution position and the nucleotide at the
-    #                 # second substitution position will be deleted.
-    #                 all_del_positions = []
-    #                 all_del_pos_scores = []
-    #                 for del_locus_index, del_range in enumerate(del_range_config):
-    #                     sub_pos = del_locus_config[del_locus_index]
-    #                     locus_del_positions = []
-    #                     locus_del_pos_scores = []
-    #                     for del_pos_relative_to_sub in del_range:
-    #                         del_pos = sub_pos + del_pos_relative_to_sub
-
-    #                         # Deletion positions must be within the template sequence. There must be
-    #                         # sufficient sequence length on the 5' end to confirm the deletion. This
-    #                         # is related to the issue of nontemplated nucleotides. For example,
-    #                         # there may be a *biological* 3' tRNA fragment that ends at a
-    #                         # modification site, but a nontemplated nucleotide is added to the 5'
-    #                         # end of the read and is the same as the nucleotide that occurs 3
-    #                         # nucleotides 5' of the modification site, so without an "anchoring"
-    #                         # stretch of nucleotides on the 5' end, a deletion of length 2 could be
-    #                         # mistakenly identified as lying between the modification and the
-    #                         # nontemplated nucleotide. Therefore, only allow silico deletions that
-    #                         # occur some distance from the 5' end.
-    #                         if not seq_string_length > del_pos >= min_fiveprime_del_pos:
-    #                             continue
-
-    #                         if not locus_del_positions:
-    #                             if all_del_positions:
-    #                                 if del_pos - all_del_positions[-1] < min_dist_between_dels:
-    #                                     continue
-
-    #                         locus_del_positions.append(del_pos)
-
-    #                         # Lower deletion position scores are better (see below for the purpose
-    #                         # of the score). Distinguish 3' and 5' deletions that are the same
-    #                         # distance from the substitution locus by adding 0.5 to the magnitude of
-    #                         # the 3' distance.
-    #                         if del_pos_relative_to_sub <= 0:
-    #                             locus_del_pos_scores.append(abs(del_pos_relative_to_sub))
-    #                         else:
-    #                             locus_del_pos_scores.append(abs(del_pos_relative_to_sub) + 0.5)
-    #                     all_del_positions.extend(locus_del_positions)
-    #                     all_del_pos_scores.extend(locus_del_pos_scores)
-    #                 if all_del_positions:
-    #                     # It is possible that in silico deletions originating from one substitution
-    #                     # locus may coincide with those originating from another, so these
-    #                     # redundancies must be resolved.
-    #                     del_pos_config = []
-    #                     prev_del_pos = -1
-    #                     for del_pos_info in sorted(zip(all_del_positions, all_del_pos_scores), key=lambda del_pos_info: (del_pos_info[0], del_pos_info[1])):
-    #                         if del_pos_info[0] > prev_del_pos:
-    #                             del_pos_config.append(del_pos_info)
-    #                     del_pos_configs.append(tuple(del_pos_config))
-    #     # It is possible to generate the same sequence with deletions given different deletion
-    #     # configurations. For example, ACCG can become ACG by deleting either C. If the second C is
-    #     # the sole substitution locus in the sequence, then only record the in silico deletion as
-    #     # occurring at that nucleotide rather one nucleotide 5' of it. This is resolved by choosing
-    #     # the lower deletion position score. The deletion at the first C has a score of 1, whereas
-    #     # the deletion at the second has a score of 0.
-    #     del_dict = {}
-    #     for del_pos_config in del_pos_configs:
-    #         seq_string_with_dels = seq_string
-    #         del_positions = []
-    #         total_del_pos_score = 0
-    #         for del_pos, del_pos_score in del_pos_config[::-1]:
-    #             seq_string_with_dels = seq_string_with_dels[: del_pos] + seq_string_with_dels[del_pos + 1: ]
-    #             del_positions.append(del_pos)
-    #             total_del_pos_score += del_pos_score
-
-    #         if seq_string_with_dels in del_dict:
-    #             if total_del_pos_score >= del_dict[seq_string_with_dels][1]:
-    #                 continue
-    #         del_dict[seq_string_with_dels] = (tuple(sorted(del_positions)), total_del_pos_score)
-    #     return del_dict
-
-
-    # def prefix_dereplicate_deletion_candidates(self,
-    #                                            norm_seq_names,
-    #                                            norm_seq_reversed_seq_strings,
-    #                                            norm_seq_extras,
-    #                                            mod_seq_child_names,
-    #                                            mod_seq_child_reversed_seq_strings,
-    #                                            mod_seq_child_extras):
-    #     """3'-dereplicate modified sequence "children" with speculative in silico deletions (M') and
-    #     normalized sequences (N). Clusters seeded by M' are produced when an N is found that is a 3'
-    #     subsequence of M', potentially of equal length. Other M' that are 3' subsequences of the
-    #     seed M' may also be part of these clusters. Clusters seeded by N are produced. Only M' are
-    #     3' subsequences in these clusters, as N have already been dereplicated. No cluster, seeded
-    #     either by M' or N, can contain more than one N."""
-    #     pid = "Finding seqs with mod-induced dels"
-    #     hashed_norm_seq_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings]
-    #     hashed_mod_seq_child_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings]
-
-    #     # FIND N and other M' in M'.
-    #     ############################
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Finding seqs without in silico dels in seqs with them")
-    #     # Make an `AlignedTarget` object for each M' target that is hit, and add info on matching N
-    #     # or M' queries to its alignment attribute. Store these objects in the following dict.
-    #     mod_seq_child_aligned_target_dict = {}
-    #     # If an N is a 3' subsequence of an M', then do not search for it later as a target to form
-    #     # a cluster seeded by N.
-    #     matched_norm_seq_names = set()
-    #     # Generate k-mers of the size of each N or M' query from the 3' end of each M' target.
-    #     kmer_sizes = sorted(set([len(seq_string) for seq_string in mod_seq_child_reversed_seq_strings + norm_seq_reversed_seq_strings]))
-    #     chunk_start = 0
-    #     target_chunk_size = self.alignment_target_chunk_size
-    #     chunk_stop = target_chunk_size
-    #     while chunk_start < len(mod_seq_child_names):
-
-    #         # GENERATE A DICT mapping M' target 3' prefix k-mers to target info.
-    #         ####################################################################
-    #         # This is like a `sequence.Kmerizer` method that uses multiple k-mer sizes and doesn't
-    #         # generate `AlignedTarget` objects for each target. To speed up lookup, create a nested
-    #         # dict, with the outer dict keyed by k-mer length.
-    #         kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
-    #         for name, seq_string, target_extra in zip(mod_seq_child_names[chunk_start: chunk_stop],
-    #                                                   mod_seq_child_reversed_seq_strings[chunk_start: chunk_stop],
-    #                                                   mod_seq_child_extras[chunk_start: chunk_stop]):
-    #             seq_length = len(seq_string)
-    #             # The target extra here is a tuple with the first element being the in silico
-    #             # deletion configuration of M' and the second being the modified sequence object, M.
-    #             target_info = (name, seq_string, target_extra)
-    #             for kmer_size in kmer_sizes:
-    #                 if kmer_size > seq_length:
-    #                     break
-
-    #                 hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-    #                 try:
-    #                     kmer_dict[kmer_size][hashed_kmer].append(target_info)
-    #                 except KeyError:
-    #                     kmer_dict[kmer_size][hashed_kmer] = [target_info]
-
-
-    #         # SEARCH for N queries in M' targets.
-    #         #####################################
-    #         for hashed_norm_seq_string, norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra in zip(hashed_norm_seq_strings,
-    #                                                                                                        norm_seq_names,
-    #                                                                                                        norm_seq_reversed_seq_strings,
-    #                                                                                                        norm_seq_extras):
-    #             try:
-    #                 # N may be found in multiple M'.
-    #                 target_info_list = kmer_dict[len(norm_seq_reversed_seq_string)][hashed_norm_seq_string]
-    #             except KeyError:
-    #                 # N is not a 3' subsequence of any M'.
-    #                 continue
-
-    #             for target_name, target_seq_string, target_extra in target_info_list:
-    #                 try:
-    #                     # The M' target has already been hit by another sequence -- presumably an M'
-    #                     # query, since only one N can hit any target, as no N can be a 3' subsequence of
-    #                     # another N.
-    #                     target = mod_seq_child_aligned_target_dict[target_name]
-    #                 except KeyError:
-    #                     target = AlignedTarget(target_seq_string, name=target_name)
-    #                     mod_seq_child_aligned_target_dict[target_name] = target
-    #                     # Record information on the target as the target object's first alignment item.
-    #                     target.alignments.append((target_name, target_seq_string, target_extra))
-    #                 target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
-    #                 matched_norm_seq_names.add(norm_seq_name)
-
-
-    #         # SEARCH for M' queries in M' targets.
-    #         ######################################
-    #         for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
-    #                                                                                                                            mod_seq_child_names,
-    #                                                                                                                            mod_seq_child_reversed_seq_strings,
-    #                                                                                                                            mod_seq_child_extras):
-    #             try:
-    #                 target_info_list = kmer_dict[len(mod_seq_child_reversed_seq_string)][hashed_mod_seq_child_string]
-    #             except KeyError:
-    #                 continue
-
-    #             self_match = False
-    #             for target_name, target_seq_string, target_extra in target_info_list:
-    #                 if not self_match:
-    #                     # Use the Boolean, `self_match`, to limit string comparisons.
-    #                     if mod_seq_child_name == target_name:
-    #                         # Ignore self matches
-    #                         self_match = True
-    #                         continue
-    #                 try:
-    #                     target = mod_seq_child_aligned_target_dict[target_name]
-    #                 except KeyError:
-    #                     target = AlignedTarget(target_seq_string, name=target_name)
-    #                     mod_seq_child_aligned_target_dict[target_name] = target
-    #                     target.alignments.append((target_name, target_seq_string, target_extra))
-    #                 target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-
-    #         # Delete the k-mer dict for the current chunk.
-    #         del(kmer_dict)
-    #         gc.collect()
-    #         chunk_start = chunk_stop
-    #         chunk_stop += target_chunk_size
-
-    #     # Find N that DID NOT MATCH any M' to use as targets in the next search.
-    #     matched_norm_seq_names = list(matched_norm_seq_names)
-    #     unmatched_norm_seq_names = []
-    #     unmatched_norm_seq_reversed_seq_strings = []
-    #     unmatched_norm_seq_extras = []
-    #     for name, seq_string, extra in zip(norm_seq_names, norm_seq_reversed_seq_strings, norm_seq_extras):
-    #         if name not in matched_norm_seq_names:
-    #             unmatched_norm_seq_names.append(name)
-    #             unmatched_norm_seq_reversed_seq_strings.append(seq_string)
-    #             unmatched_norm_seq_extras.append(extra)
-
-    #     del(matched_norm_seq_names)
-    #     # Delete lists for all N rather than just unmatched N.
-    #     del(hashed_norm_seq_strings)
-    #     del(norm_seq_names)
-    #     del(norm_seq_reversed_seq_strings)
-    #     del(norm_seq_extras)
-    #     gc.collect()
-
-    #     # FIND M' in unmatched N.
-    #     #########################
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Find seqs with in silico dels in seqs without them")
-    #     # Make an `AlignedTarget` object for each N target that is hit, and add info on matching M'
-    #     # queries to its alignment attribute. Store these objects in the following dict.
-    #     norm_seq_aligned_target_dict = {}
-    #     # Generate k-mers of the size of each M' query from the 3' end of each N target.
-    #     kmer_sizes = sorted(set([len(seq_string) for seq_string in mod_seq_child_reversed_seq_strings]))
-    #     chunk_start = 0
-    #     chunk_stop = target_chunk_size
-    #     while chunk_start < len(unmatched_norm_seq_names):
-    #         chunk_norm_seq_lengths = sorted(set([len(seq_string) for seq_string in unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop]]))
-
-    #         # GENERATE A DICT mapping N target 3' prefix k-mers to target info.
-    #         ###################################################################
-    #         kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
-    #         for name, seq_string, target_extra in zip(unmatched_norm_seq_names[chunk_start: chunk_stop],
-    #                                                   unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop],
-    #                                                   unmatched_norm_seq_extras[chunk_start: chunk_stop]):
-    #             seq_length = len(seq_string)
-    #             target_info = (name, seq_string, target_extra)
-    #             for kmer_size in kmer_sizes:
-    #                 if kmer_size > seq_length:
-    #                     break
-
-    #                 hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-    #                 try:
-    #                     kmer_dict[kmer_size][hashed_kmer].append(target_info)
-    #                 except KeyError:
-    #                     kmer_dict[kmer_size][hashed_kmer] = [target_info]
-
-
-    #         # SEARCH for M' queries in N targets.
-    #         #####################################
-    #         for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
-    #                                                                                                                            mod_seq_child_names,
-    #                                                                                                                            mod_seq_child_reversed_seq_strings,
-    #                                                                                                                            mod_seq_child_extras):
-    #             try:
-    #                 target_info_list = kmer_dict[len(mod_seq_child_reversed_seq_string)][hashed_mod_seq_child_string]
-    #             except KeyError:
-    #                 continue
-
-    #             for target_name, target_seq_string, target_extra in target_info_list:
-    #                 try:
-    #                     target = norm_seq_aligned_target_dict[target_name]
-    #                 except KeyError:
-    #                     target = AlignedTarget(target_seq_string, name=target_name)
-    #                     norm_seq_aligned_target_dict[target_name] = target
-    #                     target.alignments.append((target_name, target_seq_string, target_extra))
-    #                 target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-
-    #         del(kmer_dict)
-    #         gc.collect()
-    #         chunk_start = chunk_stop
-    #         chunk_stop += target_chunk_size
-
-    #     del(hashed_mod_seq_child_strings)
-    #     gc.collect()
-
-    #     clusters = []
-    #     # CREATE CLUSTER objects for each M' containing an N.
-    #     #####################################################
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Creating clusters seeded by seqs with in silico dels")
-    #     for mod_seq_child_target in mod_seq_child_aligned_target_dict.values():
-    #         norm_seq_added = False
-    #         if mod_seq_child_target.alignments:
-    #             # Start filling out a cluster object, but only add meaningful clusters containing an
-    #             # N to the final list.
-    #             cluster = Cluster()
-    #             # The first item in the alignment is info on the M' seed. Do not add info on the
-    #             # seed to the cluster until it is established that the cluster contains an N. For
-    #             # full reproducibility, sort matching queries in descending order of length, and in
-    #             # case of ties, by name.
-    #             for name, reversed_seq_string, extra in sorted(mod_seq_child_target.alignments[1: ],
-    #                                                            key=lambda alignment_with_mod_seq_child: (-len(alignment_with_mod_seq_child[1]), alignment_with_mod_seq_child[0])):
-    #                 cluster.member_names.append(name)
-    #                 cluster.member_seqs.append(reversed_seq_string)
-    #                 cluster.member_extras.append(extra)
-    #                 if not norm_seq_added:
-    #                     if not isinstance(extra, tuple):
-    #                         norm_seq_added = True
-    #             if norm_seq_added:
-    #                 name, reversed_seq_string, extra = mod_seq_child_target.alignments[0]
-    #                 cluster.member_names.insert(0, name)
-    #                 cluster.member_seqs.insert(0, reversed_seq_string)
-    #                 cluster.member_extras.insert(0, extra)
-    #                 clusters.append(cluster)
-
-    #     # CREATE CLUSTER objects for each N containing but not contained by an M'.
-    #     ##########################################################################
-    #     self.progress.update_pid(pid)
-    #     self.progress.update("Creating clusters seeded by seqs without in silico dels")
-    #     for norm_seq_target in norm_seq_aligned_target_dict.values():
-    #         if norm_seq_target.alignments:
-    #             cluster = Cluster()
-    #             # The first item is info on the N seed.
-    #             name, reversed_seq_string, extra = norm_seq_target.alignments[0]
-    #             cluster.member_names.append(name)
-    #             cluster.member_seqs.append(reversed_seq_string)
-    #             cluster.member_extras.append(extra)
-    #             # Add info on matching M' queries.
-    #             for name, reversed_seq_string, extra in sorted(norm_seq_target.alignments[1: ],
-    #                                                            key=lambda mod_seq_child_alignment_with_norm_seq: (-len(mod_seq_child_alignment_with_norm_seq[1]), mod_seq_child_alignment_with_norm_seq[0])):
-    #                 cluster.member_names.append(name)
-    #                 cluster.member_seqs.append(reversed_seq_string)
-    #                 cluster.member_extras.append(extra)
-    #             clusters.append(cluster)
-
-    #     # For full reproducibility, sort clusters in descending order of size, and in case of ties,
-    #     # by name.
-    #     clusters.sort(key=lambda cluster: (-len(cluster.member_names), cluster.member_names[0]))
-    #     return clusters
-
-
-    # def process_deletion_clusters(self, clusters, norm_seq_type):
-    #     """Process 3'-dereplicated clusters comprised of modified sequences with in silico
-    #     deletions, *M'*, and normalized sequences. The normalized sequences either all have a
-    #     truncated feature profile, *Nt*, or all have a full feature profile, *Nf*.
-
-    #     We are interested in clusters with both M' and a normalized sequence, verifying the
-    #     speculative deletions in M' by the existence of a corresponding normalized sequence. There
-    #     can only be one N per cluster, as normalized sequences have previously been 3'-dereplicated.
-    #     There can be multiple M'.
-
-    #     N with supported deletions are removed and reconstituted as `NormalizedDeletionSequence`
-    #     objects.
-
-    #     Normalized sequences can often be sequences with deletions that also have extra 5'
-    #     nucleotides. When this type of normalized sequence is present in the cluster, M' will be
-    #     shorter. In the case of Nf, the extra nucleotides went undetected in the initial assignment
-    #     of the feature profile, as they are within a normalized sequence, which, by definition, is
-    #     meant to have trimmed 3' and 5' ends. For the extra 5' nucleotides to be detected, it must
-    #     be confirmed that the longest modified sequence is a full-length tRNA.
-
-    #     N can also arise from tRNA fragments. In a cluster, these would be 3' subsequences of one or
-    #     more M'.
-    #     """
-    #     norm_seq_mod_seqs_dict = self.get_normalized_sequences_containing_modified_sequences_with_deletions(clusters)
-
-    #     # Process the matches between N and one or more M'.
-    #     if norm_seq_type == 'trna':
-    #         norm_seq_dict = self.norm_trna_seq_dict
-    #     elif norm_seq_type == 'trunc':
-    #         norm_seq_dict = self.norm_trunc_seq_dict
-    #     new_norm_del_seq_dict = {}
-    #     # It is useful to know which of a trimmed sequence's normalized sequences are found to
-    #     # contain deletions.
-    #     trimmed_seq_norm_del_seq_dict = defaultdict(list)
-    #     # Winnow the matches down to one-to-one matches between a normalized sequence and modified
-    #     # sequence, ignoring N that can be formed from the introduction of deletions in different
-    #     # modified sequences, as indicated by the following variable, which is set to `False` and
-    #     # cannot currently be changed by the user.
-    #     allow_norm_seq_with_dels_from_multiple_mod_seqs = self.allow_norm_seq_with_dels_from_multiple_mod_seqs
-    #     for norm_seq_name, match_info in norm_seq_mod_seqs_dict.items():
-    #         if len(match_info) == 1:
-    #             norm_seq, mod_seq, del_config, extra_fiveprime_length = match_info[0]
-    #         else:
-    #             # The normalized sequence was found in multiple M', which may be from the same or
-    #             # different modified sequences.
-    #             uniq_mod_seq_info_dict = {}
-    #             # In the following loop, `norm_seq` is the same in every iteration. This same
-    #             # variable is referenced after the loop.
-    #             for norm_seq, mod_seq, del_config, extra_fiveprime_length in match_info:
-    #                 if mod_seq.represent_name in uniq_mod_seq_info_dict:
-    #                     # Multiple deletion configurations in the same modified sequence are
-    #                     # apparently able to produce the normalized sequence.
-    #                     if len(del_config) < len(uniq_mod_seq_info_dict[mod_seq.represent_name]):
-    #                         # Favor the most parsimonious configuration of deletions producing the
-    #                         # normalized sequence.
-    #                         uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
-    #                 else:
-    #                     uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
-
-    #             if len(uniq_mod_seq_info_dict) > 1:
-    #                 if not allow_norm_seq_with_dels_from_multiple_mod_seqs:
-    #                     # The normalized sequence with deletions can arise from multiple modified
-    #                     # sequences, so ignore it.
-    #                     continue
-
-    #             mod_seq = match_info[0][1]
-    #             del_config = uniq_mod_seq_info_dict[mod_seq.represent_name]
-    #             extra_fiveprime_length = match_info[0][3]
-    #         for trimmed_seq in norm_seq.trimmed_seqs:
-    #             trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name].append(norm_seq.represent_name)
-
-    #         # Transfer the contents of a normalized sequence with supported deletions to a
-    #         # `NormalizedDeletionSequence` object. Some if not all of the feature profiles of the
-    #         # trimmed/unique sequences underlying the normalized sequence are invalidated by the
-    #         # deletions. However, do not alter the trimmed and unique sequences. A certain amount of
-    #         # information contradicting the trimmed and unique sequence profiles is stored in the
-    #         # `NormalizedDeletionSequence`, such as any additional 5' extension contained in the
-    #         # normalized sequence.
-    #         if not extra_fiveprime_length:
-    #             # N was the same length as M'. No other normalized sequence will contain M', as
-    #             # normalized sequences were 3' dereplicated earlier in the workflow.
-    #             norm_seq_dict.pop(norm_seq.represent_name)
-    #             norm_del_seq_string = norm_seq.seq_string
-    #             # Offload the work of finding the position of N in M and whether N contains the
-    #             # anticodon to `TRNASeqDataset` rather than having methods for this in each instance
-    #             # of `NormalizedDeletionSequence`.
-    #             norm_del_seq_start_in_mod_seq, norm_seq_del_config = self.find_normalized_deletion_sequence_in_modified_sequence(len(norm_del_seq_string), mod_seq, del_config)
-    #             norm_del_seq_contains_anticodon = self.check_normalized_deletion_sequence_for_anticodon(mod_seq, norm_del_seq_start_in_mod_seq)
-    #             norm_del_seq = NormalizedDeletionSequence(norm_del_seq_string, norm_seq, mod_seq, del_config, norm_del_seq_start_in_mod_seq, norm_seq_del_config, norm_del_seq_contains_anticodon)
-    #             new_norm_del_seq_dict[norm_del_seq_string] = norm_del_seq
-    #             mod_seq.norm_seqs_with_dels.append(norm_del_seq)
-    #             mod_seq.del_configs.append(del_config)
-
-    #             continue
-
-    #         # By reaching this point, N was found to be longer than M'. Multiple N can contain a
-    #         # given M'. N is longer than M' when it contains previously unidentified extra 5'
-    #         # nucleotides. The new 5' extension is recorded in the `NormalizedDeletionSequence`
-    #         # object. When multiple N are the same as M' except for the new 5' extension, they
-    #         # are consolidated into the same object.
-    #         norm_del_seq_string = norm_seq.seq_string[extra_fiveprime_length: ]
-    #         if norm_del_seq_string in new_norm_del_seq_dict:
-    #             norm_del_seq = new_norm_del_seq_dict[norm_del_seq_string]
-    #             # Avoid adding duplicate trimmed sequences to the object (those shorter than N).
-    #             norm_del_seq_length = len(norm_del_seq_string)
-    #             trimmed_seqs = [trimmed_seq for trimmed_seq in norm_seq.trimmed_seqs if len(trimmed_seq.seq_string) > norm_del_seq_length]
-    #             norm_del_seq.trimmed_seqs.extend(trimmed_seqs)
-    #             norm_del_seq.defunct_norm_seqs.extend([norm_seq for _ in trimmed_seqs])
-    #         else:
-    #             # Prevent N from actually being a slightly shorter, deletion-free 3' subsequence
-    #             # fragment of the modified sequence, M.
-    #             unsupported_dels = False
-    #             for norm_seq_without_dels in mod_seq.norm_seqs_without_dels:
-    #                 if norm_del_seq_string == norm_seq_without_dels.seq_string[len(del_config): ]:
-    #                     unsupported_dels = True
-    #                     break
-    #             if unsupported_dels:
-    #                 continue
-
-    #             # The following code is the same as above, when dealing with normalized sequences
-    #             # without a newly discovered 5' extension; perhaps it should be a separate method.
-    #             norm_seq_dict.pop(norm_seq.represent_name)
-    #             norm_del_seq_start_in_mod_seq, norm_seq_del_config = self.find_normalized_deletion_sequence_in_modified_sequence(len(norm_del_seq_string), mod_seq, del_config)
-    #             norm_del_seq_contains_anticodon = self.check_normalized_deletion_sequence_for_anticodon(mod_seq, norm_del_seq_start_in_mod_seq)
-    #             norm_del_seq = NormalizedDeletionSequence(norm_del_seq_string, norm_seq, mod_seq, del_config, norm_del_seq_start_in_mod_seq, norm_seq_del_config, norm_del_seq_contains_anticodon)
-    #             new_norm_del_seq_dict[norm_del_seq_string] = norm_del_seq
-    #             mod_seq.norm_seqs_with_dels.append(norm_del_seq)
-    #             mod_seq.del_configs.append(del_config)
-
-    #     norm_del_seq_dict = self.norm_del_seq_dict
-    #     trimmed_del_seq_dict = self.trimmed_del_seq_dict
-    #     uniq_del_seq_dict = self.uniq_del_seq_dict
-    #     for norm_seq in new_norm_del_seq_dict.values():
-    #         norm_seq.init()
-    #         norm_del_seq_dict[norm_seq.represent_name] = norm_seq
-    #         # Record the constituent sequences of normalized sequences with deletions.
-    #         for trimmed_seq in norm_seq.trimmed_seqs:
-    #             trimmed_del_seq_dict[trimmed_seq.represent_name] = (trimmed_seq, set(trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name]))
-    #             for uniq_seq in trimmed_seq.uniq_seqs:
-    #                 uniq_del_seq_dict[uniq_seq.represent_name] = uniq_seq
-    #     if norm_seq_type == 'trunc':
-    #         # If a sequence with a truncated feature profile is identified as tRNA, albeit with a
-    #         # deletion, then record it as such. Trimmed truncated sequences may be nonspecific,
-    #         # found in other normalized truncated sequences not recovered by this method. This
-    #         # nuance should not affect anything downstream.
-    #         trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-    #         trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
-    #         uniq_trna_seq_dict = self.uniq_trna_seq_dict
-    #         uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
-    #         for norm_seq in new_norm_del_seq_dict.values():
-    #             for trimmed_seq in norm_seq.trimmed_seqs:
-    #                 if isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
-    #                     try:
-    #                         trimmed_trunc_seq_dict.pop(trimmed_seq.represent_name)
-    #                     except KeyError:
-    #                         # The trimmed sequence was part of another normalized sequence with
-    #                         # deletions that was already processed.
-    #                         continue
-    #                     trimmed_trna_seq_dict[trimmed_seq.represent_name] = trimmed_seq
-    #                     for uniq_seq in trimmed_seq.uniq_seqs:
-    #                         uniq_trunc_seq_dict.pop(uniq_seq.represent_name)
-    #                         uniq_trna_seq_dict[uniq_seq.represent_name] = uniq_seq
-
-
-    # def get_normalized_sequences_containing_modified_sequences_with_deletions(self, clusters):
-    #     """The first step of `process_deletion_clusters`. Clusters are inspected to find normalized
-    #     sequences that are the same as or contain as 3' subsequences modified sequences with in
-    #     silico deletions."""
-    #     norm_seq_mod_seqs_dict = defaultdict(list)
-    #     min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
-    #     for cluster in clusters:
-    #         norm_seq_name = None
-    #         # Track the previous (the only) normalized sequence found in the cluster.
-    #         norm_seq = None
-    #         norm_seq_length = None
-    #         # Track the previous modified sequences found in the cluster before a normalized
-    #         # sequence is found.
-    #         mod_seqs = []
-    #         del_configs = []
-    #         for seq_name, member_extra in zip(cluster.member_names, cluster.member_extras):
-    #             if isinstance(member_extra, tuple):
-    #                 del_config = member_extra[0]
-    #                 mod_seq = member_extra[1]
-    #                 del_configs.append(del_config)
-    #                 mod_seqs.append(mod_seq)
-    #                 if norm_seq:
-    #                     # The normalized sequence came before the modified sequence in the cluster.
-    #                     extra_fiveprime_length = norm_seq_length + len(del_config) - len(mod_seq.norm_seqs_without_dels[0].seq_string)
-    #                     if extra_fiveprime_length == 0:
-    #                         # The normalized sequence is equal in length to the longest M' in the
-    #                         # cluster, and happened to come before it in the cluster. It seems that
-    #                         # this does not actually happen when this method is called from
-    #                         # `find_deletions` due to the order in which sequences are processed
-    #                         # during clustering, but entertain the possibility for the sake of
-    #                         # completeness were the clusters to be formed slightly differently.
-    #                         for mod_seq, del_config in zip(mod_seqs, del_configs):
-    #                             norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
-    #                         mod_seqs = []
-    #                         del_configs = []
-    #                     elif extra_fiveprime_length > 0:
-    #                         # The normalized sequence is longer than the longest M' in the cluster.
-    #                         if mod_seq.norm_seqs_without_dels[0].has_complete_feature_set:
-    #                             # The longest modified sequence in the cluster is a full-length
-    #                             # tRNA. Therefore, the normalized sequence contains extra 5'
-    #                             # nucleotides that should be trimmed.
-    #                             for mod_seq, del_config in zip(mod_seqs, del_configs):
-    #                                 norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, extra_fiveprime_length))
-    #                             mod_seqs = []
-    #                             del_configs = []
-    #             else: # considering normalized sequence
-    #                 norm_seq_name = seq_name
-    #                 norm_seq = member_extra
-    #                 norm_seq_length = len(norm_seq.seq_string)
-    #                 if not mod_seqs:
-    #                     continue
-    #                 for mod_seq, del_config in zip(mod_seqs, del_configs):
-    #                     if del_config[0] - len(mod_seq.norm_seqs_without_dels[0].seq_string) + norm_seq_length + len(del_config) < min_fiveprime_del_pos:
-    #                         # There must be sufficient matching sequence length on the 5' end of the
-    #                         # normalized sequence to confirm the 5'-most deletion.
-    #                         continue
-    #                     norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
-    #                 mod_seqs = []
-    #                 del_configs = []
-    #     return norm_seq_mod_seqs_dict
-
-
-    # def find_normalized_deletion_sequence_in_modified_sequence(self, norm_del_seq_length, mod_seq, del_config):
-    #     """Normalized sequences with deletions and modified sequences are aligned at the 3' end, so
-    #     find the start position of the normalized sequence in the modified sequence by working
-    #     backward from the 3' end. Also record the normalized sequence positions immediately 5' of
-    #     the deletions."""
-    #     # Example:
-    #     # ACGTAAC (mod seq)
-    #     #    T  C (norm seq)
-    #     # del_pos = 4
-    #     # norm_seq_pos == 1
-    #     # mod_seq_pos == 6
-    #     # mod_seq_pos -> 5
-    #     # norm_seq_pos -> 0
-    #     # mod_seq_pos -> 4 (continue)
-    #     # mod_seq_pos -> 3 (del_pos = -1)
-    #     # mod_seq_pos -> 2
-    #     # norm_seq_pos -> -1 (break)
-    #     # norm_seq_start = mod_seq_pos + 1 == 3
-
-    #     del_config_iterator = iter(del_config[::-1])
-    #     del_pos = next(del_config_iterator)
-    #     norm_seq_pos = norm_del_seq_length - 1
-    #     mod_seq_pos = len(mod_seq.norm_seqs_without_dels[0].seq_string) - 1
-    #     norm_seq_del_config = []
-    #     while norm_seq_pos > -1:
-    #         if mod_seq_pos == del_pos:
-    #             mod_seq_pos -= 1
-    #             norm_seq_del_config.append(norm_seq_pos)
-    #             try:
-    #                 del_pos = next(del_config_iterator)
-    #                 continue
-    #             except StopIteration:
-    #                 del_pos = -1
-    #         mod_seq_pos -= 1
-    #         norm_seq_pos -= 1
-    #     norm_seq_start_in_mod_seq = mod_seq_pos + 1
-    #     return norm_seq_start_in_mod_seq, norm_seq_del_config
-
-
-    # def check_normalized_deletion_sequence_for_anticodon(self, mod_seq, norm_del_seq_start_in_mod_seq):
-    #     # Determine whether the normalized sequence with deletions contains the anticodon.
-    #     try:
-    #         anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
-    #     except IndexError:
-    #         # The anticodon loop was not reached in the profile.
-    #         return False
-    #     if anticodon_loop_start >= norm_del_seq_start_in_mod_seq:
-    #         return True
-    #     else:
-    #         return False
+            run.info("Normalized trunc seqs found to have indels", count_Nc_with_indels, nl_after=2)
 
 
     def report_stats(self):
@@ -5355,7 +4538,7 @@ class TRNASeqDataset(object):
 
         trnaseq_db.disconnect()
 
-        self.run.info("Summary", self.analysis_summary_path)
+        self.run.info("Summary", self.analysis_summary_path, nl_before=2)
 
 
     def write_feature_table(self):

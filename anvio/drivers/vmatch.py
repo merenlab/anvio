@@ -69,7 +69,7 @@ class Vmatch(object):
         # given length on each line.
         self.align_output_length = A('align_output_length')
 
-        self.quiet = A('quiet')
+        self.quiet = A('quiet') or True
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.keep_temp_dir = A('keep_temp_dir') or False
         self.log_path = A('log_path') or os.path.join(self.temp_dir, '00_log.txt')
@@ -133,7 +133,7 @@ class Vmatch(object):
                               f"The provided value was {self.min_ident}.")
 
 
-    def check_programs(self, quiet=True):
+    def check_programs(self):
         self.installed_index_program_version = None
         self.installed_search_program_version = None
 
@@ -144,7 +144,7 @@ class Vmatch(object):
             output, ret_code = utils.get_command_output_from_shell(f'{program_name} -version')
             try:
                 version_found = output.split(b'\n')[0].split(b' ')[2].decode("utf-8")
-                if not quiet:
+                if not self.quiet:
                     self.run.info(f"{program_name} version found", version_found, mc='green')
             except:
                 version_found = 'Unknown'
@@ -436,7 +436,8 @@ class Vmatch(object):
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         elif not self.keep_temp_dir:
-            self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
+            if not self.quiet:
+                self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
 
         return output_df
