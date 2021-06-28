@@ -6819,9 +6819,7 @@ class DatabaseConverter(object):
                 ('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
                 ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
                 ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
-                ('sample_' + db_cov_type + '_relative_abundances_dict', 'relative_abundance'),
                 ('sample_' + db_cov_type + '_detection_dict', 'detection'),
-                ('sample_' + db_cov_type + '_max_normalized_ratio_dict', 'max_normalized_ratio'),
                 ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
@@ -6836,9 +6834,7 @@ class DatabaseConverter(object):
                 ('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
                 ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
                 ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
-                ('sample_specific_relative_abundances_dict', 'sample_nonspecific_relative_abundances_dict', 'relative_abundance'),
                 ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
-                ('sample_specific_max_normalized_ratio_dict', 'sample_nonspecific_max_normalized_ratio_dict', 'max_normalized_ratio'),
                 ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]:
                 data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
@@ -6884,16 +6880,7 @@ class DatabaseConverter(object):
         profile_db_super.load_views(omit_parent_column=True)
         layer_orders_data_dict = {}
         failed_attempts = []
-        for essential_field in [
-            'abundance',
-            'std_coverage',
-            'mean_coverage',
-            'mean_coverage_Q2Q3',
-            'max_normalized_ratio',
-            'relative_abundance',
-            'detection',
-            'variability'
-        ]:
+        for essential_field in constants.essential_data_fields_for_anvio_profiles:
             try:
                 data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
                                                                       distance=self.distance,
@@ -6924,7 +6911,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_split_name] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_split_name] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id] = getattr(seed_seq, seed_seq_attr)[sample_id]
         return data_dict
@@ -6936,7 +6923,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_name + '_split_00001'] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_name + '_split_00001'] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id + '_specific'] = getattr(seed_seq, specific_seed_seq_attr)[sample_id]
                 data_dict[seed_seq_split_name][sample_id + '_nonspecific'] = getattr(seed_seq, nonspecific_seed_seq_attr)[sample_id]
