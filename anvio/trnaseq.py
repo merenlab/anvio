@@ -1,12 +1,14 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Library for tRNA-seq dataset operations bin/anvi-trnaseq and bin/anvi-convert-trnaseq-database
-are the default clients using this module. anvi-trnaseq instantiates a TRNASeqDataset.
-anvi-convert-trnaseq-database instantiates a DatabaseConverter. The scripts call the objects'
-process() methods to start the analytic workflows.
+"""Library for tRNA-seq dataset operations
 
-Each sequence library in an experiment is processed separately as a TRNASeqDataset, storing an
-information-rich anvi'o tRNA-seq database. DatabaseConverter finds reference seed sequences from a
+`bin/anvi-trnaseq` and `bin/anvi-convert-trnaseq-database` are the default clients using this
+module. `anvi-trnaseq` instantiates a `TRNASeqDataset` object. `anvi-convert-trnaseq-database`
+instantiates a `DatabaseConverter` object. The clients call the objects' `process` methods to start
+the analytic workflows.
+
+Each sequence library in an experiment is processed separately as a `TRNASeqDataset`, storing an
+information-rich anvi'o tRNA-seq database. `DatabaseConverter` finds reference seed sequences from a
 set of tRNA-seq databases, storing seeds in an anvi'o contigs database and coverage patterns for
 each dataset in anvi'o profile and auxiliary databases. Contigs and profile databases interface with
 a range of other tools in the anvi'o platform.
@@ -18,10 +20,11 @@ Feature: Canonical feature or structural element of tRNA, e.g., anticodon stem
 
 Read: Synonymous with merged paired-end tRNA-seq read oriented 5'->3'
 
-Feature profile: 5'->3' features identified de novo from the 3' end in a merged tRNA-seq read
+Feature profile (profile): 5'->3' features identified de novo from the 3' end in a merged tRNA-seq
+    read
 
 Profiled sequence: Sequence with an assigned feature profile, which may or may not span the whole
-    length of the sequence, but which at minimum includes the T arm
+    length of the sequence from the 3' end, but which at minimum includes the T arm
 
 Full profile (tRNA profile): Profile that spans (nearly) the full length of the sequence, with a
     small number of unprofiled nucleotides allowed at the 5' end when that number is less than the
@@ -31,24 +34,25 @@ Truncated profile: Profile that does not span (nearly) the full length of the se
     sequence is a chimera of two 3' tRNA fragments and the profile covers the 3' fragment but not
     the unexpected 5' fragment)
 
-Modification-induced substitution: Detected as 3-4 different nucleotides at a tRNA position, the
-    effect of semi-random nucleotide addition during reverse transcription at the site of a modified
-    nucleotide
+Potential modification-induced substitution (sub): Detected as 3-4 different nucleotides at a tRNA
+    position, potentially the effect of semi-random nucleotide addition at the site of a modified
+    nucleotide during reverse transcription
 
-Modification-induced deletion: Detected as a missing nucleotide in the proximity of a detected
-    substitution site, the effect of reverse transcription skipping nucleotides around the site of a
-    modified nucleotide (deletions are rarer than substitutions and more common than insertions,
-    which are not sought)
+Potential modification-induced indel (indel): Detected by alignment of tRNA sequences with and
+    without potential modification-induced substitutions, indels result from reverse transcriptase
+    skipping or adding extra nucleotides due to interaction with a modification (substitutions are
+    generally more common than deletions, which in turn are more common than insertions)
 
-Unique sequence: Set of dereplicated merged tRNA-seq paired-end reads
+Unique sequence (U): Set of dereplicated merged paired-end tRNA-seq reads
 
-Nontemplated nucleotide: Artifact typically added to the 5' end of a read in reverse transcription
+Nontemplated nucleotide: Reverse transcription artifact typically added to the 5' end of a read
 
-Trimmed sequence: Set of unique sequences that are identical after trimming sequence extensions 5'
-    and 3' of the discriminator nucleotide, e.g., nontemplated 5' nucleotides and 3'-CCA acceptor
+Trimmed sequence (T): Set of unique sequences that are identical after trimming sequence extensions
+    5' of the acceptor stem and 3' of the discriminator nucleotide, e.g., nontemplated 5'
+    nucleotides and 3'-CCA acceptor
 
-Normalized sequence: The longest sequence of a set of trimmed sequences, with shorter sequences
-    being tRNA fragment subsequences
+Normalized sequence (N): The longest of a set of trimmed sequences, with shorter sequences being
+    tRNA fragment subsequences
 
 Nonspecific sequence: In contrast to a specific sequence, a trimmed sequence (or its component
     unique sequences and reads) that occurs in multiple normalized sequences (cannot be resolved to
@@ -58,7 +62,44 @@ Mapped fragment: Sequence without a feature profile that maps to a normalized se
     include extra nucleotides beyond the trimmed 5' end of the normalized sequence but not
     nucleotides in the trimmed 3' terminus of the normalized sequence
 
-Modified sequence: Set of normalized sequences differing by potential modification-induced mutations
+Modified sequence (M): Set of normalized sequences differing by potential modification-induced
+    substitutions and optionally indels
+
+
+ABBREVIATIONS
+=============
+M: Modified seq
+
+N: Normalized seq
+-----------------
+Nf: N with full profile
+Nc: N with truncated profile
+Nb: N with subs but not indels
+Nqf: Nf with full profile but no subs (only important as queries in finding indels)
+Nq: Nqf or Nc queried against Nb targets to find indels
+Ni: N with indels and optionally subs
+
+T: Trimmed seq
+--------------
+Tp: T with profile
+Tf: T with full profile
+Tc: T with truncated profile
+Tm: Mapped T
+Ti: T that is part of Ni (Ti does not necessarily contain indels, though Ni does)
+Tip: Ti derived from Tp
+Tim: Ti derived from Tm
+
+U: Unique seq
+-------------
+Un: U not found to have tRNA profile
+Up: U with profile
+Uc: U with truncated profile
+Uf: U with full profile
+Us: U with full profile transferred from another Uf
+Um: Mapped U
+Ui: U that is part of Ti and Ni (Ui does not necessarily contain indels, though Ni does)
+Uif: Ui derived from Uf
+Uim: Ui derived from Um
 """
 
 import gc
