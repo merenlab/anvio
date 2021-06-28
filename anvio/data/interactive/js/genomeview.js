@@ -149,6 +149,7 @@ function processState(stateName, stateData){
 }
 
 function loadAll() {
+  buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
   genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
   scaleCanvas = new fabric.Canvas('scale')
@@ -211,7 +212,6 @@ function loadAll() {
     scale *= (2**val); // temporary fix for legibility
 
     $('#genome_scale_interval').val(scale);
-
     draw();
     canvas.absolutePan({x: scaleFactor*moveTo.x, y: moveTo.y});
   })
@@ -427,7 +427,6 @@ function draw(scaleX=scaleFactor) {
     labelSpacing += 30
     y++;
   }
-  buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   drawScale(y);
   shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
   checkGeneLabels();
@@ -758,7 +757,6 @@ function resetScale(){
 }
 
 function buildGenomesTable(genomes, order){
-
   var height = '50';
   var margin = '15';
   var template = '<tr>' +
