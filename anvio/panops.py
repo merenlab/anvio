@@ -474,21 +474,17 @@ class Pangenome(object):
         ########################################################################################
         #                           STORING FILTERED DATA IN THE DB
         ########################################################################################
-        table_structure=['gene_cluster'] + sorted(self.genomes.keys())
-        table_types=['text'] + ['numeric'] * len(self.genomes)
         TablesForViews(self.pan_db_path).create_new_view(
-                                        data_dict=self.view_data,
+                                        view_data=self.view_data,
                                         table_name='gene_cluster_frequencies',
-                                        table_structure=table_structure,
-                                        table_types=table_types,
-                                        view_name = 'gene_cluster_frequencies')
+                                        view_name = 'gene_cluster_frequencies',
+                                        from_matrix_form=True)
 
         TablesForViews(self.pan_db_path).create_new_view(
-                                        data_dict=self.view_data_presence_absence,
+                                        view_data=self.view_data_presence_absence,
                                         table_name='gene_cluster_presence_absence',
-                                        table_structure=table_structure,
-                                        table_types=table_types,
-                                        view_name = 'gene_cluster_presence_absence')
+                                        view_name = 'gene_cluster_presence_absence',
+                                        from_matrix_form=True)
 
         item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']

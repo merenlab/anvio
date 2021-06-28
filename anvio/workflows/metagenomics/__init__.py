@@ -154,6 +154,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+
+        if not self.samples_txt_file:
+            if os.path.exists('samples.txt'):
+                self.samples_txt_file = 'samples.txt'
+            else:
+                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
+                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
+                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
+                                  "around either. So please add a `samples.txt` directive.")
+
         filesnpaths.is_file_tab_delimited(self.samples_txt_file)
         try:
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
@@ -331,8 +341,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # the megahit output is temporary, and if we dont run
             # reformat_fasta we will delete the output of meghit at the
             # end of the workflow without saving a copy.
-            raise ConfigError("You can't skip reformat_fasta in assembly mode "
-                               "please change your config.json file")
+            raise ConfigError('You seem to be interested in running the metagenomics workflow in reference mode. '
+                              'in this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
+                              'to add this rule to your config file with `"run": true` directive.')
 
 
     def init_samples_txt(self):

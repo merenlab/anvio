@@ -110,6 +110,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.skip_news = A('skip_news')
+        self.annotation_source_for_per_split_summary = A('annotation_source_for_per_split_summary')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments "
@@ -734,6 +735,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.title = self.args.title or self.p_meta['sample_id']
 
+        # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
+        self.update_items_additional_data_with_functions_per_split_summary()
+
 
     def cluster_splits_of_interest(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
@@ -759,7 +763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             clusterings[clustering_id] = {'type': 'newick', 'data': newick}
 
-        run.info('available_clusterings', list(clusterings.keys()))
+        run.info('Available clusterings', list(clusterings.keys()))
 
         return clusterings
 
@@ -895,11 +899,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
             view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=self.views[view]['dict'],
+                                            view_data=self.views[view]['dict'],
                                             table_name=f"{view}",
-                                            table_structure=view_table_structure,
-                                            table_types=view_table_types,
-                                            view_name=f"{view}")
+                                            view_name=f"{view}",
+                                            from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
@@ -958,6 +961,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
+
             default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
             default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
@@ -1315,6 +1319,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see "
                                          "available states by running this program with --show-states flag." % self.state_autoload)
 
+        # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
+        self.update_items_additional_data_with_functions_per_split_summary()
+
 
     def load_gene_mode(self):
         if not self.skip_init_functions:
@@ -1454,6 +1461,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             else:
                 self.p_meta['item_orders'][clustering_id] = {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
+
+
+    def update_items_additional_data_with_functions_per_split_summary(self):
+        """Adds a layer of stacked bar chart for proportion of functions in split for a given source"""
+
+        if self.annotation_source_for_per_split_summary:
+            self.items_additional_data_dict, self.items_additional_data_keys = \
+                self.get_items_additional_data_for_functions_per_split_summary(self.annotation_source_for_per_split_summary,
+                                                                               split_names_of_interest=self.split_sequences.keys(),
+                                                                               data_dict=self.items_additional_data_dict,
+                                                                               keys_list=self.items_additional_data_keys)
 
 
     def search_for_functions(self, search_terms, requested_sources=None):

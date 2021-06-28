@@ -608,6 +608,16 @@ D = {
                      "searches that were performed against non-singlecopy gene HMM profiles into "
                      "their own layer. Please see the documentation for details."}
                 ),
+    'annotation-source-for-per-split-summary': (
+            ['-F', '--annotation-source-for-per-split-summary'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FUNCTION ANNOTATION SOURCE',
+             'help': "Using this parameter with a functional annotation source that (1) is in the contigs database "
+                     "and (2) has a maximum of 10 different function names, will dynamically add a new layer to the "
+                     "intearctive interface where proportions of functions in that source will be shown per split "
+                     "as stacked bar charts."}
+                ),
     'show-all-layers': (
             ['--show-all-layers'],
             {'default': False,
@@ -1032,10 +1042,18 @@ D = {
             ['--return-best-hit'],
             {'default': False,
              'action': 'store_true',
-             'help': "A bin may contain more than one hit for a gene name in a given HMM source. For instance, there may "
+             'help': "A bin (or genome) may contain more than one hit for a gene name in a given HMM source. For instance, there may "
                      "be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of "
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'unique-genes': (
+            ['--unique-genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "An HMM source may contain multiple models that can hit the same gene in a given bin or genome. "
+                     "Using this flag, you can ask anvi'o to go through all genes, identify those with multiple hits "
+                     "and report only the most significant hit for each unique gene."}
                 ),
     'max-num-genes-missing-from-bin': (
             ['--max-num-genes-missing-from-bin'],
@@ -2243,13 +2261,6 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
-    'domtblout': (
-            ['-F', '--domtblout'],
-            {'metavar': 'HMM OUTPUT FORMAT',
-             'type': str,
-             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
-                     "The output file will contain the suffix '_domtable.txt'."}
-                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
@@ -2261,10 +2272,10 @@ D = {
                      "in this directory. Please note that this will only work if you are running on only one "
                      "profile using the -I flag."}
                 ),
-    'get-domtable-output': (
-            ['--get-domtable-output'],
+    'domain-hits-table': (
+            ['--domain-hits-table'],
             {'default': False,
-             'type': str,
+             'action': 'store_true',
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
                      "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
                      "--tblout file will be stored in the specified directory. Please note that even if you use "

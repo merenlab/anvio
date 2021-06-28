@@ -43,6 +43,7 @@ class ReportCodonFrequencies:
         self.return_AA_frequencies_instead = A('return_AA_frequencies_instead')
         self.percent_normalize = A('percent_normalize')
         self.merens_codon_normalization = A('merens_codon_normalization')
+        self.collapse_genes = A('collapse_genes')
         self.output_file_path = A('output_file')
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -86,8 +87,10 @@ class ReportCodonFrequencies:
         else:
             self.c.init_contig_sequences()
 
-        residue_frequencies = {}
         noncoding_genes_skipped = set([])
+        residue_frequencies = {}
+        if self.collapse_genes:
+            residue_frequencies['all'] = Counter()
 
         F = utils.get_list_of_AAs_for_gene_call if self.return_AA_frequencies_instead else utils.get_list_of_codons_for_gene_call
 
@@ -98,7 +101,12 @@ class ReportCodonFrequencies:
                 noncoding_genes_skipped.add(gene_callers_id)
                 continue
 
-            residue_frequencies[gene_callers_id] = Counter(F(gene_call, self.c.contig_sequences))
+            gene_counts = Counter(F(gene_call, self.c.contig_sequences))
+            if self.collapse_genes:
+                residue_frequencies['all'] += gene_counts
+            else:
+                residue_frequencies[gene_callers_id] = gene_counts
+
 
         if self.percent_normalize:
             for gene_callers_id in residue_frequencies:
@@ -148,6 +156,10 @@ if __name__ == '__main__':
                                                                 which case anvi'o would only return results for a single gene call. If you don't declare\
                                                                 anything, well, you must be prepared to brace yourself if you are working with a very\
                                                                 large contigs database with hundreds of thousands of genes."}))
+    groupC.add_argument('--collapse-genes', default=False, action="store_true", help="By default, codon frequencies are reported on a per-gene basis, meaning "
+                                                                                     "that a frequency is reported for each gene-codon pairing. If you provide "
+                                                                                     "this flag, codon frequencies will instead be collapsed across genes, "
+                                                                                     "such that a single frequency is reported for each codon.")
 
     groupC.add_argument(*anvio.A('return-AA-frequencies-instead'), **anvio.K('return-AA-frequencies-instead'))
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))

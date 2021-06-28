@@ -71,6 +71,12 @@ def main(args):
 
     filesnpaths.is_output_file_writable(report_file_path)
 
+    if min_completion_for_MAG < 0:
+        raise ConfigError("Minimum completion value can't be negative because that's not how math works.")
+
+    if max_redundancy_for_MAG < 0:
+        raise ConfigError("You must choose a maximum redundancy value that is at least 0.")
+
     if collection_name_to_read == collection_name_to_write:
         raise ConfigError("Well :( Collection name to read from can't be identical to the collection name "
                            "you want to use to store updated bin names. You know. It kinda defeats the purpose.")
@@ -236,11 +242,11 @@ if __name__ == '__main__':
                                 and so on. If you use this flag, it will name the ones that meet the criteria\
                                 described by MAG-related flags as 'PREFIX_MAG_00001', 'PREFIX_MAG_00002', and\
                                 so on. The ones that do not get to be named as MAGs will remain as bins.")
-    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, metavar='[0-100]', choices=list(range(0, 101)), \
+    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, \
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their completion estimate is\
                               above this (the default is %(default)d), and the redundancy estimate is\
                               less than --max-redundancy-for-MAG.")
-    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, metavar='[0-100]', choices=list(range(0, 101)), \
+    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, \
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
                               below this (the default is %(default)d) and the completion estimate is above\
                               --min-completion-for-MAG.")

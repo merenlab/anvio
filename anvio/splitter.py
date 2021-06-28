@@ -371,11 +371,10 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
         # summarizer.PanBin already has updated/pruned views dicts. that's why this loop will work.
         for view_name in ['gene_cluster_frequencies', 'gene_cluster_presence_absence']:
             TablesForViews(self.bin_pan_db_path).create_new_view(
-                                                data_dict=self.views[view_name]['dict'],
+                                                view_data=self.views[view_name]['dict'],
                                                 table_name=self.views[view_name]['table_name'],
-                                                table_structure=table_structure,
-                                                table_types=table_types,
-                                                view_name = view_name)
+                                                view_name = view_name,
+                                                from_matrix_form=True)
 
         # setup the filtering rules for migrating data:
         tables = {
@@ -616,29 +615,15 @@ class BinSplitter(summarizer.Bin, XSplitter):
         # setup the filtering rules for migrating data:
         tables = {}
 
-        # this is to deal with merge atomic data tables that are stored in merged profiles.
-        # they are being created on the fly during merge, so bin_profile_db.touch() did not
-        # create them, and we have to do it here ourselves. while creating them in the target
-        # db, we will also populate the tables dictionary for data migration::
-        sample_names = self.summary.p_meta['samples']
-        if merged:
-            for table_name in t.atomic_data_table_structure[1:-1]:
-                for target in ['splits', 'contigs']:
-                    new_table_name = '_'.join([table_name, target])
-                    new_table_structure = ['contig'] + sample_names + ['__parent__']
-                    new_table_types = ['text'] + ['numeric'] * len(sample_names) + ['text']
-                    bin_profile_db.db.create_table(new_table_name, new_table_structure, new_table_types)
+        # dealing with 'view' data tables
+        for table_name in constants.essential_data_fields_for_anvio_profiles:
+            for target in ['splits', 'contigs']:
+                new_table_name = '_'.join([table_name, target])
+                new_table_structure = t.view_table_structure
+                new_table_types = t.view_table_types
+                bin_profile_db.db.create_table(new_table_name, new_table_structure, new_table_types)
 
-                    tables[new_table_name] = ('contig', self.split_names)
-        else:
-            profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            table_structure = profile_db.db.get_table_structure('atomic_data_contigs')
-            table_types = profile_db.db.get_table_column_types('atomic_data_contigs')
-            for table_name in ['atomic_data_splits', 'atomic_data_contigs']:
-                new_table_structure = profile_db.db.get_table_structure(table_name)
-                bin_profile_db.db.create_table(table_name, table_structure, table_types)
-
-                tables[table_name] = ('contig', self.split_names)
+                tables[new_table_name] = ('contig', self.split_names)
 
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless

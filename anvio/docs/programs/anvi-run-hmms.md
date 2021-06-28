@@ -73,13 +73,16 @@ These resulting files are not _exactly_ the raw output of HMMER because anvi'o d
 
 #### Requesting domain table output
 
-No matter what, anvi'o will use the regular table output to annotate your contigs database. However, if you are using the --hmmer-output-dir to store the HMMER output, you can also request a domain table output using the flag `--get-domtable-output`.
+{:.notice}
+Please also see %(anvi-script-filter-hmm-hits-table)s
+
+No matter what, anvi'o will use the regular table output to annotate your contigs database. However, if you are using the `--hmmer-output-dir` to store the HMMER output, you can also request a domain table output using the flag `--domain-hits-table`.
 
 {{ codestart }}
 anvi-run-hmms -c %(contigs-db)s \
               -I Bacteria_71 \
               --hmmer-output-dir OUTPUT_DIR \
-              --get-domtable-output`
+              --domain-hits-table
 {{ codestop }}
 
 In this case anvi'o will run [HMMER](http://hmmer.org) using the `--domtblout` flag to generate this output file.

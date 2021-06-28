@@ -183,7 +183,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'merged': False,
                        'blank': self.blank,
                        'items_ordered': False,
-                       'default_view': 'single',
+                       'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
@@ -267,14 +267,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_mock_profile()
 
             # creating a null view_data_splits dict:
-            view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
-            TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
-            TablesForViews(self.profile_db_path).create_new_view(
-                                           data_dict=view_data_splits,
-                                           table_name='atomic_data_splits',
-                                           table_structure=t.atomic_data_table_structure,
-                                           table_types=t.atomic_data_table_types,
-                                           view_name='single')
+            for view in constants.essential_data_fields_for_anvio_profiles:
+                for table_name in [f"{view}_{target}" for target in ['splits', 'contigs']]:
+                    TablesForViews(self.profile_db_path).remove(view, table_names_to_blank=[table_name])
+                    TablesForViews(self.profile_db_path,
+                                   progress=self.progress) \
+                                        .create_new_view(view_data=[],
+                                                         table_name=table_name,
+                                                         skip_sanity_check=True,
+                                                         view_name=None if table_name.endswith('contigs') else view)
         elif self.input_file_path:
             self.init_profile_from_BAM()
             if self.num_threads > 1 or self.args.force_multi:
@@ -794,8 +795,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # FIXME: We know this is ugly. You can keep your opinion to yourself.
         if overall_mean_coverage > 0.0:
             # avoid dividing by zero
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_splits SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_contigs SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
@@ -934,8 +935,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # FIXME: We know this is ugly. You can keep your opinion to yourself.
         if overall_mean_coverage > 0.0:
             # avoid dividing by zero
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_splits SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_contigs SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
@@ -986,27 +987,25 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_indels_table()
         self.store_split_coverages()
 
-        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
-        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
-        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
-        # function create_new_view defined in the class TablesForViews.
-        view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
+        # the crux of the profiling
+        for atomic_data_field in constants.essential_data_fields_for_anvio_profiles:
+            view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field)
 
-        TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_splits,
-                                        table_name='atomic_data_splits',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name='single',
-                                        append_mode=True)
+            table_name = '_'.join([atomic_data_field, 'splits'])
+            TablesForViews(self.profile_db_path,
+                           progress=self.progress) \
+                                .create_new_view(view_data=view_data_splits,
+                                                 table_name=table_name,
+                                                 view_name=atomic_data_field,
+                                                 append_mode=True)
 
-        TablesForViews(self.profile_db_path).create_new_view(
-                                        data_dict=view_data_contigs,
-                                        table_name='atomic_data_contigs',
-                                        table_structure=t.atomic_data_table_structure,
-                                        table_types=t.atomic_data_table_types,
-                                        view_name=None,
-                                        append_mode=True)
+            table_name = '_'.join([atomic_data_field, 'contigs'])
+            TablesForViews(self.profile_db_path,
+                           progress=self.progress) \
+                                .create_new_view(view_data=view_data_contigs,
+                                                 table_name=table_name,
+                                                 view_name=None,
+                                                 append_mode=True)
 
 
     def check_contigs(self, num_contigs=None):
