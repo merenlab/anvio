@@ -109,9 +109,7 @@ import math
 import time
 import random
 import shutil
-import hashlib
 import argparse
-import itertools
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -120,7 +118,7 @@ import multiprocessing as mp
 from hashlib import sha1
 from functools import partial
 from bisect import bisect_left
-from itertools import chain, combinations, product
+from itertools import chain
 from collections import defaultdict, deque, OrderedDict
 
 import anvio
@@ -141,7 +139,7 @@ from anvio.drivers.vmatch import Vmatch
 from anvio.agglomeration import Agglomerator
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
-from anvio.sequence import AlignedTarget, Aligner, Cluster, Dereplicator, Kmerizer
+from anvio.sequence import Dereplicator
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
