@@ -27,15 +27,20 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
+pp = terminal.pretty_print
+
+
 class Vmatch(object):
     """Parent class for all Vmatch usage"""
+
+    QUERY_CHUNK_SIZE_DEFAULT = 100000
 
     def __init__(self, args, run=None, progress=None, skip_sanity_check=False):
         self.index_program_name = 'mkvtree'
         self.search_program_name = 'vmatch'
 
         self.tested_versions = ('2.3.0', )
-        self.supported_match_modes = ('exact_query_substring', 'query_substring_with_mismatches')
+        self.supported_match_modes = ('exact_query_substring', 'query_substring_with_mismatches', 'query_substring_with_indels')
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.match_mode = A('match_mode')
@@ -50,9 +55,14 @@ class Vmatch(object):
         # To manage disk space, scale the default chunk size with the number of threads using a rule
         # of thumb. Intermediate files for chunks can build up dramatically though they are
         # regularly deleted.
-        self.query_chunk_size = A('query_chunk_size') or 100000 // self.num_threads
+        self.query_chunk_size = A('query_chunk_size') or self.QUERY_CHUNK_SIZE_DEFAULT // self.num_threads
 
         self.max_hamming_dist = A('max_hamming_dist')
+        self.max_edit_dist = A('max_edit_dist') # Levenshtein distance
+        # Reject indels within a certain distance of the ends of the alignment by providing left and
+        # right buffers.
+        self.edit_left_buffer = A('edit_left_buffer')
+        self.edit_right_buffer = A('edit_right_buffer')
         self.min_ident = A('min_ident') or 100
 
         # With this option, sequence alignments are included in the output. They are wrapped to the
@@ -86,21 +96,34 @@ class Vmatch(object):
             raise ConfigError(f"The supported Vmatch match modes are: {', '.join(self.supported_match_modes)}. "
                               f"No mode named {self.match_mode} is allowed.")
 
-        if self.match_mode == 'exact_query_substring':
-            if self.max_hamming_dist is not None:
-                raise ConfigError("The match mode, 'exact_query_substring', is incompatible with the maximum Hamming distance argument.")
-
-            if self.align_output_length is not None:
-                raise ConfigError("The match mode, 'exact_query_substring', is incompatible with the alignment output length argument.")
-        else:
+        if self.match_mode == 'query_substring_with_mismatches':
             if self.max_hamming_dist is None:
                 raise ConfigError("The match mode, 'query_substring_with_mismatches', requires the maximum Hamming distance argument.")
-
             if self.max_hamming_dist % 1 != 0 or self.max_hamming_dist <= 1:
                 raise ConfigError("The maximum allowed Hamming distance must be a positive integer.")
+        else:
+            if self.max_hamming_dist is not None:
+                raise ConfigError(f"The match mode, '{self.match_mode}', is incompatible with the maximum Hamming distance argument.")
 
+        if self.match_mode == 'query_substring_with_indels':
+            if self.max_edit_dist is None:
+                raise ConfigError("The match mode, 'query_substring_with_indels', requires the maximum edit (Levenshtein) distance argument.")
+            if self.max_edit_dist % 1 != 0 or self.max_edit_dist <= 1:
+                raise ConfigError("The maximum allowed edit (Levenshtein) distance must be a positive integer.")
+        else:
+            if self.max_edit_dist is not None:
+                raise ConfigError(f"The match mode, '{self.match_mode}', is incompatible with the maximum edit (Levenshtein) distance argument.")
+            if self.edit_left_buffer is not None:
+                raise ConfigError(f"The match mode, '{self.match_mode}', is incompatible with the edit left buffer argument.")
+            if self.edit_right_buffer is not None:
+                raise ConfigError(f"The match mode, '{self.match_mode}', is incompatible with the edit right buffer argument.")
+
+        if self.match_mode == 'query_substring_with_mismatches' or self.match_mode == 'query_substring_with_indels':
             if not self.align_output_length:
-                raise ConfigError("The match mode, 'query_substring_with_mismatches', requires the argument, 'align_output_length'.")
+                raise ConfigError(f"The match mode, '{self.match_mode}', requires the argument, 'align_output_length'.")
+        else:
+            if self.align_output_length is not None:
+                raise ConfigError(f"The match mode, '{self.match_mode}', is incompatible with the alignment output length argument.")
 
         filesnpaths.is_file_exists(self.fasta_db_path)
         self.index_path = os.path.join(self.temp_dir, 'index')
@@ -110,7 +133,7 @@ class Vmatch(object):
                               f"The provided value was {self.min_ident}.")
 
 
-    def check_programs(self, quiet=False):
+    def check_programs(self, quiet=True):
         self.installed_index_program_version = None
         self.installed_search_program_version = None
 
@@ -156,25 +179,23 @@ class Vmatch(object):
             # here automatically determined.
             # `-tis -suf -sti1 -lcp -bck` are necessary index tables.
             # `-v` produces verbose commented output.
-            command = ('mkvtree '
-                       f'-db {self.fasta_db_path} '
-                       '-dna '
-                       f'-indexname {self.index_path} '
-                       '-pl '
-                       f'-tis -suf -sti1 -lcp -bck '
-                       '-v'
-                       ).split(' ')
+            command = ['mkvtree',
+                       '-db', f'{self.fasta_db_path}',
+                       '-dna',
+                       '-indexname', f'{self.index_path}',
+                       '-pl',
+                       '-tis', '-suf', '-sti1', '-lcp', '-bck',
+                       '-v']
         else:
             # `-ois` produces an index table of original sequences and is needed to output sequence alignments.
             # `-skp` produces an index table used in finding whole queries with mismatches.
-            command = ('mkvtree '
-                       f'-db {self.fasta_db_path} '
-                       '-dna '
-                       f'-indexname {self.index_path} '
-                       '-pl '
-                       f'-tis -suf -sti1 -lcp -bck -ois -skp '
-                       '-v'
-                       ).split(' ')
+            command = ['mkvtree',
+                       '-db', f'{self.fasta_db_path}',
+                       '-dna',
+                       '-indexname', f'{self.index_path}',
+                       '-pl',
+                       '-tis', '-suf', '-sti1', '-lcp', '-bck', '-ois', '-skp',
+                       '-v']
         ret_val = utils.run_command(command, self.log_path, remove_log_file_if_exists=False)
 
         if int(ret_val):
@@ -191,52 +212,66 @@ class Vmatch(object):
         self.progress.new(pid)
         self.progress.update(f"Setting up search")
 
-        query_chunk_size = self.query_chunk_size * 2 # convert sequences to FASTA lines
-        next_chunk_start = query_chunk_size
-        unprocessed_chunk_num = 1
-        unprocessed_chunk_dict = defaultdict(dict)
-        running_line_count = 0
         with open(self.fasta_query_path) as query_file:
             for line_num, line in enumerate(query_file, 1):
                 pass
         total_lines = line_num
+        pp_total_lines = pp(total_lines)
+        query_chunk_size = self.query_chunk_size * 2 # convert sequences to FASTA lines
+        chunk_start = 0
+        chunk_stop = query_chunk_size
+        unprocessed_chunk_num = 1
+        unprocessed_chunk_dict = defaultdict(dict)
+        running_line_count = 0
 
         match_mode = self.match_mode
-        if next_chunk_start >= total_lines:
+        if chunk_stop < total_lines:
+            query_chunked = True
+        else:
+            query_chunked = False
             # All query sequences fit in one chunk, so use the original query file as vmatch input.
             query_chunk_path = self.fasta_query_path
             unprocessed_chunk_dict[unprocessed_chunk_num]['query_path'] = query_chunk_path
             output_chunk_path = os.path.join(self.temp_dir, 'output.txt')
             unprocessed_chunk_dict[unprocessed_chunk_num]['output_path'] = output_chunk_path
+            # Change the chunk stop to the number of lines in the query file.
+            chunk_stop = total_lines
 
             if match_mode == 'exact_query_substring':
-                command = ('vmatch '
-                           f'-q {query_chunk_path} '
-                           '-complete '
-                           '-identity 100 '
-                           '-nodist -noevalue -noidentity -noscore ' # do not include alignment distance, E-value, identity and score in the output, but include the alignment distance
-                           '-showdesc 0 ' # query and target sequence names included in the output
-                           '-v ' # verbose commented output
-                           f'{self.index_path}').split(' ')
+                command = ['vmatch',
+                           '-q', f'{query_chunk_path}',
+                           '-complete',
+                           '-identity', '100',
+                           '-nodist', '-noevalue', '-noidentity', '-noscore', # do not include alignment distance, E-value, identity and score in the output, but include the alignment distance
+                           '-showdesc', '0', # query and target sequence names included in the output
+                           '-v', # verbose commented output
+                           f'{self.index_path}']
             elif match_mode == 'query_substring_with_mismatches':
-                command = ('vmatch '
-                           f'-q {query_chunk_path} '
-                           '-complete '
-                           f'-h {self.max_hamming_dist} '
-                           f'-identity {self.min_ident} '
-                           '-nodist -noevalue -noidentity -noscore '
-                           '-showdesc 0 '
-                           f'-s {self.align_output_length} '
-                           '-v '
-                           f'{self.index_path}').split(' ')
+                command = ['vmatch',
+                           '-q', f'{query_chunk_path}',
+                           '-complete',
+                           '-h', f'{self.max_hamming_dist}',
+                           '-identity', f'{self.min_ident}',
+                           '-nodist', '-noevalue', '-noidentity', '-noscore',
+                           '-showdesc', '0',
+                           '-s', f'{self.align_output_length}',
+                           '-v',
+                           f'{self.index_path}']
+            elif match_mode == 'query_substring_with_indels':
+                command = ['vmatch',
+                           '-q', f'{query_chunk_path}',
+                           '-complete',
+                           '-e', f'{self.max_edit_dist}',
+                           '-identity', f'{self.min_ident}',
+                           '-nodist', '-noevalue', '-noidentity', '-noscore',
+                           '-showdesc', '0',
+                           '-s', f'{self.align_output_length}',
+                           '-v',
+                           f'{self.index_path}']
             output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
             unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
             subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
             unprocessed_chunk_dict[unprocessed_chunk_num]['subprocess'] = subprocess
-
-            # Ensure that `next_chunk_start` is greater than the total number of lines in the query
-            # file as a way of distinguishing this case from the chunking case.
-            next_chunk_start += 1
 
         # Chunk output parsing can lag behind vmatch, so distribute parsing jobs to multiple
         # processes. At any time during the search, the allocated cores will either be running
@@ -249,7 +284,14 @@ class Vmatch(object):
         full_output_path = os.path.join(self.temp_dir, 'parsed_output.tsv')
         lock = mp.Lock()
         parsing_processes = [mp.Process(target=parsing_worker,
-                                        args=(input_queue, output_queue, self.align_output_length, self.match_mode, full_output_path, lock))
+                                        args=(input_queue,
+                                              output_queue,
+                                              self.align_output_length,
+                                              self.match_mode,
+                                              full_output_path,
+                                              lock,
+                                              self.edit_left_buffer,
+                                              self.edit_right_buffer))
                              for _ in range(self.num_threads)]
         for p in parsing_processes:
             p.start()
@@ -259,17 +301,17 @@ class Vmatch(object):
         output_dfs = []
         if unprocessed_chunk_dict:
             self.progress.update_pid(pid)
-            self.progress.update(f"Queuing queries 1-{total_lines}/{total_lines}")
+            self.progress.update(f"Queuing queries 1-{pp_total_lines}/{pp_total_lines}")
         while True:
             # Stay in the loop while there are chunks to be processed. Fill up as many available
             # cores as possible with vmatch processes.
             if len(unprocessed_chunk_dict) + num_unparsed_chunks < self.num_threads:
-                if next_chunk_start < total_lines:
+                if chunk_start < total_lines:
                     # Write the next chunk of query sequences to a new file.
                     query_chunk_path = os.path.join(self.temp_dir, 'query_chunk_' + str(unprocessed_chunk_num) + '.fa')
                     unprocessed_chunk_dict[unprocessed_chunk_num]['query_path'] = query_chunk_path
                     with open(query_chunk_path, 'w') as query_chunk_file:
-                        while running_line_count < next_chunk_start:
+                        while running_line_count < chunk_stop:
                             query_chunk_file.write(next(query_file))
                             running_line_count += 1
 
@@ -277,36 +319,46 @@ class Vmatch(object):
                     unprocessed_chunk_dict[unprocessed_chunk_num]['output_path'] = output_chunk_path
 
                     if match_mode == 'exact_query_substring':
-                        command = ('vmatch '
-                                   f'-q {query_chunk_path} '
-                                   '-complete '
-                                   '-identity 100'
-                                   '-nodist -noevalue -noidentity -noscore '
-                                   '-showdesc 0 '
-                                   '-v '
-                                   f'{self.index_path}').split(' ')
+                        command = ['vmatch',
+                                   '-q', f'{query_chunk_path}',
+                                   '-complete',
+                                   '-identity', '100',
+                                   '-nodist', '-noevalue', '-noidentity', '-noscore',
+                                   '-showdesc', '0',
+                                   '-v',
+                                   f'{self.index_path}']
                     elif match_mode == 'query_substring_with_mismatches':
-                        command = ('vmatch '
-                                   f'-q {query_chunk_path} '
-                                   '-complete '
-                                   f'-h {self.max_hamming_dist} '
-                                   f'-identity {self.min_ident} '
-                                   '-nodist -noevalue -noidentity -noscore '
-                                   '-showdesc 0 '
-                                   f'-s {self.align_output_length} '
-                                   '-v '
-                                   f'{self.index_path}').split(' ')
+                        command = ['vmatch',
+                                   '-q', f'{query_chunk_path}',
+                                   '-complete',
+                                   '-h', f'{self.max_hamming_dist}',
+                                   '-identity', f'{self.min_ident}',
+                                   '-nodist', '-noevalue', '-noidentity', '-noscore',
+                                   '-showdesc', '0',
+                                   '-s', f'{self.align_output_length}',
+                                   '-v',
+                                   f'{self.index_path}']
+                    elif match_mode == 'query_substring_with_indels':
+                        command = ['vmatch',
+                                   '-q', f'{query_chunk_path}',
+                                   '-complete',
+                                   '-e', f'{self.max_edit_dist}',
+                                   '-identity', f'{self.min_ident}',
+                                   '-nodist', '-noevalue', '-noidentity', '-noscore',
+                                   '-showdesc', '0',
+                                   '-s', f'{self.align_output_length}',
+                                   '-v',
+                                   f'{self.index_path}']
                     output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
                     unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
                     subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
                     unprocessed_chunk_dict[unprocessed_chunk_num]['subprocess'] = subprocess
 
                     self.progress.update_pid(pid)
-                    self.progress.update(f"Queuing queries {next_chunk_start - query_chunk_size + 1}-{next_chunk_start}/{total_lines}")
-                    # When query sequences are chunked, the maximum value of `next_chunk_start` is
-                    # `total_lines`. In the absence of chunking, `next_chunk_start` exceeds
-                    # `total_lines`.
-                    next_chunk_start = next_chunk_start + query_chunk_size if next_chunk_start + query_chunk_size < total_lines else total_lines
+                    self.progress.update(f"Queuing queries {pp(chunk_start + 1)}-{pp(chunk_stop)}/{pp_total_lines}")
+
+                    chunk_start = chunk_stop if chunk_stop < total_lines else total_lines
+                    chunk_stop = chunk_start + query_chunk_size if chunk_start + query_chunk_size <= total_lines else total_lines
                     unprocessed_chunk_num += 1
 
             # Check if any chunks have finished.
@@ -325,8 +377,7 @@ class Vmatch(object):
                 input_queue.put(chunk_subdict['output_path'])
                 num_unparsed_chunks += 1
 
-                # Clean up.
-                if next_chunk_start <= total_lines:
+                if query_chunked:
                     # If chunking occurred, remove the chunked query file.
                     os.remove(chunk_subdict['query_path'])
                 unprocessed_chunk_dict.pop(chunk_num)
@@ -339,7 +390,7 @@ class Vmatch(object):
                 except queue.Empty:
                     pass
 
-            if (next_chunk_start >= total_lines) and (not unprocessed_chunk_dict) and (num_unparsed_chunks == 0):
+            if (chunk_start >= total_lines) and (not unprocessed_chunk_dict) and (num_unparsed_chunks == 0):
                 # All queries have been processed.
                 break
         query_file.close()
@@ -352,9 +403,34 @@ class Vmatch(object):
         self.progress.update_pid(pid)
         self.progress.update("Finalizing matches")
         if self.match_mode == 'exact_query_substring':
-            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start_in_target', 'query_length'])
+            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name',
+                                                                                    'target_name',
+                                                                                    'query_start_in_target',
+                                                                                    'query_length'])
         elif self.match_mode == 'query_substring_with_mismatches':
-            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name', 'target_name', 'query_start_in_target', 'mismatch_positions'])
+            output_df = pd.read_csv(full_output_path, sep='\t', header=None, names=['query_name',
+                                                                                    'target_name',
+                                                                                    'query_start_in_target',
+                                                                                    'mismatch_positions'])
+        elif self.match_mode == 'query_substring_with_indels':
+            output_df = pd.read_csv(full_output_path,
+                                    sep='\t',
+                                    header=None,
+                                    names=['query_name',
+                                           'target_name',
+                                           'query_start_in_target',
+                                           'query_align_insert_starts',
+                                           'target_align_insert_starts',
+                                           'insert_lengths',
+                                           'query_align_del_starts',
+                                           'target_align_del_starts',
+                                           'del_lengths'],
+                                    dtype={'query_align_insert_starts': str,
+                                           'target_align_insert_starts': str,
+                                           'insert_lengths': str,
+                                           'query_align_del_starts': str,
+                                           'target_align_del_starts': str,
+                                           'del_lengths': str}).fillna('')
         self.progress.end()
 
         if anvio.DEBUG:
@@ -366,7 +442,7 @@ class Vmatch(object):
         return output_df
 
 
-def parsing_worker(input_queue, output_queue, align_output_length, match_mode, full_output_path, lock):
+def parsing_worker(input_queue, output_queue, align_output_length, match_mode, full_output_path, lock, edit_left_buffer=None, edit_right_buffer=None):
     """This worker is called from `Vmatch.search_queries` to parse chunked vmatch output. It is
     located outside `Vmatch` to allow multiprocessing."""
     while True:
@@ -375,6 +451,12 @@ def parsing_worker(input_queue, output_queue, align_output_length, match_mode, f
             output_df = parse_exact_query_substrings(output_path)
         elif match_mode == 'query_substring_with_mismatches':
             output_df = parse_query_substrings_with_mismatches(output_path, align_output_length)
+        elif match_mode == 'query_substring_with_indels':
+            if edit_left_buffer is None:
+                edit_left_buffer = 0
+            if edit_right_buffer is None:
+                edit_right_buffer = 0
+            output_df = parse_query_substrings_with_indels(output_path, align_output_length, edit_left_buffer, edit_right_buffer)
 
         with lock:
             # Sending the DataFrame through the multiprocessing pipe is much slower than writing
@@ -399,7 +481,7 @@ def parse_exact_query_substrings(output_path):
 
 
 def parse_query_substrings_with_mismatches(output_path, align_output_length):
-    """Parse queries that are fully contained by targets and that contain mismatches but not gaps.
+    """Parse queries that are fully contained by targets and that have mismatches but not gaps.
     Exact matches without any mismatches are not retained! Finding the positions of mismatches
     requires parsing actual sequence alignments in addition to rows of summary data."""
     align_records = []
@@ -413,9 +495,9 @@ def parse_query_substrings_with_mismatches(output_path, align_output_length):
 
     # The following is True when the alignment lines are being parsed.
     parsing_align = True
-    # The first line of the alignment is (part of) the subject sequence.
-    prev_line_was_subject = False
-    # Alignments longer than the determined width are split up with a blank line between
+    # The first line of the alignment is (part of) the target sequence.
+    prev_line_was_target = False
+    # Alignments longer than the determined width are split between lines with a blank line between
     # sections. A second blank line signifies the end of the alignment record.
     prev_line_was_blank_after_align = False
     align_index = 0
@@ -424,30 +506,33 @@ def parse_query_substrings_with_mismatches(output_path, align_output_length):
         if parsing_align:
             if line[0] == 'S':
                 prev_line_was_blank_after_align = False
-                prev_line_was_subject = True
+                prev_line_was_target = True
             elif line[0] == 'Q':
-                if prev_line_was_subject:
-                    prev_line_was_subject = False
-                    # If the query line comes immediately after the subject line, then this section
+                if prev_line_was_target:
+                    prev_line_was_target = False
+                    # If the query line comes immediately after the target line, then this section
                     # of the alignment has no mismatches.
                     align_index += align_output_length
-            elif prev_line_was_subject:
-                # A line between the subject and query is under consideration. Its existence means
+            elif prev_line_was_target:
+                # A line between the target and query is under consideration. Its existence means
                 # there is a mismatch in this section of the alignment.
                 for section_index, char in enumerate(line[7: 7 + align_output_length]):
                     if char == '!':
                         mismatch_positions.append(str(align_index + section_index))
-                prev_line_was_subject = False
+                prev_line_was_target = False
                 align_index += align_output_length
             elif prev_line_was_blank_after_align:
                 # A second blank line has now been encountered, indicating the end of a record.
                 if mismatch_positions:
                     # Retain the query name, target name, query start in target, and mismatch positions in the query.
-                    align_records.append((align_record[5], align_record[1], align_record[2], ','.join(mismatch_positions)))
+                    align_records.append((align_record[5],
+                                          align_record[1],
+                                          align_record[2],
+                                          ','.join(mismatch_positions)))
+                    mismatch_positions = []
                 parsing_align = False
                 prev_line_was_blank_after_align = False
                 align_index = 0
-                mismatch_positions = []
                 continue
             else:
                 prev_line_was_blank_after_align = True
@@ -457,4 +542,564 @@ def parse_query_substrings_with_mismatches(output_path, align_output_length):
             parsing_align = True
     output_file.close()
 
-    return pd.DataFrame(align_records, columns=['query_name', 'target_name', 'query_start_in_target', 'mismatch_positions'])
+    return pd.DataFrame(align_records, columns=['query_name',
+                                                'target_name',
+                                                'query_start_in_target',
+                                                'mismatch_positions'])
+
+
+def parse_query_substrings_with_indels(output_path, align_output_length, edit_left_buffer, edit_right_buffer):
+    """Parse queries that are fully contained by targets and that have indels but not mismatches.
+    Exact matches without any indels are not retained! Finding the positions of indels requires
+    parsing actual sequence alignments in addition to rows of summary data."""
+    align_records = []
+    output_file = open(output_path)
+    for line in output_file:
+        if line[0] != '#':
+            # Ignore comment lines at the beginning of the file.
+            break
+    # The first non-comment line contains summary data for the first alignment.
+    align_record = line.rstrip().split()
+
+    # The following is True when the alignment lines are being parsed.
+    parsing_align = True
+    # The first line of the alignment is (part of) the target sequence.
+    prev_line_was_target = False
+    # Alignments longer than the determined width are split between lines with a blank line between
+    # sections. A second blank line signifies the end of the alignment record.
+    prev_line_was_blank_after_align = False
+    target_align = ''
+    query_align = ''
+    align_index = 0
+    edit_positions = []
+    for line in output_file:
+        if parsing_align:
+            if line[0] == 'S':
+                target_align += line[7: 7 + align_output_length]
+                prev_line_was_blank_after_align = False
+                prev_line_was_target = True
+            elif line[0] == 'Q':
+                query_align += line[7: 7 + align_output_length]
+                if prev_line_was_target:
+                    prev_line_was_target = False
+                    # If the query line comes immediately after the target line, then this section
+                    # of the alignment has no mismatches or indels.
+                    align_index += align_output_length
+            elif prev_line_was_target:
+                # A line between the target and query is under consideration. Its existence means
+                # there is a mismatch or indel in this section of the alignment.
+                for section_index, char in enumerate(line[7: 7 + align_output_length]):
+                    if char == '!':
+                        edit_positions.append(align_index + section_index)
+                prev_line_was_target = False
+                align_index += align_output_length
+            elif prev_line_was_blank_after_align:
+                # A second blank line has now been encountered, indicating the end of a record.
+                if edit_positions:
+                    align_records.extend(get_alignments_with_indels(align_record,
+                                                                    query_align.rstrip(' '),
+                                                                    target_align.rstrip(' '),
+                                                                    edit_positions,
+                                                                    edit_left_buffer,
+                                                                    edit_right_buffer))
+
+                parsing_align = False
+                prev_line_was_blank_after_align = False
+                align_index = 0
+                query_align = ''
+                target_align = ''
+                edit_positions = []
+                continue
+            else:
+                prev_line_was_blank_after_align = True
+                continue
+        else:
+            align_record = line.rstrip().split()
+            parsing_align = True
+    output_file.close()
+
+    return pd.DataFrame(align_records, columns=['query_name',
+                                                'target_name',
+                                                'query_start_in_target',
+                                                'query_align_insert_starts',
+                                                'target_align_insert_starts',
+                                                'insert_lengths',
+                                                'query_align_del_starts',
+                                                'target_align_del_starts',
+                                                'del_lengths'])
+
+
+def get_alignments_with_indels(align_record, query_align, target_align, edit_positions, edit_left_buffer, edit_right_buffer):
+    """Determine the positions of indels in the alignment. Reject alignments with any mismatches.
+    Also reject alignments that have indels within the left and right buffer distances of the
+    respective ends of the alignment."""
+    # Find coordinates and lengths of indels in both query and target seqs.
+    # For example:
+    #     0123456  789012345
+    # Q: -ACGTTAC--GTACGACTA
+    #    0123 4567890123  4
+    # S: TACG-TACGCGTACG--T-
+    # Del positions in aligned query, relative to the nt before the gap, which can result in a value of -1.
+    # [-1, 6]
+    # Del positions in aligned target:
+    # [0, 7]
+    # Del lengths:
+    # [1, 2]
+    # Insertion positions in aligned query:
+    # [3, 12, 15]
+    # Insertion positions in aligned target, relative to the nt before the gap:
+    # [3, 13, 14]
+    # Insertion lengths:
+    # [1, 2, 1]
+
+    # There may be equivalent alignments that are not reported by Vmatch but which are recorded
+    # here. Vmatch reports alignments with the gap in the first possible positions. Exclamation
+    # marks show the transposable gaps from the same example as before:
+    #        !!
+    # Q: -ACGTTAC--GTACGACTA
+    # S: TACGT-ACGCGTACG--T-
+
+    #            !!!
+    # Q: -ACGTTACG--TACGACTA
+    # S: TACG-TACGCGTACG--T-
+
+    #        !!  !!!
+    # Q: -ACGTTACG--TACGACTA
+    # S: TACGT-ACGCGTACG--T-
+
+    align_records = []
+    indel_configs = [{'query_align_insert_starts': [],
+                      'target_align_insert_starts': [],
+                      'insert_lengths': [],
+                      'query_align_del_starts': [],
+                      'target_align_del_starts': [],
+                      'del_lengths': []}]
+    insert_pos_in_align = -1
+    insert_length = 0
+    del_pos_in_align = -1
+    del_length = 0
+    # Count the gaps recorded through the query and target.
+    running_query_gap_count = 0
+    running_target_gap_count = 0
+    edit_right_bound = len(query_align) - edit_right_buffer
+    for edit_pos in edit_positions:
+        if not edit_left_buffer <= edit_pos < edit_right_bound:
+            # Do not allow indels within the left and right buffer distances of the
+            # respective ends of the alignment.
+            break
+
+        if target_align[edit_pos] == '-': # insertion
+            if del_length:
+                # The insertion is the next edit after a del. The del is recorded here.
+                query_align_del_start = del_pos_in_align - running_query_gap_count + 1
+                target_align_del_start = del_pos_in_align - running_target_gap_count - del_length + 1
+                del_extensions = []
+                for indel_config_dict in indel_configs:
+                    if indel_config_dict['query_align_del_starts']:
+                        if query_align_del_start == indel_config_dict['query_align_del_starts'][-1]:
+                            # The del being recorded is actually adjacent to and part of the last
+                            # recorded del. This can happen when the last recorded del was an
+                            # "alternative" configuration. Therefore, extend the last recorded del.
+                            indel_config_dict['del_lengths'][-1] = indel_config_dict['del_lengths'][-1] + del_length
+                            del_extensions.append(True)
+                            continue
+                    indel_config_dict['query_align_del_starts'].append(query_align_del_start)
+                    indel_config_dict['target_align_del_starts'].append(target_align_del_start)
+                    indel_config_dict['del_lengths'].append(del_length)
+                    del_extensions.append(False)
+
+                # Record any alternative configurations of the del.
+                pos_in_align = del_pos_in_align
+                alt_configs = []
+                while True:
+                    # Loop through each subsequent nt in the alignment.
+                    next_pos_in_align = pos_in_align + 1
+                    try:
+                        next_query_value = query_align[next_pos_in_align]
+                    except IndexError:
+                        # The del is at the end of the alignment.
+                        break
+
+                    if next_pos_in_align >= edit_right_bound:
+                        # A transposed del would violate the right bound.
+                        break
+
+                    if next_query_value != target_align[next_pos_in_align - del_length]:
+                        # The next nt in the query does not match the nt in the target to which it
+                        # would be paired, so the del cannot be shifted without creating a mismatch.
+                        break
+
+                    # Make a new indel config with the present del shifted to the right by ≥1
+                    # positions.
+                    pos_in_align = next_pos_in_align
+                    indel_shift = pos_in_align - del_pos_in_align
+                    for basis_indel_config_dict, del_extension in zip(indel_configs, del_extensions):
+                        if del_extension:
+                            # The shifted del is no longer an extension of the previous del, so
+                            # split it off.
+                            alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                                'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                                'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'] + [query_align_del_start + indel_shift],
+                                                'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'] + [target_align_del_start + indel_shift],
+                                                'del_lengths': basis_indel_config_dict['del_lengths'][: -1] + [basis_indel_config_dict['del_lengths'][-1] - del_length, del_length]})
+                        else:
+                            alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                                'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                                'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'][: -1] + [basis_indel_config_dict['query_align_del_starts'][-1] + indel_shift],
+                                                'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'][: -1] + [basis_indel_config_dict['target_align_del_starts'][-1] + indel_shift],
+                                                'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                indel_configs.extend(alt_configs)
+
+                del_pos_in_align = -1
+                del_length = 0
+            elif insert_length:
+                # A distinct insertion rather than a del or mismatch is the next edit after an
+                # insertion. The prior insertion is recorded here.
+                if edit_pos - insert_pos_in_align > 1:
+                    query_align_insert_start = insert_pos_in_align - running_query_gap_count - insert_length + 1
+                    target_align_insert_start = insert_pos_in_align - running_target_gap_count + 1
+                    insert_extensions = []
+                    for indel_config_dict in indel_configs:
+                        if indel_config_dict['query_align_insert_starts']:
+                            if query_align_insert_start == indel_config_dict['query_align_insert_starts'][-1] + indel_config_dict['insert_lengths'][-1]:
+                                # The insertion being recorded is actually adjacent to and part of the
+                                # last recorded insertion. This can happen when the last recorded
+                                # insertion was an "alternative" configuration. Therefore, extend the
+                                # last recorded insertion.
+                                indel_config_dict['insert_lengths'][-1] = indel_config_dict['insert_lengths'][-1] + insert_length
+                                insert_extensions.append(True)
+                                continue
+                        indel_config_dict['query_align_insert_starts'].append(query_align_insert_start)
+                        indel_config_dict['target_align_insert_starts'].append(target_align_insert_start)
+                        indel_config_dict['insert_lengths'].append(insert_length)
+                        insert_extensions.append(False)
+
+                    # Record any alternative configurations of the insertion.
+                    pos_in_align = insert_pos_in_align
+                    alt_configs = []
+                    while True:
+                        # Loop through each subsequent nt in the alignment.
+                        next_pos_in_align = pos_in_align + 1
+                        try:
+                            next_target_value = target_align[next_pos_in_align]
+                        except IndexError:
+                            # The insertion is at the end of the alignment.
+                            break
+
+                        if next_pos_in_align >= edit_right_bound:
+                            # A transposed insertion would violate the right bound.
+                            break
+
+                        if next_target_value != query_align[next_pos_in_align - insert_length]:
+                            # The next nt in the target does not match the nt in the query to which
+                            # it would be paired, so the insertion cannot be shifted without
+                            # creating a mismatch.
+                            break
+
+                        # Make a new indel config with the present insertion shifted to the right by
+                        # ≥1 positions.
+                        pos_in_align = next_pos_in_align
+                        indel_shift = pos_in_align - insert_pos_in_align
+                        for basis_indel_config_dict, insert_extension in zip(indel_configs, insert_extensions):
+                            if insert_extension:
+                                # The shifted insertion is no longer an extension of the previous
+                                # insertion, so split it off.
+                                alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'] + [query_align_insert_start + indel_shift],
+                                                    'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'] + [target_align_insert_start + indel_shift],
+                                                    'insert_lengths': basis_indel_config_dict['insert_lengths'][: -1] + [basis_indel_config_dict['insert_lengths'][-1] - insert_length, insert_length],
+                                                    'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                                    'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                                    'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                            else:
+                                alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'][: -1] + [basis_indel_config_dict['query_align_insert_starts'][-1] + indel_shift],
+                                                    'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'][: -1] + [basis_indel_config_dict['target_align_insert_starts'][-1] + indel_shift],
+                                                    'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                    'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                                    'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                                    'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                    indel_configs.extend(alt_configs)
+
+                    insert_length = 0
+            running_target_gap_count += 1
+            insert_pos_in_align = edit_pos
+            insert_length += 1
+        elif query_align[edit_pos] == '-': # del
+            if insert_length:
+                # The del is the next edit after an insertion. The insertion is recorded here.
+                query_align_insert_start = insert_pos_in_align - running_query_gap_count - insert_length + 1
+                target_align_insert_start = insert_pos_in_align - running_target_gap_count + 1
+                insert_extensions = []
+                for indel_config_dict in indel_configs:
+                    if indel_config_dict['query_align_insert_starts']:
+                        if query_align_insert_start == indel_config_dict['query_align_insert_starts'][-1] + indel_config_dict['insert_lengths'][-1]:
+                            # The insertion being recorded is actually adjacent to and part of the
+                            # last recorded insertion. This can happen when the last recorded
+                            # insertion was an "alternative" configuration. Therefore, extend the
+                            # last recorded insertion.
+                            indel_config_dict['insert_lengths'][-1] = indel_config_dict['insert_lengths'][-1] + insert_length
+                            insert_extensions.append(True)
+                            continue
+                    indel_config_dict['query_align_insert_starts'].append(query_align_insert_start)
+                    indel_config_dict['target_align_insert_starts'].append(target_align_insert_start)
+                    indel_config_dict['insert_lengths'].append(insert_length)
+                    insert_extensions.append(False)
+
+                # Record any alternative configurations of the insertion.
+                pos_in_align = insert_pos_in_align
+                alt_configs = []
+                while True:
+                    # Loop through each subsequent nt in the alignment.
+                    next_pos_in_align = pos_in_align + 1
+                    try:
+                        next_target_value = target_align[next_pos_in_align]
+                    except IndexError:
+                        # The insertion is at the end of the alignment.
+                        break
+
+                    if next_pos_in_align >= edit_right_bound:
+                        # A transposed insertion would violate the right bound.
+                        break
+
+                    if next_target_value != query_align[next_pos_in_align - insert_length]:
+                        # The next nt in the target does not match the nt in the query to which it
+                        # would be paired, so the insertion cannot be shifted without creating a
+                        # mismatch.
+                        break
+
+                    # Make a new indel config with the present insertion shifted
+                    # to the right by ≥1 positions.
+                    pos_in_align = next_pos_in_align
+                    indel_shift = pos_in_align - insert_pos_in_align
+                    for basis_indel_config_dict, insert_extension in zip(indel_configs, insert_extensions):
+                        if insert_extension:
+                            alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'] + [query_align_insert_start + indel_shift],
+                                                'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'] + [target_align_insert_start + indel_shift],
+                                                'insert_lengths': basis_indel_config_dict['insert_lengths'][: -1] + [basis_indel_config_dict['insert_lengths'][-1] - insert_length, insert_length],
+                                                'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                                'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                                'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                        else:
+                            alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'][: -1] + [basis_indel_config_dict['query_align_insert_starts'][-1] + indel_shift],
+                                                'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'][: -1] + [basis_indel_config_dict['target_align_insert_starts'][-1] + indel_shift],
+                                                'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                                'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                                'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                indel_configs.extend(alt_configs)
+
+                insert_pos_in_align = -1
+                insert_length = 0
+            elif del_length:
+                # A distinct del rather than an insertion or mismatch is the next edit after a del.
+                # The prior del is recorded here.
+                if edit_pos - del_pos_in_align > 1:
+                    query_align_del_start = del_pos_in_align - running_query_gap_count + 1
+                    target_align_del_start = del_pos_in_align - running_target_gap_count - del_length + 1
+                    del_extensions = []
+                    for indel_config_dict in indel_configs:
+                        if indel_config_dict['query_align_del_starts']:
+                            if query_align_del_start == indel_config_dict['query_align_del_starts'][-1]:
+                                # The del being recorded is actually adjacent to and part of the last
+                                # recorded del. This can happen when the last recorded del was an
+                                # "alternative" configuration. Therefore, extend the last recorded del.
+                                indel_config_dict['del_lengths'][-1] = indel_config_dict['del_lengths'][-1] + del_length
+                                del_extensions.append(True)
+                                continue
+                        indel_config_dict['query_align_del_starts'].append(query_align_del_start)
+                        indel_config_dict['target_align_del_starts'].append(target_align_del_start)
+                        indel_config_dict['del_lengths'].append(del_length)
+                        del_extensions.append(False)
+
+                    # Record any alternative configurations of the del.
+                    pos_in_align = del_pos_in_align
+                    alt_configs = []
+                    while True:
+                        # Loop through each subsequent nt in the alignment.
+                        next_pos_in_align = pos_in_align + 1
+                        try:
+                            next_query_value = query_align[next_pos_in_align]
+                        except IndexError:
+                            # The del is at the end of the alignment.
+                            break
+
+                        if next_pos_in_align >= edit_right_bound:
+                            # A transposed del would violate the right bound.
+                            break
+
+                        if next_query_value != target_align[next_pos_in_align - del_length]:
+                            # The next nt in the query does not match the nt in the target to which
+                            # it would be paired, so the del cannot be shifted without creating a
+                            # mismatch.
+                            break
+
+                        # Make a new indel config with the present del shifted to the right by ≥1
+                        # positions.
+                        pos_in_align = next_pos_in_align
+                        indel_shift = pos_in_align - del_pos_in_align
+                        for basis_indel_config_dict, del_extension in zip(indel_configs, del_extensions):
+                            if del_extension:
+                                alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                                    'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                                    'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                    'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'] + [query_align_del_start + indel_shift],
+                                                    'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'] + [target_align_del_start + indel_shift],
+                                                    'del_lengths': basis_indel_config_dict['del_lengths'][: -1] + [basis_indel_config_dict['del_lengths'][-1] - del_length, del_length]})
+                            else:
+                                alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                                    'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                                    'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                                    'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'][: -1] + [basis_indel_config_dict['query_align_del_starts'][-1] + indel_shift],
+                                                    'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'][: -1] + [basis_indel_config_dict['target_align_del_starts'][-1] + indel_shift],
+                                                    'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                    indel_configs.extend(alt_configs)
+
+                    del_length = 0
+            running_query_gap_count += 1
+            del_pos_in_align = edit_pos
+            del_length += 1
+        else:
+            # The edit is a mismatch.
+            break
+    else:
+        # Record the last edit in the alignment.
+        if insert_length:
+            # The last edit was an insertion.
+            query_align_insert_start = insert_pos_in_align - running_query_gap_count - insert_length + 1
+            target_align_insert_start = insert_pos_in_align - running_target_gap_count + 1
+            insert_extensions = []
+            for indel_config_dict in indel_configs:
+                if indel_config_dict['query_align_insert_starts']:
+                    if query_align_insert_start == indel_config_dict['query_align_insert_starts'][-1] + indel_config_dict['insert_lengths'][-1]:
+                        # The insertion being recorded is actually adjacent to and part of the
+                        # last recorded insertion. This can happen when the last recorded
+                        # insertion was an "alternative" configuration. Therefore, extend the
+                        # last recorded insertion.
+                        indel_config_dict['insert_lengths'][-1] = indel_config_dict['insert_lengths'][-1] + insert_length
+                        insert_extensions.append(True)
+                        continue
+                indel_config_dict['query_align_insert_starts'].append(query_align_insert_start)
+                indel_config_dict['target_align_insert_starts'].append(target_align_insert_start)
+                indel_config_dict['insert_lengths'].append(insert_length)
+                insert_extensions.append(False)
+
+            # Record any alternative configurations of the insertion.
+            pos_in_align = insert_pos_in_align
+            alt_configs = []
+            while True:
+                # Loop through each subsequent nt in the alignment.
+                next_pos_in_align = pos_in_align + 1
+                try:
+                    next_target_value = target_align[next_pos_in_align]
+                except IndexError:
+                    # The insertion is at the end of the alignment.
+                    break
+
+                if next_pos_in_align >= edit_right_bound:
+                    # A transposed insertion would violate the right bound.
+                    break
+
+                if next_target_value != query_align[next_pos_in_align - insert_length]:
+                    # The next nt in the target does not match the nt in the query to which it
+                    # would be paired, so the insertion cannot be shifted without creating a
+                    # mismatch.
+                    break
+
+                # Make a new indel config with the present insertion shifted to the right by ≥1
+                # positions.
+                pos_in_align = next_pos_in_align
+                indel_shift = pos_in_align - insert_pos_in_align
+                for basis_indel_config_dict, insert_extension in zip(indel_configs, insert_extensions):
+                    if insert_extension:
+                        alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'] + [query_align_insert_start + indel_shift],
+                                            'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'] + [target_align_insert_start + indel_shift],
+                                            'insert_lengths': basis_indel_config_dict['insert_lengths'][: -1] + [basis_indel_config_dict['insert_lengths'][-1] - insert_length, insert_length],
+                                            'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                            'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                            'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+                    else:
+                        alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'][: -1] + [basis_indel_config_dict['query_align_insert_starts'][-1] + indel_shift],
+                                            'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'][: -1] + [basis_indel_config_dict['target_align_insert_starts'][-1] + indel_shift],
+                                            'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                            'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'].copy(),
+                                            'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'].copy(),
+                                            'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+            indel_configs.extend(alt_configs)
+        elif del_length:
+            # The last edit was a deletion.
+            query_align_del_start = del_pos_in_align - running_query_gap_count + 1
+            target_align_del_start = del_pos_in_align - running_target_gap_count - del_length + 1
+            del_extensions = []
+            for indel_config_dict in indel_configs:
+                if indel_config_dict['query_align_del_starts']:
+                    if query_align_del_start == indel_config_dict['query_align_del_starts'][-1]:
+                        # The del being recorded is actually adjacent to and part of the last
+                        # recorded del. This can happen when the last recorded del was an
+                        # "alternative" configuration. Therefore, extend the last recorded del.
+                        indel_config_dict['del_lengths'][-1] = indel_config_dict['del_lengths'][-1] + del_length
+                        del_extensions.append(True)
+                        continue
+                indel_config_dict['query_align_del_starts'].append(query_align_del_start)
+                indel_config_dict['target_align_del_starts'].append(target_align_del_start)
+                indel_config_dict['del_lengths'].append(del_length)
+                del_extensions.append(False)
+
+            # Record any alternative configurations of the del.
+            pos_in_align = del_pos_in_align
+            alt_configs = []
+            while True:
+                # Loop through each subsequent nt in the alignment.
+                next_pos_in_align = pos_in_align + 1
+                try:
+                    next_query_value = query_align[next_pos_in_align]
+                except IndexError:
+                    # The del is at the end of the alignment.
+                    break
+
+                if next_pos_in_align >= edit_right_bound:
+                    # A transposed del would violate the right bound.
+                    break
+
+                if next_query_value != target_align[next_pos_in_align - del_length]:
+                    # The next nt in the query does not match the nt in the target to which it
+                    # would be paired, so the del cannot be shifted without creating a mismatch.
+                    break
+
+                # Make a new indel config with the present del shifted to the right by ≥1 positions.
+                pos_in_align = next_pos_in_align
+                indel_shift = pos_in_align - del_pos_in_align
+                for basis_indel_config_dict, del_extension in zip(indel_configs, del_extensions):
+                    if del_extension:
+                        alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                            'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                            'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                            'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'] + [query_align_del_start + indel_shift],
+                                            'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'] + [target_align_del_start + indel_shift],
+                                            'del_lengths': basis_indel_config_dict['del_lengths'][: -1] + [basis_indel_config_dict['del_lengths'][-1] - del_length, del_length]})
+                    else:
+                        alt_configs.append({'query_align_insert_starts': basis_indel_config_dict['query_align_insert_starts'].copy(),
+                                            'target_align_insert_starts': basis_indel_config_dict['target_align_insert_starts'].copy(),
+                                            'insert_lengths': basis_indel_config_dict['insert_lengths'].copy(),
+                                            'query_align_del_starts': basis_indel_config_dict['query_align_del_starts'][: -1] + [basis_indel_config_dict['query_align_del_starts'][-1] + indel_shift],
+                                            'target_align_del_starts': basis_indel_config_dict['target_align_del_starts'][: -1] + [basis_indel_config_dict['target_align_del_starts'][-1] + indel_shift],
+                                            'del_lengths': basis_indel_config_dict['del_lengths'].copy()})
+            indel_configs.extend(alt_configs)
+
+        if indel_configs[0]['insert_lengths'] or indel_configs[0]['del_lengths']:
+            # Retain the query name, target name, and query start in target in
+            # addition to edit information.
+            query_name = align_record[5]
+            target_name = align_record[1]
+            query_start = align_record[2]
+            for indel_config_dict in indel_configs:
+                align_records.append((query_name,
+                                      target_name,
+                                      query_start,
+                                      ','.join(map(str, indel_config_dict['query_align_insert_starts'])),
+                                      ','.join(map(str, indel_config_dict['target_align_insert_starts'])),
+                                      ','.join(map(str, indel_config_dict['insert_lengths'])),
+                                      ','.join(map(str, indel_config_dict['query_align_del_starts'])),
+                                      ','.join(map(str, indel_config_dict['target_align_del_starts'])),
+                                      ','.join(map(str, indel_config_dict['del_lengths']))))
+    return align_records
