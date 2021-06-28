@@ -79,13 +79,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--min-trna-fragment-size',
             '--agglomeration-max-mismatch-freq',
             '--skip-INDEL-profiling',
-            '--fiveprimemost-deletion-start',
-            '--threeprimemost-deletion-start',
-            '--fiveprimemost-deletion-stop',
-            '--threeprimemost-deletion-stop',
-            '--max-distinct-deletions',
-            '--min-distance-between-deletions',
-            '--max-deletion-configurations',
+            '--max-indel-freq',
+            '--left-indel-buffer',
+            '--right-indel-buffer',
             '--skip-fasta-check',
             '--alignment-target-chunk-size',
             '--profiling-chunk-size'
@@ -101,7 +97,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--nonspecific-output',
             '--min-variation',
             '--min-third-fourth-nt',
-            '--min-deletion-fraction',
+            '--min-indel-fraction',
             '--distance',
             '--linkage'
         ]
@@ -153,16 +149,12 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--min-trna-fragment-size': anvio.D['min-trna-fragment-size'][1]['default'],
                 '--agglomeration-max-mismatch-freq': anvio.D['agglomeration-max-mismatch-freq'][1]['default'],
                 '--skip-INDEL-profiling': anvio.D['skip-INDEL-profiling'][1]['default'],
-                '--fiveprimemost-deletion-start': anvio.D['fiveprimemost-deletion-start'][1]['default'],
-                '--threeprimemost-deletion-start': anvio.D['threeprimemost-deletion-start'][1]['default'],
-                '--fiveprimemost-deletion-stop': anvio.D['fiveprimemost-deletion-stop'][1]['default'],
-                '--threeprimemost-deletion-stop': anvio.D['threeprimemost-deletion-stop'][1]['default'],
-                '--max-distinct-deletions': anvio.D['max-distinct-deletions'][1]['default'],
-                '--min-distance-between-deletions': anvio.D['min-distance-between-deletions'][1]['default'],
-                '--max-deletion-configurations': anvio.D['max-deletion-configurations'][1]['default'],
+                '--max-indel-freq': anvio.D['max-indel-freq'][1]['default'],
+                '--left-indel-buffer': anvio.D['left-indel-buffer'][1]['default'],
+                '--right-indel-buffer': anvio.D['right-indel-buffer'][1]['default'],
                 '--skip-fasta-check': True, # not the default in anvi-trnaseq
                 '--profiling-chunk-size': anvio.D['profiling-chunk-size'][1]['default'],
-                '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default']
+                '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 'threads': 1
             },
             'anvi_convert_trnaseq_database': {
@@ -176,7 +168,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--nonspecific-output': anvio.D['nonspecific-output'][1]['default'],
                 '--min-variation': anvio.D['min-variation'][1]['default'],
                 '--min-third-fourth-nt': anvio.D['min-third-fourth-nt'][1]['default'],
-                '--min-deletion-fraction': anvio.D['min-deletion-fraction'][1]['default'],
+                '--min-indel-fraction': anvio.D['min-indel-fraction'][1]['default'],
                 '--distance': anvio.D['distance'][1]['default'],
                 '--linkage': anvio.D['linkage'][1]['default'],
                 'threads': 1
