@@ -896,8 +896,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
-            view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
-            view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
                                             view_data=self.views[view]['dict'],
                                             table_name=f"{view}",
