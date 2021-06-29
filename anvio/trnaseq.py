@@ -1391,9 +1391,6 @@ class TRNASeqDataset(object):
         self.load_checkpoint = A('load_checkpoint')
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
         self.param_3prime_termini = A('threeprime_termini')
-        if '' in self.param_3prime_termini:
-            global PROFILE_ABSENT_3PRIME_TERMINUS
-            PROFILE_ABSENT_3PRIME_TERMINUS = True
         global MIN_LENGTH_LONG_5PRIME_EXTENSION
         MIN_LENGTH_LONG_5PRIME_EXTENSION = A('min_length_long_fiveprime')
         self.min_trna_frag_size = A('min_trna_fragment_size')
@@ -1542,6 +1539,9 @@ class TRNASeqDataset(object):
         total_time_start = time.time()
 
         self.sanity_check()
+        if '_' in self.param_3prime_termini:
+            global PROFILE_ABSENT_3PRIME_TERMINUS
+            PROFILE_ABSENT_3PRIME_TERMINUS = True
 
         load_checkpoint = self.load_checkpoint
         if not load_checkpoint:
@@ -6807,16 +6807,17 @@ class DatabaseConverter(object):
             profile_db.db.commit()
 
         if db_cov_type == 'specific' or db_cov_type == 'nonspecific' or db_cov_type == 'summed':
-            for attr, table_basename in [
-                ('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
-                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
-                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
-                ('sample_' + db_cov_type + '_relative_abundances_dict', 'relative_abundance'),
-                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
-                ('sample_' + db_cov_type + '_max_normalized_ratio_dict', 'max_normalized_ratio'),
-                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
+                                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
+                                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
+                                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+            # Variability is the measure of the frequency of modification-induced substitutions in
+            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
             self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
@@ -6824,16 +6825,17 @@ class DatabaseConverter(object):
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
                                      getattr(self, db_cov_type + '_indels_table_entries'))
         elif db_cov_type == 'combined':
-            for specific_attr, nonspecific_attr, table_basename in [
-                ('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
-                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
-                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
-                ('sample_specific_relative_abundances_dict', 'sample_nonspecific_relative_abundances_dict', 'relative_abundance'),
-                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
-                ('sample_specific_max_normalized_ratio_dict', 'sample_nonspecific_max_normalized_ratio_dict', 'max_normalized_ratio'),
-                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
+                                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
+                                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
+                                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for specific_attr, nonspecific_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+            # Variability is the measure of the frequency of modification-induced substitutions in
+            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
             self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
@@ -6876,16 +6878,7 @@ class DatabaseConverter(object):
         profile_db_super.load_views(omit_parent_column=True)
         layer_orders_data_dict = {}
         failed_attempts = []
-        for essential_field in [
-            'abundance',
-            'std_coverage',
-            'mean_coverage',
-            'mean_coverage_Q2Q3',
-            'max_normalized_ratio',
-            'relative_abundance',
-            'detection',
-            'variability'
-        ]:
+        for essential_field in constants.essential_data_fields_for_anvio_profiles:
             try:
                 data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
                                                                       distance=self.distance,
@@ -6916,7 +6909,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_split_name] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_split_name] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id] = getattr(seed_seq, seed_seq_attr)[sample_id]
         return data_dict
@@ -6928,7 +6921,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_name + '_split_00001'] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_name + '_split_00001'] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id + '_specific'] = getattr(seed_seq, specific_seed_seq_attr)[sample_id]
                 data_dict[seed_seq_split_name][sample_id + '_nonspecific'] = getattr(seed_seq, nonspecific_seed_seq_attr)[sample_id]
