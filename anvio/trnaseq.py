@@ -3788,244 +3788,6 @@ class TRNASeqDataset(object):
         trnaseq_db.disconnect()
 
 
-    def add_Ni_to_M(self, results_dict):
-        """This helper method for `find_indels` generates Ni from Nq and adds them to M."""
-        dict_Ni_string = {}
-        for name_M, results_M_dict in results_dict.items():
-            names_Ni, starts_Ni_in_M = self.make_Ni(results_M_dict, dict_Ni_string)
-            seq_M = results_M_dict['M_seq']
-            seq_M.names_Ni = tuple(names_Ni)
-            seq_M.starts_Ni_in_M = tuple(starts_Ni_in_M)
-
-
-    def make_Ni(self, results_M_dict, dict_Ni_string):
-        """Given an M with mapped Nq containing indels, make Ni from Nq.
-
-        Nq may be Nqf or Nc. Each Nqf must contain ≥ 1 Tf, each of which is formed from ≥ 1 Uf.
-        Each Nc must contain ≥ 1 Tc, each of which is formed from 1 Uc. Some Nq may contain Tm,
-        each of which can only contain 1 Um. Uf/Uc are adjusted for extra 5'/3' nts, forming new Uip
-        objects. Uip are pooled and trimmed, forming new Tip. 3' dereplication of Tip strings
-        produces clusters of Tip in each new Ni. Ni strings are *already known* from mapping Nq to
-        M (Nb). Ni objects can then be instantiated from their component Tip objects. Tim objects,
-        derived from Tm adjusted for extra 5'/3' nts, are then added to Ni. Tim membership in Ni
-        was known from the relation of Nq to Ni: Tm are part of Nq, and each Tm yields one Tim."""
-        # Indels have not been added to M, which only has subs.
-        seq_M = results_M_dict['M_seq']
-        # From the search against M, Nq may have been found to have extra 5'/3' nts. The following
-        # lists store information on Ni created from Nq.
-        strings_Ni = []
-        xtra_5primes_Nq = []
-        xtra_3primes_Nq = []
-        starts_Ni_in_M = []
-        length_M = seq_M.length
-
-        # Relate Tip strings to lists of Uip objects.
-        dict_Uip_in_Tip = defaultdict(list)
-        # Relate Ni strings to Tim objects.
-        dict_Uim_Tim_in_Ni = defaultdict(list)
-        # Relate Ti strings to their start positions in Ni.
-        dict_Ti_start_in_Ni = {}
-        dict_Ti_strings_from_T_name = defaultdict(list)
-        excluded_Ti_strings = []
-        for seq_Nq, start_Nq_in_M, stop_Nq_in_M in zip(results_M_dict['Nq_seqs'],
-                                                       results_M_dict['Nq_starts_in_M'],
-                                                       results_M_dict['Nq_stops_in_M']):
-            string_Nq = seq_Nq.string
-            length_Nq = len(string_Nq)
-            # If Nq has 5' nts overhanging M, the start position of Nq in M is negative.
-            xtra_5prime_Nq = -start_Nq_in_M if start_Nq_in_M < 0 else 0
-            # If Nq has 3' nts overhanging M, indicating an adjustment is needed in the 3'
-            # terminus, the stop position of Nq in M lies beyond the length of M.
-            xtra_3prime_Nq = stop_Nq_in_M - length_M if stop_Nq_in_M > length_M else 0
-            string_Ni = string_Nq[xtra_5prime_Nq: length_Nq - xtra_3prime_Nq]
-
-            strings_Ni.append(string_Ni)
-            xtra_5primes_Nq.append(xtra_5prime_Nq)
-            xtra_3primes_Nq.append(xtra_3prime_Nq)
-            starts_Ni_in_M.append(start_Nq_in_M + xtra_5prime_Nq)
-
-            self.process_T_in_Nq(seq_Nq,
-                                 string_Ni,
-                                 xtra_5prime_Nq,
-                                 xtra_3prime_Nq,
-                                 dict_Ti_start_in_Ni,
-                                 dict_Uip_in_Tip,
-                                 dict_Uim_Tim_in_Ni,
-                                 dict_Ti_strings_from_T_name,
-                                 excluded_Ti_strings)
-
-        # 3' dereplicate Tip to form Ni clusters and then Ni objects.
-        seqs_Tip = []
-        dict_Ti = self.dict_Ti
-        dict_Ui = self.dict_Ui
-        for string_Tip, seqs_Uip in dict_Uip_in_Tip.items():
-            if string_Tip in excluded_Ti_strings:
-                # Different Tip strings were found to originate from the same T.
-                pass
-            else:
-                seq_Tip = TrimmedIndelSequence(string_Tip, seqs_Uip)
-                seqs_Tip.append(seq_Tip)
-                dict_Ti[seq_Tip.name] = seq_Tip
-                for seq_Uip in seqs_Uip:
-                    dict_Ui[seq_Uip.name] = seq_Uip
-
-        names_Tip = [seq_Tip.name for seq_Tip in seqs_Tip]
-        reverse_Tip_strings = [seq_Tip.string[::-1] for seq_Tip in seqs_Tip]
-        extras_Tip = [(seq_Tip, dict_Ti_start_in_Ni[seq_Tip.string]) for seq_Tip in seqs_Tip]
-        clusters = Dereplicator(names_Tip, reverse_Tip_strings, extras=extras_Tip).prefix_dereplicate()
-        names_Ni = []
-        dict_Ni = self.dict_Ni
-        for cluster in clusters:
-            seqs_Tip = []
-            starts_Tip_in_Ni = []
-            for extra in cluster.member_extras:
-                seqs_Tip.append(extra[0])
-                starts_Tip_in_Ni.append(extra[1])
-            string_Ni = seqs_Tip[0].string
-            index_Ni = strings_Ni.index(string_Ni)
-            xtra_5prime_Nq = xtra_5primes_Nq[index_Ni]
-            # Find the positions of insertions in Ni adjusting for extra 5' nts.
-            insert_starts_Ni = tuple([insert_start_Nq - xtra_5prime_Nq for insert_start_Nq in results_M_dict['Nq_insert_starts'][index_Ni]])
-            # Find the positions of deletions in Ni adjusting for extra 5' nts.
-            del_starts_Ni = tuple([del_start_Nq - xtra_5prime_Nq for del_start_Nq in results_M_dict['Nq_del_starts'][index_Ni]])
-            contains_anticodon = self.check_normalized_indel_sequence_for_anticodon(seq_M, starts_Ni_in_M[index_Ni])
-            seq_Ni = NormalizedIndelSequence(string_Ni,
-                                             seqs_Tip,
-                                             starts_Tip_in_Ni,
-                                             seq_M.name,
-                                             insert_starts_Ni,
-                                             tuple(results_M_dict['M_insert_starts'][index_Ni]),
-                                             tuple(results_M_dict['insert_lengths'][index_Ni]),
-                                             del_starts_Ni,
-                                             tuple(results_M_dict['M_del_starts'][index_Ni]),
-                                             tuple(results_M_dict['del_lengths'][index_Ni]),
-                                             contains_anticodon)
-            # Add Tim to Ni.
-            seqs_Tim = []
-            try:
-                for seq_Uim, seq_Tim, start_Tim_in_Ni in dict_Uim_Tim_in_Ni[string_Ni]:
-                    if seq_Tim.string not in excluded_Ti_strings:
-                        name_Tim = seq_Tim.name
-                        seq_Ni.names_T.append(name_Tim)
-                        seq_Ni.starts_T_in_N.append(start_Tim_in_Ni)
-                        dict_Ui[name_Tim] = seq_Uim
-                        dict_Ti[name_Tim] = seq_Tim
-            except KeyError:
-                # Ni does not contain any Tim.
-                pass
-            seq_Ni.init(seqs_Tip + seqs_Tim, self.dict_Ui)
-            dict_Ni[seq_Ni.name] = seq_Ni
-            names_Ni.append(seq_Ni.name)
-
-        return names_Ni, starts_Ni_in_M
-
-
-    def check_normalized_indel_sequence_for_anticodon(self, seq_M, start_Ni_in_M):
-        # Determine whether Ni contains the anticodon.
-        seq_Tf = self.dict_Tf[self.dict_Nf[seq_M.name].names_T[0]]
-        try:
-            anticodon_loop_start = seq_Tf.feature_starts[self.RELATIVE_ANTICODON_LOOP_INDEX]
-        except IndexError:
-            # The anticodon loop was not reached in the profile.
-            return False
-        if anticodon_loop_start >= start_Ni_in_M:
-            return True
-        else:
-            return False
-
-
-    def process_T_in_Nq(self,
-                        seq_Nq,
-                        string_Ni,
-                        xtra_5prime_Nq,
-                        xtra_3prime_Nq,
-                        dict_Ti_start_in_Ni,
-                        dict_Uip_in_Tip,
-                        dict_Uim_Tim_in_Ni,
-                        dict_Ti_strings_from_T_name,
-                        excluded_Ti_strings):
-        """Process T in an Nq mapped to M with indels. Generate Ui and Tim objects. Gather
-        information to generate Tip objects, which can come from multiple Ni."""
-        length_Nq = len(seq_Nq.string)
-        dict_Um = self.dict_Um
-        try:
-            # Nq is Nf.
-            categories_T = seq_Nq.categories_T
-        except AttributeError:
-            # Nq is Nc.
-            categories_T = ['Tc_nontrna'] * len(seq_Nq.names_T)
-        for name_T, category_T, start_T_in_Nq in zip(seq_Nq.names_T, categories_T, seq_Nq.starts_T_in_N):
-            seq_T = getattr(self, 'dict_' + category_T)[name_T]
-            string_T = seq_T.string
-            # T has 5' nts overhanging M when T is within `xtra_5prime_Nq` nts of the start of Nq.
-            # These overhanging nts are trimmed in Ti.
-            xtra_5prime_T = xtra_5prime_Nq - start_T_in_Nq if start_T_in_Nq < xtra_5prime_Nq else 0
-            type_T = type(seq_T)
-            # Extra 3' nts are handled differently in Tm and Tp.
-            if type_T is TrimmedMappedSequence:
-                # Find the distance from the end of Tm to the end of N.
-                delta_3prime = length_Nq - start_T_in_Nq - len(string_T)
-                # If Tm has 3' nts overhanging M, the stop position of Tm in M lies beyond the
-                # length of M.
-                xtra_3prime_T = xtra_3prime_Nq - delta_3prime if delta_3prime < xtra_3prime_Nq else 0
-            else:
-                # Tp ends at the same point as Nq, so the number of extra 3' nts is the same in
-                # each.
-                xtra_3prime_T = xtra_3prime_Nq
-            string_Ti = string_T[xtra_5prime_T: len(string_T) - xtra_3prime_T]
-
-            # It is required that the same T generate the same Ti in alignments to different M.
-            # Conflicting Ti strings from the same T are recorded and their Ti objects later purged.
-            strings_Ti_from_T_name = dict_Ti_strings_from_T_name[seq_T.name]
-            if len(strings_Ti_from_T_name) == 0:
-                strings_Ti_from_T_name.append(string_Ti)
-            elif len(strings_Ti_from_T_name) == 1:
-                if string_Ti != strings_Ti_from_T_name[0]:
-                    excluded_Ti_strings.append(strings_Ti_from_T_name[0])
-                    excluded_Ti_strings.append(string_Ti)
-                    strings_Ti_from_T_name.append(string_Ti)
-            else:
-                if string_Ti not in strings_Ti_from_T_name:
-                    excluded_Ti_strings.append(string_Ti)
-                    strings_Ti_from_T_name.append(string_Ti)
-
-            start_Ti_in_Ni = 0 if start_T_in_Nq < xtra_5prime_Nq else start_T_in_Nq - xtra_5prime_Nq
-            dict_Ti_start_in_Ni[string_Ti] = start_Ti_in_Ni
-
-            # Make Ui objects.
-            for index_U, name_U in enumerate(seq_T.names_U):
-                if type_T == TrimmedMappedSequence:
-                    seq_Ui = UniqueIndelSequence(dict_Um[name_U], xtra_3prime_T, xtra_5prime_T)
-                    # There is only 1 Um per Tm, so the loop can be terminated after the first
-                    # iteration.
-                    break
-
-                # Only Up are considered after this point in the loop. Due to 5'/3' adjustments, Up
-                # from different Tp and Np can end up in the same Tip. Therefore, initialize Tip
-                # after processing all Nq.
-                if type_T == TrimmedTruncatedProfileSequence:
-                    seq_U = getattr(self, 'dict_Uc_' + seq_T.category)[name_U]
-                    # Uc are flush with Tc at the 5' end, so they undergo the same 5' adjustment
-                    # when converted into Ui and Ti.
-                    length_5prime_U = xtra_5prime_T
-                else:
-                    seq_U = getattr(self, 'dict_' + seq_T.categories_U[index_U])[name_U]
-                    # Adjust the nts beyond the 5' tRNA terminus as needed in Up.
-                    length_5prime_U = xtra_5prime_T + seq_U.xtra_5prime_length
-
-                length_3prime_U = xtra_3prime_T + seq_U.length_3prime_terminus
-                seq_Uip = UniqueIndelSequence(seq_U, length_3prime_U, length_5prime_U)
-                dict_Uip_in_Tip[string_Ti].append(seq_Uip)
-            else:
-                # This point is reached for Tp.
-                continue
-
-            # This point is reached for Tm. Since this is a mapped sequence, Tim is a mirror of Uim
-            # and the string is not trimmed.
-            seq_Tim = TrimmedIndelSequence(seq_Ui.string, [seq_Ui])
-            dict_Uim_Tim_in_Ni[string_Ni].append((seq_Ui, seq_Tim, start_Ti_in_Ni))
-
-
     def write_fasta_Nb(self, fasta_path):
         """This helper method for `find_indels` writes a FASTA file of Nb constituting M."""
         count_Nb = 0
@@ -4366,6 +4128,244 @@ class TRNASeqDataset(object):
             config_index += 1
 
         return indel_configs[selected_config_index]
+
+
+    def add_Ni_to_M(self, results_dict):
+        """This helper method for `find_indels` generates Ni from Nq and adds them to M."""
+        dict_Ni_string = {}
+        for name_M, results_M_dict in results_dict.items():
+            names_Ni, starts_Ni_in_M = self.make_Ni(results_M_dict, dict_Ni_string)
+            seq_M = results_M_dict['M_seq']
+            seq_M.names_Ni = tuple(names_Ni)
+            seq_M.starts_Ni_in_M = tuple(starts_Ni_in_M)
+
+
+    def make_Ni(self, results_M_dict, dict_Ni_string):
+        """Given an M with mapped Nq containing indels, make Ni from Nq.
+
+        Nq may be Nqf or Nc. Each Nqf must contain ≥ 1 Tf, each of which is formed from ≥ 1 Uf.
+        Each Nc must contain ≥ 1 Tc, each of which is formed from 1 Uc. Some Nq may contain Tm,
+        each of which can only contain 1 Um. Uf/Uc are adjusted for extra 5'/3' nts, forming new Uip
+        objects. Uip are pooled and trimmed, forming new Tip. 3' dereplication of Tip strings
+        produces clusters of Tip in each new Ni. Ni strings are *already known* from mapping Nq to
+        M (Nb). Ni objects can then be instantiated from their component Tip objects. Tim objects,
+        derived from Tm adjusted for extra 5'/3' nts, are then added to Ni. Tim membership in Ni
+        was known from the relation of Nq to Ni: Tm are part of Nq, and each Tm yields one Tim."""
+        # Indels have not been added to M, which only has subs.
+        seq_M = results_M_dict['M_seq']
+        # From the search against M, Nq may have been found to have extra 5'/3' nts. The following
+        # lists store information on Ni created from Nq.
+        strings_Ni = []
+        xtra_5primes_Nq = []
+        xtra_3primes_Nq = []
+        starts_Ni_in_M = []
+        length_M = seq_M.length
+
+        # Relate Tip strings to lists of Uip objects.
+        dict_Uip_in_Tip = defaultdict(list)
+        # Relate Ni strings to Tim objects.
+        dict_Uim_Tim_in_Ni = defaultdict(list)
+        # Relate Ti strings to their start positions in Ni.
+        dict_Ti_start_in_Ni = {}
+        dict_Ti_strings_from_T_name = defaultdict(list)
+        excluded_Ti_strings = []
+        for seq_Nq, start_Nq_in_M, stop_Nq_in_M in zip(results_M_dict['Nq_seqs'],
+                                                       results_M_dict['Nq_starts_in_M'],
+                                                       results_M_dict['Nq_stops_in_M']):
+            string_Nq = seq_Nq.string
+            length_Nq = len(string_Nq)
+            # If Nq has 5' nts overhanging M, the start position of Nq in M is negative.
+            xtra_5prime_Nq = -start_Nq_in_M if start_Nq_in_M < 0 else 0
+            # If Nq has 3' nts overhanging M, indicating an adjustment is needed in the 3'
+            # terminus, the stop position of Nq in M lies beyond the length of M.
+            xtra_3prime_Nq = stop_Nq_in_M - length_M if stop_Nq_in_M > length_M else 0
+            string_Ni = string_Nq[xtra_5prime_Nq: length_Nq - xtra_3prime_Nq]
+
+            strings_Ni.append(string_Ni)
+            xtra_5primes_Nq.append(xtra_5prime_Nq)
+            xtra_3primes_Nq.append(xtra_3prime_Nq)
+            starts_Ni_in_M.append(start_Nq_in_M + xtra_5prime_Nq)
+
+            self.process_T_in_Nq(seq_Nq,
+                                 string_Ni,
+                                 xtra_5prime_Nq,
+                                 xtra_3prime_Nq,
+                                 dict_Ti_start_in_Ni,
+                                 dict_Uip_in_Tip,
+                                 dict_Uim_Tim_in_Ni,
+                                 dict_Ti_strings_from_T_name,
+                                 excluded_Ti_strings)
+
+        # 3' dereplicate Tip to form Ni clusters and then Ni objects.
+        seqs_Tip = []
+        dict_Ti = self.dict_Ti
+        dict_Ui = self.dict_Ui
+        for string_Tip, seqs_Uip in dict_Uip_in_Tip.items():
+            if string_Tip in excluded_Ti_strings:
+                # Different Tip strings were found to originate from the same T.
+                pass
+            else:
+                seq_Tip = TrimmedIndelSequence(string_Tip, seqs_Uip)
+                seqs_Tip.append(seq_Tip)
+                dict_Ti[seq_Tip.name] = seq_Tip
+                for seq_Uip in seqs_Uip:
+                    dict_Ui[seq_Uip.name] = seq_Uip
+
+        names_Tip = [seq_Tip.name for seq_Tip in seqs_Tip]
+        reverse_Tip_strings = [seq_Tip.string[::-1] for seq_Tip in seqs_Tip]
+        extras_Tip = [(seq_Tip, dict_Ti_start_in_Ni[seq_Tip.string]) for seq_Tip in seqs_Tip]
+        clusters = Dereplicator(names_Tip, reverse_Tip_strings, extras=extras_Tip).prefix_dereplicate()
+        names_Ni = []
+        dict_Ni = self.dict_Ni
+        for cluster in clusters:
+            seqs_Tip = []
+            starts_Tip_in_Ni = []
+            for extra in cluster.member_extras:
+                seqs_Tip.append(extra[0])
+                starts_Tip_in_Ni.append(extra[1])
+            string_Ni = seqs_Tip[0].string
+            index_Ni = strings_Ni.index(string_Ni)
+            xtra_5prime_Nq = xtra_5primes_Nq[index_Ni]
+            # Find the positions of insertions in Ni adjusting for extra 5' nts.
+            insert_starts_Ni = tuple([insert_start_Nq - xtra_5prime_Nq for insert_start_Nq in results_M_dict['Nq_insert_starts'][index_Ni]])
+            # Find the positions of deletions in Ni adjusting for extra 5' nts.
+            del_starts_Ni = tuple([del_start_Nq - xtra_5prime_Nq for del_start_Nq in results_M_dict['Nq_del_starts'][index_Ni]])
+            contains_anticodon = self.check_normalized_indel_sequence_for_anticodon(seq_M, starts_Ni_in_M[index_Ni])
+            seq_Ni = NormalizedIndelSequence(string_Ni,
+                                             seqs_Tip,
+                                             starts_Tip_in_Ni,
+                                             seq_M.name,
+                                             insert_starts_Ni,
+                                             tuple(results_M_dict['M_insert_starts'][index_Ni]),
+                                             tuple(results_M_dict['insert_lengths'][index_Ni]),
+                                             del_starts_Ni,
+                                             tuple(results_M_dict['M_del_starts'][index_Ni]),
+                                             tuple(results_M_dict['del_lengths'][index_Ni]),
+                                             contains_anticodon)
+            # Add Tim to Ni.
+            seqs_Tim = []
+            try:
+                for seq_Uim, seq_Tim, start_Tim_in_Ni in dict_Uim_Tim_in_Ni[string_Ni]:
+                    if seq_Tim.string not in excluded_Ti_strings:
+                        name_Tim = seq_Tim.name
+                        seq_Ni.names_T.append(name_Tim)
+                        seq_Ni.starts_T_in_N.append(start_Tim_in_Ni)
+                        dict_Ui[name_Tim] = seq_Uim
+                        dict_Ti[name_Tim] = seq_Tim
+            except KeyError:
+                # Ni does not contain any Tim.
+                pass
+            seq_Ni.init(seqs_Tip + seqs_Tim, self.dict_Ui)
+            dict_Ni[seq_Ni.name] = seq_Ni
+            names_Ni.append(seq_Ni.name)
+
+        return names_Ni, starts_Ni_in_M
+
+
+    def process_T_in_Nq(self,
+                        seq_Nq,
+                        string_Ni,
+                        xtra_5prime_Nq,
+                        xtra_3prime_Nq,
+                        dict_Ti_start_in_Ni,
+                        dict_Uip_in_Tip,
+                        dict_Uim_Tim_in_Ni,
+                        dict_Ti_strings_from_T_name,
+                        excluded_Ti_strings):
+        """Process T in an Nq mapped to M with indels. Generate Ui and Tim objects. Gather
+        information to generate Tip objects, which can come from multiple Ni."""
+        length_Nq = len(seq_Nq.string)
+        dict_Um = self.dict_Um
+        try:
+            # Nq is Nf.
+            categories_T = seq_Nq.categories_T
+        except AttributeError:
+            # Nq is Nc.
+            categories_T = ['Tc_nontrna'] * len(seq_Nq.names_T)
+        for name_T, category_T, start_T_in_Nq in zip(seq_Nq.names_T, categories_T, seq_Nq.starts_T_in_N):
+            seq_T = getattr(self, 'dict_' + category_T)[name_T]
+            string_T = seq_T.string
+            # T has 5' nts overhanging M when T is within `xtra_5prime_Nq` nts of the start of Nq.
+            # These overhanging nts are trimmed in Ti.
+            xtra_5prime_T = xtra_5prime_Nq - start_T_in_Nq if start_T_in_Nq < xtra_5prime_Nq else 0
+            type_T = type(seq_T)
+            # Extra 3' nts are handled differently in Tm and Tp.
+            if type_T is TrimmedMappedSequence:
+                # Find the distance from the end of Tm to the end of N.
+                delta_3prime = length_Nq - start_T_in_Nq - len(string_T)
+                # If Tm has 3' nts overhanging M, the stop position of Tm in M lies beyond the
+                # length of M.
+                xtra_3prime_T = xtra_3prime_Nq - delta_3prime if delta_3prime < xtra_3prime_Nq else 0
+            else:
+                # Tp ends at the same point as Nq, so the number of extra 3' nts is the same in
+                # each.
+                xtra_3prime_T = xtra_3prime_Nq
+            string_Ti = string_T[xtra_5prime_T: len(string_T) - xtra_3prime_T]
+
+            # It is required that the same T generate the same Ti in alignments to different M.
+            # Conflicting Ti strings from the same T are recorded and their Ti objects later purged.
+            strings_Ti_from_T_name = dict_Ti_strings_from_T_name[seq_T.name]
+            if len(strings_Ti_from_T_name) == 0:
+                strings_Ti_from_T_name.append(string_Ti)
+            elif len(strings_Ti_from_T_name) == 1:
+                if string_Ti != strings_Ti_from_T_name[0]:
+                    excluded_Ti_strings.append(strings_Ti_from_T_name[0])
+                    excluded_Ti_strings.append(string_Ti)
+                    strings_Ti_from_T_name.append(string_Ti)
+            else:
+                if string_Ti not in strings_Ti_from_T_name:
+                    excluded_Ti_strings.append(string_Ti)
+                    strings_Ti_from_T_name.append(string_Ti)
+
+            start_Ti_in_Ni = 0 if start_T_in_Nq < xtra_5prime_Nq else start_T_in_Nq - xtra_5prime_Nq
+            dict_Ti_start_in_Ni[string_Ti] = start_Ti_in_Ni
+
+            # Make Ui objects.
+            for index_U, name_U in enumerate(seq_T.names_U):
+                if type_T == TrimmedMappedSequence:
+                    seq_Ui = UniqueIndelSequence(dict_Um[name_U], xtra_3prime_T, xtra_5prime_T)
+                    # There is only 1 Um per Tm, so the loop can be terminated after the first
+                    # iteration.
+                    break
+
+                # Only Up are considered after this point in the loop. Due to 5'/3' adjustments, Up
+                # from different Tp and Np can end up in the same Tip. Therefore, initialize Tip
+                # after processing all Nq.
+                if type_T == TrimmedTruncatedProfileSequence:
+                    seq_U = getattr(self, 'dict_Uc_' + seq_T.category)[name_U]
+                    # Uc are flush with Tc at the 5' end, so they undergo the same 5' adjustment
+                    # when converted into Ui and Ti.
+                    length_5prime_U = xtra_5prime_T
+                else:
+                    seq_U = getattr(self, 'dict_' + seq_T.categories_U[index_U])[name_U]
+                    # Adjust the nts beyond the 5' tRNA terminus as needed in Up.
+                    length_5prime_U = xtra_5prime_T + seq_U.xtra_5prime_length
+
+                length_3prime_U = xtra_3prime_T + seq_U.length_3prime_terminus
+                seq_Uip = UniqueIndelSequence(seq_U, length_3prime_U, length_5prime_U)
+                dict_Uip_in_Tip[string_Ti].append(seq_Uip)
+            else:
+                # This point is reached for Tp.
+                continue
+
+            # This point is reached for Tm. Since this is a mapped sequence, Tim is a mirror of Uim
+            # and the string is not trimmed.
+            seq_Tim = TrimmedIndelSequence(seq_Ui.string, [seq_Ui])
+            dict_Uim_Tim_in_Ni[string_Ni].append((seq_Ui, seq_Tim, start_Ti_in_Ni))
+
+
+    def check_normalized_indel_sequence_for_anticodon(self, seq_M, start_Ni_in_M):
+        # Determine whether Ni contains the anticodon.
+        seq_Tf = self.dict_Tf[self.dict_Nf[seq_M.name].names_T[0]]
+        try:
+            anticodon_loop_start = seq_Tf.feature_starts[self.RELATIVE_ANTICODON_LOOP_INDEX]
+        except IndexError:
+            # The anticodon loop was not reached in the profile.
+            return False
+        if anticodon_loop_start >= start_Ni_in_M:
+            return True
+        else:
+            return False
 
 
     def report_M_stats(self):
