@@ -27,7 +27,7 @@ requirements:
     # the following prevents an openmp error first reported in
     # merenlab/anvio#1489 that also occurs during conda bulid:
     # https://github.com/bioconda/bioconda-recipes/pull/26014#issuecomment-753693842
-    - scikit-learn <0.21
+    - scikit-learn >=0.23.2
     - django
     - requests
     - psutil ==5.4.3
