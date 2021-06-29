@@ -109,18 +109,16 @@ import math
 import time
 import random
 import shutil
-import hashlib
 import argparse
-import itertools
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import multiprocessing as mp
 
 from hashlib import sha1
+from itertools import chain
 from functools import partial
 from bisect import bisect_left
-from itertools import chain, combinations, product
 from collections import defaultdict, deque, OrderedDict
 
 import anvio
@@ -137,11 +135,11 @@ import anvio.trnaidentifier as trnaidentifier
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.sequence import Dereplicator
 from anvio.drivers.vmatch import Vmatch
 from anvio.agglomeration import Agglomerator
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
-from anvio.sequence import AlignedTarget, Aligner, Cluster, Dereplicator, Kmerizer
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -1394,7 +1392,9 @@ class TRNASeqDataset(object):
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
         self.param_3prime_termini = A('threeprime_termini')
         if '' in self.param_3prime_termini:
+            global PROFILE_ABSENT_3PRIME_TERMINUS
             PROFILE_ABSENT_3PRIME_TERMINUS = True
+        global MIN_LENGTH_LONG_5PRIME_EXTENSION
         MIN_LENGTH_LONG_5PRIME_EXTENSION = A('min_length_long_fiveprime')
         self.min_trna_frag_size = A('min_trna_fragment_size')
         agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
@@ -2352,7 +2352,6 @@ class TRNASeqDataset(object):
         self.progress.update("Inspecting normalized seq clusters")
 
         dict_Nf = self.dict_Nf
-        dict_Tf = self.dict_Tf
         dict_Uf = self.dict_Uf
 
         # It is possible that trimmed sequences from multiple clusters can consolidate.
@@ -2884,7 +2883,6 @@ class TRNASeqDataset(object):
         been profiled as tRNA. Un are searched against Nf. Un is recovered as tRNA when it is a 3'
         subseq of Nf or is longer than Nf with a complete profile and thus is shown to have a 5'
         extension. Recovered Un each generate a Um object."""
-        start_time = time.time()
         self.progress.new("Dereplicating tRNA seqs ending in discriminator nt")
         self.progress.update("...")
 
@@ -3651,7 +3649,6 @@ class TRNASeqDataset(object):
         but not another Nq. This would not necessarily be an error, as identical underlying reads
         could theoretically originate from different cDNA seqs, with some containing an indel, and
         others, representing a different tRNA, not containing it."""
-        start_time = time.time()
         pid = "Finding seqs with mod-induced indels"
         progress = self.progress
         run = self.run
@@ -3877,10 +3874,8 @@ class TRNASeqDataset(object):
         extras_Tip = [(seq_Tip, dict_Ti_start_in_Ni[seq_Tip.string]) for seq_Tip in seqs_Tip]
         clusters = Dereplicator(names_Tip, reverse_Tip_strings, extras=extras_Tip).prefix_dereplicate()
         names_Ni = []
-        dict_Um = self.dict_Um
         dict_Ni = self.dict_Ni
         for cluster in clusters:
-            seqs_Ti = []
             seqs_Tip = []
             starts_Tip_in_Ni = []
             for extra in cluster.member_extras:
@@ -4020,7 +4015,6 @@ class TRNASeqDataset(object):
 
                 length_3prime_U = xtra_3prime_T + seq_U.length_3prime_terminus
                 seq_Uip = UniqueIndelSequence(seq_U, length_3prime_U, length_5prime_U)
-                string_U = seq_U.string
                 dict_Uip_in_Tip[string_Ti].append(seq_Uip)
             else:
                 # This point is reached for Tp.
@@ -4359,7 +4353,6 @@ class TRNASeqDataset(object):
             counts_5prime_indels.append(count_5prime_indels)
 
         min_sum_sub_dist = min(sum_sub_distances)
-        min_dist_config_indices = []
         max_5prime_indel_count = -1
         selected_config_index = -1
         config_index = 0
@@ -4992,23 +4985,23 @@ class ModifiedSeqSummary(object):
     )
 
     def __init__(self):
-        name = None
-        sample_id = None
-        consensus_seq_string = None
-        sub_positions = None
-        specific_nt_covs_dict = None
-        nonspecific_nt_covs_dict = None
-        specific_covs = None
-        nonspecific_covs = None
-        insert_starts = None
-        insert_strings = None
-        spec_insert_covs = None
-        nonspec_insert_covs = None
-        del_starts = None
-        del_lengths = None
-        spec_del_covs = None
-        nonspec_del_covs = None
-        norm_seq_summaries = None
+        self.name = None
+        self.sample_id = None
+        self.consensus_seq_string = None
+        self.sub_positions = None
+        self.specific_nt_covs_dict = None
+        self.nonspecific_nt_covs_dict = None
+        self.specific_covs = None
+        self.nonspecific_covs = None
+        self.insert_starts = None
+        self.insert_strings = None
+        self.spec_insert_covs = None
+        self.nonspec_insert_covs = None
+        self.del_starts = None
+        self.del_lengths = None
+        self.spec_del_covs = None
+        self.nonspec_del_covs = None
+        self.norm_seq_summaries = None
 
 
 class SeedSeq(object):
@@ -6153,7 +6146,6 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             sample_insert_dict = {}
             sample_del_dict = {}
-            seed_seq_length = len(seed_seq.seq_string)
 
             for sample_id in self.trnaseq_db_sample_ids:
                 sample_insert_dict[sample_id] = []
