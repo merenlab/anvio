@@ -1462,6 +1462,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.p_meta['item_orders'][clustering_id] = {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
+            # make sure item names in collection mode matches to the items in the user-provided tree
+            if self.mode == 'collection':
+                item_names_in_collection = set(self.collection.keys())
+                item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
+                if not item_names_in_collection == item_names_in_user_tree:
+                    raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
+                                      f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
+                                      f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
+                                      f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
+                                      f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
+                                      f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
+                                      f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
+                                      f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
+                                      f"to one match between the two.")
+
 
     def update_items_additional_data_with_functions_per_split_summary(self):
         """Adds a layer of stacked bar chart for proportion of functions in split for a given source"""
