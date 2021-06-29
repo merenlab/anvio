@@ -151,7 +151,6 @@ function processState(stateName, stateData){
 function loadAll() {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
-  genomeLabelsCanvas = new fabric.Canvas('genomeLabels');
   scaleCanvas = new fabric.Canvas('scale')
   scaleCanvas.add(new fabric.Rect({
     width: 1200,
@@ -239,27 +238,6 @@ function loadAll() {
   canvas.on('mouse:out', (event) => {
     $('#tooltip-body').html('').hide()
   })
-
-  genomeLabelsCanvas.on('object:moved', function(options) {
-    options.target.set({
-      left: Math.round(options.target.left / draggableGridUnits) * draggableGridUnits,
-      top: Math.round(options.target.top / draggableGridUnits) * draggableGridUnits
-    });
-    let labelsArr = genomeLabelsCanvas.getObjects()
-    labelsArr.sort((a,b) => (a.top > b.top) ? 1 : -1) // sort genomes based on vertical position after drag event
-
-    let newGenomeOrder = []
-    labelsArr.map(label => {
-      genomeData.genomes.map(genome => {
-         if(label.text == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
-           newGenomeOrder.push(genome)
-           return
-         }
-      })
-    })
-    genomeData.genomes = newGenomeOrder
-    draw()
-  });
 
   if(showGeneLabels && arrowStyle != 3) {
     spacing = 60;
@@ -416,7 +394,6 @@ function loadAll() {
 }
 
 function draw(scaleX=scaleFactor) {
-  genomeLabelsCanvas.clear()
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
 
