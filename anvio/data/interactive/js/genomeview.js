@@ -757,36 +757,37 @@ function resetScale(){
 }
 
 function buildGenomesTable(genomes, order){
-  var height = '50';
-  var margin = '15';
-  var template = '<tr>' +
-                '<td><img src="images/drag.gif" class="drag-icon" /></td>' +
-                '<td> {Parent} </td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
-                '</tr>';
-
   genomes.map(genome => {
-    let genomeLabel= Object.keys(genome[1]['contigs']['info']); // this is our genome label
+    var height = '50';
+    var margin = '15';
+    var template = '<tr id={genomeLabel}>' +
+                  '<td><img src="images/drag.gif" class="drag-icon" id={genomeLabel} /></td>' +
+                  '<td> {genomeLabel} </td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                  '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                  '</tr>';
+    let genomeLabel= Object.keys(genome[1]['contigs']['info']); 
 
-    template = template.replace(new RegExp('{Parent}', 'g'), genomeLabel)
-                       .replace(new RegExp('{height}', 'g'), height)
-                       .replace(new RegExp('{margin}', 'g'), margin);
+    template = template.replace(new RegExp('{height}', 'g'), height)
+                       .replace(new RegExp('{margin}', 'g'), margin)
+                       .replace(new RegExp('{genomeLabel}', 'g'), genomeLabel);
 
     $('#tbody_genomes').prepend(template);
   })
-  $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).enableSelection();
 
-  $('#table_genomes .drag-icon').on('mousedown', function() {
-    console.log('sorting');
-    // $('#samples_order').val('custom').trigger('change');
-  });
+  $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+  $("#tbody_genomes").on("sortupdate", (event, ui) => {
+    let orderArr = $("#tbody_genomes").sortable('toArray')
+    console.log(orderArr);
+  
+  })
 }
 
 function changeGenomeOrder(event){
