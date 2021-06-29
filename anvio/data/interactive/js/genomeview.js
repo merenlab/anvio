@@ -778,23 +778,28 @@ function buildGenomesTable(genomes, order){
                        .replace(new RegExp('{margin}', 'g'), margin)
                        .replace(new RegExp('{genomeLabel}', 'g'), genomeLabel);
 
-    $('#tbody_genomes').prepend(template);
+    $('#tbody_genomes').append(template);
   })
 
   $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
   $("#tbody_genomes").on("sortupdate", (event, ui) => {
-    let orderArr = $("#tbody_genomes").sortable('toArray')
-    console.log(orderArr);
-  
+    changeGenomeOrder($("#tbody_genomes").sortable('toArray'))
   })
 }
 
-function changeGenomeOrder(event){
+function changeGenomeOrder(updatedOrder){
 
-  if(event.target.value === "Alphabetical"){
-    console.log(typeof genomeData.genomes)
-  }
+  let newGenomeOrder = []
+  updatedOrder.map(label => {
+    genomeData.genomes.map(genome => {
+        if(label == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
+          newGenomeOrder.push(genome)
+        }    
+    }) 
+  })
+  genomeData.genomes = newGenomeOrder
+  draw()
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
