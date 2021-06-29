@@ -53,6 +53,7 @@ var genomeData;
 $(document).ready(function() {
     initData();
     // loadState();
+    processState('default', {}) // lifted here until loadState is hooked in from backend
     loadAll();
 });
 
@@ -134,9 +135,22 @@ function loadState(){
 function processState(stateName, stateData){
   // set genome order options from state
 
+  // mock data 
+  stateData['genome-order-method'] = [{ 
+      'name' : 'cats',
+      'ordering' : 'some order'
+    }, {
+      'name' : 'dogs', 
+      'ordering' : 'some other order'
+    }, {
+      'name' : 'birds', 
+      'ordering' : 'beaks to tails'
+    }
+  ]
+
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
-      $('#genomeOrderSelect').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
+      $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   }
 
