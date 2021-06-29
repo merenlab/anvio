@@ -34,6 +34,7 @@ requirements:
     - r-optparse
     - bioconductor-qvalue
     - fasttree
+    - vmatch
 
 test:
   commands:

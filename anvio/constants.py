@@ -78,12 +78,6 @@ default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'AC
 default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
 
 # The following block of constants are used in the tRNA-seq workflow.
-THREEPRIME_VARIANTS = ['CCA', 'CC', 'C',
-                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
-                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
-                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
-                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
-                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
 TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'acceptor_stem',
                       'fiveprime_acceptor_stem_sequence',
@@ -110,6 +104,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'discriminator',
                       'threeprime_terminus']
 TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
+TRNASEQ_CHECKPOINTS = ('profile', 'normalize', 'map_fragments', 'substitutions', 'indels')
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
