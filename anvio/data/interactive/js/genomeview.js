@@ -760,7 +760,7 @@ function buildGenomesTable(genomes, order){
   var height = '50';
   var margin = '15';
   var template = '<tr>' +
-                '<td><img src="images/drag.gif" /></td>' +
+                '<td><img src="images/drag.gif" class="drag-icon" /></td>' +
                 '<td> {Parent} </td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
