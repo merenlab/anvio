@@ -1525,8 +1525,7 @@ class Profiler(object):
 
 
     def profile(self, input_seq, name=''):
-        """Create a tRNA feature profile from a DNA sequence, assuming the presence of some form of
-        3' adapter sequence in the template molecule."""
+        """Create a tRNA feature profile representing a tRNA transcript from a DNA sequence."""
         self.p = profile = Profile(input_seq, name=name)
 
         (profile.profiled_seq,
@@ -1621,8 +1620,7 @@ class Profiler(object):
 
 
     def profile_gene(self, input_seq, name='', check_encoded_acceptor=True):
-        """Create a tRNA feature profile from a DNA sequence, assuming the presence of some form of
-        3' adapter sequence in the template molecule."""
+        """Create a tRNA feature profile representing a tRNA gene from a DNA sequence."""
         gene_profile = GeneProfile(input_seq, name=name)
         gene_profile.unencoded_acceptor_profile = self.profile(input_seq + 'CCA', name=name)
 
