@@ -941,7 +941,7 @@ class ThreeprimeTerminus(object):
     others due to the variety of sequences that may be found at the 3' end of tRNA-seq reads."""
 
     name = '3\' terminus'
-    patterns = (re.compile('CCA'), )
+    allowed_patterns = (re.compile('CCA'), )
 
     def __init__(self, string, start_pos, stop_pos, priority=0):
         self.string = string
