@@ -281,14 +281,14 @@ class FindAnvioDBs(object):
     The primary data structure in this class is `self.anvio_dbs` and is initiated
     upon creating an instance from it.
 
-    As of 2021, the primary sole client of htis class is `PopulateAnvioDBArgs` in the
+    As of 2021, the primary sole client of this class is `PopulateAnvioDBArgs` in the
     anvio.argsparse module to fill in missing databases into the args object.
 
     Parameters
     ==========
     search_path : str
         The beginning of the search. The search will be limited to this directory
-        and files and directoreies underneath it.
+        and files and directories underneath it.
 
     max_files_and_dirs_to_process : int, default 50000
         Stop processing if the number of files and directories processed exceeds
