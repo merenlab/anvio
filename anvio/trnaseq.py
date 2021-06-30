@@ -337,7 +337,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.name_T = None
 
         # Store the defunct profile information for posterity.
-        self.defunct_U = defunct_U
+        self.defunct_Uf = defunct_Uf
 
 
 class UniqueMappedSequence(UniqueSequence):
@@ -6816,10 +6816,11 @@ class DatabaseConverter(object):
             for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+
             # Variability is the measure of the frequency of modification-induced substitutions in
             # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
-            self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
@@ -6834,10 +6835,11 @@ class DatabaseConverter(object):
             for specific_attr, nonspecific_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+
             # Variability is the measure of the frequency of modification-induced substitutions in
             # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
-            self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             combined_indels_table_entries = []
             for entry in self.specific_indels_table_entries:
