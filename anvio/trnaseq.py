@@ -164,6 +164,7 @@ INT_NT_DICT = {i: nt for i, nt in enumerate(UNAMBIG_NTS, start=1)}
 NUM_NT_BINS = len(UNAMBIG_NTS) + 1
 
 ANTICODON_AA_DICT = constants.anticodon_to_AA
+TRNA_FEATURE_NAMES = constants.TRNA_FEATURE_NAMES
 
 # The user can specify in `anvi-trnaseq` what defines a long (biological vs. non-templated) 5'
 # extension. The variable is set by `TRNASeqDataset.__init__`.
@@ -1349,7 +1350,6 @@ class ModifiedSequence(object):
 class TRNASeqDataset(object):
     """Processes reads from a tRNA-seq library. `bin/anvi-trnaseq` is the client."""
 
-    TRNA_FEATURE_NAMES = constants.TRNA_FEATURE_NAMES
     RELATIVE_ANTICODON_LOOP_INDEX = TRNA_FEATURE_NAMES.index('anticodon_loop') - len(TRNA_FEATURE_NAMES) + 1
 
     # Column headers for supplementary tables written to text files
@@ -4539,7 +4539,6 @@ class TRNASeqDataset(object):
         self.progress.update("...")
 
         rows = []
-        TRNA_FEATURE_NAMES = self.TRNA_FEATURE_NAMES
         for dict_name, dict_U in zip(('dict_Uf', 'dict_Us', 'dict_Uc_trna'),
                                      (self.dict_Uf, self.dict_Us, self.dict_Uc_trna)):
             for seq_U in dict_U.values():
@@ -4934,8 +4933,8 @@ class NormalizedSeqSummary(object):
         'name',
         'sample_id',
         'seq_string',
-        'threshold_feature_start',
         'anticodon_seq_string',
+        'feature_dict',
         'feature_threshold_start',
         'mean_specific_cov',
         'specific_covs',
@@ -4949,8 +4948,8 @@ class NormalizedSeqSummary(object):
         self.name = None
         self.sample_id = None
         self.seq_string = None
-        self.threshold_feature_start = None
         self.anticodon_seq_string = None
+        self.feature_dict = None
         self.feature_threshold_start = None
         self.mean_specific_cov = None
         self.specific_covs = None
@@ -5114,10 +5113,12 @@ class DatabaseConverter(object):
     """
 
     # The columns needed from tables of a tRNA-seq database.
+    FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES],
+                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES])))
     FEATURE_TABLE_COLS_OF_INTEREST = [
         'name',
         'anticodon_sequence'
-    ]
+    ] + FEATURE_INDEX_COLS_OF_INTEREST
     TRIMMED_TABLE_COLS_OF_INTEREST = [
         'name',
         'sequence'
@@ -5443,12 +5444,151 @@ class DatabaseConverter(object):
 
         trnaseq_db = dbops.TRNASeqDatabase(trnaseq_db_path)
 
-        norm_seq_summary_dict = {} # Used to link normalized to modified sequence summaries
+        dict_N_summary = {} # Used to link N to M summaries
 
+        norm_seq_df = pd.merge(
+            pd.DataFrame(
+                trnaseq_db.db.get_some_columns_from_table('normalized', ', '.join(self.NORM_TABLE_COLS_OF_INTEREST)),
+                columns=self.NORM_TABLE_COLS_OF_INTEREST
+            ).set_index('name'),
+            self.load_seq_string_and_feature_df(trnaseq_db),
+            left_index=True,
+            right_index=True
+        )
+
+        threshold_feature = self.feature_threshold + '_start'
+        # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
+        is_threshold_feature_stem = True if 'stem' in threshold_feature else False
+        for info_N in norm_seq_df.itertuples():
+            if info_N.id_info == 'indel_aligned':
+                # Ignore Ni. The coverage of indels themselves is recorded in the parent M, but the
+                # contribution of Ni to nt coverage is ignored. Inclusion of Ni would produce
+                # numerous complications (e.g., they don't have feature profiles).
+                continue
+
+            summary_N = NormalizedSeqSummary()
+            summary_N.name = info_N.Index
+            summary_N.sample_id = sample_id
+            summary_N.mean_specific_cov = info_N.mean_specific_coverage
+            # There is a trailing comma in the coverage strings.
+            summary_N.specific_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
+            summary_N.nonspecific_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
+            summary_N.seq_string = info_N.sequence
+            summary_N.anticodon_seq_string = info_N.anticodon_sequence
+            summary_N.feature_dict = feature_dict = {}
+            for feature_index_col in self.FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
+                feature_dict[feature_index_col] = getattr(info_N, feature_index_col)
+            db_value = getattr(info_N, threshold_feature)
+            if is_threshold_feature_stem:
+                summary_N.feature_threshold_start = int(db_value.split(',')[0]) if isinstance(db_value, str) else -1
+            else:
+                summary_N.feature_threshold_start = -1 if np.isnan(db_value) else db_value
+
+            dict_N_summary[summary_N.name] = summary_N
+
+        summaries_M = []
+        for info_M in pd.DataFrame(
+            trnaseq_db.db.get_some_columns_from_table('modified', ', '.join(self.MOD_TABLE_COLS_OF_INTEREST)),
+            columns=self.MOD_TABLE_COLS_OF_INTEREST
+            ).set_index('name').itertuples():
+            summary_M = ModifiedSeqSummary()
+            summary_M.name = info_M.Index
+            summary_M.sample_id = sample_id
+            # There is a trailing comma in the substitution and indel coverage and position strings.
+            summary_M.sub_positions = np.fromiter(map(int, info_M.substitution_positions.split(',')[: -1]), int)
+            summary_M.consensus_seq_string = consensus_seq_string = info_M.consensus_sequence
+
+            # Make nt variability arrays covering every position in the sequence. Start with arrays
+            # of overall specific/nonspecific coverage with nonzero values for the nts found in the
+            # consensus sequence, and then correct the variable positions.
+            seq_length = len(consensus_seq_string)
+            specific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+            nonspecific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+            pos = 0
+            for nt, specific_cov, nonspecific_cov in zip(consensus_seq_string,
+                                                         info_M.specific_coverages.split(',')[: -1],
+                                                         info_M.nonspecific_coverages.split(',')[: -1]):
+                specific_nt_covs_dict[nt][pos] = specific_cov
+                nonspecific_nt_covs_dict[nt][pos] = nonspecific_cov
+                pos += 1
+            for (sub_pos,
+                 specific_A_cov,
+                 specific_C_cov,
+                 specific_G_cov,
+                 specific_T_cov,
+                 nonspecific_A_cov,
+                 nonspecific_C_cov,
+                 nonspecific_G_cov,
+                 nonspecific_T_cov) in zip(summary_M.sub_positions,
+                                           map(int, info_M.substitution_A_specific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_C_specific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_G_specific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_T_specific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_A_nonspecific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_C_nonspecific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_G_nonspecific_coverage.split(',')[: -1]),
+                                           map(int, info_M.substitution_T_nonspecific_coverage.split(',')[: -1])):
+                     specific_nt_covs_dict['A'][sub_pos] = specific_A_cov
+                     specific_nt_covs_dict['C'][sub_pos] = specific_C_cov
+                     specific_nt_covs_dict['G'][sub_pos] = specific_G_cov
+                     specific_nt_covs_dict['T'][sub_pos] = specific_T_cov
+                     nonspecific_nt_covs_dict['A'][sub_pos] = nonspecific_A_cov
+                     nonspecific_nt_covs_dict['C'][sub_pos] = nonspecific_C_cov
+                     nonspecific_nt_covs_dict['G'][sub_pos] = nonspecific_G_cov
+                     nonspecific_nt_covs_dict['T'][sub_pos] = nonspecific_T_cov
+            summary_M.specific_nt_covs_dict = specific_nt_covs_dict
+            summary_M.nonspecific_nt_covs_dict = nonspecific_nt_covs_dict
+
+            if info_M.insertion_starts == ',':
+                summary_M.insert_starts = []
+                summary_M.insert_strings = []
+                summary_M.spec_insert_covs = []
+                summary_M.nonspec_insert_covs = []
+            else:
+                summary_M.insert_starts = list(map(int, info_M.insertion_starts.split(',')[: -1]))
+                summary_M.insert_strings = list(info_M.insertion_seqs.split(',')[: -1])
+                summary_M.spec_insert_covs = list(map(int, info_M.insertion_specific_coverages.split(',')[: -1]))
+                summary_M.nonspec_insert_covs = list(map(int, info_M.insertion_nonspecific_coverages.split(',')[: -1]))
+            assert len(summary_M.insert_starts) == len(summary_M.insert_strings) == len(summary_M.spec_insert_covs) == len(summary_M.nonspec_insert_covs)
+
+            if info_M.deletion_starts == ',':
+                summary_M.del_starts = []
+                summary_M.del_lengths = []
+                summary_M.spec_del_covs = []
+                summary_M.nonspec_del_covs = []
+            else:
+                summary_M.del_starts = list(map(int, info_M.deletion_starts.split(',')[: -1]))
+                summary_M.del_lengths = list(map(int, info_M.deletion_lengths.split(',')[: -1]))
+                summary_M.spec_del_covs = list(map(int, info_M.deletion_specific_coverages.split(',')[: -1]))
+                summary_M.nonspec_del_covs = list(map(int, info_M.deletion_nonspecific_coverages.split(',')[: -1]))
+            assert len(summary_M.del_starts) == len(summary_M.del_lengths) == len(summary_M.spec_del_covs) == len(summary_M.nonspec_del_covs)
+
+            summaries_N = []
+            for name_N in info_M.names_of_normalized_seqs_without_indels.split(','):
+                summary_N = dict_N_summary[name_N]
+
+                # Cross-reference the M summary with summary objects of constituent N.
+                summary_N.mod_seq_summary = summary_M
+                summaries_N.append(summary_N)
+
+                # Ensure that all constituent N have coverage arrays flush with those of M.
+                if len(summary_N.seq_string) < len(summary_M.consensus_seq_string):
+                    elongation_5prime = np.zeros(len(summary_M.consensus_seq_string) - len(summary_N.seq_string), int)
+                    self.extend_norm_seq_fiveprime_end(summary_N, elongation_5prime)
+            summary_M.norm_seq_summaries = summaries_N
+            summaries_M.append(summary_M)
+
+        summaries_unmod_N = [summary_N for summary_N in dict_N_summary.values() if not summary_N.mod_seq_summary]
+
+        return summaries_unmod_N, summaries_M
+
+
+    def load_seq_string_and_feature_df(self, trnaseq_db):
+        """Load data from the `features` and `trimmed` tables of the input tRNA-seq database."""
         # Store normalized sequence strings and feature information.
         seq_string_and_feature_df = pd.DataFrame(
-            trnaseq_db.db.get_some_columns_from_table('feature', ', '.join(self.FEATURE_TABLE_COLS_OF_INTEREST + [self.feature_threshold + '_start'])),
-            columns=self.FEATURE_TABLE_COLS_OF_INTEREST + [self.feature_threshold + '_start']
+            trnaseq_db.db.get_some_columns_from_table('feature', ', '.join(self.FEATURE_TABLE_COLS_OF_INTEREST)),
+            columns=self.FEATURE_TABLE_COLS_OF_INTEREST
         ).set_index('name')
 
         if 'stem' in self.feature_threshold:
@@ -5468,152 +5608,7 @@ class DatabaseConverter(object):
             left_index=True,
             right_index=True)
 
-        for norm_seq_info in trnaseq_db.db.get_some_columns_from_table('normalized', ', '.join(self.NORM_TABLE_COLS_OF_INTEREST)):
-            (name,
-             id_info,
-             mean_specific_cov,
-             specific_covs_string,
-             nonspecific_covs_string) = norm_seq_info
-
-            if id_info == 'indel_aligned':
-                # Ignore normalized sequences with indels. The coverage of indels themselves
-                # is recorded in the parent modified sequence, but the contribution of these
-                # sequences to nucleotide coverage is ignored. Inclusion of these sequences would
-                # produce numerous complications (e.g., they don't have feature profiles).
-                continue
-
-            norm_seq_summary = NormalizedSeqSummary()
-            norm_seq_summary.name = name
-            norm_seq_summary.sample_id = sample_id
-            norm_seq_summary.mean_specific_cov = mean_specific_cov
-            # There is always a trailing comma in the coverage strings.
-            norm_seq_summary.specific_covs = np.fromiter(map(int, specific_covs_string.split(',')[: -1]), int)
-            norm_seq_summary.nonspecific_covs = np.fromiter(map(int, nonspecific_covs_string.split(',')[: -1]), int)
-            (norm_seq_summary.seq_string,
-             norm_seq_summary.anticodon_seq_string,
-             norm_seq_summary.feature_threshold_start) = seq_string_and_feature_df.loc[norm_seq_summary.name, ['sequence', 'anticodon_sequence', self.feature_threshold + '_start']]
-
-            norm_seq_summary_dict[norm_seq_summary.name] = norm_seq_summary
-
-        mod_seq_summaries = []
-        for mod_seq_info in trnaseq_db.db.get_some_columns_from_table('modified', ', '.join(self.MOD_TABLE_COLS_OF_INTEREST)):
-            (name,
-             specific_covs,
-             nonspecific_covs,
-             names_of_norm_seqs_without_indels,
-             names_of_norm_seqs_with_indels,
-             sub_positions,
-             sub_A_specific_covs,
-             sub_C_specific_covs,
-             sub_G_specific_covs,
-             sub_T_specific_covs,
-             sub_A_nonspecific_covs,
-             sub_C_nonspecific_covs,
-             sub_G_nonspecific_covs,
-             sub_T_nonspecific_covs,
-             insert_starts,
-             insert_strings,
-             spec_insert_covs,
-             nonspec_insert_covs,
-             del_starts,
-             del_lengths,
-             spec_del_covs,
-             nonspec_del_covs,
-             consensus_seq_string) = mod_seq_info
-
-            mod_seq_summary = ModifiedSeqSummary()
-            mod_seq_summary.name = name
-            mod_seq_summary.sample_id = sample_id
-            # There is always a trailing comma in the substitution and deletion coverage and
-            # position strings.
-            mod_seq_summary.sub_positions = np.fromiter(map(int, sub_positions.split(',')[: -1]), int)
-            mod_seq_summary.consensus_seq_string = consensus_seq_string
-
-            # Make nucleotide variability arrays covering every position in the sequence. Start with
-            # arrays of overall specific/nonspecific coverage with nonzero values for the
-            # nucleotides found in the consensus sequence, and then correct the variable positions.
-            seq_length = len(consensus_seq_string)
-            specific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
-            nonspecific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
-            pos = 0
-            for nt, specific_cov, nonspecific_cov in zip(consensus_seq_string,
-                                                         specific_covs.split(',')[: -1],
-                                                         nonspecific_covs.split(',')[: -1]):
-                specific_nt_covs_dict[nt][pos] = specific_cov
-                nonspecific_nt_covs_dict[nt][pos] = nonspecific_cov
-                pos += 1
-            for (sub_pos,
-                 specific_A_cov,
-                 specific_C_cov,
-                 specific_G_cov,
-                 specific_T_cov,
-                 nonspecific_A_cov,
-                 nonspecific_C_cov,
-                 nonspecific_G_cov,
-                 nonspecific_T_cov) in zip(map(int, sub_positions.split(',')[: -1]),
-                                           map(int, sub_A_specific_covs.split(',')[: -1]),
-                                           map(int, sub_C_specific_covs.split(',')[: -1]),
-                                           map(int, sub_G_specific_covs.split(',')[: -1]),
-                                           map(int, sub_T_specific_covs.split(',')[: -1]),
-                                           map(int, sub_A_nonspecific_covs.split(',')[: -1]),
-                                           map(int, sub_C_nonspecific_covs.split(',')[: -1]),
-                                           map(int, sub_G_nonspecific_covs.split(',')[: -1]),
-                                           map(int, sub_T_nonspecific_covs.split(',')[: -1])):
-                     specific_nt_covs_dict['A'][sub_pos] = specific_A_cov
-                     specific_nt_covs_dict['C'][sub_pos] = specific_C_cov
-                     specific_nt_covs_dict['G'][sub_pos] = specific_G_cov
-                     specific_nt_covs_dict['T'][sub_pos] = specific_T_cov
-                     nonspecific_nt_covs_dict['A'][sub_pos] = nonspecific_A_cov
-                     nonspecific_nt_covs_dict['C'][sub_pos] = nonspecific_C_cov
-                     nonspecific_nt_covs_dict['G'][sub_pos] = nonspecific_G_cov
-                     nonspecific_nt_covs_dict['T'][sub_pos] = nonspecific_T_cov
-            mod_seq_summary.specific_nt_covs_dict = specific_nt_covs_dict
-            mod_seq_summary.nonspecific_nt_covs_dict = nonspecific_nt_covs_dict
-
-            if insert_starts == ',':
-                mod_seq_summary.insert_starts = []
-                mod_seq_summary.insert_strings = []
-                mod_seq_summary.spec_insert_covs = []
-                mod_seq_summary.nonspec_insert_covs = []
-            else:
-                mod_seq_summary.insert_starts = list(map(int, insert_starts.split(',')[: -1]))
-                mod_seq_summary.insert_strings = list(insert_strings.split(',')[: -1])
-                mod_seq_summary.spec_insert_covs = list(map(int, spec_insert_covs.split(',')[: -1]))
-                mod_seq_summary.nonspec_insert_covs = list(map(int, nonspec_insert_covs.split(',')[: -1]))
-            assert len(mod_seq_summary.insert_starts) == len(mod_seq_summary.insert_strings) == len(mod_seq_summary.spec_insert_covs) == len(mod_seq_summary.nonspec_insert_covs)
-
-            if del_starts == ',':
-                mod_seq_summary.del_starts = []
-                mod_seq_summary.del_lengths = []
-                mod_seq_summary.spec_del_covs = []
-                mod_seq_summary.nonspec_del_covs = []
-            else:
-                mod_seq_summary.del_starts = list(map(int, del_starts.split(',')[: -1]))
-                mod_seq_summary.del_lengths = list(map(int, del_lengths.split(',')[: -1]))
-                mod_seq_summary.spec_del_covs = list(map(int, spec_del_covs.split(',')[: -1]))
-                mod_seq_summary.nonspec_del_covs = list(map(int, nonspec_del_covs.split(',')[: -1]))
-            assert len(mod_seq_summary.del_starts) == len(mod_seq_summary.del_lengths) == len(mod_seq_summary.spec_del_covs) == len(mod_seq_summary.nonspec_del_covs)
-
-            mod_seq_summary.norm_seq_summaries = []
-            for norm_seq_name in names_of_norm_seqs_without_indels.split(','):
-                norm_seq_summary = norm_seq_summary_dict[norm_seq_name]
-
-                # Cross-reference the modified sequence summary and constituent modified normalized
-                # sequence summary objects.
-                norm_seq_summary.mod_seq_summary = mod_seq_summary
-                mod_seq_summary.norm_seq_summaries.append(norm_seq_summary)
-
-                # Ensure that all of the constituent modified normalized sequences have coverage
-                # arrays flush with the modified sequence.
-                if len(norm_seq_summary.seq_string) < len(mod_seq_summary.consensus_seq_string):
-                    fiveprime_extension = np.zeros(len(mod_seq_summary.consensus_seq_string) - len(norm_seq_summary.seq_string), int)
-                    self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-            mod_seq_summaries.append(mod_seq_summary)
-
-        unmod_norm_seq_summaries = [norm_seq for norm_seq in norm_seq_summary_dict.values()
-                                    if not norm_seq.mod_seq_summary]
-
-        return unmod_norm_seq_summaries, mod_seq_summaries
+        return seq_string_and_feature_df
 
 
     def extend_norm_seq_fiveprime_end(self, norm_seq_summary, fiveprime_extension):
