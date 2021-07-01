@@ -107,6 +107,7 @@ import os
 import sys
 import math
 import time
+import queue
 import random
 import shutil
 import argparse
@@ -5215,8 +5216,8 @@ class DatabaseConverter(object):
         self.trnaseq_dbs_info_dict = OrderedDict()
         self.num_trnaseq_dbs = None
         self.trnaseq_db_sample_ids = None
-        self.unmod_norm_seq_summaries_dict = OrderedDict()
-        self.mod_seq_summaries_dict = OrderedDict()
+        self.unmod_norm_seq_summaries_dict = defaultdict(list)
+        self.mod_seq_summaries_dict = defaultdict(list)
 
         self.seed_seqs = None
         self.total_seed_length = None
@@ -5404,27 +5405,64 @@ class DatabaseConverter(object):
 
     def load_trnaseq_dbs(self):
         loaded_db_count = 0
-        num_trnaseq_db_paths = len(self.trnaseq_db_paths)
-        self.progress.new("Loading seq info from tRNA-seq dbs")
-        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+        trnaseq_db_paths = self.trnaseq_db_paths
+        num_trnaseq_db_paths = len(trnaseq_db_paths)
+        progress = self.progress
+        progress.new("Loading seq info from tRNA-seq dbs")
+        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
 
         manager = mp.Manager()
         input_queue = manager.Queue()
-        output_queue = manager.Queue()
-        processes = [mp.Process(target=trnaseq_db_loader, args=(input_queue, output_queue, self))
+        output_queue_Nu_summaries = manager.Queue()
+        output_queue_M_summaries = manager.Queue()
+        processes = [mp.Process(target=trnaseq_db_loader,
+                                args=(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, self))
                      for _ in range(self.num_threads)]
         for p in processes:
             p.start()
 
-        for trnaseq_db_path in self.trnaseq_db_paths:
+        for trnaseq_db_path in trnaseq_db_paths:
             input_queue.put(trnaseq_db_path)
 
-        while loaded_db_count < len(self.trnaseq_db_paths):
-            trnaseq_db_path, unmod_norm_seq_summaries, mod_seq_summaries = output_queue.get()
-            self.unmod_norm_seq_summaries_dict[trnaseq_db_path] = unmod_norm_seq_summaries
-            self.mod_seq_summaries_dict[trnaseq_db_path] = mod_seq_summaries
-            loaded_db_count += 1
-            self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+        poison_pill_count = 0
+        unmod_norm_seq_summaries_dict = self.unmod_norm_seq_summaries_dict
+        mod_seq_summaries_dict = self.mod_seq_summaries_dict
+        empty = queue.Empty
+        db_completion_dict = {}
+        while poison_pill_count < len(trnaseq_db_paths) * 2:
+            try:
+                summary_item = output_queue_Nu_summaries.get_nowait()
+                try:
+                    trnaseq_db_path, summary_Nu = summary_item
+                    unmod_norm_seq_summaries_dict[trnaseq_db_path].append(summary_Nu)
+                except ValueError:
+                    trnaseq_db_path = summary_item
+                    poison_pill_count += 1
+                    try:
+                        db_completion_dict[trnaseq_db_path] += 1
+                        loaded_db_count += 1
+                        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+                    except KeyError:
+                        db_completion_dict[trnaseq_db_path] = 1
+            except empty:
+                pass
+
+            try:
+                summary_item = output_queue_M_summaries.get_nowait()
+                try:
+                    trnaseq_db_path, summary_M = summary_item
+                    mod_seq_summaries_dict[trnaseq_db_path].append(summary_M)
+                except ValueError:
+                    trnaseq_db_path = summary_item
+                    poison_pill_count += 1
+                    try:
+                        db_completion_dict[trnaseq_db_path] += 1
+                        loaded_db_count += 1
+                        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+                    except KeyError:
+                        db_completion_dict[trnaseq_db_path] = 1
+            except empty:
+                pass
 
         for p in processes:
             p.terminate()
@@ -6955,10 +6993,15 @@ class DatabaseConverter(object):
             from_matrix_form=True)
 
 
-def trnaseq_db_loader(input_queue, output_queue, db_converter):
+def trnaseq_db_loader(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, db_converter):
     """This client for `DatabaseConverter.load_trnaseq_db_seq_info` is located outside the
     `DatabaseConverter` class to allow multiprocessing."""
     while True:
         trnaseq_db_path = input_queue.get()
-        unmod_norm_seq_summaries, mod_seq_summaries = db_converter.load_trnaseq_db_seq_info(trnaseq_db_path)
-        output_queue.put((trnaseq_db_path, unmod_norm_seq_summaries, mod_seq_summaries))
+        summaries_Nu, summaries_M = db_converter.load_trnaseq_db_seq_info(trnaseq_db_path)
+        for summary_Nu in summaries_Nu:
+            output_queue_Nu_summaries.put((trnaseq_db_path, summary_Nu))
+        for summary_M in summaries_M:
+            output_queue_M_summaries.put((trnaseq_db_path, summary_M))
+        output_queue_Nu_summaries.put(trnaseq_db_path)
+        output_queue_M_summaries.put(trnaseq_db_path)
