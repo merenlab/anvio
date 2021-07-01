@@ -5119,7 +5119,8 @@ class DatabaseConverter(object):
                                                      [f + '_stop' for f in TRNA_FEATURE_NAMES[: -2]])))
     FEATURE_TABLE_COLS_OF_INTEREST = [
         'name',
-        'anticodon_sequence'
+        'anticodon_sequence',
+        'num_extra_fiveprime'
     ] + FEATURE_INDEX_COLS_OF_INTEREST
     TRIMMED_TABLE_COLS_OF_INTEREST = [
         'name',
@@ -5514,25 +5515,32 @@ class DatabaseConverter(object):
             summary_N.nonspecific_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
             summary_N.seq_string = info_N.sequence
             summary_N.anticodon_seq_string = info_N.anticodon_sequence
+
+            num_extra_fiveprime = info_N.num_extra_fiveprime
             summary_N.feature_dict = feature_dict = {}
             for feature_index_col in self.FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
                 db_value = getattr(info_N, feature_index_col)
                 if isinstance(db_value, str):
                     # The string contains the start indices of stem strands.
-                    feature_dict[feature_index_col] = tuple(map(int, db_value.split(',')))
+                    if num_extra_fiveprime:
+                        split_db_value = tuple(map(int, db_value.split(',')))
+                        feature_dict[feature_index_col] = (split_db_value[0] - num_extra_fiveprime, split_db_value[1] - num_extra_fiveprime)
+                    else:
+                        feature_dict[feature_index_col] = tuple(map(int, db_value.split(',')))
                 else:
                     try:
                         if np.isnan(db_value):
                             feature_dict[feature_index_col] = -0.5
                         else:
-                            feature_dict[feature_index_col] = int(db_value)
+                            feature_dict[feature_index_col] = int(db_value) - num_extra_fiveprime
                     except TypeError:
                         feature_dict[feature_index_col] = -0.5
+
             db_value = getattr(info_N, threshold_feature)
             if is_threshold_feature_stem:
-                summary_N.feature_threshold_start = int(db_value.split(',')[0]) if isinstance(db_value, str) else -1
+                summary_N.feature_threshold_start = int(db_value.split(',')[0]) - num_extra_fiveprime if isinstance(db_value, str) else -0.5
             else:
-                summary_N.feature_threshold_start = -1 if np.isnan(db_value) else db_value
+                summary_N.feature_threshold_start = -0.5 if np.isnan(db_value) else db_value - num_extra_fiveprime
 
             dict_N_summary[summary_N.name] = summary_N
 
