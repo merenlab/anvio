@@ -5520,7 +5520,13 @@ class DatabaseConverter(object):
                     # The string contains the start indices of stem strands.
                     feature_dict[feature_index_col] = tuple(map(int, db_value.split(',')))
                 else:
-                    feature_dict[feature_index_col] = db_value
+                    try:
+                        if np.isnan(db_value):
+                            feature_dict[feature_index_col] = -0.5
+                        else:
+                            feature_dict[feature_index_col] = int(db_value)
+                    except TypeError:
+                        feature_dict[feature_index_col] = -0.5
             db_value = getattr(info_N, threshold_feature)
             if is_threshold_feature_stem:
                 summary_N.feature_threshold_start = int(db_value.split(',')[0]) if isinstance(db_value, str) else -1
