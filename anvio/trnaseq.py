@@ -5515,7 +5515,12 @@ class DatabaseConverter(object):
             summary_N.anticodon_seq_string = info_N.anticodon_sequence
             summary_N.feature_dict = feature_dict = {}
             for feature_index_col in self.FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
-                feature_dict[feature_index_col] = getattr(info_N, feature_index_col)
+                db_value = getattr(info_N, feature_index_col)
+                if isinstance(db_value, str):
+                    # The string contains the start indices of stem strands.
+                    feature_dict[feature_index_col] = tuple(map(int, db_value.split(',')))
+                else:
+                    feature_dict[feature_index_col] = db_value
             db_value = getattr(info_N, threshold_feature)
             if is_threshold_feature_stem:
                 summary_N.feature_threshold_start = int(db_value.split(',')[0]) if isinstance(db_value, str) else -1
@@ -5649,12 +5654,27 @@ class DatabaseConverter(object):
         return seq_string_and_feature_df
 
 
-    def extend_norm_seq_fiveprime_end(self, norm_seq_summary, fiveprime_extension):
+    def extend_norm_seq_fiveprime_end(self, summary_N, elongation_5prime):
         """Seed sequences can be longer than the normalized sequences from the individual samples,
         requiring addition of empty positions in the normalized sequence coverage arrays at the 5'
-        end, as normalized (and modified) sequences are aligned from the 3' end."""
-        norm_seq_summary.specific_covs = np.concatenate([fiveprime_extension, norm_seq_summary.specific_covs])
-        norm_seq_summary.nonspecific_covs = np.concatenate([fiveprime_extension, norm_seq_summary.nonspecific_covs])
+        end and reindexing of features, as normalized (and modified) sequences are aligned from the 3' end."""
+        summary_N.specific_covs = np.concatenate([elongation_5prime, summary_N.specific_covs])
+        summary_N.nonspecific_covs = np.concatenate([elongation_5prime, summary_N.nonspecific_covs])
+
+        elongation_length = elongation_5prime.size
+        new_feature_dict = {}
+        for feature, feature_index in summary_N.feature_dict.items():
+            try:
+                new_feature_dict[feature] = (feature_index[0] + elongation_length, feature_index[1] + elongation_length)
+            except TypeError:
+                # Missing features with an index of np.nan result in np.nan after addition.
+                try:
+                    new_feature_dict[feature] = feature_index + elongation_length
+                except TypeError:
+                    # `feature_index` is None rather than np.nan for a missing stem start index. For
+                    # convenience, replace it with np.nan.
+                    new_feature_dict[feature] = np.nan
+        summary_N.feature_dict = new_feature_dict
 
 
     def form_seeds(self):
