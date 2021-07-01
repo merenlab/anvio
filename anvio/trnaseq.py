@@ -5658,27 +5658,21 @@ class DatabaseConverter(object):
 
 
     def form_seeds(self):
-        """Form tRNA seed sequences through comparison of the input samples.
+        """Form tRNA seeds through comparison of sequences from the input samples.
 
-        Seed sequences are formed through comparison of the samples' normalized sequences (both
-        unmodified normalized sequences and normalized sequences underlying modified sequences).
-        Seed sequences need not be found in every sample.
+        Normalized sequences (N) are compared. These include N underlying modified sequences (M),
+        called Nm, and N that are not part of M, called Nu.
 
-        Modification-induced mutations complicate seed formation. (anvi-trnaseq is capable of
-        finding substitutions -- the main type of mutation -- and deletions, though insertions can
-        also occur but go undetected.) Modified sequences are derived from clusters of normalized
-        sequences; unmodified normalized sequences and the normalized sequences underlying modified
-        sequences are here compared between samples to find seeds. If a normalized sequence is
-        shared identically (not as a subsequence) between samples, then the normalized seed
-        sequences and any modified sequences that the normalized sequences are part of are combined
-        into a single seed sequence.
+        Modification-induced mutations (substitutions and indels) complicate seed formation. If N is
+        shared identically (not as a subsequence) between samples, then N from the samples and any M
+        that N are part of are combined into a single seed. The seed sequence is that of the longest
+        N and need not be found in every sample.
 
-        It is a heuristic to exactly match normalized sequences, rather than to check whether one
-        normalized sequence is a 3' subsequence of the other, or to instead compare underlying
-        trimmed sequences making up normalized sequences. This heuristic should not distort sample
-        merging for the more abundant tRNA species, in particular, as these are most likely to be
-        represented by reads spanning the full length of the tRNA, producing the same normalized
-        sequences."""
+        It is a heuristic to exactly match N, rather than to check whether one N is a 3' subsequence
+        of the other, or to instead compare underlying trimmed sequences making up N. This heuristic
+        should not distort sample merging for the more abundant tRNA species, in particular, as
+        these are most likely to be represented by reads spanning the full length of the tRNA,
+        producing the same N."""
         progress = self.progress
         progress.new("Forming seed seqs from input samples")
 
@@ -5691,13 +5685,13 @@ class DatabaseConverter(object):
             summaries_M = self.mod_seq_summaries_dict[trnaseq_db_path]
 
             for summary_Nu in summaries_Nu:
-                # Process normalized sequences without any detected potential modifications.
+                # Process Nu.
                 string_Nu = summary_Nu.seq_string
                 try:
-                    # The normalized sequence has already been found in another dataset.
+                    # Nu has already been found in another dataset.
                     seed = string_N_seed_dict[string_Nu]
                 except KeyError:
-                    # Create a new seed sequence based on the normalized sequence.
+                    # Create a new seed based on Nu.
                     seed = SeedSeq()
                     seed.name = summary_Nu.name + '_' + sample_id
                     seed.seq_string = string_Nu
@@ -5708,30 +5702,28 @@ class DatabaseConverter(object):
                     continue
 
                 if len(string_Nu) < len(seed.seq_string):
-                    # The normalized sequence string is shorter than the seed sequence string,
-                    # implying that the seed string is a longer modified sequence in another
-                    # dataset. Extend the normalized sequence coverage arrays the needed amount at
-                    # the 5' end. (Note: It is impossible here for the normalized sequence string to
-                    # be longer than the seed sequence string.)
+                    # Nu is shorter than the existing seed. This implies that the seed was formed
+                    # from a longer M in another dataset. Extend Nu coverage arrays the needed
+                    # amount at the 5' end. (Note: It is impossible here for Nu to be longer than
+                    # the seed.)
                     elongation_5prime = np.zeros(len(seed.seq_string) - len(string_Nu), int)
                     self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
                 seed.unmod_norm_seq_summaries.append(summary_Nu)
 
             for summary_M in summaries_M:
-                # Find seed sequences from other datasets containing any of the normalized sequences
-                # forming the modified sequence under consideration. If more than one seed sequence
-                # is identified, they are merged.
+                # Find seeds from other datasets containing any of Nm forming M under consideration.
+                # If >1 seed is identified, they are merged.
                 seed_dict = {}
                 for summary_Nm in summary_M.norm_seq_summaries:
                     try:
-                        # The normalized sequence is represented in another dataset.
+                        # Nm is represented in another dataset.
                         seed = string_N_seed_dict[summary_Nm.seq_string]
                     except KeyError:
                         continue
                     seed_dict[seed.name] = seed
 
                 if not seed_dict:
-                    # Create a new seed sequence based on the modified sequence.
+                    # Create a new seed based on M.
                     seed = SeedSeq()
                     seed.name = summary_M.name + '_' + sample_id
                     seed.seq_string = summary_M.consensus_seq_string
@@ -5749,19 +5741,18 @@ class DatabaseConverter(object):
                     continue
 
                 if len(seed_dict) == 1:
-                    # The modified sequence shares one or more normalized sequences with one seed sequence.
+                    # M shares ≥1 Nm with 1 seed sequence.
                     seed_seq_name, seed = seed_dict.popitem()
                     if len(summary_M.consensus_seq_string) < len(seed.seq_string):
-                        # The modified sequence is shorter than the seed sequence, so its coverage
-                        # arrays must be extended with zeros at the 5' end.
+                        # M is shorter than the seed, so its coverage arrays must be extended with
+                        # zeros at the 5' end.
                         elongation_5prime = np.zeros(len(seed.seq_string) - len(summary_M.consensus_seq_string), int)
                         self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
                         for summary_Nm in summary_M.norm_seq_summaries:
                             self.extend_norm_seq_fiveprime_end(summary_Nm, elongation_5prime)
                     elif len(summary_M.consensus_seq_string) > len(seed.seq_string):
-                        # The modified sequence is longer than the seed sequence, so the coverage
-                        # arrays of the sequences forming the seed sequence must be extended with
-                        # zeros at the 5' end.
+                        # M is longer than the seed, so the coverage arrays of N forming the seed
+                        # must be extended with zeros at the 5' end.
                         elongation_5prime = np.zeros(len(summary_M.consensus_seq_string) - len(seed.seq_string), int)
                         for summary_Nu in seed.unmod_norm_seq_summaries:
                             self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
@@ -5780,19 +5771,17 @@ class DatabaseConverter(object):
                         string_N_seed_dict[summary_Nm.seq_string] = seed
                     continue
 
-                # To reach this point, the modified sequence must map to more than one seed
-                # sequence.
+                # To reach this point, M must map to >1 seed.
                 sorted_seeds = sorted([seed for seed in seed_dict.values()],
                                       key=lambda seed: -len(seed.seq_string))
                 max_seed_length = len(sorted_seeds[0].seq_string)
                 length_M = len(summary_M.consensus_seq_string)
                 if length_M < max_seed_length:
-                    # Extend coverage arrays of the modified sequence.
+                    # Extend coverage arrays of M.
                     elongation_5prime = np.zeros(max_seed_length - length_M, int)
                     self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
 
-                    # Extend coverage arrays of shorter seed sequences now grouped with a longer
-                    # seed sequence.
+                    # Extend coverage arrays of shorter seeds now grouped with a longer seed.
                     for seed in seed_dict.values():
                         if len(seed.seq_string) < max_seed_length:
                             elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
@@ -5807,7 +5796,7 @@ class DatabaseConverter(object):
                     new_seed.seq_string = longest_seed.seq_string
                     new_seed.meets_feature_threshold = longest_seed.meets_feature_threshold
                 elif length_M > max_seed_length:
-                    # Extend coverage arrays of seed sequences.
+                    # Extend coverage arrays of seeds.
                     for seed in seed_dict.values():
                         elongation_5prime = np.zeros(length_M - len(seed.seq_string), int)
                         for summary_Nu in seed.unmod_norm_seq_summaries:
@@ -5830,9 +5819,8 @@ class DatabaseConverter(object):
                         else:
                             new_seed.meets_feature_threshold = False
                 else:
-                    # The modified sequence is the same length as the longest seed sequence. Extend
-                    # coverage arrays of shorter seed sequences now grouped with a longer seed
-                    # sequence.
+                    # M is the same length as the longest seed. Extend coverage arrays of shorter
+                    # seeds now grouped with a longer seed.
                     for seed in seed_dict.values():
                         if len(seed.seq_string) < max_seed_length:
                             elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
@@ -5854,9 +5842,8 @@ class DatabaseConverter(object):
                         else:
                             new_seed.meets_feature_threshold = False
 
-                # Now that all of the coverage arrays are reconciled in length, the modified
-                # sequence query and constituent sequences of the matching seeds can be added to the
-                # new seed.
+                # Now that all of the coverage arrays are reconciled in length, M and constituent N
+                # of the matching seeds can be added to the new seed.
                 new_seed.unmod_norm_seq_summaries = []
                 new_seed.mod_seq_summaries = []
                 for seed in seed_dict.values():
@@ -5875,12 +5862,12 @@ class DatabaseConverter(object):
         # The seed references in the dict need to be dereplicated.
         seeds = list({seed.name: seed for seed in string_N_seed_dict.values()}.values())
 
-        # Disregard seed sequences that do not reach the 5' feature threshold.
+        # Disregard seeds that do not reach the 5' feature threshold.
         seeds = [seed for seed in seeds if seed.meets_feature_threshold]
         self.set_anticodon(seeds)
         seeds = [seed for seed in seeds if seed.anticodon_seq_string]
 
-        # Find specific coverages of modified sequences from specific coverages of nucleotides.
+        # Find specific coverages of M by summing specific coverages of nts.
         self.sum_specific_nt_covs(seeds)
         # Select the top seeds by specific coverage.
         self.set_total_specific_covs(seeds)
