@@ -135,15 +135,15 @@ function loadState(){
 function processState(stateName, stateData){
   // set genome order options from state
 
-  // mock data 
-  stateData['genome-order-method'] = [{ 
+  // mock data
+  stateData['genome-order-method'] = [{
       'name' : 'cats',
       'ordering' : 'some order'
     }, {
-      'name' : 'dogs', 
+      'name' : 'dogs',
       'ordering' : 'some other order'
     }, {
-      'name' : 'birds', 
+      'name' : 'birds',
       'ordering' : 'beaks to tails'
     }
   ]
@@ -169,18 +169,19 @@ function loadAll() {
   scaleCanvas.add(new fabric.Rect({
     width: 1200,
     height : 200,
-    fill : 'gray',
+    fill : "rgba(0,0,0,.1)",
     opacity : .6,
     selectable : false,
-
+    hoverCursor: "crosshair"
   }))
 
-  scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
-    strokeWidth : 10,
-    stroke : 'green',
+  scaleCanvas.add(new fabric.Rect({ // 'cursor' for current zoom location
+    width: 10,
+    height: 200,
+    fill: "rgba(0,0,0,.125)",
+    stroke: 'black',
     top : 0,
     left : 10,
-    opacity : .6,
     selectable : false
   }))
   let scaleDragStartingX;
@@ -208,12 +209,13 @@ function loadAll() {
     let moveTo = new fabric.Point((showLabels?120:0) + genomeMax * percentileStart, 0)
 
     scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed
-    scaleCanvas.add(new fabric.Line([0,200,0,0],{ // 'cursor' for current zoom location
-      strokeWidth : 1200 * percentileToShow,
-      stroke : 'green',
-      top : 0,
-      left : scaleCanvas.width * percentileStart,
-      opacity : .6,
+    scaleCanvas.add(new fabric.Rect({ // 'cursor' for current zoom location
+      width: 1200 * percentileToShow,
+      height: 200,
+      fill: "rgba(0,0,0,.125)",
+      stroke: 'black',
+      top: 0,
+      left: scaleCanvas.width * percentileStart,
       selectable : false
     }))
 
@@ -763,7 +765,7 @@ function buildGenomesTable(genomes, order){
                   '<td>n/a</td>' +
                   '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                   '</tr>';
-    let genomeLabel= Object.keys(genome[1]['contigs']['info']); 
+    let genomeLabel= Object.keys(genome[1]['contigs']['info']);
 
     template = template.replace(new RegExp('{height}', 'g'), height)
                        .replace(new RegExp('{margin}', 'g'), margin)
@@ -786,8 +788,8 @@ function changeGenomeOrder(updatedOrder){
     genomeData.genomes.map(genome => {
         if(label == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
           newGenomeOrder.push(genome)
-        }    
-    }) 
+        }
+    })
   })
   genomeData.genomes = newGenomeOrder
   draw()
