@@ -5114,8 +5114,9 @@ class DatabaseConverter(object):
     """
 
     # The columns needed from tables of a tRNA-seq database.
-    FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES],
-                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES])))
+    # Ignore the 3' terminus start and stop indices.
+    FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -2]],
+                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES[: -2]])))
     FEATURE_TABLE_COLS_OF_INTEREST = [
         'name',
         'anticodon_sequence'
