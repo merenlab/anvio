@@ -5679,220 +5679,221 @@ class DatabaseConverter(object):
         merging for the more abundant tRNA species, in particular, as these are most likely to be
         represented by reads spanning the full length of the tRNA, producing the same normalized
         sequences."""
-        self.progress.new("Forming seed seqs from input samples")
+        progress = self.progress
+        progress.new("Forming seed seqs from input samples")
 
-        norm_seq_string_seed_seq_dict = {}
+        string_N_seed_dict = {}
         for trnaseq_db_num, trnaseq_db_path in enumerate(self.trnaseq_db_paths):
             sample_id = self.trnaseq_db_sample_ids[trnaseq_db_num]
-            self.progress.update(f"Adding {sample_id}")
+            progress.update(f"Adding {sample_id}")
 
-            unmod_norm_seq_summaries = self.unmod_norm_seq_summaries_dict[trnaseq_db_path]
-            mod_seq_summaries = self.mod_seq_summaries_dict[trnaseq_db_path]
+            summaries_Nu = self.unmod_norm_seq_summaries_dict[trnaseq_db_path]
+            summaries_M = self.mod_seq_summaries_dict[trnaseq_db_path]
 
-            for norm_seq_summary in unmod_norm_seq_summaries:
+            for summary_Nu in summaries_Nu:
                 # Process normalized sequences without any detected potential modifications.
-                norm_seq_string = norm_seq_summary.seq_string
+                string_Nu = summary_Nu.seq_string
                 try:
                     # The normalized sequence has already been found in another dataset.
-                    seed_seq = norm_seq_string_seed_seq_dict[norm_seq_string]
+                    seed = string_N_seed_dict[string_Nu]
                 except KeyError:
                     # Create a new seed sequence based on the normalized sequence.
-                    seed_seq = SeedSeq()
-                    seed_seq.name = norm_seq_summary.name + '_' + sample_id
-                    seed_seq.seq_string = norm_seq_string
-                    seed_seq.meets_feature_threshold = True if norm_seq_summary.feature_threshold_start >= 0 else False
-                    seed_seq.unmod_norm_seq_summaries = [norm_seq_summary]
-                    seed_seq.mod_seq_summaries = []
-                    norm_seq_string_seed_seq_dict[norm_seq_string] = seed_seq
+                    seed = SeedSeq()
+                    seed.name = summary_Nu.name + '_' + sample_id
+                    seed.seq_string = string_Nu
+                    seed.meets_feature_threshold = True if summary_Nu.feature_threshold_start >= 0 else False
+                    seed.unmod_norm_seq_summaries = [summary_Nu]
+                    seed.mod_seq_summaries = []
+                    string_N_seed_dict[string_Nu] = seed
                     continue
 
-                if len(norm_seq_string) < len(seed_seq.seq_string):
+                if len(string_Nu) < len(seed.seq_string):
                     # The normalized sequence string is shorter than the seed sequence string,
                     # implying that the seed string is a longer modified sequence in another
                     # dataset. Extend the normalized sequence coverage arrays the needed amount at
                     # the 5' end. (Note: It is impossible here for the normalized sequence string to
                     # be longer than the seed sequence string.)
-                    fiveprime_extension = np.zeros(len(seed_seq.seq_string) - len(norm_seq_string), int)
-                    self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                seed_seq.unmod_norm_seq_summaries.append(norm_seq_summary)
+                    elongation_5prime = np.zeros(len(seed.seq_string) - len(string_Nu), int)
+                    self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
+                seed.unmod_norm_seq_summaries.append(summary_Nu)
 
-            for mod_seq_summary in mod_seq_summaries:
+            for summary_M in summaries_M:
                 # Find seed sequences from other datasets containing any of the normalized sequences
                 # forming the modified sequence under consideration. If more than one seed sequence
                 # is identified, they are merged.
-                seed_seq_dict = {}
-                for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
+                seed_dict = {}
+                for summary_Nm in summary_M.norm_seq_summaries:
                     try:
                         # The normalized sequence is represented in another dataset.
-                        seed_seq = norm_seq_string_seed_seq_dict[norm_seq_summary.seq_string]
+                        seed = string_N_seed_dict[summary_Nm.seq_string]
                     except KeyError:
                         continue
-                    seed_seq_dict[seed_seq.name] = seed_seq
+                    seed_dict[seed.name] = seed
 
-                if not seed_seq_dict:
+                if not seed_dict:
                     # Create a new seed sequence based on the modified sequence.
-                    seed_seq = SeedSeq()
-                    seed_seq.name = mod_seq_summary.name + '_' + sample_id
-                    seed_seq.seq_string = mod_seq_summary.consensus_seq_string
-                    seed_seq.unmod_norm_seq_summaries = []
-                    seed_seq.mod_seq_summaries = []
-                    seed_seq.mod_seq_summaries.append(mod_seq_summary)
-                    for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                        if norm_seq_summary.feature_threshold_start >= 0:
-                            seed_seq.meets_feature_threshold = True
+                    seed = SeedSeq()
+                    seed.name = summary_M.name + '_' + sample_id
+                    seed.seq_string = summary_M.consensus_seq_string
+                    seed.unmod_norm_seq_summaries = []
+                    seed.mod_seq_summaries = []
+                    seed.mod_seq_summaries.append(summary_M)
+                    for summary_Nm in summary_M.norm_seq_summaries:
+                        if summary_Nm.feature_threshold_start >= 0:
+                            seed.meets_feature_threshold = True
                             break
                     else:
-                        seed_seq.meets_feature_threshold = False
-                    for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                        norm_seq_string_seed_seq_dict[norm_seq_summary.seq_string] = seed_seq
+                        seed.meets_feature_threshold = False
+                    for summary_Nm in summary_M.norm_seq_summaries:
+                        string_N_seed_dict[summary_Nm.seq_string] = seed
                     continue
 
-                if len(seed_seq_dict) == 1:
+                if len(seed_dict) == 1:
                     # The modified sequence shares one or more normalized sequences with one seed sequence.
-                    seed_seq_name, seed_seq = seed_seq_dict.popitem()
-                    if len(mod_seq_summary.consensus_seq_string) < len(seed_seq.seq_string):
+                    seed_seq_name, seed = seed_dict.popitem()
+                    if len(summary_M.consensus_seq_string) < len(seed.seq_string):
                         # The modified sequence is shorter than the seed sequence, so its coverage
                         # arrays must be extended with zeros at the 5' end.
-                        fiveprime_extension = np.zeros(len(seed_seq.seq_string) - len(mod_seq_summary.consensus_seq_string), int)
-                        self.extend_mod_seq_fiveprime_end(mod_seq_summary, fiveprime_extension)
-                        for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                    elif len(mod_seq_summary.consensus_seq_string) > len(seed_seq.seq_string):
+                        elongation_5prime = np.zeros(len(seed.seq_string) - len(summary_M.consensus_seq_string), int)
+                        self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
+                        for summary_Nm in summary_M.norm_seq_summaries:
+                            self.extend_norm_seq_fiveprime_end(summary_Nm, elongation_5prime)
+                    elif len(summary_M.consensus_seq_string) > len(seed.seq_string):
                         # The modified sequence is longer than the seed sequence, so the coverage
                         # arrays of the sequences forming the seed sequence must be extended with
                         # zeros at the 5' end.
-                        fiveprime_extension = np.zeros(len(mod_seq_summary.consensus_seq_string) - len(seed_seq.seq_string), int)
-                        for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                        for other_mod_seq_summary in seed_seq.mod_seq_summaries:
-                            self.extend_mod_seq_fiveprime_end(other_mod_seq_summary, fiveprime_extension)
-                        seed_seq.name = mod_seq_summary.name + '_' + sample_id
-                        seed_seq.seq_string = mod_seq_summary.consensus_seq_string
-                        for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                            if norm_seq_summary.feature_threshold_start >= 0:
-                                seed_seq.meets_feature_threshold = True
+                        elongation_5prime = np.zeros(len(summary_M.consensus_seq_string) - len(seed.seq_string), int)
+                        for summary_Nu in seed.unmod_norm_seq_summaries:
+                            self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
+                        for other_summary_M in seed.mod_seq_summaries:
+                            self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
+                        seed.name = summary_M.name + '_' + sample_id
+                        seed.seq_string = summary_M.consensus_seq_string
+                        for summary_Nm in summary_M.norm_seq_summaries:
+                            if summary_Nm.feature_threshold_start >= 0:
+                                seed.meets_feature_threshold = True
                                 break
                         else:
-                            seed_seq.meets_feature_threshold = False
-                    seed_seq.mod_seq_summaries.append(mod_seq_summary)
-                    for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                        norm_seq_string_seed_seq_dict[norm_seq_summary.seq_string] = seed_seq
+                            seed.meets_feature_threshold = False
+                    seed.mod_seq_summaries.append(summary_M)
+                    for summary_Nm in summary_M.norm_seq_summaries:
+                        string_N_seed_dict[summary_Nm.seq_string] = seed
                     continue
 
                 # To reach this point, the modified sequence must map to more than one seed
                 # sequence.
-                sorted_seed_seqs = sorted([seed_seq for seed_seq in seed_seq_dict.values()],
-                                          key=lambda seed_seq: -len(seed_seq.seq_string))
-                max_seed_seq_length = len(sorted_seed_seqs[0].seq_string)
-                mod_seq_length = len(mod_seq_summary.consensus_seq_string)
-                if mod_seq_length < max_seed_seq_length:
+                sorted_seeds = sorted([seed for seed in seed_dict.values()],
+                                      key=lambda seed: -len(seed.seq_string))
+                max_seed_length = len(sorted_seeds[0].seq_string)
+                length_M = len(summary_M.consensus_seq_string)
+                if length_M < max_seed_length:
                     # Extend coverage arrays of the modified sequence.
-                    fiveprime_extension = np.zeros(max_seed_seq_length - mod_seq_length, int)
-                    self.extend_mod_seq_fiveprime_end(mod_seq_summary, fiveprime_extension)
+                    elongation_5prime = np.zeros(max_seed_length - length_M, int)
+                    self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
 
                     # Extend coverage arrays of shorter seed sequences now grouped with a longer
                     # seed sequence.
-                    for seed_seq in seed_seq_dict.values():
-                        if len(seed_seq.seq_string) < max_seed_seq_length:
-                            fiveprime_extension = np.zeros(max_seed_seq_length - len(seed_seq.seq_string), int)
-                            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                                self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                            for other_mod_seq_summary in seed_seq.mod_seq_summaries:
-                                self.extend_mod_seq_fiveprime_end(other_mod_seq_summary, fiveprime_extension)
+                    for seed in seed_dict.values():
+                        if len(seed.seq_string) < max_seed_length:
+                            elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
+                            for summary_Nu in seed.unmod_norm_seq_summaries:
+                                self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
+                            for other_summary_M in seed.mod_seq_summaries:
+                                self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
 
-                    new_seed_seq = SeedSeq()
-                    longest_seed_seq = sorted_seed_seqs[0]
-                    new_seed_seq.name = longest_seed_seq.name
-                    new_seed_seq.seq_string = longest_seed_seq.seq_string
-                    new_seed_seq.meets_feature_threshold = longest_seed_seq.meets_feature_threshold
-                elif mod_seq_length > max_seed_seq_length:
+                    new_seed = SeedSeq()
+                    longest_seed = sorted_seeds[0]
+                    new_seed.name = longest_seed.name
+                    new_seed.seq_string = longest_seed.seq_string
+                    new_seed.meets_feature_threshold = longest_seed.meets_feature_threshold
+                elif length_M > max_seed_length:
                     # Extend coverage arrays of seed sequences.
-                    for seed_seq in seed_seq_dict.values():
-                        fiveprime_extension = np.zeros(mod_seq_length - len(seed_seq.seq_string), int)
-                        for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                        for other_mod_seq_summary in seed_seq.mod_seq_summaries:
-                            self.extend_mod_seq_fiveprime_end(other_mod_seq_summary, fiveprime_extension)
+                    for seed in seed_dict.values():
+                        elongation_5prime = np.zeros(length_M - len(seed.seq_string), int)
+                        for summary_Nu in seed.unmod_norm_seq_summaries:
+                            self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
+                        for other_summary_M in seed.mod_seq_summaries:
+                            self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
 
-                    new_seed_seq = SeedSeq()
-                    new_seed_seq.name = mod_seq_summary.name + '_' + sample_id
-                    new_seed_seq.seq_string = mod_seq_summary.consensus_seq_string
-                    for seed_seq in seed_seq_dict.values():
-                        if seed_seq.meets_feature_threshold:
-                            new_seed_seq.meets_feature_threshold = True
+                    new_seed = SeedSeq()
+                    new_seed.name = summary_M.name + '_' + sample_id
+                    new_seed.seq_string = summary_M.consensus_seq_string
+                    for seed in seed_dict.values():
+                        if seed.meets_feature_threshold:
+                            new_seed.meets_feature_threshold = True
                             break
                     else:
-                        for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                            if norm_seq_summary.feature_threshold_start >= 0:
-                                new_seed_seq.meets_feature_threshold = True
+                        for summary_Nm in summary_M.norm_seq_summaries:
+                            if summary_Nm.feature_threshold_start >= 0:
+                                new_seed.meets_feature_threshold = True
                                 break
                         else:
-                            new_seed_seq.meets_feature_threshold = False
+                            new_seed.meets_feature_threshold = False
                 else:
                     # The modified sequence is the same length as the longest seed sequence. Extend
                     # coverage arrays of shorter seed sequences now grouped with a longer seed
                     # sequence.
-                    for seed_seq in seed_seq_dict.values():
-                        if len(seed_seq.seq_string) < max_seed_seq_length:
-                            fiveprime_extension = np.zeros(max_seed_seq_length - len(seed_seq.seq_string), int)
-                            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                                self.extend_norm_seq_fiveprime_end(norm_seq_summary, fiveprime_extension)
-                            for other_mod_seq_summary in seed_seq.mod_seq_summaries:
-                                self.extend_mod_seq_fiveprime_end(other_mod_seq_summary, fiveprime_extension)
+                    for seed in seed_dict.values():
+                        if len(seed.seq_string) < max_seed_length:
+                            elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
+                            for summary_Nu in seed.unmod_norm_seq_summaries:
+                                self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
+                            for other_summary_M in seed.mod_seq_summaries:
+                                self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
 
-                    new_seed_seq = SeedSeq()
-                    new_seed_seq.name = mod_seq_summary.name + '_' + sample_id
-                    new_seed_seq.seq_string = mod_seq_summary.consensus_seq_string
-                    if sorted_seed_seqs[0].meets_feature_threshold:
-                        new_seed_seq.meets_feature_threshold = True
+                    new_seed = SeedSeq()
+                    new_seed.name = summary_M.name + '_' + sample_id
+                    new_seed.seq_string = summary_M.consensus_seq_string
+                    if sorted_seeds[0].meets_feature_threshold:
+                        new_seed.meets_feature_threshold = True
                     else:
-                        for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                            if norm_seq_summary.feature_threshold_start >= 0:
-                                new_seed_seq.meets_feature_threshold = True
+                        for summary_Nm in summary_M.norm_seq_summaries:
+                            if summary_Nm.feature_threshold_start >= 0:
+                                new_seed.meets_feature_threshold = True
                                 break
                         else:
-                            new_seed_seq.meets_feature_threshold = False
+                            new_seed.meets_feature_threshold = False
 
                 # Now that all of the coverage arrays are reconciled in length, the modified
                 # sequence query and constituent sequences of the matching seeds can be added to the
                 # new seed.
-                new_seed_seq.unmod_norm_seq_summaries = []
-                new_seed_seq.mod_seq_summaries = []
-                for seed_seq in seed_seq_dict.values():
-                    new_seed_seq.unmod_norm_seq_summaries += seed_seq.unmod_norm_seq_summaries
-                    new_seed_seq.mod_seq_summaries += seed_seq.mod_seq_summaries
-                new_seed_seq.mod_seq_summaries.append(mod_seq_summary)
+                new_seed.unmod_norm_seq_summaries = []
+                new_seed.mod_seq_summaries = []
+                for seed in seed_dict.values():
+                    new_seed.unmod_norm_seq_summaries += seed.unmod_norm_seq_summaries
+                    new_seed.mod_seq_summaries += seed.mod_seq_summaries
+                new_seed.mod_seq_summaries.append(summary_M)
 
-                for norm_seq_summary in new_seed_seq.unmod_norm_seq_summaries:
-                    norm_seq_string_seed_seq_dict[norm_seq_summary.seq_string] = new_seed_seq
-                for mod_seq_summary in new_seed_seq.mod_seq_summaries:
-                    for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                        norm_seq_string_seed_seq_dict[norm_seq_summary.seq_string] = new_seed_seq
+                for summary_Nu in new_seed.unmod_norm_seq_summaries:
+                    string_N_seed_dict[summary_Nu.seq_string] = new_seed
+                for mod_seq_summary in new_seed.mod_seq_summaries:
+                    for summary_Nm in mod_seq_summary.norm_seq_summaries:
+                        string_N_seed_dict[summary_Nm.seq_string] = new_seed
 
-        self.progress.update("Finalizing seeds")
+        progress.update("Finalizing seeds")
 
         # The seed references in the dict need to be dereplicated.
-        seed_seqs = list({seed_seq.name: seed_seq for seed_seq in norm_seq_string_seed_seq_dict.values()}.values())
+        seeds = list({seed.name: seed for seed in string_N_seed_dict.values()}.values())
 
         # Disregard seed sequences that do not reach the 5' feature threshold.
-        seed_seqs = [seed_seq for seed_seq in seed_seqs if seed_seq.meets_feature_threshold]
-        self.set_anticodon(seed_seqs)
-        seed_seqs = [seed_seq for seed_seq in seed_seqs if seed_seq.anticodon_seq_string]
+        seeds = [seed for seed in seeds if seed.meets_feature_threshold]
+        self.set_anticodon(seeds)
+        seeds = [seed for seed in seeds if seed.anticodon_seq_string]
 
         # Find specific coverages of modified sequences from specific coverages of nucleotides.
-        self.sum_specific_nt_covs(seed_seqs)
+        self.sum_specific_nt_covs(seeds)
         # Select the top seeds by specific coverage.
-        self.set_total_specific_covs(seed_seqs)
-        seed_seqs = sorted(seed_seqs, key=lambda seed_seq: -seed_seq.total_mean_specific_cov)[: self.seed_seq_limit]
+        self.set_total_specific_covs(seeds)
+        seeds = sorted(seeds, key=lambda seed: -seed.total_mean_specific_cov)[: self.seed_seq_limit]
 
-        self.set_nt_covs(seed_seqs)
-        self.sum_nonspecific_nt_covs(seed_seqs)
-        self.set_total_nonspecific_covs(seed_seqs)
-        self.set_consensus_seq_string(seed_seqs)
-        self.set_gc_fraction(seed_seqs)
+        self.set_nt_covs(seeds)
+        self.sum_nonspecific_nt_covs(seeds)
+        self.set_total_nonspecific_covs(seeds)
+        self.set_consensus_seq_string(seeds)
+        self.set_gc_fraction(seeds)
 
-        self.seed_seqs = seed_seqs
-        self.total_seed_length = sum([len(seed_seq.seq_string) for seed_seq in seed_seqs])
+        self.seed_seqs = seeds
+        self.total_seed_length = sum([len(seed.seq_string) for seed in seeds])
 
         self.set_sample_covs()
         self.set_mods()
@@ -5900,7 +5901,7 @@ class DatabaseConverter(object):
 
         self.set_sample_indels()
 
-        self.progress.end()
+        progress.end()
 
 
     def extend_mod_seq_fiveprime_end(self, mod_seq_summary, fiveprime_extension):
