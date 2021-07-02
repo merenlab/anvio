@@ -175,23 +175,70 @@ function loadAll() {
     hoverCursor: "crosshair"
   }))
 
-  scaleCanvas.add(new fabric.Rect({ // 'cursor' for current zoom location
+  var brush = new fabric.Rect({ // 'cursor' for current zoom location
+    id: 'cursor_box',
     width: 10,
     height: 200,
     fill: "rgba(0,0,0,.125)",
     stroke: 'black',
+    strokeUniform: true,
+    noScaleCache: false,
     top : 0,
     left : 10,
-    selectable : false
-  }))
+    lockMovementY: true,
+    lockScalingY: true,
+    lockRotation: true,
+    lockScalingFlip: true,
+    hasBorders: false
+  })
+  brush.setControlsVisibility({
+    tl:false, //top-left
+    mt:false, // middle-top
+    tr:false, //top-right
+    bl:false, // bottom-left
+    mb:false, //middle-bottom
+    br:false //bottom-right
+  });
+  scaleCanvas.add(brush)
+  scaleCanvas.setActiveObject(brush);
   let scaleDragStartingX;
-  let totalScaleX
+  let totalScaleX;
+  let dragging = false;
 
   scaleCanvas.on('mouse:down', (event) => {
+    if(event.target && event.target.id == 'cursor_box') {
+      dragging = true;
+      return;
+    }
     scaleDragStartingX = event.pointer.x
   })
 
+  scaleCanvas.on('object:moving', (event) => {
+    var obj = event.target;
+    if(!obj || obj.id != 'cursor_box') return;
+    obj.set({
+      left: clamp(obj.left, 0, scaleCanvas.width - obj.width)
+    });
+  })
+
+  scaleCanvas.on('object:scaling', (event) => {
+    var obj = event.target;
+    if(!obj || obj.id != 'cursor_box') return;
+
+    var sX = obj.scaleX;
+    var sY = obj.scaleY;
+    obj.width *= sX;
+    obj.scaleX = 1;
+  })
+
   scaleCanvas.on('mouse:up', (event) => {
+    if(dragging) {
+      dragging = false;
+      //let start = event.pointer.x - distanceFromStartOfBox;
+      //let end = event.pointer.x - distanceFromStartOfBox + lengthOfBox;
+      // draw new amount here
+      return;
+    }
     let scaleDragEndingX = event.pointer.x // click + drag ending x position
     totalScaleX = event.target ? event.target.aCoords.tr.x : scaleCanvas.width // total x axis length
     if(scaleDragEndingX < 0) scaleDragEndingX = 0;
@@ -209,15 +256,32 @@ function loadAll() {
     let moveTo = new fabric.Point((showLabels?120:0) + genomeMax * percentileStart, 0)
 
     scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed
-    scaleCanvas.add(new fabric.Rect({ // 'cursor' for current zoom location
+    var brush = new fabric.Rect({ // 'cursor' for current zoom location
+      id: 'cursor_box',
       width: 1200 * percentileToShow,
       height: 200,
       fill: "rgba(0,0,0,.125)",
       stroke: 'black',
+      strokeUniform: true,
+      noScaleCache: false,
       top: 0,
       left: scaleCanvas.width * percentileStart,
-      selectable : false
-    }))
+      lockMovementY: true,
+      lockScalingY: true,
+      lockRotation: true,
+      lockScalingFlip: true,
+      hasBorders: false
+    });
+    brush.setControlsVisibility({
+      tl:false, //top-left
+      mt:false, // middle-top
+      tr:false, //top-right
+      bl:false, // bottom-left
+      mb:false, //middle-bottom
+      br:false //bottom-right
+    });
+    scaleCanvas.add(brush);
+    scaleCanvas.setActiveObject(brush);
 
     let ntsToShow = percentileToShow*genomeMax;
     scaleFactor = mainCanvasWidth/ntsToShow;
@@ -743,6 +807,10 @@ function getClassFromKEGGAnnotation(class_str) {
 // https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
 function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
+}
+
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
 }
 
 function resetScale(){
