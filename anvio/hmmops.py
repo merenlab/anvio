@@ -130,7 +130,7 @@ class SequencesForHMMHits:
                 if self.bin_name:
                     header = f"A WARNING RELATED TO HMMs IN '{self.bin_name}'"
                 else:
-                    header = f"WARNING"
+                    header = "WARNING"
 
                 self.run.warning(f"While anvi'o was trying to finalize HMM hits associated with splits of interest, "
                                  f"it realized that there were one or more HMM hits that spanned through multiple splits "
@@ -172,6 +172,7 @@ class SequencesForHMMHits:
             # there are HMMs but no hits. FINE.
             self.progress.end()
             contigs_db.disconnect()
+            progress.reset()
             self.run.warning(f"SequencesForHMMHits class here. The current database (at {contigs_db_path}) "
                              f"contains 0 HMM hits, at least within the HMM sources or splits that were "
                              f"requested. It might not be a problem for your case, but we just thought you should "
@@ -405,6 +406,33 @@ class SequencesForHMMHits:
             return self.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict_for_splits)
         else:
             return hmm_sequences_dict_for_splits
+
+
+    def filter_hmm_sequences_dict_to_keep_only_unique_gene_hits(self, hmm_sequences_dict_for_splits):
+        """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every hit
+           to remove hits that resolve to the same gene, and only keeps the one with the smallest e-value.
+
+           Say, if there are multipe HMMs hitting the same gene, this filter will only keep the one that is the
+           most significant.
+        """
+
+        hits_per_gene_caller_id = {}
+        for hit_id in hmm_sequences_dict_for_splits:
+            hit = hmm_sequences_dict_for_splits[hit_id]
+
+            if hit['gene_callers_id'] in hits_per_gene_caller_id:
+                hits_per_gene_caller_id[hit['gene_callers_id']].add(hit_id)
+            else:
+                hits_per_gene_caller_id[hit['gene_callers_id']] = set([hit_id])
+
+        for gene_callers_id in hits_per_gene_caller_id:
+            if len(hits_per_gene_caller_id[gene_callers_id]) > 1:
+                hit_ids_to_remove = [tpl[1] for tpl in sorted([(hmm_sequences_dict_for_splits[hit]['e_value'], hit) \
+                                                                    for hit in hits_per_gene_caller_id[gene_callers_id]])[1:]]
+                for hit_id_to_remove in hit_ids_to_remove:
+                    hmm_sequences_dict_for_splits.pop(hit_id_to_remove)
+
+        return hmm_sequences_dict_for_splits
 
 
     def filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(self, hmm_sequences_dict_for_splits):

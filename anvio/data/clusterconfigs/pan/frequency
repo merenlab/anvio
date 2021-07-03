@@ -1,5 +1,6 @@
 [general]
 
 [PresenceAbsenceData !PAN.db::gene_cluster_frequencies]
+table_form = view
 normalize = False
 log = True

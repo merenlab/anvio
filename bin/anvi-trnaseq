@@ -52,25 +52,15 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('skip-INDEL-profiling'),
                          **anvio.K('skip-INDEL-profiling',
                                    {'help': "This flag prevents the prediction of deletions in tRNA reads, which can save time."}))
-    group1C.add_argument(*anvio.A('fiveprimemost-deletion-start'), **anvio.K('fiveprimemost-deletion-start'))
-    group1C.add_argument(*anvio.A('threeprimemost-deletion-start'), **anvio.K('threeprimemost-deletion-start'))
-    group1C.add_argument(*anvio.A('fiveprimemost-deletion-stop'), **anvio.K('fiveprimemost-deletion-stop'))
-    group1C.add_argument(*anvio.A('threeprimemost-deletion-stop'), **anvio.K('threeprimemost-deletion-stop'))
-    group1C.add_argument(*anvio.A('max-distinct-deletions'), **anvio.K('max-distinct-deletions'))
-    group1C.add_argument(*anvio.A('min-distance-between-deletions'), **anvio.K('min-distance-between-deletions'))
-    group1C.add_argument(*anvio.A('max-deletion-configurations'), **anvio.K('max-deletion-configurations'))
+    group1C.add_argument(*anvio.A('max-indel-freq'), **anvio.K('max-indel-freq'))
+    group1C.add_argument(*anvio.A('left-indel-buffer'), **anvio.K('left-indel-buffer'))
+    group1C.add_argument(*anvio.A('right-indel-buffer'), **anvio.K('right-indel-buffer'))
 
     group1D = parser.add_argument_group('PERFORMANCE')
     group1D.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group1D.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
     group1D.add_argument(*anvio.A('profiling-chunk-size'), **anvio.K('profiling-chunk-size'))
     group1D.add_argument(*anvio.A('alignment-target-chunk-size'), **anvio.K('alignment-target-chunk-size'))
-    group1D.add_argument(*anvio.A('fragment-mapping-query-chunk-length'), **anvio.K('fragment-mapping-query-chunk-length'))
-
-    group1E = parser.add_argument_group('PROGRESS')
-    group1E.add_argument(*anvio.A('profiling-progress-interval'), **anvio.K('profiling-progress-interval'))
-    group1E.add_argument(*anvio.A('alignment-progress-interval'), **anvio.K('alignment-progress-interval'))
-    group1E.add_argument(*anvio.A('modification-progress-interval'), **anvio.K('modification-progress-interval'))
 
     group2 = parser.add_argument_group('DEFAULTS')
     group2.add_argument(*anvio.A('default-feature-param-file'), **anvio.K('default-feature-param-file'))

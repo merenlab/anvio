@@ -8,9 +8,9 @@ import random
 import argparse
 
 import anvio
+import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -96,8 +96,10 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
     input_files.splits_fasta = P('sequence_splits.fa')
     input_files.contigs_fasta = P('sequence_contigs.fa')
 
-    split_coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
-    split_coverages_log_norm = profile_db.db.get_table_as_dict('mean_coverage_contigs', log_norm_numeric_values=True)
+    splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+
+    split_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info)
+    split_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, log_norm_numeric_values=True)
 
     contig_coverages = {}
     contig_coverages_log_norm = {}

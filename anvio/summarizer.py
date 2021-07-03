@@ -290,9 +290,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         from anvio.dbops import PanDatabase
         pan_db = PanDatabase(self.pan_db_path)
 
-        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
-                                                    pan_db.db.get_table_as_dict('gene_cluster_frequencies'),
-                                                    orient='index')
+        view_data, _ = pan_db.db.get_view_data('gene_cluster_frequencies')
+        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(view_data, orient='index')
 
         self.progress.update('Merging presence/absence of gene clusters with the same function')
 

@@ -763,7 +763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             clusterings[clustering_id] = {'type': 'newick', 'data': newick}
 
-        run.info('available_clusterings', list(clusterings.keys()))
+        run.info('Available clusterings', list(clusterings.keys()))
 
         return clusterings
 
@@ -896,14 +896,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
-            view_table_structure = ['contig'] + sorted(list(facc.layer_names_considered))
-            view_table_types = ['text'] + ['numeric'] * len(facc.layer_names_considered)
             TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=self.views[view]['dict'],
+                                            view_data=self.views[view]['dict'],
                                             table_name=f"{view}",
-                                            table_structure=view_table_structure,
-                                            table_types=view_table_types,
-                                            view_name=f"{view}")
+                                            view_name=f"{view}",
+                                            from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
@@ -962,6 +959,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
+
             default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
             default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
@@ -1461,6 +1459,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             else:
                 self.p_meta['item_orders'][clustering_id] = {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
+
+            # make sure item names in collection mode matches to the items in the user-provided tree
+            if self.mode == 'collection':
+                item_names_in_collection = set(self.collection.keys())
+                item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
+                if not item_names_in_collection == item_names_in_user_tree:
+                    raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
+                                      f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
+                                      f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
+                                      f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
+                                      f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
+                                      f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
+                                      f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
+                                      f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
+                                      f"to one match between the two.")
 
 
     def update_items_additional_data_with_functions_per_split_summary(self):

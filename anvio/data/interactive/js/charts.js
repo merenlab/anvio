@@ -100,6 +100,8 @@ function loadAll() {
         state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
     }
 
+    if(state['show_highlights'] == null) state['show_highlights'] = true;
+
     var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
 
     info("Sending ajax request to gather split data");
@@ -1394,9 +1396,9 @@ function saveState()
   */
 function processState(state_name, state) {
     // set color defaults
-    if(!state['cog-colors']) state['source-colors'] = default_source_colors;
+    if(!state['source-colors']) state['source-colors'] = default_source_colors;
     if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
-    if(!state['cog-colors']) state['kegg-colors'] = default_KEGG_colors;
+    if(!state['kegg-colors']) state['kegg-colors'] = default_KEGG_colors;
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
       state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
@@ -1437,6 +1439,10 @@ function processState(state_name, state) {
       $('#largeIndelInput').val(20);
       //$('#minIndelInput').val(0);
     }
+
+    state['show_highlights'] = $('#toggle_highlight_box').val() == "on";
+    state['show_snvs'] = $('#toggle_snv_box').val() == "on";
+    state['show_indels'] = $('#toggle_indel_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
@@ -1513,6 +1519,11 @@ function createCharts(state){
     $('#SNV-boxes').css("height", height + "px");
     $('#SNV-boxes').css("top", (margin.top - 20) + "px");
 
+    var samplesSvg = d3.select("#sample-titles").append("svg")
+                            .attr("id", "samplesSvg")
+                            .attr("width", width + margin.left + margin.right)
+                            .attr("height", height + margin.top);
+    $('#sample-titles').css("top", (margin.top - 20) + "px");
 
     charts = [];
 
@@ -1577,6 +1588,7 @@ function createCharts(state){
                         maxCountOverCoverage: maxCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
+                        samples_svg: samplesSvg,
                         margin: margin,
                         showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
@@ -1743,6 +1755,7 @@ function Chart(options){
     this.maxCountOverCoverage = options.maxCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
+    this.samples_svg = options.samples_svg;
     this.id = options.id;
     this.name = options.name;
     this.margin = options.margin;
@@ -1836,6 +1849,10 @@ function Chart(options){
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.textContainerIndels = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -2085,7 +2102,7 @@ function Chart(options){
                      .call(this.yAxisLine);
     }
 
-    this.chartContainer.append("text")
+    this.sampleTextContainer.append("text")
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
                    .text(this.name);

@@ -43,7 +43,7 @@ config_template = {
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
-                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix'], 'required': 'matrix or dataframe'},
+                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix', 'view'], 'required': 'matrix, view, or dataframe'},
                 'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 0,
                             'required': 'one or more comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
@@ -136,8 +136,11 @@ class ClusteringConfiguration:
             m['path'] = self.matrix_paths[alias]
             m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True
             m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False
+
             # next two variables are necessary to follow the order of vectors
-            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], self.row_ids_of_interest)
+            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(file_path=m['path'],
+                                                                                        cols_to_return=m['columns_to_use'],
+                                                                                        rows_to_return=self.row_ids_of_interest)
             self.matrices_dict[alias] = m
 
         # make sure all matrices have identical rows:
@@ -164,26 +167,6 @@ class ClusteringConfiguration:
 
         self.num_matrices = len(self.matrices)
         self.multiple_matrices = self.num_matrices > 1
-
-        # following section will be irrelevant for a while (this is tied to working on
-        # the clustering.order_contigs_experimental() function:
-        #if not self.multiple_matrices:
-        #    # there is only one matrix, we don't expect to see a ratio.
-        #    if self.matrices_dict[self.matrices[0]]['ratio']:
-        #        raise ConfigError, 'There is only one matrix declared in the config file. Which renders the\
-        #                            "ratio" variables irrelevant. Please make sure it is not set in the\
-        #                             config file.'
-        #    if self.num_components:
-        #        raise ConfigError, 'There is only one matrix declared in the config file. In this there\
-        #                            will be no scaling step. Therefore the "num_components" variable will\
-        #                            not be used. Please make sure it is not set under the general section.'
-        #else:
-        #    # if there are multiple matrices, it means this config is going to be used to
-        #    # scale and mix the data, therefore it is mandatory to have num_components
-        #    # defined.
-        #    if self.multiple_matrices and not self.get_option(config, 'general', 'num_components', int):
-        #        raise ConfigError, 'When multiple matrices are defined, it is mandatory to define the number of\
-        #                            components under the general section ("num_components").'
 
 
     def print_summary(self, r=run):
@@ -252,6 +235,7 @@ class ClusteringConfiguration:
         # look for requests from the database, create temporary tab delimited files:
         for section in sections:
             alias, matrix = section.split()
+
             if matrix.find('::') > -1:
                 if matrix.startswith('!'):
                     database, table = matrix.split('::')
@@ -288,22 +272,20 @@ class ClusteringConfiguration:
                 # matrix the clustering module can work with, the former requires extra attention. so here we need to first
                 # figure out whether which form the table is in. why this even became necessary? taking a look at this issue
                 # may help: https://github.com/merenlab/anvio/issues/662
-                table_form = None
-                if config.has_option(section, 'table_form'):
-                    table_form = config.get(section, 'table_form')
+                table_form = self.get_option(config, section, 'table_form', str)
 
-                if self.row_ids_of_interest:
-                    column_name = dbc.get_table_structure(table)[0]
-                    where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
-                    table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                if table_form == 'view':
+                    table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
                 else:
-                    table_rows = dbc.get_all_rows_from_table(table)
-
-                if self.row_ids_of_interest:
-                    if table_form == 'dataframe':
-                        raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
-                                          "refernced from a clustering recipe is in dataframe form :(")
-                    table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
+                    if self.row_ids_of_interest:
+                        if table_form == 'dataframe':
+                            raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
+                                              "refernced from a clustering recipe is in dataframe form :(")
+                        column_name = dbc.get_table_structure(table)[0]
+                        where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
+                        table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                    else:
+                        table_rows = dbc.get_all_rows_from_table(table)
 
                 if not len(table_rows):
                     raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This "
@@ -318,6 +300,8 @@ class ClusteringConfiguration:
                     table = TableForItemAdditionalData(args)
                     table_keys_list, table_data_dict = table.get()
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
+                elif table_form == 'view':
+                    store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
                 else:
                     table_structure = dbc.get_table_structure(table)
                     columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]

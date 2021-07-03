@@ -56,7 +56,7 @@ class DB:
         # to its rows read from the database or not. if the first column of a given
         # table does not contain unique variables, anvi'o prepends the ROWID of each
         # column to index 0, unless `skip_rowid_prepend` is True
-        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.requires_unique_entry_id[table_name]
+        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.is_table_requires_unique_entry_id(table_name)
         self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
         if new_database:
@@ -103,14 +103,13 @@ class DB:
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
                                       f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if not tables.is_known_table(table_name)]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
-                                  "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
+                                  "anvio/tables/__init__.py dictionary `table_requires_unique_entry_id` to explicitly define whether anvi'o "
                                   "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
-                                  "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
-                                  "dictionary." % (', '.join(bad_tables)))
+                                  "in this database do not satisfy that: %s." % (', '.join([f"'{t}'" for t in bad_tables])))
 
 
     def __enter__(self):
@@ -523,7 +522,53 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None, omit_parent_column=False):
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None, log_norm_numeric_values=False):
+        """A wrapper function to get view data.
+
+        Anvi'o keeps view data in long format while most tools in it work with view data
+        in NxM matrix format. The purpose of this function is to transform the table data
+        into the convenient data structure.
+
+        In some applications, the view data is required to have information about the parent
+        contig of each split. While anvi'o reports clean view data by default, if the user
+        provides a `splits_basic_info` dictionary, this function will add the `__parent__`
+        key to each item.
+        """
+
+        if split_names_of_interest:
+            split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
+            where_clause = f"""item IN ({split_names_formatted})"""
+            d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
+        else:
+            d = self.get_all_rows_from_table(view_table_name)
+
+        data = {}
+        layers = set([])
+
+        # this looks dumb, but actually much faster than better looking alternatives
+        for entry_id, item, layer, value in d:
+            data[item] = {}
+            layers.add(layer)
+
+        for entry_id, item, layer, value in d:
+            if log_norm_numeric_values:
+                data[item][layer] = math.log10(value + 1)
+            else:
+                data[item][layer] = value
+
+        # add `__parent__` layer if asked:
+        if splits_basic_info:
+            for split_name in data:
+                data[split_name]['__parent__'] = splits_basic_info[split_name]['parent']
+            header = sorted(list(layers)) + ['__parent__']
+        else:
+            header = sorted(list(layers))
+
+        # fly away, lil birb, flai awai.
+        return (data, header)
+
+
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
         """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
 
         If the user is interested in only some of the data, they can build a where clause
@@ -580,15 +625,15 @@ class DB:
             if progress:
                 progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
 
-            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data)
         else:
             if progress:
                 progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
 
-            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
 
 
-    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, error_if_no_data=True, log_norm_numeric_values=False):
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
@@ -598,11 +643,6 @@ class DB:
 
         if columns_of_interest and not isinstance(columns_of_interest, type([])):
             raise ConfigError("The parameter `columns_of_interest` must be of type <list>.")
-
-        if omit_parent_column:
-            if '__parent__' in table_structure:
-                columns_to_return.remove(table_structure.index('__parent__'))
-                table_structure.remove('__parent__')
 
         if columns_of_interest:
             for col in table_structure[1:]:
@@ -789,7 +829,7 @@ class DB:
         return results_df[columns_of_interest]
 
 
-    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False, omit_parent_column=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
         get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -811,8 +851,6 @@ class DB:
         row_num_as_key: bool
              added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
              first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
-        omit_parent_column: bool
-             removes __parent__ column from the data to be returned if __parent__ exists in table structure.
 
         Returns
         =======
@@ -828,9 +866,6 @@ class DB:
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
             table_structure = self.get_table_structure(table_name)
-
-        if omit_parent_column and '__parent__' in table_structure:
-            table_structure.remove('__parent__')
 
         columns_to_return = list(range(0, len(table_structure)))
 

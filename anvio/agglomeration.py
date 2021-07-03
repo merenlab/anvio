@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import anvio
-import anvio.terminal as terminal
-
-from anvio.sequence import Aligner, AlignedTarget, Alignment
+import gc
+import os
+import math
+import argparse
 
 from collections import deque
+
+import anvio
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.drivers.vmatch import Vmatch
+from anvio.sequence import Alignment, AlignedQuery, AlignedTarget
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -23,7 +30,7 @@ pp = terminal.pretty_print
 
 
 class Agglomerator:
-    def __init__(self, seq_names, seq_strings, num_threads=1, progress=None):
+    def __init__(self, seq_names, seq_strings, num_threads=1):
         """This class agglomerates sequences into clusters.
 
         Parameters
@@ -36,26 +43,15 @@ class Agglomerator:
 
         num_threads : int, 1
             Number of threads available for alignment
-
-        progress : terminal.Progress object, None
         """
         self.seq_names = seq_names
         self.seq_strings = seq_strings
         self.num_threads = num_threads
-        if not progress:
-            progress = terminal.Progress()
-            progress.new("Agglomerating")
-        self.progress = progress
         self.agglom_aligned_query_dict = None
         self.agglom_aligned_ref_dict = None
 
 
-    def agglomerate(self,
-                    max_mismatch_freq=0,
-                    priority_function=None,
-                    alignment_target_chunk_size=20000,
-                    alignment_progress_interval=100000,
-                    agglom_progress_interval=10000):
+    def agglomerate(self, max_mismatch_freq=0, priority_function=None):
         """Agglomerate sequences by aligning all to all and then remapping alignments to seed references.
 
         Sets the attributes, `agglom_aligned_query_dict` and `agglom_aligned_ref_dict`:
@@ -74,42 +70,98 @@ class Agglomerator:
             By default, the priority function ranks in descending order of sequence length,
             then descending order of number of alignments, then in ascending order of sequence name.
             (The longest sequence with the most alignments is the first to seed a cluster.)
-
-        alignment_target_chunk_size : int, 20000
-            The chunk size for k-mer dict formation from alignment target sequences:
-            all queries are aligned to the first chunk of targets, then the second chunk, etc.
-            The default balances speed and memory consumption:
-            the larger the chunks, the faster the mapping and the more memory consumed.
-
-        alignment_progress_interval : int, 100000
-            The number of queries aligned to a chunk of targets between alignment progress statements
-
-        agglomeration_progress_interval : int, 10000
-            The number of alignment references remapped between progress statements
         """
-        self.progress.update("Aligning seqs to themselves")
+        progress = terminal.Progress()
+        progress.new("Agglomerating")
+        progress.update("Writing FASTA file of sequences")
+        temp_dir_path = filesnpaths.get_temp_directory_path()
+        fasta_path = os.path.join(temp_dir_path, 'seqs.fa')
+        seq_dict = {}
+        with open(fasta_path, 'w') as fasta_file:
+            for name, seq_string in zip(self.seq_names, self.seq_strings):
+                fasta_file.write(f">{name}\n{seq_string}\n")
+                seq_dict[name] = seq_string
+        progress.end()
+
+        align_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_mismatches',
+                                             fasta_db_file=fasta_path,
+                                             fasta_query_file=fasta_path,
+                                             num_threads=self.num_threads,
+                                             max_hamming_dist=math.ceil(max(map(len, self.seq_strings)) * max_mismatch_freq),
+                                             min_ident=int(100 - 100 * max_mismatch_freq),
+                                             align_output_length=10,
+                                             temp_dir=temp_dir_path)).search_queries()
+
+        pid = "Parsing alignments"
+        progress.new(pid)
+        # The dictionary of aligned queries is named `agglom_aligned_query_dict` to indicate that
+        # its AlignedQuery objects are modified during agglomeration.
+        agglom_aligned_query_dict = {}
+        aligned_ref_dict = {}
+        num_processed_aligns = -1
+        parsing_progress_interval = 10000
+        total_align_count = len(align_df)
+        pp_total_align_count = pp(total_align_count)
+        for query_name, query_align_df in align_df.groupby('query_name'):
+            query_seq_string = seq_dict[query_name]
+            query_length = len(query_seq_string)
+            aligned_query = AlignedQuery(query_seq_string, query_name)
+            agglom_aligned_query_dict[query_name] = aligned_query
+            for target_name, query_start_in_target, mismatch_positions in zip(query_align_df['target_name'],
+                                                                              query_align_df['query_start_in_target'],
+                                                                              query_align_df['mismatch_positions']):
+                num_processed_aligns += 1
+                if num_processed_aligns % parsing_progress_interval == 0:
+                    pp_progress_interval_end = pp(total_align_count if num_processed_aligns + parsing_progress_interval > total_align_count else num_processed_aligns + parsing_progress_interval)
+                    progress.update_pid(pid)
+                    progress.update(f"{pp(num_processed_aligns + 1)}-{pp_progress_interval_end}/{pp_total_align_count}")
+
+                try:
+                    aligned_target = aligned_ref_dict[target_name]
+                except KeyError:
+                    aligned_target = AlignedTarget(seq_dict[target_name], target_name)
+                    aligned_ref_dict[target_name] = aligned_target
+
+                # Convert the positions of mismatches into a cigar tuple for the alignment. The
+                # search method ensured that each alignment contains at least one mismatch.
+                cigartuples = []
+                prev_mismatch_pos = -2
+                for mismatch_num, mismatch_pos in enumerate(map(int, mismatch_positions.split(','))):
+                    if prev_mismatch_pos == -2:
+                        # This is the first mismatch in the alignment.
+                        if mismatch_pos > 0:
+                            # There is not a mismatch at the first position of the query.
+                            cigartuples.append((7, mismatch_pos))
+                        cigartuples.append((8, 1))
+                    elif mismatch_pos == prev_mismatch_pos + 1:
+                        # This mismatch follows another mismatch.
+                        cigartuples[-1] = (8, cigartuples[-1][1] + 1)
+                    else:
+                        cigartuples.append((7, mismatch_pos - prev_mismatch_pos - 1))
+                        cigartuples.append((8, 1))
+                    prev_mismatch_pos = mismatch_pos
+                if query_length - prev_mismatch_pos > 1:
+                    cigartuples.append((7, query_length - prev_mismatch_pos - 1))
+
+                alignment = Alignment(0, query_start_in_target, cigartuples, aligned_query, aligned_target)
+                # The Alignment doesn't need to be added to the AlignedQuery object, as these are
+                # changed later when queries are remapped.
+                aligned_target.alignments.append(alignment)
+        del seq_dict
+        gc.collect()
+        progress.end()
+
+        pid = "Agglomerating aligned reference seqs"
+        progress.new(pid)
+        progress.update("...")
 
         if priority_function is None:
             priority_function = lambda aligned_ref: (-len(aligned_ref.seq_string),
                                                      -len(aligned_ref.alignments),
                                                      aligned_ref.name)
 
-        # The `aligned_query_dict` output of `Aligner.align`
-        # is named `agglomerated_aligned_query_dict` and modified during agglomeration.
-        (agglom_aligned_query_dict,
-         aligned_ref_dict) = Aligner(self.seq_names,
-                                     self.seq_strings,
-                                     self.seq_names,
-                                     self.seq_strings,
-                                     num_threads=self.num_threads,
-                                     progress=self.progress).align(max_mismatch_freq=max_mismatch_freq,
-                                                                   target_chunk_size=alignment_target_chunk_size,
-                                                                   query_progress_interval=alignment_progress_interval)
-
         for agglom_aligned_query in agglom_aligned_query_dict.values():
             agglom_aligned_query.alignments = []
-
-        self.progress.update("Agglomerating alignments")
 
         # Agglomerated clusters should preferentially be seeded
         # by the longest reference sequences with the most alignments.
@@ -125,17 +177,20 @@ class Agglomerator:
         processed_ref_dict = {name: len(ordered_ref_names) for name in ordered_ref_names}
 
         agglom_aligned_refs = []
-        processed_input_count = 0
-        total_input_count = len(ordered_ref_inputs)
+        agglom_progress_interval = 1000
+        total_ref_count = len(ordered_ref_inputs)
+        pp_total_ref_count = pp(total_ref_count)
+        num_processed_refs = -1
         for agglom_ref_priority, name in enumerate(ordered_ref_names):
+            num_processed_refs += 1
+            if num_processed_refs % agglom_progress_interval == 0:
+                pp_progress_interval_end = pp(total_ref_count if num_processed_refs + agglom_progress_interval > total_ref_count else num_processed_refs + agglom_progress_interval)
+                progress.update_pid(pid)
+                progress.update(f"{pp(num_processed_refs + 1)}-{pp_progress_interval_end}/{pp_total_ref_count}")
 
             if agglom_ref_priority >= processed_ref_dict[name]:
                 # The reference sequence has already been processed,
                 # as it mapped to another reference sequence that had been processed.
-                processed_input_count += 1
-                if processed_input_count % agglom_progress_interval == 0:
-                    self.progress.update("%s/%s seqs processed in agglomerative remapping"
-                                         % (pp(processed_input_count), pp(total_input_count)))
                 continue
 
             processed_ref_dict[name] = agglom_ref_priority
@@ -166,18 +221,20 @@ class Agglomerator:
                     query_name = aligned_query.name
                     query_seq_string = aligned_query.seq_string
 
-                    if query_name == current_ref_name:
-                        # Ignore a sequence mapping to itself.
-                        continue
-
                     if query_name in presently_processed_ref_names:
                         # The query has already been agglomerated with this seed,
                         # as it mapped to another agglomerated sequence.
                         continue
 
+                    try:
+                        prev_ref_priority = processed_ref_dict[query_name]
+                    except KeyError:
+                        # No sequences aligned to the query sequence.
+                        continue
+
                     # In the next iteration, the current query sequence will be investigated as a reference.
                     presently_processed_ref_names.append(query_name)
-                    if agglom_ref_priority < processed_ref_dict[query_name]:
+                    if agglom_ref_priority < prev_ref_priority:
                         processed_ref_dict[query_name] = agglom_ref_priority
 
                     # Get the mismatches between the query and the current reference,
@@ -280,15 +337,8 @@ class Agglomerator:
                     remapping_stack.append(next_remapping_item)
 
             agglom_aligned_refs.append(agglom_aligned_ref)
-            processed_input_count += 1
-            if processed_input_count % agglom_progress_interval == 0:
-                self.progress.update("%s/%s seqs processed in agglomerative remapping"
-                                     % (pp(processed_input_count), pp(total_input_count)))
-        if processed_input_count % agglom_progress_interval != 0:
-            self.progress.update("%s/%s seqs processed in agglomerative remapping"
-                                 % (pp(total_input_count), pp(total_input_count)))
-
         agglom_aligned_ref_dict = {ref.name: ref for ref in agglom_aligned_refs}
 
         self.agglom_aligned_query_dict = agglom_aligned_query_dict
         self.agglom_aligned_ref_dict = agglom_aligned_ref_dict
+        progress.end()
