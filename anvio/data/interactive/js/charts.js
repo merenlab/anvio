@@ -294,6 +294,7 @@ function loadAll() {
                   }
                   if(state['show_snvs'] && numSNVs > 1000) {
                     state['show_snvs'] = false;
+                    $("#toggle_snv_box").val("checked", "unchecked");
                     $("div.snvs-disabled").append("WARNING: A total of " + numSNVs + " SNVs were dedected on this page and are not shown to optimize perfomance. Use the settings panel to show them.");
                     $("div.snvs-disabled").fadeIn(300);
                   }
