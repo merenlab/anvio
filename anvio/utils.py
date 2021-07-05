@@ -490,6 +490,32 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         raise ConfigError("command was failed for the following reason: '%s' ('%s')" % (e, cmdline))
 
 
+def start_command(cmdline, log_file_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
+    """Start a command using subprocess.Popen, returning an object that can be monitored."""
+    cmdline = format_cmdline(cmdline)
+
+    if anvio.DEBUG:
+        Progress().reset()
+        Run().info("[DEBUG] `start_command`",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
+                   nl_before=1, nl_after=1, mc='red', lc='yellow')
+
+    filesnpaths.is_output_file_writable(log_file_path)
+
+    if remove_log_file_if_exists and os.path.exists(log_file_path):
+        os.remove(log_file_path)
+
+    try:
+        if first_line_of_log_is_cmdline:
+            with open(log_file_path, 'a') as log_file:
+                log_file.write(f"# DATE: {get_date()}\n# CMD LINE: {' '.join(cmdline)}\n")
+
+        p = subprocess.Popen(cmdline, stdout=stdout, stderr=stderr)
+        return p
+    except OSError as e:
+        raise ConfigError("The command failed for the following reason: '%s' ('%s')" % (e, cmdline))
+
+
 def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.Popen and sends data to your `cmdline` through STDIN"""
     cmdline = format_cmdline(cmdline)
@@ -1129,6 +1155,11 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         The enrichment analysis results
     """
 
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                "You can find more information about it in the following paper: Shaiber, Willis et al "
+                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
+                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
     # sanity check for R packages
     package_dict = get_required_packages_for_enrichment_test()
     check_R_packages_are_installed(package_dict)
@@ -1139,9 +1170,9 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     if not enrichment_output_file_path:
         enrichment_output_file_path = filesnpaths.get_temp_file_path()
     elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
-        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
-                           "Please either delete the existing file, or provide another file path before re-running this "
-                           "program again.")
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/ "
+                          f"Please either delete the existing file, or provide another file path before re-running this "
+                          f"program again.")
 
     log_file_path = filesnpaths.get_temp_file_path()
 
@@ -3381,6 +3412,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         return dict_to_append
 
     # this is here for backward compatibility.
+    failed_lines = list(set(failed_lines)) # confirming we are not printing multiple instances of the same line
     if return_failed_lines:
         return d, failed_lines
 
@@ -3753,10 +3785,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")
             return set([])
-        elif int(database.get_meta_value('merged')):
-            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
         else:
-            all_items = set(database.get_single_column_from_table('atomic_data_splits', 'contig'))
+            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':

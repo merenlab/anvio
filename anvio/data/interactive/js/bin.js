@@ -78,7 +78,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
                        <td data-value="${name}">
-                            <input type="text" class="bin-name" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
+                            <input type="text" class="bin-name" oninput="this.value = event.target.value.replaceAll(' ', '_');" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
                         </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
@@ -807,13 +807,24 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
 
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
+
     let nodes_for_inversion = []
+    let calculatedRectX = 0
 
     for(let i = 0; i < leaf_list.length; i++){ //selecting all the nodes that aren't assigned to bins
         if(leaf_list[i] === -1){
             nodes_for_inversion.push(drawer.tree.leaves.filter(leaf => leaf.order === i))
         }
     }
+
+    nodes_for_inversion.map((node, idx) => {
+        // map through each node, use the highest 'x' value for all nodes in subsequent rect phylogram render
+        // addresses bug of rect shades starting from their relative position in tree
+        let p = node[0];
+        if(p){
+            p.xy.x > calculatedRectX ? calculatedRectX = p.xy.x : null
+        }
+    })
 
     nodes_for_inversion.map((node, idx) => {
 
@@ -849,7 +860,7 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
         } else {
            let rect =  drawPhylogramRectangle('bin',
                 'bin_background_' + idx,
-                p.xy.x,
+                calculatedRectX, // new variable calculated above
                 p.xy.y,
                 p.size,
                 rect_width,
@@ -984,7 +995,7 @@ Bins.prototype.RedrawBins = function() {
                         'x': bin_label_px,
                         'y': bin_label_py,
                     },
-                    $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
+                    $('#bin_name_' + bins_to_draw[i][2]).val().replaceAll("_", " "),
                     (autorotate_bin_labels) ? new_angle : bin_labels_angle,
                     align,
                     bin_labels_font_size + "px",

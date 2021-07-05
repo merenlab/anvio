@@ -44,7 +44,9 @@ def main(args):
                               "things would likely work.")
         else:
             utils.is_profile_db_and_contigs_db_compatible(args.pan_or_profile_db, args.contigs_db)
-            all_items = dbops.ContigsDatabase(args.contigs_db).db.get_single_column_from_table(splits_info_table_name, 'split')
+            contigs_db = dbops.ContigsDatabase(args.contigs_db)
+            all_items = contigs_db.db.get_single_column_from_table(splits_info_table_name, 'split')
+            contigs_db.disconnect()
     else:
         if args.contigs_db:
             run.warning("You should provide a contigs database to this script only if you are working with an anvi'o blank "

@@ -32,7 +32,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db')
+        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db', 'genes_db')
 
         # FIXME This is a first-come, first-serve business. As of now, it is the programmer's
         # responsibility to ensure they are not passing more inputs than they need.
@@ -917,6 +917,14 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
         items_in_db = utils.get_all_item_names_from_the_database(self.db_path)
         items_in_data = set(data_dict.keys())
 
+        # this step is essential for genes database, where item naems are actually
+        # gene caller ids that are meant to be integers:
+        try:
+            items_in_db = set([int(i) for i in items_in_db])
+            items_in_data = set([int(i) for i in data_dict.keys()])
+        except:
+            pass
+
         if not len(items_in_db):
             raise ConfigError("No item names found in your target database. This is normal if you are working with "
                               "a blank profile database. But in that case, you need to include `skip_check_names=True` "
@@ -934,7 +942,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                               "in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
                                        items_in_data_but_not_in_db.pop(),
-                                       items_in_db.pop() if items_in_db else "No entries found in databse"))
+                                       items_in_db.pop() if items_in_db else "No entries found in database"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):

@@ -192,7 +192,10 @@ class ArgumentParser(argparse.ArgumentParser):
         args, unknown = parser.parse_known_args()
 
         if auto_fill_anvio_dbs:
-            args = PopulateAnvioDBArgs(args).get_updated_args()
+            if anvio.DEBUG:
+                args = PopulateAnvioDBArgs(args, lazy_init=False).get_updated_args()
+            else:
+                args = PopulateAnvioDBArgs(args).get_updated_args()
 
         # if there are any args in the unknown that we do not expect to find
         # we we will make argparse complain about those.
@@ -223,14 +226,18 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         The starting directory to search for all anvi'o databases underneath
     """
 
-    def __init__(self, args, search_path='.', run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args, search_path='.', run=terminal.Run(), progress=terminal.Progress(), lazy_init=True):
         self.run = run
         self.progress = progress
 
         self.args = args
         self.search_path = search_path
 
-        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress)
+        if lazy_init:
+            self.anvio_dbs_found = False
+            self.anvio_dbs = None
+        else:
+            FindAnvioDBs.__init__(self, run=self.run, progress=self.progress)
 
         self.__args_set = []
         self.__args_failed = []
@@ -248,6 +255,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         if self.args.contigs_db:
             return
 
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
         if 'contigs' not in self.anvio_dbs:
             return
 
@@ -269,6 +277,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         if self.args.genomes_storage:
             return
 
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
         if 'genomestorage' not in self.anvio_dbs:
             return
 
@@ -287,6 +296,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         if 'profile_db' not in self.args:
             return
 
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
         if not 'profile' in self.anvio_dbs:
             self.__args_failed.append(('profile_db', 'No profile databases around :/'))
             return
@@ -320,7 +330,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             self.set_arg('profile_db', profile_db.path)
             self.set_arg('manual_mode', True)
         else:
-            # it is associated with a contigs database. here we will set the 
+            # it is associated with a contigs database. here we will set the
             # profile db, and next ask anvi'o to set the contigs db if it can
             # find one.
             self.set_arg('profile_db', profile_db.path)
@@ -331,6 +341,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
         if 'pan_db' not in self.args:
             return
 
+        FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
         if not 'pan' in self.anvio_dbs:
             return self.__args_failed.append(('pan_db', 'No pan databases around :/'))
 

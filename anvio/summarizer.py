@@ -290,9 +290,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         from anvio.dbops import PanDatabase
         pan_db = PanDatabase(self.pan_db_path)
 
-        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
-                                                    pan_db.db.get_table_as_dict('gene_cluster_frequencies'),
-                                                    orient='index')
+        view_data, _ = pan_db.db.get_view_data('gene_cluster_frequencies')
+        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(view_data, orient='index')
 
         self.progress.update('Merging presence/absence of gene clusters with the same function')
 
@@ -364,7 +363,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         list_functional_annotation_sources = A('list_annotation_sources')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         include_ungrouped = A('include_ungrouped')
-
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -1013,7 +1011,7 @@ class ContigSummarizer(SummarizerSuperClass):
         if split_names:
             split_names = set(split_names)
             c.init_split_sequences()
-            seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
+            seq = ''.join([c.split_sequences[split_name]['sequence'] for split_name in split_names])
             for e in list(c.genes_in_splits.values()):
                 if e['split'] in split_names:
                     process_gene_call(e['gene_callers_id'])
@@ -1648,7 +1646,7 @@ class Bin:
 
                 sequence = ''
                 for split_order in sequential_block:
-                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]
+                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]['sequence']
 
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)

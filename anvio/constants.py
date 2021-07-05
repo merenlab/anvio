@@ -19,6 +19,20 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
+# these are the atomic data that are generated for each contig profiled
+# based on read recruitment results. anvio/contigops.py has the details:
+essential_data_fields_for_anvio_profiles = ['std_coverage',
+                                            'mean_coverage',
+                                            'mean_coverage_Q2Q3',
+                                            'detection',
+                                            'abundance',
+                                            'variability']
+
+# this is to distinguish fields that are often useless for clustering ops
+# and other purposes
+IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
+
 default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -63,13 +77,7 @@ default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'AC
                                    'TTT']
 default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
 
-THREEPRIME_VARIANTS = ['CCA', 'CC', 'C',
-                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
-                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
-                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
-                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
-                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
-
+# The following block of constants are used in the tRNA-seq workflow.
 TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'acceptor_stem',
                       'fiveprime_acceptor_stem_sequence',
@@ -94,8 +102,9 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'threeprime_t_stem_sequence',
                       'threeprime_acceptor_stem_sequence',
                       'discriminator',
-                      'acceptor']
+                      'threeprime_terminus']
 TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
+TRNASEQ_CHECKPOINTS = ('profile', 'normalize', 'map_fragments', 'substitutions', 'indels')
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
@@ -190,8 +199,6 @@ for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clusteri
     for config in glob.glob(os.path.join(clustering_configs_dir, dir, '*')):
         clustering_configs[dir][os.path.basename(config)] = config
 
-IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
-IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
@@ -199,20 +206,18 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 unambiguous_nucleotides = set(list('ATCG'))
 nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
 
-WC_base_pairs = {
-    'A': ('T', ),
-    'T': ('A', ),
-    'C': ('G', ),
-    'G': ('C', ),
-    'N': ('', )
+WC_BASE_PAIRS = {
+    'A': 'T',
+    'T': 'A',
+    'C': 'G',
+    'G': 'C'
 }
 # In tRNA, wobble base pairing, including G/U, is common
 WC_PLUS_WOBBLE_BASE_PAIRS = {
     'A': ('T', ),
     'T': ('A', 'G'),
     'C': ('G', ),
-    'G': ('C', 'T'),
-    'N': ('N', )
+    'G': ('C', 'T')
 }
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},

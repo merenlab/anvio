@@ -494,12 +494,12 @@ named_category_colors = {
     'TNC'             : '#00AA00',
     'TNA'             : '#00d1ca',
     'NaN'             : '#73727a',
-    'AGNOSTOS_K'      : '#233B43',
-    'AGNOSTOS_KWP'    : '#556C74',
-    'AGNOSTOS_GU'     : '#65ADC2',
-    'AGNOSTOS_EU'     : '#E84646',
-    'AGNOSTOS_SINGL'  : '#BCC8CC',
-    'AGNOSTOS_DISC'   : '#BCC8CC'
+    'K'               : '#233B43',
+    'KWP'             : '#556C74',
+    'GU'              : '#65ADC2',
+    'EU'              : '#E84646',
+    'SINGL'           : '#BCC8CC',
+    'DISC'            : '#BCC8CC'
 };
 
 function getNamedCategoryColor(name)
@@ -600,7 +600,7 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     if (layer.substring(0, 5) == "hmmx_") {
         if (attribute == 'height') return '30';
         if (attribute == 'norm')   return 'none';
-        if (attribute == 'color')  return '#882222'
+        if (attribute == 'color')  return '#882222';
     }
 
     /* Some ad-hoc manipulation of special hmms_ single hmm layers */
@@ -622,7 +622,11 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
             if (attribute == 'color')  return '#444444';
             if (attribute == 'color-start')  return '#DDDDDD';
         }
+    }
 
+    if (layer.substring(0, 6) == "motif_") {
+        if (attribute == 'norm')   return 'none';
+        if (attribute == 'color')  return '#222288';
     }
 
     if (layer in named_layers)

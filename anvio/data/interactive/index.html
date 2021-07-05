@@ -13,29 +13,31 @@
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
     <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
+    <script type="text/javascript" src="js/error.js"></script>
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
-    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/core.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/button.js"></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/position.js"></script>
-    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
-    <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
-    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"></script>
-    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js"></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
-    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js"></script>
+
+    <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+    <script type="text/javascript" src="lib/randomColor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
+    <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
+    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js" onerror='alertDependencyError("md5")'></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("col-picker")'></script>
+    <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -61,13 +63,13 @@
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")'></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="lib/marked/lib/marked.js"></script>
+    <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
     <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js"></script>
+    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
@@ -379,7 +381,7 @@
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
                                         <div class="col-md-8">
-                                            <input type="text" value="0.3" size="4" id="background_opacity" class="form-control input-xs">
+                                            <input type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <span class="settings-header">Layer Labels</span>

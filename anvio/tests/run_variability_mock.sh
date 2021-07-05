@@ -167,11 +167,11 @@ cat test-output/fixation_NT_external.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
 rm -rf test-output/pn_ps_ratio_output
-anvi-script-calculate-pn-ps-ratio -V test-output/variability_CDN.txt \
-                                  -c test-output/single_contig.db \
-                                  -o test-output/pn_ps_ratio_output \
-                                  -m 10 \
-                                  -i 3
+anvi-get-pn-ps-ratio -V test-output/variability_CDN.txt \
+                     -c test-output/single_contig.db \
+                     -o test-output/pn_ps_ratio_output \
+                     -m 10 \
+                     -i 3
 
 INFO "anvi-gen-gene-consensus-sequences for gene mode"
 anvi-gen-gene-consensus-sequences -p test-output/SAMPLES-MERGED/PROFILE.db \

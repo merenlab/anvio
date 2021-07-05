@@ -1,8 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-import os
-
 import anvio
 import anvio.tables as t
 import anvio.utils as utils
@@ -30,12 +28,49 @@ pp = terminal.pretty_print
 
 class TablesForViews(Table):
     def __init__(self, db_path, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), self.run, self.progress)
 
 
-    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
+    def sanity_check(self, view_data):
+        if not isinstance(view_data, list):
+            self.progress.reset()
+            raise ConfigError(f"View data must be a list of tuples or list of lists :( Yours is a {type(view_data)}.")
+
+        if len(view_data[0]) != 3:
+            self.progress.reset()
+            raise ConfigError(f"Each item in the view data list must be a list or tuple with three items (item name, "
+                              f"layer name, and data value). The length of yours is {len(view_data[0])}. Not OK.")
+
+        data_tuple_lengths = set([len(d) for d in view_data])
+        if len(data_tuple_lengths) > 1:
+            self.progress.reset()
+            raise ConfigError("Each list or tuple item in the view data list must be of length 3. Your view data is "
+                              "composed of mixed lengths :/")
+
+        try:
+            [float(d[2]) for d in view_data]
+        except:
+            self.progress.reset()
+            raise ConfigError("The third item in every list or tuple in your view data list must be a numerical value. "
+                              "At lesat that is what anvi'o asks for currently. We can get rid of this requirement, but "
+                              "that is another discussion. For now, you need to ensure your view data complies with what "
+                              "anvi'o expects :/")
+
+
+    def matrix_to_long_form(self, view_data):
+        d = []
+        for item in view_data:
+            for layer in view_data[item]:
+                d.append((item, layer, view_data[item][layer]), )
+
+        return(d)
+
+
+    def create_new_view(self, view_data, table_name, view_name=None, append_mode=False, skip_sanity_check=False, from_matrix_form=False):
         """Creates a new view table, and adds an entry for it into the 'views' table.
 
         Entries in 'views' table appear in various places in the interface. However, we also generate
@@ -52,6 +87,12 @@ class TablesForViews(Table):
         If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
         """
 
+        if from_matrix_form:
+            view_data = self.matrix_to_long_form(view_data)
+
+        if not skip_sanity_check:
+            self.sanity_check(view_data)
+
         anvio_db = DBClassFactory().get_db_object(self.db_path)
 
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
@@ -66,7 +107,7 @@ class TablesForViews(Table):
             anvio_db.db.drop_table(table_name)
 
         try:
-            anvio_db.db.create_table(table_name, table_structure, table_types)
+            anvio_db.db.create_table(table_name, t.view_table_structure, t.view_table_types)
         except Exception as e:
             # FIXME: the following if statement will omit errors and quietly continue despite the
             # table creation failed. I think we should remove it, and add `create_table` function
@@ -77,28 +118,7 @@ class TablesForViews(Table):
                                   "'%s'. Here is how the part of the code that was about this described the "
                                   "problem: '%s'." % (table_name, self.db_path, str(e)))
 
-        db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
-
-        try:
-            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
-        except Exception as e:
-            num_columns = set([len(x) for x in db_entries])
-            if len(num_columns) == 1:
-                columns_text = "%d columns" % num_columns.pop()
-            else:
-                columns_text = "%d to %d columns (which is utterly weird)" % (min(num_columns), max(num_columns))
-
-            temp_file_output_path = os.path.abspath(self.db_path) + '-DB_ENTRIES_FOR_SAD_ERROR.txt'
-            with open(temp_file_output_path, 'w') as temp_file:
-                for entry in db_entries:
-                    temp_file.write('\t'.join([str(e) for e in entry]) + '\n')
-
-            raise ConfigError("Something bad happened while anvi'o was trying to insert %d entries with %s into the "
-                              "table '%s' which contained a table structure with %d columns in '%s' :( This "
-                              "is the error we got back from the database module: \"%s\". Anvi'o created a temporary "
-                              "file for you so you can see the contents of the db_entries it tried to add to the "
-                              "database, which is here: '%s'." % \
-                                    (len(db_entries), columns_text, table_name, len(table_structure), self.db_path, e, temp_file_output_path))
+        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
 
         if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))

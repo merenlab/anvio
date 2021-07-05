@@ -47,13 +47,13 @@ def main(args):
             if not sequence_profile.predicted_profile:
                 raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
 
-            # Allow for args.dna_sequence to be a tRNA transcript:
-            # remove the 3'-CCA acceptor regardless of whether it is encoded in the gene or added post-transcriptionally.
-            genomic_sequence = args.dna_sequence[:-3] if sequence_profile.has_encoded_acceptor else args.dna_sequence
+            # Allow for args.dna_sequence to be a tRNA transcript: remove the 3'-CCA acceptor
+            # regardless of whether it is encoded in the gene or added post-transcriptionally.
+            genomic_sequence = args.dna_sequence[: -3] if sequence_profile.has_encoded_acceptor else args.dna_sequence
         anticodon = sequence_profile.predicted_profile.anticodon_seq
 
         if not anticodon:
-            raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps not a proper tRNA sequence?")
+            raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps it is not a proper tRNA sequence?")
 
         # setup search
         fasta_formatted_sequence = f'>{anticodon}\n{genomic_sequence}'
