@@ -147,6 +147,26 @@ function processState(stateName, stateData){
       'ordering' : 'beaks to tails'
     }
   ]
+  stateData['additional-data-layers'] = []
+
+  calculateMaxGenomeLength() 
+  
+  for(let i = 0; i < genomeData.genomes.length; i++){
+    let gcContent = []
+    let coverage = []
+    
+    for(let j = 0; j < genomeMax; j++){
+      gcContent.push(Math.floor(Math.random() * 25))
+      coverage.push(Math.floor(Math.random() * 25))
+    }
+    let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
+    let additionalDataObject = {
+      'genome' : genomeLabel, 
+      'coverage' : coverage, 
+      'gcContent' : gcContent
+    }
+    stateData['additional-data-layers'].push(additionalDataObject)
+  }  
 
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
@@ -168,11 +188,7 @@ function loadAll() {
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   // Find max length genome
-  for(genome of genomeData.genomes) {
-    genome = genome[1].genes.gene_calls;
-    let genomeEnd = genome[Object.keys(genome).length-1].stop;
-    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
-  }
+  calculateMaxGenomeLength()
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
@@ -823,6 +839,14 @@ function changeGenomeOrder(updatedOrder){
   })
   genomeData.genomes = newGenomeOrder
   draw()
+}
+
+function calculateMaxGenomeLength(){
+  for(genome of genomeData.genomes) {
+    genome = genome[1].genes.gene_calls;
+    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
+  }
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
