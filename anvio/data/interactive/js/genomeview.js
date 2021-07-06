@@ -27,7 +27,7 @@
 
  // Settings vars
  // TODO migrate below variables to kvp in state
- var state = {};
+ var stateData = {};
  var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
@@ -38,7 +38,7 @@
  var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
-
+ 
  var alignToGC = null;
 
  var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon
@@ -53,7 +53,7 @@ var genomeData;
 $(document).ready(function() {
     initData();
     // loadState();
-    processState('default', {}) // lifted here until loadState is hooked in from backend
+    processState('default', stateData) // lifted here until loadState is hooked in from backend
     loadAll();
 });
 
@@ -166,7 +166,7 @@ function processState(stateName, stateData){
       'gcContent' : gcContent
     }
     stateData['additional-data-layers'].push(additionalDataObject)
-  }  
+  } 
 
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
@@ -189,6 +189,7 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
+  calculateSpacingForGroups()
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
@@ -847,6 +848,14 @@ function calculateMaxGenomeLength(){
     let genomeEnd = genome[Object.keys(genome).length-1].stop;
     if(genomeEnd > genomeMax) genomeMax = genomeEnd;
   }
+}
+
+function calculateSpacingForGroups(){ // to be used for setting vertical spacing 
+  let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer 
+  stateData['additional-data-layers'].map(group => {
+    Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null 
+  })
+  return maxGroupSize
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
