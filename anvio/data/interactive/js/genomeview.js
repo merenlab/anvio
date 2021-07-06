@@ -151,7 +151,7 @@ function processState(stateName, stateData){
 
   calculateMaxGenomeLength() 
   
-  for(let i = 0; i < genomeData.genomes.length; i++){
+  for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content 
     let gcContent = []
     let coverage = []
     
