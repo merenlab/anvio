@@ -1804,7 +1804,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### ATOMIC ESTIMATION FUNCTIONS #########
 
-    def init_hits_and_splits(self, annotation_sources=['Kofam']):
+    def init_hits_and_splits(self, annotation_sources=['KOfam']):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
         We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
