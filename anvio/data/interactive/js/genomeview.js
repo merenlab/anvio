@@ -39,7 +39,7 @@
  var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
- 
+
  var alignToGC = null;
 
  var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon
@@ -150,24 +150,24 @@ function processState(stateName, stateData){
   ]
   stateData['additional-data-layers'] = []
 
-  calculateMaxGenomeLength() 
-  
-  for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content 
+  calculateMaxGenomeLength()
+
+  for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
     let gcContent = []
     let coverage = []
-    
+
     for(let j = 0; j < genomeMax; j++){
       gcContent.push(Math.floor(Math.random() * 25))
       coverage.push(Math.floor(Math.random() * 25))
     }
     let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
     let additionalDataObject = {
-      'genome' : genomeLabel, 
-      'coverage' : coverage, 
+      'genome' : genomeLabel,
+      'coverage' : coverage,
       'gcContent' : gcContent
     }
     stateData['additional-data-layers'].push(additionalDataObject)
-  } 
+  }
 
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
@@ -211,12 +211,13 @@ function loadAll() {
               .x(xScale)
               .on("brushend", onBrush);
 
-  $("#scaleSvg").attr("width", scaleWidth);
+  $("#scaleSvg").attr("width", scaleWidth + 10);
 
   var scaleBox = d3.select("#scaleSvg").append("g")
               .attr("id", "scaleBox")
               .attr("class","scale")
-              .attr("y", 230); // rather than 80 from 50?
+              .attr("y", 230) // rather than 80 from 50?
+              .attr("tranform", "translate(5,0)");
 
   scaleBox.append("g")
               .attr("class", "x axis top noselect")
@@ -863,13 +864,13 @@ function calculateMaxGenomeLength(){
   }
 }
 
-function calculateSpacingForGroups(){ // to be used for setting vertical spacing 
-  let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer 
+function calculateSpacingForGroups(){ // to be used for setting vertical spacing
+  let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer
   stateData['additional-data-layers'].map(group => {
-    Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null 
+    Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null
   })
   let spacing = 500 / [maxGroupSize * genomeData.genomes.length] // 500 is hardcoded main canvas height
-  return spacing 
+  return spacing
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file

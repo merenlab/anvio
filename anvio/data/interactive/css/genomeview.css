@@ -48,18 +48,6 @@ g.scale rect.background{
     pointer-events: all;
 }
 
-.brush .extent {
-    stroke: black;
-    fill-opacity: .125;
-    shape-rendering: crispEdges;
-}
-
-rect.background {
-  fill: rgba(0,0,0,0.1);
-  visibility: visible !important;
-  pointer-events: all;
-}
-
 #tooltip-body{
     height: 300px;
     width: 300px;
