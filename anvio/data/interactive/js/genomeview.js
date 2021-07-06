@@ -165,6 +165,7 @@ function processState(stateName, stateData){
 function loadAll() {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
+  canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   // Find max length genome
   for(genome of genomeData.genomes) {
@@ -173,7 +174,7 @@ function loadAll() {
     if(genomeEnd > genomeMax) genomeMax = genomeEnd;
   }
 
-  var scaleWidth = 1200;
+  var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
 
   var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
@@ -191,6 +192,8 @@ function loadAll() {
   brush = d3.svg.brush()
               .x(xScale)
               .on("brushend", onBrush);
+
+  $("#scaleSvg").attr("width", scaleWidth);
 
   var scaleBox = d3.select("#scaleSvg").append("g")
               .attr("id", "scaleBox")
@@ -210,7 +213,7 @@ function loadAll() {
               .attr("height", scaleHeight);
 
   $('#brush_start').val(0);
-  $('#brush_end').val(scaleWidth);
+  $('#brush_end').val(Math.floor(scaleWidth));
 
   function onBrush(){
       console.log("onBrush() called!");
