@@ -189,7 +189,7 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
-  calculateSpacingForGroups()
+  let calculatedSpacing = calculateSpacingForGroups()
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
@@ -855,7 +855,8 @@ function calculateSpacingForGroups(){ // to be used for setting vertical spacing
   stateData['additional-data-layers'].map(group => {
     Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null 
   })
-  return maxGroupSize
+  let spacing = 500 / [maxGroupSize * genomeData.genomes.length] // 500 is hardcoded main canvas height
+  return spacing 
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
