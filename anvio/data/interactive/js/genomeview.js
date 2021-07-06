@@ -209,6 +209,9 @@ function loadAll() {
               .attr("y", 0)
               .attr("height", scaleHeight);
 
+  $('#brush_start').val(0);
+  $('#brush_end').val(scaleWidth);
+
   function onBrush(){
       console.log("onBrush() called!");
       var b = brush.empty() ? xScale.domain() : brush.extent();
@@ -406,6 +409,26 @@ function loadAll() {
   $('#show_scale_box').on('change', function() {
     showScale = !showScale;
     draw();
+  });
+  $('#brush_start, #brush_end').keydown(function(ev) {
+      if (ev.which == 13) { // enter key
+          let start = parseInt($('#brush_start').val());
+          let end = parseInt($('#brush_end').val());
+
+          if (isNaN(start) || isNaN(end) || start < 0 || start > genomeMax || end < 0 || end > genomeMax) {
+              alert(`Invalid value, value needs to be in range 0-${genomeMax}.`);
+              return;
+          }
+
+          if (start >= end) {
+              alert('Starting value cannot be greater or equal to the ending value.');
+              return;
+          }
+
+          brush.extent([start, end]);
+          brush(d3.select(".brush").transition());
+          brush.event(d3.select(".brush").transition());
+      }
   });
 }
 
