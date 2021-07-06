@@ -1738,6 +1738,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # init the base class
         KeggContext.__init__(self, self.args)
 
+        # let user know what they told anvi'o to work
+        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.collection_name:
+            self.run.info('Collection', self.collection_name)
+        if self.bin_id:
+            self.run.info('Bin ID', self.bin_id)
+        elif self.bin_ids_file:
+            self.run.info('Bin IDs file', self.bin_ids_file)
+
         # init the KO dictionary
         self.setup_ko_dict()
 
@@ -1894,16 +1905,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.progress.update("Done")
         self.progress.end()
 
-        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
-        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
-        self.run.info('Metagenome mode', self.metagenome_mode)
-        if self.collection_name:
-            self.run.info('Collection', self.collection_name)
-        if self.bin_id:
-            self.run.info('Bin ID', self.bin_id)
-        elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file)
 
         if not self.quiet and not len(kofam_hits):
             self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
