@@ -1879,58 +1879,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         contigs_db.disconnect()
 
-        # get rid of gene calls that are not associated with KOfam hits.
-        all_gene_calls_in_splits = set([tpl[0] for tpl in genes_in_splits])
-        gene_calls_with_kofam_hits = set([tpl[0] for tpl in kofam_hits])
-        gene_calls_without_kofam_hits = all_gene_calls_in_splits.difference(gene_calls_with_kofam_hits)
-
-        if gene_calls_without_kofam_hits:
-            self.progress.update("Removing %s gene calls without KOfam hits" % len(gene_calls_without_kofam_hits))
-            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in gene_calls_without_kofam_hits]
-            genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
-            if anvio.DEBUG:
-                self.progress.reset()
-                self.run.warning("The following gene calls in your contigs DB were removed from consideration as they "
-                                 "do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
-
-
-        # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
-        if self.profile_db_path:
-            # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
-            if utils.is_blank_profile(self.profile_db_path):
-                self.progress.reset()
-                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism for you. "
-                                 "But we cannot load splits from the profile DB, so instead we are assuming that you are interested in "
-                                 "ALL splits and we will load those from the contigs database.")
-                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
-            else:
-                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
-            split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
-            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
-
-            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
-
-            if len(splits_missing_in_profile_db):
-                self.progress.reset()
-                self.run.warning("Please note that anvi'o found %s splits in your contigs database with KOfam hits. But only %s of them "
-                                 "appear in the profile database. As a result, anvi'o will now remove the %s splits with KOfam hits "
-                                 "that occur only in the contigs db from all downstream analyses. Where is this difference coming from though? "
-                                 "Well. This is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
-                                 "step can exclude many contigs from downstream analyses (often for good reasons, too). For "
-                                 "instance, in your case the minimum contig length goes as low as %s nts in your contigs database. "
-                                 "Yet, the minimum contig length set in the profile databaes is %s nts. Hence the difference. Anvi'o "
-                                 "hopes that this explaines some things." % (pp(len(split_names_in_contigs_db)),
-                                                                             pp(len(split_names_in_profile_db)),
-                                                                             pp(len(splits_missing_in_profile_db)),
-                                                                             pp(min_contig_length_in_contigs_db),
-                                                                             pp(min_contig_length_in_profile_db)))
-
-                self.progress.update("Removing %s splits (and associated gene calls) that were missing from the profile db" % pp(len(splits_missing_in_profile_db)))
-                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in splits_missing_in_profile_db]
-                remaining_gene_calls = [tpl[0] for tpl in genes_in_splits]
-                genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] in remaining_gene_calls]
-                kofam_hits = [tpl for tpl in kofam_hits if tpl[0] in remaining_gene_calls]
-
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
         # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
