@@ -1862,17 +1862,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.progress.update('Loading gene call data from contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
-        split_list = ','.join(splits_to_use)
+        split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
         splits_where_clause = f'''split IN ({split_list})'''
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split",
                                                                     where_clause=splits_where_clause)
 
-        gene_list = ','.join([gcid for gcid,split in genes_in_splits])
+        gene_list = ','.join(["'%s'" % gcid for gcid,split in genes_in_splits])
         contigs_where_clause = f'''gene_callers_id IN ({gene_list})'''
         genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig",
                                                                      where_clause=contigs_where_clause)
 
-        source_list = ','.join(annotation_sources)
+        source_list = ','.join(["'%s'" % src for src in annotation_sources])
         hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                                where_clause=hits_where_clause)
