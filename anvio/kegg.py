@@ -1819,6 +1819,40 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
+        self.progress.new("Loading split data from contigs DB")
+        split_names_in_contigs_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+        splits_to_use = split_names_in_contigs_db
+
+        # first, resolve differences in splits between profile and contigs db
+        if self.profile_db_path:
+            self.progress.update("Loading split data from profile DB")
+            # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
+            if utils.is_blank_profile(self.profile_db_path):
+                self.progress.reset()
+                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism "
+                                 "for you. But we cannot load splits from the profile DB, so instead we are assuming that "
+                                 "you are interested in ALL splits and we will load those from the contigs database.")
+            else:
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+                splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+
+                if len(splits_missing_in_profile_db):
+                    min_contig_length_in_profile_db = pp(ProfileDatabase(self.profile_db_path).meta['min_contig_length'])
+                    num_splits_contig = pp(len(split_names_in_contigs_db))
+                    num_splits_profile = pp(len(split_names_in_profile_db))
+                    num_missing = pp(len(splits_missing_in_profile_db))
+                    self.progress.reset()
+                    self.run.warning(f"Please note that anvi'o found {num_splits_contig} splits in your contigs database. "
+                                     f"But only {num_splits_profile} of them appear in the profile database. As a result, "
+                                     f"anvi'o will now remove the {num_missing} splits that occur only in the contigs db "
+                                     f"from all downstream analyses. Where is this difference coming from though? Well. This "
+                                     f"is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
+                                     f"step can exclude many contigs from downstream analyses (often for good reasons, too). For "
+                                     f"instance, in your case the minimum contig length set in the profile database is "
+                                     f"{min_contig_length_in_profile_db} nts. Anvi'o hopes that this explains some things.")
+                    splits_to_use = split_names_in_profile_db
+
+
         self.progress.new('Loading data from Contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
