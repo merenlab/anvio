@@ -347,7 +347,6 @@ class BottleApplication(Bottle):
             if self.interactive.mode == 'full' or self.interactive.mode == 'refine':
                 item_lengths = dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info])
             elif self.interactive.mode == 'pan':
-                item_lengths = {}
                 for gene_cluster in self.interactive.gene_clusters:
                     item_lengths[gene_cluster] = 0
                     for genome in self.interactive.gene_clusters[gene_cluster]:

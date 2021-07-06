@@ -339,6 +339,87 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
+    def get_items_additional_data_for_functions_per_split_summary(self, source, split_names_of_interest, data_dict={}, keys_list=[]):
+        """Get items additional data layers to display the frequency of function names
+           for each split in a given contigs database so it can be shown as a stacked bar
+           chart in the anvi'o interactive interface.
+
+        Parameters
+        ==========
+        source : str
+            A functional annotation source that is in the contigs database.
+        split_names_of_interest : list
+            Split names to be considered.
+        data_dict : dict
+            An optional `items_additional_data_dict` type dictionary to update.
+        keys_list : list
+            An optional `items_additional_data_keys` type list to update.
+
+        Returns
+        =======
+        data_dict : dict
+            An `items_additional_data_dict` type dictionary.
+        keys_list : list
+            An `items_additional_data_keys` type list.
+        """
+
+        if not self.gene_function_calls_initiated:
+            raise ConfigError("For this to work, someone needs to initialize gene functions first :/")
+
+        if source not in self.gene_function_call_sources:
+            raise ConfigError(f"Nice try. Your '{source}' is not a valid function annotation source in this "
+                              f"contigs database. You will need to choose one of these: {', '.join(self.gene_function_call_sources)}")
+
+        if len(data_dict) or len(keys_list):
+            if not len(data_dict) and len(keys_list):
+                raise ConfigError("If you are sending a data dictionary to expand with function summaries "
+                                  "per split, then you also need to send a keys dictionary to be expanded.")
+
+        # learn the number of categories for the function source
+        function_source_categories = set([])
+        for entry in self.gene_function_calls_dict.values():
+            if entry[source]:
+                function_source_category = entry[source][1].split('!!!')[0]
+                function_source_categories.add(function_source_category)
+
+        function_source_categories = sorted(list(function_source_categories))
+
+        # we can't use this strategy if there are many categories for a given
+        # function source
+        if len(function_source_categories) > 10:
+            raise ConfigError(f"The functional annotation source '{source}' has {len(function_source_categories)} "
+                              f"which is way too many to summarize into 'per split' data. If you think this is "
+                              f"a dumb reason to not do this, please let us know and we will try to find a better "
+                              f"solution to this. In the current implementation, any function annotation source "
+                              f"that has up to 10 categories is good.")
+
+        # create a template dictionaries to hold the category frequencies and default entries
+        # for splits with no information
+        _frequency_of_categories = dict([(cat, 0) for cat in function_source_categories])
+
+        for split_name in split_names_of_interest:
+            frequency_of_categories = copy.deepcopy(_frequency_of_categories)
+
+            for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
+                gene_callers_id = self.genes_in_splits[entry_id]['gene_callers_id']
+                if self.gene_function_calls_dict[gene_callers_id][source]:
+                    gene_function = self.gene_function_calls_dict[gene_callers_id][source][1].split('!!!')[0]
+                    frequency_of_categories[gene_function] += 1
+
+            if split_name not in data_dict:
+                data_dict[split_name] = {}
+                for key in keys_list:
+                    data_dict[split_name][key] = None
+
+            for category in function_source_categories:
+                data_dict[split_name][f"{source}!{category}"] = frequency_of_categories[category]
+
+        for category in function_source_categories:
+            keys_list.append(f"{source}!{category}")
+
+        return data_dict, keys_list
+
+
     def init_split_sequences(self, min_contig_length=0, split_names_of_interest=set([])):
         if not len(split_names_of_interest):
             split_names_of_interest = self.split_names_of_interest
@@ -2441,9 +2522,10 @@ class PanSuperclass(object):
 
         for view in views_table:
             table_name = views_table[view]['target_table']
+            data, header = pan_db.db.get_view_data(table_name, split_names_of_interest=split_names_of_interest)
             self.views[view] = {'table_name': table_name,
-                                'header': pan_db.db.get_table_structure(table_name)[1:],
-                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest)}
+                                'header': header,
+                                'dict': data}
 
         pan_db.disconnect()
 
@@ -3362,40 +3444,27 @@ class ProfileSuperclass(object):
                               "were trying to do with this database will not work :/" % (self.profile_db_path))
 
         if splits_mode and report_contigs:
+            self.progress.reset()
             raise ConfigError("--splits-mode and --report-contigs flags are incompatible. Pick one.")
 
         coverage_data_of_interest = 'mean_coverage_Q2Q3' if use_Q2Q3_coverages else 'mean_coverage'
 
+        table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
+
         profile_db = ProfileDatabase(self.profile_db_path)
-
-        if self.p_meta['merged']:
-            table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
-            split_coverages_dict = profile_db.db.get_table_as_dict(table_name)
-        else:
-            table_name = 'atomic_data' + '_' + ('splits' if splits_mode else 'contigs')
-            d = profile_db.db.get_table_as_dict(table_name, columns_of_interest=[coverage_data_of_interest])
-
-            # converting the raw dictionary read from the atomic data table into a for that is identical
-            # to the one that is read from a merged profile database:
-            split_coverages_dict = dict([(s, dict([(profile_db.meta['samples'], v) for v in list(d[s].values())])) for s in d])
-
+        split_coverages_dict, _ = profile_db.db.get_view_data(table_name)
         profile_db.disconnect()
 
-        # this is one of the shittiest blocks of code in anvi'o :( it is because the atomics_data_contigs table
-        # in single profiles have a 'None' for the __parent__ column in them, even though it is not the case
-        # for atomic_data_splits table (which is essentially identical to the former, except that it keeps
-        # staitstics for individual splits rather than their parents). this tiny tiny design issue creates a
-        # ridiculously complex chain of issues that require us here to use Python's split function to resolve
-        # split names to contig names when the user wants to get back item coverages values for contigs from
-        # single profiles. after literally spending hours on this, meren decided to let it go. the proper
-        # solution is to implement a new table for parent - split name associations in contigs databases,
-        # and remove __parent__ columns from all single and merged profile databases once and for all. it is
-        # quite a bit of refactoring though.
         if report_contigs:
+            # if we are here it means the user is asking for coverages for contigs, not splits. easy peasy.
+            contigs_db = ContigsDatabase(self.contigs_db_path)
+            split_parents = contigs_db.db.get_table_as_dict(t.splits_info_table_name, columns_of_interest=['contig', 'parent'])
+            contigs_db.disconnect()
+
             contig_coverages_dict = {}
 
             for split_name in split_coverages_dict:
-                contig_name = '_split_'.join(split_name.split('_split_')[:-1])
+                contig_name = split_parents[split_name]['parent']
 
                 if contig_name in contig_coverages_dict:
                     continue
@@ -3424,24 +3493,18 @@ class ProfileSuperclass(object):
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
 
-        table_names = [] if self.p_meta['blank'] else [table_name for table_name in t.atomic_data_table_structure[1:-1]]
+        table_names = [] if self.p_meta['blank'] else constants.essential_data_fields_for_anvio_profiles
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
-        # anonymous function to convert single profile table dicts compatible with merged ones (#155):
-        SINGLE_P = lambda d: dict([(s, dict([(self.p_meta['samples'][0], v) for v in list(d[s].values())])) for s in d])
-
-        self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
+        self.progress.new(f"Collection profile for '{collection_name}'")
         for table_name in table_names:
             # if SNVs are not profiled, skip the `variability` table
             if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
                 continue
 
-            self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
-            if self.p_meta['merged']:
-                table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
-            else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ], omit_parent_column=True))
+            self.progress.update(f"Populating view '{table_name}'")
+            table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
                 # populate averages per bin
@@ -3472,10 +3535,7 @@ class ProfileSuperclass(object):
                 self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
-        if self.p_meta['merged']:
-            coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
-        else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=["mean_coverage", ], omit_parent_column=True))
+        coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
 
         self.bin_percent_recruitment_per_sample = {}
         if self.p_meta['blank']:
@@ -3518,10 +3578,12 @@ class ProfileSuperclass(object):
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
 
-            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress, omit_parent_column=omit_parent_column)
+            data, header = profile_db.db.get_view_data(table_name,
+                                                       split_names_of_interest=split_names_of_interest,
+                                                       splits_basic_info=(None if omit_parent_column else self.splits_basic_info))
 
             self.views[view] = {'table_name': table_name,
-                                'header': profile_db.db.get_table_structure(table_name)[1:],
+                                'header': header,
                                 'dict': data}
 
         self.progress.end()

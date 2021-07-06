@@ -95,8 +95,8 @@ class Parser(object):
                         failed_lines_text = '%s' % (', '.join([str(l) for l in failed_lines]))
 
                     run.warning("This is the base parser class--a part of the code you should never hear from. PLEASE "
-                                "READ THIS CAREFULLY. While anvi'o was trying to parse some files assocaited with the "
-                                "annotation source `%s`, it found that %d of the lines in this file were not able to "
+                                "READ THIS CAREFULLY. While anvi'o was trying to parse some files associated with the "
+                                "program `%s`, it found that %d of the lines in this file were not able to "
                                 "made sense of. This part of the code does not know anything more than that. It doesn't "
                                 "even know what file it is. But in general this error occurs when the mapping function "
                                 "does not find what its looking for in a line. For instance, a value that was supposed to "

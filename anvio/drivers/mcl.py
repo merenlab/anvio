@@ -59,12 +59,13 @@ class MCL:
 
             line_no += 1
 
-        self.run.info('Number of gene clusters', '%s' % pp(len(clusters_dict)))
+        self.run.info('Number of MCL clusters', '%s' % pp(len(clusters_dict)))
 
         return clusters_dict
 
 
     def cluster(self):
+        self.run.warning(None, header="MCL", lc="green")
         self.run.info('MCL inflation', self.inflation)
 
         self.progress.new('MCL')

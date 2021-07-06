@@ -237,7 +237,7 @@ class AnvioPrograms:
                              nl_after=1, nl_before=1)
 
         # report missing provides/requires information
-        self.run.info_single("Of %d programs found, %d did not have any USAGE INFORMATION. You can "
+        self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
                              "help by adding usage information for programs by creating markdown "
                              "formatted files under the directory '%s'. Please see examples in anvi'o "
                              "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "

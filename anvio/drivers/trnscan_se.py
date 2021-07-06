@@ -32,7 +32,7 @@ class tRNAScanSE:
     def __init__(self, args, program_name='tRNAscan-SE', run=None, progress=None, skip_sanity_check=False):
         self.program_name = program_name
 
-        self.tested_versions = ['2.0.5']
+        self.tested_versions = ['2.0.5', '2.0.7']
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
@@ -89,13 +89,13 @@ class tRNAScanSE:
                 self.run.info('%s version found' % self.program_name, version_found, mc="green", nl_after=1)
         except:
             version_found = 'Unknown'
-            self.run.warning("Anvi'o failed to learn the version of %s installed on this system :/")
+            self.run.warning("Anvi'o failed to learn the version of %s installed on this system :/" % self.program_name)
 
         if version_found not in self.tested_versions:
             self.run.warning("The version of %s installed on your system ('%s') is not one of those that we tested its anvi'o driver "
                              "with. Anvi'o will continue to try to run everything as if this didn't happen. If you see this warning "
                              "but everything works fine, let us know so we can include this version number into the list of 'tested' "
-                             "version numbers. If you see an unexpexted error, please consider installing one of these versions "
+                             "version numbers. If you see an unexpected error, please consider installing one of these versions "
                              "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" % \
                                            (self.program_name, version_found, ', '.join(list(self.tested_versions))))
 

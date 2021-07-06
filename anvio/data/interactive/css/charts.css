@@ -18,7 +18,7 @@
   bottom: 0;
   background: rgba(255,255,255,.80);
   border-top: 1px solid #ccc;
-  z-index: 4;
+  z-index: 5;
   pointer-events: none;
 }
 
@@ -49,6 +49,16 @@
   z-index: 3;
   position: absolute;
   pointer-events: none;
+}
+
+#sample-titles {
+  z-index: 4;
+  position: absolute;
+  pointer-events: none;
+}
+
+.sample-title {
+  pointer-events: all;
 }
 
 .SNV_text, .indels_text {
