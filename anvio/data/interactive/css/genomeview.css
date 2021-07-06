@@ -11,6 +11,54 @@
 #myCanvas {
 }
 
+svg {
+    font-family: 'Lato', Arial, serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+}
+
+g.context g.brush rect.background {
+    fill: rgba(0,0,0,.1);
+}
+
+g.context g.axis path {
+    stroke-opacity: 0;
+}
+
+g.context g.axis line {
+    stroke-opacity: .5;
+}
+
+.axis path, .axis line {
+    fill: none;
+    stroke: #aaa;
+    shape-rendering: crispEdges;
+}
+
+.brush .extent {
+    stroke: black;
+    fill-opacity: .125;
+    shape-rendering: crispEdges;
+}
+
+g.context rect.background{
+    fill: rgb(200,200,255);
+    visibility: visible !important;
+    pointer-events: all;
+}
+
+.brush .extent {
+    stroke: black;
+    fill-opacity: .125;
+    shape-rendering: crispEdges;
+}
+
+rect.background {
+  fill: rgba(0,0,0,0.1);
+  visibility: visible !important;
+  pointer-events: all;
+}
 
 #tooltip-body{
     height: 300px;

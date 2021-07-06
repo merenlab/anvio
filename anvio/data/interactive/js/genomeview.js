@@ -21,8 +21,8 @@
  var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
  var canvas;
- var scaleCanvas;
  var genomeLabelsCanvas;
+ var brush;
  var genomeMax = 0;
 
  // Settings vars
@@ -36,7 +36,7 @@
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
  var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
- var scale = 100; // nt scale intervals
+ var scaleInterval = 100; // nt scale intervals
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 
  var alignToGC = null;
@@ -165,135 +165,78 @@ function processState(stateName, stateData){
 function loadAll() {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
-  scaleCanvas = new fabric.Canvas('scale')
-  scaleCanvas.add(new fabric.Rect({
-    width: 1200,
-    height : 200,
-    fill : "rgba(0,0,0,.1)",
-    opacity : .6,
-    selectable : false,
-    hoverCursor: "crosshair"
-  }))
 
-  var brush = new fabric.Rect({ // 'cursor' for current zoom location
-    id: 'cursor_box',
-    width: 10,
-    height: 200,
-    fill: "rgba(0,0,0,.125)",
-    stroke: 'black',
-    strokeUniform: true,
-    noScaleCache: false,
-    top : 0,
-    left : 10,
-    lockMovementY: true,
-    lockScalingY: true,
-    lockRotation: true,
-    lockScalingFlip: true,
-    hasBorders: false
-  })
-  brush.setControlsVisibility({
-    tl:false, //top-left
-    mt:false, // middle-top
-    tr:false, //top-right
-    bl:false, // bottom-left
-    mb:false, //middle-bottom
-    br:false //bottom-right
-  });
-  scaleCanvas.add(brush)
-  scaleCanvas.setActiveObject(brush);
-  let scaleDragStartingX;
-  let totalScaleX;
-  let dragging = false;
+  // Find max length genome
+  for(genome of genomeData.genomes) {
+    genome = genome[1].genes.gene_calls;
+    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
+  }
 
-  scaleCanvas.on('mouse:down', (event) => {
-    if(event.target && event.target.id == 'cursor_box') {
-      dragging = true;
-      return;
-    }
-    scaleDragStartingX = event.pointer.x
-  })
+  var scaleWidth = 1200;
+  var scaleHeight = 200;
 
-  scaleCanvas.on('object:moving', (event) => {
-    var obj = event.target;
-    if(!obj || obj.id != 'cursor_box') return;
-    obj.set({
-      left: clamp(obj.left, 0, scaleCanvas.width - obj.width)
-    });
-  })
+  var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
 
-  scaleCanvas.on('object:scaling', (event) => {
-    var obj = event.target;
-    if(!obj || obj.id != 'cursor_box') return;
+  var scaleAxis = d3.svg.axis()
+              .scale(xScale)
+              .tickSize(scaleHeight);
 
-    var sX = obj.scaleX;
-    var sY = obj.scaleY;
-    obj.width *= sX;
-    obj.scaleX = 1;
-  })
+  var contextArea = d3.svg.area()
+              .interpolate("monotone")
+              .x(function(d) { return xScale(d); })
+              .y0(scaleHeight)
+              .y1(0);
 
-  scaleCanvas.on('mouse:up', (event) => {
-    if(dragging) {
-      dragging = false;
-      //let start = event.pointer.x - distanceFromStartOfBox;
-      //let end = event.pointer.x - distanceFromStartOfBox + lengthOfBox;
-      // draw new amount here
-      return;
-    }
-    let scaleDragEndingX = event.pointer.x // click + drag ending x position
-    totalScaleX = event.target ? event.target.aCoords.tr.x : scaleCanvas.width // total x axis length
-    if(scaleDragEndingX < 0) scaleDragEndingX = 0;
-    if(scaleDragEndingX > totalScaleX) scaleDragEndingX = totalScaleX;
+  brush = d3.svg.brush()
+              .x(xScale)
+              .on("brushend", onBrush);
 
-    if(scaleDragStartingX === scaleDragEndingX){ //account for accidental drag, click and release
-      return
-    }
-    let mainCanvasWidth = canvas.getWidth()
-    let [percentileStart, percentileEnd] = [Math.min(scaleDragStartingX,scaleDragEndingX)/totalScaleX,
-                                            Math.max(scaleDragStartingX,scaleDragEndingX)/totalScaleX]
-    let percentileToShow = (percentileEnd - percentileStart).toFixed(3)
-    if(percentileToShow < 300/genomeMax) percentileToShow = 300/genomeMax;
+  var scaleBox = d3.select("#scaleSvg").append("g")
+              .attr("id", "context-chart")
+              .attr("class","context")
+              .attr("y", 230); // rather than 80 from 50?
 
-    let moveTo = new fabric.Point((showLabels?120:0) + genomeMax * percentileStart, 0)
+  scaleBox.append("g")
+              .attr("class", "x axis top noselect")
+              .attr("transform", "translate(0,0)")
+              .call(scaleAxis);
 
-    scaleCanvas.remove(scaleCanvas.getObjects()[1]) // this should be changed
-    var brush = new fabric.Rect({ // 'cursor' for current zoom location
-      id: 'cursor_box',
-      width: 1200 * percentileToShow,
-      height: 200,
-      fill: "rgba(0,0,0,.125)",
-      stroke: 'black',
-      strokeUniform: true,
-      noScaleCache: false,
-      top: 0,
-      left: scaleCanvas.width * percentileStart,
-      lockMovementY: true,
-      lockScalingY: true,
-      lockRotation: true,
-      lockScalingFlip: true,
-      hasBorders: false
-    });
-    brush.setControlsVisibility({
-      tl:false, //top-left
-      mt:false, // middle-top
-      tr:false, //top-right
-      bl:false, // bottom-left
-      mb:false, //middle-bottom
-      br:false //bottom-right
-    });
-    scaleCanvas.add(brush);
-    scaleCanvas.setActiveObject(brush);
+  scaleBox.append("g")
+              .attr("class", "x brush")
+              .call(brush)
+              .selectAll("rect")
+              .attr("y", 0)
+              .attr("height", scaleHeight);
 
-    let ntsToShow = percentileToShow*genomeMax;
-    scaleFactor = mainCanvasWidth/ntsToShow;
-    if(scaleFactor > 4) scaleFactor = 4;
+  function onBrush(){
+      console.log("onBrush() called!");
+      var b = brush.empty() ? xScale.domain() : brush.extent();
 
-    let val = Math.floor(50 / (scale * scaleFactor));
-    scale *= (2**val); // temporary fix for legibility
+      if (brush.empty()) {
+          $('.btn-selection-sequence').addClass('disabled').prop('disabled', true);
+      } else {
+          $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
+      }
 
-    $('#genome_scale_interval').val(scale);
-    draw();
-    canvas.absolutePan({x: scaleFactor*moveTo.x, y: moveTo.y});
-  })
+      b = [Math.floor(b[0]), Math.floor(b[1])];
+
+      $('#brush_start').val(b[0]);
+      $('#brush_end').val(b[1]);
+
+      let ntsToShow = b[1] - b[0];
+      scaleFactor = canvas.getWidth()/ntsToShow;
+
+      let val = Math.floor(50 / (scaleInterval * scaleFactor));
+      scaleInterval *= (2**val); // temporary fix for legibility
+
+      $('#genome_scale_interval').val(scaleInterval);
+      draw();
+      moveToX = (showLabels?120:0) + b[0];
+      canvas.absolutePan({x: scaleFactor*moveToX, y: 0});
+
+      // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
+  }
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#show_genome_labels_box').attr("checked", showLabels);
@@ -365,13 +308,6 @@ function loadAll() {
     }));
   }
 
-  // Find max length genome
-  for(genome of genomeData.genomes) {
-    genome = genome[1].genes.gene_calls;
-    let genomeEnd = genome[Object.keys(genome).length-1].stop;
-    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
-  }
-
   draw();
 
   // zooming and panning
@@ -406,8 +342,8 @@ function loadAll() {
 
     var delta = opt.e.deltaY;
     scaleFactor *= 0.999 ** delta;
-    if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
-    $('#genome_scale_interval').val(scale);
+    if(scale * scaleFactor < 50) scaleInterval *= 2; // temporary fix for legibility
+    $('#genome_scale_interval').val(scaleInterval);
     if (scaleFactor > 4) scaleFactor = 4;
     if (scaleFactor < 0.01) scaleFactor = 0.01;
     draw();
@@ -492,7 +428,7 @@ function draw(scaleX=scaleFactor) {
 function drawScale(y, scaleX=scaleFactor) {
   if(!showScale) return;
 
-  for(var w = 0; w < genomeMax; w+=scale) {
+  for(var w = 0; w < genomeMax; w+=scaleInterval) {
     canvas.add(new fabric.Line([0,0,0,20], {left: (w+(showLabels?120:0))*scaleX,
           top: y*(spacing)-24,
           stroke: 'black',
@@ -533,8 +469,8 @@ function zoomIn() {
 function zoomOut() {
   scaleFactor -= (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor < 0.01) scaleFactor = 0.01;
-  if(scale * scaleFactor < 50) scale *= 2; // temporary fix for legibility
-  $('#genome_scale_interval').val(scale);
+  if(scaleInterval * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+  $('#genome_scale_interval').val(scaleInterval);
   draw();
 }
 
@@ -631,7 +567,7 @@ function setScale(newScale) {
     alert(`Invalid value, scale interval must be >=50.`);
     return;
   }
-  scale = newScale;
+  scaleInterval = newScale;
   draw();
 }
 

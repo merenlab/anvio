@@ -8,6 +8,7 @@
         <link rel="stylesheet" type="text/css" href="./css/genomeview.css" />
         <link rel="shortcut icon" href="#">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
         <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
         <script type="text/javascript" src="lib/jquery-ui/ui/core.js"></script>
         <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
@@ -29,10 +30,13 @@
               <canvas id="myCanvas" width="1200px" height="500px"></canvas>
             </div>
             <div id='scaleContainer'>
-              <nutton id='reset-scale' onclick="resetScale()">reset scale</nutton>
-              <canvas id="scale" width="1200px" height="200px"></canvas>
+              <div id="scaleBox" width="1200px" height="200px">
+                <svg id="scaleSvg" width="1200px" height="200px"></svg>
+              </div>
               <button id="zoom-in" onclick="zoomIn()">+</button>
               <button id="zoom-out" onclick="zoomOut()">-</button>
+              <input type="text" class="form-control input-sm" id="brush_end" style= "width: 60px; float:right" value="0"></input>
+              <input type="text" class="form-control input-sm" id="brush_start" style= "width: 60px; float:right; margin-right:10px" value="0"></input>
             </div>
             <div id='tooltip-body' display='none'></div>
 
@@ -63,15 +67,6 @@
                         </table>
 
                         <span class="settings-header">Genomes</span>
-
-                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                          <label id="genome_order_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="genome_order" data-original-title="" title="">Genome Order:</label>
-                          <div class="col-md-8">
-                            <select id="genome_order_select" style="margin-bottom: 10px" class="form-control input-xs">
-                              <option value='Alphabetical'>Alphabetical</option>
-                            </select>
-                          </div>
-                        </div>
 
                   <div id="table_layers_container" style="margin-top: 15px;">
                       <table id="table_genomes" class='sortable'>
