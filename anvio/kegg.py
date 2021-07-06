@@ -1859,13 +1859,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     splits_to_use = split_names_in_profile_db
 
 
-        self.progress.new('Loading data from Contigs DB')
+        self.progress.update('Loading gene call data from contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
-        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
+
+        split_list = ','.join(splits_to_use)
+        splits_where_clause = f'''split IN ({split_list})'''
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split",
+                                                                    where_clause=splits_where_clause)
+
+        gene_list = ','.join([gcid for gcid,split in genes_in_splits])
+        contigs_where_clause = f'''gene_callers_id IN ({gene_list})'''
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig",
+                                                                     where_clause=contigs_where_clause)
+
+        source_list = ','.join(annotation_sources)
+        hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
-                                                               where_clause="source = 'KOfam'")
-        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
+                                                               where_clause=hits_where_clause)
+
         contigs_db.disconnect()
 
         # get rid of gene calls that are not associated with KOfam hits.
