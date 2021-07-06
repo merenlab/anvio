@@ -182,7 +182,7 @@ function loadAll() {
               .scale(xScale)
               .tickSize(scaleHeight);
 
-  var contextArea = d3.svg.area()
+  var scaleArea = d3.svg.area()
               .interpolate("monotone")
               .x(function(d) { return xScale(d); })
               .y0(scaleHeight)
@@ -193,8 +193,8 @@ function loadAll() {
               .on("brushend", onBrush);
 
   var scaleBox = d3.select("#scaleSvg").append("g")
-              .attr("id", "context-chart")
-              .attr("class","context")
+              .attr("id", "scaleBox")
+              .attr("class","scale")
               .attr("y", 230); // rather than 80 from 50?
 
   scaleBox.append("g")
