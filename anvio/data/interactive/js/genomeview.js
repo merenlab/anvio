@@ -28,6 +28,7 @@
  // Settings vars
  // TODO migrate below variables to kvp in state
  var stateData = {};
+ var calculatedSpacing; // like spacing, but calculated ;)
  var spacing = 30; // vertical spacing between genomes
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
@@ -189,7 +190,7 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
-  let calculatedSpacing = calculateSpacingForGroups()
+  calculatedSpacing = calculateSpacingForGroups()
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
@@ -460,6 +461,7 @@ function draw(scaleX=scaleFactor) {
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
     addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
+    addLayers(label, genome[1], genome[0])
     labelSpacing += 30
     y++;
   }
@@ -697,6 +699,17 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
   }
   //canvas.add(geneGroup.set('scaleX',canvas.getWidth()/genomeMax/3));
   //geneGroup.destroy();
+}
+
+function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
+
+  let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
+  if(additionalDataLayers['coverage']){
+    // process for rendering coverage
+  }
+  if(additionalDataLayers['gcContent']){
+    //process for rendering GC content
+  }
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
