@@ -1815,6 +1815,67 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### ATOMIC ESTIMATION FUNCTIONS #########
 
+    def get_splits_for_genome(self):
+        """Returns list of splits for a genome"""
+
+        split_names_in_contigs_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+        splits_to_use = split_names_in_contigs_db
+
+        # resolve differences in splits between profile and contigs db
+        if self.profile_db_path:
+            self.progress.update("Loading split data from profile DB")
+            # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
+            if utils.is_blank_profile(self.profile_db_path):
+                self.progress.reset()
+                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism "
+                                 "for you. But we cannot load splits from the profile DB, so instead we are assuming that "
+                                 "you are interested in ALL splits and we will load those from the contigs database.")
+            else:
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+                splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+
+                if len(splits_missing_in_profile_db):
+                    min_contig_length_in_profile_db = pp(ProfileDatabase(self.profile_db_path).meta['min_contig_length'])
+                    num_splits_contig = pp(len(split_names_in_contigs_db))
+                    num_splits_profile = pp(len(split_names_in_profile_db))
+                    num_missing = pp(len(splits_missing_in_profile_db))
+                    self.progress.reset()
+                    self.run.warning(f"Please note that anvi'o found {num_splits_contig} splits in your contigs database. "
+                                     f"But only {num_splits_profile} of them appear in the profile database. As a result, "
+                                     f"anvi'o will now remove the {num_missing} splits that occur only in the contigs db "
+                                     f"from all downstream analyses. Where is this difference coming from though? Well. This "
+                                     f"is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
+                                     f"step can exclude many contigs from downstream analyses (often for good reasons, too). For "
+                                     f"instance, in your case the minimum contig length set in the profile database is "
+                                     f"{min_contig_length_in_profile_db} nts. Anvi'o hopes that this explains some things.")
+                    splits_to_use = split_names_in_profile_db
+
+        return splits_to_use
+
+
+    def get_contigs_and_splits_for_metagenome(self):
+        """Returns dictionary mapping contigs to splits for a metagenome"""
+
+        splits_to_use = self.get_splits_for_genome()
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+
+        split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
+        splits_where_clause = f'''split IN ({split_list})'''
+        contigs_and_splits = contigs_db.db.get_some_columns_from_table(t.splits_info_table_name, "parent, split",
+                                                                    where_clause=splits_where_clause)
+        contigs_db.disconnect()
+
+        contig_to_split_dict = {}
+        for c,s in contigs_and_splits:
+            if c not in contig_to_split_dict:
+                contig_to_split_dict[c] = [s]
+            else:
+                contig_to_split_dict[c].append(s)
+
+        return contig_to_split_dict
+
+
     def init_hits_and_splits(self, annotation_sources=['KOfam']):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
@@ -1916,6 +1977,72 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return kofam_gene_split_contig
 
 
+    def init_hits_for_list_of_splits(self, splits_to_use, annotation_sources=['KOfam']):
+        """This function returns a list of (KOfam hits, gene calls, splits, contigs) tuples from a particular set of splits.
+
+        It is an alternative function to init_hits_and_splits(), which loads all hits from the contigs database.
+        It is intended to be used when processing individual bins or contigs.
+
+        PARAMETERS
+        ==========
+        splits_to_use : list
+            a list of split names to obtain KOfam hits and gene calls from
+        annotation_sources : list
+            which functional annotation sources to obtain gene calls from. Should at least contain 'Kofam' for
+            default usage. Adding other sources may be necessary when working with user-defined metabolic modules.
+
+        RETURNS
+        =======
+        kofam_gene_split_contig : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        """
+
+        self.progress.new('Loading gene call data from contigs DB')
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+
+        split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
+        splits_where_clause = f'''split IN ({split_list})'''
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split",
+                                                                    where_clause=splits_where_clause)
+
+        gene_list = ','.join(["'%s'" % gcid for gcid,split in genes_in_splits])
+        contigs_where_clause = f'''gene_callers_id IN ({gene_list})'''
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig",
+                                                                     where_clause=contigs_where_clause)
+
+        source_list = ','.join(["'%s'" % src for src in annotation_sources])
+        hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
+                                                               where_clause=hits_where_clause)
+
+        contigs_db.disconnect()
+
+        # combine the information for each gene call into neat tuples for returning
+        # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
+        # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
+        self.progress.update("Organizing KOfam hit data")
+        gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
+        gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
+        assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
+
+        kofam_gene_split_contig = []
+        for gene_call_id, ko in kofam_hits:
+            kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+
+        self.progress.update("Done")
+        self.progress.end()
+
+        self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
+
+        if not self.quiet and not len(kofam_hits):
+            self.run.warning("Hmmm. No KOfam hits were found in the current set of splits. This is fine, and "
+                             "could even be biologically correct. But we thought we'd mention it just in case you thought it was weird. "
+                             "Other, technical reasons that this could have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` "
+                             "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
+
+        return kofam_gene_split_contig
+
+
     def init_paths_for_modules(self):
         """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
         all downstream functions to access.
@@ -2009,7 +2136,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
-    def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
+    def mark_kos_present_for_list_of_splits(self, split_list=None, bin_name=None):
         """This function generates two bin-level dictionaries of dictionaries to store metabolism data.
 
         The first dictionary of dictionaries is the module completeness dictionary, which associates modules with the KOs
@@ -2057,6 +2184,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         bin_level_ko_dict : dictionary of dictionaries
             dictionary of ko hits within the list of splits provided
         """
+
+        kofam_hits_in_splits = self.init_hits_for_list_of_splits(split_list)
 
         bin_level_module_dict = {}
         bin_level_ko_dict = {}
@@ -2634,7 +2763,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### ESTIMATION DRIVER FUNCTIONS #########
 
-    def estimate_for_genome(self, kofam_gene_split_contig):
+    def estimate_for_genome(self):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
         Assuming this contigs DB contains only one genome, it sends all of the splits and their kofam hits to the atomic
@@ -2657,8 +2786,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         genome_ko_superdict = {}
 
         # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
-        splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-        metabolism_dict_for_genome, ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_genome,
+        splits_in_genome = self.get_splits_for_genome()
+        metabolism_dict_for_genome, ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(split_list=splits_in_genome,
                                                                                                     bin_name=self.contigs_db_project_name)
         if not self.store_json_without_estimation:
             genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome, bin_name=self.contigs_db_project_name)
@@ -2673,7 +2802,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return genome_metabolism_superdict, genome_ko_superdict
 
 
-    def estimate_for_bins_in_collection(self, kofam_gene_split_contig):
+    def estimate_for_bins_in_collection(self):
         """
         This function calls metabolism estimation for every bin the user requests.
 
@@ -2706,13 +2835,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
 
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
-            ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
+            #ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
 
-            if not len(ko_in_bin):
-                self.progress.reset()
-                self.run.warning(f"It seems the bin '{bin_name}' contains zero KOfam hits. Just so you know.")
+            #if not len(ko_in_bin):
+                #self.progress.reset()
+                #self.run.warning(f"It seems the bin '{bin_name}' contains zero KOfam hits. Just so you know.")
 
-            metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
+            metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(split_list=splits_in_bin, bin_name=bin_name)
 
             if not self.store_json_without_estimation:
                 bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin, bin_name=bin_name)
@@ -2735,7 +2864,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bins_metabolism_superdict, bins_ko_superdict
 
 
-    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
+    def estimate_for_contigs_db_for_metagenome(self):
         """This function handles metabolism estimation for an entire metagenome.
 
         We treat each contig in the metagenome to be its own 'bin' or 'genome' and estimate
@@ -2757,20 +2886,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         metagenome_metabolism_superdict = {}
         metagenome_ko_superdict = {}
 
-        contigs_in_metagenome = list(set([tpl[3] for tpl in kofam_gene_split_contig]))
-        num_contigs = len(contigs_in_metagenome)
+        #contigs_in_metagenome = list(set([tpl[3] for tpl in kofam_gene_split_contig]))
+        contigs_to_splits = self.get_contigs_and_splits_for_metagenome()
+        num_contigs = len(contigs_to_splits.keys())
 
         self.progress.new("Estimating metabolism for each contig in metagenome", progress_total_items=num_contigs)
 
-        for contig in contigs_in_metagenome:
+        for contig in contigs_to_splits:
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_contigs, contig))
 
             # get unique split names associated with this contig
-            splits_in_contig = list(set([tpl[2] for tpl in kofam_gene_split_contig if tpl[3] == contig]))
+            splits_in_contig = contigs_to_splits[contig]
             if anvio.DEBUG:
                 self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
-            ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
-            metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(ko_in_contig, split_list=splits_in_contig, bin_name=contig)
+            #ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
+            metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(split_list=splits_in_contig, bin_name=contig)
 
 
             if not self.store_json_without_estimation:
@@ -2902,19 +3032,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
 
-            kofam_hits_info = self.init_hits_and_splits()
+            #kofam_hits_info = self.init_hits_and_splits()
             self.init_paths_for_modules()
 
             if self.add_coverage:
                 self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
 
             if self.profile_db_path and self.collection_name and not self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection()
             elif not self.collection_name and not self.metagenome_mode:
                 self.genome_mode = True
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome()
             elif self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome()
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
