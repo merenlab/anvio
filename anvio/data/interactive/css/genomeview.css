@@ -18,15 +18,15 @@ svg {
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
 }
 
-g.context g.brush rect.background {
+g.scale g.brush rect.background {
     fill: rgba(0,0,0,.1);
 }
 
-g.context g.axis path {
+g.scale g.axis path {
     stroke-opacity: 0;
 }
 
-g.context g.axis line {
+g.scale g.axis line {
     stroke-opacity: .5;
 }
 
@@ -42,7 +42,7 @@ g.context g.axis line {
     shape-rendering: crispEdges;
 }
 
-g.context rect.background{
+g.scale rect.background{
     fill: rgb(200,200,255);
     visibility: visible !important;
     pointer-events: all;
