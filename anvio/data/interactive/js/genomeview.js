@@ -707,9 +707,13 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
   if(additionalDataLayers['coverage']){
     // process for rendering coverage
+  } else {
+    // still need to render out the empty space for even group sizing
   }
   if(additionalDataLayers['gcContent']){
     //process for rendering GC content
+  } else {
+    // still need to render out the empty space for even group sizing
   }
 }
 
