@@ -706,7 +706,6 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
 
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
-
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
     for(let i = 0; i < additionalDataLayers['coverage'].length; i++){ // TODO this seems like an inefficient way to find the max range for coverage
@@ -723,16 +722,11 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         left : 120 + i
       }) )
     }
-  } else {
-    // still need to render out the empty space for even group sizing
-  }
+  } 
   if(additionalDataLayers['gcContent']){
     //process for rendering GC content
-  } else {
-    // still need to render out the empty space for even group sizing
-  }
+  } 
   yOffset += 40
-  console.log(`y offset is ${yOffset}`)
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
