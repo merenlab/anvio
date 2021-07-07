@@ -704,7 +704,6 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 }
 
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
-  console.log(scaleFactor)
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
@@ -735,7 +734,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         fill : 'pink', 
         opacity : 1 * [additionalDataLayers['gcContent'][i] / maxGCValue],
         selectable : false, 
-        top : 80 + yOffset + 12, 
+        top : 70 + yOffset + 12, 
         left : 120 + i
       }) )
     }
