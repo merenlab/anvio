@@ -4953,53 +4953,68 @@ def profile_worker(input_queue, output_queue, profiler):
         output_queue.put((profiler.profile(seq_string, name=represent_name), read_count))
 
 
-class NormalizedSeqSummary(object):
-    """Relevant data from normalized sequences stored in anvi'o tRNA-seq databases are reloaded into
-    these objects."""
+class NormalizedSequenceSummary(object):
+    """Relevant data from a normalized sequence stored in a tRNA-seq database is reloaded into this
+    object."""
 
     __slots__ = (
         'name',
         'sample_id',
-        'seq_string',
-        'anticodon_seq_string',
+        'string',
+        'anticodon_string',
         'feature_dict',
         'feature_threshold_start',
-        'mean_specific_cov',
-        'specific_covs',
-        'nonspecific_covs',
-        'specific_nt_covs_dict',
-        'nonspecific_nt_covs_dict',
-        'mod_seq_summary'
+        'alpha_start',
+        'alpha_stop',
+        'beta_start',
+        'beta_stop',
+        'mean_spec_cov',
+        'spec_covs',
+        'nonspec_covs',
+        'spec_nt_covs_dict',
+        'nonspec_nt_covs_dict',
+        'summary_M'
     )
 
     def __init__(self):
-        self.name = None
-        self.sample_id = None
-        self.seq_string = None
-        self.anticodon_seq_string = None
-        self.feature_dict = None
-        self.feature_threshold_start = None
-        self.mean_specific_cov = None
-        self.specific_covs = None
-        self.nonspecific_covs = None
-        self.specific_nt_covs_dict = None
-        self.nonspecific_nt_covs_dict = None
-        self.mod_seq_summary = None
+        for attr_name in NormalizedSequenceSummary.__slots__:
+            setattr(self, attr_name, None)
 
 
-class ModifiedSeqSummary(object):
-    """Relevant data from modified sequences stored in anvi'o tRNA-seq databases are reloaded into
-    these objects."""
+class NormalizedIndelSequenceSummary(NormalizedSequenceSummary):
+    """Relevant data from a normalized sequence with indels stored in a tRNA-seq database is
+    reloaded into this object."""
+
+    __slots__ = (
+        'insert_starts',
+        'insert_strings',
+        'spec_insert_covs',
+        'nonspec_insert_covs',
+        'del_starts',
+        'del_lengths',
+        'spec_del_covs',
+        'nonspec_del_covs'
+    )
+
+    def __init__(self):
+        super().__init__()
+        for attr_name in NormalizedIndelSequenceSummary.__slots__:
+            setattr(self, attr_name, None)
+
+
+class ModifiedSequenceSummary(object):
+    """Relevant data from a modified sequence stored in a tRNA-seq database is reloaded into this
+    object."""
 
     __slots__ = (
         'name',
         'sample_id',
-        'consensus_seq_string',
+        'consensus_string',
         'sub_positions',
-        'specific_nt_covs_dict',
-        'nonspecific_nt_covs_dict',
-        'specific_covs',
-        'nonspecific_covs',
+        'spec_nt_covs_dict',
+        'nonspec_nt_covs_dict',
+        'spec_covs',
+        'nonspec_covs',
         'insert_starts',
         'insert_strings',
         'spec_insert_covs',
@@ -5008,146 +5023,92 @@ class ModifiedSeqSummary(object):
         'del_lengths',
         'spec_del_covs',
         'nonspec_del_covs',
-        'norm_seq_summaries'
+        'summaries_Nb',
+        'summaries_Ni'
     )
 
     def __init__(self):
-        self.name = None
-        self.sample_id = None
-        self.consensus_seq_string = None
-        self.sub_positions = None
-        self.specific_nt_covs_dict = None
-        self.nonspecific_nt_covs_dict = None
-        self.specific_covs = None
-        self.nonspecific_covs = None
-        self.insert_starts = None
-        self.insert_strings = None
-        self.spec_insert_covs = None
-        self.nonspec_insert_covs = None
-        self.del_starts = None
-        self.del_lengths = None
-        self.spec_del_covs = None
-        self.nonspec_del_covs = None
-        self.norm_seq_summaries = None
+        for attr_name in ModifiedSequenceSummary.__slots__:
+            setattr(self, attr_name, None)
 
 
-class SeedSeq(object):
+class SeedSequence(object):
 
     __slots__ = (
         'name',
-        'seq_string',
+        'string',
         'meets_feature_threshold',
-        'unmod_norm_seq_summaries',
-        'mod_seq_summaries',
-        'anticodon_seq_string',
-        'total_specific_covs',
-        'total_nonspecific_covs',
-        'total_mean_specific_cov',
-        'total_mean_nonspecific_cov',
-        'sample_specific_covs_dict',
-        'sample_nonspecific_covs_dict',
+        'summaries_Nu',
+        'summaries_M',
+        'anticodon_string',
+        'feature_dict',
+        'alpha_start',
+        'alpha_stop',
+        'beta_start',
+        'beta_stop',
+        'total_spec_covs',
+        'total_nonspec_covs',
+        'total_mean_spec_cov',
+        'total_mean_nonspec_cov',
+        'sample_spec_covs_dict',
+        'sample_nonspec_covs_dict',
         'sample_summed_covs_dict',
-        'sample_specific_nt_covs_dict',
-        'sample_nonspecific_nt_covs_dict',
+        'sample_spec_nt_covs_dict',
+        'sample_nonspec_nt_covs_dict',
         'sample_summed_nt_covs_dict',
-        'sample_mean_specific_cov_dict',
-        'sample_mean_nonspecific_cov_dict',
+        'sample_mean_spec_cov_dict',
+        'sample_mean_nonspec_cov_dict',
         'sample_mean_summed_cov_dict',
-        'sample_std_specific_cov_dict',
-        'sample_std_nonspecific_cov_dict',
+        'sample_std_spec_cov_dict',
+        'sample_std_nonspec_cov_dict',
         'sample_std_summed_cov_dict',
-        'sample_specific_abundances_dict',
-        'sample_nonspecific_abundances_dict',
-        'sample_summed_abundances_dict',
-        'sample_specific_relative_abundances_dict',
-        'sample_nonspecific_relative_abundances_dict',
-        'sample_summed_relative_abundances_dict',
-        'sample_specific_detection_dict',
-        'sample_nonspecific_detection_dict',
+        'sample_spec_abund_dict',
+        'sample_nonspec_abund_dict',
+        'sample_summed_abund_dict',
+        'sample_spec_rel_abund_dict',
+        'sample_nonspec_rel_abund_dict',
+        'sample_summed_rel_abund_dict',
+        'sample_spec_detection_dict',
+        'sample_nonspec_detection_dict',
         'sample_summed_detection_dict',
-        'sample_mean_Q2Q3_specific_cov_dict',
-        'sample_mean_Q2Q3_nonspecific_cov_dict',
+        'sample_mean_Q2Q3_spec_cov_dict',
+        'sample_mean_Q2Q3_nonspec_cov_dict',
         'sample_mean_Q2Q3_summed_cov_dict',
-        'sample_normalized_mean_Q2Q3_specific_cov_dict',
-        'sample_normalized_mean_Q2Q3_nonspecific_cov_dict',
+        'sample_normalized_mean_Q2Q3_spec_cov_dict',
+        'sample_normalized_mean_Q2Q3_nonspec_cov_dict',
         'sample_normalized_mean_Q2Q3_summed_cov_dict',
-        'sample_specific_max_normalized_ratio_dict',
-        'sample_nonspecific_max_normalized_ratio_dict',
+        'sample_spec_max_normalized_ratio_dict',
+        'sample_nonspec_max_normalized_ratio_dict',
         'sample_summed_max_normalized_ratio_dict',
         'gc_fraction',
         'sample_sub_positions_dict',
-        'total_mod_positions',
-        'sample_mod_positions_dict',
+        'total_sub_positions',
         'sample_variability_dict',
         'sample_insert_dict',
         'sample_del_dict'
     )
 
     def __init__(self):
-        self.name = None
-        self.seq_string = None
-        self.meets_feature_threshold = None
-        self.unmod_norm_seq_summaries = None
-        self.mod_seq_summaries = None
-        self.anticodon_seq_string = None
-        self.total_specific_covs = None
-        self.total_nonspecific_covs = None
-        self.total_mean_specific_cov = None
-        self.total_mean_nonspecific_cov = None
-        self.sample_specific_covs_dict = None
-        self.sample_nonspecific_covs_dict = None
-        self.sample_summed_covs_dict = None
-        self.sample_specific_nt_covs_dict = None
-        self.sample_nonspecific_nt_covs_dict = None
-        self.sample_summed_nt_covs_dict = None
-        self.sample_mean_specific_cov_dict = None
-        self.sample_mean_nonspecific_cov_dict = None
-        self.sample_mean_summed_cov_dict = None
-        self.sample_std_specific_cov_dict = None
-        self.sample_std_nonspecific_cov_dict = None
-        self.sample_std_summed_cov_dict = None
-        self.sample_specific_abundances_dict = None
-        self.sample_nonspecific_abundances_dict = None
-        self.sample_summed_abundances_dict = None
-        self.sample_specific_relative_abundances_dict = None
-        self.sample_nonspecific_relative_abundances_dict = None
-        self.sample_summed_relative_abundances_dict = None
-        self.sample_specific_detection_dict = None
-        self.sample_nonspecific_detection_dict = None
-        self.sample_summed_detection_dict = None
-        self.sample_mean_Q2Q3_specific_cov_dict = None
-        self.sample_mean_Q2Q3_nonspecific_cov_dict = None
-        self.sample_mean_Q2Q3_summed_cov_dict = None
-        self.sample_normalized_mean_Q2Q3_specific_cov_dict = None
-        self.sample_normalized_mean_Q2Q3_nonspecific_cov_dict = None
-        self.sample_normalized_mean_Q2Q3_summed_cov_dict = None
-        self.sample_specific_max_normalized_ratio_dict = None
-        self.sample_nonspecific_max_normalized_ratio_dict = None
-        self.sample_summed_max_normalized_ratio_dict = None
-        self.gc_fraction = None
-        self.sample_sub_positions_dict = None
-        self.total_mod_positions = None
-        self.sample_mod_positions_dict = None
-        self.sample_variability_dict = None
-        self.sample_insert_dict = None
-        self.sample_del_dict = None
+        for attr_name in SeedSequence.__slots__:
+            setattr(self, attr_name, None)
 
 
 class DatabaseConverter(object):
-    """Converts tRNA-seq database(s) into contigs, auxiliary, and profile databases.
+    """Converts tRNA-seq database(s) into contigs, auxiliary, and profile databases. "Contigs" in
+    this context are tRNA seed sequences representing tRNA identified in the samples."""
 
-    "Contigs" in this context are tRNA seed sequences representing tRNA identified in the collection
-    of samples.
-    """
-
-    # The columns needed from tables of a tRNA-seq database.
-    # Ignore the 3' terminus start and stop indices.
-    FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -2]],
-                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES[: -2]])))
+    # The following constants are columns needed from tables of a tRNA-seq database.
+    # Load all feature positional indices but the 3' terminus start and stop indices.
+    FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]],
+                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]])))
     FEATURE_TABLE_COLS_OF_INTEREST = [
         'name',
         'anticodon_sequence',
-        'num_extra_fiveprime'
+        'num_extra_fiveprime',
+        'alpha_start',
+        'alpha_stop',
+        'beta_start',
+        'beta_stop'
     ] + FEATURE_INDEX_COLS_OF_INTEREST
     TRIMMED_TABLE_COLS_OF_INTEREST = [
         'name',
@@ -5200,14 +5161,14 @@ class DatabaseConverter(object):
 
         # Argument group B: EXTRAS
         self.num_threads = A('num_threads')
-        self.seed_seq_limit = A('max_reported_trna_seeds')
+        self.seed_limit = A('max_reported_trna_seeds')
         self.overwrite_out_dest = A('overwrite_output_destinations')
         self.descrip_path = os.path.abspath(A('description')) if A('description') else None
 
         # Argument group C: ADVANCED
         self.feature_threshold = A('feature_threshold')
         self.preferred_treatment = A('preferred_treatment')
-        self.nonspecific_output = A('nonspecific_output')
+        self.nonspec_output = A('nonspecific_output')
         self.min_variation = A('min_variation')
         self.min_third_fourth_nt = A('min_third_fourth_nt')
         self.min_indel_fraction = A('min_indel_fraction')
@@ -5215,21 +5176,20 @@ class DatabaseConverter(object):
         self.linkage = A('linkage') or constants.linkage_method_default
 
         if not self.project_name:
-            raise ConfigError("Please specify a name for the collection of input tRNA-seq dbs "
-                              "using --project-name or -n.")
+            raise ConfigError("Please specify a name for the collection of input tRNA-seq dbs using --project-name or -n.")
         if not self.out_dir:
             raise ConfigError("Please provide an output directory using --output-dir or -o.")
 
         self.contigs_db_path = None
         self.contigs_db_hash = None
 
-        self.specific_out_dir = None
-        self.specific_profile_db_path = None
-        self.specific_auxiliary_db_path = None
+        self.spec_out_dir = None
+        self.spec_profile_db_path = None
+        self.spec_auxiliary_db_path = None
 
-        self.nonspecific_out_dir = None
-        self.nonspecific_profile_db_path = None
-        self.nonspecific_auxiliary_db_path = None
+        self.nonspec_out_dir = None
+        self.nonspec_profile_db_path = None
+        self.nonspec_auxiliary_db_path = None
         self.summed_out_dir = None
         self.summed_profile_db_path = None
         self.summed_auxiliary_db_path = None
@@ -5245,26 +5205,26 @@ class DatabaseConverter(object):
         self.trnaseq_dbs_info_dict = OrderedDict()
         self.num_trnaseq_dbs = None
         self.trnaseq_db_sample_ids = None
-        self.unmod_norm_seq_summaries_dict = defaultdict(list)
-        self.mod_seq_summaries_dict = defaultdict(list)
+        self.dict_summaries_Nu = defaultdict(list)
+        self.dict_summaries_M = defaultdict(list)
 
-        self.seed_seqs = None
+        self.seeds = None
         self.total_seed_length = None
 
-        self.sample_total_specific_cov_dict = None
-        self.sample_total_nonspecific_cov_dict = None
+        self.sample_total_spec_cov_dict = None
+        self.sample_total_nonspec_cov_dict = None
         self.sample_total_summed_cov_dict = None
-        self.sample_overall_mean_specific_cov_dict = None
-        self.sample_mean_nonspecific_cov_dict = None
+        self.sample_overall_mean_spec_cov_dict = None
+        self.sample_mean_nonspec_cov_dict = None
         self.sample_mean_summed_cov_dict = None
         self.sample_normalization_multiplier_dict = None
 
-        self.overall_mean_specific_cov = None
-        self.overall_mean_nonspecific_cov = None
+        self.overall_mean_spec_cov = None
+        self.overall_mean_nonspec_cov = None
 
         self.variable_nts_table_entries = None
-        self.specific_indels_table_entries = None
-        self.nonspecific_indels_table_entries = None
+        self.spec_indels_table_entries = None
+        self.nonspec_indels_table_entries = None
         self.summed_indels_table_entries = None
 
 
@@ -5277,36 +5237,36 @@ class DatabaseConverter(object):
 
         self.form_seeds()
 
-        filesnpaths.gen_output_directory(self.specific_out_dir)
-        self.gen_contigs_db()
-        self.gen_auxiliary_db('specific')
+        filesnpaths.gen_output_directory(self.spec_out_dir)
+        self.generate_contigs_database()
+        self.generate_auxiliary_database('specific')
 
-        self.set_sample_total_covs()
-        self.set_sample_overall_mean_covs()
-        self.set_sample_mean_covs()
-        self.set_sample_std_covs()
+        self.set_sample_total_coverages()
+        self.set_sample_overall_mean_coverages()
+        self.set_sample_mean_coverages()
+        self.set_sample_coverage_standard_deviations()
         self.set_sample_abundances()
         self.set_sample_normalization_multipliers()
         self.set_sample_normalized_mean_Q2Q3_coverages()
         self.set_sample_detections()
         self.set_sample_relative_abundances()
         self.set_sample_max_normalized_ratios()
-        self.set_variable_nts_table_entries()
+        self.set_variable_nucleotides_table_entries()
         self.set_indels_table_entries()
-        self.gen_profile_db('specific')
+        self.generate_profile_database('specific')
 
-        if self.nonspecific_out_dir:
-            filesnpaths.gen_output_directory(self.nonspecific_out_dir, delete_if_exists=self.overwrite_out_dest)
-            self.gen_auxiliary_db('nonspecific')
-            self.gen_profile_db('nonspecific')
+        if self.nonspec_out_dir:
+            filesnpaths.gen_output_directory(self.nonspec_out_dir, delete_if_exists=self.overwrite_out_dest)
+            self.generate_auxiliary_database('nonspecific')
+            self.generate_profile_database('nonspecific')
         if self.combined_out_dir:
             filesnpaths.gen_output_directory(self.combined_out_dir, delete_if_exists=self.overwrite_out_dest)
-            self.gen_auxiliary_db('combined')
-            self.gen_profile_db('combined')
+            self.generate_auxiliary_database('combined')
+            self.generate_profile_database('combined')
         if self.summed_out_dir:
             filesnpaths.gen_output_directory(self.summed_out_dir, delete_if_exists=self.overwrite_out_dest)
-            self.gen_auxiliary_db('summed')
-            self.gen_profile_db('summed')
+            self.generate_auxiliary_database('summed')
+            self.generate_profile_database('summed')
 
 
     def sanity_check(self):
@@ -5314,34 +5274,32 @@ class DatabaseConverter(object):
         for trnaseq_db_path in self.trnaseq_db_paths:
             utils.is_trnaseq_db(trnaseq_db_path)
         self.populate_trnaseq_dbs_info_dict()
-        self.trnaseq_db_sample_ids = [inner_dict['sample_id'] for inner_dict in self.trnaseq_dbs_info_dict.values()]
+        self.trnaseq_db_sample_ids = [trnaseq_db_info_dict['sample_id'] for trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.values()]
         if len(self.trnaseq_dbs_info_dict) != len(set(self.trnaseq_db_sample_ids)):
-            raise ConfigError("Sample IDs in each input tRNA-seq db must be unique. This is not "
-                              "the case with your input. Here are the sample names so you can see "
-                              "which ones occur more than once: '%s'" % (", ".join(self.trnaseq_db_sample_ids)))
+            raise ConfigError("Sample IDs in each input tRNA-seq db must be unique. "
+                              "This is not the case with your input. "
+                              "Here are the sample names so you can see which ones occur more than once: "
+                              f"'{', '.join(self.trnaseq_db_sample_ids)}'")
         self.num_trnaseq_dbs = len(self.trnaseq_db_sample_ids)
 
         self.check_trnaseq_db_versions()
 
-        self.out_dir = filesnpaths.check_output_directory(self.out_dir,
-                                                          ok_if_exists=self.overwrite_out_dest)
+        self.out_dir = filesnpaths.check_output_directory(self.out_dir, ok_if_exists=self.overwrite_out_dest)
         self.out_dir = os.path.abspath(self.out_dir)
 
         self.contigs_db_path = os.path.join(self.out_dir, 'CONTIGS.db')
         self.contigs_db_hash = 'hash' + str('%08x' % random.randrange(16**8))
 
-        self.specific_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'SPECIFIC_COVERAGE'),
-                                                                   ok_if_exists=self.overwrite_out_dest)
-        self.specific_profile_db_path = os.path.join(self.specific_out_dir, 'PROFILE.db')
-        self.specific_auxiliary_db_path = os.path.join(self.specific_out_dir, 'AUXILIARY-DATA.db')
+        self.spec_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'SPECIFIC_COVERAGE'), ok_if_exists=self.overwrite_out_dest)
+        self.spec_profile_db_path = os.path.join(self.spec_out_dir, 'PROFILE.db')
+        self.spec_auxiliary_db_path = os.path.join(self.spec_out_dir, 'AUXILIARY-DATA.db')
 
         if not 1 <= self.num_threads <= mp.cpu_count():
-            raise ConfigError("The number of threads to use must be a positive integer less than or equal to %d. "
-                              "Try again!" % mp.cpu_count())
+            raise ConfigError(f"The number of threads to use must be a positive integer less than or equal to {mp.cpu_count()}. Try again!")
 
         self.set_treatment_preference()
 
-        self.set_nonspecific_db_info()
+        self.set_nonspecific_database_info()
 
         utils.check_sample_id(self.project_name)
 
@@ -5350,18 +5308,17 @@ class DatabaseConverter(object):
             self.descrip_path = os.path.abspath(self.descrip_path)
             self.descrip = open(self.descrip_path).read()
 
-        if self.seed_seq_limit == -1:
-            self.seed_seq_limit = MAXSIZE
-        elif self.seed_seq_limit < 1:
-            raise ConfigError(f"{self.seed_seq_limit} is an invalid value for `--max-reported-seed-seqs`. "
-                              "To remove the limit on tRNA seeds reported to the contigs db, "
-                              "provide a value of -1. Otherwise provide an integer greater than 0.")
+        if self.seed_limit == -1:
+            self.seed_limit = MAXSIZE
+        elif self.seed_limit < 1:
+            raise ConfigError(f"{self.seed_limit} is an invalid value for `--max-reported-seed-seqs`. "
+                              "To remove the limit on tRNA seeds reported to the contigs db, provide a value of -1. "
+                              "Otherwise provide an integer greater than 0.")
 
         self.run.info("Input tRNA-seq dbs", ", ".join(self.trnaseq_db_paths))
         if self.preferred_treatment:
             self.run.info("Databases preferred for seed formation",
-                          ", ".join([trnaseq_db_path for trnaseq_db_num, trnaseq_db_path
-                                     in enumerate(self.trnaseq_db_paths)
+                          ", ".join([trnaseq_db_path for trnaseq_db_num, trnaseq_db_path in enumerate(self.trnaseq_db_paths)
                                      if trnaseq_db_num in self.preferred_trnaseq_db_nums]))
         self.run.info("Output directory", self.out_dir)
 
@@ -5374,13 +5331,13 @@ class DatabaseConverter(object):
 
 
     def check_trnaseq_db_versions(self):
-        if len(set([inner_dict['version'] for inner_dict in self.trnaseq_dbs_info_dict.values()])) > 1:
-            trnaseq_db_version_report = "\n".join([trnaseq_db_path + " : " + inner_dict['version']
-                                                   for trnaseq_db_path, inner_dict in self.trnaseq_dbs_info_dict.items()])
+        if len(set([trnaseq_db_info_dict['version'] for trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.values()])) > 1:
+            trnaseq_db_version_report = "\n".join(
+                [trnaseq_db_path + " : " + trnaseq_db_info_dict['version']
+                 for trnaseq_db_path, trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.items()])
             if anvio.FORCE:
-                self.run.warning("Not all input tRNA-seq dbs have the same version number, "
-                                 "but since you have used the `--force` flag, `anvi-convert-trnaseq-database` "
-                                 "will proceed though this is dangerous and may lead to errors. "
+                self.run.warning("Not all input tRNA-seq dbs have the same version number, but since you have used the `--force` flag, "
+                                 "`anvi-convert-trnaseq-database` will proceed though this is dangerous and may lead to errors. "
                                  f"Here is the version number of each database:\n{trnaseq_db_version_report}")
             else:
                 raise ConfigError("Not all input tRNA-seq dbs have the same version number. "
@@ -5391,48 +5348,45 @@ class DatabaseConverter(object):
         if not self.preferred_treatment:
             return
 
-        input_treatments = [inner_dict['treatment'] for inner_dict in self.trnaseq_dbs_info_dict.values()]
+        input_treatments = [trnaseq_db_info_dict['treatment'] for trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.values()]
         self.preferred_trnaseq_db_sample_ids = []
         self.preferred_trnaseq_db_nums = []
         if self.preferred_treatment not in input_treatments:
-            raise ConfigError("You provided a preferred treatment type, %s, "
+            raise ConfigError(f"You provided a preferred treatment type, {self.preferred_treatment}, "
                               "but it was not found in any of the input dbs, "
-                              "which were found to have the following treatments: %s."
-                              % (self.preferred_treatment, ', '.join(input_treatments)))
+                              f"which were found to have the following treatments: {', '.join(input_treatments)}.")
         for trnaseq_db_num, treatment in enumerate(input_treatments):
             if self.preferred_treatment == treatment:
                 self.preferred_trnaseq_db_sample_ids.append(self.trnaseq_db_sample_ids[trnaseq_db_num])
                 self.preferred_trnaseq_db_nums.append(trnaseq_db_num)
 
 
-    def set_nonspecific_db_info(self):
-        self.nonspecific_db_types = self.nonspecific_output.split(',')
-        for nonspecific_db_type in self.nonspecific_db_types:
-            if nonspecific_db_type not in ['nonspecific_db', 'combined_db', 'summed_db']:
+    def set_nonspecific_database_info(self):
+        self.nonspec_db_types = self.nonspec_output.split(',')
+        for nonspec_db_type in self.nonspec_db_types:
+            if nonspec_db_type not in ['nonspecific_db', 'combined_db', 'summed_db']:
                 raise ConfigError("The nonspecific profile db types provided by `--nonspecific-output` are not recognized. "
-                                  "The db types must be comma separated without spaces, "
-                                  f"e.g., 'nonspecific_db,combined_db,summed_db'. Your argument was: {self.nonspecific_output}'")
+                                  "The db types must be comma separated without spaces, e.g., 'nonspecific_db,combined_db,summed_db'. "
+                                  f"Your argument was: {self.nonspec_output}'")
 
-        if 'nonspecific_db' in self.nonspecific_db_types:
-            self.nonspecific_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'NONSPECIFIC_COVERAGE'),
-                                                                          ok_if_exists=self.overwrite_out_dest)
-            self.nonspecific_profile_db_path = os.path.join(self.nonspecific_out_dir, 'PROFILE.db')
-            self.nonspecific_auxiliary_db_path = os.path.join(self.nonspecific_out_dir, 'AUXILIARY-DATA.db')
+        if 'nonspecific_db' in self.nonspec_db_types:
+            self.nonspec_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'NONSPECIFIC_COVERAGE'), ok_if_exists=self.overwrite_out_dest)
+            self.nonspec_profile_db_path = os.path.join(self.nonspec_out_dir, 'PROFILE.db')
+            self.nonspec_auxiliary_db_path = os.path.join(self.nonspec_out_dir, 'AUXILIARY-DATA.db')
 
-        if 'combined_db' in self.nonspecific_db_types:
-            self.combined_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'COMBINED_COVERAGE'),
-                                                                       ok_if_exists=self.overwrite_out_dest)
+        if 'combined_db' in self.nonspec_db_types:
+            self.combined_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'COMBINED_COVERAGE'), ok_if_exists=self.overwrite_out_dest)
             self.combined_profile_db_path = os.path.join(self.combined_out_dir, 'PROFILE.db')
             self.combined_auxiliary_db_path = os.path.join(self.combined_out_dir, 'AUXILIARY-DATA.db')
 
-        if 'summed_db' in self.nonspecific_db_types:
-            self.summed_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'SUMMED_COVERAGE'),
-                                                                     ok_if_exists=self.overwrite_out_dest)
+        if 'summed_db' in self.nonspec_db_types:
+            self.summed_out_dir = filesnpaths.check_output_directory(os.path.join(self.out_dir, 'SUMMED_COVERAGE'), ok_if_exists=self.overwrite_out_dest)
             self.summed_profile_db_path = os.path.join(self.summed_out_dir, 'PROFILE.db')
             self.summed_auxiliary_db_path = os.path.join(self.summed_out_dir, 'AUXILIARY-DATA.db')
 
 
     def load_trnaseq_dbs(self):
+        """Load information from input tRNA-seq databases."""
         loaded_db_count = 0
         trnaseq_db_paths = self.trnaseq_db_paths
         num_trnaseq_db_paths = len(trnaseq_db_paths)
@@ -5454,33 +5408,39 @@ class DatabaseConverter(object):
             input_queue.put(trnaseq_db_path)
 
         poison_pill_count = 0
-        unmod_norm_seq_summaries_dict = self.unmod_norm_seq_summaries_dict
-        mod_seq_summaries_dict = self.mod_seq_summaries_dict
+        dict_summaries_Nu = self.dict_summaries_Nu
+        dict_summaries_M = self.dict_summaries_M
         empty = queue.Empty
         db_completion_dict = {}
         while poison_pill_count < len(trnaseq_db_paths) * 2:
+            # For each input db, one poison pill is put at the end of the Nu queue and another at
+            # the end of the M queue.
             try:
                 summary_item = output_queue_Nu_summaries.get_nowait()
                 try:
                     trnaseq_db_path, summary_Nu = summary_item
-                    unmod_norm_seq_summaries_dict[trnaseq_db_path].append(summary_Nu)
+                    dict_summaries_Nu[trnaseq_db_path].append(summary_Nu)
                 except ValueError:
+                    # The poison pill indicates there are no more Nu to be retrieved.
                     trnaseq_db_path = summary_item
                     poison_pill_count += 1
                     try:
+                        # The poison pill was already returned in the db's M queue, so all Nu and M
+                        # have been retrieved, and the db has been fully processed.
                         db_completion_dict[trnaseq_db_path] += 1
                         loaded_db_count += 1
                         progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
                     except KeyError:
+                        # The poison pill has not been returned in the db's M queue.
                         db_completion_dict[trnaseq_db_path] = 1
             except empty:
-                pass
+                pass # waiting on items in the Nu queue
 
             try:
                 summary_item = output_queue_M_summaries.get_nowait()
                 try:
                     trnaseq_db_path, summary_M = summary_item
-                    mod_seq_summaries_dict[trnaseq_db_path].append(summary_M)
+                    dict_summaries_M[trnaseq_db_path].append(summary_M)
                 except ValueError:
                     trnaseq_db_path = summary_item
                     poison_pill_count += 1
@@ -5491,7 +5451,7 @@ class DatabaseConverter(object):
                     except KeyError:
                         db_completion_dict[trnaseq_db_path] = 1
             except empty:
-                pass
+                pass # waiting on items in the M queue
 
         for p in processes:
             p.terminate()
@@ -5500,7 +5460,7 @@ class DatabaseConverter(object):
         self.progress.end()
 
 
-    def load_trnaseq_db_seq_info(self, trnaseq_db_path):
+    def load_trnaseq_database_sequence_summaries(self, trnaseq_db_path):
         """Load necessary tRNA sequence data from the input tRNA-seq database.
 
         Unmodified normalized sequences and "modified" sequences, comprising clustered normalized
@@ -5513,198 +5473,178 @@ class DatabaseConverter(object):
 
         dict_N_summary = {} # Used to link N to M summaries
 
-        norm_seq_df = pd.merge(
+        # Load columns from the "normalized", "features", and "trimmed" tables.
+        df_N = pd.merge(
             pd.DataFrame(
                 trnaseq_db.db.get_some_columns_from_table('normalized', ', '.join(self.NORM_TABLE_COLS_OF_INTEREST)),
                 columns=self.NORM_TABLE_COLS_OF_INTEREST
             ).set_index('name'),
-            self.load_seq_string_and_feature_df(trnaseq_db),
+            pd.merge(pd.DataFrame(
+                        trnaseq_db.db.get_some_columns_from_table('feature', ', '.join(self.FEATURE_TABLE_COLS_OF_INTEREST)),
+                        columns=self.FEATURE_TABLE_COLS_OF_INTEREST
+                     ).set_index('name'),
+                     pd.DataFrame(
+                        trnaseq_db.db.get_some_columns_from_table('trimmed', ', '.join(self.TRIMMED_TABLE_COLS_OF_INTEREST)),
+                        columns=self.TRIMMED_TABLE_COLS_OF_INTEREST
+                     ).set_index('name'),
+                     left_index=True,
+                     right_index=True),
             left_index=True,
-            right_index=True
-        )
+            right_index=True)
 
         threshold_feature = self.feature_threshold + '_start'
         # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
         is_threshold_feature_stem = True if 'stem' in threshold_feature else False
-        for info_N in norm_seq_df.itertuples():
+        for info_N in df_N.itertuples():
             if info_N.id_info == 'indel_aligned':
                 # Ignore Ni. The coverage of indels themselves is recorded in the parent M, but the
                 # contribution of Ni to nt coverage is ignored. Inclusion of Ni would produce
                 # numerous complications (e.g., they don't have feature profiles).
                 continue
 
-            summary_N = NormalizedSeqSummary()
+            summary_N = NormalizedSequenceSummary()
             summary_N.name = info_N.Index
             summary_N.sample_id = sample_id
-            summary_N.mean_specific_cov = info_N.mean_specific_coverage
+            summary_N.mean_spec_cov = info_N.mean_specific_coverage
             # There is a trailing comma in the coverage strings.
-            summary_N.specific_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
-            summary_N.nonspecific_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
-            summary_N.seq_string = info_N.sequence
-            summary_N.anticodon_seq_string = info_N.anticodon_sequence
+            summary_N.spec_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
+            summary_N.nonspec_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
+            summary_N.string = info_N.sequence
+            summary_N.anticodon_string = info_N.anticodon_sequence if info_N.anticodon_sequence else ''
+            length_N = len(summary_N.string)
+            summary_N.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
+            summary_N.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
+            for nt_pos, nt, spec_cov, nonspec_cov in zip(range(length_N), summary_N.string, summary_N.spec_covs, summary_N.nonspec_covs):
+                spec_nt_covs_dict[nt][nt_pos] += spec_cov
+                nonspec_nt_covs_dict[nt][nt_pos] += nonspec_cov
 
-            num_extra_fiveprime = info_N.num_extra_fiveprime
-            summary_N.feature_dict = feature_dict = {}
+            length_5prime = info_N.num_extra_fiveprime
+            summary_N.feature_dict = feature_dict = OrderedDict()
             for feature_index_col in self.FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
                 db_value = getattr(info_N, feature_index_col)
                 if isinstance(db_value, str):
                     # The string contains the start indices of stem strands.
-                    if num_extra_fiveprime:
+                    if length_5prime:
                         split_db_value = tuple(map(int, db_value.split(',')))
-                        feature_dict[feature_index_col] = (split_db_value[0] - num_extra_fiveprime, split_db_value[1] - num_extra_fiveprime)
+                        feature_dict[feature_index_col] = (split_db_value[0] - length_5prime, split_db_value[1] - length_5prime)
                     else:
                         feature_dict[feature_index_col] = tuple(map(int, db_value.split(',')))
                 else:
                     try:
+                        # N/A in numerical columns where the feature is not a stem load as `np.nan`.
+                        # Represent missing feature indices as an impossibly negative number.
                         if np.isnan(db_value):
-                            feature_dict[feature_index_col] = -0.5
+                            feature_dict[feature_index_col] = -1000
                         else:
-                            feature_dict[feature_index_col] = int(db_value) - num_extra_fiveprime
+                            feature_dict[feature_index_col] = int(db_value) - length_5prime
                     except TypeError:
-                        feature_dict[feature_index_col] = -0.5
+                        # N/A in string columns where the feature is a stem load as `None`.
+                        feature_dict[feature_index_col] = -1000
 
             db_value = getattr(info_N, threshold_feature)
             if is_threshold_feature_stem:
-                summary_N.feature_threshold_start = int(db_value.split(',')[0]) - num_extra_fiveprime if isinstance(db_value, str) else -0.5
+                summary_N.feature_threshold_start = int(db_value.split(',')[0]) - length_5prime if isinstance(db_value, str) else -1000
             else:
-                summary_N.feature_threshold_start = -0.5 if np.isnan(db_value) else db_value - num_extra_fiveprime
+                summary_N.feature_threshold_start = -1000 if np.isnan(db_value) else db_value - length_5prime
+
+            summary_N.alpha_start = info_N.alpha_start
+            summary_N.alpha_stop = info_N.alpha_stop
+            summary_N.beta_start = info_N.beta_start
+            summary_N.beta_stop = info_N.beta_stop
 
             dict_N_summary[summary_N.name] = summary_N
 
         summaries_M = []
         for info_M in pd.DataFrame(
             trnaseq_db.db.get_some_columns_from_table('modified', ', '.join(self.MOD_TABLE_COLS_OF_INTEREST)),
-            columns=self.MOD_TABLE_COLS_OF_INTEREST
-            ).set_index('name').itertuples():
-            summary_M = ModifiedSeqSummary()
+            columns=self.MOD_TABLE_COLS_OF_INTEREST).set_index('name').itertuples():
+            summary_M = ModifiedSequenceSummary()
             summary_M.name = info_M.Index
             summary_M.sample_id = sample_id
             # There is a trailing comma in the substitution and indel coverage and position strings.
             summary_M.sub_positions = np.fromiter(map(int, info_M.substitution_positions.split(',')[: -1]), int)
-            summary_M.consensus_seq_string = consensus_seq_string = info_M.consensus_sequence
+            summary_M.consensus_string = consensus_string = info_M.consensus_sequence
 
-            # Make nt variability arrays covering every position in the sequence. Start with arrays
-            # of overall specific/nonspecific coverage with nonzero values for the nts found in the
-            # consensus sequence, and then correct the variable positions.
-            seq_length = len(consensus_seq_string)
-            specific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
-            nonspecific_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+            # Make nt variability arrays covering every position in the seq. Start with arrays of
+            # overall specific/nonspecific coverage with nonzero values for the nts found in the
+            # consensus seq, and then correct the variable positions.
+            seq_length = len(consensus_string)
+            summary_M.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+            summary_M.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
             pos = 0
-            for nt, specific_cov, nonspecific_cov in zip(consensus_seq_string,
-                                                         info_M.specific_coverages.split(',')[: -1],
-                                                         info_M.nonspecific_coverages.split(',')[: -1]):
-                specific_nt_covs_dict[nt][pos] = specific_cov
-                nonspecific_nt_covs_dict[nt][pos] = nonspecific_cov
+            for nt, spec_cov, nonspec_cov in zip(consensus_string,
+                                                 info_M.specific_coverages.split(',')[: -1],
+                                                 info_M.nonspecific_coverages.split(',')[: -1]):
+                spec_nt_covs_dict[nt][pos] = spec_cov
+                nonspec_nt_covs_dict[nt][pos] = nonspec_cov
                 pos += 1
-            for (sub_pos,
-                 specific_A_cov,
-                 specific_C_cov,
-                 specific_G_cov,
-                 specific_T_cov,
-                 nonspecific_A_cov,
-                 nonspecific_C_cov,
-                 nonspecific_G_cov,
-                 nonspecific_T_cov) in zip(summary_M.sub_positions,
-                                           map(int, info_M.substitution_A_specific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_C_specific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_G_specific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_T_specific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_A_nonspecific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_C_nonspecific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_G_nonspecific_coverage.split(',')[: -1]),
-                                           map(int, info_M.substitution_T_nonspecific_coverage.split(',')[: -1])):
-                     specific_nt_covs_dict['A'][sub_pos] = specific_A_cov
-                     specific_nt_covs_dict['C'][sub_pos] = specific_C_cov
-                     specific_nt_covs_dict['G'][sub_pos] = specific_G_cov
-                     specific_nt_covs_dict['T'][sub_pos] = specific_T_cov
-                     nonspecific_nt_covs_dict['A'][sub_pos] = nonspecific_A_cov
-                     nonspecific_nt_covs_dict['C'][sub_pos] = nonspecific_C_cov
-                     nonspecific_nt_covs_dict['G'][sub_pos] = nonspecific_G_cov
-                     nonspecific_nt_covs_dict['T'][sub_pos] = nonspecific_T_cov
-            summary_M.specific_nt_covs_dict = specific_nt_covs_dict
-            summary_M.nonspecific_nt_covs_dict = nonspecific_nt_covs_dict
+            for nt in UNAMBIG_NTS:
+                sub_positions = summary_M.sub_positions
+                for sub_pos, spec_nt_cov, nonspec_nt_cov in zip(
+                    sub_positions,
+                    map(int, getattr(info_M, 'substitution_' + nt + '_specific_coverage').split(',')[: -1]),
+                    map(int, getattr(info_M, 'substitution_' + nt + '_nonspecific_coverage').split(',')[: -1])):
+                    spec_nt_covs_dict[nt][sub_pos] = spec_nt_cov
+                    nonspec_nt_covs_dict[nt][sub_pos] = nonspec_nt_cov
 
             if info_M.insertion_starts == ',':
-                summary_M.insert_starts = []
+                summary_M.insert_starts = np.zeros(0, dtype=int)
                 summary_M.insert_strings = []
-                summary_M.spec_insert_covs = []
-                summary_M.nonspec_insert_covs = []
+                summary_M.spec_insert_covs = np.zeros(0, dtype=int)
+                summary_M.nonspec_insert_covs = np.zeros(0, dtype=int)
             else:
-                summary_M.insert_starts = list(map(int, info_M.insertion_starts.split(',')[: -1]))
+                summary_M.insert_starts = np.fromiter(map(int, info_M.insertion_starts.split(',')[: -1]), int)
                 summary_M.insert_strings = list(info_M.insertion_seqs.split(',')[: -1])
-                summary_M.spec_insert_covs = list(map(int, info_M.insertion_specific_coverages.split(',')[: -1]))
-                summary_M.nonspec_insert_covs = list(map(int, info_M.insertion_nonspecific_coverages.split(',')[: -1]))
-            assert len(summary_M.insert_starts) == len(summary_M.insert_strings) == len(summary_M.spec_insert_covs) == len(summary_M.nonspec_insert_covs)
+                summary_M.spec_insert_covs = np.fromiter(map(int, info_M.insertion_specific_coverages.split(',')[: -1]), int)
+                summary_M.nonspec_insert_covs = np.fromiter(map(int, info_M.insertion_nonspecific_coverages.split(',')[: -1]), int)
 
             if info_M.deletion_starts == ',':
-                summary_M.del_starts = []
+                summary_M.del_starts = np.zeros(0, dtype=int)
                 summary_M.del_lengths = []
-                summary_M.spec_del_covs = []
-                summary_M.nonspec_del_covs = []
+                summary_M.spec_del_covs = np.zeros(0, dtype=int)
+                summary_M.nonspec_del_covs = np.zeros(0, dtype=int)
             else:
-                summary_M.del_starts = list(map(int, info_M.deletion_starts.split(',')[: -1]))
+                summary_M.del_starts = np.fromiter(map(int, info_M.deletion_starts.split(',')[: -1]), int)
                 summary_M.del_lengths = list(map(int, info_M.deletion_lengths.split(',')[: -1]))
-                summary_M.spec_del_covs = list(map(int, info_M.deletion_specific_coverages.split(',')[: -1]))
-                summary_M.nonspec_del_covs = list(map(int, info_M.deletion_nonspecific_coverages.split(',')[: -1]))
-            assert len(summary_M.del_starts) == len(summary_M.del_lengths) == len(summary_M.spec_del_covs) == len(summary_M.nonspec_del_covs)
+                summary_M.spec_del_covs = np.fromiter(map(int, info_M.deletion_specific_coverages.split(',')[: -1]), int)
+                summary_M.nonspec_del_covs = np.fromiter(map(int, info_M.deletion_nonspecific_coverages.split(',')[: -1]), int)
 
-            summaries_N = []
-            for name_N in info_M.names_of_normalized_seqs_without_indels.split(','):
-                summary_N = dict_N_summary[name_N]
+            summary_M.summaries_Nb = summaries_Nb = []
+            for name_Nb in info_M.names_of_normalized_seqs_without_indels.split(','):
+                summary_Nb = dict_N_summary[name_Nb]
 
-                # Cross-reference the M summary with summary objects of constituent N.
-                summary_N.mod_seq_summary = summary_M
-                summaries_N.append(summary_N)
+                # Cross-reference the M summary with summary objects of constituent Nb.
+                summary_Nb.summary_M = summary_M
+                summaries_Nb.append(summary_Nb)
 
-                # Ensure that all constituent N have coverage arrays flush with those of M.
-                if len(summary_N.seq_string) < len(summary_M.consensus_seq_string):
-                    elongation_5prime = np.zeros(len(summary_M.consensus_seq_string) - len(summary_N.seq_string), int)
-                    self.extend_norm_seq_fiveprime_end(summary_N, elongation_5prime)
-            summary_M.norm_seq_summaries = summaries_N
+                # Ensure that all constituent Nb have coverage arrays flush with those of M.
+                if summary_Nb.spec_covs.size < seq_length:
+                    elongation_5prime = np.zeros(seq_length - summary_Nb.spec_covs.size, int)
+                    self.elongate_normalized_sequence_fiveprime(summary_Nb, elongation_5prime)
+
             summaries_M.append(summary_M)
 
-        summaries_unmod_N = [summary_N for summary_N in dict_N_summary.values() if not summary_N.mod_seq_summary]
+        summaries_Nu = [summary_N for summary_N in dict_N_summary.values() if not summary_N.summary_M]
 
-        return summaries_unmod_N, summaries_M
-
-
-    def load_seq_string_and_feature_df(self, trnaseq_db):
-        """Load data from the `features` and `trimmed` tables of the input tRNA-seq database."""
-        # Store normalized sequence strings and feature information.
-        seq_string_and_feature_df = pd.DataFrame(
-            trnaseq_db.db.get_some_columns_from_table('feature', ', '.join(self.FEATURE_TABLE_COLS_OF_INTEREST)),
-            columns=self.FEATURE_TABLE_COLS_OF_INTEREST
-        ).set_index('name')
-
-        if 'stem' in self.feature_threshold:
-            # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
-            seq_string_and_feature_df[self.feature_threshold + '_start'] = [int(entry.split(',')[0]) if isinstance(entry, str) else entry for entry
-                                                                            in seq_string_and_feature_df[self.feature_threshold + '_start'].fillna(-1).tolist()]
-        else:
-            seq_string_and_feature_df[self.feature_threshold + '_start'] = seq_string_and_feature_df[self.feature_threshold + '_start'].fillna(-1)
-        seq_string_and_feature_df['anticodon_sequence'] = seq_string_and_feature_df['anticodon_sequence'].fillna('')
-
-        seq_string_and_feature_df = pd.merge(
-            pd.DataFrame(
-                trnaseq_db.db.get_some_columns_from_table('trimmed', ', '.join(self.TRIMMED_TABLE_COLS_OF_INTEREST)),
-                columns=self.TRIMMED_TABLE_COLS_OF_INTEREST
-            ).set_index('name'),
-            seq_string_and_feature_df,
-            left_index=True,
-            right_index=True)
-
-        return seq_string_and_feature_df
+        return summaries_Nu, summaries_M
 
 
-    def extend_norm_seq_fiveprime_end(self, summary_N, elongation_5prime):
+    def elongate_normalized_sequence_fiveprime(self, summary_N, elongation_5prime):
         """Seed sequences can be longer than the normalized sequences from the individual samples,
         requiring addition of empty positions in the normalized sequence coverage arrays at the 5'
-        end and reindexing of features, as normalized (and modified) sequences are aligned from the 3' end."""
-        summary_N.specific_covs = np.concatenate([elongation_5prime, summary_N.specific_covs])
-        summary_N.nonspecific_covs = np.concatenate([elongation_5prime, summary_N.nonspecific_covs])
+        end and reindexing of features, as normalized (and modified) sequences are aligned from the
+        3' end."""
+        summary_N.spec_covs = np.concatenate([elongation_5prime, summary_N.spec_covs])
+        summary_N.nonspec_covs = np.concatenate([elongation_5prime, summary_N.nonspec_covs])
+        spec_nt_covs_dict = summary_N.spec_nt_covs_dict
+        for nt, spec_covs in spec_nt_covs_dict.items():
+            spec_nt_covs_dict[nt] = np.concatenate([elongation_5prime, spec_covs])
+        nonspec_nt_covs_dict = summary_N.nonspec_nt_covs_dict
+        for nt, nonspec_covs in nonspec_nt_covs_dict.items():
+            nonspec_nt_covs_dict[nt] = np.concatenate([elongation_5prime, nonspec_covs])
 
         elongation_length = elongation_5prime.size
-        new_feature_dict = {}
+        new_feature_dict = OrderedDict()
         for feature, feature_index in summary_N.feature_dict.items():
             try:
                 new_feature_dict[feature] = (feature_index[0] + elongation_length, feature_index[1] + elongation_length)
@@ -5717,6 +5657,7 @@ class DatabaseConverter(object):
                     # convenience, replace it with np.nan.
                     new_feature_dict[feature] = np.nan
         summary_N.feature_dict = new_feature_dict
+        summary_N.feature_threshold_start + elongation_length
 
 
     def form_seeds(self):
@@ -5743,139 +5684,136 @@ class DatabaseConverter(object):
             sample_id = self.trnaseq_db_sample_ids[trnaseq_db_num]
             progress.update(f"Adding {sample_id}")
 
-            summaries_Nu = self.unmod_norm_seq_summaries_dict[trnaseq_db_path]
-            summaries_M = self.mod_seq_summaries_dict[trnaseq_db_path]
+            summaries_Nu = self.dict_summaries_Nu[trnaseq_db_path]
+            summaries_M = self.dict_summaries_M[trnaseq_db_path]
 
             for summary_Nu in summaries_Nu:
                 # Process Nu.
-                string_Nu = summary_Nu.seq_string
+                string_Nu = summary_Nu.string
                 try:
                     # Nu has already been found in another dataset.
                     seed = string_N_seed_dict[string_Nu]
                 except KeyError:
                     # Create a new seed based on Nu.
-                    seed = SeedSeq()
+                    seed = SeedSequence()
                     seed.name = summary_Nu.name + '_' + sample_id
-                    seed.seq_string = string_Nu
+                    seed.string = string_Nu
                     seed.meets_feature_threshold = True if summary_Nu.feature_threshold_start >= 0 else False
-                    seed.unmod_norm_seq_summaries = [summary_Nu]
-                    seed.mod_seq_summaries = []
+                    seed.summaries_Nu = [summary_Nu]
+                    seed.summaries_M = []
                     string_N_seed_dict[string_Nu] = seed
                     continue
 
-                if len(string_Nu) < len(seed.seq_string):
+                if len(string_Nu) < len(seed.string):
                     # Nu is shorter than the existing seed. This implies that the seed was formed
                     # from a longer M in another dataset. Extend Nu coverage arrays the needed
                     # amount at the 5' end. (Note: It is impossible here for Nu to be longer than
                     # the seed.)
-                    elongation_5prime = np.zeros(len(seed.seq_string) - len(string_Nu), int)
-                    self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
-                seed.unmod_norm_seq_summaries.append(summary_Nu)
+                    elongation_5prime = np.zeros(len(seed.string) - len(string_Nu), int)
+                    self.elongate_normalized_sequence_fiveprime(summary_Nu, elongation_5prime)
+                seed.summaries_Nu.append(summary_Nu)
 
             for summary_M in summaries_M:
-                # Find seeds from other datasets containing any of Nm forming M under consideration.
-                # If >1 seed is identified, they are merged.
+                # Find seeds from other datasets containing any of Nb forming the M under
+                # consideration. If >1 seed is identified, they are merged.
                 seed_dict = {}
-                for summary_Nm in summary_M.norm_seq_summaries:
+                for summary_Nb in summary_M.summaries_Nb:
                     try:
-                        # Nm is represented in another dataset.
-                        seed = string_N_seed_dict[summary_Nm.seq_string]
+                        # Nb is represented in another dataset.
+                        seed = string_N_seed_dict[summary_Nb.string]
                     except KeyError:
                         continue
                     seed_dict[seed.name] = seed
 
                 if not seed_dict:
                     # Create a new seed based on M.
-                    seed = SeedSeq()
+                    seed = SeedSequence()
                     seed.name = summary_M.name + '_' + sample_id
-                    seed.seq_string = summary_M.consensus_seq_string
-                    seed.unmod_norm_seq_summaries = []
-                    seed.mod_seq_summaries = []
-                    seed.mod_seq_summaries.append(summary_M)
-                    for summary_Nm in summary_M.norm_seq_summaries:
-                        if summary_Nm.feature_threshold_start >= 0:
+                    seed.string = summary_M.consensus_string
+                    seed.summaries_Nu = []
+                    seed.summaries_M = []
+                    seed.summaries_M.append(summary_M)
+                    for summary_Nb in summary_M.summaries_Nb:
+                        if summary_Nb.feature_threshold_start >= 0:
                             seed.meets_feature_threshold = True
                             break
                     else:
                         seed.meets_feature_threshold = False
-                    for summary_Nm in summary_M.norm_seq_summaries:
-                        string_N_seed_dict[summary_Nm.seq_string] = seed
+                    for summary_Nb in summary_M.summaries_Nb:
+                        string_N_seed_dict[summary_Nb.string] = seed
                     continue
 
                 if len(seed_dict) == 1:
-                    # M shares ≥1 Nm with 1 seed sequence.
-                    seed_seq_name, seed = seed_dict.popitem()
-                    if len(summary_M.consensus_seq_string) < len(seed.seq_string):
+                    # M shares ≥1 Nb with 1 seed.
+                    seed_name, seed = seed_dict.popitem()
+                    if len(summary_M.consensus_string) < len(seed.string):
                         # M is shorter than the seed, so its coverage arrays must be extended with
                         # zeros at the 5' end.
-                        elongation_5prime = np.zeros(len(seed.seq_string) - len(summary_M.consensus_seq_string), int)
-                        self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
-                        for summary_Nm in summary_M.norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(summary_Nm, elongation_5prime)
-                    elif len(summary_M.consensus_seq_string) > len(seed.seq_string):
+                        elongation_5prime = np.zeros(len(seed.string) - len(summary_M.consensus_string), int)
+                        self.elongate_modified_sequence_fiveprime(summary_M, elongation_5prime)
+                    elif len(summary_M.consensus_string) > len(seed.string):
                         # M is longer than the seed, so the coverage arrays of N forming the seed
                         # must be extended with zeros at the 5' end.
-                        elongation_5prime = np.zeros(len(summary_M.consensus_seq_string) - len(seed.seq_string), int)
-                        for summary_Nu in seed.unmod_norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
-                        for other_summary_M in seed.mod_seq_summaries:
-                            self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
+                        elongation_5prime = np.zeros(len(summary_M.consensus_string) - len(seed.string), int)
+                        for summary_Nu in seed.summaries_Nu:
+                            self.elongate_normalized_sequence_fiveprime(summary_Nu, elongation_5prime)
+                        for other_summary_M in seed.summaries_M:
+                            self.elongate_modified_sequence_fiveprime(other_summary_M, elongation_5prime)
                         seed.name = summary_M.name + '_' + sample_id
-                        seed.seq_string = summary_M.consensus_seq_string
-                        for summary_Nm in summary_M.norm_seq_summaries:
-                            if summary_Nm.feature_threshold_start >= 0:
+                        seed.string = summary_M.consensus_string
+                        for summary_Nb in summary_M.summaries_Nb:
+                            if summary_Nb.feature_threshold_start >= 0:
                                 seed.meets_feature_threshold = True
                                 break
                         else:
                             seed.meets_feature_threshold = False
-                    seed.mod_seq_summaries.append(summary_M)
-                    for summary_Nm in summary_M.norm_seq_summaries:
-                        string_N_seed_dict[summary_Nm.seq_string] = seed
+                    seed.summaries_M.append(summary_M)
+                    for summary_Nb in summary_M.summaries_Nb:
+                        string_N_seed_dict[summary_Nb.string] = seed
                     continue
 
                 # To reach this point, M must map to >1 seed.
-                sorted_seeds = sorted([seed for seed in seed_dict.values()],
-                                      key=lambda seed: -len(seed.seq_string))
-                max_seed_length = len(sorted_seeds[0].seq_string)
-                length_M = len(summary_M.consensus_seq_string)
+                sorted_seeds = sorted([seed for seed in seed_dict.values()], key=lambda seed: -len(seed.string))
+                max_seed_length = len(sorted_seeds[0].string)
+                length_M = len(summary_M.consensus_string)
                 if length_M < max_seed_length:
                     # Extend coverage arrays of M.
                     elongation_5prime = np.zeros(max_seed_length - length_M, int)
-                    self.extend_mod_seq_fiveprime_end(summary_M, elongation_5prime)
+                    self.elongate_modified_sequence_fiveprime(summary_M, elongation_5prime)
 
                     # Extend coverage arrays of shorter seeds now grouped with a longer seed.
                     for seed in seed_dict.values():
-                        if len(seed.seq_string) < max_seed_length:
-                            elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
-                            for summary_Nu in seed.unmod_norm_seq_summaries:
-                                self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
-                            for other_summary_M in seed.mod_seq_summaries:
-                                self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
+                        if len(seed.string) < max_seed_length:
+                            elongation_5prime = np.zeros(max_seed_length - len(seed.string), int)
+                            for summary_Nu in seed.summaries_Nu:
+                                self.elongate_normalized_sequence_fiveprime(summary_Nu, elongation_5prime)
+                            for other_summary_M in seed.summaries_M:
+                                self.elongate_modified_sequence_fiveprime(other_summary_M, elongation_5prime)
 
-                    new_seed = SeedSeq()
+                    new_seed = SeedSequence()
                     longest_seed = sorted_seeds[0]
                     new_seed.name = longest_seed.name
-                    new_seed.seq_string = longest_seed.seq_string
+                    new_seed.string = longest_seed.string
                     new_seed.meets_feature_threshold = longest_seed.meets_feature_threshold
                 elif length_M > max_seed_length:
                     # Extend coverage arrays of seeds.
                     for seed in seed_dict.values():
-                        elongation_5prime = np.zeros(length_M - len(seed.seq_string), int)
-                        for summary_Nu in seed.unmod_norm_seq_summaries:
-                            self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
-                        for other_summary_M in seed.mod_seq_summaries:
-                            self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
+                        elongation_5prime = np.zeros(length_M - len(seed.string), int)
+                        for summary_Nu in seed.summaries_Nu:
+                            self.elongate_normalized_sequence_fiveprime(summary_Nu, elongation_5prime)
+                        for other_summary_M in seed.summaries_M:
+                            self.elongate_modified_sequence_fiveprime(other_summary_M, elongation_5prime)
 
-                    new_seed = SeedSeq()
+                    new_seed = SeedSequence()
                     new_seed.name = summary_M.name + '_' + sample_id
-                    new_seed.seq_string = summary_M.consensus_seq_string
+                    new_seed.string = summary_M.consensus_string
                     for seed in seed_dict.values():
                         if seed.meets_feature_threshold:
                             new_seed.meets_feature_threshold = True
                             break
                     else:
-                        for summary_Nm in summary_M.norm_seq_summaries:
-                            if summary_Nm.feature_threshold_start >= 0:
+                        for summary_Nb in summary_M.summaries_Nb:
+                            if summary_Nb.feature_threshold_start >= 0:
                                 new_seed.meets_feature_threshold = True
                                 break
                         else:
@@ -5884,21 +5822,21 @@ class DatabaseConverter(object):
                     # M is the same length as the longest seed. Extend coverage arrays of shorter
                     # seeds now grouped with a longer seed.
                     for seed in seed_dict.values():
-                        if len(seed.seq_string) < max_seed_length:
-                            elongation_5prime = np.zeros(max_seed_length - len(seed.seq_string), int)
-                            for summary_Nu in seed.unmod_norm_seq_summaries:
-                                self.extend_norm_seq_fiveprime_end(summary_Nu, elongation_5prime)
-                            for other_summary_M in seed.mod_seq_summaries:
-                                self.extend_mod_seq_fiveprime_end(other_summary_M, elongation_5prime)
+                        if len(seed.string) < max_seed_length:
+                            elongation_5prime = np.zeros(max_seed_length - len(seed.string), int)
+                            for summary_Nu in seed.summaries_Nu:
+                                self.elongate_normalized_sequence_fiveprime(summary_Nu, elongation_5prime)
+                            for other_summary_M in seed.summaries_M:
+                                self.elongate_modified_sequence_fiveprime(other_summary_M, elongation_5prime)
 
-                    new_seed = SeedSeq()
+                    new_seed = SeedSequence()
                     new_seed.name = summary_M.name + '_' + sample_id
-                    new_seed.seq_string = summary_M.consensus_seq_string
+                    new_seed.string = summary_M.consensus_string
                     if sorted_seeds[0].meets_feature_threshold:
                         new_seed.meets_feature_threshold = True
                     else:
-                        for summary_Nm in summary_M.norm_seq_summaries:
-                            if summary_Nm.feature_threshold_start >= 0:
+                        for summary_Nb in summary_M.summaries_Nb:
+                            if summary_Nb.feature_threshold_start >= 0:
                                 new_seed.meets_feature_threshold = True
                                 break
                         else:
@@ -5906,18 +5844,18 @@ class DatabaseConverter(object):
 
                 # Now that all of the coverage arrays are reconciled in length, M and constituent N
                 # of the matching seeds can be added to the new seed.
-                new_seed.unmod_norm_seq_summaries = []
-                new_seed.mod_seq_summaries = []
+                new_seed.summaries_Nu = []
+                new_seed.summaries_M = []
                 for seed in seed_dict.values():
-                    new_seed.unmod_norm_seq_summaries += seed.unmod_norm_seq_summaries
-                    new_seed.mod_seq_summaries += seed.mod_seq_summaries
-                new_seed.mod_seq_summaries.append(summary_M)
+                    new_seed.summaries_Nu += seed.summaries_Nu
+                    new_seed.summaries_M += seed.summaries_M
+                new_seed.summaries_M.append(summary_M)
 
-                for summary_Nu in new_seed.unmod_norm_seq_summaries:
-                    string_N_seed_dict[summary_Nu.seq_string] = new_seed
-                for mod_seq_summary in new_seed.mod_seq_summaries:
-                    for summary_Nm in mod_seq_summary.norm_seq_summaries:
-                        string_N_seed_dict[summary_Nm.seq_string] = new_seed
+                for summary_Nu in new_seed.summaries_Nu:
+                    string_N_seed_dict[summary_Nu.string] = new_seed
+                for summary_M in new_seed.summaries_M:
+                    for summary_Nb in summary_M.summaries_Nb:
+                        string_N_seed_dict[summary_Nb.string] = new_seed
 
         progress.update("Finalizing seeds")
 
@@ -5926,307 +5864,502 @@ class DatabaseConverter(object):
 
         # Disregard seeds that do not reach the 5' feature threshold.
         seeds = [seed for seed in seeds if seed.meets_feature_threshold]
-        self.set_anticodon(seeds)
-        seeds = [seed for seed in seeds if seed.anticodon_seq_string]
-
-        # Find specific coverages of M by summing specific coverages of nts.
-        self.sum_specific_nt_covs(seeds)
-        # Select the top seeds by specific coverage.
-        self.set_total_specific_covs(seeds)
-        seeds = sorted(seeds, key=lambda seed: -seed.total_mean_specific_cov)[: self.seed_seq_limit]
-
-        self.set_nt_covs(seeds)
-        self.sum_nonspecific_nt_covs(seeds)
-        self.set_total_nonspecific_covs(seeds)
-        self.set_consensus_seq_string(seeds)
-        self.set_gc_fraction(seeds)
-
-        self.seed_seqs = seeds
-        self.total_seed_length = sum([len(seed.seq_string) for seed in seeds])
-
-        self.set_sample_covs()
-        self.set_mods()
-        self.set_consensus_mod_nts()
-
-        self.set_sample_indels()
-
-        progress.end()
 
 
-    def extend_mod_seq_fiveprime_end(self, mod_seq_summary, fiveprime_extension):
-        """Seed sequences can be longer than the normalized sequences from the individual samples,
-        requiring addition of empty positions in the normalized sequence coverage arrays at the 5'
-        end, as normalized (and modified) sequences are aligned from the 3' end."""
-        # The positions of substitutions are recorded in the seed sequence index.
-        length_5prime_extension = fiveprime_extension.size
-        mod_seq_summary.sub_positions += length_5prime_extension
-        for nt in UNAMBIG_NTS:
-            mod_seq_summary.specific_nt_covs_dict[nt] = np.concatenate([fiveprime_extension, mod_seq_summary.specific_nt_covs_dict[nt]])
-            mod_seq_summary.nonspecific_nt_covs_dict[nt] = np.concatenate([fiveprime_extension, mod_seq_summary.nonspecific_nt_covs_dict[nt]])
-        mod_seq_summary.insert_starts = [start + length_5prime_extension for start in mod_seq_summary.insert_starts]
-        mod_seq_summary.del_starts = [start + length_5prime_extension for start in mod_seq_summary.del_starts]
+        # Reads with extra 5' nts beyond the acceptor stem sometimes generate false positive tRNA
+        # feature profiles. These erroneous profiles shoehorn the 5' extra nts into the profile
+        # through nt accommodation in variable-length sections of the profile, such as the D loop.
+        # Make sure there are no N shorter than the seed sequence that have a full-length profile.
+
+        # The algorithm requires seq summaries sorted in descending order of seq length.
+        for seed in seeds:
+            seed.summaries_Nu = sorted([summary_Nu for summary_Nu in seed.summaries_Nu],
+                                       key=lambda summary_Nu: -len(summary_Nu.string))
+            seed.summaries_M = sorted([summary_M for summary_M in seed.summaries_M],
+                                      key=lambda summary_M: -len(summary_M.consensus_string))
+            for summary_M in seed.summaries_M:
+                summary_M.summaries_Nb = sorted([summary_Nb for summary_Nb in summary_M.summaries_Nb],
+                                                key=lambda summary_Nb: -len(summary_Nb.string))
+
+        names_seeds_with_conflict = set()
+        for seed in seeds:
+            while True:
+                # Remove the longest N (Nu or Nb) with inconsistent full-length profiles until only
+                # N with consistent full-length profiles remain. Exit the while loop at this point.
+                seed_length = len(seed.string)
+                longest_Nu_indices = []
+                longest_Nb_indices = []
+                # Get the feature profile of the first N with the same seq as the seed plus a
+                # full-length profile.
+                seed_features = None
+                # The following variable is used for a specific circumstance. Nu are searched before
+                # M. An Nu the same length as the seed with a full-length profile may not be found
+                # while a shorter Nu with a full-length profile is found, apparently a conflict.
+                # However, an M the same length as the seed with a full-length profile and a
+                # tRNA-His 5'-G can subsequently explain the full-length profile of the shorter Nu.
+                check_His_G = False
+                # Search for a conflict between the full-length profile of a shorter seq and the
+                # seed profile.
+                found_conflict = False
+
+                for index_Nu, summary_Nu in enumerate(seed.summaries_Nu):
+                    if len(summary_Nu.string) == seed_length:
+                        longest_Nu_indices.append(index_Nu)
+                        if seed_features or summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
+                            # Extrapolated acceptor stems, e.g., with starts of -1, can be
+                            # discredited.
+                            if not seed_features:
+                                # Only record the first qualifying profile.
+                                seed_features = tuple(summary_Nu.feature_dict.values())
+                        else:
+                            # The seed does not have a full-length profile, so stop looking.
+                            break
+                    elif summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= 0:
+                        # A shorter N than the seed was assigned a full-length profile. This
+                        # indicates a conflict (with one exception), and the longest N will be
+                        # removed from the seed. The exception is that the longest N was also
+                        # assigned a full-length profile and only differs from the shorter profile
+                        # by a 5'-G at the end of tRNA-His.
+                        if seed_features:
+                            if seed_features[0] == 0:
+                                if summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                                    break
+                        if not seed_features and summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                            check_His_G = True
+                        found_conflict = True
+                        break
+
+                for index_M, summary_M in enumerate(seed.summaries_M):
+                    if len(summary_M.consensus_string) == seed_length:
+                        for index_Nb, summary_Nb in enumerate(summary_M.summaries_Nb):
+                            # Each M consists of Nb which may be of varying lengths.
+                            if len(summary_Nb.string) == seed_length:
+                                longest_Nb_indices.append((index_M, index_Nb))
+                                if seed_features or summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
+                                    if not seed_features:
+                                        seed_features = tuple(summary_Nb.feature_dict.values())
+                                        if check_His_G:
+                                            if seed_features[0] == 0:
+                                                found_conflict = False
+                                else:
+                                    # The seed does not have a full-length profile, so stop
+                                    # searching M.
+                                    break
+                        else:
+                            continue
+                        # To reach this point, it was found that the seed does not have a
+                        # full-length profile, so stop searching.
+                        break
+                    else:
+                        for summary_Nb in summary_M.summaries_Nb:
+                            if summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= 0:
+                                if seed_features:
+                                    if seed_features[0] == 0:
+                                        if summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                                            break
+                                found_conflict = True
+                                break
+
+                if not found_conflict:
+                    try:
+                        max_length_Nu = len(seed.summaries_Nu[0].string)
+                    except IndexError:
+                        max_length_Nu = 0
+                    try:
+                        max_length_M = len(seed.summaries_M[0].consensus_string)
+                    except IndexError:
+                        max_length_M = 0
+                    if not max_length_Nu:
+                        selected_summary = seed.summaries_M[0].summaries_Nb[0]
+                    elif not max_length_M:
+                        selected_summary = seed.summaries_Nu[0]
+                    else:
+                        if max_length_Nu >= max_length_M:
+                            selected_summary = seed.summaries_Nu[0]
+                        else:
+                            selected_summary = seed.summaries_M[0].summaries_Nb[0]
+                    seed.feature_dict = selected_summary.feature_dict
+                    seed.alpha_start = selected_summary.alpha_start
+                    seed.alpha_stop = selected_summary.alpha_stop
+                    seed.beta_start = selected_summary.beta_start
+                    seed.beta_stop = selected_summary.beta_stop
+                    break
+                names_seeds_with_conflict.add(seed.name)
+
+                # Remove the longest Nu from the seed.
+                for longest_Nu_index in longest_Nu_indices[::-1]:
+                    seed.summaries_Nu.pop(longest_Nu_index)
+
+                altered_M_indices = set()
+                for longest_Nb_index in longest_Nb_indices[::-1]:
+                    seed.summaries_M[longest_Nb_index[0]].summaries_Nb.pop(longest_Nb_index[1])
+                altered_M_indices = set([longest_Nb_index[0] for longest_Nb_index in longest_Nb_indices])
+
+                # If all Nb are removed from an M, then remove M from the seed.
+                altered_M_summaries = []
+                if longest_Nb_indices:
+                    empty_M_indices = []
+                    for index_M, summary_M in enumerate(seed.summaries_M):
+                        if not summary_M.summaries_Nb:
+                            empty_M_indices.append(index_M)
+                        elif index_M in altered_M_indices:
+                            altered_M_summaries.append(summary_M)
+                    for empty_M_index in empty_M_indices[::-1]:
+                        seed.summaries_M.pop(empty_M_index)
+
+                # Find the new length of the seed.
+                max_length_Nu = 0
+                if seed.summaries_Nu:
+                    max_length_Nu = len(seed.summaries_Nu[0].string)
+                max_length_M = 0
+                for summary_M in seed.summaries_M:
+                    length_M = len(summary_M.summaries_Nb[0].string)
+                    if length_M > max_length_M:
+                        max_length_M = length_M
+                new_seed_length = max(max_length_Nu, max_length_M)
+                seed_length_diff = seed_length - new_seed_length
+
+                # Adjust the following attributes of Nu, M, and Nb summary objects that depend upon
+                # seed length: coverage array lengths, feature indices, threshold feature start,
+                # indel information (some indels may now be removed from M).
+                for summary_Nu in seed.summaries_Nu:
+                    self.shorten_normalized_sequence_fiveprime(summary_Nu, seed_length_diff)
+
+                for summary_M in seed.summaries_M:
+                    self.shorten_modified_sequence_fiveprime(summary_M, seed_length_diff)
+
+                if max_length_Nu >= max_length_M:
+                    seed.string = seed.summaries_Nu[0].string
+                    selected_summary = seed.summaries_Nu[0]
+                else:
+                    seed.string = seed.summaries_M[0].consensus_string
+                    selected_summary = seed.summaries_M[0].summaries_Nb[0]
+                seed.feature_dict = selected_summary.feature_dict
+                seed.alpha_start = selected_summary.alpha_start
+                seed.alpha_stop = selected_summary.alpha_stop
+                seed.beta_start = selected_summary.beta_start
+                seed.beta_stop = selected_summary.beta_stop
 
 
-    def set_anticodon(self, seed_seqs):
-        """Assign the anticodon by comparing the mean specific coverage of the normalized sequences
-        comprising the seed (a simpler, approximate substitute for extracting the anticodon coverage
-        from each normalized sequence). This method is called by `DatabaseConverter.process` after
-        sequences from input tRNA-seq databases have been assigned to seeds."""
-        for seed_seq in seed_seqs:
-            if not seed_seq.mod_seq_summaries:
-                # The seed is comprised entirely of identical unmodified normalized sequences.
-                seed_seq.anticodon_seq_string = seed_seq.unmod_norm_seq_summaries[0].anticodon_seq_string
+        # Assign the anticodon by comparing the mean specific coverage of N comprising the seed, a
+        # simpler approximation of extracting the anticodon coverage from each N.
+        for seed in seeds:
+            if not seed.summaries_M:
+                # The seed is comprised entirely of Nu without unlike nts.
+                seed.anticodon_string = seed.summaries_Nu[0].anticodon_string
                 continue
 
             anticodon_cov_dict = defaultdict(int)
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
+            for summary_Nu in seed.summaries_Nu:
                 # Mean specific coverage does not include any 5' padding of zero coverage from the
-                # formation of the seed sequence.
-                anticodon_cov_dict[norm_seq_summary.anticodon_seq_string] += norm_seq_summary.mean_specific_cov
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                for norm_seq_summary in mod_seq_summary.norm_seq_summaries:
-                    anticodon_cov_dict[norm_seq_summary.anticodon_seq_string] += norm_seq_summary.mean_specific_cov
+                # formation of the seed.
+                anticodon_cov_dict[summary_Nu.anticodon_string] += summary_Nu.mean_spec_cov
+            for summary_M in seed.summaries_M:
+                for summary_Nb in summary_M.summaries_Nb:
+                    anticodon_cov_dict[summary_Nb.anticodon_string] += summary_Nb.mean_spec_cov
 
-            seed_seq.anticodon_seq_string = sorted(anticodon_cov_dict.items(), key=lambda t: -t[1])[0][0]
-
-
-    def sum_specific_nt_covs(self, seed_seqs):
-        """Coverages of the 4 nucleotides are maintained in the tRNA-seq database for modified
-        sequences, since modified sequences have nucleotide variability, so this method is used to
-        calculate overall specific coverages."""
-        for seed_seq in seed_seqs:
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                mod_seq_summary.specific_covs = np.array([covs for covs in mod_seq_summary.specific_nt_covs_dict.values()]).sum(axis=0)
+            seed.anticodon_string = sorted(anticodon_cov_dict.items(), key=lambda anticodon_item: -anticodon_item[1])[0][0]
+        seeds = [seed for seed in seeds if seed.anticodon_string]
 
 
-    def set_total_specific_covs(self, seed_seqs):
-        """Sum specific coverages from each sequence comprising the seed sequence, and also
-        calculate the mean thereof."""
-        for seed_seq in seed_seqs:
-            seed_seq.total_specific_covs = np.zeros(len(seed_seq.seq_string), int)
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                seed_seq.total_specific_covs += norm_seq_summary.specific_covs
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                seed_seq.total_specific_covs += mod_seq_summary.specific_covs
+        for seed in seeds:
+            # Find specific coverages of M by summing specific coverages of nts.
+            for summary_M in seed.summaries_M:
+                summary_M.spec_covs = np.array([covs for covs in summary_M.spec_nt_covs_dict.values()]).sum(axis=0)
 
-            seed_seq.total_mean_specific_cov = seed_seq.total_specific_covs.mean()
+            # Sum specific coverages from each seq comprising a seed. Calculate the mean specific
+            # coverage of the seed.
+            seed.total_spec_covs = np.zeros(len(seed.string), int)
+            for summary_Nu in seed.summaries_Nu:
+                seed.total_spec_covs += summary_Nu.spec_covs
+            for summary_M in seed.summaries_M:
+                seed.total_spec_covs += summary_M.spec_covs
 
-
-    def set_nt_covs(self, seed_seqs):
-        """Make separate coverage arrays for A, C, G and T, which are needed in seed sequence formation."""
-        for seed_seq in seed_seqs:
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                norm_seq_summary.specific_nt_covs_dict = {nt: np.zeros(norm_seq_summary.specific_covs.size, int) for nt in UNAMBIG_NTS}
-                norm_seq_summary.nonspecific_nt_covs_dict = {nt: np.zeros(norm_seq_summary.nonspecific_covs.size, int) for nt in UNAMBIG_NTS}
-                start_pos = norm_seq_summary.specific_covs.size - len(norm_seq_summary.seq_string)
-                pos = start_pos
-                for nt, specific_cov, nonspecific_cov in zip(norm_seq_summary.seq_string,
-                                                             norm_seq_summary.specific_covs[start_pos: ],
-                                                             norm_seq_summary.nonspecific_covs[start_pos: ]):
-                    norm_seq_summary.specific_nt_covs_dict[nt][pos] = specific_cov
-                    norm_seq_summary.nonspecific_nt_covs_dict[nt][pos] = nonspecific_cov
-                    pos += 1
+            seed.total_mean_spec_cov = seed.total_spec_covs.mean()
+        # Select the top seeds by specific coverage.
+        seeds = sorted(seeds, key=lambda seed: -seed.total_mean_spec_cov)[: self.seed_limit]
 
 
-    def sum_nonspecific_nt_covs(self, seed_seqs):
-        """Coverages of the 4 nucleotides are maintained in the tRNA-seq database for modified
-        sequences, since modified sequences have nucleotide variability, so this method is used to
-        calculate overall nonspecific coverages."""
-        for seed_seq in seed_seqs:
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                mod_seq_summary.nonspecific_covs = np.array([covs for covs in mod_seq_summary.nonspecific_nt_covs_dict.values()]).sum(axis=0)
+        for seed in seeds:
+            # Find nonspecific coverages of M by summing nonspecific coverage of nts.
+            for summary_M in seed.summaries_M:
+                summary_M.nonspec_covs = np.array([covs for covs in summary_M.nonspec_nt_covs_dict.values()]).sum(axis=0)
+
+            # Sum nonspecific coverages from each seq comprising a seed. Calculate the mean
+            # nonspecific coverage of the seed.
+            seed.total_nonspec_covs = np.zeros(len(seed.string), int)
+            for summary_Nu in seed.summaries_Nu:
+                seed.total_nonspec_covs += summary_Nu.nonspec_covs
+            for summary_M in seed.summaries_M:
+                nonspec_nt_covs = np.array([covs for covs in summary_M.nonspec_nt_covs_dict.values()])
+                seed.total_nonspec_covs += nonspec_nt_covs.sum(axis=0)
+
+            seed.total_mean_nonspec_cov = seed.total_nonspec_covs.mean()
 
 
-    def set_total_nonspecific_covs(self, seed_seqs):
-        """Sum nonspecific coverages from each sequence forming the seed sequence, and also
-        calculate the mean thereof."""
-        for seed_seq in seed_seqs:
-            seed_seq.total_nonspecific_covs = np.zeros(len(seed_seq.seq_string), int)
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                seed_seq.total_nonspecific_covs += norm_seq_summary.nonspecific_covs
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                nonspecific_nt_covs = np.array([covs for covs in mod_seq_summary.nonspecific_nt_covs_dict.values()])
-                seed_seq.total_nonspecific_covs += nonspecific_nt_covs.sum(axis=0)
+        # The consensus sequence of a seed consists of the nts with the maximum specific coverage
+        # summed across constituent sequences. When certain tRNA-seq treatments are preferred (e.g.,
+        # demethylase), the chosen nts at substitution sites are on the basis of seqs from preferred
+        # samples.
+        for seed in seeds:
+            if not seed.summaries_M:
+                # The seed is comprised entirely of Nu, which must be subsequences of one another,
+                # so there is no variation in nt composition at any position. The sequence string
+                # was already assigned and does not need to be altered.
+                continue
 
-            seed_seq.total_mean_nonspecific_cov = seed_seq.total_nonspecific_covs.mean()
-
-
-    def set_consensus_seq_string(self, seed_seqs):
-        """The consensus sequence for the seed consists of the nucleotides with the maximum specific
-        coverage summed across constituent sequences. When certain tRNA-seq treatments are preferred
-        (e.g., demethylase), nucleotides with predicted modifications are called on the basis of
-        sequences from preferred samples."""
-        for seed_seq in seed_seqs:
-            if not seed_seq.mod_seq_summaries:
-                # The seed is composed entirely of identical unmodified normalized sequences.
-                return
-
-            total_nt_cov_dict = {nt: np.zeros(len(seed_seq.seq_string), int) for nt in UNAMBIG_NTS}
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
+            total_nt_cov_dict = {nt: np.zeros(len(seed.string), int) for nt in UNAMBIG_NTS}
+            for summary_Nu in seed.summaries_Nu:
                 for nt in UNAMBIG_NTS:
-                    total_nt_cov_dict[nt] += norm_seq_summary.specific_nt_covs_dict[nt]
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
+                    total_nt_cov_dict[nt] += summary_Nu.spec_nt_covs_dict[nt]
+            for summary_M in seed.summaries_M:
                 for nt in UNAMBIG_NTS:
-                    total_nt_cov_dict[nt] += mod_seq_summary.specific_nt_covs_dict[nt]
+                    total_nt_cov_dict[nt] += summary_M.spec_nt_covs_dict[nt]
 
-            seed_seq.seq_string = ''.join(
-                [INT_NT_DICT[i + 1] for i in
-                np.argmax(np.array([total_nt_cov_dict[nt] for nt in UNAMBIG_NTS]), axis=0)]
-            )
+            seed.string = ''.join([INT_NT_DICT[i + 1] for i in np.argmax(np.array([total_nt_cov_dict[nt] for nt in UNAMBIG_NTS]), axis=0)])
+
+            # Set GC fraction of the seed.
+            seed.gc_fraction = sum([1 for nt in seed.string if nt == 'C' or nt == 'G']) / len(seed.string)
+        self.seeds = seeds
+        self.total_seed_length = sum([len(seed.string) for seed in seeds])
+
+        self.set_sample_covs()
+        self.set_substitutions()
+        self.set_sample_indels()
+
+        progress.end()
+        self.run.info("Candidate seeds with feature conflicts", len(names_seeds_with_conflict), nl_before=1, nl_after=1)
 
 
-    def set_gc_fraction(self, seed_seqs):
-        for seed_seq in seed_seqs:
-            seed_seq.gc_fraction = sum([1 for nt in seed_seq.seq_string if nt == 'C' or nt == 'G']) / len(seed_seq.seq_string)
+    def elongate_modified_sequence_fiveprime(self, summary_M, elongation_5prime):
+        """Seed sequences can be longer than the normalized sequences from the individual samples,
+        requiring addition of empty positions in the normalized sequence coverage arrays at the 5'
+        end, as normalized (and modified) sequences are aligned from the 3' end."""
+        for summary_Nb in summary_M.summaries_Nb:
+            self.elongate_normalized_sequence_fiveprime(summary_Nb, elongation_5prime)
+
+        elongation_length = elongation_5prime.size
+        # The positions of substitutions are recorded in the seed sequence index.
+        summary_M.sub_positions += elongation_length
+        for nt in UNAMBIG_NTS:
+            summary_M.spec_nt_covs_dict[nt] = np.concatenate([elongation_5prime, summary_M.spec_nt_covs_dict[nt]])
+            summary_M.nonspec_nt_covs_dict[nt] = np.concatenate([elongation_5prime, summary_M.nonspec_nt_covs_dict[nt]])
+        summary_M.insert_starts += elongation_length
+        summary_M.del_starts += elongation_length
+
+
+    def shorten_normalized_sequence_fiveprime(self, summary_N, reduction_5prime):
+        """Remove some 5' nucleotides from the normalized sequence and recompute certain
+        attributes."""
+        new_feature_dict = {}
+        for feature, feature_index in summary_N.feature_dict.items():
+            try:
+                new_feature_dict[feature] = feature_index - reduction_5prime
+            except TypeError:
+                new_feature_dict[feature] = (feature_index[0] - reduction_5prime, feature_index[1] - reduction_5prime)
+        summary_N.feature_dict = new_feature_dict
+        summary_N.feature_threshold_start -= reduction_5prime
+
+        summary_N.spec_covs = summary_N.spec_covs[reduction_5prime: ]
+        summary_N.nonspec_covs = summary_N.nonspec_covs[reduction_5prime: ]
+
+        spec_nt_covs_dict = summary_N.spec_nt_covs_dict
+        for nt, spec_covs in summary_N.spec_nt_covs_dict.items():
+            spec_nt_covs_dict[nt] = spec_covs[reduction_5prime: ]
+        nonspec_nt_covs_dict = summary_N.nonspec_nt_covs_dict
+        for nt, spec_covs in summary_N.nonspec_nt_covs_dict.items():
+            nonspec_nt_covs_dict[nt] = spec_covs[reduction_5prime: ]
+
+
+    def shorten_modified_sequence_fiveprime(self, summary_M, reduction_5prime):
+        """Remove some 5' nucleotides from the modified sequence and recompute certain
+        attributes."""
+        for summary_Nb in summary_M.summaries_Nb:
+            self.shorten_normalized_sequence_fiveprime(summary_Nb, reduction_5prime)
+
+        sub_positions = summary_M.sub_positions - reduction_5prime
+        summary_M.sub_positions = sub_positions[np.where(sub_positions >= 0)[0][0]: ]
+
+        # The following indel adjustments are very crude because Ni are not currently tracked.
+        if summary_M.insert_starts.size:
+            insert_starts = summary_M.insert_starts - reduction_5prime
+            first_retained_insert_index = np.where(insert_starts >= 0)[0][0]
+            summary_M.insert_starts = insert_starts[first_retained_insert_index: ]
+            summary_M.insert_strings = summary_M.insert_strings[first_retained_insert_index: ]
+            summary_M.spec_insert_covs = summary_M.spec_insert_covs[first_retained_insert_index: ]
+            summary_M.nonspec_insert_covs = summary_M.nonspec_insert_covs[first_retained_insert_index: ]
+
+        if summary_M.del_starts.size:
+            del_starts = summary_M.del_starts - reduction_5prime
+            first_retained_del_index = np.where(del_starts >= 0)[0][0]
+            summary_M.del_starts = del_starts[first_retained_del_index: ]
+            summary_M.del_lengths = summary_M.del_lengths[first_retained_del_index: ]
+            summary_M.spec_del_covs = summary_M.spec_del_covs[first_retained_del_index: ]
+            summary_M.nonspec_del_covs = summary_M.nonspec_del_covs[first_retained_del_index: ]
+
+        # Find the nt coverages of M from the Nb remaining in M.
+        seq_length = summary_M.spec_nt_covs_dict['A'].size - reduction_5prime
+        summary_M.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+        summary_M.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(seq_length, int) for nt in UNAMBIG_NTS}
+        for summary_Nb in summary_M.summaries_Nb:
+            for nt in UNAMBIG_NTS:
+                spec_nt_covs_dict[nt] += summary_Nb.spec_nt_covs_dict[nt]
+                nonspec_nt_covs_dict[nt] += summary_Nb.nonspec_nt_covs_dict[nt]
+        summary_M.spec_covs = sum(spec_nt_covs_dict.values())
+        summary_M.nonspec_covs = sum(nonspec_nt_covs_dict.values())
+
+        # Set a consensus seq using the nts with the highest specific cov at each sub position.
+        summary_M.consensus_string = ''.join(
+            [INT_NT_DICT[nt_int + 1] for nt_int in
+             np.argmax(np.stack(tuple(spec_nt_covs_dict.values()), axis=0), axis=0)])
 
 
     def set_sample_covs(self):
-        """Determine sample-specific coverages of seeds. Specific, nonspecific and summed coverages
-        are found for A, C, G and T, as well as overall and for Q2-Q3."""
-        for seed_seq in self.seed_seqs:
-            sample_specific_covs_dict = {}
-            sample_nonspecific_covs_dict = {}
+        """Determine coverages of seeds in each sample. Specific, nonspecific and summed coverages
+        are found for each nucleotide, as well as overall and for Q2-Q3."""
+        for seed in self.seeds:
+            sample_spec_covs_dict = {}
+            sample_nonspec_covs_dict = {}
             sample_summed_covs_dict = {}
-            sample_specific_nt_covs_dict = {}
-            sample_nonspecific_nt_covs_dict = {}
+            sample_spec_nt_covs_dict = {}
+            sample_nonspec_nt_covs_dict = {}
             sample_summed_nt_covs_dict = {}
-            seed_seq_length = len(seed_seq.seq_string)
+            seed_length = len(seed.string)
 
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_covs_dict[sample_id] = np.zeros(seed_seq_length, int)
-                sample_nonspecific_covs_dict[sample_id] = np.zeros(seed_seq_length, int)
+                sample_spec_covs_dict[sample_id] = np.zeros(seed_length, int)
+                sample_nonspec_covs_dict[sample_id] = np.zeros(seed_length, int)
 
-                sample_specific_nt_covs_dict[sample_id] = [np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
-                sample_nonspecific_nt_covs_dict[sample_id] = [np.zeros(seed_seq_length, int) for _ in UNAMBIG_NTS]
+                sample_spec_nt_covs_dict[sample_id] = [np.zeros(seed_length, int) for _ in UNAMBIG_NTS]
+                sample_nonspec_nt_covs_dict[sample_id] = [np.zeros(seed_length, int) for _ in UNAMBIG_NTS]
 
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                sample_id = norm_seq_summary.sample_id
+            for summary_Nu in seed.summaries_Nu:
+                sample_id = summary_Nu.sample_id
 
-                sample_specific_covs_dict[sample_id] += norm_seq_summary.specific_covs
-                sample_nonspecific_covs_dict[sample_id] += norm_seq_summary.nonspecific_covs
+                sample_spec_covs_dict[sample_id] += summary_Nu.spec_covs
+                sample_nonspec_covs_dict[sample_id] += summary_Nu.nonspec_covs
 
-                for i, nt in enumerate(UNAMBIG_NTS):
-                    sample_specific_nt_covs_dict[sample_id][i] += norm_seq_summary.specific_nt_covs_dict[nt]
-                    sample_nonspecific_nt_covs_dict[sample_id][i] += norm_seq_summary.nonspecific_nt_covs_dict[nt]
+                for nt_num, nt in enumerate(UNAMBIG_NTS):
+                    sample_spec_nt_covs_dict[sample_id][nt_num] += summary_Nu.spec_nt_covs_dict[nt]
+                    sample_nonspec_nt_covs_dict[sample_id][nt_num] += summary_Nu.nonspec_nt_covs_dict[nt]
 
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                sample_id = mod_seq_summary.sample_id
+            for summary_M in seed.summaries_M:
+                sample_id = summary_M.sample_id
 
-                sample_specific_covs_dict[sample_id] += mod_seq_summary.specific_covs
-                sample_nonspecific_covs_dict[sample_id] += mod_seq_summary.nonspecific_covs
+                sample_spec_covs_dict[sample_id] += summary_M.spec_covs
+                sample_nonspec_covs_dict[sample_id] += summary_M.nonspec_covs
 
-                for i, nt in enumerate(UNAMBIG_NTS):
-                    sample_specific_nt_covs_dict[sample_id][i] += mod_seq_summary.specific_nt_covs_dict[nt]
-                    sample_nonspecific_nt_covs_dict[sample_id][i] += mod_seq_summary.nonspecific_nt_covs_dict[nt]
+                for nt_num, nt in enumerate(UNAMBIG_NTS):
+                    sample_spec_nt_covs_dict[sample_id][nt_num] += summary_M.spec_nt_covs_dict[nt]
+                    sample_nonspec_nt_covs_dict[sample_id][nt_num] += summary_M.nonspec_nt_covs_dict[nt]
 
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_summed_covs_dict[sample_id] = sample_specific_covs_dict[sample_id] + sample_nonspecific_covs_dict[sample_id]
+                sample_summed_covs_dict[sample_id] = sample_spec_covs_dict[sample_id] + sample_nonspec_covs_dict[sample_id]
 
-                sample_specific_nt_covs = sample_specific_nt_covs_dict[sample_id]
-                sample_nonspecific_nt_covs = sample_nonspecific_nt_covs_dict[sample_id]
-                sample_summed_nt_covs_dict[sample_id] = [specific_covs + nonspecific_covs for specific_covs, nonspecific_covs
-                                                         in zip(sample_specific_nt_covs, sample_nonspecific_nt_covs)]
+                sample_spec_nt_covs = sample_spec_nt_covs_dict[sample_id]
+                sample_nonspec_nt_covs = sample_nonspec_nt_covs_dict[sample_id]
+                sample_summed_nt_covs_dict[sample_id] = [spec_covs + nonspec_covs for spec_covs, nonspec_covs
+                                                         in zip(sample_spec_nt_covs, sample_nonspec_nt_covs)]
 
-            seed_seq.sample_specific_covs_dict = sample_specific_covs_dict
-            seed_seq.sample_nonspecific_covs_dict = sample_nonspecific_covs_dict
-            seed_seq.sample_summed_covs_dict = sample_summed_covs_dict
-            seed_seq.sample_specific_nt_covs_dict = sample_specific_nt_covs_dict
-            seed_seq.sample_nonspecific_nt_covs_dict = sample_nonspecific_nt_covs_dict
-            seed_seq.sample_summed_nt_covs_dict = sample_summed_nt_covs_dict
+            seed.sample_spec_covs_dict = sample_spec_covs_dict
+            seed.sample_nonspec_covs_dict = sample_nonspec_covs_dict
+            seed.sample_summed_covs_dict = sample_summed_covs_dict
+            seed.sample_spec_nt_covs_dict = sample_spec_nt_covs_dict
+            seed.sample_nonspec_nt_covs_dict = sample_nonspec_nt_covs_dict
+            seed.sample_summed_nt_covs_dict = sample_summed_nt_covs_dict
 
-            q = int(seed_seq_length * 0.25)
-            seed_seq.sample_mean_Q2Q3_specific_cov_dict = {}
-            seed_seq.sample_mean_Q2Q3_nonspecific_cov_dict = {}
-            seed_seq.sample_mean_Q2Q3_summed_cov_dict = {}
+            quartile = int(seed_length * 0.25)
+            seed.sample_mean_Q2Q3_spec_cov_dict = {}
+            seed.sample_mean_Q2Q3_nonspec_cov_dict = {}
+            seed.sample_mean_Q2Q3_summed_cov_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                seed_seq.sample_mean_Q2Q3_specific_cov_dict[sample_id] = np.mean(
-                    sorted(sample_specific_covs_dict[sample_id])[q: -q])
-                seed_seq.sample_mean_Q2Q3_nonspecific_cov_dict[sample_id] = np.mean(
-                    sorted(sample_nonspecific_covs_dict[sample_id])[q: -q])
-                seed_seq.sample_mean_Q2Q3_summed_cov_dict[sample_id] = np.mean(
-                    sorted(sample_summed_covs_dict[sample_id])[q: -q])
+                seed.sample_mean_Q2Q3_spec_cov_dict[sample_id] = np.mean(
+                    sorted(sample_spec_covs_dict[sample_id])[quartile: -quartile])
+                seed.sample_mean_Q2Q3_nonspec_cov_dict[sample_id] = np.mean(
+                    sorted(sample_nonspec_covs_dict[sample_id])[quartile: -quartile])
+                seed.sample_mean_Q2Q3_summed_cov_dict[sample_id] = np.mean(
+                    sorted(sample_summed_covs_dict[sample_id])[quartile: -quartile])
 
 
-    def set_mods(self):
-        """Predict modified positions in the tRNA seed.
+    def set_substitutions(self):
+        """Predict positions with modification-induced substitutions in the tRNA seed.
 
-        A modification requires a certain level of third- and/or fourth-most abundant nucleotides at
-        the position in one or more samples. A modification in any particular sample additionally
-        requires a certain level of second- through fourth-most abundant nucleotides at the
-        position.
+        A sub requires a certain level of third- and/or fourth-most abundant nts at the position in
+        ≥1 sample. A sub in any particular sample additionally requires a certain level of second-
+        through fourth-most abundant nts at the position.
 
-        There is currently an idiosyncracy in how modifications are set that results in the
-        retention, but potential masking, of SNVs. If the position of a potential modification does
-        not meet the coverage threshold for third- and fourth-most abundant nucleotides, the seed is
-        not split into separate seeds around those SNVs, as occurs in anvi-trnaseq. Instead, the
-        SNVs are simply not reported. This is a downside to imposing the aforementioned coverage
+        There is currently an idiosyncracy in how subs are set that results in the retention, but
+        potential masking, of SNVs. If the position of a potential modification does not meet the
+        coverage threshold for third- and fourth-most abundant nucleotides, the seed is not split
+        into separate seeds around those SNVs, as occurs in `anvi-trnaseq`. Instead, the SNVs are
+        simply not reported. This is a downside to imposing the aforementioned coverage
         threshold."""
         # Division by zero issues a numpy warning, but we handle it immediately by converting the
-        # nan result to zero, so you don't need to see the warning. Unfortunately, this is the only
-        # way we have found to suppress the warning.
+        # nan result to zero so that a warning is not produced. Unfortunately, this is the only way
+        # to suppress the warning that is known by the humble developer.
         np.seterr(invalid='ignore')
         min_variation = self.min_variation
         min_third_fourth_nt = self.min_third_fourth_nt
-        for seed_seq in self.seed_seqs:
-            sample_mod_positions_dict = {}
+        for seed in self.seeds:
+            sample_sub_positions_dict = {}
             sample_variability_dict = {}
-            sample_specific_nt_covs_dict = seed_seq.sample_specific_nt_covs_dict
-            seed_seq_length = len(seed_seq.seq_string)
+            sample_spec_nt_covs_dict = seed.sample_spec_nt_covs_dict
+            seed_length = len(seed.string)
             sample_variations = []
-            third_fourth_variations = np.zeros(seed_seq_length)
-            for sample_id, specific_nt_covs in sample_specific_nt_covs_dict.items():
-                specific_nt_covs_array = np.array(specific_nt_covs)
-                specific_nt_covs_array.sort(axis=0)
-                first_covs = specific_nt_covs_array[-1, :]
-                second_covs = specific_nt_covs_array[-2, :]
-                summed_covs = specific_nt_covs_array.sum(axis=0)
+            third_fourth_variations = np.zeros(seed_length)
+            for sample_id, spec_nt_covs in sample_spec_nt_covs_dict.items():
+                spec_nt_covs_array = np.array(spec_nt_covs)
+                spec_nt_covs_array.sort(axis=0)
+                first_covs = spec_nt_covs_array[-1, :]
+                second_covs = spec_nt_covs_array[-2, :]
+                summed_covs = spec_nt_covs_array.sum(axis=0)
                 sample_variations.append(np.nan_to_num(1 - first_covs / summed_covs))
                 third_fourth_variations += np.nan_to_num(1 - (first_covs + second_covs) / summed_covs) >= min_third_fourth_nt
             sample_variations = np.array(sample_variations)
             third_fourth_variations = (third_fourth_variations > 0)
-            total_mod_positions = np.nonzero((sample_variations >= min_variation).any(axis=0) & third_fourth_variations)[0]
-            mod_sample_variations = sample_variations[:, total_mod_positions]
-            for sample_num, sample_id in enumerate(sample_specific_nt_covs_dict.keys()):
-                sample_mod_positions = total_mod_positions[np.nonzero(mod_sample_variations[sample_num, :] >= min_variation)[0]]
-                sample_mod_positions_dict[sample_id] = sample_mod_positions.tolist()
-                sample_variability_dict[sample_id] = sample_mod_positions.size * 1000 / seed_seq_length
-            seed_seq.total_mod_positions = total_mod_positions.tolist()
-            seed_seq.sample_mod_positions_dict = sample_mod_positions_dict
-            seed_seq.sample_variability_dict = sample_variability_dict
+            total_sub_positions = np.nonzero((sample_variations >= min_variation).any(axis=0) & third_fourth_variations)[0]
+            sub_sample_variations = sample_variations[:, total_sub_positions]
+            for sample_num, sample_id in enumerate(sample_spec_nt_covs_dict.keys()):
+                sample_sub_positions = total_sub_positions[np.nonzero(sub_sample_variations[sample_num, :] >= min_variation)[0]]
+                sample_sub_positions_dict[sample_id] = sample_sub_positions.tolist()
+                sample_variability_dict[sample_id] = sample_sub_positions.size * 1000 / seed_length
+            seed.total_sub_positions = total_sub_positions.tolist()
+            seed.sample_sub_positions_dict = sample_sub_positions_dict
+            seed.sample_variability_dict = sample_variability_dict
         np.seterr(invalid='warn')
 
+        if self.preferred_treatment:
+            self.set_consensus_substitution_nucleotides()
 
-    def set_consensus_mod_nts(self):
-        """Change predicted modified nucleotides in the seed consensus sequences to the nucleotides
-        supported by the "preferred" treated samples, e.g., demethylase splits, with the goal of
-        increasing the accuracy of the underlying base call."""
-        if not self.preferred_treatment:
-            return
 
-        for seed_seq in self.seed_seqs:
-            seq_string = seed_seq.seq_string
-            preferred_nt_cov_dict = {nt: np.zeros(len(seq_string), int) for nt in UNAMBIG_NTS}
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                if norm_seq_summary.sample_id in self.preferred_trnaseq_db_sample_ids:
+    def set_consensus_substitution_nucleotides(self):
+        """Change predicted nucleotides in seed consensus sequences to those supported by the
+        samples with the preferred treatment (e.g., demethylase splits) with the goal of increasing
+        the accuracy of the underlying base call."""
+        for seed in self.seeds:
+            seed_string = seed.string
+            preferred_nt_cov_dict = {nt: np.zeros(len(seed_string), int) for nt in UNAMBIG_NTS}
+            for summary_Nu in seed.summaries_Nu:
+                if summary_Nu.sample_id in self.preferred_trnaseq_db_sample_ids:
                     for nt in UNAMBIG_NTS:
-                        preferred_nt_cov_dict[nt] += norm_seq_summary.specific_nt_covs_dict[nt]
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                if mod_seq_summary.sample_id in self.preferred_trnaseq_db_sample_ids:
+                        preferred_nt_cov_dict[nt] += summary_Nu.spec_nt_covs_dict[nt]
+            for summary_M in seed.summaries_M:
+                if summary_M.sample_id in self.preferred_trnaseq_db_sample_ids:
                     for nt in UNAMBIG_NTS:
-                        preferred_nt_cov_dict[nt] += mod_seq_summary.specific_nt_covs_dict[nt]
+                        preferred_nt_cov_dict[nt] += summary_M.spec_nt_covs_dict[nt]
 
             preferred_nt_cov_array = np.array([preferred_nt_cov_dict[nt] for nt in UNAMBIG_NTS])
-            for mod_pos in seed_seq.total_mod_positions:
-                mod_covs = preferred_nt_cov_array[:, mod_pos]
-                if mod_covs.sum() == 0:
-                    # The preferred treatments do not have specific coverage of the modified site.
+            for sub_pos in seed.total_sub_positions:
+                sub_covs = preferred_nt_cov_array[:, sub_pos]
+                if sub_covs.sum() == 0:
+                    # The preferred treatments do not have specific coverage of the sub site.
                     continue
-                seq_string = seq_string[: mod_pos] + INT_NT_DICT[np.argmax(mod_covs) + 1] + seq_string[mod_pos + 1: ]
-            seed_seq.seq_string = seq_string
+                seed_string = seed_string[: sub_pos] + INT_NT_DICT[np.argmax(sub_covs) + 1] + seed_string[sub_pos + 1: ]
+            seed.string = seed_string
 
 
     def set_sample_indels(self):
-        for seed_seq in self.seed_seqs:
+        for seed in self.seeds:
             sample_insert_dict = {}
             sample_del_dict = {}
 
@@ -6234,40 +6367,39 @@ class DatabaseConverter(object):
                 sample_insert_dict[sample_id] = []
                 sample_del_dict[sample_id] = []
 
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                sample_id = mod_seq_summary.sample_id
+            for summary_M in seed.summaries_M:
+                sample_id = summary_M.sample_id
 
                 sample_insert_info = sample_insert_dict[sample_id]
-                for insert_start, insert_string, spec_insert_cov, nonspec_insert_cov in zip(mod_seq_summary.insert_starts,
-                                                                                            mod_seq_summary.insert_strings,
-                                                                                            mod_seq_summary.spec_insert_covs,
-                                                                                            mod_seq_summary.nonspec_insert_covs):
+                for insert_start, insert_string, spec_insert_cov, nonspec_insert_cov in zip(summary_M.insert_starts,
+                                                                                            summary_M.insert_strings,
+                                                                                            summary_M.spec_insert_covs,
+                                                                                            summary_M.nonspec_insert_covs):
                     sample_insert_info.append((insert_start, insert_string, spec_insert_cov, nonspec_insert_cov))
 
                 sample_del_info = sample_del_dict[sample_id]
-                for del_start, del_length, spec_del_cov, nonspec_del_cov in zip(mod_seq_summary.del_starts,
-                                                                                mod_seq_summary.del_lengths,
-                                                                                mod_seq_summary.spec_del_covs,
-                                                                                mod_seq_summary.nonspec_del_covs):
+                for del_start, del_length, spec_del_cov, nonspec_del_cov in zip(summary_M.del_starts,
+                                                                                summary_M.del_lengths,
+                                                                                summary_M.spec_del_covs,
+                                                                                summary_M.nonspec_del_covs):
                     sample_del_info.append((del_start, del_length, spec_del_cov, nonspec_del_cov))
 
-            seed_seq.sample_insert_dict = sample_insert_dict
-            seed_seq.sample_del_dict = sample_del_dict
+            seed.sample_insert_dict = sample_insert_dict
+            seed.sample_del_dict = sample_del_dict
 
 
-    def gen_contigs_db(self):
-        """Generate a contigs database of tRNA seeds. The create method of dbops.ContigsDatabase is
-        not used because it tries to call genes, count kmers, and do other things that are
+    def generate_contigs_database(self):
+        """Generate a contigs database of tRNA seeds. The create method of `dbops.ContigsDatabase`
+        is not used because it tries to call genes, count kmers, and do other things that are
         irrelevant to tRNA-seq reads. There are no tRNA splits, but to satisfy the structure of the
-        database, call every contig a split, and maintain tables on both."""
+        database, call every contig a split, and maintain tables for both contigs and splits."""
         self.progress.new("Generating a contigs db of tRNA seeds")
         self.progress.update("...")
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        contigs_db.touch()
-        set_meta_value = contigs_db.db.set_meta_value
-        insert_many = contigs_db.db.insert_many
+        contigs_db.touch('trnaseq')
 
+        set_meta_value = contigs_db.db.set_meta_value
         # Meta-values are set like in `dbops.ContigsDatabase.create`.
         set_meta_value('db_type', 'contigs')
         set_meta_value('db_variant', 'trnaseq')
@@ -6275,8 +6407,8 @@ class DatabaseConverter(object):
         set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
         set_meta_value('contigs_db_hash', self.contigs_db_hash)
         set_meta_value('split_length', 10000) # sys.maxsize
-        set_meta_value('num_contigs', len(self.seed_seqs))
-        set_meta_value('num_splits', len(self.seed_seqs))
+        set_meta_value('num_contigs', len(self.seeds))
+        set_meta_value('num_splits', len(self.seeds))
         set_meta_value('total_length', self.total_seed_length)
         set_meta_value('kmer_size', 0)
         set_meta_value('gene_level_taxonomy_source', None)
@@ -6292,7 +6424,8 @@ class DatabaseConverter(object):
         set_meta_value('trna_taxonomy_database_version', None)
         set_meta_value('creation_date', time.time())
 
-        insert_many('contig_sequences', [(seed_seq.name, seed_seq.seq_string) for seed_seq in self.seed_seqs])
+        insert_many = contigs_db.db.insert_many
+        insert_many('contig_sequences', [(seed.name, seed.string) for seed in self.seeds])
         insert_many('contigs_basic_info', self.get_contigs_basic_info_table_entries())
         insert_many('splits_basic_info', self.get_splits_basic_info_table_entries())
         insert_many('hmm_hits', self.get_hmm_hits_table_entries())
@@ -6301,9 +6434,10 @@ class DatabaseConverter(object):
         # hits info table are 'ref', 'search_type', 'domain' and 'genes'.
         contigs_db.db.insert('hmm_hits_info', ('Transfer_RNAs', '', 'Transfer_RNAs', None, ''))
         insert_many('genes_in_contigs', self.get_genes_in_contigs_table_entries())
-        insert_many('gene_amino_acid_sequences', [(i, '') for i in range(len(self.seed_seqs))])
+        insert_many('gene_amino_acid_sequences', [(seed_num, '') for seed_num in range(len(self.seeds))])
         insert_many('genes_in_splits', self.get_genes_in_splits_table_entries())
         insert_many('gene_functions', self.get_gene_functions_table_entries())
+        insert_many('trna_feature', self.get_trna_feature_table_entries())
 
         contigs_db.disconnect()
 
@@ -6312,12 +6446,12 @@ class DatabaseConverter(object):
 
     def get_contigs_basic_info_table_entries(self):
         entries = []
-        for seed_seq in self.seed_seqs:
-            seq_string = seed_seq.seq_string
+        for seed in self.seeds:
+            seed_string = seed.string
             entries.append(
-                (seed_seq.name,
-                 len(seq_string),
-                 seed_seq.gc_fraction,
+                (seed.name,
+                 len(seed_string),
+                 seed.gc_fraction,
                  1)
             )
         return entries
@@ -6325,16 +6459,16 @@ class DatabaseConverter(object):
 
     def get_splits_basic_info_table_entries(self):
         entries = []
-        for seed_seq in self.seed_seqs:
+        for seed in self.seeds:
             entries.append(
-                (seed_seq.name + '_split_00001',
+                (seed.name + '_split_00001',
                  0, # Order of split in parent contig
                  0, # Start in contig
-                 len(seed_seq.seq_string), # Stop in contig
-                 len(seed_seq.seq_string), # Split length
-                 seed_seq.gc_fraction, # GC content of split
-                 seed_seq.gc_fraction, # GC content of parent contig
-                 seed_seq.name)
+                 len(seed.string), # Stop in contig
+                 len(seed.string), # Split length
+                 seed.gc_fraction, # GC content of split
+                 seed.gc_fraction, # GC content of parent contig
+                 seed.name)
             )
         return entries
 
@@ -6342,25 +6476,25 @@ class DatabaseConverter(object):
     def get_hmm_hits_table_entries(self):
         """tRNA seeds are analogous to tRNA gene predictions from a metagenomic contigs database."""
         entries = []
-        for i, seed_seq in enumerate(self.seed_seqs):
+        for seed_num, seed in enumerate(self.seeds):
             entries.append(
-                (i, # Entry ID
-                'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
-                sha1(seed_seq.seq_string.encode('utf-8')).hexdigest(), # "Gene unique identifier"
-                i, # "Gene callers ID"
-                ANTICODON_AA_DICT[seed_seq.anticodon_seq_string] + '_' + seed_seq.anticodon_seq_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
-                '-', # "Gene HMM ID"
-                0.0) # "HMM E-value"
+                (seed_num, # Entry ID
+                 'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
+                 sha1(seed.string.encode('utf-8')).hexdigest(), # "Gene unique identifier"
+                 seed_num, # "Gene callers ID"
+                 ANTICODON_AA_DICT[seed.anticodon_string] + '_' + seed.anticodon_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
+                 '-', # "Gene HMM ID"
+                 0.0) # "HMM E-value"
             )
         return entries
 
 
     def get_hmm_hits_in_splits_table_entries(self):
         entries = []
-        for i, seed_seq in enumerate(self.seed_seqs):
+        for seed_num, seed in enumerate(self.seeds):
             entries.append(
-                (i, # Entry ID
-                 seed_seq.name + '_split_00001', # Split name
+                (seed_num, # Entry ID
+                 seed.name + '_split_00001', # Split name
                  100, # Percentage of "HMM hit" in split
                  'Transfer_RNAs')
             )
@@ -6369,12 +6503,12 @@ class DatabaseConverter(object):
 
     def get_genes_in_contigs_table_entries(self):
         entries = []
-        for i, seed_seq in enumerate(self.seed_seqs):
+        for seed_num, seed in enumerate(self.seeds):
             entries.append(
-                (i, # Gene callers ID
-                 seed_seq.name, # Contig name
+                (seed_num, # Gene callers ID
+                 seed.name, # Contig name
                  0, # Gene start in contig
-                 len(seed_seq.seq_string), # Gene stop in contig
+                 len(seed.string), # Gene stop in contig
                  'f', # Direction of gene call on contig
                  0, # Is partial gene call: for now, say all seeds are "full tRNAs"
                  2, # Call type: 1 = coding, 2 = noncoding, 3 = unknown
@@ -6386,12 +6520,12 @@ class DatabaseConverter(object):
 
     def get_genes_in_splits_table_entries(self):
         entries = []
-        for i, seed_seq in enumerate(self.seed_seqs):
+        for seed_num, seed in enumerate(self.seeds):
             entries.append(
-                (seed_seq.name + '_split_00001',
-                 i,
+                (seed.name + '_split_00001',
+                 seed_num,
                  0,
-                 len(seed_seq.seq_string),
+                 len(seed.string),
                  100)
             )
         return entries
@@ -6399,200 +6533,203 @@ class DatabaseConverter(object):
 
     def get_gene_functions_table_entries(self):
         entries = []
-        for i, seed_seq in enumerate(self.seed_seqs):
+        for seed_num, seed in enumerate(self.seeds):
             entries.append(
-                (i,
+                (seed_num,
                  'Transfer_RNAs',
-                 '%s_%s_%d' % (ANTICODON_AA_DICT[seed_seq.anticodon_seq_string], seed_seq.anticodon_seq_string, i),
+                 '%s_%s_%d' % (ANTICODON_AA_DICT[seed.anticodon_string], seed.anticodon_string, seed_num),
                  'tRNA transcript',
                  0.0)
             )
         return entries
 
 
-    def gen_auxiliary_db(self, db_cov_type):
+    def get_trna_feature_table_entries(self):
+        entries = []
+        for seed_num, seed in enumerate(self.seeds):
+            entry = [seed_num]
+            for feature, feature_index in seed.feature_dict.items():
+                try:
+                    if feature_index >= -10:
+                        entry.append(str(feature_index))
+                    else:
+                        entry.append(None)
+                except TypeError:
+                    entry.append(','.join(map(str, feature_index)))
+            entry.extend([seed.alpha_start, seed.alpha_stop, seed.beta_start, seed.beta_stop])
+            entries.append(tuple(entry))
+        return entries
+
+
+    def generate_auxiliary_database(self, db_cov_type):
         if db_cov_type == 'specific':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(
-                self.specific_auxiliary_db_path, self.contigs_db_hash, create_new=True)
-            for seed_seq in self.seed_seqs:
-                split_name = seed_seq.name + '_split_00001'
-                for sample_id in self.trnaseq_db_sample_ids:\
-                    auxiliary_db.append(split_name,
-                                        sample_id,
-                                        seed_seq.sample_specific_covs_dict[sample_id].tolist())
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_auxiliary_db_path, self.contigs_db_hash, create_new=True)
+            for seed in self.seeds:
+                split_name = seed.name + '_split_00001'
+                for sample_id in self.trnaseq_db_sample_ids:
+                    auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'nonspecific':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(
-                self.nonspecific_auxiliary_db_path, self.contigs_db_hash, create_new=True)
-            for seed_seq in self.seed_seqs:
-                split_name = seed_seq.name + '_split_00001'
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_auxiliary_db_path, self.contigs_db_hash, create_new=True)
+            for seed in self.seeds:
+                split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name,
-                                        sample_id,
-                                        seed_seq.sample_nonspecific_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'combined':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(
-                self.combined_auxiliary_db_path, self.contigs_db_hash, create_new=True)
-            for seed_seq in self.seed_seqs:
-                split_name = seed_seq.name + '_split_00001'
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.combined_auxiliary_db_path, self.contigs_db_hash, create_new=True)
+            for seed in self.seeds:
+                split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name,
-                                        sample_id + '_specific',
-                                        seed_seq.sample_specific_covs_dict[sample_id].tolist())
-                    auxiliary_db.append(split_name,
-                                        sample_id + '_nonspecific',
-                                        seed_seq.sample_nonspecific_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'summed':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(
-                self.summed_auxiliary_db_path, self.contigs_db_hash, create_new=True)
-            for seed_seq in self.seed_seqs:
-                split_name = seed_seq.name + '_split_00001'
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summed_auxiliary_db_path, self.contigs_db_hash, create_new=True)
+            for seed in self.seeds:
+                split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name,
-                                        sample_id,
-                                        (seed_seq.sample_specific_covs_dict[sample_id] + seed_seq.sample_nonspecific_covs_dict[sample_id]).tolist())
+                    auxiliary_db.append(split_name, sample_id, (seed.sample_spec_covs_dict[sample_id] + seed.sample_nonspec_covs_dict[sample_id]).tolist())
         else:
-            raise ConfigError(f"The type of profile database provided, {db_cov_type}, is not among "
-                              "those that are recognized: 'specific', 'nonspecific', 'combined', and 'summed'.")
+            raise ConfigError(f"The type of profile database provided, {db_cov_type}, "
+                              "is not among those that are recognized: 'specific', 'nonspecific', 'combined', and 'summed'.")
 
         auxiliary_db.store()
         auxiliary_db.close()
 
 
-    def set_sample_total_covs(self):
+    def set_sample_total_coverages(self):
         """For each input sample, find the total specific, nonspecific and summed coverage of the
         seeds across all positions (single integers)."""
-        sample_total_specific_cov_dict = {sample_id: 0 for sample_id in self.trnaseq_db_sample_ids}
-        sample_total_nonspecific_cov_dict = {sample_id: 0 for sample_id in self.trnaseq_db_sample_ids}
-        for seed_seq in self.seed_seqs:
-            for norm_seq_summary in seed_seq.unmod_norm_seq_summaries:
-                sample_id = norm_seq_summary.sample_id
-                specific_cov = norm_seq_summary.specific_covs.sum()
-                nonspecific_cov = norm_seq_summary.nonspecific_covs.sum()
-                sample_total_specific_cov_dict[sample_id] += specific_cov
-                sample_total_nonspecific_cov_dict[sample_id] += nonspecific_cov
-            for mod_seq_summary in seed_seq.mod_seq_summaries:
-                sample_id = mod_seq_summary.sample_id
-                specific_cov = mod_seq_summary.specific_covs.sum()
-                nonspecific_cov = mod_seq_summary.nonspecific_covs.sum()
-                sample_total_specific_cov_dict[sample_id] += specific_cov
-                sample_total_nonspecific_cov_dict[sample_id] += nonspecific_cov
+        sample_total_spec_cov_dict = {sample_id: 0 for sample_id in self.trnaseq_db_sample_ids}
+        sample_total_nonspec_cov_dict = {sample_id: 0 for sample_id in self.trnaseq_db_sample_ids}
+        for seed in self.seeds:
+            for summary_Nu in seed.summaries_Nu:
+                sample_id = summary_Nu.sample_id
+                spec_cov = summary_Nu.spec_covs.sum()
+                nonspec_cov = summary_Nu.nonspec_covs.sum()
+                sample_total_spec_cov_dict[sample_id] += spec_cov
+                sample_total_nonspec_cov_dict[sample_id] += nonspec_cov
+            for summary_M in seed.summaries_M:
+                sample_id = summary_M.sample_id
+                spec_cov = summary_M.spec_covs.sum()
+                nonspec_cov = summary_M.nonspec_covs.sum()
+                sample_total_spec_cov_dict[sample_id] += spec_cov
+                sample_total_nonspec_cov_dict[sample_id] += nonspec_cov
 
         sample_total_summed_cov_dict = {}
         for sample_id in self.trnaseq_db_sample_ids:
-            sample_total_summed_cov_dict[sample_id] = sample_total_specific_cov_dict[sample_id] + sample_total_nonspecific_cov_dict[sample_id]
+            sample_total_summed_cov_dict[sample_id] = sample_total_spec_cov_dict[sample_id] + sample_total_nonspec_cov_dict[sample_id]
 
-        self.sample_total_specific_cov_dict = sample_total_specific_cov_dict
-        self.sample_total_nonspecific_cov_dict = sample_total_nonspecific_cov_dict
+        self.sample_total_spec_cov_dict = sample_total_spec_cov_dict
+        self.sample_total_nonspec_cov_dict = sample_total_nonspec_cov_dict
         self.sample_total_summed_cov_dict = sample_total_summed_cov_dict
 
 
-    def set_sample_overall_mean_covs(self):
+    def set_sample_overall_mean_coverages(self):
         """For each input sample, find the mean specific, nonspecific and summed coverage of all
         seeds across all positions (single numbers)."""
-        sample_overall_mean_specific_cov_dict = {}
-        sample_overall_mean_nonspecific_cov_dict = {}
+        sample_overall_mean_spec_cov_dict = {}
+        sample_overall_mean_nonspec_cov_dict = {}
         sample_overall_mean_summed_cov_dict = {}
-        for sample_id, total_specific_cov in self.sample_total_specific_cov_dict.items():
-            sample_overall_mean_specific_cov_dict[sample_id] = total_specific_cov / self.total_seed_length
-        for sample_id, total_nonspecific_cov in self.sample_total_nonspecific_cov_dict.items():
-            sample_overall_mean_nonspecific_cov_dict[sample_id] = total_nonspecific_cov / self.total_seed_length
+        for sample_id, total_spec_cov in self.sample_total_spec_cov_dict.items():
+            sample_overall_mean_spec_cov_dict[sample_id] = total_spec_cov / self.total_seed_length
+        for sample_id, total_nonspec_cov in self.sample_total_nonspec_cov_dict.items():
+            sample_overall_mean_nonspec_cov_dict[sample_id] = total_nonspec_cov / self.total_seed_length
         for sample_id, total_summed_cov in self.sample_total_summed_cov_dict.items():
             sample_overall_mean_summed_cov_dict[sample_id] = total_summed_cov / self.total_seed_length
 
-        self.sample_overall_mean_specific_cov_dict = sample_overall_mean_specific_cov_dict
-        self.sample_overall_mean_nonspecific_cov_dict = sample_overall_mean_nonspecific_cov_dict
+        self.sample_overall_mean_spec_cov_dict = sample_overall_mean_spec_cov_dict
+        self.sample_overall_mean_nonspec_cov_dict = sample_overall_mean_nonspec_cov_dict
         self.sample_overall_mean_summed_cov_dict = sample_overall_mean_summed_cov_dict
 
 
-    def set_sample_mean_covs(self):
-        """Mean coverage of each seed in a sample."""
-        for seed_seq in self.seed_seqs:
-            sample_mean_specific_cov_dict = {}
-            sample_mean_nonspecific_cov_dict = {}
+    def set_sample_mean_coverages(self):
+        """Set the mean coverage of each seed in a sample."""
+        for seed in self.seeds:
+            sample_mean_spec_cov_dict = {}
+            sample_mean_nonspec_cov_dict = {}
             sample_mean_summed_cov_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_mean_specific_cov_dict[sample_id] = seed_seq.sample_specific_covs_dict[sample_id].mean()
-                sample_mean_nonspecific_cov_dict[sample_id] = seed_seq.sample_nonspecific_covs_dict[sample_id].mean()
-                sample_mean_summed_cov_dict[sample_id] = seed_seq.sample_summed_covs_dict[sample_id].mean()
-            seed_seq.sample_mean_specific_cov_dict = sample_mean_specific_cov_dict
-            seed_seq.sample_mean_nonspecific_cov_dict = sample_mean_nonspecific_cov_dict
-            seed_seq.sample_mean_summed_cov_dict = sample_mean_summed_cov_dict
+                sample_mean_spec_cov_dict[sample_id] = seed.sample_spec_covs_dict[sample_id].mean()
+                sample_mean_nonspec_cov_dict[sample_id] = seed.sample_nonspec_covs_dict[sample_id].mean()
+                sample_mean_summed_cov_dict[sample_id] = seed.sample_summed_covs_dict[sample_id].mean()
+            seed.sample_mean_spec_cov_dict = sample_mean_spec_cov_dict
+            seed.sample_mean_nonspec_cov_dict = sample_mean_nonspec_cov_dict
+            seed.sample_mean_summed_cov_dict = sample_mean_summed_cov_dict
 
 
-    def set_sample_std_covs(self):
-        """Standard deviation of the coverage of each seed in a sample."""
-        for seed_seq in self.seed_seqs:
-            sample_std_specific_cov_dict = {}
-            sample_std_nonspecific_cov_dict = {}
+    def set_sample_coverage_standard_deviations(self):
+        """Set the standard deviation of the coverage of each seed in a sample."""
+        for seed in self.seeds:
+            sample_std_spec_cov_dict = {}
+            sample_std_nonspec_cov_dict = {}
             sample_std_summed_cov_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_std_specific_cov_dict[sample_id] = seed_seq.sample_specific_covs_dict[sample_id].std()
-                sample_std_nonspecific_cov_dict[sample_id] = seed_seq.sample_nonspecific_covs_dict[sample_id].std()
-                sample_std_summed_cov_dict[sample_id] = seed_seq.sample_summed_covs_dict[sample_id].std()
-            seed_seq.sample_std_specific_cov_dict = sample_std_specific_cov_dict
-            seed_seq.sample_std_nonspecific_cov_dict = sample_std_nonspecific_cov_dict
-            seed_seq.sample_std_summed_cov_dict = sample_std_summed_cov_dict
+                sample_std_spec_cov_dict[sample_id] = seed.sample_spec_covs_dict[sample_id].std()
+                sample_std_nonspec_cov_dict[sample_id] = seed.sample_nonspec_covs_dict[sample_id].std()
+                sample_std_summed_cov_dict[sample_id] = seed.sample_summed_covs_dict[sample_id].std()
+            seed.sample_std_spec_cov_dict = sample_std_spec_cov_dict
+            seed.sample_std_nonspec_cov_dict = sample_std_nonspec_cov_dict
+            seed.sample_std_summed_cov_dict = sample_std_summed_cov_dict
 
 
     def set_sample_abundances(self):
         """For each sample, and for specific and nonspecific coverages, abundance is defined as the
         mean coverage of the seed divided by the mean total coverage of the sample across all
         seeds."""
-        for seed_seq in self.seed_seqs:
-            sample_specific_abundances_dict = {}
-            sample_nonspecific_abundances_dict = {}
-            sample_summed_abundances_dict = {}
+        for seed in self.seeds:
+            sample_spec_abund_dict = {}
+            sample_nonspec_abund_dict = {}
+            sample_summed_abund_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_abundances_dict[sample_id] = seed_seq.sample_mean_specific_cov_dict[sample_id] / self.sample_overall_mean_specific_cov_dict[sample_id]
-                sample_nonspecific_abundances_dict[sample_id] = seed_seq.sample_mean_nonspecific_cov_dict[sample_id] / self.sample_overall_mean_nonspecific_cov_dict[sample_id]
-                sample_summed_abundances_dict[sample_id] = seed_seq.sample_mean_summed_cov_dict[sample_id] / self.sample_overall_mean_summed_cov_dict[sample_id]
-            seed_seq.sample_specific_abundances_dict = sample_specific_abundances_dict
-            seed_seq.sample_nonspecific_abundances_dict = sample_nonspecific_abundances_dict
-            seed_seq.sample_summed_abundances_dict = sample_summed_abundances_dict
+                sample_spec_abund_dict[sample_id] = seed.sample_mean_spec_cov_dict[sample_id] / self.sample_overall_mean_spec_cov_dict[sample_id]
+                sample_nonspec_abund_dict[sample_id] = seed.sample_mean_nonspec_cov_dict[sample_id] / self.sample_overall_mean_nonspec_cov_dict[sample_id]
+                sample_summed_abund_dict[sample_id] = seed.sample_mean_summed_cov_dict[sample_id] / self.sample_overall_mean_summed_cov_dict[sample_id]
+            seed.sample_spec_abund_dict = sample_spec_abund_dict
+            seed.sample_nonspec_abund_dict = sample_nonspec_abund_dict
+            seed.sample_summed_abund_dict = sample_summed_abund_dict
 
 
     def set_sample_normalization_multipliers(self):
         """Set a normalization constant for each sample to scale their coverages, allowing the
-        relative abundance of seeds in a sample to compared between samples. Normalization is based
-        on the total specific coverage of each sample -- one can imagine other ways of doing this,
-        including use of summed specific and nonspecific coverage, but this would require
+        relative abundance of seeds in a sample to be compared between samples. Normalization is
+        based on the total specific coverage of each sample -- one can imagine other ways of doing
+        this, including use of summed specific and nonspecific coverage, but this would require
         deconvoluting the multiple representation of nonspecific reads."""
         sample_normalization_multiplier_dict = {}
-        min_total_specific_cov = min([v for v in self.sample_total_specific_cov_dict.values()])
-        for sample_id, total_specific_cov in self.sample_total_specific_cov_dict.items():
-            sample_normalization_multiplier_dict[sample_id] = min_total_specific_cov / total_specific_cov
+        min_total_spec_cov = min([v for v in self.sample_total_spec_cov_dict.values()])
+        for sample_id, total_spec_cov in self.sample_total_spec_cov_dict.items():
+            sample_normalization_multiplier_dict[sample_id] = min_total_spec_cov / total_spec_cov
         self.sample_normalization_multiplier_dict = sample_normalization_multiplier_dict
 
 
     def set_sample_normalized_mean_Q2Q3_coverages(self):
         """Scale mean coverages for comparison across samples."""
-        for seed_seq in self.seed_seqs:
-            sample_normalized_mean_Q2Q3_specific_cov_dict = {}
-            sample_normalized_mean_Q2Q3_nonspecific_cov_dict = {}
+        for seed in self.seeds:
+            sample_normalized_mean_Q2Q3_spec_cov_dict = {}
+            sample_normalized_mean_Q2Q3_nonspec_cov_dict = {}
             sample_normalized_mean_Q2Q3_summed_cov_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_normalized_mean_Q2Q3_specific_cov_dict[sample_id] = seed_seq.sample_mean_Q2Q3_specific_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
-                sample_normalized_mean_Q2Q3_nonspecific_cov_dict[sample_id] = seed_seq.sample_mean_Q2Q3_nonspecific_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
-                sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] = seed_seq.sample_mean_Q2Q3_summed_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
-            seed_seq.sample_normalized_mean_Q2Q3_specific_cov_dict = sample_normalized_mean_Q2Q3_specific_cov_dict
-            seed_seq.sample_normalized_mean_Q2Q3_nonspecific_cov_dict = sample_normalized_mean_Q2Q3_nonspecific_cov_dict
-            seed_seq.sample_normalized_mean_Q2Q3_summed_cov_dict = sample_normalized_mean_Q2Q3_summed_cov_dict
+                sample_normalized_mean_Q2Q3_spec_cov_dict[sample_id] = seed.sample_mean_Q2Q3_spec_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
+                sample_normalized_mean_Q2Q3_nonspec_cov_dict[sample_id] = seed.sample_mean_Q2Q3_nonspec_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
+                sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] = seed.sample_mean_Q2Q3_summed_cov_dict[sample_id] * self.sample_normalization_multiplier_dict[sample_id]
+            seed.sample_normalized_mean_Q2Q3_spec_cov_dict = sample_normalized_mean_Q2Q3_spec_cov_dict
+            seed.sample_normalized_mean_Q2Q3_nonspec_cov_dict = sample_normalized_mean_Q2Q3_nonspec_cov_dict
+            seed.sample_normalized_mean_Q2Q3_summed_cov_dict = sample_normalized_mean_Q2Q3_summed_cov_dict
 
 
     def set_sample_detections(self):
         """Find the proportion of each seed sequence covered by reads in a sample."""
-        for seed_seq in self.seed_seqs:
-            seed_seq_length = len(seed_seq.seq_string)
-            sample_specific_detection_dict = {}
-            sample_nonspecific_detection_dict = {}
+        for seed in self.seeds:
+            seed_length = len(seed.string)
+            sample_spec_detection_dict = {}
+            sample_nonspec_detection_dict = {}
             sample_summed_detection_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_detection_dict[sample_id] = seed_seq.sample_specific_covs_dict[sample_id].nonzero()[0].size / seed_seq_length
-                sample_nonspecific_detection_dict[sample_id] = seed_seq.sample_nonspecific_covs_dict[sample_id].nonzero()[0].size / seed_seq_length
-                sample_summed_detection_dict[sample_id] = seed_seq.sample_summed_covs_dict[sample_id].nonzero()[0].size / seed_seq_length
-            seed_seq.sample_specific_detection_dict = sample_specific_detection_dict
-            seed_seq.sample_nonspecific_detection_dict = sample_nonspecific_detection_dict
-            seed_seq.sample_summed_detection_dict = sample_summed_detection_dict
+                sample_spec_detection_dict[sample_id] = seed.sample_spec_covs_dict[sample_id].nonzero()[0].size / seed_length
+                sample_nonspec_detection_dict[sample_id] = seed.sample_nonspec_covs_dict[sample_id].nonzero()[0].size / seed_length
+                sample_summed_detection_dict[sample_id] = seed.sample_summed_covs_dict[sample_id].nonzero()[0].size / seed_length
+            seed.sample_spec_detection_dict = sample_spec_detection_dict
+            seed.sample_nonspec_detection_dict = sample_nonspec_detection_dict
+            seed.sample_summed_detection_dict = sample_summed_detection_dict
 
 
     def set_sample_relative_abundances(self):
@@ -6600,64 +6737,66 @@ class DatabaseConverter(object):
         total coverage of the seed across samples -- relative abundances sum to one across
         samples."""
         np.seterr(invalid='ignore')
-        for seed_seq in self.seed_seqs:
-            sample_specific_relative_abundances_dict = {}
-            sample_nonspecific_relative_abundances_dict = {}
-            sample_summed_relative_abundances_dict = {}
-            pansample_normalized_mean_Q2Q3_specific_cov = sum(seed_seq.sample_normalized_mean_Q2Q3_specific_cov_dict.values())
-            pansample_normalized_mean_Q2Q3_nonspecific_cov = sum(seed_seq.sample_normalized_mean_Q2Q3_nonspecific_cov_dict.values())
-            pansample_normalized_mean_Q2Q3_summed_cov = sum(seed_seq.sample_normalized_mean_Q2Q3_summed_cov_dict.values())
+        for seed in self.seeds:
+            sample_spec_rel_abund_dict = {}
+            sample_nonspec_rel_abund_dict = {}
+            sample_summed_rel_abund_dict = {}
+            pansample_normalized_mean_Q2Q3_spec_cov = sum(seed.sample_normalized_mean_Q2Q3_spec_cov_dict.values())
+            pansample_normalized_mean_Q2Q3_nonspec_cov = sum(seed.sample_normalized_mean_Q2Q3_nonspec_cov_dict.values())
+            pansample_normalized_mean_Q2Q3_summed_cov = sum(seed.sample_normalized_mean_Q2Q3_summed_cov_dict.values())
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_relative_abundances_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_specific_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_specific_cov
-                sample_nonspecific_relative_abundances_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_nonspecific_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_nonspecific_cov
-                sample_summed_relative_abundances_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_summed_cov
-            seed_seq.sample_specific_relative_abundances_dict = sample_specific_relative_abundances_dict
-            seed_seq.sample_nonspecific_relative_abundances_dict = sample_nonspecific_relative_abundances_dict
-            seed_seq.sample_summed_relative_abundances_dict = sample_summed_relative_abundances_dict
+                sample_spec_rel_abund_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_spec_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_spec_cov
+                sample_nonspec_rel_abund_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_nonspec_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_nonspec_cov
+                sample_summed_rel_abund_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] / pansample_normalized_mean_Q2Q3_summed_cov
+            seed.sample_spec_rel_abund_dict = sample_spec_rel_abund_dict
+            seed.sample_nonspec_rel_abund_dict = sample_nonspec_rel_abund_dict
+            seed.sample_summed_rel_abund_dict = sample_summed_rel_abund_dict
         np.seterr(invalid='warn')
 
 
     def set_sample_max_normalized_ratios(self):
         """The max normalized coverage ratio represents the coverage of the seed in one sample
-        relative to the maximum coverage amongst the samples -- one sample will always have a value
-        equal to one."""
-        for seed_seq in self.seed_seqs:
-            sample_specific_max_normalized_ratio_dict = {}
-            sample_nonspecific_max_normalized_ratio_dict = {}
+        relative to the max coverage amongst the samples -- one sample will always have a value
+        equal to 1."""
+        for seed in self.seeds:
+            sample_spec_max_normalized_ratio_dict = {}
+            sample_nonspec_max_normalized_ratio_dict = {}
             sample_summed_max_normalized_ratio_dict = {}
-            max_normalized_mean_Q2Q3_specific_cov = max(seed_seq.sample_normalized_mean_Q2Q3_specific_cov_dict.values())
-            max_normalized_mean_Q2Q3_nonspecific_cov = max(seed_seq.sample_normalized_mean_Q2Q3_nonspecific_cov_dict.values())
-            max_normalized_mean_Q2Q3_summed_cov = max(seed_seq.sample_normalized_mean_Q2Q3_summed_cov_dict.values())
+            max_normalized_mean_Q2Q3_spec_cov = max(seed.sample_normalized_mean_Q2Q3_spec_cov_dict.values())
+            max_normalized_mean_Q2Q3_nonspec_cov = max(seed.sample_normalized_mean_Q2Q3_nonspec_cov_dict.values())
+            max_normalized_mean_Q2Q3_summed_cov = max(seed.sample_normalized_mean_Q2Q3_summed_cov_dict.values())
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_max_normalized_ratio_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_specific_cov_dict[sample_id] / max_normalized_mean_Q2Q3_specific_cov if max_normalized_mean_Q2Q3_specific_cov else 0
-                sample_nonspecific_max_normalized_ratio_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_nonspecific_cov_dict[sample_id] / max_normalized_mean_Q2Q3_nonspecific_cov if max_normalized_mean_Q2Q3_nonspecific_cov else 0
-                sample_summed_max_normalized_ratio_dict[sample_id] = seed_seq.sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] / max_normalized_mean_Q2Q3_summed_cov if max_normalized_mean_Q2Q3_summed_cov else 0
-            seed_seq.sample_specific_max_normalized_ratio_dict = sample_specific_max_normalized_ratio_dict
-            seed_seq.sample_nonspecific_max_normalized_ratio_dict = sample_nonspecific_max_normalized_ratio_dict
-            seed_seq.sample_summed_max_normalized_ratio_dict = sample_summed_max_normalized_ratio_dict
+                sample_spec_max_normalized_ratio_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_spec_cov_dict[sample_id] / max_normalized_mean_Q2Q3_spec_cov if max_normalized_mean_Q2Q3_spec_cov else 0
+                sample_nonspec_max_normalized_ratio_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_nonspec_cov_dict[sample_id] / max_normalized_mean_Q2Q3_nonspec_cov if max_normalized_mean_Q2Q3_nonspec_cov else 0
+                sample_summed_max_normalized_ratio_dict[sample_id] = seed.sample_normalized_mean_Q2Q3_summed_cov_dict[sample_id] / max_normalized_mean_Q2Q3_summed_cov if max_normalized_mean_Q2Q3_summed_cov else 0
+            seed.sample_spec_max_normalized_ratio_dict = sample_spec_max_normalized_ratio_dict
+            seed.sample_nonspec_max_normalized_ratio_dict = sample_nonspec_max_normalized_ratio_dict
+            seed.sample_summed_max_normalized_ratio_dict = sample_summed_max_normalized_ratio_dict
 
 
-    def set_variable_nts_table_entries(self):
-        """Variable nucleotides in the profile databases are nucleotides with predicted
-        modifications, not single nucleotide variants. Modifications are determined from specific
-        coverage, but are displayed in nonspecific and summed profile databases as well."""
+    def set_variable_nucleotides_table_entries(self):
+        """Variable nucleotides in the profile databases are those with predicted
+        modification-induced substitutions, not single nucleotide variants. Subs are determined from
+        specific coverage and are currently only reported in the specific coverage profile database.
+        (Therefore, `anvi-interactive` does not display subs with "combined" or "summed" coverage
+        profile databases.)"""
         entries = []
         for sample_id in self.trnaseq_db_sample_ids:
-            for i, seed_seq in enumerate(self.seed_seqs):
-                specific_covs = seed_seq.sample_specific_covs_dict[sample_id]
-                specific_nt_cov_arrays = seed_seq.sample_specific_nt_covs_dict[sample_id]
-                for pos in seed_seq.sample_mod_positions_dict[sample_id]:
-                    total_cov = specific_covs[pos]
-                    specific_nt_covs = [arr[pos] for arr in specific_nt_cov_arrays]
-                    max_nt_cov = max(specific_nt_covs)
-                    sorted_nt_covs = sorted(zip(UNAMBIG_NTS, specific_nt_covs), key=lambda x: -x[1])
+            for seed_num, seed in enumerate(self.seeds):
+                spec_covs = seed.sample_spec_covs_dict[sample_id]
+                spec_nt_cov_arrays = seed.sample_spec_nt_covs_dict[sample_id]
+                for pos in seed.sample_sub_positions_dict[sample_id]:
+                    total_cov = spec_covs[pos]
+                    spec_nt_covs = [arr[pos] for arr in spec_nt_cov_arrays]
+                    max_nt_cov = max(spec_nt_covs)
+                    sorted_nt_covs = sorted(zip(UNAMBIG_NTS, spec_nt_covs), key=lambda nt_item: -nt_item[1])
                     ref_nt = sorted_nt_covs[0][0]
                     secondary_nt = sorted_nt_covs[1][0]
                     entries.append((sample_id,
-                                    seed_seq.name + '_split_00001',
+                                    seed.name + '_split_00001',
                                     pos, # Position in split
                                     pos, # Position in contig
-                                    i, # Corresponding gene call
+                                    seed_num, # Corresponding gene call
                                     1, # In noncoding gene call
                                     0, # In coding gene call
                                     0, # Base position in codon (0 for noncoding gene call)
@@ -6668,26 +6807,26 @@ class DatabaseConverter(object):
                                     1 - max_nt_cov / total_cov, # Departure from reference
                                     ref_nt + secondary_nt, # Competing nts (top 2)
                                     ref_nt,
-                                    specific_nt_covs[0], # A coverage
-                                    specific_nt_covs[1], # C coverage
-                                    specific_nt_covs[2], # G coverage
-                                    specific_nt_covs[3], # T coverage
+                                    spec_nt_covs[0], # A coverage
+                                    spec_nt_covs[1], # C coverage
+                                    spec_nt_covs[2], # G coverage
+                                    spec_nt_covs[3], # T coverage
                                     0))
         self.variable_nts_table_entries = entries
 
 
     def set_indels_table_entries(self):
         """Indels are determined separately from specific and nonspecific coverages."""
-        specific_entries = []
-        nonspecific_entries = []
+        spec_entries = []
+        nonspec_entries = []
         summed_entries = []
         min_indel_fraction = self.min_indel_fraction
         for sample_id in self.trnaseq_db_sample_ids:
-            for seed_seq_index, seed_seq in enumerate(self.seed_seqs):
-                insert_info = seed_seq.sample_insert_dict[sample_id]
-                del_info = seed_seq.sample_del_dict[sample_id]
-                spec_covs = seed_seq.sample_specific_covs_dict[sample_id]
-                nonspec_covs = seed_seq.sample_nonspecific_covs_dict[sample_id]
+            for seed_num, seed in enumerate(self.seeds):
+                insert_info = seed.sample_insert_dict[sample_id]
+                del_info = seed.sample_del_dict[sample_id]
+                spec_covs = seed.sample_spec_covs_dict[sample_id]
+                nonspec_covs = seed.sample_nonspec_covs_dict[sample_id]
 
                 for insert_start, insert_string, insert_spec_cov, insert_nonspec_cov in insert_info:
                     spec_cov = (spec_covs[insert_start] + spec_covs[insert_start + 1]) / 2
@@ -6696,61 +6835,61 @@ class DatabaseConverter(object):
                     # but not the reference nucleotide.
                     insert_freq = 1 if spec_cov == 0 else insert_spec_cov / spec_cov
                     if insert_freq >= min_indel_fraction:
-                        specific_entries.append((sample_id,
-                                                 seed_seq.name + '_split_00001',
-                                                 insert_start, # Position in split
-                                                 insert_start, # Position in contig
-                                                 seed_seq_index, # Corresponding gene call
-                                                 1, # In noncoding gene call
-                                                 0, # In coding gene call
-                                                 0, # Base position in codon (0 for noncoding gene call)
-                                                 -1, # Codon order in gene (-1 for noncoding gene call)
-                                                 0, # Coverage outlier in split (0 or 1)
-                                                 0, # Coverage outlier in contig (0 or 1)
-                                                 seed_seq.seq_string[insert_start], # Reference nt
-                                                 'INS', # Type of indel
-                                                 insert_string, # Indel sequence ('' for deletion)
-                                                 len(insert_string), # Indel length
-                                                 insert_spec_cov, # Deletion count (coverage)
-                                                 spec_cov)) # Reference sequence coverage
+                        spec_entries.append((sample_id,
+                                             seed.name + '_split_00001',
+                                             insert_start, # Position in split
+                                             insert_start, # Position in contig
+                                             seed_num, # Corresponding gene call
+                                             1, # In noncoding gene call
+                                             0, # In coding gene call
+                                             0, # Base position in codon (0 for noncoding gene call)
+                                             -1, # Codon order in gene (-1 for noncoding gene call)
+                                             0, # Coverage outlier in split (0 or 1)
+                                             0, # Coverage outlier in contig (0 or 1)
+                                             seed.string[insert_start], # Reference nt
+                                             'INS', # Type of indel
+                                             insert_string, # Indel sequence ('' for deletion)
+                                             len(insert_string), # Indel length
+                                             insert_spec_cov, # Deletion count (coverage)
+                                             spec_cov)) # Reference sequence coverage
 
                     nonspec_cov = (nonspec_covs[insert_start] + nonspec_covs[insert_start + 1]) / 2
                     insert_freq = 1 if nonspec_cov == 0 else insert_nonspec_cov / nonspec_cov
                     if insert_freq >= min_indel_fraction:
-                        nonspecific_entries.append((sample_id,
-                                                    seed_seq.name + '_split_00001',
-                                                    insert_start,
-                                                    insert_start,
-                                                    seed_seq_index,
-                                                    1,
-                                                    0,
-                                                    0,
-                                                    -1,
-                                                    0,
-                                                    0,
-                                                    seed_seq.seq_string[insert_start],
-                                                    'INS',
-                                                    insert_string,
-                                                    len(insert_string),
-                                                    insert_nonspec_cov,
-                                                    nonspec_cov))
+                        nonspec_entries.append((sample_id,
+                                                seed.name + '_split_00001',
+                                                insert_start,
+                                                insert_start,
+                                                seed_num,
+                                                1,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                seed.string[insert_start],
+                                                'INS',
+                                                insert_string,
+                                                len(insert_string),
+                                                insert_nonspec_cov,
+                                                nonspec_cov))
 
                     sum_cov = spec_cov + nonspec_cov
                     insert_sum_cov = insert_spec_cov + insert_nonspec_cov
                     insert_freq = 1 if sum_cov == 0 else insert_sum_cov / sum_cov
                     if insert_freq >= min_indel_fraction:
                         summed_entries.append((sample_id,
-                                               seed_seq.name + '_split_00001',
+                                               seed.name + '_split_00001',
                                                insert_start,
                                                insert_start,
-                                               seed_seq_index,
+                                               seed_num,
                                                1,
                                                0,
                                                0,
                                                -1,
                                                0,
                                                0,
-                                               seed_seq.seq_string[insert_start],
+                                               seed.string[insert_start],
                                                'INS',
                                                insert_string,
                                                len(insert_string),
@@ -6761,79 +6900,79 @@ class DatabaseConverter(object):
                     spec_cov = spec_covs[del_start: del_start + del_length].mean()
                     del_freq = 1 if spec_cov == 0 else del_spec_cov / spec_cov
                     if del_freq >= min_indel_fraction:
-                        specific_entries.append((sample_id,
-                                                 seed_seq.name + '_split_00001',
-                                                 del_start, # Position in split
-                                                 del_start, # Position in contig
-                                                 seed_seq_index, # Corresponding gene call
-                                                 1, # In noncoding gene call
-                                                 0, # In coding gene call
-                                                 0, # Base position in codon (0 for noncoding gene call)
-                                                 -1, # Codon order in gene (-1 for noncoding gene call)
-                                                 0, # Coverage outlier in split (0 or 1)
-                                                 0, # Coverage outlier in contig (0 or 1)
-                                                 seed_seq.seq_string[del_start], # Reference nt
-                                                 'DEL', # Type of indel
-                                                 '', # Indel sequence ('' for deletion)
-                                                 del_length, # Indel length
-                                                 del_spec_cov, # Deletion count (coverage)
-                                                 spec_cov)) # Reference sequence coverage
+                        spec_entries.append((sample_id,
+                                             seed.name + '_split_00001',
+                                             del_start, # Position in split
+                                             del_start, # Position in contig
+                                             seed_num, # Corresponding gene call
+                                             1, # In noncoding gene call
+                                             0, # In coding gene call
+                                             0, # Base position in codon (0 for noncoding gene call)
+                                             -1, # Codon order in gene (-1 for noncoding gene call)
+                                             0, # Coverage outlier in split (0 or 1)
+                                             0, # Coverage outlier in contig (0 or 1)
+                                             seed.string[del_start], # Reference nt
+                                             'DEL', # Type of indel
+                                             '', # Indel sequence ('' for deletion)
+                                             del_length, # Indel length
+                                             del_spec_cov, # Deletion count (coverage)
+                                             spec_cov)) # Reference sequence coverage
 
                     nonspec_cov = nonspec_covs[del_start: del_start + del_length].mean()
                     del_freq = 1 if nonspec_cov == 0 else del_nonspec_cov / nonspec_cov
                     if del_freq >= min_indel_fraction:
-                        nonspecific_entries.append((sample_id,
-                                                    seed_seq.name + '_split_00001',
-                                                    del_start,
-                                                    del_start,
-                                                    seed_seq_index,
-                                                    1,
-                                                    0,
-                                                    0,
-                                                    -1,
-                                                    0,
-                                                    0,
-                                                    seed_seq.seq_string[del_start],
-                                                    'DEL',
-                                                    '',
-                                                    del_length,
-                                                    del_nonspec_cov,
-                                                    nonspec_cov))
+                        nonspec_entries.append((sample_id,
+                                                seed.name + '_split_00001',
+                                                del_start,
+                                                del_start,
+                                                seed_num,
+                                                1,
+                                                0,
+                                                0,
+                                                -1,
+                                                0,
+                                                0,
+                                                seed.string[del_start],
+                                                'DEL',
+                                                '',
+                                                del_length,
+                                                del_nonspec_cov,
+                                                nonspec_cov))
 
                     sum_cov = spec_cov + nonspec_cov
                     del_sum_cov = del_spec_cov + del_nonspec_cov
                     del_freq = 1 if sum_cov == 0 else del_sum_cov / sum_cov
                     if del_freq >= min_indel_fraction:
                         summed_entries.append((sample_id,
-                                               seed_seq.name + '_split_00001',
+                                               seed.name + '_split_00001',
                                                del_start,
                                                del_start,
-                                               seed_seq_index,
+                                               seed_num,
                                                1,
                                                0,
                                                0,
                                                -1,
                                                0,
                                                0,
-                                               seed_seq.seq_string[del_start],
+                                               seed.string[del_start],
                                                'DEL',
                                                '',
                                                del_length,
                                                del_sum_cov,
                                                sum_cov))
-        self.specific_indels_table_entries = specific_entries
-        self.nonspecific_indels_table_entries = nonspecific_entries
+        self.spec_indels_table_entries = spec_entries
+        self.nonspec_indels_table_entries = nonspec_entries
         self.summed_indels_table_entries = summed_entries
 
 
-    def gen_profile_db(self, db_cov_type):
+    def generate_profile_database(self, db_cov_type):
         self.progress.new(f"Generating {db_cov_type} profile db")
         self.progress.update("...")
 
         if db_cov_type == 'specific':
-            profile_db_path = self.specific_profile_db_path
+            profile_db_path = self.spec_profile_db_path
         elif db_cov_type == 'nonspecific':
-            profile_db_path = self.nonspecific_profile_db_path
+            profile_db_path = self.nonspec_profile_db_path
         elif db_cov_type == 'combined':
             profile_db_path = self.combined_profile_db_path
         elif db_cov_type == 'summed':
@@ -6845,44 +6984,44 @@ class DatabaseConverter(object):
         profile_db = dbops.ProfileDatabase(profile_db_path)
         profile_db.touch()
 
+        set_meta_value = profile_db.db.set_meta_value
         # Profile database meta-values are set in a parallel fashion to `merger.MultipleRuns.merge`.
-        profile_db.db.set_meta_value('creation_date', time.time())
-        profile_db.db.set_meta_value('db_type', 'profile')
+        set_meta_value('creation_date', time.time())
+        set_meta_value('db_type', 'profile')
+        set_meta_value('db_variant', 'trnaseq')
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
-        profile_db.db.set_meta_value('contigs_db_hash', contigs_db.meta['contigs_db_hash'])
-        profile_db.db.set_meta_value('sample_id', contigs_db.meta['project_name'])
+        set_meta_value('contigs_db_hash', contigs_db.meta['contigs_db_hash'])
+        set_meta_value('sample_id', contigs_db.meta['project_name'])
         contigs_db.disconnect()
 
         if db_cov_type == 'combined':
-            profile_db.db.set_meta_value('samples', ', '.join([sample_id + '_' + cov_type
-                                                               for sample_id in self.trnaseq_db_sample_ids
-                                                               for cov_type in ('specific', 'nonspecific')]))
+            set_meta_value('samples', ', '.join([sample_id + '_' + cov_type
+                                                 for sample_id in self.trnaseq_db_sample_ids
+                                                 for cov_type in ('specific', 'nonspecific')]))
         else:
-            profile_db.db.set_meta_value('samples', ', '.join([sample_id for sample_id in self.trnaseq_db_sample_ids]))
-        # The total number of reads mapped is not calculated, as that would require deconvoluting
-        # the number of reads that mapped nonspecifically. Also, the total number of mapped reads is
-        # less informative here than in metagenomics, since they vary greatly in length.
-        # profile_db.db.set_meta_value('total_reads_mapped', -1)
-        profile_db.db.set_meta_value('merged', True)
-        profile_db.db.set_meta_value('blank', False)
-        profile_db.db.set_meta_value('default_view', 'mean_coverage')
-        profile_db.db.set_meta_value('min_contig_length', 1)
-        profile_db.db.set_meta_value('max_contig_length', MAXSIZE)
-        profile_db.db.set_meta_value('SNVs_profiled', False)
-        profile_db.db.set_meta_value('SCVs_profiled', False)
-        profile_db.db.set_meta_value('INDELs_profiled', False)
-        profile_db.db.set_meta_value('num_contigs', len(self.seed_seqs))
-        profile_db.db.set_meta_value('num_splits', len(self.seed_seqs))
-        profile_db.db.set_meta_value('total_length', self.total_seed_length)
-        profile_db.db.set_meta_value('min_coverage_for_variability', 1)
-        profile_db.db.set_meta_value('min_indel_fraction', 0)
-        profile_db.db.set_meta_value('report_variability_full', False)
-        profile_db.db.set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
-        # profile_db.db.set_meta_value('min_percent_identity', -1)
+            set_meta_value('samples', ', '.join([sample_id for sample_id in self.trnaseq_db_sample_ids]))
+        # The total number of reads "mapped" is not calculated due to various complexities.
+        # set_meta_value('total_reads_mapped', -1)
+        set_meta_value('merged', True)
+        set_meta_value('blank', False)
+        set_meta_value('default_view', 'mean_coverage')
+        set_meta_value('min_contig_length', 1)
+        set_meta_value('max_contig_length', MAXSIZE)
+        set_meta_value('SNVs_profiled', False)
+        set_meta_value('SCVs_profiled', False)
+        set_meta_value('INDELs_profiled', False)
+        set_meta_value('num_contigs', len(self.seeds))
+        set_meta_value('num_splits', len(self.seeds))
+        set_meta_value('total_length', self.total_seed_length)
+        set_meta_value('min_coverage_for_variability', 1)
+        set_meta_value('min_indel_fraction', 0)
+        set_meta_value('report_variability_full', False)
+        set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
+        # set_meta_value('min_percent_identity', -1)
 
-        # Whereas variability in metagenomics refers to SNVs, here it refers to modifications.
-        # Modifications are only identified from specific coverage.
+        # Whereas variability in metagenomics refers to SNVs, here it refers to inferred
+        # modification-induced substitutions. Subs are only identified from specific coverage.
         if db_cov_type == 'specific':
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('variable_nucleotides', ','.join('?' * len(tables.variable_nts_table_structure))),
@@ -6890,42 +7029,44 @@ class DatabaseConverter(object):
             profile_db.db.commit()
 
         if db_cov_type == 'specific' or db_cov_type == 'nonspecific' or db_cov_type == 'summed':
-            tables_to_create = [('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
-                                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
-                                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
-                                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
-                                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]
+            tables_to_create = [('sample_mean_' + db_cov_type.replace('specific', 'spec') + '_cov_dict', 'mean_coverage'),
+                                ('sample_std_' + db_cov_type.replace('specific', 'spec') + '_cov_dict', 'std_coverage'),
+                                ('sample_' + db_cov_type.replace('specific', 'spec') + '_abund_dict', 'abundance'),
+                                ('sample_' + db_cov_type.replace('specific', 'spec') + '_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_' + db_cov_type.replace('specific', 'spec') + '_cov_dict', 'mean_coverage_Q2Q3')]
 
             for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
-            # Variability is the measure of the frequency of modification-induced substitutions in
-            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
+            # Variability is the measure of the frequency of inferred modification-induced
+            # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
+            # coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
             self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
-                                     getattr(self, db_cov_type + '_indels_table_entries'))
+                                     getattr(self, db_cov_type.replace('specific', 'spec') + '_indels_table_entries'))
         elif db_cov_type == 'combined':
-            tables_to_create = [('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
-                                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
-                                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
-                                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
-                                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]
+            tables_to_create = [('sample_mean_spec_cov_dict', 'sample_mean_nonspec_cov_dict', 'mean_coverage'),
+                                ('sample_std_spec_cov_dict', 'sample_std_nonspec_cov_dict', 'std_coverage'),
+                                ('sample_spec_abund_dict', 'sample_nonspec_abund_dict', 'abundance'),
+                                ('sample_spec_detection_dict', 'sample_nonspec_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_spec_cov_dict', 'sample_mean_Q2Q3_nonspec_cov_dict', 'mean_coverage_Q2Q3')]
 
-            for specific_attr, nonspecific_attr, table_basename in tables_to_create:
-                data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
+            for spec_attr, nonspec_attr, table_basename in tables_to_create:
+                data_dict = self.get_combined_data_dict(spec_attr, nonspec_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
-            # Variability is the measure of the frequency of modification-induced substitutions in
-            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
+            # Variability is the measure of the frequency of inferred modification-induced
+            # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
+            # coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
             self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             combined_indels_table_entries = []
-            for entry in self.specific_indels_table_entries:
+            for entry in self.spec_indels_table_entries:
                 combined_indels_table_entries.append((entry[0] + '_specific', ) + entry[1: ])
-            for entry in self.nonspecific_indels_table_entries:
+            for entry in self.nonspec_indels_table_entries:
                 combined_indels_table_entries.append((entry[0] + '_nonspecific', ) + entry[1: ])
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
@@ -6937,15 +7078,15 @@ class DatabaseConverter(object):
         # Add layers for anticodon and corresponding amino acid.
         items_additional_data_table = miscdata.MiscDataTableFactory(argparse.Namespace(profile_db=profile_db_path, target_data_table='items'))
         data_dict = {}
-        for seed_seq in self.seed_seqs:
-            data_dict[seed_seq.name + '_split_00001'] = {'anticodon': seed_seq.anticodon_seq_string,
-                                                         'amino_acid': ANTICODON_AA_DICT[seed_seq.anticodon_seq_string]}
+        for seed in self.seeds:
+            data_dict[seed.name + '_split_00001'] = {'anticodon': seed.anticodon_string,
+                                                     'amino_acid': ANTICODON_AA_DICT[seed.anticodon_string]}
         items_additional_data_table.add(data_dict, ['anticodon', 'amino_acid'])
 
         # Cluster tRNA seeds to form the central dendrogram in anvi-interactive.
         dbops.do_hierarchical_clustering_of_items(profile_db_path,
                                                   constants.clustering_configs['trnaseq'],
-                                                  [seed_seq.name + '_split_00001' for seed_seq in self.seed_seqs],
+                                                  [seed.name + '_split_00001' for seed in self.seeds],
                                                   {'CONTIGS.db': self.contigs_db_path, 'PROFILE.db': profile_db_path},
                                                   input_directory=os.path.dirname(profile_db_path),
                                                   default_clustering_config=constants.trnaseq_default,
@@ -6953,7 +7094,7 @@ class DatabaseConverter(object):
                                                   linkage=self.linkage,
                                                   run=self.run,
                                                   progress=self.progress)
-        profile_db.db.set_meta_value('items_ordered', True)
+        set_meta_value('items_ordered', True)
         profile_db.db.disconnect()
 
         # Cluster samples by "view" data to find possible sample layer orderings.
@@ -6971,43 +7112,42 @@ class DatabaseConverter(object):
             except:
                 failed_attempts.append(essential_field)
         if not len(layer_orders_data_dict):
-            self.run.warning("This may or may not be important: anvi'o attempted to generate orders for your "
-                             "samples based on the view data, however, it failed :/")
+            self.run.warning("This may or may not be important: "
+                             "anvi'o attempted to generate orders for your samples based on the view data. It failed :/")
             return
         if len(failed_attempts):
-            self.run.warning("While anvi'o was trying to generate clusterings of samples based on view data "
-                             f"available in the {db_cov_type} profile, clustering of some of the essential data "
-                             "failed. It is likely not a very big deal, but you shall be the judge of it. "
-                             "Anvi'o now proceeds to store layers order information for those view items "
-                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
-                              % (', '.join(failed_attempts)))
+            self.run.warning(f"While anvi'o was trying to generate clusterings of samples based on view data available in the {db_cov_type} profile, "
+                             "clustering of some of the essential data failed. "
+                             "It is likely not a very big deal, but you shall be the judge of it. "
+                             "Anvi'o now proceeds to store layers order information for those view items the clustering in fact worked. "
+                             f"Here is the list of stuff that failed: '{', '.join(failed_attempts)}'")
         # Add the layer orders quietly.
         TableForLayerOrders(argparse.Namespace(profile_db=profile_db_path), r=terminal.Run(verbose=False)).add(layer_orders_data_dict)
 
 
-    def get_specific_nonspecific_or_summed_data_dict(self, seed_seq_attr):
-        """Get data from seed sequences to generate a table in a specific, nonspecific, or summed
-        profile database."""
+    def get_specific_nonspecific_or_summed_data_dict(self, seed_attr):
+        """Get data from seeds to generate a table in a specific, nonspecific, or summed profile
+        database."""
         data_dict = {}
-        for seed_seq in self.seed_seqs:
-            seed_seq_name = seed_seq.name
-            seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_split_name] = {}
+        for seed in self.seeds:
+            seed_name = seed.name
+            seed_split_name = seed_name + '_split_00001'
+            data_dict[seed_split_name] = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                data_dict[seed_seq_split_name][sample_id] = getattr(seed_seq, seed_seq_attr)[sample_id]
+                data_dict[seed_split_name][sample_id] = getattr(seed, seed_attr)[sample_id]
         return data_dict
 
 
-    def get_combined_data_dict(self, specific_seed_seq_attr, nonspecific_seed_seq_attr):
-        """Get data from seed sequences to generate a table in a combined profile database."""
+    def get_combined_data_dict(self, spec_seed_attr, nonspec_seed_attr):
+        """Get data from seeds to generate a table in a combined profile database."""
         data_dict = {}
-        for seed_seq in self.seed_seqs:
-            seed_seq_name = seed_seq.name
-            seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_name + '_split_00001'] = {}
+        for seed in self.seeds:
+            seed_name = seed.name
+            seed_split_name = seed_name + '_split_00001'
+            data_dict[seed_name + '_split_00001'] = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                data_dict[seed_seq_split_name][sample_id + '_specific'] = getattr(seed_seq, specific_seed_seq_attr)[sample_id]
-                data_dict[seed_seq_split_name][sample_id + '_nonspecific'] = getattr(seed_seq, nonspecific_seed_seq_attr)[sample_id]
+                data_dict[seed_split_name][sample_id + '_specific'] = getattr(seed, spec_seed_attr)[sample_id]
+                data_dict[seed_split_name][sample_id + '_nonspecific'] = getattr(seed, nonspec_seed_attr)[sample_id]
         return data_dict
 
 
@@ -7044,11 +7184,11 @@ class DatabaseConverter(object):
 
 
 def trnaseq_db_loader(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, db_converter):
-    """This client for `DatabaseConverter.load_trnaseq_db_seq_info` is located outside the
+    """This client for `DatabaseConverter.load_trnaseq_database_sequence_summaries` is located outside the
     `DatabaseConverter` class to allow multiprocessing."""
     while True:
         trnaseq_db_path = input_queue.get()
-        summaries_Nu, summaries_M = db_converter.load_trnaseq_db_seq_info(trnaseq_db_path)
+        summaries_Nu, summaries_M = db_converter.load_trnaseq_database_sequence_summaries(trnaseq_db_path)
         for summary_Nu in summaries_Nu:
             output_queue_Nu_summaries.put((trnaseq_db_path, summary_Nu))
         for summary_M in summaries_M:
