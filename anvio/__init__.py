@@ -3047,7 +3047,7 @@ D = {
                 ),
     'profiling-chunk-size': (
             ['--profiling-chunk-size'],
-            {'default': 500000,
+            {'default': 100000,
              'metavar': 'INT',
              'type': int,
              'help': "Anvi'o manages memory consumption during tRNA feature profiling by chunking the unique input sequences. "
