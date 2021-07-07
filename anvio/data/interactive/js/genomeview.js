@@ -738,7 +738,6 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         left : 120 + i
       }) )
     }
-    //process for rendering GC content
   } 
   yOffset += 60
 }
