@@ -3949,7 +3949,7 @@ class ContigsDatabase:
         return 'hash' + str('%08x' % random.randrange(16**8))
 
 
-    def touch(self):
+    def touch(self, db_variant='unknown'):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -3981,6 +3981,9 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
+
+        if db_variant == 'trnaseq':
+            self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
 
         return self.db
 
@@ -4240,7 +4243,7 @@ class ContigsDatabase:
             skip_mindful_splitting = True
 
         # create a blank contigs database on disk, and set the self.db
-        self.touch()
+        self.touch(db_variant)
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
