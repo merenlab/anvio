@@ -3218,17 +3218,11 @@ class TRNASeqDataset(object):
         nonspec_reads_Nf /= count_Nf
 
         count_spec_Tm = 0
-        count_nonspec_Tm = 0
         reads_spec_Tm = 0
-        reads_nonspec_Tm = 0
         spec_short_5prime_seq_Tm = 0
-        nonspec_short_5prime_seq_Tm = 0
         spec_long_5prime_seq_Tm = 0
-        nonspec_long_5prime_seq_Tm = 0
         spec_short_5prime_read_Tm = 0
-        nonspec_short_5prime_read_Tm = 0
         spec_long_5prime_read_Tm = 0
-        nonspec_long_5prime_read_Tm = 0
         spec_short_5prime_Nf_names = []
         spec_long_5prime_Nf_names = []
         nonspec_short_5prime_Nf_names = []
@@ -3247,16 +3241,10 @@ class TRNASeqDataset(object):
                         spec_short_5prime_read_Tm += seq_Tm.read_count
                         spec_short_5prime_Nf_names.append(seq_Tm.names_N[0])
             else:
-                count_nonspec_Tm += 1
-                reads_nonspec_Tm += seq_Tm.read_count
                 if seq_Tm.read_with_xtra_5prime_count:
                     if seq_Tm.long_5prime_extension_dict:
-                        nonspec_long_5prime_seq_Tm += 1
-                        nonspec_long_5prime_read_Tm += seq_Tm.read_count
                         nonspec_long_5prime_Nf_names.extend(seq_Tm.names_N)
                     else:
-                        nonspec_short_5prime_seq_Tm += 1
-                        nonspec_short_5prime_read_Tm += seq_Tm.read_count
                         nonspec_short_5prime_Nf_names.extend(seq_Tm.names_N)
         spec_short_5prime_Nf = len(set(spec_short_5prime_Nf_names))
         spec_long_5prime_Nf = len(set(spec_long_5prime_Nf_names))
@@ -3282,17 +3270,11 @@ class TRNASeqDataset(object):
 
         run.warning(None, "Mapped seq counts", lc='cyan')
         run.info("Specific seqs", count_spec_Tm)
-        run.info("Nonspecific seqs", count_nonspec_Tm)
         run.info("Specific reads", reads_spec_Tm)
-        run.info("Nonspecific reads", reads_nonspec_Tm)
         run.info(f"Specific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_seq_Tm)
         run.info(f"Specific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_seq_Tm)
         run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_Tm)
         run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_Tm)
-        run.info(f"Nonspecific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_seq_Tm)
-        run.info(f"Nonspecific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_seq_Tm)
-        run.info(f"Nonspecific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_read_Tm)
-        run.info(f"Nonspecific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_read_Tm)
         if not PROFILE_ABSENT_3PRIME_TERMINUS:
             run.info("Seqs only missing a 3' terminus", absent_3prime_terminus_seqs_Tm)
             run.info("Reads only missing a 3' terminus", absent_3prime_terminus_reads_Tm)
@@ -3305,7 +3287,6 @@ class TRNASeqDataset(object):
     def report_initialized_normalized_sequence_coverage_statistics(self):
         """Report to terminal stats on N coverages immediately after N initialization."""
         spec_read_Nf = 0
-        nonspec_read_Nf = 0
         mean_spec_cov_Nf = 0
         mean_nonspec_cov_Nf = 0
         total_length_Nf = 0
@@ -3314,7 +3295,6 @@ class TRNASeqDataset(object):
         max_total_cov_Nf = 0
         for seq_Nf in self.dict_Nf.values():
             spec_read_Nf += seq_Nf.spec_read_count
-            nonspec_read_Nf += seq_Nf.nonspec_read_count
             length_Nf = len(seq_Nf.string)
             mean_spec_cov = seq_Nf.mean_spec_cov
             mean_nonspec_cov = seq_Nf.mean_nonspec_cov
@@ -3331,7 +3311,6 @@ class TRNASeqDataset(object):
         mean_nonspec_cov_Nf /= total_length_Nf
 
         spec_read_Nc = 0
-        nonspec_read_Nc = 0
         mean_spec_cov_Nc = 0
         mean_nonspec_cov_Nc = 0
         total_length_Nc = 0
@@ -3340,7 +3319,6 @@ class TRNASeqDataset(object):
         max_total_cov_Nc = 0
         for seq_Nc in self.dict_Nc.values():
             spec_read_Nc += seq_Nc.spec_read_count
-            nonspec_read_Nc += seq_Nc.nonspec_read_count
             length_Nc = len(seq_Nc.string)
             mean_spec_cov = seq_Nc.mean_spec_cov
             mean_nonspec_cov = seq_Nc.mean_nonspec_cov
@@ -3362,7 +3340,6 @@ class TRNASeqDataset(object):
 
         run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
         run.info("Specific reads", spec_read_Nf)
-        run.info("Nonspecific reads", nonspec_read_Nf)
         run.info("Mean specific coverage", round(mean_spec_cov_Nf, 2))
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nf, 2))
         run.info("Max specific coverage", round(max_spec_cov_Nf, 2))
@@ -3371,7 +3348,6 @@ class TRNASeqDataset(object):
 
         run.warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
         run.info("Specific reads", spec_read_Nc)
-        run.info("Nonspecific reads", nonspec_read_Nc)
         run.info("Mean specific coverage", round(mean_spec_cov_Nc, 2))
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nc, 2))
         run.info("Max specific coverage", round(max_spec_cov_Nc, 2))
