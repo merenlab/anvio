@@ -3393,8 +3393,9 @@ class TRNASeqDataset(object):
         progress.new(pid)
         progress.update("...")
 
-        excluded_Nf_names = [] # Used to exclude Nf from being considered as aligned queries in clusters (see below)
-        names_Nf = [] # Used to prevent the same M from being created twice
+        excluded_Nf_names = [] # used to exclude Nf from being considered as aligned queries in clusters (see below)
+        represent_Nb_names = [] # used to prevent the same M from being created twice
+        dict_name_Nb_M = defaultdict(list)
         dict_M = self.dict_M
         num_processed_refs = -1
         total_ref_count = len(agglom_aligned_ref_dict)
@@ -3425,7 +3426,8 @@ class TRNASeqDataset(object):
                 # The Nf query may have formed a M already. If the Nf had a complete feature
                 # profile, or if it was the same length as such a sequence, then it should not be
                 # able to form a longer M that would have 5' nts beyond the end of a complete
-                # feature profile.
+                # feature profile. This is only relevant when nonspecific Nf membership of M is
+                # allowed, which is not currently the case.
                 if query_name in excluded_Nf_names:
                     continue
 
@@ -3437,146 +3439,197 @@ class TRNASeqDataset(object):
                 continue
 
             valid_aligned_queries.sort(key=lambda seq_Nf: (-len(seq_Nf.string), -seq_Nf.has_complete_feature_set, seq_Nf.name))
-
-            seq_array = np.zeros((len(valid_aligned_queries) + 1, aligned_ref_length), dtype=int)
-            # Rather than using the ASCII representation of each character, which saves some time in
-            # converting the sequence string to a numpy array, constrain the integer representation
-            # to the smallest possible range of integers to speed up the bincount method used to
-            # determine the number of unique nts at an alignment position.
-            seq_array[0, :] += [NT_INT_DICT[nt] for nt in aligned_ref.seq_string]
-            for query_index, aligned_query in enumerate(valid_aligned_queries, start=1):
-                seq_array[query_index, aligned_ref_length - len(aligned_query.string): ] += [NT_INT_DICT[nt] for nt in aligned_query.string]
-
             seqs_Nf = np.array([dict_Nf[ref_name]] + valid_aligned_queries)
 
-            # Find positions in the alignment with nt variability.
-            alignment_pos_uniq_nt_counts = (
-                np.bincount(
-                    (seq_array + np.arange(aligned_ref_length, dtype=int) * NUM_NT_BINS).ravel(),
-                    minlength=aligned_ref_length * NUM_NT_BINS
-                ).reshape(-1, NUM_NT_BINS)[:, 1:] != 0
-            ).sum(axis=1)
-            alignment_positions_3_4_nts = (alignment_pos_uniq_nt_counts > 2).nonzero()[0]
+            self.decompose_substitution_cluster(seqs_Nf, represent_Nb_names, excluded_Nf_names, dict_name_Nb_M, dict_M)
 
-            # Modification sites must have ≥ 3 nts.
-            if not alignment_positions_3_4_nts.size:
+        # Remove nonspecific Nf from M. Treat the remaining Nf in M as a cluster, from which a new M
+        # may be generated.
+        dict_M_with_nonspec_Nb = {}
+        count_nonspec_Nb = 0
+        while dict_name_Nb_M:
+            name_Nb, seqs_M = dict_name_Nb_M.popitem()
+            if len(seqs_M) > 1:
+                count_nonspec_Nb += 1
+                for seq_M in seqs_M:
+                    seq_M.names_Nb.remove(name_Nb)
+                    dict_M_with_nonspec_Nb[seq_M.name] = seq_M
+
+        count_M_with_nonspec_Nb = 0
+        count_rejected_M = 0
+        for seq_M in dict_M_with_nonspec_Nb.values():
+            count_M_with_nonspec_Nb += 1
+            seqs_Nf = []
+            for name_Nb in seq_M.names_Nb:
+                seqs_Nf.append(dict_Nf[name_Nb])
+
+            if not seqs_Nf:
+                # All Nb were nonspecific.
+                count_rejected_M += 1
+                dict_M.pop(seq_M.name)
                 continue
 
-            alignment_positions_2_nts = (alignment_pos_uniq_nt_counts == 2).nonzero()[0]
-            clusters = deque(((seq_array, seqs_Nf, alignment_positions_3_4_nts), ))
-            for alignment_pos in alignment_positions_2_nts:
-                next_clusters = deque() # Make a new object with each iteration rather than clearing the same one
+            try:
+                # Nf is no longer a representative Nf of a M (for the time being -- M might be
+                # vindicated).
+                represent_Nb_names.remove(seqs_Nf[0].name)
+            except ValueError:
+                pass
 
-                while clusters:
-                    seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
-
-                    # A modification requires ≥ 3 different nts to be detected, and each Nf differs
-                    # by ≥ 1 nt, so for a cluster to form an M it must contain ≥ 3 Nf.
-                    if seqs_Nf.size < 3:
-                        continue
-
-                    aligned_nts = seq_array[:, alignment_pos]
-                    nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
-
-                    if (nt_counts != 0).sum() < 2:
-                        # There are now < 2 nts at the alignment position in the cluster under
-                        # consideration. 2 different nts are needed to distinguish SNVs.
-                        next_clusters.appendleft((seq_array, seqs_Nf, alignment_positions_3_4_nts))
-                        continue
-
-                    # Add a new cluster for each SNV to the stack of clusters to process if: 1. the
-                    # new cluster contains ≥ 3 Nf and 2. the longest Nf (with a complete feature
-                    # profile, if applicable) in the new cluster has not yet formed an M.
-                    # Agglomerative clustering ensures that the Nf agglomerated with the longest Nf
-                    # will be the same regardless of the original unsplit cluster.
-                    represented_nts = nt_counts.nonzero()[0] + 1
-                    for nt in represented_nts:
-                        split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
-
-                        if split_cluster_seq_indices.size > 2:
-                            split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
-
-                            if split_cluster_Nf_seqs[0].name in names_Nf:
-                                continue
-
-                            next_clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                      split_cluster_Nf_seqs,
-                                                      alignment_positions_3_4_nts.copy()))
-                if next_clusters:
-                    clusters = next_clusters
-                else:
-                    break
-            if not clusters:
-                continue
-
-            # Check alignment positions previously found to have 3-4 nts. Further split clusters
-            # when positions now have 2 nts.
-            next_clusters = deque()
-            while clusters:
-                seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
-                candidates_to_remove = []
-
-                for i, alignment_pos in enumerate(alignment_positions_3_4_nts):
-                    aligned_nts = seq_array[:, alignment_pos]
-                    nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
-                    # At least 3 different nts are needed at a position to predict a mod.
-                    represented_nts = nt_counts.nonzero()[0] + 1
-                    if represented_nts.size < 2:
-                        candidates_to_remove.append(i)
-                    elif represented_nts.size == 2:
-                        candidates_to_remove.append(i)
-                        for nt in represented_nts:
-                            split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
-
-                            # At least 3 Nf are needed, and the split cluster cannot have already
-                            # formed an M.
-                            if split_cluster_seq_indices.size > 2:
-                                split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
-
-                                if split_cluster_Nf_seqs[0].name in names_Nf:
-                                    continue
-
-                                clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                     split_cluster_Nf_seqs,
-                                                     np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
-                        # Reevaluate previous alignment positions in the split clusters.
-                        break
-                else:
-                    # At least 1 position was discounted as no longer having 3-4 different nts, but
-                    # these positions had < 2 nts, and so did not cause the cluster to be split into
-                    # new clusters. Therefore, do not cycle through the remaining positions again to
-                    # find any more with < 3 nts.
-                    if candidates_to_remove:
-                        next_clusters.appendleft((seqs_Nf, np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
-                    else:
-                        next_clusters.appendleft((seqs_Nf, alignment_positions_3_4_nts))
-
-            if not next_clusters:
-                continue
-            clusters = next_clusters
-
-            while clusters:
-                seqs_Nf, mod_positions = clusters.pop() # Nf should have retained their order
-                seqs_Nf = list(seqs_Nf) # Turn the array into a list
-                represent_Nf_seq = seqs_Nf[0]
-
-                length_represent_Nf = len(represent_Nf_seq.string)
-                represent_Nf_start_in_array = aligned_ref_length - length_represent_Nf
-                mod_positions -= represent_Nf_start_in_array
-                seq_M = ModifiedSequence(seqs_Nf, tuple(mod_positions))
-
-                if represent_Nf_seq.has_complete_feature_set:
-                    for seq_Nf in seqs_Nf:
-                        if len(seq_Nf.string) < length_represent_Nf:
-                            break
-                        excluded_Nf_names.append(seq_Nf.name)
-
-                dict_M[seq_M.name] = seq_M
+            found_M = self.decompose_substitution_cluster(np.array(seqs_Nf), represent_Nb_names, excluded_Nf_names, dict_name_Nb_M, dict_M)
+            if not found_M:
+                count_rejected_M += 1
+                dict_M.pop(seq_M.name)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
 
         progress.end()
+
+        if count_nonspec_Nb:
+            self.run.info_single(f"{pp(count_nonspec_Nb)} nonspecific norm seqs "
+                                 f"were found in {pp(count_M_with_nonspec_Nb)} candidate mod seqs, "
+                                 f"resulting in {pp(count_rejected_M)} rejected candidates",
+                                 cut_after=100, nl_before=2 if self.write_checkpoints else 0)
+
+
+    def decompose_substitution_cluster(self, input_seqs_Nf, represent_Nb_names, excluded_Nf_names, dict_name_Nb_M, dict_M):
+        max_length_Nf = len(input_seqs_Nf[0].string)
+        seq_array = np.zeros((len(input_seqs_Nf), max_length_Nf), dtype=int)
+        # Rather than using the ASCII representation of each character, which saves some time in
+        # converting the sequence string to a numpy array, constrain the integer representation to
+        # the smallest possible range of integers to speed up the bincount method used to determine
+        # the number of unique nts at an alignment position.
+        for seq_index, seq_Nf in enumerate(input_seqs_Nf):
+            seq_array[seq_index, max_length_Nf - len(seq_Nf.string): ] += [NT_INT_DICT[nt] for nt in seq_Nf.string]
+
+        # Find positions in the alignment with nt variability.
+        alignment_pos_uniq_nt_counts = (
+            np.bincount(
+                (seq_array + np.arange(max_length_Nf, dtype=int) * NUM_NT_BINS).ravel(),
+                minlength=max_length_Nf * NUM_NT_BINS
+            ).reshape(-1, NUM_NT_BINS)[:, 1:] != 0
+        ).sum(axis=1)
+        alignment_positions_3_4_nts = (alignment_pos_uniq_nt_counts > 2).nonzero()[0]
+
+        # Modification-induced substitutions must have ≥ 3 nts.
+        if not alignment_positions_3_4_nts.size:
+            return False
+
+        alignment_positions_2_nts = (alignment_pos_uniq_nt_counts == 2).nonzero()[0]
+        clusters = deque(((seq_array, input_seqs_Nf, alignment_positions_3_4_nts), ))
+        for alignment_pos in alignment_positions_2_nts:
+            next_clusters = deque() # Make a new object with each iteration rather than clearing the same one
+
+            while clusters:
+                seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
+
+                # A sub requires ≥ 3 different nts to be detected, and each Nf differs by ≥ 1 nt, so
+                # for a cluster to form an M it must contain ≥ 3 Nf.
+                if seqs_Nf.size < 3:
+                    continue
+
+                aligned_nts = seq_array[:, alignment_pos]
+                nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
+
+                if (nt_counts != 0).sum() < 2:
+                    # There are now < 2 nts at the alignment position in the cluster under
+                    # consideration. 2 different nts are needed to distinguish SNVs.
+                    next_clusters.appendleft((seq_array, seqs_Nf, alignment_positions_3_4_nts))
+                    continue
+
+                # Add a new cluster for each SNV to the stack of clusters to process if: 1. the new
+                # cluster contains ≥ 3 Nf and 2. the longest Nf (with a complete feature profile, if
+                # applicable) in the new cluster has not yet formed an M.
+                represented_nts = nt_counts.nonzero()[0] + 1
+                for nt in represented_nts:
+                    split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
+
+                    if split_cluster_seq_indices.size > 2:
+                        split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
+
+                        if split_cluster_Nf_seqs[0].name in represent_Nb_names:
+                            # Nf already seeded an M, which would be the same M, as the same
+                            # subcluster of Nf can be found in different agglomerations.
+                            continue
+
+                        next_clusters.appendleft((seq_array[split_cluster_seq_indices, :],
+                                                  split_cluster_Nf_seqs,
+                                                  alignment_positions_3_4_nts.copy()))
+
+            if next_clusters:
+                clusters = next_clusters
+            else:
+                return False
+
+        # Check alignment positions previously found to have 3-4 nts. Further split clusters when
+        # positions now have 2 nts.
+        next_clusters = deque()
+        while clusters:
+            seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
+            candidates_to_remove = []
+
+            for i, alignment_pos in enumerate(alignment_positions_3_4_nts):
+                aligned_nts = seq_array[:, alignment_pos]
+                nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
+                # At least 3 different nts are needed at a position to predict a mod.
+                represented_nts = nt_counts.nonzero()[0] + 1
+                if represented_nts.size < 2:
+                    candidates_to_remove.append(i)
+                elif represented_nts.size == 2:
+                    candidates_to_remove.append(i)
+                    for nt in represented_nts:
+                        split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
+
+                        # At least 3 Nf are needed, and the split cluster cannot have already formed
+                        # an M.
+                        if split_cluster_seq_indices.size > 2:
+                            split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
+
+                            if split_cluster_Nf_seqs[0].name in represent_Nb_names:
+                                continue
+
+                            clusters.appendleft((seq_array[split_cluster_seq_indices, :],
+                                                 split_cluster_Nf_seqs,
+                                                 np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
+                    # Reevaluate previous alignment positions in the split clusters.
+                    break
+            else:
+                # At least 1 position was discounted as no longer having 3-4 different nts, but
+                # these positions had < 2 nts, and so did not cause the cluster to be split into new
+                # clusters. Therefore, do not cycle through the remaining positions again to find
+                # any more with < 3 nts.
+                if candidates_to_remove:
+                    next_clusters.appendleft((seqs_Nf, np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
+                else:
+                    next_clusters.appendleft((seqs_Nf, alignment_positions_3_4_nts))
+
+        if not next_clusters:
+            return False
+        clusters = next_clusters
+
+        while clusters:
+            seqs_Nf, sub_positions = clusters.pop() # Nf should have retained their order
+            seqs_Nf = list(seqs_Nf) # Turn the array into a list
+            represent_Nf_seq = seqs_Nf[0]
+
+            represent_Nf_length = len(represent_Nf_seq.string)
+            represent_Nf_start_in_array = max_length_Nf - represent_Nf_length
+            sub_positions -= represent_Nf_start_in_array
+            seq_M = ModifiedSequence(seqs_Nf, tuple(sub_positions))
+
+            represent_Nb_names.append(represent_Nf_seq.name)
+            if represent_Nf_seq.has_complete_feature_set:
+                for seq_Nf in seqs_Nf:
+                    if len(seq_Nf.string) < represent_Nf_length:
+                        break
+                    excluded_Nf_names.append(seq_Nf.name)
+
+            for seq_Nf in seqs_Nf:
+                dict_name_Nb_M[seq_Nf.name].append(seq_M)
+
+            dict_M[seq_M.name] = seq_M
+            return True
 
 
     def report_sub_stats(self):
