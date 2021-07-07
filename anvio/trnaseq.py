@@ -4410,11 +4410,8 @@ class TRNASeqDataset(object):
     def report_M_stats(self):
         """Report to terminal stats on M. Stats on subs were already reported."""
         spec_read_count_M = 0
-        nonspec_read_count_M = 0
         spec_short_5prime_read_count_M = 0
         spec_long_5prime_read_count_M = 0
-        nonspec_short_5prime_read_count_M = 0
-        nonspec_long_5prime_read_count_M = 0
         mean_spec_cov_M = 0
         mean_nonspec_cov_M = 0
         total_length_M = 0
@@ -4423,7 +4420,6 @@ class TRNASeqDataset(object):
         max_total_cov_M = 0
         for seq_M in self.dict_M.values():
             spec_read_count_M += seq_M.spec_read_count
-            nonspec_read_count_M += seq_M.nonspec_read_count
             if seq_M.spec_read_xtra_5prime_count:
                 if seq_M.spec_long_5prime_extension_dict:
                     spec_long_5prime_read_count = sum(seq_M.spec_long_5prime_extension_dict.values())
@@ -4434,10 +4430,6 @@ class TRNASeqDataset(object):
             if seq_M.nonspec_read_xtra_5prime_count:
                 if seq_M.nonspec_long_5prime_extension_dict:
                     nonspec_long_5prime_read_count = sum(seq_M.nonspec_long_5prime_extension_dict.values())
-                    nonspec_long_5prime_read_count_M += nonspec_long_5prime_read_count
-                    nonspec_short_5prime_read_count_M += seq_M.nonspec_read_xtra_5prime_count - nonspec_long_5prime_read_count
-                else:
-                    nonspec_short_5prime_read_count_M += seq_M.nonspec_read_xtra_5prime_count
             length_M = len(seq_M.consensus_string)
             mean_spec_cov = seq_M.mean_spec_cov
             mean_nonspec_cov = seq_M.mean_nonspec_cov
@@ -4470,11 +4462,8 @@ class TRNASeqDataset(object):
 
         run.warning(None, "Modified seqs", lc='cyan')
         run.info("Specific reads", spec_read_count_M)
-        run.info("Nonspecific reads", nonspec_read_count_M)
         run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_count_M)
         run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_count_M)
-        run.info(f"Nonspecific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_read_count_M)
-        run.info(f"Nonspecific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_read_count_M)
         run.info("Mean specific coverage", round(mean_spec_cov_M, 2))
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_M, 2))
         run.info("Max specific coverage", round(max_spec_cov_M, 2))
