@@ -704,29 +704,44 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 }
 
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
-
+  console.log(scaleFactor)
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
     for(let i = 0; i < additionalDataLayers['coverage'].length; i++){ // TODO this seems like an inefficient way to find the max range for coverage
       additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
     }
-    for(let i = 0; i < 10000; i++){ // TODO hardcoded to 10k for now because canvas ~really~ doesn't like rendering out 130k * 3 objects (maybe)
+    for(let i = 0; i < 1000; i++){ // TODO hardcoded to 1k for now because canvas ~really~ doesn't like rendering out 130k * 3 objects (maybe)
       canvas.add(new fabric.Rect({
         height : 8, 
         width : 1*scaleFactor, 
         fill : 'blue', 
         opacity : 1 * [additionalDataLayers['coverage'][i] / maxCoverageValue],
         selectable : false, 
-        top : 100 + yOffset, 
+        top : 70 + yOffset, 
         left : 120 + i
       }) )
     }
   } 
   if(additionalDataLayers['gcContent']){
+    let maxGCValue = 0
+    for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
+      additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
+    }
+    for(let i = 0; i < 1000; i++){ // 
+      canvas.add(new fabric.Rect({
+        height : 8, 
+        width : 1*scaleFactor, 
+        fill : 'pink', 
+        opacity : 1 * [additionalDataLayers['gcContent'][i] / maxGCValue],
+        selectable : false, 
+        top : 80 + yOffset + 12, 
+        left : 120 + i
+      }) )
+    }
     //process for rendering GC content
   } 
-  yOffset += 40
+  yOffset += 60
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
