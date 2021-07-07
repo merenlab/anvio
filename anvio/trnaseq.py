@@ -1589,7 +1589,7 @@ class TRNASeqDataset(object):
 
             # Recover Tc as tRNA by comparing to Nf.
             self.threeprime_dereplicate_truncated_sequences()
-            self.report_3prime_derep_stats()
+            self.report_threeprime_dereplication_statistics()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('normalize')
@@ -1619,8 +1619,8 @@ class TRNASeqDataset(object):
                 seq_Nf.init([getattr(self, 'dict_' + category_T)[name_T]
                              for category_T, name_T in zip(seq_Nf.categories_T, seq_Nf.names_T)])
             self.progress.end()
-            self.report_map_stats()
-            self.report_N_cov_stats()
+            self.report_mapping_statistics()
+            self.report_initialized_normalized_sequence_coverage_statistics()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('map_fragments')
@@ -2709,7 +2709,7 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def report_3prime_derep_stats(self):
+    def report_threeprime_dereplication_statistics(self):
         """Report to terminal stats regarding 3'-dereplication immediately after these steps."""
         count_Nf = len(self.dict_Nf)
         anticodon_count_Nf = 0
@@ -3183,7 +3183,7 @@ class TRNASeqDataset(object):
         match_df['length_5prime'] = lengths_5prime
 
 
-    def report_map_stats(self):
+    def report_mapping_statistics(self):
         """Report to terminal stats on fragment mapping immediately after these steps."""
         count_spec_Nf = 0
         count_nonspec_Nf = 0
@@ -3298,7 +3298,7 @@ class TRNASeqDataset(object):
                             mc='red')
 
 
-    def report_N_cov_stats(self):
+    def report_initialized_normalized_sequence_coverage_statistics(self):
         """Report to terminal stats on N coverages immediately after N initialization."""
         spec_read_Nf = 0
         nonspec_read_Nf = 0
