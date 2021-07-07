@@ -30,6 +30,7 @@
  var stateData = {};
  var calculatedSpacing; // like spacing, but calculated ;)
  var spacing = 30; // vertical spacing between genomes
+ var yOffset = 0 // vertical space between additional data layers
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
  var showGeneLabels = true; // show gene labels?
@@ -157,8 +158,8 @@ function processState(stateName, stateData){
     let coverage = []
 
     for(let j = 0; j < genomeMax; j++){
-      gcContent.push(Math.floor(Math.random() * 25))
-      coverage.push(Math.floor(Math.random() * 25))
+      gcContent.push(Math.floor(Math.random() * 45))
+      coverage.push(Math.floor(Math.random() * 45))
     }
     let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
     let additionalDataObject = {
@@ -457,7 +458,7 @@ function loadAll() {
 function draw(scaleX=scaleFactor) {
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
-
+  yOffset = 0 // reset 
   var y = 1;
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
@@ -705,8 +706,23 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
 
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
+
   if(additionalDataLayers['coverage']){
-    // process for rendering coverage
+    let maxCoverageValue = 0
+    for(let i = 0; i < additionalDataLayers['coverage'].length; i++){ // TODO this seems like an inefficient way to find the max range for coverage
+      additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
+    }
+    for(let i = 0; i < 10000; i++){ // TODO hardcoded to 10k for now because canvas ~really~ doesn't like rendering out 130k * 3 objects (maybe)
+      canvas.add(new fabric.Rect({
+        height : 8, 
+        width : 1*scaleFactor, 
+        fill : 'blue', 
+        opacity : 1 * [additionalDataLayers['coverage'][i] / maxCoverageValue],
+        selectable : false, 
+        top : 100 + yOffset, 
+        left : 120 + i
+      }) )
+    }
   } else {
     // still need to render out the empty space for even group sizing
   }
@@ -715,6 +731,8 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   } else {
     // still need to render out the empty space for even group sizing
   }
+  yOffset += 40
+  console.log(`y offset is ${yOffset}`)
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
