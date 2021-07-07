@@ -2130,19 +2130,20 @@ class TRNASeqDataset(object):
         mean_reads_Un = read_count_Un / seq_count_Un
 
         run = self.run
-        run.info_single("Results of profiling (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+        run.warning(None, "PROFILING RESULTS", lc='green', nl_before=1)
+        run.info_single("subject to change -- see summary output file for final results")
 
-        run.info_single("Unique seq counts")
+        run.warning(None, "Unique seq counts", lc='cyan')
         run.info("tRNA profile", seq_count_Uf)
         run.info("Truncated tRNA profile", seq_count_Uc)
-        run.info("No tRNA profile", seq_count_Un, nl_after=1)
+        run.info("No tRNA profile", seq_count_Un)
 
-        run.info_single("Read counts")
+        run.warning(None, "Read counts", lc='cyan')
         run.info("tRNA profile", read_count_Uf)
         run.info("Truncated tRNA profile", read_count_Uc)
-        run.info("No tRNA profile", read_count_Un, nl_after=1)
+        run.info("No tRNA profile", read_count_Un)
 
-        run.info_single("Unique seqs with tRNA profile")
+        run.warning(None, "Unique seqs with tRNA profile", lc='cyan')
         run.info("Count with anticodon", seq_anticodon_count_Uf)
         run.info("Count with complete feature set", seq_complete_count_Uf)
         run.info("Mean reads per seq", round(mean_reads_Uf, 1))
@@ -2152,21 +2153,21 @@ class TRNASeqDataset(object):
         run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uf, 3))
         run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uf, 4))
         run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uf, 4))
-        run.info("Mean extrapolated 5' nt freq", round(mean_seq_extrap_freq_Uf, 3), nl_after=1)
+        run.info("Mean extrapolated 5' nt freq", round(mean_seq_extrap_freq_Uf, 3))
 
-        run.info_single("Unique seqs with truncated tRNA profile")
+        run.warning(None, "Unique seqs with truncated tRNA profile", lc='cyan')
         run.info("Count with anticodon", seq_anticodon_count_Uc)
         run.info("Mean reads per seq", round(mean_reads_Uc, 1))
         run.info("Max reads per seq", max_reads_Uc)
         run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uc, 3))
         run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uc, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uc, 4), nl_after=1)
+        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uc, 4))
 
-        run.info_single("Unique seqs with no tRNA profile")
+        run.warning(None, "Unique seqs with no tRNA profile", lc='cyan')
         run.info("Mean reads per seq", round(mean_reads_Un, 1))
-        run.info("Max reads per seq", max_reads_Un, nl_after=1)
+        run.info("Max reads per seq", max_reads_Un)
 
-        run.info_single("Reads with tRNA profile")
+        run.warning(None, "Reads with tRNA profile", lc='cyan')
         run.info("Count with anticodon", read_anticodon_count_Uf)
         run.info("Count with complete feature set", read_complete_count_Uf)
         run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uf, 1))
@@ -2176,14 +2177,14 @@ class TRNASeqDataset(object):
         run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uf, 3))
         run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uf, 4))
         run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uf, 4))
-        run.info("Mean extrapolated 5' nt freq", round(mean_read_extrap_freq_Uf, 3), nl_after=1)
+        run.info("Mean extrapolated 5' nt freq", round(mean_read_extrap_freq_Uf, 3))
 
-        run.info_single("Reads with truncated tRNA profile")
+        run.warning(None, "Reads with truncated tRNA profile", lc='cyan')
         run.info("Spans anticodon", read_anticodon_count_Uc)
         run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uc, 1))
         run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uc, 3))
         run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uc, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uc, 4), nl_after=2)
+        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uc, 4), nl_after=2 if self.write_checkpoints else 1)
 
 
     def trim_trna_ends(self):
@@ -2277,27 +2278,28 @@ class TRNASeqDataset(object):
         mean_reads_Tc /= count_Tc
 
         run = self.run
-        run.info_single("Results of trimming (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+        run.warning(None, "TRIMMING RESULTS", lc='green', nl_before=1)
+        run.info_single("subject to change -- see summary output file for final results")
 
-        run.info_single("Trimmed seq counts")
+        run.warning(None, "Trimmed seq counts", lc='cyan')
         run.info("tRNA profile", count_Tf)
-        run.info("Truncated tRNA profile", count_Tc, nl_after=1)
+        run.info("Truncated tRNA profile", count_Tc)
 
-        run.info_single("Trimmed seqs with tRNA profile")
+        run.warning(None, "Trimmed seqs with tRNA profile", lc='cyan')
         run.info("Count with anticodon", anticodon_count_Tf)
         run.info("Count with complete feature set", complete_count_Tf)
         run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tf, 1))
         run.info("Count with single unique seq", single_count_Tf)
         run.info("Mean reads per seq", round(mean_reads_Tf, 1))
         run.info("Max reads per seq", max_reads_Tf)
-        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", long_5prime_count_Tf, nl_after=1)
+        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", long_5prime_count_Tf)
 
-        run.info_single("Trimmed seqs with truncated tRNA profile")
+        run.warning(None, "Trimmed seqs with truncated tRNA profile", lc='cyan')
         run.info("Count with anticodon", anticodon_count_Tc)
         run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tc, 1))
         run.info("Count with single unique seq", single_uniq_seq_count_Tc)
         run.info("Mean reads per seq", round(mean_reads_Tc, 1))
-        run.info("Max reads per seq", max_reads_Tc, nl_after=2)
+        run.info("Max reads per seq", max_reads_Tc, nl_after=1)
 
 
     def threeprime_dereplicate_profiled_trna(self):
@@ -2807,13 +2809,14 @@ class TRNASeqDataset(object):
         mean_nonspec_reads_Nc /= count_Nc
 
         run = self.run
-        run.info_single("Results of 3' dereplication (subject to change -- see summary output file for final results)", nl_after=1)
+        run.warning(None, "3' DEREPLICATION RESULTS", lc='green')
+        run.info_single("subject to change -- see summary output file for final results")
 
-        run.info_single("Normalized seq counts")
+        run.warning(None, "Normalized seq counts", lc='cyan')
         run.info("tRNA profile", count_Nf)
-        run.info("Truncated tRNA profile", count_Nc, nl_after=1)
+        run.info("Truncated tRNA profile", count_Nc)
 
-        run.info_single("Normalized seqs with tRNA profile")
+        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
         run.info("Containing anticodon", anticodon_count_Nf)
         run.info("Containing complete feature set", complete_count_Nf)
         run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nf, 1))
@@ -2833,14 +2836,14 @@ class TRNASeqDataset(object):
         run.info("Mean recovered trunc reads per seq", round(mean_Uc_reads_Nf, 2))
         run.info("Consolidated trimmed tRNA seqs", self.count_consol_Tf, nl_after=1)
 
-        run.info_single("Normalized seqs with truncated tRNA profile")
+        run.warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
         run.info("Containing anticodon", anticodon_count_Nc)
         run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nc, 1))
         run.info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nc, 1))
         run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nc, 1))
         run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nc, 1))
         run.info("Mean specific reads per seq", round(mean_spec_reads_Nc, 1))
-        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2)
+        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2 if self.write_checkpoints else 1)
 
 
     def write_checkpoint_files(self, checkpoint_name):
@@ -3261,9 +3264,10 @@ class TRNASeqDataset(object):
         nonspec_long_5prime_Nf = len(set(nonspec_long_5prime_Nf_names))
 
         run = self.run
-        run.info_single("Results of fragment mapping (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+        run.warning(None, "FRAGMENT MAPPING RESULTS", lc='green', nl_before=1 if self.write_checkpoints else 0)
+        run.info_single("subject to change -- see summary output file for final results")
 
-        run.info_single("Normalized seqs with tRNA profile")
+        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
         run.info("With specific mapping", count_spec_Nf)
         run.info("With nonspecific mapping", count_nonspec_Nf)
         run.info("With any mapping", count_any_Nf)
@@ -3274,9 +3278,9 @@ class TRNASeqDataset(object):
         run.info(f"With specific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_Nf)
         run.info(f"With specific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_Nf)
         run.info(f"With nonspecific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_Nf)
-        run.info(f"With nonspecific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_Nf, nl_after=1)
+        run.info(f"With nonspecific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_Nf)
 
-        run.info_single("Mapped seq counts")
+        run.warning(None, "Mapped seq counts", lc='cyan')
         run.info("Specific seqs", count_spec_Tm)
         run.info("Nonspecific seqs", count_nonspec_Tm)
         run.info("Specific reads", reads_spec_Tm)
@@ -3353,18 +3357,19 @@ class TRNASeqDataset(object):
         mean_nonspec_cov_Nc /= total_length_Nc
 
         run = self.run
-        run.info_single("Results of normalization (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+        run.warning(None, "NORMALIZATION RESULTS", lc='green', nl_before=1)
+        run.info_single("subject to change -- see summary output file for final results")
 
-        run.info_single("Normalized seqs with tRNA profile")
+        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
         run.info("Specific reads", spec_read_Nf)
         run.info("Nonspecific reads", nonspec_read_Nf)
         run.info("Mean specific coverage", round(mean_spec_cov_Nf, 2))
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nf, 2))
         run.info("Max specific coverage", round(max_spec_cov_Nf, 2))
         run.info("Max nonspecific coverage", round(max_nonspec_cov_Nf, 2))
-        run.info("Max total coverage", round(max_total_cov_Nf, 2), nl_after=1)
+        run.info("Max total coverage", round(max_total_cov_Nf, 2))
 
-        run.info_single("Normalized seqs with truncated tRNA profile")
+        run.warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
         run.info("Specific reads", spec_read_Nc)
         run.info("Nonspecific reads", nonspec_read_Nc)
         run.info("Mean specific coverage", round(mean_spec_cov_Nc, 2))
@@ -3612,7 +3617,7 @@ class TRNASeqDataset(object):
         mean_sub_per_nt = total_sub_count / total_length_M
 
         run = self.run
-        run.info_single("Results of substitution search", nl_before=2)
+        run.warning(None, "SUBSTITUTION SEARCH RESULTS", lc='green', nl_before=1)
         run.info("Modified seqs", count_M)
         run.info("Mean (*potential*) subs per modified seq", round(mean_sub_per_seq, 1))
         run.info("Mean subs per nt in modified seq", round(mean_sub_per_nt, 3), nl_after=2)
@@ -3673,6 +3678,7 @@ class TRNASeqDataset(object):
         count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
         # Search Nqf against Nb.
+        progress.update("Searching for norm tRNA seqs within mod tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nb,
                                              fasta_query_file=fasta_path_Nqf,
@@ -3692,7 +3698,7 @@ class TRNASeqDataset(object):
         # The following method updates `results_dict`.
         count_Nqf_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, False)
         progress.end()
-        run.info_single("Completed indel search stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2)
+        run.info_single("Completed indel search Stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2 if self.write_checkpoints else 0)
 
 
         # Search Nb against Nqf.
@@ -3702,6 +3708,7 @@ class TRNASeqDataset(object):
             progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
             count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
+        progress.update("Searching for mod tRNA seqs within norm tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nqf,
                                              fasta_query_file=fasta_path_Nb,
@@ -3719,7 +3726,7 @@ class TRNASeqDataset(object):
 
         count_Nqf_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, True)
         progress.end()
-        run.info_single("Completed indel search stage 2/4: mod tRNA seqs within norm tRNA seqs")
+        run.info_single("Completed indel search Stage 2/4: mod tRNA seqs within norm tRNA seqs")
 
 
         # Write a FASTA file of Nc.
@@ -3729,6 +3736,7 @@ class TRNASeqDataset(object):
         count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
         # Search Nc against Nb.
+        progress.update("Searching for trunc tRNA seqs within mod tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nb,
                                              fasta_query_file=fasta_path_Nc,
@@ -3746,7 +3754,7 @@ class TRNASeqDataset(object):
 
         count_Nc_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, False)
         progress.end()
-        run.info_single("Completed indel search stage 3/4: trunc tRNA seqs within mod tRNA seqs")
+        run.info_single("Completed indel search Stage 3/4: trunc tRNA seqs within mod tRNA seqs")
 
 
         # Search Nb against Nc.
@@ -3756,6 +3764,7 @@ class TRNASeqDataset(object):
             progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
             count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
+        progress.update("Searching for mod tRNA seqs within trunc tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nc,
                                              fasta_query_file=fasta_path_Nb,
@@ -3773,7 +3782,7 @@ class TRNASeqDataset(object):
 
         count_Nc_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, True)
         progress.end()
-        run.info_single("Completed indel search stage 4/4: mod tRNA seqs within trunc tRNA seqs")
+        run.info_single("Completed indel search Stage 4/4: mod tRNA seqs within trunc tRNA seqs")
 
 
         # Consolidate Nq differing by 5' and 3' extensions into a new Ni object.
@@ -4428,9 +4437,9 @@ class TRNASeqDataset(object):
                     count_indel_M += 1
 
         run = self.run
-        run.info_single("Final results of modification analysis", nl_before=2, nl_after=1)
+        run.warning(None, "MODIFICATION ANALYSIS RESULTS", lc='green', nl_before=1)
 
-        run.info_single("Modified seqs")
+        run.warning(None, "Modified seqs", lc='cyan')
         run.info("Specific reads", spec_read_count_M)
         run.info("Nonspecific reads", nonspec_read_count_M)
         run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_count_M)
@@ -4441,10 +4450,10 @@ class TRNASeqDataset(object):
         run.info("Mean nonspecific coverage", round(mean_nonspec_cov_M, 2))
         run.info("Max specific coverage", round(max_spec_cov_M, 2))
         run.info("Max nonspecific coverage", round(max_nonspec_cov_M, 2))
-        run.info("Max total coverage", round(max_total_cov_M, 2), nl_after=0 if self.skip_indel_profiling else 1)
+        run.info("Max total coverage", round(max_total_cov_M, 2), nl_after=2 if self.skip_indel_profiling else 0)
 
         if not self.skip_indel_profiling:
-            run.info_single("Results of indel search")
+            run.warning(None, "Results of indel search", lc='cyan')
             run.info("Modified seqs with indels", count_indel_M)
             run.info("Modified seqs with insertions", count_insert_M)
             run.info("Modified seqs with deletions", count_del_M)
