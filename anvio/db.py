@@ -309,13 +309,17 @@ class DB:
         """
 
         if anvio.DISPLAY_DB_CALLS:
-            self.progress.reset()
-            self.run.info_single(f"Executing SQL command: '{sql_query}'", nl_before=1)
+            self.run.warning(None, header='EXECUTING SQL', progress=self.progress, lc='yellow', nl_before=1)
+            self.run.info_single(f"{sql_query}", cut_after=None, level=0, mc='yellow', nl_after=1)
+            sql_exec_timer = terminal.Timer()
 
         if value:
             ret_val = self.cursor.execute(sql_query, value)
         else:
             ret_val = self.cursor.execute(sql_query)
+
+        if anvio.DISPLAY_DB_CALLS:
+            self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
         self.commit()
         return ret_val
@@ -334,11 +338,15 @@ class DB:
         chunk_counter = 0
         for chunk in get_list_in_chunks(values):
             if anvio.DISPLAY_DB_CALLS:
-                self.progress.reset()
-                self.run.info_single(f"Adding the chunk {chunk_counter} with {len(chunk)} entries of {len(values)} "
-                                     f"total is being added to the db with the SQL command '{sql_query}'.", nl_before=1)
+                header = f"MULTI SQL // {chunk_counter} of {len(values)} with {len(chunk)} {len(chunk)} entries"
+                self.run.warning(None, header=header, progress=self.progress, lc='yellow')
+                self.run.info_single(f"{sql_query}", nl_after=1, cut_after=None, level=0, mc='yellow')
+                sql_exec_timer = terminal.Timer()
 
             self.cursor.executemany(sql_query, chunk)
+
+            if anvio.DISPLAY_DB_CALLS:
+                self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
             chunk_counter += 1
 
