@@ -218,7 +218,7 @@ function loadAll() {
               .attr("id", "scaleBox")
               .attr("class","scale")
               .attr("y", 230) // rather than 80 from 50?
-              .attr("tranform", "translate(5,0)");
+              .attr("transform", "translate(5,0)");
 
   scaleBox.append("g")
               .attr("class", "x axis top noselect")
@@ -368,7 +368,7 @@ function loadAll() {
 
     var delta = opt.e.deltaY;
     scaleFactor *= 0.999 ** delta;
-    if(scale * scaleFactor < 50) scaleInterval *= 2; // temporary fix for legibility
+    if(scaleInterval * scaleFactor < 50) scaleInterval *= 2; // temporary fix for legibility
     $('#genome_scale_interval').val(scaleInterval);
     if (scaleFactor > 4) scaleFactor = 4;
     if (scaleFactor < 0.01) scaleFactor = 0.01;
@@ -516,7 +516,7 @@ function zoomIn() {
 function zoomOut() {
   scaleFactor -= (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor < 0.01) scaleFactor = 0.01;
-  if(scaleInterval * scaleFactor < 50) scale *= 2; // temporary fix for legibility
+  if(scaleInterval * scaleFactor < 50) scaleInterval *= 2; // temporary fix for legibility
   $('#genome_scale_interval').val(scaleInterval);
   draw();
 }
