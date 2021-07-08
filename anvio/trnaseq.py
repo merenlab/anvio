@@ -135,6 +135,7 @@ import anvio.tables.miscdata as miscdata
 import anvio.trnaidentifier as trnaidentifier
 import anvio.auxiliarydataops as auxiliarydataops
 
+from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.sequence import Dereplicator
 from anvio.drivers.vmatch import Vmatch
@@ -7168,3 +7169,130 @@ def trnaseq_db_loader(input_queue, output_queue_Nu_summaries, output_queue_M_sum
             output_queue_M_summaries.put((trnaseq_db_path, summary_M))
         output_queue_Nu_summaries.put(trnaseq_db_path)
         output_queue_M_summaries.put(trnaseq_db_path)
+
+
+class ResultTabulator(object):
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # Argument group 1: IO
+        self.contigs_db_path = A('contigs_db')
+        self.spec_profile_db_path = A('specific_profile_db')
+        self.nonspec_profile_db_path = A('nonspecific_profile_db')
+        self.out_dir = os.path.abspath(A('output_dir')) if A('output_dir') else os.path.dirname(self.contigs_db_path)
+
+        if not self.contigs_db_path:
+            raise ConfigError("Please provide the path to a `trnaseq`-variant contigs database using `--contigs-db` or `-c`.")
+        if not self.spec_profile_db_path:
+            raise ConfigError("Please provide the path to a profile database containing specific coverage information on tRNA seeds using `--specific-profile-db` or `-s`.")
+
+
+    def process(self):
+        self.sanity_check()
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
+        spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash)
+        contig_iter = iter(contigs_db.db.get_single_column_from_table(tables.genes_in_contigs_table_name, 'contig'))
+        feature_table_dict = contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
+        spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
+        spec_aux_df['contig'] = spec_aux_df['split_name'].apply(lambda split: split.split('_split_00001')[0])
+        spec_aux_df = spec_aux_df.drop('split_name', axis=1)
+        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.COVERAGE_DTYPE)
+        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+        spec_sample_covs_dict = {}
+        for contig, contig_df in spec_aux_df.groupby('contig'):
+            spec_sample_covs_dict[contig] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
+
+        TRNA_FEATURE_ORDINAL_DICT = constants.TRNA_FEATURE_ORDINAL_DICT
+        for gene_callers_id, feature_dict in feature_table_dict.items():
+            contig = next(contig_iter)
+            contig_spec_sample_covs_dict = {sample: iter(covs) for sample, covs in spec_sample_covs_dict[contig].items()}
+            print(contig)
+            row = [gene_callers_id, contig]
+            feature_start = None
+            feature_stop = None
+            ordinal_start = None
+            ordinal_stop = None
+            l = [[] for _ in range(len(contig_spec_sample_covs_dict))]
+            d = {}
+            for feature_bound, ordinal_rank in TRNA_FEATURE_ORDINAL_DICT.items():
+                print(feature_bound)
+                try:
+                    j = feature_dict[feature_bound]
+                except KeyError:
+                    if feature_bound == 'd_loop_prealpha_start':
+                        j = d_loop_start = feature_dict['d_loop_start']
+                    elif feature_bound == 'd_loop_prealpha_stop':
+                        alpha_start = feature_dict['alpha_start']
+                        j = alpha_start - 1
+                    elif feature_bound == 'd_loop_alpha_start':
+                        j = alpha_start = feature_dict['alpha_start']
+                    elif feature_bound == 'd_loop_alpha_stop':
+                        j = alpha_stop = feature_dict['alpha_stop']
+                    elif feature_bound == 'd_loop_postalpha_start':
+                        j = alpha_stop + 1
+                    elif feature_bound == 'd_loop_postalpha_stop':
+                        beta_start = feature_dict['beta_start']
+                        j = beta_start - 1
+                    elif feature_bound == 'd_loop_beta_start':
+                        j = beta_start
+                    elif feature_bound == 'd_loop_beta_stop':
+                        j = beta_stop = feature_dict['beta_stop']
+                    elif feature_bound == 'd_loop_postbeta_start':
+                        j = beta_stop + 1
+                    elif feature_bound == 'd_loop_postbeta_stop':
+                        j = feature_dict['d_loop_stop']
+
+                if pd.notnull(feature_start):
+                    feature_stop = j
+                    ordinal_stop = ordinal_rank
+                    print(feature_start)
+                    print(feature_stop)
+                    for ordinal_index, seq_index in enumerate(range(feature_start, feature_stop + 1)):
+                        if seq_index >= 0:
+                            for sample_num, cov_iter in enumerate(contig_spec_sample_covs_dict.values()):
+                                l[sample_num].append(next(cov_iter))
+                            d[seq_index] = ordinal_start + ordinal_index
+                        else:
+                            for sample_num in range(len(contig_spec_sample_covs_dict)):
+                                l[sample_num].append(None)
+                    for _ in range(ordinal_start + ordinal_index + 1, ordinal_stop + 1):
+                        for sample_num in range(len(contig_spec_sample_covs_dict)):
+                            l[sample_num].append(None)
+                    feature_start = None
+                    feature_stop = None
+                    ordinal_start = None
+                    ordinal_stop = None
+                else:
+                    feature_start = j
+                    ordinal_start = ordinal_rank
+            print(d)
+            print(l)
+            raise Exception
+        # c_000002983890_tongue3_day2_untreated
+
+
+    def sanity_check(self):
+        """Check `anvi-tabulate-trnaseq` user inputs."""
+        self.contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
+        if self.contigs_db_info.variant != 'trnaseq':
+            raise ConfigError("The input contigs database is not of the `trnaseq` variant...")
+        self.spec_profile_db_info = DBInfo(self.spec_profile_db_path, expecting='profile')
+        self.nonspec_profile_db_info = DBInfo(self.nonspec_profile_db_path, expecting='profile') if self.nonspec_profile_db_path else None
+        self.spec_aux_db_path = os.path.join(os.path.dirname(self.spec_profile_db_path), 'AUXILIARY-DATA.db')
+        self.spec_aux_db_info = DBInfo(self.spec_aux_db_path, expecting='auxiliary data for coverages')
+        self.nonspec_aux_db_path = os.path.join(os.path.dirname(self.nonspec_profile_db_path), 'AUXILIARY_DATA.db') if self.nonspec_profile_db_path else None
+        if self.nonspec_aux_db_path:
+            nonspec_aux_db_info = DBInfo(self.nonspec_aux_db_path, expecting='auxiliary data for coverages')
+
+        filesnpaths.is_output_dir_writable(self.out_dir)
+        self.spec_cov_out_path = os.path.join(self.out_dir, 'SPECIFIC_COVERAGE.tsv')
+        filesnpaths.is_output_file_writable(self.spec_cov_out_path)
+        self.nonspec_cov_out_path = os.path.join(self.out_dir, 'NONSPECIFIC_COVERAGE.tsv') if self.nonspec_profile_db_path else None
+        if self.nonspec_cov_out_path:
+            filesnpaths.is_output_file_writable(self.nonspec_cov_out_path)
+        self.mod_out_path = os.path.join(self.out_dir, 'MODIFICATION_COVERAGE.tsv')
+        filesnpaths.is_output_file_writable(self.mod_out_path)

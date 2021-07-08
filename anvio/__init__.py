@@ -3191,6 +3191,16 @@ D = {
              'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
                      "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
                      "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
+                ),
+    'specific-profile-db': (
+            ['--specific-profile-db', '-s'],
+            {'metavar': 'PROFILE_DB',
+             'help': ""}
+                ),
+    'nonspecific-profile-db': (
+            ['--nonspecific-profile-db', '-n'],
+            {'metavar': 'PROFILE_DB',
+             'help': ""}
     )
 }
 

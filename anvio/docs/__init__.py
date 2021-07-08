@@ -496,6 +496,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-seed-txt":{
+        "name": "TRNASEQ SEED SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-mod-txt":{
+        "name": "TRNASEQ MODIFICATION SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "summary": {
         "name": "STATIC SUMMARY",
         "type": "SUMMARY",
