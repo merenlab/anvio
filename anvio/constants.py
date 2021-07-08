@@ -104,7 +104,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'discriminator',
                       'threeprime_terminus']
 TRNA_FEATURE_ORDINAL_DICT = {'trna_his_position_0_start': 101,
-                             'trna_his_positions_0_stop': 101,
+                             'trna_his_position_0_stop': 101,
                              'fiveprime_acceptor_stem_sequence_start': 201,
                              'fiveprime_acceptor_stem_sequence_stop': 207,
                              'position_8_start': 301,
@@ -116,11 +116,11 @@ TRNA_FEATURE_ORDINAL_DICT = {'trna_his_position_0_start': 101,
                              'd_loop_prealpha_start': 601,
                              'd_loop_prealpha_stop': 602,
                              'd_loop_alpha_start': 701,
-                             'd_loop_alpha_stop': 705, # variable: this seems like an accommodating upper limit (default α length range 1-3)
+                             'd_loop_alpha_stop': 703, # variable: default α length range 1-3
                              'd_loop_postalpha_start': 801,
                              'd_loop_postalpha_stop': 802,
                              'd_loop_beta_start': 901,
-                             'd_loop_beta_stop': 905, # variable: this seems like an accommodating upper limit (default β length range 1-3)
+                             'd_loop_beta_stop': 903, # variable: default β length range 1-3
                              'd_loop_postbeta_start': 1001,
                              'd_loop_postbeta_stop': 1001,
                              'threeprime_d_stem_sequence_start': 1101,
@@ -134,7 +134,7 @@ TRNA_FEATURE_ORDINAL_DICT = {'trna_his_position_0_start': 101,
                              'threeprime_anticodon_stem_sequence_start': 1501,
                              'threeprime_anticodon_stem_sequence_stop': 1505,
                              'v_loop_start': 1601,
-                             'v_loop_stop': 1630, # variable: this seems like an accommodating upper limit (default V loop length range 4-5; 9-23)
+                             'v_loop_stop': 1623, # variable: default V loop length range 4-5; 9-23
                              'fiveprime_t_stem_sequence_start': 1701,
                              'fiveprime_t_stem_sequence_stop': 1705,
                              't_loop_start': 1801,
