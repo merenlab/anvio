@@ -1369,7 +1369,6 @@ class TRNASeqDataset(object):
     ]
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.args = args
         self.run = run
         self.progress = progress
 
@@ -5148,7 +5147,6 @@ class DatabaseConverter(object):
     ]
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.args = args
         self.run = run
         self.progress = progress
 
