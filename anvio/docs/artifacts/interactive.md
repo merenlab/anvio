@@ -72,7 +72,7 @@ Finally, at the top-right of the Settings panel header you will find a dropdown 
 OK. Let's talk about each tab you will find in the settings panel.
 
 
-#### Main Tab
+### Main Tab
 
 This is one of the most frequently used tabs in the interface, and there are multiple sections in it (keeps growing over time, so things may be missing here).
 
