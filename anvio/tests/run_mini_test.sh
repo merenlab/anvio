@@ -37,7 +37,8 @@ do
                  -o $output_dir/SAMPLE-$f \
                  -c $output_dir/CONTIGS.db \
                  --cluster \
-                 --profile-SCVs
+                 --profile-SCVs \
+                 --display-db-calls
 
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
