@@ -235,6 +235,20 @@ class DB:
         self._exec('''DETACH DATABASE "source_db"''')
 
 
+    def _fetchall(self, response):
+        """Wrapper for fetchall"""
+
+        if anvio.DISPLAY_DB_CALLS:
+            sql_exec_timer = terminal.Timer()
+
+        results = response.fetchall()
+
+        if anvio.DISPLAY_DB_CALLS:
+            self.run.info("fetchall", f"{sql_exec_timer.time_elapsed()}", mc='yellow', nl_after=1)
+
+        return results
+
+
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
         """Get the maximum OR minimum column value in a table
 
@@ -245,7 +259,8 @@ class DB:
         """
 
         response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
-        rows = response.fetchall()
+
+        rows = self._fetchall(response)
 
         val = rows[0][0]
 
@@ -264,7 +279,9 @@ class DB:
         """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
 
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
-        rows = response.fetchall()
+
+        rows = self._fetchall(response)
+
         if not rows and return_none_if_not_in_table:
             return None
         if not rows:
@@ -444,7 +461,10 @@ class DB:
         self.is_table_exists(table_name)
 
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
-        return response.fetchall()
+
+        results = self._fetchall(response)
+
+        return results
 
 
     def get_some_rows_from_table(self, table_name, where_clause):
@@ -453,7 +473,10 @@ class DB:
         where_clause = where_clause.replace('"', "'")
 
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
-        return response.fetchall()
+
+        results = self._fetchall(response)
+
+        return results
 
 
     def get_row_counts_from_table(self, table_name, where_clause=None):
@@ -465,7 +488,9 @@ class DB:
         else:
             response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
-        return response.fetchall()[0][0]
+        results = self._fetchall(response)
+
+        return results[0][0]
 
 
     @_not_if_read_only
@@ -486,7 +511,10 @@ class DB:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
-        return [t[0] for t in response.fetchall()]
+
+        results = self._fetchall(response)
+
+        return [t[0] for t in results]
 
 
     def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
@@ -497,7 +525,10 @@ class DB:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
-        return response.fetchall()
+
+        results = self._fetchall(response)
+
+        return results
 
 
     def get_frequencies_of_values_from_a_column(self, table_name, column_name):
@@ -505,27 +536,36 @@ class DB:
 
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
-        return response.fetchall()
+        results = self._fetchall(response)
+
+        return results
 
 
     def get_table_column_types(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
-        return [t[2] for t in response.fetchall()]
+
+        results = self._fetchall(response)
+
+        return [t[2] for t in results]
 
 
     def get_table_columns_and_types(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
-        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+        results = self._fetchall(response)
+
+        return dict([(t[1], t[2]) for t in results])
 
 
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('''SELECT * FROM %s''' % table_name)
+
         return [t[0] for t in response.description]
 
 
@@ -914,4 +954,7 @@ class DB:
 
     def get_table_names(self):
         response = self._exec("""select name from sqlite_master where type='table'""")
-        return [r[0] for r in response.fetchall()]
+
+        results = self._fetchall(response)
+
+        return [r[0] for r in results]
