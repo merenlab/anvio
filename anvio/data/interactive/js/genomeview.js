@@ -266,6 +266,7 @@ function loadAll() {
   $('#show_genome_labels_box').attr("checked", showLabels);
   $('#show_gene_labels_box').attr("checked", showGeneLabels);
   $('#show_scale_box').attr("checked", showScale);
+  $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
 
   // can either set it on the canvas to check for all arrows, or when arrow is created.
   canvas.on('mouse:down', function(options) {
@@ -429,6 +430,9 @@ function loadAll() {
   $('#show_scale_box').on('change', function() {
     showScale = !showScale;
     draw();
+  });
+  $('#show_dynamic_scale_box').on('change', function() {
+    dynamicScaleInterval = !dynamicScaleInterval;
   });
   $('#brush_start, #brush_end').keydown(function(ev) {
       if (ev.which == 13) { // enter key
