@@ -1997,7 +1997,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
-        self.progress.new('Loading gene call data from contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
         split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
@@ -2020,7 +2019,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
         # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
-        self.progress.update("Organizing KOfam hit data")
         gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
         gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
         assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
@@ -2028,9 +2026,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kofam_gene_split_contig = []
         for gene_call_id, ko in kofam_hits:
             kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
-
-        self.progress.update("Done")
-        self.progress.end()
 
         self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
 
