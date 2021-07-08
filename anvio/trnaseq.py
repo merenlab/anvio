@@ -4963,10 +4963,6 @@ class NormalizedSequenceSummary(object):
         'anticodon_string',
         'feature_dict',
         'feature_threshold_start',
-        'alpha_start',
-        'alpha_stop',
-        'beta_start',
-        'beta_stop',
         'mean_spec_cov',
         'spec_covs',
         'nonspec_covs',
@@ -5041,10 +5037,6 @@ class SeedSequence(object):
         'summaries_M',
         'anticodon_string',
         'feature_dict',
-        'alpha_start',
-        'alpha_stop',
-        'beta_start',
-        'beta_stop',
         'total_spec_covs',
         'total_nonspec_covs',
         'total_mean_spec_cov',
@@ -5099,15 +5091,11 @@ class DatabaseConverter(object):
     # The following constants are columns needed from tables of a tRNA-seq database.
     # Load all feature positional indices but the 3' terminus start and stop indices.
     FEATURE_INDEX_COLS_OF_INTEREST = list(chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]],
-                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]])))
+                                                     [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
     FEATURE_TABLE_COLS_OF_INTEREST = [
         'name',
         'anticodon_sequence',
         'num_extra_fiveprime',
-        'alpha_start',
-        'alpha_stop',
-        'beta_start',
-        'beta_stop'
     ] + FEATURE_INDEX_COLS_OF_INTEREST
     TRIMMED_TABLE_COLS_OF_INTEREST = [
         'name',
@@ -5490,6 +5478,7 @@ class DatabaseConverter(object):
             left_index=True,
             right_index=True)
 
+        FEATURE_INDEX_COLS_OF_INTEREST = self.FEATURE_INDEX_COLS_OF_INTEREST
         threshold_feature = self.feature_threshold + '_start'
         # The starts of both strands of the stem are recorded, so pick the start of the 5' strand.
         is_threshold_feature_stem = True if 'stem' in threshold_feature else False
@@ -5518,7 +5507,7 @@ class DatabaseConverter(object):
 
             length_5prime = info_N.num_extra_fiveprime
             summary_N.feature_dict = feature_dict = OrderedDict()
-            for feature_index_col in self.FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
+            for feature_index_col in FEATURE_INDEX_COLS_OF_INTEREST: # `trna_his_position_0_start`, etc.
                 db_value = getattr(info_N, feature_index_col)
                 if isinstance(db_value, str):
                     # The string contains the start indices of stem strands.
@@ -5544,11 +5533,6 @@ class DatabaseConverter(object):
                 summary_N.feature_threshold_start = int(db_value.split(',')[0]) - length_5prime if isinstance(db_value, str) else -1000
             else:
                 summary_N.feature_threshold_start = -1000 if np.isnan(db_value) else db_value - length_5prime
-
-            summary_N.alpha_start = info_N.alpha_start
-            summary_N.alpha_stop = info_N.alpha_stop
-            summary_N.beta_start = info_N.beta_start
-            summary_N.beta_stop = info_N.beta_stop
 
             dict_N_summary[summary_N.name] = summary_N
 
@@ -5977,10 +5961,6 @@ class DatabaseConverter(object):
                         else:
                             selected_summary = seed.summaries_M[0].summaries_Nb[0]
                     seed.feature_dict = selected_summary.feature_dict
-                    seed.alpha_start = selected_summary.alpha_start
-                    seed.alpha_stop = selected_summary.alpha_stop
-                    seed.beta_start = selected_summary.beta_start
-                    seed.beta_stop = selected_summary.beta_stop
                     break
                 names_seeds_with_conflict.add(seed.name)
 
@@ -6033,10 +6013,6 @@ class DatabaseConverter(object):
                     seed.string = seed.summaries_M[0].consensus_string
                     selected_summary = seed.summaries_M[0].summaries_Nb[0]
                 seed.feature_dict = selected_summary.feature_dict
-                seed.alpha_start = selected_summary.alpha_start
-                seed.alpha_stop = selected_summary.alpha_stop
-                seed.beta_start = selected_summary.beta_start
-                seed.beta_stop = selected_summary.beta_stop
 
 
         # Assign the anticodon by comparing the mean specific coverage of N comprising the seed, a
@@ -6549,12 +6525,11 @@ class DatabaseConverter(object):
             for feature, feature_index in seed.feature_dict.items():
                 try:
                     if feature_index >= -10:
-                        entry.append(str(feature_index))
+                        entry.append(feature_index)
                     else:
                         entry.append(None)
                 except TypeError:
                     entry.append(','.join(map(str, feature_index)))
-            entry.extend([seed.alpha_start, seed.alpha_stop, seed.beta_start, seed.beta_stop])
             entries.append(tuple(entry))
         return entries
 
