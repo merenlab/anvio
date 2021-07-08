@@ -28,7 +28,7 @@
  // Settings vars
  // TODO migrate below variables to kvp in state
  var stateData = {};
- var calculatedSpacing; // like spacing, but calculated ;)
+ var mainCanvasHeight; 
  var spacing = 30; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
  var showLabels = true; // show genome labels?
@@ -192,7 +192,7 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
-  calculatedSpacing = calculateSpacingForGroups()
+  // canvas.setHeight(calculateMainCanvasHeight()) set canvas height dynamically
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 200;
@@ -896,13 +896,14 @@ function calculateMaxGenomeLength(){
   }
 }
 
-function calculateSpacingForGroups(){ // to be used for setting vertical spacing
+function calculateMainCanvasHeight(){ // to be used for setting vertical spacing
+  let optimalGroupHeight = 150 // arbitrary value to be set by us experts ;) 
   let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer
   stateData['additional-data-layers'].map(group => {
     Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null
   })
-  let spacing = 500 / [maxGroupSize * genomeData.genomes.length] // 500 is hardcoded main canvas height
-  return spacing
+  let mainCanvasHeight = optimalGroupHeight * maxGroupSize * genomeData.genomes.length
+  return mainCanvasHeight
 }
 
 function adjustScaleInterval() { // dynamically set scale interval based on scaleFactor
