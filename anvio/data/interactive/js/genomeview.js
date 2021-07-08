@@ -39,6 +39,7 @@
  var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
+ var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 
  var alignToGC = null;
@@ -218,7 +219,7 @@ function loadAll() {
               .attr("id", "scaleBox")
               .attr("class","scale")
               .attr("y", 230) // rather than 80 from 50?
-              .attr("tranform", "translate(5,0)");
+              .attr("transform", "translate(5,0)");
 
   scaleBox.append("g")
               .attr("class", "x axis top noselect")
@@ -236,7 +237,6 @@ function loadAll() {
   $('#brush_end').val(Math.floor(scaleWidth));
 
   function onBrush(){
-      console.log("onBrush() called!");
       var b = brush.empty() ? xScale.domain() : brush.extent();
 
       if (brush.empty()) {
@@ -253,12 +253,10 @@ function loadAll() {
       let ntsToShow = b[1] - b[0];
       scaleFactor = canvas.getWidth()/ntsToShow;
 
-      let val = Math.floor(50 / (scaleInterval * scaleFactor));
-      scaleInterval *= (2**val); // temporary fix for legibility
+      if(dynamicScaleInterval) adjustScaleInterval();
 
-      $('#genome_scale_interval').val(scaleInterval);
       draw();
-      moveToX = (showLabels?120:0) + b[0];
+      let moveToX = (showLabels?120:0) + b[0];
       canvas.absolutePan({x: scaleFactor*moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
@@ -268,6 +266,7 @@ function loadAll() {
   $('#show_genome_labels_box').attr("checked", showLabels);
   $('#show_gene_labels_box').attr("checked", showGeneLabels);
   $('#show_scale_box').attr("checked", showScale);
+  $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
 
   // can either set it on the canvas to check for all arrows, or when arrow is created.
   canvas.on('mouse:down', function(options) {
@@ -368,10 +367,9 @@ function loadAll() {
 
     var delta = opt.e.deltaY;
     scaleFactor *= 0.999 ** delta;
-    if(scale * scaleFactor < 50) scaleInterval *= 2; // temporary fix for legibility
-    $('#genome_scale_interval').val(scaleInterval);
     if (scaleFactor > 4) scaleFactor = 4;
     if (scaleFactor < 0.01) scaleFactor = 0.01;
+    if(dynamicScaleInterval) adjustScaleInterval();
     draw();
   });
 
@@ -432,6 +430,9 @@ function loadAll() {
   $('#show_scale_box').on('change', function() {
     showScale = !showScale;
     draw();
+  });
+  $('#show_dynamic_scale_box').on('change', function() {
+    dynamicScaleInterval = !dynamicScaleInterval;
   });
   $('#brush_start, #brush_end').keydown(function(ev) {
       if (ev.which == 13) { // enter key
@@ -510,14 +511,16 @@ function drawScale(y, scaleX=scaleFactor) {
 function zoomIn() {
   scaleFactor += (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor > 4) scaleFactor = 4;
+  if(dynamicScaleInterval) adjustScaleInterval();
+
   draw();
 }
 
 function zoomOut() {
   scaleFactor -= (scaleFactor < 0.2 ? .01 : .1);
   if(scaleFactor < 0.01) scaleFactor = 0.01;
-  if(scaleInterval * scaleFactor < 50) scale *= 2; // temporary fix for legibility
-  $('#genome_scale_interval').val(scaleInterval);
+  if(dynamicScaleInterval) adjustScaleInterval();
+
   draw();
 }
 
@@ -900,6 +903,14 @@ function calculateSpacingForGroups(){ // to be used for setting vertical spacing
   })
   let spacing = 500 / [maxGroupSize * genomeData.genomes.length] // 500 is hardcoded main canvas height
   return spacing
+}
+
+function adjustScaleInterval() { // dynamically set scale interval based on scaleFactor
+  let val = Math.floor(100/scaleFactor);
+  let roundToDigits = Math.floor(Math.log10(val)) - 1;
+  let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
+  scaleInterval = newInterval;
+  $('#genome_scale_interval').val(scaleInterval);
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
