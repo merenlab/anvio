@@ -142,6 +142,7 @@ class Progress:
 
         self.get_terminal_width()
 
+        self.msg = None
         self.current = None
 
         self.progress_total_items = None
