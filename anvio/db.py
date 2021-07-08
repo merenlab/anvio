@@ -308,6 +308,10 @@ class DB:
           to the DB using this method, even with self.read_only = True
         """
 
+        if anvio.DISPLAY_DB_CALLS:
+            self.progress.reset()
+            self.run.info_single(f"Executing SQL command: '{sql_query}'", nl_before=1)
+
         if value:
             ret_val = self.cursor.execute(sql_query, value)
         else:
@@ -329,11 +333,10 @@ class DB:
 
         chunk_counter = 0
         for chunk in get_list_in_chunks(values):
-            if anvio.DEBUG:
+            if anvio.DISPLAY_DB_CALLS:
                 self.progress.reset()
-                self.run.info_single("Adding the chunk %d with %d entries of %d total is being added to the db with "
-                                     "the SQL command '%s'." \
-                                    % (chunk_counter, len(chunk), len(values), sql_query), nl_before=1)
+                self.run.info_single(f"Adding the chunk {chunk_counter} with {len(chunk)} entries of {len(values)} "
+                                     f"total is being added to the db with the SQL command '{sql_query}'.", nl_before=1)
 
             self.cursor.executemany(sql_query, chunk)
 
