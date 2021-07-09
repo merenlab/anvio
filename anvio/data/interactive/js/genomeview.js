@@ -734,7 +734,10 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       top : startingTop,
       left : startingLeft,
       stroke : 'pink',
-      fill : 'pink'
+      fill : '', 
+      selectable : false, 
+      id : 'coverage graph', 
+      genome : additionalDataLayers['genome']
     })
     canvas.add(graphObj)
   } 
