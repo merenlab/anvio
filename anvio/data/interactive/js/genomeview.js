@@ -480,7 +480,7 @@ function drawScale(y, scaleX=scaleFactor) {
 
   for(var w = 0; w < genomeMax; w+=scaleInterval) {
     canvas.add(new fabric.Line([0,0,0,20], {left: (w+(showLabels?120:0))*scaleX,
-          top: y*(spacing)-24,
+          top: y*(spacing),
           stroke: 'black',
           strokeWidth: 1,
           fontSize: 10,
@@ -488,7 +488,7 @@ function drawScale(y, scaleX=scaleFactor) {
           selectable: false}));
 
     canvas.add(new fabric.Text(w/1000 + " kB", {left: (w+5+(showLabels?120:0))*scaleX,
-          top: y*(spacing)-24,
+          top: y*(spacing),
           stroke: 'black',
           strokeWidth: .25,
           fontSize: 15,
@@ -710,25 +710,19 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
-  console.log(additionalDataLayers)
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
-    let startingTop = 80 + yOffset
+    let startingTop = 70 + yOffset
     let startingLeft = 120
     let layerHeight = 20
     let pathDirective = [`M 0 0`]
 
-    for(let i = 0; i < additionalDataLayers['coverage'].length; i++){ // TODO this seems like an inefficient way to find the max range for coverage
+    for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
       additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
     }
-    // calculate max coverage value (we'll assume min value to be 0)
-    // line segments increment along the X axis 1 * scaleFactor
-    // line segments move along the y axis as a percentile of max coverage value * total vertical height allocated for the line graph
-    // generate a line segment string for each nucleotide position in sequence
-    // concat all segments into single path object directive
-    for(let i = 0; i < 10000; i++){
+    for(let i = 0; i < 1000; i++){
       let left = i * scaleFactor
-      let top = [additionalDataLayers['gcContent'][i] / maxCoverageValue] * layerHeight
+      let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
       let segment = `L ${left} ${top}`
       pathDirective.push(segment)
     }
@@ -746,12 +740,30 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   } 
   if(additionalDataLayers['gcContent']){
     let maxGCValue = 0
+    let startingTop = 90 + yOffset
+    let startingLeft = 120
+    let layerHeight = 20
+    let pathDirective = [`M 0 0`]
     for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
       additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
     }
     for(let i = 0; i < 1000; i++){ // 
-     
+      let left = i * scaleFactor
+      let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
+      let segment = `L ${left} ${top}`
+      pathDirective.push(segment)
     }
+    let graphObj = new fabric.Path(pathDirective.join(' '))
+    graphObj.set({
+      top : startingTop,
+      left : startingLeft,
+      stroke : additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+      fill : '', 
+      selectable : false, 
+      id : 'gcContent graph', 
+      genome : additionalDataLayers['genome']
+    })
+    canvas.add(graphObj)
   } 
   yOffset += 60
 }
