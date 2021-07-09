@@ -710,12 +710,33 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
+    let startingTop = 80 + yOffset
+    let startingLeft = 120
+    let layerHeight = 20
+    let pathDirective = [`M 0 0`]
+
     for(let i = 0; i < additionalDataLayers['coverage'].length; i++){ // TODO this seems like an inefficient way to find the max range for coverage
       additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
     }
-    for(let i = 0; i < 1000; i++){ // TODO hardcoded to 1k for now because canvas ~really~ doesn't like rendering out 130k * 3 objects (maybe)
-     
+    // calculate max coverage value (we'll assume min value to be 0)
+    // line segments increment along the X axis 1 * scaleFactor
+    // line segments move along the y axis as a percentile of max coverage value * total vertical height allocated for the line graph
+    // generate a line segment string for each nucleotide position in sequence
+    // concat all segments into single path object directive
+    for(let i = 0; i < 10000; i++){
+      let left = i * scaleFactor
+      let top = [additionalDataLayers['gcContent'][i] / maxCoverageValue] * layerHeight
+      let segment = `L ${left} ${top}`
+      pathDirective.push(segment)
     }
+    let graphObj = new fabric.Path(pathDirective.join(' '))
+    graphObj.set({
+      top : startingTop,
+      left : startingLeft,
+      stroke : 'pink',
+      fill : 'pink'
+    })
+    canvas.add(graphObj)
   } 
   if(additionalDataLayers['gcContent']){
     let maxGCValue = 0
@@ -723,7 +744,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
     }
     for(let i = 0; i < 1000; i++){ // 
-      
+     
     }
   } 
   yOffset += 60
