@@ -172,7 +172,7 @@ function processState(stateName, stateData){
     }
     stateData['additional-data-layers'].push(additionalDataObject)
   }
-
+  
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
@@ -709,7 +709,13 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 }
 
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
-  let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
+  let additionalDataLayers;
+  stateData['additional-data-layers'].map(group => {
+    if(group.genome == label){
+      additionalDataLayers = group
+    }
+  })
+
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
     let startingTop = 70 + yOffset
@@ -720,12 +726,14 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
       additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
     }
+
     for(let i = 0; i < 1000; i++){
       let left = i * scaleFactor
       let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
       let segment = `L ${left} ${top}`
       pathDirective.push(segment)
     }
+
     let graphObj = new fabric.Path(pathDirective.join(' '))
     graphObj.set({
       top : startingTop,
@@ -738,21 +746,25 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     })
     canvas.add(graphObj)
   } 
+
   if(additionalDataLayers['gcContent']){
     let maxGCValue = 0
     let startingTop = 90 + yOffset
     let startingLeft = 120
     let layerHeight = 20
     let pathDirective = [`M 0 0`]
+
     for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
       additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
     }
+
     for(let i = 0; i < 1000; i++){ // 
       let left = i * scaleFactor
       let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
       let segment = `L ${left} ${top}`
       pathDirective.push(segment)
     }
+    
     let graphObj = new fabric.Path(pathDirective.join(' '))
     graphObj.set({
       top : startingTop,
