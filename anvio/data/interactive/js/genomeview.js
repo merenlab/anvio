@@ -166,7 +166,9 @@ function processState(stateName, stateData){
     let additionalDataObject = {
       'genome' : genomeLabel,
       'coverage' : coverage,
-      'gcContent' : gcContent
+      'coverage-color' : 'pink',
+      'gcContent' : gcContent,
+      'gcContent-color' : 'purple'
     }
     stateData['additional-data-layers'].push(additionalDataObject)
   }
@@ -708,6 +710,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
 
 function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
   let additionalDataLayers = stateData['additional-data-layers'].find(group =>  group.genome = label)
+  console.log(additionalDataLayers)
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
     let startingTop = 80 + yOffset
@@ -733,7 +736,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     graphObj.set({
       top : startingTop,
       left : startingLeft,
-      stroke : 'pink',
+      stroke : additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
       fill : '', 
       selectable : false, 
       id : 'coverage graph', 
