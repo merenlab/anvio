@@ -714,15 +714,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
     }
     for(let i = 0; i < 1000; i++){ // TODO hardcoded to 1k for now because canvas ~really~ doesn't like rendering out 130k * 3 objects (maybe)
-      canvas.add(new fabric.Rect({
-        height : 8, 
-        width : 1*scaleFactor, 
-        fill : 'blue', 
-        opacity : 1 * [additionalDataLayers['coverage'][i] / maxCoverageValue],
-        selectable : false, 
-        top : 70 + yOffset, 
-        left : 120 + i
-      }) )
+     
     }
   } 
   if(additionalDataLayers['gcContent']){
