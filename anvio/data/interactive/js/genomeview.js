@@ -723,15 +723,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
     }
     for(let i = 0; i < 1000; i++){ // 
-      canvas.add(new fabric.Rect({
-        height : 8, 
-        width : 1*scaleFactor, 
-        fill : 'pink', 
-        opacity : 1 * [additionalDataLayers['gcContent'][i] / maxGCValue],
-        selectable : false, 
-        top : 70 + yOffset + 12, 
-        left : 120 + i
-      }) )
+      
     }
   } 
   yOffset += 60
