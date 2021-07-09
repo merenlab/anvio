@@ -1472,7 +1472,7 @@ function serializeSettings() {
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
-    $('#chart-container, #context-container, #highlight-boxes').empty();
+    $('#chart-container, #context-container, #highlight-boxes, #sample-titles').empty();
 
     if (state['current-view'] == "single"){
         // if we are working with a non-merged single profile, we need to do some ugly hacks here,
