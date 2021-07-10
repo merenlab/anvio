@@ -7298,17 +7298,20 @@ class ResultTabulator(object):
     def generate_seed_output(self):
         contig_name_iter = iter(self.contig_names)
         feature_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
-        found_taxonomy = self.contigs_db.db.get_meta_value('trna_taxonomy_was_run')
-        if found_taxonomy:
-            taxonomy_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_taxonomy_table_name,
-                                                                       columns_of_interest=['percent_identity',
-                                                                                            't_domain',
-                                                                                            't_phylum',
-                                                                                            't_class',
-                                                                                            't_order',
-                                                                                            't_family',
-                                                                                            't_genus',
-                                                                                            't_species'])
+        self.found_taxonomy = self.contigs_db.db.get_meta_value('trna_taxonomy_was_run')
+        if self.found_taxonomy:
+            self.taxonomy_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_taxonomy_table_name,
+                                                                            columns_of_interest=['percent_identity',
+                                                                                                 't_domain',
+                                                                                                 't_phylum',
+                                                                                                 't_class',
+                                                                                                 't_order',
+                                                                                                 't_family',
+                                                                                                 't_genus',
+                                                                                                 't_species'])
+        else:
+            self.taxonomy_table_dict = {}
+        taxonomy_table_dict = self.taxonomy_table_dict
 
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in
@@ -7497,6 +7500,7 @@ class ResultTabulator(object):
         sample_names = self.sample_names
         contig_name_iter = iter(self.contig_names)
         contig_feature_coord_dict = self.contig_feature_coord_dict
+        taxonomy_table_dict = self.taxonomy_table_dict
 
         profile_db = dbops.ProfileDatabase(self.spec_profile_db_path)
         var_nts_df = profile_db.db.get_table_as_dataframe('variable_nucleotides')
@@ -7515,23 +7519,44 @@ class ResultTabulator(object):
                                      axis=1)
         var_nts_df = var_nts_df.sort_values('gene_callers_id')
 
-        header = "\t".join(('gene_callers_id',
-                            'contig_name',
-                            'anticodon',
-                            'aa',
-                            'seed_position',
-                            'ordinal_name',
-                            'ordinal_position',
-                            'reference',
-                            'sample_name')
+        header = "\t".join(("gene_callers_id",
+                            "contig_name",
+                            "anticodon",
+                            "aa",
+                            "domain",
+                            "phylum",
+                            "class",
+                            "order",
+                            "family",
+                            "genus",
+                            "species",
+                            "taxon_percent_id",
+                            "seed_position",
+                            "ordinal_name",
+                            "ordinal_position",
+                            "reference",
+                            "sample_name")
                            + UNAMBIG_NTS) + "\n"
         out_file = open(self.mod_out_path, 'a')
         out_file.write(header)
 
         for contig_index, contig_df in var_nts_df.groupby(['gene_callers_id', 'contig_name']):
+            gene_callers_id = contig_index[0]
             contig_name = contig_index[1]
-            anticodon, aa = gene_callers_id_anticodon_aa_dict[contig_index[0]]
-            gene_callers_id = str(contig_index[0])
+            anticodon, aa = gene_callers_id_anticodon_aa_dict[gene_callers_id]
+            try:
+                t_data = tuple(taxonomy_table_dict[gene_callers_id].values())
+                t_domain = t_data[1] if t_data[1] else ''
+                t_phylum = t_data[2] if t_data[2] else ''
+                t_class = t_data[3] if t_data[3] else ''
+                t_order = t_data[4] if t_data[4] else ''
+                t_family = t_data[5] if t_data[5] else ''
+                t_genus = t_data[6] if t_data[6] else ''
+                t_species = t_data[7] if t_data[7] else ''
+                t_percent_id = str(t_data[0]) if t_data[0] else ''
+            except KeyError:
+                t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = ('', ) * 8
+            gene_callers_id = str(gene_callers_id)
             contig_df = contig_df.sort_values('pos')
             feature_coord_dict = contig_feature_coord_dict[contig_name]
             for seed_pos, sub_df in contig_df.groupby('pos'):
@@ -7543,6 +7568,14 @@ class ResultTabulator(object):
                                contig_name,
                                anticodon,
                                aa,
+                               t_domain,
+                               t_phylum,
+                               t_class,
+                               t_order,
+                               t_family,
+                               t_genus,
+                               t_species,
+                               t_percent_id,
                                str(seed_pos),
                                ordinal_name,
                                ordinal_pos,
