@@ -7183,6 +7183,7 @@ class ResultTabulator(object):
         self.spec_profile_db_path = A('specific_profile_db')
         self.nonspec_profile_db_path = A('nonspecific_profile_db')
         self.out_dir = os.path.abspath(A('output_dir')) if A('output_dir') else os.path.dirname(self.contigs_db_path)
+        self.overwrite_out_dest = A('overwrite_output_destinations')
 
         if not self.contigs_db_path:
             raise ConfigError("Please provide the path to a `trnaseq`-variant contigs database using `--contigs-db` or `-c`.")
@@ -7192,87 +7193,14 @@ class ResultTabulator(object):
 
     def process(self):
         self.sanity_check()
+        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
+        self.contig_names = self.contigs_db.db.get_single_column_from_table(tables.genes_in_contigs_table_name, 'contig')
 
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
-        spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash)
-        contig_iter = iter(contigs_db.db.get_single_column_from_table(tables.genes_in_contigs_table_name, 'contig'))
-        feature_table_dict = contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
-        spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
-        spec_aux_df['contig'] = spec_aux_df['split_name'].apply(lambda split: split.split('_split_00001')[0])
-        spec_aux_df = spec_aux_df.drop('split_name', axis=1)
-        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.COVERAGE_DTYPE)
-        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
-        spec_sample_covs_dict = {}
-        for contig, contig_df in spec_aux_df.groupby('contig'):
-            spec_sample_covs_dict[contig] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
+        self.set_ordinal_features()
+        self.generate_seed_output()
+        self.generate_modification_output()
 
-        TRNA_FEATURE_ORDINAL_DICT = constants.TRNA_FEATURE_ORDINAL_DICT
-        for gene_callers_id, feature_dict in feature_table_dict.items():
-            contig = next(contig_iter)
-            contig_spec_sample_covs_dict = {sample: iter(covs) for sample, covs in spec_sample_covs_dict[contig].items()}
-            print(contig)
-            row = [gene_callers_id, contig]
-            feature_start = None
-            feature_stop = None
-            ordinal_start = None
-            ordinal_stop = None
-            l = [[] for _ in range(len(contig_spec_sample_covs_dict))]
-            d = {}
-            for feature_bound, ordinal_rank in TRNA_FEATURE_ORDINAL_DICT.items():
-                print(feature_bound)
-                try:
-                    j = feature_dict[feature_bound]
-                except KeyError:
-                    if feature_bound == 'd_loop_prealpha_start':
-                        j = d_loop_start = feature_dict['d_loop_start']
-                    elif feature_bound == 'd_loop_prealpha_stop':
-                        alpha_start = feature_dict['alpha_start']
-                        j = alpha_start - 1
-                    elif feature_bound == 'd_loop_alpha_start':
-                        j = alpha_start = feature_dict['alpha_start']
-                    elif feature_bound == 'd_loop_alpha_stop':
-                        j = alpha_stop = feature_dict['alpha_stop']
-                    elif feature_bound == 'd_loop_postalpha_start':
-                        j = alpha_stop + 1
-                    elif feature_bound == 'd_loop_postalpha_stop':
-                        beta_start = feature_dict['beta_start']
-                        j = beta_start - 1
-                    elif feature_bound == 'd_loop_beta_start':
-                        j = beta_start
-                    elif feature_bound == 'd_loop_beta_stop':
-                        j = beta_stop = feature_dict['beta_stop']
-                    elif feature_bound == 'd_loop_postbeta_start':
-                        j = beta_stop + 1
-                    elif feature_bound == 'd_loop_postbeta_stop':
-                        j = feature_dict['d_loop_stop']
-
-                if pd.notnull(feature_start):
-                    feature_stop = j
-                    ordinal_stop = ordinal_rank
-                    print(feature_start)
-                    print(feature_stop)
-                    for ordinal_index, seq_index in enumerate(range(feature_start, feature_stop + 1)):
-                        if seq_index >= 0:
-                            for sample_num, cov_iter in enumerate(contig_spec_sample_covs_dict.values()):
-                                l[sample_num].append(next(cov_iter))
-                            d[seq_index] = ordinal_start + ordinal_index
-                        else:
-                            for sample_num in range(len(contig_spec_sample_covs_dict)):
-                                l[sample_num].append(None)
-                    for _ in range(ordinal_start + ordinal_index + 1, ordinal_stop + 1):
-                        for sample_num in range(len(contig_spec_sample_covs_dict)):
-                            l[sample_num].append(None)
-                    feature_start = None
-                    feature_stop = None
-                    ordinal_start = None
-                    ordinal_stop = None
-                else:
-                    feature_start = j
-                    ordinal_start = ordinal_rank
-            print(d)
-            print(l)
-            raise Exception
-        # c_000002983890_tongue3_day2_untreated
+        self.contigs_db.disconnect()
 
 
     def sanity_check(self):
@@ -7280,19 +7208,306 @@ class ResultTabulator(object):
         self.contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if self.contigs_db_info.variant != 'trnaseq':
             raise ConfigError("The input contigs database is not of the `trnaseq` variant...")
+
         self.spec_profile_db_info = DBInfo(self.spec_profile_db_path, expecting='profile')
         self.nonspec_profile_db_info = DBInfo(self.nonspec_profile_db_path, expecting='profile') if self.nonspec_profile_db_path else None
         self.spec_aux_db_path = os.path.join(os.path.dirname(self.spec_profile_db_path), 'AUXILIARY-DATA.db')
         self.spec_aux_db_info = DBInfo(self.spec_aux_db_path, expecting='auxiliary data for coverages')
-        self.nonspec_aux_db_path = os.path.join(os.path.dirname(self.nonspec_profile_db_path), 'AUXILIARY_DATA.db') if self.nonspec_profile_db_path else None
+        self.nonspec_aux_db_path = os.path.join(os.path.dirname(self.nonspec_profile_db_path), 'AUXILIARY-DATA.db') if self.nonspec_profile_db_path else None
         if self.nonspec_aux_db_path:
             nonspec_aux_db_info = DBInfo(self.nonspec_aux_db_path, expecting='auxiliary data for coverages')
 
         filesnpaths.is_output_dir_writable(self.out_dir)
-        self.spec_cov_out_path = os.path.join(self.out_dir, 'SPECIFIC_COVERAGE.tsv')
-        filesnpaths.is_output_file_writable(self.spec_cov_out_path)
-        self.nonspec_cov_out_path = os.path.join(self.out_dir, 'NONSPECIFIC_COVERAGE.tsv') if self.nonspec_profile_db_path else None
-        if self.nonspec_cov_out_path:
-            filesnpaths.is_output_file_writable(self.nonspec_cov_out_path)
-        self.mod_out_path = os.path.join(self.out_dir, 'MODIFICATION_COVERAGE.tsv')
-        filesnpaths.is_output_file_writable(self.mod_out_path)
+
+        self.spec_seed_out_path = os.path.join(self.out_dir, 'SEEDS_SPECIFIC.txt')
+        filesnpaths.is_output_file_writable(self.spec_seed_out_path, ok_if_exists=self.overwrite_out_dest)
+        if os.path.exists(self.spec_seed_out_path) and self.overwrite_out_dest:
+            os.remove(self.spec_seed_out_path)
+
+        self.nonspec_seed_out_path = os.path.join(self.out_dir, 'SEEDS_NONSPECIFIC.txt') if self.nonspec_profile_db_path else None
+        if self.nonspec_seed_out_path:
+            filesnpaths.is_output_file_writable(self.nonspec_seed_out_path, ok_if_exists=self.overwrite_out_dest)
+            if os.path.exists(self.nonspec_seed_out_path) and self.overwrite_out_dest:
+                os.remove(self.nonspec_seed_out_path)
+
+        self.mod_out_path = os.path.join(self.out_dir, 'MODIFICATIONS.txt')
+        filesnpaths.is_output_file_writable(self.mod_out_path, ok_if_exists=self.overwrite_out_dest)
+        if os.path.exists(self.mod_out_path) and self.overwrite_out_dest:
+            os.remove(self.mod_out_path)
+
+
+    def set_ordinal_features(self):
+        # The term "feature" is used loosely in the following dict, as it separates out "subfeatures" of the
+        # features just listed, e.g., `d_loop` is split into `d_loop_prealpha`, `d_loop_alpha`, etc.
+        self.pretty_ordinal_extrema_dict = OrderedDict([('trna_his_position_0_start', 101),
+                                                        ('trna_his_position_0_stop', 101),
+                                                        ('fiveprime_acceptor_stem_sequence_start', 201),
+                                                        ('fiveprime_acceptor_stem_sequence_stop', 207),
+                                                        ('position_8_start', 301),
+                                                        ('position_8_stop', 301),
+                                                        ('position_9_start', 401),
+                                                        ('position_9_stop', 401),
+                                                        ('fiveprime_d_stem_sequence_start', 501),
+                                                        ('fiveprime_d_stem_sequence_stop', 504),
+                                                        ('d_loop_prealpha_start', 601),
+                                                        ('d_loop_prealpha_stop', 602),
+                                                        ('d_loop_alpha_start', 701),
+                                                        ('d_loop_alpha_stop', 703), # variable: default α length range 1-3
+                                                        ('d_loop_postalpha_start', 801),
+                                                        ('d_loop_postalpha_stop', 802),
+                                                        ('d_loop_beta_start', 901),
+                                                        ('d_loop_beta_stop', 903), # variable: default β length range 1-3
+                                                        ('d_loop_postbeta_start', 1001),
+                                                        ('d_loop_postbeta_stop', 1001),
+                                                        ('threeprime_d_stem_sequence_start', 1101),
+                                                        ('threeprime_d_stem_sequence_stop', 1104),
+                                                        ('position_26_start', 1201),
+                                                        ('position_26_stop', 1201),
+                                                        ('fiveprime_anticodon_stem_sequence_start', 1301),
+                                                        ('fiveprime_anticodon_stem_sequence_stop', 1305),
+                                                        ('anticodon_loop_start', 1401),
+                                                        ('anticodon_loop_stop', 1407),
+                                                        ('threeprime_anticodon_stem_sequence_start', 1501),
+                                                        ('threeprime_anticodon_stem_sequence_stop', 1505),
+                                                        ('v_loop_start', 1601),
+                                                        ('v_loop_stop', 1623), # variable: default V loop length range 4-5; 9-23
+                                                        ('fiveprime_t_stem_sequence_start', 1701),
+                                                        ('fiveprime_t_stem_sequence_stop', 1705),
+                                                        ('t_loop_start', 1801),
+                                                        ('t_loop_stop', 1807),
+                                                        ('threeprime_t_stem_sequence_start', 1901),
+                                                        ('threeprime_t_stem_sequence_stop', 1905),
+                                                        ('threeprime_acceptor_stem_sequence_start', 2001),
+                                                        ('threeprime_acceptor_stem_sequence_stop', 2007),
+                                                        ('discriminator_start', 2101),
+                                                        ('discriminator_stop', 2101)])
+        self.ordinal_extrema_dict = ordinal_extrema_dict = OrderedDict()
+        self.ordinal_dict = ordinal_dict = OrderedDict()
+        rank = 1
+        for feature_item in zip(list(self.pretty_ordinal_extrema_dict.items())[::2],
+                                list(self.pretty_ordinal_extrema_dict.items())[1::2]):
+            ordinal_extrema_dict[feature_item[0][0]] = rank
+            ordinal_extrema_dict[feature_item[1][0]] = rank + feature_item[1][1] - feature_item[0][1]
+            feature_name = feature_item[0][0].split('_start')[0]
+            for feature_index in range(1, feature_item[1][1] - feature_item[0][1] + 2):
+                ordinal_dict[feature_name + '_' + str(feature_index)] = rank
+                rank += 1
+        self.reverse_ordinal_dict = OrderedDict([(rank, ordinal_name) for ordinal_name, rank in ordinal_dict.items()])
+
+
+    def generate_seed_output(self):
+        feature_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
+        contig_name_iter = iter(self.contig_names)
+
+        anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
+                              [anticodon_aa_item.split('_') for anticodon_aa_item in
+                               self.contigs_db.db.get_single_column_from_table(tables.hmm_hits_table_name, 'gene_name')]]
+        self.gene_callers_id_anticodon_aa_dict = gene_callers_id_anticodon_aa_dict = {}
+        for gene_callers_id, anticodon_aa_item in enumerate(anticodon_aa_items):
+            gene_callers_id_anticodon_aa_dict[gene_callers_id] = anticodon_aa_item
+        anticodon_aa_iter = iter(anticodon_aa_items)
+
+        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.COVERAGE_DTYPE)
+        spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash)
+        spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
+        spec_aux_db.close()
+        spec_aux_df['contig_name'] = spec_aux_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
+        spec_aux_df = spec_aux_df.drop('split_name', axis=1)
+        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+
+        do_nonspec = True if self.nonspec_profile_db_path else False
+        if do_nonspec:
+            nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash)
+            nonspec_aux_df = nonspec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
+            nonspec_aux_db.close()
+            nonspec_aux_df['contig_name'] = spec_aux_df['contig_name'].values
+            nonspec_aux_df = nonspec_aux_df.drop('split_name', axis=1)
+            nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+
+        spec_covs_dict = {}
+        for contig_name, contig_df in spec_aux_df.groupby('contig_name'):
+            spec_covs_dict[contig_name] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
+        self.sample_names = sample_names = contig_df['sample_name'].tolist()
+
+        if do_nonspec:
+            nonspec_covs_dict = {}
+            for contig_name, contig_df in nonspec_aux_df.groupby('contig_name'):
+                nonspec_covs_dict[contig_name] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
+
+        top_header = "\t".join(("gene_callers_id",
+                                "contig_name",
+                                "anticodon",
+                                "aa",
+                                "sample_name") + tuple(self.ordinal_dict.keys())) + "\n"
+        bottom_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
+                                  + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
+        spec_out_file = open(self.spec_seed_out_path, 'a')
+        spec_out_file.write(top_header + bottom_header)
+        if do_nonspec:
+            nonspec_out_file = open(self.nonspec_seed_out_path, 'a')
+            nonspec_out_file.write(top_header + bottom_header)
+
+        reverse_ordinal_dict = self.reverse_ordinal_dict
+        self.contig_name_gene_callers_id_dict = contig_name_gene_callers_id_dict = {}
+        self.contig_feature_coord_dict = contig_feature_coord_dict = {}
+        for gene_callers_id, feature_dict in feature_table_dict.items():
+            contig_name = next(contig_name_iter)
+            anticodon, aa = next(anticodon_aa_iter)
+            contig_name_gene_callers_id_dict[contig_name] = gene_callers_id
+            contig_spec_covs_dict = {sample_name: iter(covs) for sample_name, covs in spec_covs_dict[contig_name].items()}
+            if do_nonspec:
+                contig_nonspec_covs_dict = {sample_name: iter(covs) for sample_name, covs in nonspec_covs_dict[contig_name].items()}
+            sample_range = range(len(contig_spec_covs_dict))
+            contig_output_rows = [[str(gene_callers_id),
+                                   contig_name,
+                                   anticodon,
+                                   aa,
+                                   sample_name] for sample_name in sample_names]
+
+            feature_start_in_seq = None
+            feature_stop_in_seq = None
+            feature_ordinal_start = None
+            feature_ordinal_stop = None
+
+            tabulated_contig_spec_covs = [[] for sample_index in sample_range]
+            if do_nonspec:
+                tabulated_contig_nonspec_covs = [[] for sample_index in sample_range]
+            feature_coord_map = {}
+            ordinal_extremum_index = 0
+            for ordinal_extremum_name, ordinal_extremum in self.ordinal_extrema_dict.items():
+                try:
+                    extremum_in_seq = feature_dict[ordinal_extremum_name]
+                except KeyError:
+                    if ordinal_extremum_name == 'd_loop_prealpha_start':
+                        extremum_in_seq = feature_dict['d_loop_start']
+                    elif ordinal_extremum_name == 'd_loop_prealpha_stop':
+                        alpha_start_in_seq = feature_dict['alpha_start']
+                        extremum_in_seq = alpha_start_in_seq - 1
+                    elif ordinal_extremum_name == 'd_loop_alpha_start':
+                        extremum_in_seq = alpha_start_in_seq = feature_dict['alpha_start']
+                    elif ordinal_extremum_name == 'd_loop_alpha_stop':
+                        extremum_in_seq = alpha_stop_in_seq = feature_dict['alpha_stop']
+                    elif ordinal_extremum_name == 'd_loop_postalpha_start':
+                        extremum_in_seq = alpha_stop_in_seq + 1
+                    elif ordinal_extremum_name == 'd_loop_postalpha_stop':
+                        beta_start_in_seq = feature_dict['beta_start']
+                        extremum_in_seq = beta_start_in_seq - 1
+                    elif ordinal_extremum_name == 'd_loop_beta_start':
+                        extremum_in_seq = beta_start_in_seq
+                    elif ordinal_extremum_name == 'd_loop_beta_stop':
+                        extremum_in_seq = beta_stop_in_seq = feature_dict['beta_stop']
+                    elif ordinal_extremum_name == 'd_loop_postbeta_start':
+                        extremum_in_seq = beta_stop_in_seq + 1
+                    elif ordinal_extremum_name == 'd_loop_postbeta_stop':
+                        extremum_in_seq = feature_dict['d_loop_stop']
+
+                if pd.notnull(feature_start_in_seq):
+                    feature_stop_in_seq = extremum_in_seq
+                    feature_ordinal_max_stop = ordinal_extremum
+                    for ordinal_index, seq_index in enumerate(range(feature_start_in_seq, feature_stop_in_seq + 1)):
+                        if seq_index >= 0:
+                            for sample_num, spec_cov_iter in enumerate(contig_spec_covs_dict.values()):
+                                tabulated_contig_spec_covs[sample_num].append(next(spec_cov_iter))
+                            if do_nonspec:
+                                for sample_num, nonspec_cov_iter in enumerate(contig_nonspec_covs_dict.values()):
+                                    tabulated_contig_nonspec_covs[sample_num].append(next(nonspec_cov_iter))
+                            rank = feature_ordinal_start + ordinal_index
+                            feature_coord_map[seq_index] = (reverse_ordinal_dict[rank], rank)
+                        else:
+                            for sample_num in sample_range:
+                                tabulated_contig_spec_covs[sample_num].append('')
+                                if do_nonspec:
+                                    tabulated_contig_nonspec_covs[sample_num].append('')
+                    uncovered_ordinal_length = feature_ordinal_max_stop - feature_ordinal_start - ordinal_index
+                    if uncovered_ordinal_length:
+                        cov_extension = [''] * uncovered_ordinal_length
+                        for sample_num in sample_range:
+                            tabulated_contig_spec_covs[sample_num].extend(cov_extension)
+                            if do_nonspec:
+                                tabulated_contig_nonspec_covs[sample_num].extend(cov_extension)
+                    feature_start_in_seq = None
+                    feature_stop_in_seq = None
+                    feature_ordinal_start = None
+                    feature_ordinal_max_stop = None
+                elif ordinal_extremum_index % 2 == 1:
+                    cov_extension = [''] * (ordinal_extremum + 1 - feature_ordinal_start)
+                    for sample_num in sample_range:
+                        tabulated_contig_spec_covs[sample_num].extend(cov_extension)
+                        if do_nonspec:
+                            tabulated_contig_nonspec_covs[sample_num].extend(cov_extension)
+                    feature_start_in_seq = None
+                    feature_ordinal_start = None
+                else:
+                    feature_start_in_seq = extremum_in_seq
+                    feature_ordinal_start = ordinal_extremum
+                ordinal_extremum_index += 1
+
+            contig_feature_coord_dict[contig_name] = feature_coord_map
+
+            for contig_output_row, contig_spec_covs_row in zip(contig_output_rows, tabulated_contig_spec_covs):
+                spec_out_file.write("\t".join(contig_output_row + list(map(str, contig_spec_covs_row))) + "\n")
+            if do_nonspec:
+                for contig_output_row, contig_nonspec_covs_row in zip(contig_output_rows, tabulated_contig_nonspec_covs):
+                    nonspec_out_file.write("\t".join(contig_output_row + list(map(str, contig_nonspec_covs_row))) + "\n")
+
+
+    def generate_modification_output(self):
+        contig_name_gene_callers_id_dict = self.contig_name_gene_callers_id_dict
+        gene_callers_id_anticodon_aa_dict = self.gene_callers_id_anticodon_aa_dict
+        sample_names = self.sample_names
+        contig_name_iter = iter(self.contig_names)
+        contig_feature_coord_dict = self.contig_feature_coord_dict
+
+        profile_db = dbops.ProfileDatabase(self.spec_profile_db_path)
+        var_nts_df = profile_db.db.get_table_as_dataframe('variable_nucleotides')
+        profile_db.disconnect()
+        var_nts_df['contig_name'] = var_nts_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
+        var_nts_df['gene_callers_id'] = var_nts_df['contig_name'].apply(lambda c: contig_name_gene_callers_id_dict[c])
+        var_nts_df = var_nts_df.drop(['pos_in_contig',
+                                      'corresponding_gene_call',
+                                      'in_noncoding_gene_call',
+                                      'in_coding_gene_call',
+                                      'base_pos_in_codon',
+                                      'codon_order_in_gene',
+                                      'cov_outlier_in_split',
+                                      'departure_from_reference',
+                                      'competing_nts'],
+                                     axis=1)
+        var_nts_df = var_nts_df.sort_values('gene_callers_id')
+
+        header = "\t".join(('gene_callers_id',
+                            'contig_name',
+                            'anticodon',
+                            'aa',
+                            'seed_position',
+                            'ordinal_name',
+                            'ordinal_position',
+                            'reference',
+                            'sample_name')
+                           + UNAMBIG_NTS) + "\n"
+        out_file = open(self.mod_out_path, 'a')
+        out_file.write(header)
+
+        for contig_index, contig_df in var_nts_df.groupby(['gene_callers_id', 'contig_name']):
+            contig_name = contig_index[1]
+            anticodon, aa = gene_callers_id_anticodon_aa_dict[contig_index[0]]
+            gene_callers_id = str(contig_index[0])
+            contig_df = contig_df.sort_values('pos')
+            feature_coord_dict = contig_feature_coord_dict[contig_name]
+            for seed_pos, sub_df in contig_df.groupby('pos'):
+                sub_df = sub_df.sort_values('sample_id')
+                ordinal_name, ordinal_pos = feature_coord_dict[seed_pos]
+                ordinal_pos = str(ordinal_pos)
+                for sample_row in sub_df.itertuples():
+                    out_row = [gene_callers_id,
+                               contig_name,
+                               anticodon,
+                               aa,
+                               str(seed_pos),
+                               ordinal_name,
+                               ordinal_pos,
+                               sample_row.reference,
+                               sample_row.sample_id]
+                    for nt in UNAMBIG_NTS:
+                        out_row.append(str(getattr(sample_row, nt)))
+                    out_file.write("\t".join(out_row) + "\n")

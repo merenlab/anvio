@@ -3,6 +3,8 @@
 """Tabulate data on tRNA seeds from a set of tRNA-seq samples"""
 
 
+import sys
+
 import anvio
 import anvio.trnaseq as trnaseq
 
