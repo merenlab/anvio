@@ -7296,8 +7296,19 @@ class ResultTabulator(object):
 
 
     def generate_seed_output(self):
-        feature_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
         contig_name_iter = iter(self.contig_names)
+        feature_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
+        found_taxonomy = self.contigs_db.db.get_meta_value('trna_taxonomy_was_run')
+        if found_taxonomy:
+            taxonomy_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_taxonomy_table_name,
+                                                                       columns_of_interest=['percent_identity',
+                                                                                            't_domain',
+                                                                                            't_phylum',
+                                                                                            't_class',
+                                                                                            't_order',
+                                                                                            't_family',
+                                                                                            't_genus',
+                                                                                            't_species'])
 
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in
@@ -7334,13 +7345,22 @@ class ResultTabulator(object):
             for contig_name, contig_df in nonspec_aux_df.groupby('contig_name'):
                 nonspec_covs_dict[contig_name] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
 
-        top_header = "\t".join(("gene_callers_id",
-                                "contig_name",
-                                "anticodon",
-                                "aa",
-                                "sample_name") + tuple(self.ordinal_dict.keys())) + "\n"
+        top_header = ("gene_callers_id",
+                      "contig_name",
+                      "anticodon",
+                      "aa",
+                      "domain",
+                      "phylum",
+                      "class",
+                      "order",
+                      "family",
+                      "genus",
+                      "species",
+                      "taxon_percent_id",
+                      "sample_name") + tuple(self.ordinal_dict.keys())
         bottom_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
                                   + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
+        top_header = "\t".join(top_header) + "\n"
         spec_out_file = open(self.spec_seed_out_path, 'a')
         spec_out_file.write(top_header + bottom_header)
         if do_nonspec:
@@ -7354,6 +7374,18 @@ class ResultTabulator(object):
             contig_name = next(contig_name_iter)
             anticodon, aa = next(anticodon_aa_iter)
             contig_name_gene_callers_id_dict[contig_name] = gene_callers_id
+            try:
+                t_data = tuple(taxonomy_table_dict[gene_callers_id].values())
+                t_domain = t_data[1] if t_data[1] else ''
+                t_phylum = t_data[2] if t_data[2] else ''
+                t_class = t_data[3] if t_data[3] else ''
+                t_order = t_data[4] if t_data[4] else ''
+                t_family = t_data[5] if t_data[5] else ''
+                t_genus = t_data[6] if t_data[6] else ''
+                t_species = t_data[7] if t_data[7] else ''
+                t_percent_id = str(t_data[0]) if t_data[0] else ''
+            except KeyError:
+                t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = ('', ) * 8
             contig_spec_covs_dict = {sample_name: iter(covs) for sample_name, covs in spec_covs_dict[contig_name].items()}
             if do_nonspec:
                 contig_nonspec_covs_dict = {sample_name: iter(covs) for sample_name, covs in nonspec_covs_dict[contig_name].items()}
@@ -7362,6 +7394,14 @@ class ResultTabulator(object):
                                    contig_name,
                                    anticodon,
                                    aa,
+                                   t_domain,
+                                   t_phylum,
+                                   t_class,
+                                   t_order,
+                                   t_family,
+                                   t_genus,
+                                   t_species,
+                                   t_percent_id,
                                    sample_name] for sample_name in sample_names]
 
             feature_start_in_seq = None
