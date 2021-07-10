@@ -7293,6 +7293,57 @@ class ResultTabulator(object):
                 rank += 1
         self.reverse_ordinal_dict = OrderedDict([(rank, ordinal_name) for ordinal_name, rank in ordinal_dict.items()])
 
+        d_loop_alpha_entries = [('d_loop_alpha_' + str(feature_index), str(feature_index + 15)) for feature_index
+                                in range(1, ordinal_extrema_dict['d_loop_alpha_stop'] - ordinal_extrema_dict['d_loop_alpha_start'] + 2)]
+        if len(d_loop_alpha_entries) > 2:
+            d_loop_alpha_entries[2] = ('d_loop_alpha_3', '17a')
+        if len(d_loop_alpha_entries) > 3:
+            for entry_index, entry in d_loop_alpha_entries[3: ]:
+                d_loop_alpha_entries[entry_index] = (entry[0], '')
+        d_loop_beta_entries = [('d_loop_beta_' + str(feature_index), str(feature_index + 19)) for feature_index
+                                in range(1, ordinal_extrema_dict['d_loop_beta_stop'] - ordinal_extrema_dict['d_loop_beta_start'] + 2)]
+        if len(d_loop_beta_entries) > 1:
+            d_loop_beta_entries[1] = ('d_loop_beta_2', '20a')
+        if len(d_loop_beta_entries) > 2:
+            d_loop_beta_entries[2] = ('d_loop_beta_3', '20b')
+        if len(d_loop_beta_entries) > 3:
+            for entry_index, entry in d_loop_beta_entries[3: ]:
+                d_loop_beta_entries[entry_index] = (entry[0], '')
+        self.canonical_dict = OrderedDict([('trna_his_position_0_1', '0')] +
+                                          [('fiveprime_acceptor_stem_sequence_' + str(feature_index), str(feature_index)) for feature_index
+                                           in range(1, ordinal_extrema_dict['fiveprime_acceptor_stem_sequence_stop'] - ordinal_extrema_dict['fiveprime_acceptor_stem_sequence_start'] + 2)] +
+                                          [('position_8_1', '8'),
+                                           ('position_9_1', '9')] +
+                                          [('fiveprime_d_stem_sequence_' + str(feature_index), str(feature_index + 9)) for feature_index
+                                           in range(1, ordinal_extrema_dict['fiveprime_d_stem_sequence_stop'] - ordinal_extrema_dict['fiveprime_d_stem_sequence_start'] + 2)] +
+                                          [('d_loop_prealpha_' + str(feature_index), str(feature_index + 13)) for feature_index
+                                           in range(1, ordinal_extrema_dict['d_loop_prealpha_stop'] - ordinal_extrema_dict['d_loop_prealpha_start'] + 2)] +
+                                          d_loop_alpha_entries +
+                                          [('d_loop_postalpha_' + str(feature_index), str(feature_index + 17)) for feature_index
+                                           in range(1, ordinal_extrema_dict['d_loop_postalpha_stop'] - ordinal_extrema_dict['d_loop_postalpha_start'] + 2)] +
+                                          d_loop_beta_entries +
+                                          [('d_loop_postbeta_' + str(feature_index), str(feature_index + 20)) for feature_index
+                                           in range(1, ordinal_extrema_dict['d_loop_postbeta_stop'] - ordinal_extrema_dict['d_loop_postbeta_start'] + 2)] +
+                                          [('threeprime_d_stem_sequence_' + str(feature_index), str(feature_index + 21)) for feature_index
+                                           in range(1, ordinal_extrema_dict['threeprime_d_stem_sequence_stop'] - ordinal_extrema_dict['threeprime_d_stem_sequence_start'] + 2)] +
+                                          [('position_26_1', '26')] +
+                                          [('fiveprime_anticodon_stem_sequence_' + str(feature_index), str(feature_index + 26)) for feature_index
+                                           in range(1, ordinal_extrema_dict['fiveprime_anticodon_stem_sequence_stop'] - ordinal_extrema_dict['fiveprime_anticodon_stem_sequence_start'] + 2)] +
+                                          [('anticodon_loop_' + str(feature_index), str(feature_index + 31)) for feature_index
+                                           in range(1, ordinal_extrema_dict['anticodon_loop_stop'] - ordinal_extrema_dict['anticodon_loop_start'] + 2)] +
+                                          [('threeprime_anticodon_stem_sequence_' + str(feature_index), str(feature_index + 38)) for feature_index
+                                           in range(1, ordinal_extrema_dict['threeprime_anticodon_stem_sequence_stop'] - ordinal_extrema_dict['threeprime_anticodon_stem_sequence_start'] + 2)] +
+                                          [('v_loop_' + str(feature_index), '') for feature_index in range(1, ordinal_extrema_dict['v_loop_stop'] - ordinal_extrema_dict['v_loop_start'] + 2)] +
+                                          [('fiveprime_t_stem_sequence_' + str(feature_index), str(feature_index + 48)) for feature_index
+                                           in range(1, ordinal_extrema_dict['fiveprime_t_stem_sequence_stop'] - ordinal_extrema_dict['fiveprime_t_stem_sequence_start'] + 2)] +
+                                          [('t_loop_' + str(feature_index), str(feature_index + 53)) for feature_index
+                                           in range(1, ordinal_extrema_dict['t_loop_stop'] - ordinal_extrema_dict['t_loop_start'] + 2)] +
+                                          [('threeprime_t_stem_sequence_' + str(feature_index), str(feature_index + 60)) for feature_index
+                                           in range(1, ordinal_extrema_dict['threeprime_t_stem_sequence_stop'] - ordinal_extrema_dict['threeprime_t_stem_sequence_start'] + 2)] +
+                                          [('threeprime_acceptor_stem_sequence_' + str(feature_index), str(feature_index + 65)) for feature_index
+                                           in range(1, ordinal_extrema_dict['threeprime_acceptor_stem_sequence_stop'] - ordinal_extrema_dict['threeprime_acceptor_stem_sequence_start'] + 2)] +
+                                          [('discriminator_1', '73')])
+
 
     def generate_seed_output(self):
         contig_name_iter = iter(self.contig_names)
@@ -7366,14 +7417,17 @@ class ResultTabulator(object):
                       "species",
                       "taxon_percent_id",
                       "sample_name") + tuple(self.ordinal_dict.keys())
-        bottom_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
+        middle_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
                                   + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
+        canonical_dict = self.canonical_dict
+        bottom_header = "\t".join(("", ) * (len(top_header) - len(self.canonical_dict))
+                                  + tuple([canonical_dict[ordinal_name] for ordinal_name in self.ordinal_dict])) + "\n"
         top_header = "\t".join(top_header) + "\n"
         spec_out_file = open(self.spec_seed_out_path, 'a')
-        spec_out_file.write(top_header + bottom_header)
+        spec_out_file.write(top_header + middle_header + bottom_header)
         if do_nonspec:
             nonspec_out_file = open(self.nonspec_seed_out_path, 'a')
-            nonspec_out_file.write(top_header + bottom_header)
+            nonspec_out_file.write(top_header + middle_header + bottom_header)
 
         reverse_ordinal_dict = self.reverse_ordinal_dict
         self.contig_name_gene_callers_id_dict = contig_name_gene_callers_id_dict = {}
@@ -7492,17 +7546,11 @@ class ResultTabulator(object):
 
 
     def generate_modification_output(self):
-        contig_name_gene_callers_id_dict = self.contig_name_gene_callers_id_dict
-        gene_callers_id_anticodon_aa_dict = self.gene_callers_id_anticodon_aa_dict
-        sample_names = self.sample_names
-        contig_name_iter = iter(self.contig_names)
-        contig_feature_coord_dict = self.contig_feature_coord_dict
-        taxonomy_table_dict = self.taxonomy_table_dict
-
         profile_db = dbops.ProfileDatabase(self.spec_profile_db_path)
         var_nts_df = profile_db.db.get_table_as_dataframe('variable_nucleotides')
         profile_db.disconnect()
         var_nts_df['contig_name'] = var_nts_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
+        contig_name_gene_callers_id_dict = self.contig_name_gene_callers_id_dict
         var_nts_df['gene_callers_id'] = var_nts_df['contig_name'].apply(lambda c: contig_name_gene_callers_id_dict[c])
         var_nts_df = var_nts_df.drop(['pos_in_contig',
                                       'corresponding_gene_call',
@@ -7531,12 +7579,17 @@ class ResultTabulator(object):
                             "seed_position",
                             "ordinal_name",
                             "ordinal_position",
+                            "canonical_position",
                             "reference",
                             "sample_name")
                            + UNAMBIG_NTS) + "\n"
         out_file = open(self.mod_out_path, 'a')
         out_file.write(header)
 
+        gene_callers_id_anticodon_aa_dict = self.gene_callers_id_anticodon_aa_dict
+        taxonomy_table_dict = self.taxonomy_table_dict
+        contig_feature_coord_dict = self.contig_feature_coord_dict
+        canonical_dict = self.canonical_dict
         for contig_index, contig_df in var_nts_df.groupby(['gene_callers_id', 'contig_name']):
             gene_callers_id = contig_index[0]
             contig_name = contig_index[1]
@@ -7551,6 +7604,7 @@ class ResultTabulator(object):
             for seed_pos, sub_df in contig_df.groupby('pos'):
                 sub_df = sub_df.sort_values('sample_id')
                 ordinal_name, ordinal_pos = feature_coord_dict[seed_pos]
+                canonical_pos = canonical_dict[ordinal_name]
                 ordinal_pos = str(ordinal_pos)
                 for sample_row in sub_df.itertuples():
                     out_row = [gene_callers_id,
@@ -7568,6 +7622,7 @@ class ResultTabulator(object):
                                str(seed_pos),
                                ordinal_name,
                                ordinal_pos,
+                               str(canonical_pos),
                                sample_row.reference,
                                sample_row.sample_id]
                     for nt in UNAMBIG_NTS:
