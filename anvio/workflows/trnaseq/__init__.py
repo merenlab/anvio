@@ -19,7 +19,7 @@ from anvio.workflows import WorkflowSuperClass
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -109,6 +109,10 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--num-parallel-processes',
             '--write-buffer-size'
         ]
+        rule_acceptable_params_dict['anvi_tabulate_trnaseq'] = [
+            'run',
+            '--overwrite-output-destinations'
+        ]
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for accessible parameters: all defaults are written to the config file so
@@ -182,6 +186,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--write-buffer-size': anvio.D['write-buffer-size'][1]['default'],
                 'threads': 1
             },
+            'anvi_tabulate_trnaseq': {
+                'run': True,
+                '--overwrite-output-destinations': anvio.D['overwrite-output-destinations'][1]['default'],
+                'threads': 1
+            }
             'output_dirs': {}, # This ensures that output_dirs comes before max_threads in the file
             'max_threads': 1
         })
