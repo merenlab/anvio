@@ -7178,7 +7178,6 @@ class ResultTabulator(object):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        # Argument group 1: IO
         self.contigs_db_path = A('contigs_db')
         self.spec_profile_db_path = A('specific_profile_db')
         self.nonspec_profile_db_path = A('nonspecific_profile_db')
