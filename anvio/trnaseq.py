@@ -7297,20 +7297,26 @@ class ResultTabulator(object):
     def generate_seed_output(self):
         contig_name_iter = iter(self.contig_names)
         feature_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_seed_feature_table_name)
-        self.found_taxonomy = self.contigs_db.db.get_meta_value('trna_taxonomy_was_run')
-        if self.found_taxonomy:
-            self.taxonomy_table_dict = self.contigs_db.db.get_table_as_dict(tables.trna_taxonomy_table_name,
-                                                                            columns_of_interest=['percent_identity',
-                                                                                                 't_domain',
-                                                                                                 't_phylum',
-                                                                                                 't_class',
-                                                                                                 't_order',
-                                                                                                 't_family',
-                                                                                                 't_genus',
-                                                                                                 't_species'])
-        else:
-            self.taxonomy_table_dict = {}
-        taxonomy_table_dict = self.taxonomy_table_dict
+        self.taxonomy_table_dict = taxonomy_table_dict = {}
+        for taxonomy_item in self.contigs_db.db.get_table_as_dataframe(tables.trna_taxonomy_table_name,
+                                                                       error_if_no_data=False,
+                                                                       columns_of_interest=['gene_callers_id',
+                                                                                            't_domain',
+                                                                                            't_phylum',
+                                                                                            't_class',
+                                                                                            't_order',
+                                                                                            't_family',
+                                                                                            't_genus',
+                                                                                            't_species',
+                                                                                            'percent_identity']).itertuples():
+            taxonomy_table_dict[taxonomy_item.gene_callers_id] = (taxonomy_item.t_domain if taxonomy_item.t_domain else '',
+                                                                  taxonomy_item.t_phylum if taxonomy_item.t_phylum else '',
+                                                                  taxonomy_item.t_class if taxonomy_item.t_class else '',
+                                                                  taxonomy_item.t_order if taxonomy_item.t_order else '',
+                                                                  taxonomy_item.t_family if taxonomy_item.t_family else '',
+                                                                  taxonomy_item.t_genus if taxonomy_item.t_genus else '',
+                                                                  taxonomy_item.t_species if taxonomy_item.t_species else '',
+                                                                  str(taxonomy_item.percent_identity) if taxonomy_item.percent_identity else '')
 
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in
@@ -7377,15 +7383,7 @@ class ResultTabulator(object):
             anticodon, aa = next(anticodon_aa_iter)
             contig_name_gene_callers_id_dict[contig_name] = gene_callers_id
             try:
-                t_data = tuple(taxonomy_table_dict[gene_callers_id].values())
-                t_domain = t_data[1] if t_data[1] else ''
-                t_phylum = t_data[2] if t_data[2] else ''
-                t_class = t_data[3] if t_data[3] else ''
-                t_order = t_data[4] if t_data[4] else ''
-                t_family = t_data[5] if t_data[5] else ''
-                t_genus = t_data[6] if t_data[6] else ''
-                t_species = t_data[7] if t_data[7] else ''
-                t_percent_id = str(t_data[0]) if t_data[0] else ''
+                t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = taxonomy_table_dict[gene_callers_id]
             except KeyError:
                 t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = ('', ) * 8
             contig_spec_covs_dict = {sample_name: iter(covs) for sample_name, covs in spec_covs_dict[contig_name].items()}
@@ -7544,15 +7542,7 @@ class ResultTabulator(object):
             contig_name = contig_index[1]
             anticodon, aa = gene_callers_id_anticodon_aa_dict[gene_callers_id]
             try:
-                t_data = tuple(taxonomy_table_dict[gene_callers_id].values())
-                t_domain = t_data[1] if t_data[1] else ''
-                t_phylum = t_data[2] if t_data[2] else ''
-                t_class = t_data[3] if t_data[3] else ''
-                t_order = t_data[4] if t_data[4] else ''
-                t_family = t_data[5] if t_data[5] else ''
-                t_genus = t_data[6] if t_data[6] else ''
-                t_species = t_data[7] if t_data[7] else ''
-                t_percent_id = str(t_data[0]) if t_data[0] else ''
+                t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = taxonomy_table_dict[gene_callers_id]
             except KeyError:
                 t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = ('', ) * 8
             gene_callers_id = str(gene_callers_id)
