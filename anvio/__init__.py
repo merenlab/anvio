@@ -3195,12 +3195,16 @@ D = {
     'specific-profile-db': (
             ['--specific-profile-db', '-s'],
             {'metavar': 'PROFILE_DB',
-             'help': ""}
+             'required': True,
+             'help': "The path to an anvi'o profile database containing specific coverage information on tRNA seeds. "
+                     "`anvi-convert-trnaseq-database` generates a specific profile database from a tRNA-seq experiment."}
                 ),
     'nonspecific-profile-db': (
             ['--nonspecific-profile-db', '-n'],
             {'metavar': 'PROFILE_DB',
-             'help': ""}
+             'required': False,
+             'help': "The path to an anvi'o profile database containing nonspecific coverage information on tRNA seeds. "
+                     "`anvi-convert-trnaseq-database` optionally generates a nonspecific profile database from a tRNA-seq experiment."}
     )
 }
 

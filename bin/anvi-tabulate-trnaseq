@@ -27,13 +27,16 @@ __description__ = "A program to write standardized tab-delimited files of tRNA-s
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('contigs-db'),
+    group1 = parser.add_argument_group('MANDATORY')
+    group1.add_argument(*anvio.A('contigs-db'),
                         **anvio.K('contigs-db',
                                   {'help': "Path to a `trnaseq`-variant contigs database, as produced by `anvi-convert-trnaseq-database`."}))
-    parser.add_argument(*anvio.A('specific-profile-db'), **anvio.K('specific-profile-db'))
-    parser.add_argument(*anvio.A('nonspecific-profile-db'), **anvio.K('nonspecific-profile-db'))
-    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    group1.add_argument(*anvio.A('specific-profile-db'), **anvio.K('specific-profile-db'))
+
+    group2 = parser.add_argument_group('OPTIONAL')
+    group2.add_argument(*anvio.A('nonspecific-profile-db'), **anvio.K('nonspecific-profile-db'))
+    group2.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    group2.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
     args = parser.get_args(parser)
     try:

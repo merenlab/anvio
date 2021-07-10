@@ -7178,8 +7178,10 @@ class ResultTabulator(object):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # Group 1: MANDATORY
         self.contigs_db_path = A('contigs_db')
         self.spec_profile_db_path = A('specific_profile_db')
+        # Group 2: OPTIONAL
         self.nonspec_profile_db_path = A('nonspecific_profile_db')
         self.out_dir = os.path.abspath(A('output_dir')) if A('output_dir') else os.path.dirname(self.contigs_db_path)
         self.overwrite_out_dest = A('overwrite_output_destinations')
