@@ -190,7 +190,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 'run': True,
                 '--overwrite-output-destinations': anvio.D['overwrite-output-destinations'][1]['default'],
                 'threads': 1
-            }
+            },
             'output_dirs': {}, # This ensures that output_dirs comes before max_threads in the file
             'max_threads': 1
         })
