@@ -5901,9 +5901,9 @@ class DatabaseConverter(object):
                     elif summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= 0:
                         # A shorter N than the seed was assigned a full-length profile. This
                         # indicates a conflict (with one exception), and the longest N will be
-                        # removed from the seed. The exception is that the longest N was also
-                        # assigned a full-length profile and only differs from the shorter profile
-                        # by a 5'-G at the end of tRNA-His.
+                        # removed from the seed. The exception is if the longest N was also assigned
+                        # a full-length profile and only differs from the shorter profile by a 5'-G
+                        # at the end of tRNA-His.
                         if seed_features:
                             if seed_features[0] == 0:
                                 if summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
