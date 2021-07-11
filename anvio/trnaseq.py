@@ -7018,12 +7018,12 @@ class DatabaseConverter(object):
 
             for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
-                self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+                self.create_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
             # Variability is the measure of the frequency of inferred modification-induced
             # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
             # coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
-            self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
@@ -7037,12 +7037,12 @@ class DatabaseConverter(object):
 
             for spec_attr, nonspec_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(spec_attr, nonspec_attr)
-                self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+                self.create_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
             # Variability is the measure of the frequency of inferred modification-induced
             # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
             # coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
-            self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
 
             combined_indels_table_entries = []
             for entry in self.spec_indels_table_entries:
@@ -7111,11 +7111,9 @@ class DatabaseConverter(object):
         database."""
         data_dict = {}
         for seed in self.seeds:
-            seed_name = seed.name
-            seed_split_name = seed_name + '_split_00001'
-            data_dict[seed_split_name] = {}
+            data_dict[seed.name + '_split_00001'] = sample_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                data_dict[seed_split_name][sample_id] = getattr(seed, seed_attr)[sample_id]
+                sample_dict[sample_id] = getattr(seed, seed_attr)[sample_id]
         return data_dict
 
 
@@ -7123,35 +7121,16 @@ class DatabaseConverter(object):
         """Get data from seeds to generate a table in a combined profile database."""
         data_dict = {}
         for seed in self.seeds:
-            seed_name = seed.name
-            seed_split_name = seed_name + '_split_00001'
-            data_dict[seed_name + '_split_00001'] = {}
+            data_dict[seed.name + '_split_00001'] = sample_dict = {}
             for sample_id in self.trnaseq_db_sample_ids:
-                data_dict[seed_split_name][sample_id + '_specific'] = getattr(seed, spec_seed_attr)[sample_id]
-                data_dict[seed_split_name][sample_id + '_nonspecific'] = getattr(seed, nonspec_seed_attr)[sample_id]
+                sample_dict[sample_id + '_specific'] = getattr(seed, spec_seed_attr)[sample_id]
+                sample_dict[sample_id + '_nonspecific'] = getattr(seed, nonspec_seed_attr)[sample_id]
         return data_dict
 
 
-    def create_specific_nonspecific_or_summed_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
-        """Create a pair of tables in a specific, nonspecific, or summed profile database. Contigs
-        and splits tables contain the same information since tRNA, unlike a metagenomic contig, is
-        not long enough to be split."""
-        TablesForViews(profile_db_path).create_new_view(
-            view_data=data_dict,
-            table_name=table_basename + '_contigs',
-            view_name=None,
-            from_matrix_form=True)
-        TablesForViews(profile_db_path).create_new_view(
-            view_data=data_dict,
-            table_name=table_basename + '_splits',
-            view_name=table_basename,
-            from_matrix_form=True)
-
-
-    def create_combined_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
-        """Create a pair of tables in a combined profile database. Contigs and splits tables contain
-        the same information since tRNA, unlike a metagenomic contig, is not long enough to be
-        split."""
+    def create_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
+        """Create a pair of tables in a profile database. Contigs and splits tables contain the same
+        information since tRNA, unlike a metagenomic contig, is not long enough to be split."""
         TablesForViews(profile_db_path).create_new_view(
             view_data=data_dict,
             table_name=table_basename + '_contigs',
