@@ -654,10 +654,16 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('kullback_leibler_divergence_normalized', float),
                 ('pN_consensus', float),
                 ('pS_consensus', float),
+                ('nN_consensus', float),
+                ('nS_consensus', float),
                 ('pN_reference', float),
                 ('pS_reference', float),
+                ('nN_reference', float),
+                ('nS_reference', float),
                 ('pN_popular_consensus', float),
                 ('pS_popular_consensus', float),
+                ('nN_popular_consensus', float),
+                ('nS_popular_consensus', float),
             ],
             'SSMs': [
             ],
@@ -2418,9 +2424,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
         if self.include_site_pnps:
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
