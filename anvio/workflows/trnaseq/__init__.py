@@ -45,7 +45,8 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             'anvi_reformat_fasta',
             'anvi_trnaseq',
             'anvi_convert_trnaseq_database',
-            'anvi_run_trna_taxonomy'
+            'anvi_run_trna_taxonomy',
+            'anvi_tabulate_trnaseq'
         ])
 
         # "General" section of the workflow config file.
