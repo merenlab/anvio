@@ -654,10 +654,16 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('kullback_leibler_divergence_normalized', float),
                 ('pN_consensus', float),
                 ('pS_consensus', float),
+                ('nN_consensus', float),
+                ('nS_consensus', float),
                 ('pN_reference', float),
                 ('pS_reference', float),
+                ('nN_reference', float),
+                ('nS_reference', float),
                 ('pN_popular_consensus', float),
                 ('pS_popular_consensus', float),
+                ('nN_popular_consensus', float),
+                ('nS_popular_consensus', float),
             ],
             'SSMs': [
             ],
@@ -2418,9 +2424,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
         if self.include_site_pnps:
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
@@ -2512,7 +2518,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None, add_potentials=False):
         """Calculate new columns in self.data corresponding to each site's contribution to a grouping
 
         First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
@@ -2552,7 +2558,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         output : None
             This function does not return anything. It creates 2 new columns in `self.data` with
             names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
-            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}. If
+            add_potentials is True, the number of synonymous and nonsynonymous sites will be
+            added as the columns nS_{grouping}_{comparison} and nN_{grouping}_{comparison}.
         """
 
         if contigs_db is None:
@@ -2572,6 +2580,11 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
         self.data[pS_name] = frac_syns/potentials[:, 0]
         self.data[pN_name] = frac_nonsyns/potentials[:, 1]
+
+        if add_potentials:
+            nN_name, nS_name = f"nN_{group_tag}{comparison}", f"nS_{group_tag}{comparison}"
+            self.data[nS_name] = potentials[:, 0]
+            self.data[nN_name] = potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
