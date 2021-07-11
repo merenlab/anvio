@@ -5888,12 +5888,13 @@ class DatabaseConverter(object):
                 for index_Nu, summary_Nu in enumerate(seed.summaries_Nu):
                     if len(summary_Nu.string) == seed_length:
                         longest_Nu_indices.append(index_Nu)
-                        if seed_features or summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
+                        if seed_features:
+                            # Only record the first qualifying profile.
+                            pass
+                        elif summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
                             # Extrapolated acceptor stems, e.g., with starts of -1, can be
                             # discredited.
-                            if not seed_features:
-                                # Only record the first qualifying profile.
-                                seed_features = tuple(summary_Nu.feature_dict.values())
+                            seed_features = tuple(summary_Nu.feature_dict.values())
                         else:
                             # The seed does not have a full-length profile, so stop looking.
                             break
@@ -5918,12 +5919,13 @@ class DatabaseConverter(object):
                             # Each M consists of Nb which may be of varying lengths.
                             if len(summary_Nb.string) == seed_length:
                                 longest_Nb_indices.append((index_M, index_Nb))
-                                if seed_features or summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
-                                    if not seed_features:
-                                        seed_features = tuple(summary_Nb.feature_dict.values())
-                                        if check_His_G:
-                                            if seed_features[0] == 0:
-                                                found_conflict = False
+                                if seed_features:
+                                    pass
+                                if summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= -10:
+                                    seed_features = tuple(summary_Nb.feature_dict.values())
+                                    if check_His_G:
+                                        if seed_features[0] == 0:
+                                            found_conflict = False
                                 else:
                                     # The seed does not have a full-length profile, so stop
                                     # searching M.
