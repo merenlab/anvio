@@ -1500,7 +1500,7 @@ function createCharts(state){
     var width = VIEWER_WIDTH * .80;
     var chartHeight = 200;
     var height = ((chartHeight + 10) * visible_layers);
-    curr_height = height;
+    curr_height = height + 10;
     var contextHeight = 50;
     var contextWidth = width;
 
