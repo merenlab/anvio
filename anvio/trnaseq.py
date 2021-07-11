@@ -5904,12 +5904,15 @@ class DatabaseConverter(object):
                         # longest N will be removed from the seed.
                         if seed_features:
                             if seed_features[0] == 0:
-                                if summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                                if (summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1
+                                    and ANTICODON_AA_DICT[summary_Nu.anticodon_string] == 'His'):
                                     # The longest N was also assigned a full-length profile and only
                                     # differs from the shorter profile by a 5'-G at the end of
                                     # tRNA-His, so a conflict was not found.
                                     break
-                        if not seed_features and summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                        if (not seed_features
+                            and summary_Nu.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1
+                            and ANTICODON_AA_DICT[summary_Nu.anticodon_string] == 'His'):
                             check_His_G = True
                         found_conflict = True
                         break
@@ -5941,7 +5944,8 @@ class DatabaseConverter(object):
                             if summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] >= 0:
                                 if seed_features:
                                     if seed_features[0] == 0:
-                                        if summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1:
+                                        if (summary_Nb.feature_dict['fiveprime_acceptor_stem_sequence_start'] == 1
+                                            and ANTICODON_AA_DICT[summary_Nb.anticodon_string] == 'His'):
                                             break
                                 found_conflict = True
                                 break
