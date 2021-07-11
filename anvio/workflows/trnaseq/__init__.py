@@ -213,6 +213,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
         self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
+        self.run_anvi_tabulate_trnaseq = self.get_param_value_from_config(['anvi_tabulate_trnaseq', 'run'])
 
         # Load table of sample info from samples_txt.
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
@@ -480,6 +481,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
         if self.run_anvi_run_trna_taxonomy:
             target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
+
+        if self.run_anvi_tabulate_trnaseq:
+            target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "TABULATE.done"))
 
         return target_files
 
