@@ -2512,7 +2512,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None, add_potentials=False):
         """Calculate new columns in self.data corresponding to each site's contribution to a grouping
 
         First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
@@ -2552,7 +2552,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         output : None
             This function does not return anything. It creates 2 new columns in `self.data` with
             names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
-            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}. If
+            add_potentials is True, the number of synonymous and nonsynonymous sites will be
+            added as the columns nS_{grouping}_{comparison} and nN_{grouping}_{comparison}.
         """
 
         if contigs_db is None:
@@ -2572,6 +2574,11 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
         self.data[pS_name] = frac_syns/potentials[:, 0]
         self.data[pN_name] = frac_nonsyns/potentials[:, 1]
+
+        if add_potentials:
+            nN_name, nS_name = f"nN_{group_tag}{comparison}", f"nS_{group_tag}{comparison}"
+            self.data[nS_name] = potentials[:, 0]
+            self.data[nN_name] = potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
