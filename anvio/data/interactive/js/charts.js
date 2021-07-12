@@ -232,13 +232,12 @@ function loadAll() {
                 }
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
-                state['snv_scale_bottom'] = state['snvs_enabled'] || indels_enabled;
+                state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
 
                 // adjust menu options
                 if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
                   $('#toggleSNVIndelTable').hide();
                   $("#indels").hide();
-                  $('#snv_scale_picker').hide();
                   $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
                   $('#settings-section-info-SNV-warning').show();
                 } else {
@@ -250,6 +249,8 @@ function loadAll() {
                   }
                   if(!state['snvs_enabled'] || maxVariability==0) {
                     $('#snv_picker').hide();
+                    state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
+                    $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
                     $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
                     $('#settings-section-info-SNV-warning').show();
                   }
@@ -318,6 +319,7 @@ function loadAll() {
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
+                if(state['snv_scale_dir_up']) $("#scale_dir_box").attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -480,6 +482,16 @@ function loadAll() {
                           dialogSize: 'sm',
                           onShow: function() {
                               toggleSNVScalePosition();
+                              waitingDialog.hide();
+                          },
+                      });
+                });
+                $('#scale_dir_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleScaleDir();
                               waitingDialog.hide();
                           },
                       });
@@ -670,6 +682,11 @@ function toggleIndels() {
 
 function toggleSNVScalePosition() {
   state['snv_scale_bottom'] = !state['snv_scale_bottom'];
+  createCharts(state);
+}
+
+function toggleScaleDir() {
+  state['snv_scale_dir_up'] = !state['snv_scale_dir_up'];
   createCharts(state);
 }
 
@@ -1463,6 +1480,7 @@ function processState(state_name, state) {
     state['show_snvs'] = $('#toggle_snv_box').val() == "on";
     state['show_indels'] = $('#toggle_indel_box').val() == "on";
     state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
+    state['snv_scale_dir_up'] = $('#scale_dir_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
@@ -2108,7 +2126,7 @@ function Chart(options){
 
 
     this.yAxis = d3.svg.axis().scale(this.yScale).orient("left").ticks(5);
-    this.yAxisLine = d3.svg.axis().scale(this.yScaleLine).orient("right").ticks(5);
+    this.yAxisLine = d3.svg.axis().scale(state['snv_scale_dir_up'] ? this.yScaleLine : yScaleLineReverse).orient("right").ticks(5);
 
     this.chartContainer.append("g")
                    .attr("class", "y axis noselect")
