@@ -232,11 +232,13 @@ function loadAll() {
                 }
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+                state['snv_scale_bottom'] = state['snvs_enabled'] || indels_enabled;
 
                 // adjust menu options
                 if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
                   $('#toggleSNVIndelTable').hide();
                   $("#indels").hide();
+                  $('#snv_scale_picker').hide();
                   $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
                   $('#settings-section-info-SNV-warning').show();
                 } else {
@@ -315,6 +317,7 @@ function loadAll() {
 
                 if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
+                if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -470,6 +473,16 @@ function loadAll() {
                           },
                       });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
+                });
+                $('#snv_scale_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleSNVScalePosition();
+                              waitingDialog.hide();
+                          },
+                      });
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -652,6 +665,11 @@ function toggleSNVs() {
 function toggleIndels() {
   console.log("Toggling indel markers (" + Math.round(Date.now()/1000) + ")");
   state['show_indels'] = !state['show_indels'];
+  createCharts(state);
+}
+
+function toggleSNVScalePosition() {
+  state['snv_scale_bottom'] = !state['snv_scale_bottom'];
   createCharts(state);
 }
 
@@ -1444,6 +1462,7 @@ function processState(state_name, state) {
     state['show_highlights'] = $('#toggle_highlight_box').val() == "on";
     state['show_snvs'] = $('#toggle_snv_box').val() == "on";
     state['show_indels'] = $('#toggle_indel_box').val() == "on";
+    state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
@@ -1807,8 +1826,8 @@ function Chart(options){
 
     var xS = this.xScale;
     var yS = this.yScale;
-    var ySL = this.yScaleLine;
-    var ySLR = yScaleLineReverse;
+    var ySL_SNV = state['snv_scale_bottom'] ?  this.yScaleLine : yScaleLineReverse;
+    var ySL_indel = state['snv_scale_bottom'] ? yScaleLineReverse : this.yScaleLine;
     var yGC = this.yScaleGC;
 
     this.area = d3.svg.area()
@@ -1818,13 +1837,13 @@ function Chart(options){
     if(indels_enabled) {
       this.line = d3.svg.line()
                               .x(function(d, i) { return xS(1+i)+4; })
-                              .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
+                              .y(function(d, i) { if(i == 0) return ySL_indel(0); if(i == num_data_points - 1) return ySL_indel(0); return ySL_indel(d); })
                               .interpolate('step-before');
     }
 
     this.reverseLine = d3.svg.line()
                             .x(function(d, i) { return xS(1+i); })
-                            .y(function(d, i) { if(i == 0) return ySLR(0); if(i == num_data_points - 1) return ySLR(0); return ySLR(d); })
+                            .y(function(d, i) { if(i == 0) return ySL_SNV(0); if(i == num_data_points - 1) return ySL_SNV(0); return ySL_SNV(d); })
                             .interpolate('step-before');
 
 
@@ -1914,7 +1933,7 @@ function Chart(options){
                                 .append("text")
                                 .attr("class", "SNV_text")
                                 .attr("x", function (d) { return xS(0.5+parseInt(d.key)); })
-                                .attr("y", function (d) { return 0; })
+                                .attr("y", function (d) { return ySL_SNV(0) > 0 ? ySL_SNV(0) - 10 : ySL_SNV(0); })
                                 .attr("writing-mode", "tb")
                                 .attr("font-size", "5px")
                                 .attr("glyph-orientation-vertical", "0")
@@ -2044,7 +2063,7 @@ function Chart(options){
                               //.filter(function(d){ return d.value['coverage'] >= state['min-indel-coverage']})
                               .attr("class", "indels_text")
                               .attr("x", function (d) { return xS(0.5+d.value['pos']); })
-                              .attr("y", function (d) { return ySL(0); })
+                              .attr("y", function (d) { return ySL_indel(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
                               .attr("fill", function(d) { return (((d.value['pos'] in mult_indels ? mult_indels[d.value['pos']][2] : d.value['length']) > state['large-indel']) ? 'red' : '#CCCC00'); })
