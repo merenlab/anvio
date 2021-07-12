@@ -41,6 +41,7 @@ Elmar Pruesse              University of Colorado Denver          United States
 C. Titus Brown             University of California Davis         United States
 Bryan Merill               Stanford University                    United States
 Lucas Paoli                ETH Zurich                             Switzerland
+Moritz Buck                Uppsala University                     Sweeden
 Inés Martinez              University of Alberta                  Canada
 
 ===============================================================================
