@@ -762,8 +762,13 @@ class GenbankToAnvio:
             for gene in genes:
                 num_genes_found += 1
                 location = str(gene.location)
-                # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
-                if any(exclusion_term in location for exclusion_term in self.location_terms_to_exclude):
+                # "join" in `location` means that the gene call spans multiple contigs
+                # so we exclude it here:
+                if 'join' in location:
+                    num_genes_excluded += 1
+                    if 'protein_id' in gene.qualifiers:
+                        genes_excluded.add(gene.qualifiers['protein_id'][0])
+
                     continue
 
                 if "note" in gene.qualifiers:
@@ -781,8 +786,16 @@ class GenbankToAnvio:
                 if "pseudo" in gene.qualifiers or "pseudogene" in gene.qualifiers:
                     continue
 
+                # The character "<" or ">" in `location `means the gene call runs off a contig, so it
+                # is best to mark it as impartial:
+                if ('<' in location or '>' in location):
+                    partial = 1
+                    num_partial_genes += 1
+                else:
+                    partial = 0
+
                 # cleaning up gene coordinates to more easily parse:
-                location = location.replace("[", "")
+                location = location.replace("[", "").replace('>', '').replace('<', '')
                 location = re.sub('](.*)', '', location)
                 location = location.split(":")
 
@@ -822,7 +835,7 @@ class GenbankToAnvio:
                                                            'start': start,
                                                            'stop': end,
                                                            'direction': direction,
-                                                           'partial': 0,
+                                                           'partial': partial,
                                                            'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
@@ -856,8 +869,27 @@ class GenbankToAnvio:
         self.run.info('Num GenBank entries processed', num_genbank_records_processed)
         self.run.info('Num gene records found', num_genes_found)
         self.run.info('Num genes reported', num_genes_reported, mc='green')
-        self.run.info('Num genes with functions', num_genes_with_functions, mc='green', nl_after=1)
         self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
+        self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
+        self.run.info('Num partial genes', num_partial_genes, mc='cyan')
+        self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
+
+        if num_genes_excluded:
+            msg = (f"A total of {num_genes_excluded} in this file were excluded during the processing of "
+                   f"the GFF file because they were marked as 'spanning multiple contigs'.")
+                # dumping gene if "location" section contains any of these terms set above: "join" means
+                # the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+            if len(genes_excluded):
+                self.run.warning(msg + "Here are some protein IDs from the file that were associated with "
+                                 f"them: {', '.join(genes_excluded)}. But please note that such genes that "
+                                 f"span multiple contigs are often associated with multiple 'protein IDs' in "
+                                 f"the GFF description, and this list includes only the first protein ID if "
+                                 f"there are multiple. In addition, not every gene that spans across multiple "
+                                 f"contigs will have a protein ID, so you will not see them in this list :/ "
+                                 f"If you think anvi'o should try to include them in its report anyway, let us "
+                                 f"know.", header="WEIRD GENE CALLS EXCLUDED")
+            else:
+                self.run.warning(msg, header="WERID GENE CALLS EXCLUDED")
 
         if aa_sequences_present and num_partial_genes > 1:
             self.run.warning(f"Anvi'o found out that aminio acid seqeunces were present in the GFF file, so it "
