@@ -16,7 +16,6 @@ from Bio import SeqIO
 from collections import OrderedDict
 
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -710,6 +709,19 @@ class GenbankToAnvio:
                               "file names, or delete these files and come back: '%s'" % (', '.join(files_already_exist)))
 
 
+    def get_genbank_file_object(self):
+        try:
+            if self.input_genbank_path.endswith('.gz'):
+                genbank_file_object = SeqIO.parse(io.TextIOWrapper(gzip.open(self.input_genbank_path, 'r')), "genbank")
+            else:
+                genbank_file_object = SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
+        except Exception as e:
+            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said "
+                              "about it: '%s'." % e)
+
+        return genbank_file_object
+
+
     def process(self):
         self.sanity_check()
 
@@ -721,16 +733,10 @@ class GenbankToAnvio:
         num_genes_reported = 0
         num_genes_with_functions = 0
 
-        try:
-            if self.input_genbank_path.endswith('.gz'):
-                genbank_file_object = SeqIO.parse(io.TextIOWrapper(gzip.open(self.input_genbank_path, 'r')), "genbank")
-            else:
-                genbank_file_object = SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
-        except Exception as e:
-            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said "
-                              "about it: '%s'." % e)
 
         for genbank_record in genbank_file_object:
+        # The main loop to go through all records forreals.
+        for genbank_record in self.get_genbank_file_object():
             num_genbank_records_processed += 1
             output_fasta[genbank_record.name] = str(genbank_record.seq)
 
