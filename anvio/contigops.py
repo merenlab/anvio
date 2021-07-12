@@ -663,6 +663,7 @@ class GenbankToAnvio:
         self.output_gene_calls_path = A('output_gene_calls')
         self.source = A('annotation_source') or 'NCBI_PGAP'
         self.version = A('annotation_version') or 'v4.6'
+        self.omit_aa_sequences_column = A('omit_aa_sequences_column') or False
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
@@ -731,10 +732,14 @@ class GenbankToAnvio:
         num_genbank_records_processed = 0
         num_genes_found = 0
         num_genes_reported = 0
+        num_genes_with_AA_sequences = 0
+        num_partial_genes = 0
         num_genes_with_functions = 0
 
+        num_genes_excluded = 0
+        genes_excluded = set([])
 
-        for genbank_record in genbank_file_object:
+
         # The main loop to go through all records forreals.
         for genbank_record in self.get_genbank_file_object():
             num_genbank_records_processed += 1
