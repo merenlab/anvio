@@ -33,6 +33,7 @@ Mike Lee                   NASA Ames Research Center              United States
 Xabier Vázquez-Campos      University of New South Wales          Australia
 John Eppley                University of Hawaiʻi at Mānoa         United States
 S. Çağlar Onur             Google, Inc.                           United States
+Jessika Fuessel            University of Chicago                  United States
 Dan Utter                  Harvard University                     United States
 Tom Delmont                Genoscope                              France
 Finlay Maguire             Dalhousie University                   Canada
