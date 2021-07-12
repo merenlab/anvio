@@ -5195,6 +5195,9 @@ class DatabaseConverter(object):
         self.dict_summaries_Nu = defaultdict(list)
         self.dict_summaries_M = defaultdict(list)
 
+        self.sample_total_mean_spec_cov_dict = None
+        self.sample_total_discriminator_spec_cov_dict = None
+
         self.seeds = None
         self.total_seed_length = None
 
@@ -6044,6 +6047,8 @@ class DatabaseConverter(object):
         seeds = [seed for seed in seeds if seed.anticodon_string]
 
 
+        self.sample_total_mean_spec_cov_dict = sample_total_mean_spec_cov_dict = defaultdict(int)
+        self.sample_total_discriminator_spec_cov_dict = sample_total_discriminator_spec_cov_dict = defaultdict(int)
         for seed in seeds:
             # Find specific coverages of M by summing specific coverages of nts.
             for summary_M in seed.summaries_M:
@@ -6054,8 +6059,12 @@ class DatabaseConverter(object):
             seed.total_spec_covs = np.zeros(len(seed.string), int)
             for summary_Nu in seed.summaries_Nu:
                 seed.total_spec_covs += summary_Nu.spec_covs
+                sample_total_mean_spec_cov_dict[summary_Nu.sample_id] += summary_Nu.mean_spec_cov
+                sample_total_discriminator_spec_cov_dict[summary_Nu.sample_id] += summary_Nu.spec_covs[-1]
             for summary_M in seed.summaries_M:
                 seed.total_spec_covs += summary_M.spec_covs
+                sample_total_mean_spec_cov_dict[summary_M.sample_id] += summary_M.spec_covs.mean()
+                sample_total_discriminator_spec_cov_dict[summary_M.sample_id] += summary_M.spec_covs[-1]
 
             seed.total_mean_spec_cov = seed.total_spec_covs.mean()
         # Select the top seeds by specific coverage.
@@ -6982,6 +6991,11 @@ class DatabaseConverter(object):
                                                  for cov_type in ('specific', 'nonspecific')]))
         else:
             set_meta_value('samples', ', '.join([sample_id for sample_id in self.trnaseq_db_sample_ids]))
+        if db_cov_type == 'specific':
+            set_meta_value('sample_total_mean_specific_coverage', ', '.join(map(str, [round(self.sample_total_mean_spec_cov_dict[sample_id], 1)
+                                                                                      for sample_id in self.trnaseq_db_sample_ids])))
+            set_meta_value('sample_total_discriminator_specific_coverage', ', '.join(map(str, [self.sample_total_discriminator_spec_cov_dict[sample_id]
+                                                                                               for sample_id in self.trnaseq_db_sample_ids])))
         # The total number of reads "mapped" is not calculated due to various complexities.
         # set_meta_value('total_reads_mapped', -1)
         set_meta_value('merged', True)
