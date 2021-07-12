@@ -911,6 +911,7 @@ class GenbankToAnvio:
 
         if len(output_gene_calls):
             header_for_external_gene_calls = ["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"]
+            header_for_functions = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
 
             if aa_sequences_present:
                 header_for_external_gene_calls.append('aa_sequence')
@@ -921,7 +922,7 @@ class GenbankToAnvio:
 
             utils.store_dict_as_TAB_delimited_file(output_functions,
                                                    self.output_functions_path,
-                                                   headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
+                                                   headers=header_for_functions)
 
             self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
