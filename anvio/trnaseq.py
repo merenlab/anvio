@@ -7371,6 +7371,20 @@ class ResultTabulator(object):
                                                                   taxonomy_item.t_species if taxonomy_item.t_species else '',
                                                                   str(taxonomy_item.percent_identity) if taxonomy_item.percent_identity else '')
 
+        spec_profile_db = dbops.ProfileDatabase(self.spec_profile_db_path, quiet=True)
+        get_meta_value = spec_profile_db.db.get_meta_value
+        self.sample_names = sample_names = get_meta_value('samples').split(', ')
+        sample_total_mean_spec_covs = tuple(map(float, get_meta_value('sample_total_mean_specific_coverage').split(', ')))
+        sample_total_discriminator_spec_covs = tuple(map(int, get_meta_value('sample_total_discriminator_specific_coverage').split(', ')))
+        mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+        spec_profile_db.disconnect()
+        mean_spec_cov_df['contig_name'] = mean_spec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
+        mean_spec_cov_df = mean_spec_cov_df.drop(['item', 'layer'], axis=1)
+        mean_spec_cov_df = mean_spec_cov_df.rename({'value': 'mean_spec_cov'}, axis=1)
+        mean_spec_cov_dict = {}
+        for contig_name, contig_df in mean_spec_cov_df.groupby('contig_name'):
+            mean_spec_cov_dict[contig_name] = tuple(contig_df['mean_spec_cov'])
+
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in
                                self.contigs_db.db.get_single_column_from_table(tables.hmm_hits_table_name, 'gene_name')]]
@@ -7379,7 +7393,7 @@ class ResultTabulator(object):
             gene_callers_id_anticodon_aa_dict[gene_callers_id] = anticodon_aa_item
         anticodon_aa_iter = iter(anticodon_aa_items)
 
-        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.COVERAGE_DTYPE)
+        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
         spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash)
         spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
         spec_aux_db.close()
@@ -7397,9 +7411,11 @@ class ResultTabulator(object):
             nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
 
         spec_covs_dict = {}
+        sample_rel_discriminator_spec_cov_dict = {}
         for contig_name, contig_df in spec_aux_df.groupby('contig_name'):
             spec_covs_dict[contig_name] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
-        self.sample_names = sample_names = contig_df['sample_name'].tolist()
+            sample_rel_discriminator_spec_cov_dict[contig_name] = tuple([round(covs[-1] / total_discriminator_cov, 8) for covs, total_discriminator_cov
+                                                                         in zip(contig_df['coverages'], sample_total_discriminator_spec_covs)])
 
         if do_nonspec:
             nonspec_covs_dict = {}
@@ -7418,7 +7434,10 @@ class ResultTabulator(object):
                       "genus",
                       "species",
                       "taxon_percent_id",
-                      "sample_name") + tuple(self.ordinal_dict.keys())
+                      "sample_name",
+                      "mean_specific_coverage",
+                      "relative_mean_specific_coverage",
+                      "relative_discriminator_specific_coverage") + tuple(self.ordinal_dict.keys())
         middle_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
                                   + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
         canonical_dict = self.canonical_dict
@@ -7438,27 +7457,42 @@ class ResultTabulator(object):
             contig_name = next(contig_name_iter)
             anticodon, aa = next(anticodon_aa_iter)
             contig_name_gene_callers_id_dict[contig_name] = gene_callers_id
+
             try:
                 t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = taxonomy_table_dict[gene_callers_id]
             except KeyError:
                 t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, t_percent_id = ('', ) * 8
+
+            sample_mean_spec_covs = mean_spec_cov_dict[contig_name]
+            sample_rel_mean_spec_covs = [round(mean_spec_cov / total_mean_spec_cov, 8) for mean_spec_cov, total_mean_spec_cov
+                                         in zip(sample_mean_spec_covs, sample_total_mean_spec_covs)]
+            sample_rel_discriminator_spec_covs = sample_rel_discriminator_spec_cov_dict[contig_name]
+
             contig_spec_covs_dict = {sample_name: iter(covs) for sample_name, covs in spec_covs_dict[contig_name].items()}
             if do_nonspec:
                 contig_nonspec_covs_dict = {sample_name: iter(covs) for sample_name, covs in nonspec_covs_dict[contig_name].items()}
             sample_range = range(len(contig_spec_covs_dict))
-            contig_output_rows = [[str(gene_callers_id),
-                                   contig_name,
-                                   anticodon,
-                                   aa,
-                                   t_domain,
-                                   t_phylum,
-                                   t_class,
-                                   t_order,
-                                   t_family,
-                                   t_genus,
-                                   t_species,
-                                   t_percent_id,
-                                   sample_name] for sample_name in sample_names]
+            contig_output_rows = []
+            for sample_name, mean_cov, rel_mean_cov, rel_discriminator_cov in zip(sample_names,
+                                                                                  sample_mean_spec_covs,
+                                                                                  sample_rel_mean_spec_covs,
+                                                                                  sample_rel_discriminator_spec_covs):
+                contig_output_rows.append([str(gene_callers_id),
+                                           contig_name,
+                                           anticodon,
+                                           aa,
+                                           t_domain,
+                                           t_phylum,
+                                           t_class,
+                                           t_order,
+                                           t_family,
+                                           t_genus,
+                                           t_species,
+                                           t_percent_id,
+                                           sample_name,
+                                           str(mean_cov),
+                                           str(rel_mean_cov),
+                                           str(rel_discriminator_cov)])
 
             feature_start_in_seq = None
             feature_stop_in_seq = None
