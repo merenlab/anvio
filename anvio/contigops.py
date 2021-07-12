@@ -739,6 +739,18 @@ class GenbankToAnvio:
         num_genes_excluded = 0
         genes_excluded = set([])
 
+        # A very quick look at the genbank file to see if translated sequences are present in it
+        for genbank_record in self.get_genbank_file_object():
+            genes = [gene for gene in genbank_record.features if gene.type =="CDS"]
+
+            # do we have AA sequences in this?
+            aa_sequences_present = True if 'translation' in genes[0].qualifiers else False
+
+            if aa_sequences_present and self.omit_aa_sequences_column:
+                aa_sequences_present = False
+                self.run.info_single("Amino acid sequences seem to be present in this GFF file, but you wanted anvi'o "
+                                     "to not report them. FINE. They shall be ignored.", nl_after=1)
+                break
 
         # The main loop to go through all records forreals.
         for genbank_record in self.get_genbank_file_object():
@@ -814,6 +826,15 @@ class GenbankToAnvio:
                                                            'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
+
+                # let's keep the amino acid sequences if present
+                if aa_sequences_present:
+                    if 'translation' in gene.qualifiers and not partial:
+                        output_gene_calls[self.gene_callers_id]['aa_sequence'] = gene.qualifiers["translation"][0]
+                        num_genes_with_AA_sequences += 1
+                    else:
+                        output_gene_calls[self.gene_callers_id]['aa_sequence'] = ''
+
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
@@ -836,6 +857,19 @@ class GenbankToAnvio:
         self.run.info('Num gene records found', num_genes_found)
         self.run.info('Num genes reported', num_genes_reported, mc='green')
         self.run.info('Num genes with functions', num_genes_with_functions, mc='green', nl_after=1)
+        self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
+
+        if aa_sequences_present and num_partial_genes > 1:
+            self.run.warning(f"Anvi'o found out that aminio acid seqeunces were present in the GFF file, so it "
+                             f"reported them in the external gene calls file. But the {num_partial_genes} that "
+                             f"were marked as partial in the GFF file, there will not be any amino acid sequences. "
+                             f"Alternatively, you could use the flag `--omit-aa-seqeunces-column` to instruct "
+                             f"this program to report an external gene calls file WITHOUT an amino acid sequences, "
+                             f"column. When it is missing, anvi'o would do its best to translate your gene calls "
+                             f"and may be able to find out what to do with your partial gene calls. But it usually "
+                             f"is a MUCH better idea to learn translated sequences from a GFF file since they may "
+                             f"include careful consideration of organism-specific genetic code.",
+                             header="JUSTICE FOR PARTIAL GENES: NOT FOUND")
 
         # time to write these down:
         utils.store_dict_as_FASTA_file(output_fasta,
@@ -844,14 +878,20 @@ class GenbankToAnvio:
         self.run.info('FASTA file path', self.output_fasta_path)
 
         if len(output_gene_calls):
+            header_for_external_gene_calls = ["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"]
+
+            if aa_sequences_present:
+                header_for_external_gene_calls.append('aa_sequence')
+
             utils.store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
-                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"])
-            self.run.info('External gene calls file', self.output_gene_calls_path)
+                                                   headers=header_for_external_gene_calls)
 
             utils.store_dict_as_TAB_delimited_file(output_functions,
                                                    self.output_functions_path,
                                                    headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
+
+            self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
         else:
             self.output_gene_calls_path = None
