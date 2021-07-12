@@ -227,12 +227,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.check_samples_txt()
 
         self.sample_names = self.sample_info['sample'].tolist()
-        if 'treatment' in self.sample_info['treatment']:
-            # The treatment is specified for each sample in samples_txt.
-            self.treatments = self.sample_info['treatment'].tolist()
-        else:
+        if 'treatment' not in self.sample_info:
             # The treatment is the same for each sample and is set in the config file.
-            self.treatments = [self.get_param_value_from_config(['anvi_trnaseq', 'treatment'])] * len(self.sample_names)
+            self.sample_info['treatment'] = [self.get_param_value_from_config(['anvi_trnaseq', '--treatment'])] * len(self.sample_names)
         if self.run_iu_merge_pairs:
             self.treatments = self.sample_info['treatment']
             self.r1_paths = self.sample_info['r1'].tolist()
