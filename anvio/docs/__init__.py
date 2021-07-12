@@ -508,6 +508,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-plot": {
+        "name": "TRNASEQ PLOT",
+        "type": "DISPLAY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "summary": {
         "name": "STATIC SUMMARY",
         "type": "SUMMARY",
