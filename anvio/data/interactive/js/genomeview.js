@@ -337,8 +337,7 @@ function loadAll() {
 
   draw();
 
-  // zooming and panning
-  // http://fabricjs.com/fabric-intro-part-5#pan_zoom
+  // panning
   canvas.on('mouse:down', function(opt) {
     var evt = opt.e;
     if (evt.shiftKey === true) {
@@ -352,13 +351,14 @@ function loadAll() {
       var e = opt.e;
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
+      if(vpt[4] > 125) vpt[4] = 125;
+      if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - 250)
+      vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - 250;
       this.requestRenderAll();
       this.lastPosX = e.clientX;
     }
   });
   canvas.on('mouse:up', function(opt) {
-    // on mouse up we want to recalculate new interaction
-    // for all objects, so we call setViewportTransform
     this.setViewportTransform(this.viewportTransform);
     this.isDragging = false;
     this.selection = true;
