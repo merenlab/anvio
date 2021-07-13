@@ -23,6 +23,12 @@ const issueCategories = [
     {
         'category' : 'There are bats in my terminal', 
         'content' : 'Did you hire a cut-rate terminal sweep?'
+    },
+    {
+        'category' : 'All my layers have melted', 
+        'content' : `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
     }
 ]
 
@@ -43,24 +49,24 @@ function displayAlert(reason){
 }
 
 function errorLandingContext(){
-    issueCategories.map(issue => {
+    issueCategories.map((issue, idx) => {
         document.querySelector('#content-div').innerHTML += 
         `
-            <h1 class='dropdown-category closed'>${issue.category} <span class='icon'>∆</span></h1>
+            <h1 class='dropdown-category closed'>${issue.category} <span class='icon' id='icon-${idx}'>∆</span></h1>
             <div class='dropdown-content'>
                 <p>${issue.content}</p>
             </div>
         `
-    })
-    
-    document.querySelector('.icon').addEventListener('click', (e) => {
-        if(e.target.parentNode.classList.contains('closed')){
-            e.target.parentNode.classList.remove('closed')
-            e.target.parentNode.classList.add('open')
-        } else {
-            e.target.parentNode.classList.add('closed')
-            e.target.parentNode.classList.remove('open')
-        }
+        
+        document.querySelector(`#icon-${idx}`).addEventListener('click', (e) => {
+            if(e.target.parentNode.classList.contains('closed')){
+                e.target.parentNode.classList.remove('closed')
+                e.target.parentNode.classList.add('open')
+            } else {
+                e.target.parentNode.classList.add('closed')
+                e.target.parentNode.classList.remove('open')
+            }
+        })
     })
 }
 
