@@ -33,14 +33,24 @@ function displayAlert(reason){
 
 function errorLandingContext(){
     issueCategories.map(issue => {
-        document.querySelector('#content-div').innerHTML += `
-        <h1>${issue.category}</h1>
-        <p>${issue.content}</p>
+        document.querySelector('#content-div').innerHTML += 
         `
+        <h1 class='dropdown-category closed'>${issue.category} <span>∆</span></h1>
+        <p class='dropdown-content'>${issue.content}</p>
+        `
+        document.querySelector('.dropdown-category').addEventListener('click', (e) => {
+            if(e.target.classList.contains('closed')){
+                e.target.classList.remove('closed')
+            } else {
+                e.target.classList.add('closed')
+            }
+        })
     })
 
-    // document.querySelector('#content-div').innerHTML += '<p> this can be programmatically changed based on current issue</p>'
+    
 }
+
+
 
 const issueCategories = [
     {
