@@ -12,7 +12,6 @@
 // */
 
 let ERROR_COUNT = 0
-let ERROR_REASONS = []
 
 const issueCategories = [
     {
@@ -41,7 +40,6 @@ function alertDependencyError(dependencyError, isFinalDependency){
 function displayAlert(reason){
     alert(`Anvi'o has encountered an error, possibly related to ${reason}. Anvi'o would like to offer some guidance in a new browser tab. Please make sure popups are enabled :)`)
     window.open('error-landing.html', '_blank')
-    ERROR_REASONS.push(reason)
 }
 
 function errorLandingContext(){
