@@ -29,6 +29,7 @@ h1,h2{
     border-width: 3;
     border-radius: 5;
     padding: 15px;
+    position: relative;
 }
 
 .dropdown-content > p {
@@ -48,4 +49,9 @@ h1,h2{
 .open > .icon {
     display: inline-block;
     transform: rotate(180deg);
+}
+
+.icon {
+    position: absolute;
+    left: 800px;
 }
