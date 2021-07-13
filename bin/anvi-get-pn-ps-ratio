@@ -71,12 +71,13 @@ def load_contigs_db(args):
     return contigs_db
 
 
-def report(args, pNpS, pN, pS, num_SCVs):
+def report(args, pNpS, pN, pS, num_SCVs, potentials):
     # write it to folder
     pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True)
     pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True)
     pS.to_csv(os.path.join(args.output_dir, "pS.txt"), sep="\t", index = True)
     num_SCVs.to_csv(os.path.join(args.output_dir, "num_SCVs.txt"), sep="\t", index = True)
+    potentials.to_csv(os.path.join(args.output_dir, "potentials.txt"), sep="\t", index = True)
 
     run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
                     nl_before=1,
@@ -96,7 +97,10 @@ def calculate_pN_pS_ratio(args):
         contigs_db=contigs_db,
         grouping='gene',
         comparison=args.comparison,
+        add_potentials=True
     )
+
+    potentials = var.data.groupby('corresponding_gene_call')[f'nS_gene_{args.comparison}', f'nN_gene_{args.comparison}'].first()
 
     groupby_vars = args.groupby.split(',')
 
@@ -143,7 +147,7 @@ def calculate_pN_pS_ratio(args):
             ).\
             fillna(0)
 
-    report(args, pNpS, pN, pS, SCVs_per_group)
+    report(args, pNpS, pN, pS, SCVs_per_group, potentials)
 
 
 
