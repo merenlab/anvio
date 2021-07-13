@@ -32,5 +32,23 @@ function displayAlert(reason){
 }
 
 function errorLandingContext(){
-    document.querySelector('#content-div').innerHTML += '<p> this can be programmatically changed based on current issue</p>'
+    issueCategories.map(issue => {
+        document.querySelector('#content-div').innerHTML += `
+        <h1>${issue.category}</h1>
+        <p>${issue.content}</p>
+        `
+    })
+
+    // document.querySelector('#content-div').innerHTML += '<p> this can be programmatically changed based on current issue</p>'
 }
+
+const issueCategories = [
+    {
+        'category' : 'Dependencies failed to load', 
+        'content' : 'Did you make sure to pay your dependency bill?'
+    },
+    {
+        'category' : 'There are bats in my terminal', 
+        'content' : 'Did you hire a cut-rate terminal sweep?'
+    }
+]
