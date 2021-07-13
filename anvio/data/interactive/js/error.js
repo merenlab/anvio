@@ -49,7 +49,6 @@ function alertDependencyError(dependencyError, isFinalDependency){
     if(dependencyError){
         ERROR_COUNT += 1
     }
-    
     if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
         displayAlert('dependencies')
     }
@@ -60,7 +59,7 @@ function displayAlert(reason){
     window.open('error-landing.html', '_blank')
 }
 
-function errorLandingContext(){
+function errorLandingContext(){ // onload function called y error-landing.html, generate help 'docs' from object above
     issueCategories.map((issue, idx) => {
         document.querySelector('#content-div').innerHTML += 
         `
