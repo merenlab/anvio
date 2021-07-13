@@ -233,6 +233,7 @@ function loadAll() {
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
+                if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = true;
 
                 // adjust menu options
                 if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
@@ -320,6 +321,7 @@ function loadAll() {
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
                 if(state['snv_scale_dir_up']) $("#scale_dir_box").attr("checked", "checked");
+                if(state['fixed-y-scale']) $('#fixed_ys_box').attr("checked", "checked");
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -492,6 +494,16 @@ function loadAll() {
                           dialogSize: 'sm',
                           onShow: function() {
                               toggleScaleDir();
+                              waitingDialog.hide();
+                          },
+                      });
+                });
+                $('#fixed_ys_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleFixedYScale();
                               waitingDialog.hide();
                           },
                       });
@@ -687,6 +699,11 @@ function toggleSNVScalePosition() {
 
 function toggleScaleDir() {
   state['snv_scale_dir_up'] = !state['snv_scale_dir_up'];
+  createCharts(state);
+}
+
+function toggleFixedYScale() {
+  state['fixed-y-scale'] = !state['fixed-y-scale'];
   createCharts(state);
 }
 
@@ -1481,6 +1498,7 @@ function processState(state_name, state) {
     state['show_indels'] = $('#toggle_indel_box').val() == "on";
     state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
     state['snv_scale_dir_up'] = $('#scale_dir_box').val() == "on";
+    state['fixed-y-scale'] = $('#fixed_ys_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
@@ -1823,7 +1841,7 @@ function Chart(options){
     this.maxGCContent = gc_min_max['Min'];
     this.minGCContent = gc_min_max['Max'];
 
-    let yScaleMax = Math.max(this.maxVariability, this.maxCountOverCoverage);
+    let yScaleMax = state['fixed-y-scale'] ? 1 : Math.max(this.maxVariability, this.maxCountOverCoverage);
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])

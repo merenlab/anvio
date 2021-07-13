@@ -140,13 +140,13 @@
 
 
                   <span class="settings-header">Set/Reset Maximum Values</span>
-                  <p class="settings-section-info">The y-axis on the left hand-side of each plot is automatically sclaed per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
+                  <p class="settings-section-info">The y-axis on the left-hand side of each plot is automatically scaled per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
                   <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
 
 
                   <span class="settings-header">SNVs and IN/DELS</span>
-                  <p class="settings-section-info">Show or hide single-nucleotide variant information and/or insertion/deletions anvi'o identified during the profiling of read recruitment. IN/DELs reaching the specified min sequence length will be marked in red. <a href="http://merenlab.org/2015/07/20/analyzing-variability/" target="_blank">See this</a> for more information on how to study microbial population genetics in anvi'o beyond displaying them in the context of reference sequences.</p>
+                  <p class="settings-section-info">Show or hide single-nucleotide variant information and/or insertion/deletions anvi'o identified during the profiling of read recruitment. IN/DELs reaching the specified min sequence length will be marked in red.<br><br>By default, the y-axis on the right-hand side of each plot is set to a fixed scale of 0-1, but if the corresponding box is unchecked, the y-axis maximum will be set independently for each sample as the max of (1) max variability of SNVs, or (2) max count/coverage value of IN/DELs in the sample. <br><br><a href="http://merenlab.org/2015/07/20/analyzing-variability/" target="_blank">See this</a> for more information on how to study microbial population genetics in anvi'o beyond displaying them in the context of reference sequences.</p>
                   <p class="settings-section-info" id="settings-section-info-SNV-warning"></p>
                   <table id="toggleSNVIndelTable" style="margin-bottom: 20px;">
                     <tbody>
@@ -165,6 +165,10 @@
                       <tr id="snv_scale_dir">
                         <td><div style="width: 20px;"><input id="scale_dir_box" type="checkbox" class="layer_selectors"></div></td>
                         <td>Scale direction upwards</td>
+                      </tr>
+                      <tr id="fixed_ys_picker">
+                        <td><div style="width: 20px;"><input id="fixed_ys_box" type="checkbox" class="layer_selectors"></div></td>
+                        <td>Fixed y-scale</td>
                       </tr>
                     </tbody>
                   </table>
