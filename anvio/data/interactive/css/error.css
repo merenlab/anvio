@@ -33,6 +33,8 @@ h1,h2{
 
 .dropdown-content > p {
     font-size: 25px;
+    width: 700px;
+
 }
 
 .closed + .dropdown-content {

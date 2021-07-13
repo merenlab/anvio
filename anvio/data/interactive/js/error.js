@@ -14,6 +14,19 @@
 let ERROR_COUNT = 0
 let ERROR_REASONS = []
 
+const issueCategories = [
+    {
+        'category' : 'Dependencies failed to load', 
+        'content' : `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+    },
+    {
+        'category' : 'There are bats in my terminal', 
+        'content' : 'Did you hire a cut-rate terminal sweep?'
+    }
+]
+
 function alertDependencyError(dependencyError, isFinalDependency){
 
     if(dependencyError){
@@ -54,14 +67,3 @@ function errorLandingContext(){
 }
 
 
-
-const issueCategories = [
-    {
-        'category' : 'Dependencies failed to load', 
-        'content' : 'Did you make sure to pay your dependency bill?'
-    },
-    {
-        'category' : 'There are bats in my terminal', 
-        'content' : 'Did you hire a cut-rate terminal sweep?'
-    }
-]
