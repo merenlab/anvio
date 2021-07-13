@@ -52,6 +52,8 @@ class DB:
         self.run = run
         self.progress = progress
 
+        self.tables_to_exclude_from_db_call_reports = ['self', 'sqlite_master']
+
         # these anonymous functions report whether the ROWID will be added
         # to its rows read from the database or not. if the first column of a given
         # table does not contain unique variables, anvi'o prepends the ROWID of each
@@ -118,6 +120,15 @@ class DB:
 
     def __exit__(self, *args):
         self.disconnect()
+
+
+    def _display_db_calls(func):
+        def inner(self, *args, **kwargs):
+            if self.read_only:
+                raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
+            else:
+                return func(self, *args, **kwargs)
+        return inner
 
 
     def _not_if_read_only(func):
@@ -235,15 +246,17 @@ class DB:
         self._exec('''DETACH DATABASE "source_db"''')
 
 
-    def _fetchall(self, response):
+    def _fetchall(self, response, table_name):
         """Wrapper for fetchall"""
 
-        if anvio.DISPLAY_DB_CALLS:
+        DISPLAY_DB_CALLS = False if table_name in self.tables_to_exclude_from_db_call_reports else anvio.DISPLAY_DB_CALLS
+
+        if DISPLAY_DB_CALLS:
             sql_exec_timer = terminal.Timer()
 
         results = response.fetchall()
 
-        if anvio.DISPLAY_DB_CALLS:
+        if DISPLAY_DB_CALLS:
             self.run.info("fetchall", f"{sql_exec_timer.time_elapsed()}", mc='yellow', nl_after=1)
 
         return results
@@ -260,7 +273,7 @@ class DB:
 
         response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
 
-        rows = self._fetchall(response)
+        rows = self._fetchall(response, table_name)
 
         val = rows[0][0]
 
@@ -280,7 +293,7 @@ class DB:
 
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
 
-        rows = self._fetchall(response)
+        rows = self._fetchall(response, 'self')
 
         if not rows and return_none_if_not_in_table:
             return None
@@ -325,8 +338,19 @@ class DB:
           to the DB using this method, even with self.read_only = True
         """
 
-        if anvio.DISPLAY_DB_CALLS:
-            self.run.warning(None, header='EXECUTING SQL', progress=self.progress, lc='yellow', nl_before=1)
+        # this is an ugly workaround to not display DB calls if they involve talbes
+        # such as `self` or `sqlite_master` (comlete list in self.tables_to_exclude_from_db_call_reports).
+        # Otherwise when the user sets the `--display-db-calls` flag, the output is heavily
+        # dominated by queries to `self`. Even though Meren is implementing this sadness,
+        # Iva agreed to it as well. Just saying:
+        if any(table_name for table_name in self.tables_to_exclude_from_db_call_reports if f' {table_name} ' in sql_query):
+            DISPLAY_DB_CALLS = False
+        else:
+            DISPLAY_DB_CALLS = anvio.DISPLAY_DB_CALLS
+
+        if DISPLAY_DB_CALLS:
+            self.progress.reset()
+            self.run.warning(None, header='EXECUTING SQL', lc='yellow', nl_before=1)
             self.run.info_single(f"{sql_query}", cut_after=None, level=0, mc='yellow', nl_after=1)
             sql_exec_timer = terminal.Timer()
 
@@ -335,7 +359,7 @@ class DB:
         else:
             ret_val = self.cursor.execute(sql_query)
 
-        if anvio.DISPLAY_DB_CALLS:
+        if DISPLAY_DB_CALLS:
             self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
         self.commit()
@@ -462,7 +486,7 @@ class DB:
 
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return results
 
@@ -474,7 +498,7 @@ class DB:
 
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return results
 
@@ -488,7 +512,7 @@ class DB:
         else:
             response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return results[0][0]
 
@@ -503,30 +527,30 @@ class DB:
         self.commit()
 
 
-    def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
-        self.is_table_exists(table)
+    def get_single_column_from_table(self, table_name, column, unique=False, where_clause=None):
+        self.is_table_exists(table_name)
 
         if where_clause:
             where_clause = where_clause.replace('"', "'")
-            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table_name, where_clause))
         else:
-            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table_name))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return [t[0] for t in results]
 
 
-    def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
-        self.is_table_exists(table)
+    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None):
+        self.is_table_exists(table_name)
 
         if where_clause:
             where_clause = where_clause.replace('"', "'")
-            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name, where_clause))
         else:
-            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return results
 
@@ -536,7 +560,7 @@ class DB:
 
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return results
 
@@ -546,7 +570,7 @@ class DB:
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return [t[2] for t in results]
 
@@ -556,7 +580,7 @@ class DB:
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, table_name)
 
         return dict([(t[1], t[2]) for t in results])
 
@@ -955,6 +979,6 @@ class DB:
     def get_table_names(self):
         response = self._exec("""select name from sqlite_master where type='table'""")
 
-        results = self._fetchall(response)
+        results = self._fetchall(response, 'sqlite_master')
 
         return [r[0] for r in results]
