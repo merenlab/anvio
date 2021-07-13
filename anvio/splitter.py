@@ -623,7 +623,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
                 new_table_types = t.view_table_types
                 bin_profile_db.db.create_table(new_table_name, new_table_structure, new_table_types)
 
-                tables[new_table_name] = ('contig', self.split_names)
+                tables[new_table_name] = ('item', self.split_names)
 
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless
