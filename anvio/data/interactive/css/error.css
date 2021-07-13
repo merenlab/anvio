@@ -31,3 +31,12 @@ h1,h2{
     width: 40vw;
 
 }
+
+.dropdown-category{
+    width: 700px;
+    height: 50px;
+    border-style: solid;
+    border-width: 3;
+    border-radius: 5;
+    padding: 15px;
+}
