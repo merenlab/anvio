@@ -35,19 +35,22 @@ function errorLandingContext(){
     issueCategories.map(issue => {
         document.querySelector('#content-div').innerHTML += 
         `
-        <h1 class='dropdown-category closed'>${issue.category} <span>∆</span></h1>
-        <p class='dropdown-content'>${issue.content}</p>
+            <h1 class='dropdown-category closed'>${issue.category} <span class='icon'>∆</span></h1>
+            <div class='dropdown-content'>
+                <p>${issue.content}</p>
+            </div>
         `
-        document.querySelector('.dropdown-category').addEventListener('click', (e) => {
-            if(e.target.classList.contains('closed')){
-                e.target.classList.remove('closed')
-            } else {
-                e.target.classList.add('closed')
-            }
-        })
     })
-
     
+    document.querySelector('.icon').addEventListener('click', (e) => {
+        if(e.target.parentNode.classList.contains('closed')){
+            e.target.parentNode.classList.remove('closed')
+            e.target.parentNode.classList.add('open')
+        } else {
+            e.target.parentNode.classList.add('closed')
+            e.target.parentNode.classList.remove('open')
+        }
+    })
 }
 
 

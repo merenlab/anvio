@@ -22,16 +22,6 @@ h1,h2{
     width: fit-content;
 }
 
-.issue-header{
-    font-size: 40;
-}
-
-.issue-text{
-    font-size: 20;
-    width: 40vw;
-
-}
-
 .dropdown-category{
     width: 700px;
     height: 50px;
@@ -39,4 +29,21 @@ h1,h2{
     border-width: 3;
     border-radius: 5;
     padding: 15px;
+}
+
+.dropdown-content > p {
+    font-size: 25px;
+}
+
+.closed + .dropdown-content {
+    display: none;
+}
+
+.closed > .icon {
+    display: inline-block;
+}
+
+.open > .icon {
+    display: inline-block;
+    transform: rotate(180deg);
 }
