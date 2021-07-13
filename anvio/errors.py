@@ -59,7 +59,7 @@ class AnvioError(Exception, object):
 
 
     def clear_text(self):
-        return '%s: %s' % (self.error_type, self.e)
+        return self.e
 
 
 class CommandError(AnvioError):
