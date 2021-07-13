@@ -57,16 +57,15 @@ function errorLandingContext(){
                 <p>${issue.content}</p>
             </div>
         `
-        
-        document.querySelector(`#icon-${idx}`).addEventListener('click', (e) => {
-            if(e.target.parentNode.classList.contains('closed')){
-                e.target.parentNode.classList.remove('closed')
-                e.target.parentNode.classList.add('open')
-            } else {
-                e.target.parentNode.classList.add('closed')
-                e.target.parentNode.classList.remove('open')
-            }
-        })
+    })
+    document.addEventListener('click', (e) => {
+        if(e.target.parentNode.classList.contains('closed')){
+            e.target.parentNode.classList.remove('closed')
+            e.target.parentNode.classList.add('open')
+        } else {
+            e.target.parentNode.classList.add('closed')
+            e.target.parentNode.classList.remove('open')
+        }
     })
 }
 
