@@ -190,7 +190,7 @@ function loadAll() {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
-
+  
   // Find max length genome
   calculateMaxGenomeLength()
   // canvas.setHeight(calculateMainCanvasHeight()) set canvas height dynamically
@@ -289,7 +289,7 @@ function loadAll() {
   })
 
   if(showGeneLabels && arrowStyle != 3) {
-    spacing = 60;
+    spacing = 150; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
   }
 
