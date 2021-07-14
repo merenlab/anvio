@@ -196,7 +196,7 @@ function loadAll() {
   // canvas.setHeight(calculateMainCanvasHeight()) set canvas height dynamically
 
   var scaleWidth = canvas.getWidth();
-  var scaleHeight = 200;
+  var scaleHeight = 100;
 
   var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
 
