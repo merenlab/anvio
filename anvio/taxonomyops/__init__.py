@@ -1178,9 +1178,9 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             sequence = ""
             for entry in item_sequences_dict[item_name].values():
                 if 'sequence' not in entry or 'gene_name' not in entry:
-                    raise ConfigError(f"The `get_filtered_dict` function got a parameter that does not look like "
-                                      f"the way we expected it. This function expects a dictionary that contains "
-                                      f"keys `gene_name` and `sequence`.")
+                    raise ConfigError("The `get_filtered_dict` function got a parameter that does not look like "
+                                      "the way we expected it. This function expects a dictionary that contains "
+                                      "keys `gene_name` and `sequence`.")
 
                 sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
                 entry['hits'] = []
