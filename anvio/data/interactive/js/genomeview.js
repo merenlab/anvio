@@ -36,7 +36,6 @@
  var showGeneLabels = true; // show gene labels?
  var geneLabelSize = 40; // font size of gene labels
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
- var draggableGridUnits = 35; // 'snap' to grid for better user feedback
  var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
