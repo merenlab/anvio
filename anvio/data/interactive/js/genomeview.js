@@ -190,7 +190,7 @@ function loadAll() {
   buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
-  
+
   // Find max length genome
   calculateMaxGenomeLength()
   // canvas.setHeight(calculateMainCanvasHeight()) set canvas height dynamically
@@ -552,7 +552,7 @@ function shadeGeneClusters(geneClusters, colors, y) {
       });
       path.left += (showLabels?120:0)*scaleFactor;
       path.sendBackwards();
-      canvas.add(path);
+      canvas.sendToBack(path);
     }
     y += spacing
   }
@@ -717,9 +717,9 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
 
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
-    let startingTop = 70 + yOffset
+    let startingTop = 180 + yOffset
     let startingLeft = 120
-    let layerHeight = 20
+    let layerHeight = 50
     let pathDirective = [`M 0 0`]
 
     for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
@@ -738,19 +738,19 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       top : startingTop,
       left : startingLeft,
       stroke : additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
-      fill : '', 
+      fill : '', //additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
       selectable : false, 
       id : 'coverage graph', 
       genome : additionalDataLayers['genome']
     })
-    canvas.add(graphObj)
+    canvas.bringToFront(graphObj)
   } 
 
   if(additionalDataLayers['gcContent']){
     let maxGCValue = 0
-    let startingTop = 90 + yOffset
+    let startingTop = 240 + yOffset
     let startingLeft = 120
-    let layerHeight = 20
+    let layerHeight = 50
     let pathDirective = [`M 0 0`]
 
     for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
@@ -769,14 +769,14 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       top : startingTop,
       left : startingLeft,
       stroke : additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
-      fill : '', 
+      fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
       selectable : false, 
       id : 'gcContent graph', 
       genome : additionalDataLayers['genome']
     })
-    canvas.add(graphObj)
+    canvas.bringToFront(graphObj)
   } 
-  yOffset += 60
+  yOffset += 150
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
