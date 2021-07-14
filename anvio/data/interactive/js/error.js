@@ -59,7 +59,7 @@ function displayAlert(reason){
     window.open('error-landing.html', '_blank')
 }
 
-function errorLandingContext(){ // onload function called y error-landing.html, generate help 'docs' from object above
+function errorLandingContext(){ // onload function called by error-landing.html, generate help 'docs' from object above
     issueCategories.map((issue, idx) => {
         document.querySelector('#content-div').innerHTML += 
         `
