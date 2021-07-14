@@ -413,7 +413,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.progress.reset()
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
 
-        if len(hits):
+        if not (len(hits) == 1 and hits[0]['anticodon'] == 'CONSENSUS'):
             if self.scgs_focus:
                 header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
                 field_names = [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']
@@ -432,7 +432,10 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                     taxon_text = terminal.c(taxon_text, color='red')
 
                     for field_name in field_names:
-                        hit[field_name] = terminal.c(hit[field_name], color='red')
+                        if field_name in hit:
+                            hit[field_name] = terminal.c(hit[field_name], color='red')
+                        else:
+                            hit[field_name] = terminal.c('--', color='red')
 
                 if self.scgs_focus:
                     table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
