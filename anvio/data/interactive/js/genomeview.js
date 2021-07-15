@@ -78,23 +78,6 @@ function initData() {
 }
 
 function loadState(){
-  let mockStateData = {
-    "state-name" : 'default',
-    "zoom" : "1.0",
-    "arrow-style" : "1",
-    "color-genes-by" : "Source",
-    "genome-order-method" : [
-      {
-        "name" : "some value",
-        "order" : ['genome1', 'genome2', 'genome3']
-      },
-      {
-        "name" : "some other value",
-        "order" : ['genome2', 'genome1', 'genome3']
-      }
-    ]
-  };
-
   var defer = $.Deferred();
   $('#modLoadState').modal('hide');
   if ($('#loadState_list').val() == null) {
