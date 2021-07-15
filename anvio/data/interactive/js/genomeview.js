@@ -193,7 +193,7 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
-  // canvas.setHeight(calculateMainCanvasHeight()) set canvas height dynamically
+  canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 100;
@@ -932,11 +932,12 @@ function calculateMaxGenomeLength(){
 
 function calculateMainCanvasHeight(){ // to be used for setting vertical spacing
   let optimalGroupHeight = 150 // arbitrary value to be set by us experts ;) 
+  let additionalSpacing = 100 // arbitrary additional spacing for ruler(s), cosmetics
   let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer
   stateData['additional-data-layers'].map(group => {
     Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null
   })
-  let mainCanvasHeight = optimalGroupHeight * maxGroupSize * genomeData.genomes.length
+  let mainCanvasHeight = optimalGroupHeight * maxGroupSize * genomeData.genomes.length + additionalSpacing
   return mainCanvasHeight
 }
 
