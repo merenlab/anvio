@@ -95,6 +95,7 @@ function loadState(){
             }
             // waitingDialog.hide();
         }
+    })
 }
 
 function processState(stateName, stateData){
