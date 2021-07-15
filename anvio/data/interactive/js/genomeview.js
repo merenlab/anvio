@@ -29,7 +29,7 @@
  // TODO migrate below variables to kvp in state
  var stateData = {};
  var mainCanvasHeight; 
- var spacing = 30; // vertical spacing between genomes
+ var spacing = 50; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
@@ -43,7 +43,7 @@
 
  var alignToGC = null;
 
- var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon
+ var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon, 4 = rect
 
  var color_db;
  var cog_annotated = true, kegg_annotated = false;
@@ -772,17 +772,21 @@ function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
   /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
   let length = (gene.stop-gene.start)*scaleX;
+  let stemLength = length-25 > 0 ? length-25 : 0;
 
   var arrowPathStr;
   switch(style) {
     case 2: // thicker arrows
-      arrowPathStr = 'M ' + (length-25) + ' -5 L 0 -5 L 0 15 L ' + (length-25) + ' 15 L ' + (length-25) + ' 15 L ' + (length-25) + ' 20 L ' + length + ' 5 L ' + (length-25) + ' -10 z';
+      arrowPathStr = 'M ' + stemLength + ' -5 L 0 -5 L 0 15 L ' + stemLength + ' 15 L ' + stemLength + ' 15 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
       break;
     case 3: // pentagon arrows
-      arrowPathStr = 'M 0 0 L ' + (length-25) + ' 0 L ' + length + ' 20 L ' + (length-25) + ' 40 L 0 40 L 0 0 z';
+      arrowPathStr = 'M 0 0 L ' + stemLength + ' 0 L ' + length + ' 20 L ' + stemLength + ' 40 L 0 40 L 0 0 z';
+      break;
+    case 4: // rect arrows
+      arrowPathStr = 'M ' + length + ' -5 L 0 -5 L 0 15 L ' + length + ' 15 z';
       break;
     default: // 'inspect page' arrows
-      arrowPathStr = 'M ' + (length-25) + ' 0 L 0 0 L 0 10 L ' + (length-25) + ' 10 L ' + (length-25) + ' 10 L ' + (length-25) + ' 20 L ' + length + ' 5 L ' + (length-25) + ' -10 z';
+      arrowPathStr = 'M ' + stemLength + ' 0 L 0 0 L 0 10 L ' + stemLength + ' 10 L ' + stemLength + ' 10 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
       break;
   }
 
