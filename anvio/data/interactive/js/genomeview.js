@@ -78,43 +78,23 @@ function initData() {
 }
 
 function loadState(){
-  var defer = $.Deferred();
-  $('#modLoadState').modal('hide');
-  if ($('#loadState_list').val() == null) {
-      defer.reject();
-      return;
-  }
-
-  var state_name = $('#loadState_list').val();
-  waitingDialog.show('Requesting state data from the server ...',
-      {
-          dialogSize: 'sm',
-          onHide: function() {
-              defer.resolve();
-          },
-          onShow: function() {
-              $.ajax({
-                      type: 'GET',
-                      cache: false,
-                      url: '/data/genome_view/state/get/' + state_name,
-                      success: function(response) {
-                          try{
-                              // processState(state_name, response[0]); process actual response from backend
-                              processState(state_name, mockStateData); // process mock state data
-                          }catch(e){
-                              console.error("Exception thrown", e.stack);
-                              toastr.error('Failed to parse state data, ' + e);
-                              defer.reject();
-                              return;
-                          }
-                          waitingDialog.hide();
-                      }
-                  });
-          },
-      }
-  );
-
-  return defer.promise();
+  
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/genome_view/state/get/' + state_name,
+        success: function(response) {
+            try{
+                // processState(state_name, response[0]); process actual response from backend
+                processState(state_name, mockStateData); // process mock state data
+            }catch(e){
+                console.error("Exception thrown", e.stack);
+                toastr.error('Failed to parse state data, ' + e);
+                defer.reject();
+                return;
+            }
+            // waitingDialog.hide();
+        }
 }
 
 function processState(stateName, stateData){
