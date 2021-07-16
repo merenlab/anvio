@@ -51,6 +51,12 @@ if __name__ == '__main__':
                              source (default: "NCBI_PGAP")')
     groupC.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
                              source version to be stored in the database (default: "v4.6")')
+    groupC.add_argument("--omit-aa-sequences-column", default=False, action="store_true", help="If amino acid sequences for "
+                            "gene calls are present in the GFF file, anvi'o by default will include an `aa_sequences` column "
+                            "in the external gene calls output file. This is good because then anvi-gen-contigs-database can "
+                            "use that information directly, instead of trying to predict the translated sequences itself. "
+                            "If you would like this program to not report amino acid sequences even when they present and use "
+                            "anvi'o to predict translated sequences later, you can use this flag.")
 
     args = parser.get_args(parser)
 

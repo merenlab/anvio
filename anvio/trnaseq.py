@@ -340,7 +340,7 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.name_T = None
 
         # Store the defunct profile information for posterity.
-        self.defunct_U = defunct_U
+        self.defunct_Uf = defunct_Uf
 
 
 class UniqueMappedSequence(UniqueSequence):

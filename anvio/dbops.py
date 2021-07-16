@@ -4271,11 +4271,15 @@ class ContigsDatabase:
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls_file_path:
-                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
-                    input_file_path=external_gene_calls_file_path,
-                    ignore_internal_stop_codons=ignore_internal_stop_codons,
-                    skip_predict_frame=skip_predict_frame,
-                )
+                try:
+                    gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
+                        input_file_path=external_gene_calls_file_path,
+                        ignore_internal_stop_codons=ignore_internal_stop_codons,
+                        skip_predict_frame=skip_predict_frame,
+                    )
+                except ConfigError as e:
+                    os.remove(self.db_path)
+                    raise ConfigError(e.clear_text())
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
 
