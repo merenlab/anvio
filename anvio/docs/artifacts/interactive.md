@@ -39,6 +39,12 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 - %(anvi-script-snvs-to-interactive)s lets you view a comprehensive summary of the SNVs, SCVs, and SAAVs within your contigs.
 
+## Artifacts that give interactive access
+
+- %(gene-cluster-inspection)s lets you examine specific gene clusters.
+
+- %(contig-inspection)s shows you detailed contig information. 
+
 ## An overview of the display
 
 The interactive interface has three major areas of interaction:
