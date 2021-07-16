@@ -159,7 +159,7 @@ The news panel provides information and external links tracking major Anvi'o rel
 - The description panel is a flexible, multipurpose space where users can, 
 - Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment. 
 - Display context, references, reproducibility instructions, and any other salient details for published figures. 
-<!-- reference image here https://anvi-server.org/merenlab/dwh_o_desum -->
+![The Description panel in action](../../images/interactive_interface/interactive-settings-description-panel.png){:.center-img}
 
 ## Interactive interface tips + tricks
 
