@@ -496,19 +496,40 @@ function drawScale(y, scaleX=scaleFactor) {
 }
 
 function zoomIn() {
-  scaleFactor += (scaleFactor < 0.2 ? .01 : .1);
-  if(scaleFactor > 4) scaleFactor = 4;
-  if(dynamicScaleInterval) adjustScaleInterval();
+  let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
+  let newStart, newEnd;
 
-  draw();
+  let len = end - start;
+  if(len > 4*genomeMax/50) {
+    newStart = Math.floor(start + genomeMax/50), newEnd = Math.floor(end - genomeMax/50);
+  } else {
+    if(len < 50) return;
+    newStart = Math.floor(start + len/4);
+    newEnd = Math.floor(end - len/4);
+    if(newEnd - newStart <= 0) return;
+  }
+
+  brush.extent([newStart, newEnd]);
+  brush(d3.select(".brush").transition());
+  brush.event(d3.select(".brush").transition());
 }
 
 function zoomOut() {
-  scaleFactor -= (scaleFactor < 0.2 ? .01 : .1);
-  if(scaleFactor < 0.01) scaleFactor = 0.01;
-  if(dynamicScaleInterval) adjustScaleInterval();
+  let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
 
+  let newStart = start - genomeMax/50, newEnd = end + genomeMax/50;
+  if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
+    scaleFactor = 0.01;
+    if(dynamicScaleInterval) adjustScaleInterval();
   draw();
+    return;
+  }
+  if(newStart < 0) newStart = 0;
+  if(newEnd > genomeMax) newEnd = genomeMax;
+
+  brush.extent([newStart, newEnd]);
+  brush(d3.select(".brush").transition());
+  brush.event(d3.select(".brush").transition());
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
@@ -673,7 +694,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
       if(arrowStyle == 3) {
         label.set({
           top: -5+spacing*y,
-          left: (150+gene.start)*scaleX,
+          left: xDisplacement+(gene.start+50)*scaleX,
           scaleX: 0.5,
           scaleY: 0.5,
           selectionColor:'rgba(128,128,128,.5)'
@@ -683,7 +704,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
           scaleX: 0.5,
           scaleY: 0.5,
           top: -30+spacing*y,
-          left: (200+gene.start)*scaleX,
+          left: xDisplacement+(gene.start+50)*scaleX,
           angle: -10,
           selectionColor:'rgba(128,128,128,.2)'
         });
