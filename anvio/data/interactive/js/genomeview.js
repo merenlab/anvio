@@ -325,14 +325,13 @@ function loadAll() {
     }
   });
   canvas.on('mouse:up', function(opt) {
-    this.setViewportTransform(this.viewportTransform);
-    this.isDragging = false;
-    this.selection = true;
-
     var vpt = this.viewportTransform;
+    this.setViewportTransform(vpt);
+
+    if(this.isDragging) {
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-    let [newStart, newEnd] = [Math.floor(-1*vpt[4]/scaleFactor+xDisplacement),
-                              Math.floor(-1*(vpt[4]/scaleFactor+xDisplacement)+(end-start))];
+      let newStart = Math.floor(-1*(vpt[4]/scaleFactor)-xDisplacement);
+      let newEnd = newStart + (end-start);
     if(newStart < 0) {
       newStart = 0;
       newEnd = end - start;
@@ -344,6 +343,9 @@ function loadAll() {
     brush(d3.select(".brush").transition());
     $('#brush_start').val(newStart);
     $('#brush_end').val(newEnd);
+    }
+    this.isDragging = false;
+    this.selection = true;
   });
   canvas.on('mouse:wheel', function(opt) {
     opt.e.preventDefault();
