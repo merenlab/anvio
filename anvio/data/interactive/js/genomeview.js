@@ -277,7 +277,7 @@ function loadAll() {
         <tr><td>Start in Contig</td><td>${event.target.gene.start}</td></tr>
         <tr><td>Length</td><td>${event.target.gene.stop - event.target.gene.start}</td></tr>
         <tr><td>Gene Callers ID</td><td>${event.target.geneID}</td></tr>
-        <tr><td>Gene Cluster</td><td>${genomeData.gene_associations["anvio-pangenome"]["genome-and-gene-names-to-gene-clusters"][event.target.genomeID][event.target.geneID]}</td></tr>
+        <tr><td>Gene Cluster</td><td>${genomeData.gene_associations["anvio-pangenome"] ? genomeData.gene_associations["anvio-pangenome"]["genome-and-gene-names-to-gene-clusters"][event.target.genomeID][event.target.geneID] : "None"}</td></tr>
       </table>
       <button>some action</button>
       <button>some other action</button>
@@ -512,6 +512,8 @@ function zoomOut() {
 }
 
 function shadeGeneClusters(geneClusters, colors, y) {
+  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+
   for(var i = 0; i < genomeData.genomes.length-1; i++) {
     let genomeA = genomeData.genomes[i][1].genes.gene_calls;
     let genomeB = genomeData.genomes[i+1][1].genes.gene_calls;
@@ -565,6 +567,8 @@ function checkGeneLabels() {
 }
 
 function alignToCluster(gc) {
+  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
     alignToGC = gc;
 
