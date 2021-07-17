@@ -31,6 +31,7 @@
  var mainCanvasHeight; 
  var spacing = 50; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
+ var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
  var showGeneLabels = true; // show gene labels?
@@ -155,6 +156,8 @@ function loadAll() {
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
+  xDisplacement = showLabels ? 120 : 0;
+
   // Find max length genome
   calculateMaxGenomeLength()
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
@@ -183,7 +186,7 @@ function loadAll() {
   var scaleBox = d3.select("#scaleSvg").append("g")
               .attr("id", "scaleBox")
               .attr("class","scale")
-              .attr("y", 230) // rather than 80 from 50?
+              .attr("y", 230)
               .attr("transform", "translate(5,0)");
 
   scaleBox.append("g")
@@ -221,7 +224,7 @@ function loadAll() {
       if(dynamicScaleInterval) adjustScaleInterval();
 
       draw();
-      let moveToX = (showLabels?120:0) + b[0];
+      let moveToX = xDisplacement + b[0];
       canvas.absolutePan({x: scaleFactor*moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
@@ -325,6 +328,22 @@ function loadAll() {
     this.setViewportTransform(this.viewportTransform);
     this.isDragging = false;
     this.selection = true;
+
+    var vpt = this.viewportTransform;
+    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let [newStart, newEnd] = [Math.floor(-1*vpt[4]/scaleFactor+xDisplacement),
+                              Math.floor(-1*(vpt[4]/scaleFactor+xDisplacement)+(end-start))];
+    if(newStart < 0) {
+      newStart = 0;
+      newEnd = end - start;
+    } else if(newEnd > genomeMax) {
+      newEnd = genomeMax;
+      newStart = start + (genomeMax - end);
+    }
+    brush.extent([newStart, newEnd]);
+    brush(d3.select(".brush").transition());
+    $('#brush_start').val(newStart);
+    $('#brush_end').val(newEnd);
   });
   canvas.on('mouse:wheel', function(opt) {
     opt.e.preventDefault();
@@ -385,6 +404,7 @@ function loadAll() {
   });
   $('#show_genome_labels_box').on('change', function() {
     showLabels = !showLabels;
+    xDisplacement = showLabels ? 120 : 0;
     alignToGC = null;
     draw();
   });
@@ -442,7 +462,7 @@ function drawScale(y, scaleX=scaleFactor) {
   if(!showScale) return;
 
   for(var w = 0; w < genomeMax; w+=scaleInterval) {
-    canvas.add(new fabric.Line([0,0,0,20], {left: (w+(showLabels?120:0))*scaleX,
+    canvas.add(new fabric.Line([0,0,0,20], {left: (w*scaleX+xDisplacement),
           top: y*(spacing),
           stroke: 'black',
           strokeWidth: 1,
@@ -450,7 +470,7 @@ function drawScale(y, scaleX=scaleFactor) {
           fontFamily: 'sans-serif',
           selectable: false}));
 
-    canvas.add(new fabric.Text(w/1000 + " kB", {left: (w+5+(showLabels?120:0))*scaleX,
+    canvas.add(new fabric.Text(w/1000 + " kB", {left: (w*scaleX+5+xDisplacement),
           top: y*(spacing),
           stroke: 'black',
           strokeWidth: .25,
@@ -459,12 +479,12 @@ function drawScale(y, scaleX=scaleFactor) {
           selectable: false}));
   }
 
-  canvas.add(new fabric.Line([0,0,100,0], {left: (showLabels?120:0)*scaleX,
+  canvas.add(new fabric.Line([0,0,100,0], {left: xDisplacement,
         top: y*(1.25*spacing)-4,
         stroke: 'black',
         strokeWidth: 2,
         selectable: false}));
-  canvas.add(new fabric.Text("100 nts", {left: (15+(showLabels?120:0))*scaleX,
+  canvas.add(new fabric.Text("100 nts", {left: (15+xDisplacement),
         top: y*(1.25*spacing)-4,
         stroke: 'black',
         strokeWidth: 1,
@@ -514,7 +534,7 @@ function shadeGeneClusters(geneClusters, colors, y) {
         opacity: 0.25,
         selectable: false
       });
-      path.left += (showLabels?120:0)*scaleFactor;
+      path.left += xDisplacement;
       path.sendBackwards();
       canvas.sendToBack(path);
     }
@@ -614,7 +634,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
   }
 
   // line
-  canvas.add(new fabric.Line([0,0,genomeMax*scaleX,0], {left: (showLabels?120:0),
+  canvas.add(new fabric.Line([0,0,genomeMax*scaleX,0], {left: xDisplacement,
         top: spacing*y + 4,
         stroke: 'black',
         strokeWidth: 2,
@@ -630,9 +650,7 @@ function addGenome(label, gene_list, genomeID, y, scaleX=1) {
     //geneGroup.addWithUpdate(geneArrow(gene,y));   // IMPORTANT: only way to select is to select the group or use indices. maybe don't group them but some alternative which lets me scale them all at once?
     var geneIndex = genomeData.genomes.findIndex(g => genomeID == g[0]);
     var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
-    if(showLabels) {
-      geneObj.left += 120*scaleX;
-    }
+    geneObj.left += xDisplacement;
     canvas.add(geneObj);
 
     if(showGeneLabels) {
