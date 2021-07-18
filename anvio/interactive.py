@@ -698,7 +698,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.split_sequences = None
         if self.p_meta['splits_fasta']:
             filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
-            self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+
+            # the utils.get_FASTA_file_as_dictionary returns a dictionary, but anvi'o expects
+            # a different format when bottleroutes accesses interactive.split_sequences. so
+            # here we will first turn the naive dictionary from get_FASTA_file_as_dictionary
+            # into a dictionary with 'sequence' keys:
+            self.split_sequences = {}
+            split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+            for split_name in split_sequences:
+                self.split_sequences[split_name] = {'sequence': split_sequences[split_name]}
 
             names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
@@ -709,8 +717,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
-                self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
-                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
+                self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]['sequence']),
+                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id]['sequence'])}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
