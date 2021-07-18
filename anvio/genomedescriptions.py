@@ -169,10 +169,13 @@ class GenomeDescriptions(object):
     def get_HMM_sources_common_to_all_genomes(self):
         """Returns True if all HMM sources in all genomes are comparable"""
 
+        self.progress.new('Identifying HMM sources common to all genomes', progress_total_items=len(self.genomes))
+
         hmm_sources_info_per_genome = {}
 
         # first recover hmm sources info per genome
         for genome_name in self.genomes:
+            self.progress.update(f"Processing '{genome_name}' ...", increment=True)
             if 'hmm_sources_info' not in self.genomes[genome_name]:
                 # someone did not run the expensive `init` function. but we can recover this
                 # here quitte cheaply
@@ -183,6 +186,7 @@ class GenomeDescriptions(object):
 
             hmm_sources_info_per_genome[genome_name] = hmm_sources_info
 
+        self.progress.update('Finalizing ...')
         hmm_sources_found = set([])
         for genome_name in self.genomes:
             [hmm_sources_found.add(s) for s in hmm_sources_info.keys()]
@@ -193,6 +197,8 @@ class GenomeDescriptions(object):
             for hmm_source in hmm_sources_found:
                 if hmm_source not in hmm_sources_info_per_genome[genome_name] and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
+
+        self.progress.end()
 
         return hmm_sources_in_all_genomes
 
@@ -281,11 +287,15 @@ class GenomeDescriptions(object):
         else:
             # init will do everything. but it is very expensive. if the user does not want to
             # init all the bulky stuff, we still can give them the contents of the meta tables.
+            self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
+            self.progress.update('...')
             for genome_name in self.genomes:
+                self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
                 contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
                 for key in contigs_db.meta:
                     g[key] = contigs_db.meta[key]
+            self.progress.end()
 
         # we are done hre.
         self.initialized = True
