@@ -166,8 +166,12 @@ class GenomeDescriptions(object):
             sys.exit(0)
 
 
-    def get_HMM_sources_common_to_all_genomes(self):
-        """Returns True if all HMM sources in all genomes are comparable"""
+    def get_HMM_sources_common_to_all_genomes(self, sources_that_must_be_common=None):
+        """Returns True if all HMM sources in all genomes are comparable.
+
+        If you send a list of sources via the parameter `sources_sources_that_must_be_common`, it will also
+        ensure that they are common to all genomes, or will throw an exception.
+        """
 
         self.progress.new('Identifying HMM sources common to all genomes', progress_total_items=len(self.genomes))
 
@@ -199,6 +203,21 @@ class GenomeDescriptions(object):
                     hmm_sources_in_all_genomes.remove(hmm_source)
 
         self.progress.end()
+
+        if sources_that_must_be_common:
+            hmm_sources_missing = [s for s in sources_that_must_be_common if s not in hmm_sources_in_all_genomes]
+            if len(hmm_sources_missing):
+                genomes_missing_any = set([])
+
+                for genome_name in self.genomes:
+                    for hmm_source in sources_that_must_be_common:
+                        if hmm_source not in hmm_sources_info_per_genome[genome_name].keys():
+                            genomes_missing_any.add(genome_name)
+
+                raise ConfigError(f"Bad news. {P('An HMM source', len(hmm_sources_missing), alt='Some HMM sources')} "
+                                  f"you really need ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
+                                  f"missing from some of your contigs databases :/ Here is the list: [{', '.join(genomes_missing_any)}].")
+
 
         return hmm_sources_in_all_genomes
 
