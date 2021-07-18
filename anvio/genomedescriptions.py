@@ -573,7 +573,8 @@ class GenomeDescriptions(object):
         """Make sure self.genomes is good to go"""
 
         # depending on whether args requested such behavior.
-        self.list_HMM_info_and_quit()
+        if self.args.list_hmm_sources:
+            self.list_HMM_info_and_quit()
 
         self.progress.new('Sanity checks')
 
