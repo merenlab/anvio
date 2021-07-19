@@ -224,8 +224,7 @@ function loadAll() {
       if(dynamicScaleInterval) adjustScaleInterval();
 
       draw();
-      let moveToX = xDisplacement + b[0];
-      canvas.absolutePan({x: scaleFactor*moveToX, y: 0});
+      canvas.absolutePan({x: xDisplacement+scaleFactor*b[0], y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
   }
@@ -330,7 +329,7 @@ function loadAll() {
 
     if(this.isDragging) {
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      let newStart = Math.floor(-1*(vpt[4]/scaleFactor)-xDisplacement);
+      let newStart = Math.floor(-1*(vpt[4]+xDisplacement)/scaleFactor);
       let newEnd = newStart + (end-start);
     if(newStart < 0) {
       newStart = 0;
