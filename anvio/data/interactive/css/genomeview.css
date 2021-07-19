@@ -179,7 +179,8 @@ a{
 
 #scaleContainer{
     border-style: solid;
-    border-width: 1;
+    border-width: 3px;
+    background: white;
     padding: 15px;
     margin: 5px;
     position: fixed;
