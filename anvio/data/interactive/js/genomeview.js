@@ -354,7 +354,7 @@ function loadAll() {
     let tmp = scaleFactor * (0.999 ** delta);
     let diff = tmp - scaleFactor;
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-    let [newStart, newEnd] = [Math.floor(start - diff*genomeMax), Math.floor(end + diff*genomeMax];
+    let [newStart, newEnd] = [Math.floor(start - diff*genomeMax), Math.floor(end + diff*genomeMax)];
     if(newStart < 0) newStart = 0;
     if(newEnd > genomeMax) newEnd = genomeMax;
     if(newEnd - newStart < 50) return;
