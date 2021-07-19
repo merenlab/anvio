@@ -25,12 +25,6 @@ const issueCategories = [
         'content' : 'Did you hire a cut-rate terminal sweep?'
     },
     {
-        'category' : 'All my layers have melted', 
-        'content' : `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
-        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
-    },
-    {
         'category' : 'some issue', 
         'content' : 'some solution'
     },
@@ -63,7 +57,7 @@ function errorLandingContext(){ // onload function called by error-landing.html,
     issueCategories.map((issue, idx) => {
         document.querySelector('#content-div').innerHTML += 
         `
-            <h1 class='dropdown-category closed'>${issue.category} <span class='icon' id='icon-${idx}'>∆</span></h1>
+            <h1 class='dropdown-category closed'>${issue.category} <span class='icon'>∆</span></h1>
             <div class='dropdown-content'>
                 <p>${issue.content}</p>
             </div>
