@@ -741,7 +741,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
-        self.title = self.args.title or self.p_meta['sample_id']
+        self.title = self.title or self.p_meta['sample_id']
 
         # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
         self.update_items_additional_data_with_functions_per_split_summary()
