@@ -16,30 +16,17 @@ let ERROR_COUNT = 0
 const issueCategories = [
     {
         'category' : 'Dependencies failed to load', 
-        'content' : `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
-        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+        'content' : `This can occur when git submodules that Anvi'o relies on fail to load. If you are tracking the main development branch of Anvi'o,
+        try running <b> git submodule update --init </b>`
     },
     {
-        'category' : 'There are bats in my terminal', 
-        'content' : 'Did you hire a cut-rate terminal sweep?'
-    },
-    {
-        'category' : 'some issue', 
-        'content' : 'some solution'
-    },
-    {
-        'category' : 'some other issue', 
-        'content' : 'some other solution'
-    },
-    {
-        'category' : 'some big issue', 
-        'content' : 'some big solution'
+        'category' : 'ReferenceError - ___ is not defined', 
+        'content' : `This can occur when Anvi'o wants to utilize some variable which it cannot resolve. Until we get some better troubleshooting advice here, 
+        try running your interactive session with the <b>--debug</b> flag`
     },
 ]
 
 function alertDependencyError(dependencyError, isFinalDependency){
-
     if(dependencyError){
         ERROR_COUNT += 1
     }
@@ -50,15 +37,11 @@ function alertDependencyError(dependencyError, isFinalDependency){
 
 function displayAlert(error){
     let reason; 
-    switch (error) {
-        case error = 'dependencies':
-            reason = 'loading dependencies'
-            break;
-        case error = 'reference error':
-            reason = 'a variable reference error'
-            break;
-        default:
-            break;
+
+    if(error == 'dependencies'){
+        reason = 'loading dependencies'
+    } else if (error.includes('is not defined')){
+        reason = 'a variable reference error'
     }
 
     alert(`Anvi'o has encountered an error, possibly related to ${reason}. Anvi'o would like to offer some guidance in a new browser tab. Please make sure popups are enabled :)`)
