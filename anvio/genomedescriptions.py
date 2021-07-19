@@ -627,10 +627,12 @@ class GenomeDescriptions(object):
                                  "but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in "
                                  "the interface.")
             else:
-                self.progress.end()
-                raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You "
-                                   "can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
-                                                    (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs)))
+                self.progress.reset()
+                self.run.warning(f"Some of the genomes you have for this analysis are missing HMM hits for SCGs ({len(genomes_missing_hmms_for_scgs)} "
+                                 f"of {len(self.genomes)} of them, to be precise). This may or may not be critical for your downstream analyses, but "
+                                 f"if you would like to be certain or run into a bigger problem with the later steps of your analysis, you can always "
+                                 f"run `anvi-run-hmms` on your contigs databases to call your single-copy core genes. For the sake of brevity, here "
+                                 f"is the list of genomes missing SCGs: {','.join(genomes_missing_hmms_for_scgs)}.", header="SCGs ARE NOT CALLED", lc="yellow")
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         self.progress.update("Checking genome names ..")
