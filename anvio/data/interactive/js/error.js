@@ -48,7 +48,19 @@ function alertDependencyError(dependencyError, isFinalDependency){
     }
 }
 
-function displayAlert(reason){
+function displayAlert(error){
+    let reason; 
+    switch (error) {
+        case error = 'dependencies':
+            reason = 'loading dependencies'
+            break;
+        case error = 'reference error':
+            reason = 'a variable reference error'
+            break;
+        default:
+            break;
+    }
+
     alert(`Anvi'o has encountered an error, possibly related to ${reason}. Anvi'o would like to offer some guidance in a new browser tab. Please make sure popups are enabled :)`)
     window.open('error-landing.html', '_blank')
 }
@@ -73,5 +85,3 @@ function errorLandingContext(){ // onload function called by error-landing.html,
         }
     })
 }
-
-
