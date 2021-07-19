@@ -351,11 +351,19 @@ function loadAll() {
     opt.e.stopPropagation();
 
     var delta = opt.e.deltaY;
-    scaleFactor *= 0.999 ** delta;
-    if (scaleFactor > 4) scaleFactor = 4;
-    if (scaleFactor < 0.01) scaleFactor = 0.01;
-    if(dynamicScaleInterval) adjustScaleInterval();
-    draw();
+    let tmp = scaleFactor * (0.999 ** delta);
+    let diff = tmp - scaleFactor;
+    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let [newStart, newEnd] = [Math.floor(start - diff*genomeMax), Math.floor(end + diff*genomeMax];
+    if(newStart < 0) newStart = 0;
+    if(newEnd > genomeMax) newEnd = genomeMax;
+    if(newEnd - newStart < 50) return;
+    
+    brush.extent([newStart, newEnd]);
+    brush(d3.select(".brush").transition()); // if zoom is slow or choppy, try removing .transition()
+    brush.event(d3.select(".brush"));
+    $('#brush_start').val(newStart);
+    $('#brush_end').val(newEnd);
   });
 
   $('#geneClusterInput').on('keydown', function(e) {
