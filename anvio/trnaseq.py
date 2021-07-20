@@ -5867,7 +5867,8 @@ class DatabaseConverter(object):
                                                 key=lambda summary_Nb: -len(summary_Nb.string))
 
         names_seeds_with_conflict = set()
-        for seed in seeds:
+        seed_indices_below_feature_threshold = []
+        for seed_index, seed in enumerate(seeds):
             while True:
                 # Remove the longest N (Nu or Nb) with inconsistent full-length profiles until only
                 # N with consistent full-length profiles remain. Exit the while loop at this point.
@@ -5971,6 +5972,10 @@ class DatabaseConverter(object):
                         else:
                             selected_summary = seed.summaries_M[0].summaries_Nb[0]
                     seed.feature_dict = selected_summary.feature_dict
+
+                    if selected_summary.feature_threshold_start < 0:
+                        seed.meets_feature_threshold = False
+                        seed_indices_below_feature_threshold.append(seed_index)
                     break
                 names_seeds_with_conflict.add(seed.name)
 
@@ -6023,6 +6028,8 @@ class DatabaseConverter(object):
                     seed.string = seed.summaries_M[0].consensus_string
                     selected_summary = seed.summaries_M[0].summaries_Nb[0]
                 seed.feature_dict = selected_summary.feature_dict
+        for seed_index in seed_indices_below_feature_threshold[::-1]:
+            seeds.pop(seed_index)
 
 
         progress.update("Assigning anticodons")
