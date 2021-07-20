@@ -635,6 +635,21 @@ function viewCluster(gc) {
 
       var geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
       canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
+
+      var shadow = new fabric.Shadow({
+        color: 'red',
+        blur: 30
+      });
+      var arrow = canvas.getObjects().filter(obj => obj.id == 'arrow' && obj.genomeID == genome[0] && obj.geneID == targetGeneID)[0];
+      arrow.set('shadow', shadow);
+      canvas.renderAll();
+      arrow.animate('shadow.blur', 0, {
+        duration: 3000,
+        onChange: canvas.renderAll.bind(canvas),
+        onComplete: function(){ arrow.shadow = null; },
+        easing: fabric.util.ease['easeInQuad']
+      });
+
       return [i, geneMid];
     }
   } else {
