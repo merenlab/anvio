@@ -7522,22 +7522,22 @@ class ResultTabulator(object):
                         extremum_in_seq = feature_dict['d_loop_start']
                     elif ordinal_extremum_name == 'd_loop_prealpha_stop':
                         alpha_start_in_seq = feature_dict['alpha_start']
-                        extremum_in_seq = alpha_start_in_seq - 1
+                        extremum_in_seq = alpha_start_in_seq - 1 if pd.notnull(alpha_start_in_seq) else np.nan
                     elif ordinal_extremum_name == 'd_loop_alpha_start':
                         extremum_in_seq = alpha_start_in_seq = feature_dict['alpha_start']
                     elif ordinal_extremum_name == 'd_loop_alpha_stop':
                         extremum_in_seq = alpha_stop_in_seq = feature_dict['alpha_stop']
                     elif ordinal_extremum_name == 'd_loop_postalpha_start':
-                        extremum_in_seq = alpha_stop_in_seq + 1
+                        extremum_in_seq = alpha_stop_in_seq + 1 if pd.notnull(alpha_stop_in_seq) else np.nan
                     elif ordinal_extremum_name == 'd_loop_postalpha_stop':
                         beta_start_in_seq = feature_dict['beta_start']
-                        extremum_in_seq = beta_start_in_seq - 1
+                        extremum_in_seq = beta_start_in_seq - 1 if pd.notnull(beta_start_in_seq) else np.nan
                     elif ordinal_extremum_name == 'd_loop_beta_start':
                         extremum_in_seq = beta_start_in_seq
                     elif ordinal_extremum_name == 'd_loop_beta_stop':
                         extremum_in_seq = beta_stop_in_seq = feature_dict['beta_stop']
                     elif ordinal_extremum_name == 'd_loop_postbeta_start':
-                        extremum_in_seq = beta_stop_in_seq + 1
+                        extremum_in_seq = beta_stop_in_seq + 1 if pd.notnull(beta_stop_in_seq) else np.nan
                     elif ordinal_extremum_name == 'd_loop_postbeta_stop':
                         extremum_in_seq = feature_dict['d_loop_stop']
 
