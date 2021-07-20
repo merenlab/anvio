@@ -249,7 +249,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     function checkInRange(){ // check to see if SV data point is within user specified range
-        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
+        if(p.branch_support >= supportValueData.numberRange[0] * 100 && p.branch_support <= supportValueData.numberRange[1] * 100){
             return true
         } else {
             return false
