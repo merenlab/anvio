@@ -368,7 +368,7 @@ function loadAll() {
 
   $('#geneClusterInput').on('keydown', function(e) {
     if(e.keyCode == 13) { // 13 = enter key
-      alignToCluster($(this).val());
+      viewCluster($(this).val());
       $(this).blur();
     }
   });
@@ -597,25 +597,65 @@ function checkGeneLabels() {
 function alignToCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
+  var [firstGenomeID, targetGeneMid] = viewCluster(gc);
+  if(firstGenomeID != null) {
     alignToGC = gc;
 
-    for(genome of genomeData.genomes) {
-      var genomeGCs = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][alignToGC][genome[0]];
-      if(genomeGCs.length == 0) continue;
-      var targetGeneID = genomeGCs[0]; /* TODO: implementation for multiple matching gene IDs */
-      var targetGene = genome[1].genes.gene_calls[targetGeneID];
-      var genePos = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-      var windowCenter = canvas.getWidth()/2 - canvas.viewportTransform[4]; // canvas.getWidth()/2 is clientX of center of screen
-      var shift = windowCenter - genePos;
-      canvas.viewportTransform[4] += (shift*scaleFactor);
-      break;
+    for(var i = firstGenomeID+1; i < genomeData.genomes.length; i++) {
+      let geneMids = getGenePosForGenome(i, alignToGC);
+      if(geneMids == null) continue;
+      var geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
+      var shift = targetGeneMid - geneMid;
+      // TODO: shift the current genome by 'shift'
+      // This implementation requires completion of
+        // a) individual genome scale 'rulers'
+        // b) genome group objects to shift encapsulated genes at once
     }
-
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
-  draw();
+  // draw();
+    }
+
+/*
+ * returns tuple [a,b] where
+ *  a is index of the first genome containing `gc` and
+ *  b is NT position of the middle of the target gene
+*/
+function viewCluster(gc) {
+  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+
+  if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
+    for(var i = 0; i < genomeData.genomes.length; i++) {
+      let genome = genomeData.genomes[i];
+      var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genome[0]];
+      if(targetGenes.length == 0) continue;
+      var targetGeneID = targetGenes[0]; /* TODO: implementation for multiple matching gene IDs */
+      var targetGene = genome[1].genes.gene_calls[targetGeneID];
+
+      var geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
+      canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
+      return [i, geneMid];
+    }
+  } else {
+    console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
+  }
+  return null;
+}
+
+/* return NT position of the middle of the gene in a given genome with a specified gene cluster */
+function getGenePosForGenome(genomeID, gc) {
+  let genome = genomeData.genomes[genomeID];
+  var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genome[0]];
+  if(targetGenes.length == 0) return null;
+
+  let mids = [];
+  for(geneID of targetGenes) {
+    let gene = genome[1].genes.gene_calls[geneID];
+    let geneMid = gene.start + (gene.stop - gene.start) / 2;
+    mids.push(geneMid);
+  }
+  return mids;
 }
 
 function setGenomeSpacing(newSpacing) {
