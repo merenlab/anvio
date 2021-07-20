@@ -317,8 +317,8 @@ function loadAll() {
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
       if(vpt[4] > 125) vpt[4] = 125;
-      if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - 250)
-      vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - 250;
+      if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125)
+      vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125;
       this.requestRenderAll();
       this.lastPosX = e.clientX;
     }
@@ -618,6 +618,7 @@ function viewCluster(gc) {
 
       var geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
       canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
+      canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125, 125);
 
       updateScalePos();
 
