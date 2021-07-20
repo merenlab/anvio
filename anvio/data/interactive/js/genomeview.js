@@ -324,25 +324,8 @@ function loadAll() {
     }
   });
   canvas.on('mouse:up', function(opt) {
-    var vpt = this.viewportTransform;
-    this.setViewportTransform(vpt);
-
-    if(this.isDragging) {
-    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      let newStart = Math.floor(-1*(vpt[4]+xDisplacement)/scaleFactor);
-      let newEnd = newStart + (end-start);
-    if(newStart < 0) {
-      newStart = 0;
-      newEnd = end - start;
-    } else if(newEnd > genomeMax) {
-      newEnd = genomeMax;
-      newStart = start + (genomeMax - end);
-    }
-    brush.extent([newStart, newEnd]);
-    brush(d3.select(".brush").transition());
-    $('#brush_start').val(newStart);
-    $('#brush_end').val(newEnd);
-    }
+    this.setViewportTransform(this.viewportTransform);
+    if(this.isDragging) updateScalePos();
     this.isDragging = false;
     this.selection = true;
   });
@@ -635,6 +618,8 @@ function viewCluster(gc) {
 
       var geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
       canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
+
+      updateScalePos();
 
       var shadow = new fabric.Shadow({
         color: 'red',
@@ -1022,6 +1007,23 @@ function adjustScaleInterval() { // dynamically set scale interval based on scal
   let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
   scaleInterval = newInterval;
   $('#genome_scale_interval').val(scaleInterval);
+}
+
+function updateScalePos() {
+  let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  let newStart = Math.floor(-1*(canvas.viewportTransform[4]+xDisplacement)/scaleFactor);
+  let newEnd = newStart + (end-start);
+  if(newStart < 0) {
+    newStart = 0;
+    newEnd = end - start;
+  } else if(newEnd > genomeMax) {
+    newEnd = genomeMax;
+    newStart = start + (genomeMax - end);
+  }
+  brush.extent([newStart, newEnd]);
+  brush(d3.select(".brush").transition());
+  $('#brush_start').val(newStart);
+  $('#brush_end').val(newEnd);
 }
 
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
