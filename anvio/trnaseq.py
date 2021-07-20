@@ -6553,26 +6553,26 @@ class DatabaseConverter(object):
 
     def generate_auxiliary_database(self, db_cov_type):
         if db_cov_type == 'specific':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_auxiliary_db_path, self.contigs_db_hash, create_new=True, db_variant='trnaseq')
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
                     auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'nonspecific':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_auxiliary_db_path, self.contigs_db_hash, create_new=True, db_variant='trnaseq')
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
                     auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'combined':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.combined_auxiliary_db_path, self.contigs_db_hash, create_new=True, db_variant='trnaseq')
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.combined_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
                     auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id].tolist())
                     auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id].tolist())
         elif db_cov_type == 'summed':
-            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summed_auxiliary_db_path, self.contigs_db_hash, create_new=True, db_variant='trnaseq')
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summed_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
@@ -7394,7 +7394,7 @@ class ResultTabulator(object):
         anticodon_aa_iter = iter(anticodon_aa_items)
 
         convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
-        spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash)
+        spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
         spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
         spec_aux_db.close()
         spec_aux_df['contig_name'] = spec_aux_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
@@ -7403,7 +7403,7 @@ class ResultTabulator(object):
 
         do_nonspec = True if self.nonspec_profile_db_path else False
         if do_nonspec:
-            nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash)
+            nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
             nonspec_aux_df = nonspec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
             nonspec_aux_db.close()
             nonspec_aux_df['contig_name'] = spec_aux_df['contig_name'].values

@@ -128,6 +128,7 @@ max_num_items_for_hierarchical_clustering = 20000
 # we use uint16 as dtype for numpy arrays when we work on & store coverages
 # which has limit of 65536, so this constant needs to be smaller than that.
 # If you change this value please change all dtypes.
+# (This does not apply to the tRNA-seq workflow, which stores coverages as uint32.)
 max_depth_for_coverage = 60000
 
 # default methods for hierarchical cluster analyses
