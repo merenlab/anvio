@@ -1706,7 +1706,7 @@ class TRNASeqDataset(object):
 
 
     def sanity_check(self):
-        """Check `anvi-trnaseq` user inputs."""
+        """Check `anvi-trnaseq` arguments."""
         if os.path.exists(self.out_dir):
             self.existing_output_directory_sanity_check()
 
@@ -5260,7 +5260,7 @@ class DatabaseConverter(object):
 
 
     def sanity_check(self):
-        """Check user inputs before proceeding."""
+        """Check `anvi-convert-trnaseq-database` arguments."""
         for trnaseq_db_path in self.trnaseq_db_paths:
             utils.is_trnaseq_db(trnaseq_db_path)
         self.populate_trnaseq_dbs_info_dict()
@@ -5843,15 +5843,14 @@ class DatabaseConverter(object):
                     for summary_Nb in summary_M.summaries_Nb:
                         string_N_seed_dict[summary_Nb.string] = new_seed
 
-        progress.update("Finalizing seeds")
-
+        progress.update("...")
         # The seed references in the dict need to be dereplicated.
         seeds = list({seed.name: seed for seed in string_N_seed_dict.values()}.values())
 
         # Disregard seeds that do not reach the 5' feature threshold.
         seeds = [seed for seed in seeds if seed.meets_feature_threshold]
 
-
+        progress.update("Checking feature profiles")
         # Reads with extra 5' nts beyond the acceptor stem sometimes generate false positive tRNA
         # feature profiles. These erroneous profiles shoehorn the 5' extra nts into the profile
         # through nt accommodation in variable-length sections of the profile, such as the D loop.
@@ -6026,6 +6025,7 @@ class DatabaseConverter(object):
                 seed.feature_dict = selected_summary.feature_dict
 
 
+        progress.update("Assigning anticodons")
         # Assign the anticodon by comparing the mean specific coverage of N comprising the seed, a
         # simpler approximation of extracting the anticodon coverage from each N.
         for seed in seeds:
@@ -6047,6 +6047,7 @@ class DatabaseConverter(object):
         seeds = [seed for seed in seeds if seed.anticodon_string]
 
 
+        progress.update("Calculating coverages")
         self.sample_total_mean_spec_cov_dict = sample_total_mean_spec_cov_dict = defaultdict(int)
         self.sample_total_discriminator_spec_cov_dict = sample_total_discriminator_spec_cov_dict = defaultdict(int)
         for seed in seeds:
@@ -6115,7 +6116,9 @@ class DatabaseConverter(object):
         self.total_seed_length = sum([len(seed.string) for seed in seeds])
 
         self.set_sample_covs()
+        progress.update("Setting mod-induced substitutions")
         self.set_substitutions()
+        progress.update("Setting mod-induced indels")
         self.set_sample_indels()
 
         progress.end()
@@ -7205,7 +7208,7 @@ class ResultTabulator(object):
 
 
     def sanity_check(self):
-        """Check `anvi-tabulate-trnaseq` user inputs."""
+        """Check `anvi-tabulate-trnaseq` arguments."""
         self.contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if self.contigs_db_info.variant != 'trnaseq':
             raise ConfigError("The input contigs database is not of the `trnaseq` variant...")
