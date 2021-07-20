@@ -286,8 +286,8 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         function makeCircle(){ // time to make the gravy
             setDetails(calculatePercentile())
 
-            circle.setAttribute('cx', p0.x)
-            circle.setAttribute('cy', p0.y)
+            circle.setAttribute('cx', p.xy.x)
+            circle.setAttribute('cy', p.xy.y)
             circle.setAttribute('r', radius)
             circle.setAttribute('id', p.id)
             circle.setAttribute('fill', supportValueData.symbolColor )
