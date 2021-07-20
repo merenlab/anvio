@@ -3207,6 +3207,27 @@ D = {
              'required': False,
              'help': "The path to an anvi'o profile database containing nonspecific coverage information on tRNA seeds. "
                      "`anvi-convert-trnaseq-database` optionally generates a nonspecific profile database from a tRNA-seq experiment."}
+                ),
+    'seeds-specific-txt': (
+            ['--seeds-specific-txt', '-s'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file containing data on tRNA seeds including specific coverages. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
+                ),
+    'seeds-nonspecific-txt': (
+            ['--seeds-nonspecific-txt', '-n'],
+            {'metavar': 'TEXT_FILE',
+             'required': False,
+             'help': "A tab-delimited text file containing data on tRNA seeds including nonspecific coverages. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
+                ),
+    'modifications-txt': (
+            ['--modifications-txt', '-m'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file containing modification data on tRNA seeds. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
     )
 }
 
