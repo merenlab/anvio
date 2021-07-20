@@ -7500,7 +7500,7 @@ class ResultTabulator(object):
                                            t_species,
                                            t_percent_id,
                                            sample_name,
-                                           str(mean_cov),
+                                           str(round(mean_cov, 1)),
                                            str(rel_mean_cov),
                                            str(rel_discriminator_cov)])
 
