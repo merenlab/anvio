@@ -247,7 +247,6 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 }
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
-
     function checkInRange(){ // check to see if SV data point is within user specified range
         if(p.branch_support >= supportValueData.numberRange[0] * 100 && p.branch_support <= supportValueData.numberRange[1] * 100){
             return true
@@ -260,7 +259,8 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         if($('#tree_type').val() == 'circlephylogram'){
             drawText(svg_id, p.xy, parseFloat(p.branch_support / 100).toFixed($('#support_floating_precision').val()), supportValueData.fontSize, 'right', 'black', 'baseline', true)
         } else {
-            drawRotatedText(svg_id, p.xy, parseFloat(p.branch_support / 100).toFixed($('#support_floating_precision').val()), -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            // drawRotatedText(svg_id, p.xy, parseFloat(p.branch_support / 100).toFixed($('#support_floating_precision').val()), -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            drawRotatedText(svg_id, p.xy, parseFloat(p.branch_support / 100), -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
         }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
@@ -431,7 +431,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family
     text.appendChild(textNode);
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
-
+    
     // trim long text
 
     if (maxLength > 0)
