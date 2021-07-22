@@ -2830,11 +2830,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
 
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
-            #ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
-
-            #if not len(ko_in_bin):
-                #self.progress.reset()
-                #self.run.warning(f"It seems the bin '{bin_name}' contains zero KOfam hits. Just so you know.")
 
             metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(split_list=splits_in_bin, bin_name=bin_name)
 
@@ -2881,7 +2876,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         metagenome_metabolism_superdict = {}
         metagenome_ko_superdict = {}
 
-        #contigs_in_metagenome = list(set([tpl[3] for tpl in kofam_gene_split_contig]))
         contigs_to_splits = self.get_contigs_and_splits_for_metagenome()
         num_contigs = len(contigs_to_splits.keys())
 
@@ -2894,7 +2888,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             splits_in_contig = contigs_to_splits[contig]
             if anvio.DEBUG:
                 self.run.info_single(f"{len(splits_in_contig)} splits recovered from contig {contig} ✌")
-            #ko_in_contig = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_contig]
+
             metabolism_dict_for_contig, ko_dict_for_contig = self.mark_kos_present_for_list_of_splits(split_list=splits_in_contig, bin_name=contig)
 
 
@@ -3026,8 +3020,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
-
-            #kofam_hits_info = self.init_hits_and_splits()
             self.init_paths_for_modules()
 
             if self.add_coverage:
