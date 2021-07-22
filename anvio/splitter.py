@@ -364,10 +364,6 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
 
         bin_pan_db.disconnect()
 
-        # let's generate views. first we need to learn learning genomes from the view data.
-        table_structure=['gene_cluster'] + sorted(self.genomes)
-        table_types=['text'] + ['numeric'] * len(self.genomes)
-
         # summarizer.PanBin already has updated/pruned views dicts. that's why this loop will work.
         for view_name in ['gene_cluster_frequencies', 'gene_cluster_presence_absence']:
             TablesForViews(self.bin_pan_db_path).create_new_view(
@@ -623,7 +619,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
                 new_table_types = t.view_table_types
                 bin_profile_db.db.create_table(new_table_name, new_table_structure, new_table_types)
 
-                tables[new_table_name] = ('contig', self.split_names)
+                tables[new_table_name] = ('item', self.split_names)
 
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless

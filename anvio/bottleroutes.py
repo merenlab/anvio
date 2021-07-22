@@ -70,9 +70,10 @@ class BottleApplication(Bottle):
         # WSGI for bottle to use
         self._wsgi_for_bottle = "paste"
 
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+
         if self.interactive:
             self.args = self.interactive.args
-            A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
             self.read_only = A('read_only')
             self.browser_path = A('browser_path')
             self.export_svg = A('export_svg')

@@ -192,7 +192,7 @@ class ArgumentParser(argparse.ArgumentParser):
         args, unknown = parser.parse_known_args()
 
         if auto_fill_anvio_dbs:
-            if anvio.DEBUG:
+            if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
                 args = PopulateAnvioDBArgs(args, lazy_init=False).get_updated_args()
             else:
                 args = PopulateAnvioDBArgs(args).get_updated_args()
@@ -356,7 +356,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
 
 
     def get_updated_args(self):
-        if anvio.DEBUG:
+        if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
             self.run.warning(None, header="ANVI'O DBs FOUND", lc="yellow")
             if len(self.anvio_dbs):
                 for db_type in self.anvio_dbs:

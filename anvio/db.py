@@ -351,6 +351,8 @@ class DB:
         if DISPLAY_DB_CALLS:
             self.progress.reset()
             self.run.warning(None, header='EXECUTING SQL', lc='yellow', nl_before=1)
+            
+            self.run.info_single(f"{os.path.abspath(self.db_path)}", cut_after=None, level=0, mc='yellow', nl_after=1)
             self.run.info_single(f"{sql_query}", cut_after=None, level=0, mc='yellow', nl_after=1)
             sql_exec_timer = terminal.Timer()
 
