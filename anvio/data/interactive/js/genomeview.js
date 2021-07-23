@@ -635,7 +635,8 @@ function alignToCluster(gc) {
   if(firstGenomeID != null) {
     alignToGC = gc;
 
-    for(var i = firstGenomeID+1; i < genomeData.genomes.length; i++) {
+    let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
+    for(var i = index+1; i < genomeData.genomes.length; i++) {
       let geneMids = getGenePosForGenome(i, alignToGC);
       if(geneMids == null) continue;
       var geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
@@ -653,54 +654,62 @@ function alignToCluster(gc) {
  *
  * @param gc : target gene cluster ID
  * @returns tuple [a,b] where
- *  a is index of the first genome containing `gc` and
+ *  a is genomeID of the first genome containing `gc` and
  *  b is NT position of the middle of the target gene
 */
 function viewCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
+  var genes = [];
+  var geneMid;
+  var first = true;
+
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
-    for(var i = 0; i < genomeData.genomes.length; i++) {
-      let genome = genomeData.genomes[i];
-      var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genome[0]];
-      if(targetGenes.length == 0) continue;
+    for(genome of genomeData.genomes) {
+      var targetGenes = getGenesOfGC(genome[0], gc);
+      if(targetGenes == null) continue;
       var targetGeneID = targetGenes[0]; /* TODO: implementation for multiple matching gene IDs */
       var targetGene = genome[1].genes.gene_calls[targetGeneID];
+      genes.push({genome:genome[0],gene:targetGeneID});
 
-      var geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
+      if(first) {
+        geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
       canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
       canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125, 125);
-
       updateScalePos();
-
+        first = false;
+      }
+    }
       var shadow = new fabric.Shadow({
         color: 'red',
         blur: 30
       });
-      var arrow = canvas.getObjects().filter(obj => obj.id == 'arrow' && obj.genomeID == genome[0] && obj.geneID == targetGeneID)[0];
+    var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && genes.some(g => g.genome == obj.genomeID && g.gene == obj.geneID));
+    for(arrow of arrows) {
       arrow.set('shadow', shadow);
-      canvas.renderAll();
       arrow.animate('shadow.blur', 0, {
         duration: 3000,
         onChange: canvas.renderAll.bind(canvas),
         onComplete: function(){ arrow.shadow = null; },
         easing: fabric.util.ease['easeInQuad']
       });
-
-      return [i, geneMid];
     }
+    canvas.renderAll();
+    return [genome[0], geneMid];
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
-  }
   return null;
 }
+}
 
-/* return NT position of the middle of the gene in a given genome with a specified gene cluster */
+/*
+ *  @returns NT position of the middle of each gene in a given genome with a specified gene cluster
+ */
 function getGenePosForGenome(genomeID, gc) {
-  let genome = genomeData.genomes[genomeID];
-  var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genome[0]];
-  if(targetGenes.length == 0) return null;
+  var targetGenes = getGenesOfGC(genomeID, gc);
+  if(targetGenes == null) return null;
 
+  let genome = genomeData.genomes.find(g => g[0] == genomeID);
   let mids = [];
   for(geneID of targetGenes) {
     let gene = genome[1].genes.gene_calls[geneID];
@@ -708,6 +717,14 @@ function getGenePosForGenome(genomeID, gc) {
     mids.push(geneMid);
   }
   return mids;
+}
+
+/*
+ *  @returns array of geneIDs in a given genome with a specified gene cluster
+ */
+function getGenesOfGC(genomeID, gc) {
+  var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID];
+  return targetGenes.length > 0 ? targetGenes : null;
 }
 
 function setGenomeSpacing(newSpacing) {
@@ -774,8 +791,8 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
-    var geneIndex = genomeData.genomes.findIndex(g => genomeID == g[0]);
-    var geneObj = geneArrow(gene,geneID,genomeData.genomes[geneIndex][1].genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
+    let genome = genomeData.genomes.find(g => g[0] == genomeID)[1];
+    var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
     canvas.add(geneObj);
 
     if(showGeneLabels) {
@@ -820,8 +837,6 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       additionalDataLayers = group
     }
   })
-
-  let genomeIndex = genomeData.genomes.findIndex(g => genomeID == g[0]);
 
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
