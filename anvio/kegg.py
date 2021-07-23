@@ -4494,6 +4494,55 @@ class KeggModulesDatabase(KeggContext):
 
 ######### MODULES TABLE ACCESS FUNCTIONS #########
 
+    def get_modules_table_data_values_as_dict(self, data_names_of_interest=[]):
+        """This function loads the modules table and returns it as a dictionary (of data values only) keyed by module.
+
+        PARAMETERS
+        ==========
+        data_names_of_interest : list of str
+            the returned dictionary will contain only data names from this list. If the list is empty,
+            all data names are returned.
+
+        RETURNS
+        =======
+        module_dictionary : dict of dicts
+            data for each module in the modules table. Outer dictionary is keyed by module number and
+            inner dictionary is keyed by data name
+        """
+
+        if data_names_of_interest:
+            data_names_list = [f"'{n}'" for n in data_names_of_interest]
+            where_clause_string = f"data_name in ({','.join(data_names_list)})"
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_mod_table = self.db.get_table_as_dict(self.module_table_name, row_num_as_key=True)
+        # the returned dictionary is keyed by an arbitrary integer, and each value is a dict containing one row from the modules table
+        # ex of one row in this dict: 0: {'module': 'M00001', 'data_name': 'ENTRY', 'data_value': 'M00001', 'data_definition': 'Pathway', 'line': 1}
+
+        # now we convert this to a per-module dictionary
+        module_dictionary = {}
+        for entry in dict_from_mod_table:
+            mod = dict_from_mod_table[entry]['module']
+            data_name = dict_from_mod_table[entry]['data_name']
+            data_value = dict_from_mod_table[entry]['data_value']
+
+            if mod not in module_dictionary:
+                module_dictionary[mod] = {}
+
+            if data_name not in module_dictionary[mod]:
+                module_dictionary[mod][data_name] = data_value
+            else:
+                if isinstance(module_dictionary[mod][data_name], list):
+                    module_dictionary[mod][data_name].append(data_value)
+                else:
+                    # this is a data name that has multiple values, so we need to convert it to a list
+                    existing_val = module_dictionary[mod][data_name]
+                    module_dictionary[mod][data_name] = [existing_val, data_value]
+
+        return module_dictionary
+
+
     def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
