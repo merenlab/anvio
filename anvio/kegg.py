@@ -2038,6 +2038,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return kofam_gene_split_contig
 
 
+    def init_data_from_modules_db(self):
+        """This function reads mucho data from the MODULES.db into dictionaries for later access.
+
+        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules in the db.
+
+        We do this once at the start so as to reduce the number of on-the-fly database queries
+        that have to happen during the estimation process.
+        """
+
+        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+
+
     def init_paths_for_modules(self):
         """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
         all downstream functions to access.
@@ -2047,7 +2059,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.module_paths_dict = {}
-        modules = self.kegg_modules_db.get_all_modules_as_list()
+        modules = self.all_modules_in_db.keys()
         for m in modules:
             self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
 
@@ -2190,7 +2202,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Number of splits", len(split_list))
 
         # initialize all modules with empty lists and dicts for kos, gene calls
-        modules = self.kegg_modules_db.get_all_modules_as_list()
+        modules = self.all_modules_in_db.keys()
         all_kos = self.kegg_modules_db.get_all_knums_as_list()
         for mnum in modules:
             bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
@@ -2930,6 +2942,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         bins_found = []
         additional_keys = set([])
 
+        self.init_data_from_modules_db()
         self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
@@ -3020,6 +3033,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
+            self.init_data_from_modules_db()
             self.init_paths_for_modules()
 
             if self.add_coverage:
