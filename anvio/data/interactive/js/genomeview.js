@@ -238,6 +238,13 @@ function loadAll() {
 
   // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
 
+  // disable group selection
+  canvas.on('selection:created', (e) => {
+    if(e.target.type === 'activeSelection') {
+      canvas.discardActiveObject();
+    }
+  })
+
   canvas.on('mouse:over', (event) => {
     if(event.target && event.target.id === 'arrow'){
       showToolTip(event)
