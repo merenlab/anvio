@@ -465,9 +465,9 @@ function draw(scaleX=scaleFactor) {
 
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
+    xDisps[genome[0]] = xDisplacement;
     addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
     addLayers(label, genome[1], genome[0])
-    xDisps[genome[0]] = xDisplacement;
     labelSpacing += 30
     y++;
   }
