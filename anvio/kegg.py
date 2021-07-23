@@ -4068,6 +4068,16 @@ class KeggModulesDatabase(KeggContext):
 
     This DB should be created in the Kegg Data folder during KEGG setup, and will be populated with information from the
     Kegg Module files.
+
+    If you want to load an existing database from the python terminal, all you need is the path to the database and an
+    empty args object:
+    ```
+    >>> import argparse
+    >>> from anvio import kegg
+    >>> path_to_db = "YOUR/PATH/HERE/MODULES.db"
+    >>> args = argparse.Namespace()
+    >>> kegg.KeggModulesDatabase(path_to_db, args)
+    ```
     """
 
     def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
