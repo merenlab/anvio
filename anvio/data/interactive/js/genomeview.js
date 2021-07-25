@@ -607,12 +607,13 @@ function drawTestShades() {
 }
 
 /*
- *  Show/hide gene labels so that none intersect.
+ *  Show/hide gene labels to show the max amount possible s.t. none overlap.
  */
 function checkGeneLabels() {
   var labels = canvas.getObjects().filter(obj => obj.id == 'geneLabel');
   for(var i = 0; i < labels.length-1; i++) {
     if(arrowStyle == 3) {
+      // hide labels that don't fit inside pentagon arrows
       if(labels[i].width/2 > canvas.getObjects().filter(obj => obj.id == 'arrow')[i].width) {
         labels[i].visible = false;
         continue;
@@ -620,10 +621,11 @@ function checkGeneLabels() {
       labels[i].visible = true;
     }
     var p = i+1;
-    while(labels[i].intersectsWithObject(labels[p]) && p < labels.length-1) {
+    while(p < labels.length && labels[i].intersectsWithObject(labels[p])) {
       labels[p].visible = false;
       p++;
     }
+    if(p == labels.length) return;
     labels[p].visible = true;
     i = p - 1;
   }
