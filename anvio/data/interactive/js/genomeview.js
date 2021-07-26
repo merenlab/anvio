@@ -739,7 +739,7 @@ function getGenesOfGC(genomeID, gc) {
  */
 function glowGenes(geneParams) {
   // convert geneParams format (1) to format (2)
-  if(geneParams[0].geneID.length > 1) {
+  if(Array.isArray(geneParams[0].geneID)) {
     let newParams = [];
     for(genome of geneParams) {
       for(gene of genome.geneID) newParams.push({genomeID:genome[0], geneID:gene});
