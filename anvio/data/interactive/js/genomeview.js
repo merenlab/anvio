@@ -969,6 +969,26 @@ function buildGenomesTable(genomes, order){
   })
 }
 
+function buildAdditionalDataLayersTable(layerLabel){
+  var height; 
+  var margin; 
+  var template = '<tr id={layerLabel}>' +
+                  '<td> {layerLabel} </td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                  '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                  '</tr>'; 
+  template = template.replace(new RegExp('{height}', 'g'), height)
+                     .replace(new RegExp('{margin}', 'g'), margin)
+                     .replace(new RegExp('{genomeLabel}', 'g'), layerLabel);   
+  $('#tbody_additionalDataLayers').append(template);
+}
+
 function changeGenomeOrder(updatedOrder){
 
   let newGenomeOrder = []
