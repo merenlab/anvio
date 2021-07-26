@@ -742,7 +742,7 @@ function glowGenes(geneParams) {
   if(Array.isArray(geneParams[0].geneID)) {
     let newParams = [];
     for(genome of geneParams) {
-      for(gene of genome.geneID) newParams.push({genomeID:genome[0], geneID:gene});
+      for(gene of genome.geneID) newParams.push({genomeID:genome.genomeID, geneID:gene});
     }
     geneParams = newParams;
   }
