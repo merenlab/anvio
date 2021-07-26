@@ -679,7 +679,7 @@ function viewCluster(gc) {
       if(targetGenes == null) continue;
       var targetGeneID = targetGenes[0]; /* TODO: implementation for multiple matching gene IDs */
       var targetGene = genome[1].genes.gene_calls[targetGeneID];
-      genes.push({genome:genome[0],gene:targetGeneID});
+      genes.push({genomeID:genome[0],geneID:targetGeneID});
 
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
@@ -689,21 +689,7 @@ function viewCluster(gc) {
         first = false;
       }
     }
-      var shadow = new fabric.Shadow({
-        color: 'red',
-        blur: 30
-      });
-    var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && genes.some(g => g.genome == obj.genomeID && g.gene == obj.geneID));
-    for(arrow of arrows) {
-      arrow.set('shadow', shadow);
-      arrow.animate('shadow.blur', 0, {
-        duration: 3000,
-        onChange: canvas.renderAll.bind(canvas),
-        onComplete: function(){ arrow.shadow = null; },
-        easing: fabric.util.ease['easeInQuad']
-      });
-    }
-    canvas.renderAll();
+    glowGenes(genes);
     return [genome[0], geneMid];
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
@@ -734,6 +720,40 @@ function getGenePosForGenome(genomeID, gc) {
 function getGenesOfGC(genomeID, gc) {
   var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID];
   return targetGenes.length > 0 ? targetGenes : null;
+}
+
+/*
+ *  Add a temporary glow effect around given gene(s).
+ *
+ *  @param geneParams : array of dicts, in one of two formats:
+ *    (1) [{genomeID: gid_1, geneID: [id_1, id_2, ...]}, ...]
+ *    (2) [{genomeID: gid_1, geneID: id_1}, ...]
+ */
+function glowGenes(geneParams) {
+  // convert geneParams format (1) to format (2)
+  if(geneParams[0].geneID.length > 1) {
+    let newParams = [];
+    for(genome of geneParams) {
+      for(gene of genome.geneID) newParams.push({genomeID:genome[0], geneID:gene});
+    }
+    geneParams = newParams;
+  }
+
+  var shadow = new fabric.Shadow({
+    color: 'red',
+    blur: 30
+  });
+  var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && geneParams.some(g => g.genomeID == obj.genomeID && g.geneID == obj.geneID));
+  for(arrow of arrows) {
+    arrow.set('shadow', shadow);
+    arrow.animate('shadow.blur', 0, {
+      duration: 3000,
+      onChange: canvas.renderAll.bind(canvas),
+      onComplete: function(){ arrow.shadow = null; },
+      easing: fabric.util.ease['easeInQuad']
+    });
+  }
+  canvas.renderAll();
 }
 
 function setGenomeSpacing(newSpacing) {
