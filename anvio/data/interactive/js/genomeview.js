@@ -136,6 +136,14 @@ function processState(stateName, stateData){
     }
     stateData['additional-data-layers'].push(additionalDataObject)
   }
+  // working under the assumption that all genome groups with contain the same additional data layers, 
+  // we can query the first genome group for specific ADL and go from there
+  if(stateData['additional-data-layers'][0]['coverage']){
+    buildAdditionalDataLayersTable('coverage')
+  }
+  if(stateData['additional-data-layers'][0]['gcContent']){
+    buildAdditionalDataLayersTable('GC Content')
+  }
   
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
@@ -985,7 +993,7 @@ function buildAdditionalDataLayersTable(layerLabel){
                   '</tr>'; 
   template = template.replace(new RegExp('{height}', 'g'), height)
                      .replace(new RegExp('{margin}', 'g'), margin)
-                     .replace(new RegExp('{genomeLabel}', 'g'), layerLabel);   
+                     .replace(new RegExp('{layerLabel}', 'g'), layerLabel);   
   $('#tbody_additionalDataLayers').append(template);
 }
 
