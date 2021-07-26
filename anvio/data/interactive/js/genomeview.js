@@ -137,6 +137,14 @@ function processState(stateName, stateData){
     }
     stateData['additional-data-layers'].push(additionalDataObject)
   }
+  // working under the assumption that all genome groups with contain the same additional data layers, 
+  // we can query the first genome group for specific ADL and go from there
+  if(stateData['additional-data-layers'][0]['coverage']){
+    buildAdditionalDataLayersTable('coverage')
+  }
+  if(stateData['additional-data-layers'][0]['gcContent']){
+    buildAdditionalDataLayersTable('GC Content')
+  }
   
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
@@ -1071,6 +1079,26 @@ function buildGenomesTable(genomes, order){
   $("#tbody_genomes").on("sortupdate", (event, ui) => {
     changeGenomeOrder($("#tbody_genomes").sortable('toArray'))
   })
+}
+
+function buildAdditionalDataLayersTable(layerLabel){
+  var height; 
+  var margin; 
+  var template = '<tr id={layerLabel}>' +
+                  '<td> {layerLabel} </td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                  '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                  '<td>n/a</td>' +
+                  '<td>n/a</td>' +
+                  '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                  '</tr>'; 
+  template = template.replace(new RegExp('{height}', 'g'), height)
+                     .replace(new RegExp('{margin}', 'g'), margin)
+                     .replace(new RegExp('{layerLabel}', 'g'), layerLabel);   
+  $('#tbody_additionalDataLayers').append(template);
 }
 
 function changeGenomeOrder(updatedOrder){
