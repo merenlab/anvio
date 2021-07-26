@@ -1062,8 +1062,8 @@ function buildGenomesTable(genomes, order){
 }
 
 function buildAdditionalDataLayersTable(layerLabel){
-  var height; 
-  var margin; 
+  var height = '50'; 
+  var margin = '25'; 
   var template = '<tr id={layerLabel}>' +
                   '<td> {layerLabel} </td>' +
                   '<td>n/a</td>' +
