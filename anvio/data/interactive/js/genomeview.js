@@ -1066,7 +1066,7 @@ function buildAdditionalDataLayersTable(layerLabel){
   var margin = '25'; 
   var template = '<tr id={layerLabel}>' +
                   '<td> {layerLabel} </td>' +
-                  '<td>n/a</td>' +
+                  '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
                   '<td>n/a</td>' +
                   '<td>n/a</td>' +
                   '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
