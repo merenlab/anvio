@@ -181,8 +181,7 @@ function processState(stateName, stateData){
       $('#brush_end').val(stop);
       brush.extent([start, stop]);
           brush(d3.select(".brush").transition());
-          brush.event(d3.select(".brush").transition());
-    
+          brush.event(d3.select(".brush").transition());   
     })
   }
   
