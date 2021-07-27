@@ -108,55 +108,76 @@ function serializeSettings(){
 }
 
 function processState(stateName, stateData){
-  stateData['genome-order-method'] = [{
-      'name' : 'cats',
-      'ordering' : 'some order'
-    }, {
-      'name' : 'dogs',
-      'ordering' : 'some other order'
-    }, {
-      'name' : 'birds',
-      'ordering' : 'beaks to tails'
-    }
-  ]
-  stateData['additional-data-layers'] = []
-  stateData['display'] = {} 
-  stateData['display']['additionalDataLayers'] = {}
-
+  
   calculateMaxGenomeLength()
-
-  for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
-    let gcContent = []
-    let coverage = []
-
-    for(let j = 0; j < genomeMax; j++){
-      gcContent.push(Math.floor(Math.random() * 45))
-      coverage.push(Math.floor(Math.random() * 45))
-    }
-    let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
-    let additionalDataObject = {
-      'genome' : genomeLabel,
-      'coverage' : coverage,
-      'coverage-color' : 'pink',
-      'gcContent' : gcContent,
-      'gcContent-color' : 'purple'
-    }
-    stateData['additional-data-layers'].push(additionalDataObject)
+  
+  if(stateData.hasOwnProperty('additional-data-layers')){
+    // TODO process     
+  } else {
+    stateData['additional-data-layers'] = []
+    generateMockADL()
   }
+  
   // working under the assumption that all genome groups with contain the same additional data layers, 
   // we can query the first genome group for specific ADL and go from there
   if(stateData['additional-data-layers'][0]['coverage']){
     buildAdditionalDataLayersTable('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
+
   if(stateData['additional-data-layers'][0]['gcContent']){
     buildAdditionalDataLayersTable('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
+
   if(stateData.hasOwnProperty('genome-order-method')){
     stateData['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
+  } else {
+    generateMockGenomeOrder()
+    stateData['genome-order-method'].forEach(orderMethod => {
+      $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
+    })
+  }
+  if(stateData.hasOwnProperty('display')){
+    // TODO process
+  } else {
+    stateData['display'] = {} 
+    stateData['display']['additionalDataLayers'] = {}
+  }
+
+  function generateMockADL(){
+    for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
+      let gcContent = []
+      let coverage = []
+  
+      for(let j = 0; j < genomeMax; j++){
+        gcContent.push(Math.floor(Math.random() * 45))
+        coverage.push(Math.floor(Math.random() * 45))
+      }
+      let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
+      let additionalDataObject = {
+        'genome' : genomeLabel,
+        'coverage' : coverage,
+        'coverage-color' : 'pink',
+        'gcContent' : gcContent,
+        'gcContent-color' : 'purple'
+      }
+      stateData['additional-data-layers'].push(additionalDataObject)
+    }
+  }
+  function generateMockGenomeOrder(){
+    stateData['genome-order-method'] = [{
+        'name' : 'cats',
+        'ordering' : 'some order'
+      }, {
+        'name' : 'dogs',
+        'ordering' : 'some other order'
+      }, {
+        'name' : 'birds',
+        'ordering' : 'beaks to tails'
+    }]
   }
 }
 
