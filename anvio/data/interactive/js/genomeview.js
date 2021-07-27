@@ -140,12 +140,36 @@ function processState(stateName, stateData){
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   }
+
   if(stateData.hasOwnProperty('display')){
     // TODO process
   } else {
     stateData['display'] = {} 
     stateData['display']['additionalDataLayers'] = {}
   }
+  if(stateData['display'].hasOwnProperty('bookmarks')){
+    // map over and render to settings pane
+  } else {
+    stateData['display']['bookmarks'] = [ // gen mock data 
+      {
+        name : 'marky mark',
+        start : '5000',
+        stop : '9000'
+      },
+      {
+        name : 'marklemore',
+        start : '15000',
+        stop : '19000'
+      },
+      {
+        name : 'my beautiful cluster',
+        start : '25000',
+        stop : '29000'
+      },
+    ]
+    // map over and render to settings
+  }
+  
 
   function generateMockADL(){
     for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
