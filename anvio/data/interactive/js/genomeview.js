@@ -108,9 +108,6 @@ function serializeSettings(){
 }
 
 function processState(stateName, stateData){
-  // set genome order options from state
-
-  // mock data
   stateData['genome-order-method'] = [{
       'name' : 'cats',
       'ordering' : 'some order'
