@@ -156,18 +156,10 @@ function processState(stateName, stateData){
     buildAdditionalDataLayersTable('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
-  if(stateData['genome-order-method']){
+  if(stateData.hasOwnProperty('genome-order-method')){
     stateData['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
-  }
-  if(s)
-
-  if(stateData['some-data']){
-    state['some-data'] = stateData['some-data']
-  }
-  if(stateData['some-other-data']){
-    state['some-other-data'] = stateData['some-other-data']
   }
 }
 
