@@ -148,7 +148,12 @@ function processState(stateName, stateData){
     stateData['display']['additionalDataLayers'] = {}
   }
   if(stateData['display'].hasOwnProperty('bookmarks')){
-    // map over and render to settings pane
+    stateData['display']['bookmarks'].map(bookmark => {
+      $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
+    })
+    $('#bookmarks-select').change(function(){
+      console.log($(this).val());
+    })
   } else {
     stateData['display']['bookmarks'] = [ // gen mock data 
       {
@@ -167,7 +172,12 @@ function processState(stateName, stateData){
         stop : '29000'
       },
     ]
-    // map over and render to settings
+    stateData['display']['bookmarks'].map(bookmark => {
+      $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
+    })
+    $('#bookmarks-select').change(function(){
+      console.log($(this).val());
+    })
   }
   
 
