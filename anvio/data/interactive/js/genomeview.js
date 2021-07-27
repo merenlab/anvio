@@ -116,6 +116,8 @@ function processState(stateName, stateData){
     }
   ]
   stateData['additional-data-layers'] = []
+  stateData['display'] = {} 
+  stateData['display']['additionalDataLayers'] = {}
 
   calculateMaxGenomeLength()
 
@@ -1098,8 +1100,14 @@ function buildAdditionalDataLayersTable(layerLabel){
 }
 
 function toggleAdditionalDataLayer(e){
-  console.log(e.target.checked, e.target.id)
-  // TODO need some kind of data store for ADL that can be mutated here and then read by draw() method
+  let layer = e.target.id.split('-')[0]
+
+  if(e.target.checked){
+    stateData['display']['additionalDataLayers'][layer] = true 
+  } else {
+    stateData['display']['additionalDataLayers'][layer] = false
+  }
+  draw()
 }
 
 function changeGenomeOrder(updatedOrder){
