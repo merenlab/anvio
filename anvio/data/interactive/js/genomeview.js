@@ -101,6 +101,12 @@ function loadState(){
     })
 }
 
+function serializeSettings(){
+  // TODO same process as the serializeSettings() function for anvi-interactive
+  // first we run through all of the UI element default values and store them as state
+  // then we update them as necessary below in processState
+}
+
 function processState(stateName, stateData){
   // set genome order options from state
 
@@ -150,12 +156,12 @@ function processState(stateName, stateData){
     buildAdditionalDataLayersTable('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
-  
   if(stateData['genome-order-method']){
     stateData['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   }
+  if(s)
 
   if(stateData['some-data']){
     state['some-data'] = stateData['some-data']
