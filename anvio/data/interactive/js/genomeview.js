@@ -174,7 +174,6 @@ function loadAll() {
 
   // Find max length genome
   calculateMaxGenomeLength()
-  canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 100;
@@ -482,6 +481,8 @@ function draw(scaleX=scaleFactor) {
   labelSpacing = 30 // reset to default value upon each draw() call
   yOffset = 0 // reset 
   var y = 1;
+  canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
+
 
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
@@ -1106,9 +1107,11 @@ function toggleAdditionalDataLayer(e){
   let layer = e.target.id.split('-')[0]
 
   if(e.target.checked){
-    stateData['display']['additionalDataLayers'][layer] = true 
+    stateData['display']['additionalDataLayers'][layer] = true
+    maxGroupSize += 1 
   } else {
     stateData['display']['additionalDataLayers'][layer] = false
+    maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   draw()
 }
