@@ -41,6 +41,7 @@
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
+ var maxGroupSize = 1 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer. 
 
  var alignToGC = null;
 
@@ -143,9 +144,11 @@ function processState(stateName, stateData){
   // we can query the first genome group for specific ADL and go from there
   if(stateData['additional-data-layers'][0]['coverage']){
     buildAdditionalDataLayersTable('Coverage')
+    maxGroupSize += 1 // increase group size if coverage layer exists
   }
   if(stateData['additional-data-layers'][0]['gcContent']){
     buildAdditionalDataLayersTable('GC_Content')
+    maxGroupSize += 1 // increase group size if GC layer exists
   }
   
   if(stateData['genome-order-method']){
@@ -1138,10 +1141,10 @@ function calculateMaxGenomeLength(){
 function calculateMainCanvasHeight(){ // to be used for setting vertical spacing
   let optimalLayerHeight = 50 // arbitrary value to be set by us experts ;) 
   let additionalSpacing = 100 // arbitrary additional spacing for ruler(s), cosmetics
-  let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer
-  stateData['additional-data-layers'].map(group => {
-    Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null
-  })
+  // let maxGroupSize = 1; // default, as each group will always have at minimum a 'genome' layer
+  // stateData['additional-data-layers'].map(group => {
+  //   Object.keys(group).length > maxGroupSize ? maxGroupSize = Object.keys(group).length : null
+  // })
   let mainCanvasHeight = optimalLayerHeight * maxGroupSize * genomeData.genomes.length + additionalSpacing
   return mainCanvasHeight
 }
