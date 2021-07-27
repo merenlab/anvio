@@ -1089,7 +1089,7 @@ function buildAdditionalDataLayersTable(layerLabel){
                   '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
                   '<td>n/a</td>' +
                   '<td>n/a</td>' +
-                  '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                  '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show></input></td>' +
                   '</tr>'; 
   template = template.replace(new RegExp('{height}', 'g'), height)
                      .replace(new RegExp('{margin}', 'g'), margin)
