@@ -140,10 +140,10 @@ function processState(stateName, stateData){
   // working under the assumption that all genome groups with contain the same additional data layers, 
   // we can query the first genome group for specific ADL and go from there
   if(stateData['additional-data-layers'][0]['coverage']){
-    buildAdditionalDataLayersTable('coverage')
+    buildAdditionalDataLayersTable('Coverage')
   }
   if(stateData['additional-data-layers'][0]['gcContent']){
-    buildAdditionalDataLayersTable('GC Content')
+    buildAdditionalDataLayersTable('GC_Content')
   }
   
   if(stateData['genome-order-method']){
@@ -1089,12 +1089,17 @@ function buildAdditionalDataLayersTable(layerLabel){
                   '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
                   '<td>n/a</td>' +
                   '<td>n/a</td>' +
-                  '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show></input></td>' +
+                  '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
                   '</tr>'; 
   template = template.replace(new RegExp('{height}', 'g'), height)
                      .replace(new RegExp('{margin}', 'g'), margin)
                      .replace(new RegExp('{layerLabel}', 'g'), layerLabel);   
   $('#tbody_additionalDataLayers').append(template);
+}
+
+function toggleAdditionalDataLayer(e){
+  console.log(e.target.checked, e.target.id)
+  // TODO need some kind of data store for ADL that can be mutated here and then read by draw() method
 }
 
 function changeGenomeOrder(updatedOrder){
