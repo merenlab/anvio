@@ -1172,7 +1172,6 @@ function toggleAdditionalDataLayer(e){
 }
 
 function changeGenomeOrder(updatedOrder){
-
   let newGenomeOrder = []
   updatedOrder.map(label => {
     genomeData.genomes.map(genome => {
