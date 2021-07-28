@@ -1238,6 +1238,21 @@ function updateScalePos() {
   $('#brush_end').val(newEnd);
 }
 
+function createBookmark(){
+  if(!$('#create_bookmark_input').val()){
+    alert('please provide a name for your bookmark :)')
+    return 
+  }
+
+  stateData['display']['bookmarks'].push(
+    {
+      name : $('#create_bookmark_input').val(), 
+      start : $('#brush_start').val(), 
+      stop : $('#brush_end').val(), 
+    }
+  )
+}
+
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
   var $originals = tr.children();
   var $helper = tr.clone();
