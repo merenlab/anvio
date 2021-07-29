@@ -997,7 +997,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       hasControls: false,
       hasBorders: false,
       lockScaling: true,
-      objectCaching: false,
+      objectCaching: false, // TODO implement for ADL graphs
       groupID: genomeID
     });
     ruler.addWithUpdate();
