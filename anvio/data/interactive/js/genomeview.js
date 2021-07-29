@@ -109,7 +109,6 @@ function serializeSettings(){
 }
 
 function processState(stateName, stateData){
-  
   calculateMaxGenomeLength()
   
   if(stateData.hasOwnProperty('additional-data-layers')){
@@ -417,7 +416,7 @@ function loadAll() {
 
     if(opt.target.id == 'genomeLine') canvas.sendToBack(opt.target);
     if(this.shades) {
-      canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
+      clearShades();
       this.shades = false;
     }
 
@@ -455,7 +454,13 @@ function loadAll() {
     $('#brush_end').val(newEnd);
   });
 
-  $('#geneClusterInput').on('keydown', function(e) {
+  $('#alignClusterInput').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      alignToCluster($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#panClusterInput').on('keydown', function(e) {
     if(e.keyCode == 13) { // 13 = enter key
       viewCluster($(this).val());
       $(this).blur();
@@ -677,6 +682,13 @@ function shadeGeneClusters(geneClusters, colors) {
 }
 
 /*
+ *  Clear all gene links from the canvas.
+ */
+function clearShades() {
+  canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
+}
+
+/*
  *  Temporary function for testing shades.
  */
 function drawTestShades() {
@@ -710,24 +722,31 @@ function checkGeneLabels() {
 
 /*
  *  Shift genomes horizontally to align genes around the target gene cluster.
- *  TODO: finish implementation and add to settings panel
  *
  *  @param gc : target gene cluster ID
  */
 function alignToCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  var [firstGenomeID, targetGeneMid] = viewCluster(gc);
+  let [firstGenomeID, targetGeneMid] = viewCluster(gc);
   if(firstGenomeID != null) {
     alignToGC = gc;
-
     let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
     for(var i = index+1; i < genomeData.genomes.length; i++) {
-      let geneMids = getGenePosForGenome(i, alignToGC);
+      let genomeID = genomeData.genomes[i][0];
+      let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if(geneMids == null) continue;
-      var geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
-      var shift = targetGeneMid - geneMid;
-      // TODO: shift the current genome by 'shift'
+      let geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
+      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[genomeID]);
+      let gid = genomeData.genomes[i][0];
+      let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
+      for(o of objs) o.left += shift;
+      xDisps[genomeID] += shift;
+      canvas.setViewportTransform(canvas.viewportTransform);
+
+      // clear and redraw shades
+      clearShades();
+      drawTestShades();
     }
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
@@ -746,9 +765,10 @@ function alignToCluster(gc) {
 function viewCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  var genes = [];
-  var geneMid;
-  var first = true;
+  let genes = [];
+  let geneMid;
+  let first = true;
+  let firstGenomeID;
 
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
     for(genome of genomeData.genomes) {
@@ -764,10 +784,11 @@ function viewCluster(gc) {
       canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125, 125);
       updateScalePos();
         first = false;
+        firstGenomeID = genome[0];
       }
     }
     glowGenes(genes);
-    return [genome[0], geneMid];
+    return (first ? null : [firstGenomeID, geneMid]);
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   return null;
@@ -975,7 +996,6 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       groupID: genomeID
     });
     ruler.addWithUpdate();
-    canvas.renderAll();
     canvas.add(ruler);
   }
 
