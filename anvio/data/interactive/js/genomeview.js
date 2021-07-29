@@ -31,6 +31,7 @@
  var mainCanvasHeight; 
  var spacing = 50; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
+ var marginTop = 20; // vertical margin at the top of the genome display
  var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
@@ -41,7 +42,7 @@
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
- var maxGroupSize = 1 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer. 
+ var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer and scale ruler.
 
  var alignToGC = null;
 
@@ -108,7 +109,6 @@ function serializeSettings(){
 }
 
 function processState(stateName, stateData){
-  
   calculateMaxGenomeLength()
   
   if(stateData.hasOwnProperty('additional-data-layers')){
@@ -128,6 +128,11 @@ function processState(stateName, stateData){
   if(stateData['additional-data-layers'][0]['gcContent']){
     buildAdditionalDataLayersTable('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
+  }
+
+  if(stateData['additional-data-layers'][0]['ruler']) {
+    buildAdditionalDataLayersTable('Genome Ruler')
+    // don't increase group size for ruler since it requires less space
   }
 
   if(stateData.hasOwnProperty('genome-order-method')){
@@ -201,7 +206,8 @@ function processState(stateName, stateData){
         'coverage' : coverage,
         'coverage-color' : 'pink',
         'gcContent' : gcContent,
-        'gcContent-color' : 'purple'
+        'gcContent-color' : 'purple',
+        'ruler' : true // TODO: store any genome-specific scale data here
       }
       stateData['additional-data-layers'].push(additionalDataObject)
     }
@@ -323,7 +329,8 @@ function loadAll() {
   })
 
   if(showGeneLabels && arrowStyle != 3) {
-    spacing = 150; // TODO maybe we refactor this out into a setSpacing() method for clarity?
+    marginTop = 60;
+    spacing = 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
   }
 
@@ -409,7 +416,7 @@ function loadAll() {
 
     if(opt.target.id == 'genomeLine') canvas.sendToBack(opt.target);
     if(this.shades) {
-      canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
+      clearShades();
       this.shades = false;
     }
 
@@ -447,7 +454,13 @@ function loadAll() {
     $('#brush_end').val(newEnd);
   });
 
-  $('#geneClusterInput').on('keydown', function(e) {
+  $('#alignClusterInput').on('keydown', function(e) {
+    if(e.keyCode == 13) { // 13 = enter key
+      alignToCluster($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#panClusterInput').on('keydown', function(e) {
     if(e.keyCode == 13) { // 13 = enter key
       viewCluster($(this).val());
       $(this).blur();
@@ -535,7 +548,7 @@ function draw(scaleX=scaleFactor) {
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
   yOffset = 0 // reset 
-  var y = 1;
+  var y = marginTop;
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
 
@@ -545,11 +558,11 @@ function draw(scaleX=scaleFactor) {
     addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
     addLayers(label, genome[1], genome[0])
     labelSpacing += 30
-    y++;
+    y+=spacing;
   }
-  drawScale(y);
-  drawTestShades();
+  //drawScale(y);
   checkGeneLabels();
+  drawTestShades();
 }
 
 function drawScale(y, scaleX=scaleFactor) {
@@ -557,7 +570,7 @@ function drawScale(y, scaleX=scaleFactor) {
 
   for(var w = 0; w < genomeMax; w+=scaleInterval) {
     canvas.add(new fabric.Line([0,0,0,20], {left: (w*scaleX+xDisplacement),
-          top: y*(spacing),
+          top: y,
           stroke: 'black',
           strokeWidth: 1,
           fontSize: 10,
@@ -565,7 +578,7 @@ function drawScale(y, scaleX=scaleFactor) {
           selectable: false}));
 
     canvas.add(new fabric.Text(w/1000 + " kB", {left: (w*scaleX+5+xDisplacement),
-          top: y*(spacing),
+          top: y,
           stroke: 'black',
           strokeWidth: .25,
           fontSize: 15,
@@ -574,12 +587,12 @@ function drawScale(y, scaleX=scaleFactor) {
   }
 
   canvas.add(new fabric.Line([0,0,100,0], {left: xDisplacement,
-        top: y*(1.25*spacing)-4,
+        top: (1.25*y)-4,
         stroke: 'black',
         strokeWidth: 2,
         selectable: false}));
   canvas.add(new fabric.Text("100 nts", {left: (15+xDisplacement),
-        top: y*(1.25*spacing)-4,
+        top: (1.25*y)-4,
         stroke: 'black',
         strokeWidth: 1,
         fontSize: 20,
@@ -631,11 +644,11 @@ function zoomOut() {
  *
  *  @param geneClusters : array of GC IDs to be shaded
  *  @param colors       : dict defining color of each shade, in the form {geneClusterID : hexColor}
- *  @param y            : y-position of first genome
  */
-function shadeGeneClusters(geneClusters, colors, y) {
+function shadeGeneClusters(geneClusters, colors) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
+  let y = marginTop;
   for(var i = 0; i < genomeData.genomes.length-1; i++) {
     let genomeA = genomeData.genomes[i][1].genes.gene_calls;
     let genomeB = genomeData.genomes[i+1][1].genes.gene_calls;
@@ -669,10 +682,17 @@ function shadeGeneClusters(geneClusters, colors, y) {
 }
 
 /*
+ *  Clear all gene links from the canvas.
+ */
+function clearShades() {
+  canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
+}
+
+/*
  *  Temporary function for testing shades.
  */
 function drawTestShades() {
-  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"},spacing);
+  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"});
 }
 
 /*
@@ -702,24 +722,31 @@ function checkGeneLabels() {
 
 /*
  *  Shift genomes horizontally to align genes around the target gene cluster.
- *  TODO: finish implementation and add to settings panel
  *
  *  @param gc : target gene cluster ID
  */
 function alignToCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  var [firstGenomeID, targetGeneMid] = viewCluster(gc);
+  let [firstGenomeID, targetGeneMid] = viewCluster(gc);
   if(firstGenomeID != null) {
     alignToGC = gc;
-
     let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
     for(var i = index+1; i < genomeData.genomes.length; i++) {
-      let geneMids = getGenePosForGenome(i, alignToGC);
+      let genomeID = genomeData.genomes[i][0];
+      let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if(geneMids == null) continue;
-      var geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
-      var shift = targetGeneMid - geneMid;
-      // TODO: shift the current genome by 'shift'
+      let geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
+      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[genomeID]);
+      let gid = genomeData.genomes[i][0];
+      let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
+      for(o of objs) o.left += shift;
+      xDisps[genomeID] += shift;
+      canvas.setViewportTransform(canvas.viewportTransform);
+
+      // clear and redraw shades
+      clearShades();
+      drawTestShades();
     }
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
@@ -738,9 +765,10 @@ function alignToCluster(gc) {
 function viewCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  var genes = [];
-  var geneMid;
-  var first = true;
+  let genes = [];
+  let geneMid;
+  let first = true;
+  let firstGenomeID;
 
   if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
     for(genome of genomeData.genomes) {
@@ -756,10 +784,11 @@ function viewCluster(gc) {
       canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125, 125);
       updateScalePos();
         first = false;
+        firstGenomeID = genome[0];
       }
     }
     glowGenes(genes);
-    return [genome[0], geneMid];
+    return (first ? null : [firstGenomeID, geneMid]);
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   return null;
@@ -871,7 +900,7 @@ function setGenomeLabelSize(newSize) {
 
 function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
   if(showLabels) {
-    canvas.add(new fabric.Text(genomeLabel, {top: spacing*y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
+    canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   // line
@@ -879,11 +908,12 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
         id: 'genomeLine',
         groupID: genomeID,
         left: xDisplacement,
-        top: spacing*y + 4,
+        top: y + 4,
         stroke: 'black',
         strokeWidth: 2,
         lockMovementY: true,
         hasControls: false,
+        hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
 
@@ -907,7 +937,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
 
       if(arrowStyle == 3) {
         label.set({
-          top: -5+spacing*y,
+          top: y-5,
           left: xDisplacement+(gene.start+50)*scaleX,
           scaleX: 0.5,
           scaleY: 0.5,
@@ -917,7 +947,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
         label.set({
           scaleX: 0.5,
           scaleY: 0.5,
-          top: -30+spacing*y,
+          top: y-30,
           left: xDisplacement+(gene.start+50)*scaleX,
           angle: -10,
           selectionColor:'rgba(128,128,128,.2)'
@@ -936,9 +966,42 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
+  if(additionalDataLayers['ruler']) {
+    let startingTop = marginTop + yOffset + 30
+    let startingLeft = xDisps[genomeID]
+
+    let ruler = new fabric.Group();
+    for(let w = 0; w < genomeMax; w+=scaleInterval) {
+      let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
+            stroke: 'black',
+            strokeWidth: 1,
+            fontSize: 10,
+            fontFamily: 'sans-serif'});
+      let lbl = new fabric.Text(w/1000 + " kB", {left: (w*scaleFactor+5),
+            stroke: 'black',
+            strokeWidth: .25,
+            fontSize: 15,
+            fontFamily: 'sans-serif'});
+      ruler.add(tick);
+      ruler.add(lbl);
+    }
+    ruler.set({
+      left: startingLeft,
+      top: startingTop,
+      lockMovementY: true,
+      hasControls: false,
+      hasBorders: false,
+      lockScaling: true,
+      objectCaching: false,
+      groupID: genomeID
+    });
+    ruler.addWithUpdate();
+    canvas.add(ruler);
+  }
+
   if(additionalDataLayers['coverage']){
     let maxCoverageValue = 0
-    let startingTop = 180 + yOffset
+    let startingTop = marginTop + yOffset + 60
     let startingLeft = xDisps[genomeID]
     let layerHeight = 50
     let pathDirective = [`M 0 0`]
@@ -962,6 +1025,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       fill : '', //additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
       lockMovementY: true,
       hasControls: false,
+      hasBorders: false,
       lockScaling: true,
       id : 'coverage graph', 
       groupID : genomeID,
@@ -972,7 +1036,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
 
   if(additionalDataLayers['gcContent']){
     let maxGCValue = 0
-    let startingTop = 240 + yOffset
+    let startingTop = marginTop + yOffset + 120
     let startingLeft = xDisps[genomeID]
     let layerHeight = 50
     let pathDirective = [`M 0 0`]
@@ -996,6 +1060,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
       lockMovementY: true,
       hasControls: false,
+      hasBorders: false,
       lockScaling: true,
       id : 'gcContent graph', 
       groupID : genomeID,
@@ -1003,7 +1068,8 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     })
     canvas.bringToFront(graphObj)
   } 
-  yOffset += 150
+
+  yOffset += spacing
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
@@ -1059,11 +1125,12 @@ function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
     groupID: genomeID,
     lockMovementY: true,
     hasControls: false,
+    hasBorders: false,
     lockScaling: true,
     gene: gene,
     geneID: geneID,
     genomeID: genomeID,
-    top: style == 3 ? -17+spacing*y : -11+spacing*y,
+    top: style == 3 ? y-17 : y-11,
     left: xDisplacement + (1.5+gene.start)*scaleX,
     fill: color,
     stroke: 'gray',
