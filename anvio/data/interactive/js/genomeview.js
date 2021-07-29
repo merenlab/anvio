@@ -1003,10 +1003,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     canvas.add(ruler);
   }
 
-  if(additionalDataLayers['coverage']){
-    if(!$('#Coverage-show').is(':checked')){
-      // do nothing, but don't return out of the function
-    } else {
+  if(additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
       let maxCoverageValue = 0
       let startingTop = marginTop + yOffset + 60
       let startingLeft = xDisps[genomeID]
@@ -1039,13 +1036,9 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         genome : additionalDataLayers['genome']
       })
       canvas.bringToFront(graphObj)
-    }
   } 
 
-  if(additionalDataLayers['gcContent']){
-    if(!$('#GC_Content-show').is(':checked')){
-      // do nothing, but don't return out of the function
-    } else {
+  if(additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
       let maxGCValue = 0
       let startingTop = marginTop + yOffset + 120
       let startingLeft = xDisps[genomeID]
@@ -1081,7 +1074,6 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     } 
   
     yOffset += spacing
-    }
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
