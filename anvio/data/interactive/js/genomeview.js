@@ -157,7 +157,12 @@ function processState(stateName, stateData){
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
     })
     $('#bookmarks-select').change(function(){
-      console.log($(this).val());
+      let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
+      $('#brush_start').val(start);
+      $('#brush_end').val(stop);
+      brush.extent([start, stop]);
+          brush(d3.select(".brush").transition());
+          brush.event(d3.select(".brush").transition());   
     })
   } else {
     stateData['display']['bookmarks'] = [ // gen mock data 
