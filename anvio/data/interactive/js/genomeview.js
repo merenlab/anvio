@@ -42,7 +42,7 @@
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
- var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer and scale ruler.
+ var maxGroupSize = 1 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer.
 
  var alignToGC = null;
 
@@ -733,7 +733,9 @@ function checkGeneLabels() {
 function alignToCluster(gc) {
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
-  let [firstGenomeID, targetGeneMid] = viewCluster(gc);
+  let targetGeneInfo = viewCluster(gc);
+  if(targetGeneInfo == null) return;
+  let [firstGenomeID, targetGeneMid] = targetGeneInfo;
   if(firstGenomeID != null) {
     alignToGC = gc;
     let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
@@ -752,10 +754,7 @@ function alignToCluster(gc) {
       clearShades();
       drawTestShades();
     }
-  } else {
-    console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
   }
-  // draw();
     }
 
 /*
