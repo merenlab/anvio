@@ -1005,76 +1005,84 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   }
 
   if(additionalDataLayers['coverage']){
-    let maxCoverageValue = 0
-    let startingTop = marginTop + yOffset + 60
-    let startingLeft = xDisps[genomeID]
-    let layerHeight = 50
-    let pathDirective = [`M 0 0`]
-
-    for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
-      additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
+    if(!$('#Coverage-show').is(':checked')){
+      // do nothing, but don't return out of the function
+    } else {
+      let maxCoverageValue = 0
+      let startingTop = marginTop + yOffset + 60
+      let startingLeft = xDisps[genomeID]
+      let layerHeight = 50
+      let pathDirective = [`M 0 0`]
+  
+      for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
+        additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
+      }
+  
+      for(let i = 0; i < 1000; i++){
+        let left = i * scaleFactor
+        let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
+        let segment = `L ${left} ${top}`
+        pathDirective.push(segment)
+      }
+  
+      let graphObj = new fabric.Path(pathDirective.join(' '))
+      graphObj.set({
+        top : startingTop,
+        left : startingLeft,
+        stroke : additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
+        fill : '', //additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
+        lockMovementY: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScaling: true,
+        id : 'coverage graph', 
+        groupID : genomeID,
+        genome : additionalDataLayers['genome']
+      })
+      canvas.bringToFront(graphObj)
     }
-
-    for(let i = 0; i < 1000; i++){
-      let left = i * scaleFactor
-      let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
-      let segment = `L ${left} ${top}`
-      pathDirective.push(segment)
-    }
-
-    let graphObj = new fabric.Path(pathDirective.join(' '))
-    graphObj.set({
-      top : startingTop,
-      left : startingLeft,
-      stroke : additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
-      fill : '', //additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
-      lockMovementY: true,
-      hasControls: false,
-      hasBorders: false,
-      lockScaling: true,
-      id : 'coverage graph', 
-      groupID : genomeID,
-      genome : additionalDataLayers['genome']
-    })
-    canvas.bringToFront(graphObj)
   } 
 
   if(additionalDataLayers['gcContent']){
-    let maxGCValue = 0
-    let startingTop = marginTop + yOffset + 120
-    let startingLeft = xDisps[genomeID]
-    let layerHeight = 50
-    let pathDirective = [`M 0 0`]
-
-    for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
-      additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
+    if(!$('#GC_Content-show').is(':checked')){
+      // do nothing, but don't return out of the function
+    } else {
+      let maxGCValue = 0
+      let startingTop = marginTop + yOffset + 120
+      let startingLeft = xDisps[genomeID]
+      let layerHeight = 50
+      let pathDirective = [`M 0 0`]
+  
+      for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
+        additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
+      }
+  
+      for(let i = 0; i < 1000; i++){ // 
+        let left = i * scaleFactor
+        let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
+        let segment = `L ${left} ${top}`
+        pathDirective.push(segment)
+      }
+      
+      let graphObj = new fabric.Path(pathDirective.join(' '))
+      graphObj.set({
+        top : startingTop,
+        left : startingLeft,
+        stroke : additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+        fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+        lockMovementY: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScaling: true,
+        id : 'gcContent graph', 
+        groupID : genomeID,
+        genome : additionalDataLayers['genome']
+      })
+      canvas.bringToFront(graphObj)
+    } 
+  
+    yOffset += spacing
     }
-
-    for(let i = 0; i < 1000; i++){ // 
-      let left = i * scaleFactor
-      let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
-      let segment = `L ${left} ${top}`
-      pathDirective.push(segment)
-    }
-    
-    let graphObj = new fabric.Path(pathDirective.join(' '))
-    graphObj.set({
-      top : startingTop,
-      left : startingLeft,
-      stroke : additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
-      fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
-      lockMovementY: true,
-      hasControls: false,
-      hasBorders: false,
-      lockScaling: true,
-      id : 'gcContent graph', 
-      groupID : genomeID,
-      genome : additionalDataLayers['genome']
-    })
-    canvas.bringToFront(graphObj)
-  } 
-
-  yOffset += spacing
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
