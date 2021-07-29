@@ -221,18 +221,13 @@
                             </select>
                           </div>
                         </div>
-                        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                          <label id="shade_by_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="shade_by" data-original-title="" title="">Shade by:</label>
-                          <div class="col-md-8">
                             <select id="shade_by" style="margin-bottom: 10px" class="form-control input-xs">
                               <option value=1>Gene Cluster</option>
                               <option value=2>COG Category</option>
                               <option value=3>KEGG Category</option>
                               <option value=4>Custom</option>
                             </select>
-                          </div>
-                        </div>
-                        <p>TODO: Color table for shades</p>
+                        <p>TODO: Color table for shades (with opacity option too?)</p>
 
                         <span class="settings-header">Labels</span>
                         <table id="labels-table" style="margin-bottom: 20px;">
@@ -243,11 +238,11 @@
                             </tr>
                             <tr>
                               <td>Genome label size:</td>
-                              <td><input type="text" class="form-control input-sm" id="genome_label" value="15"></td>
+                              <td><input type="text" class="form-control input-sm" id="genome_label" value="15" style="margin-bottom: 10px"></td>
                             </tr>
                             <tr>
                               <td>Genome label color:</td>
-                              <td><div class="colorpicker" id="genome_label_color" color="#008000" style="background-color: #008000"></div></td>
+                              <td><div class="colorpicker" id="genome_label_color" color="#000000" style="background-color: #000000; margin-bottom: 10px"></div></td>
                             </tr>
                             <tr id="show_gene_labels">
                               <td>Show gene labels</td>
@@ -255,11 +250,21 @@
                             </tr>
                             <tr>
                               <td>Gene label size:</td>
-                              <td><input type="text" class="form-control input-sm" id="gene_label" value="40"></td>
+                              <td><input type="text" class="form-control input-sm" id="gene_label" value="40" style="margin-bottom: 10px"></td>
                             </tr>
                             <tr>
                               <td>Gene label color:</td>
-                              <td><div class="colorpicker" id="gene_label_color" color="#008000" style="background-color: #008000"></div></td>
+                              <td><div class="colorpicker" id="gene_label_color" color="#000000" style="background-color: #000000; margin-bottom: 10px"></div></td>
+                            </tr>
+                            <tr>
+                              <td>Gene label position:</td>
+                              <td><div class="col-md-8">
+                                <select id="gene_text_pos" style="margin-bottom: 10px; margin-left: 0px" class="form-control input-xs">
+                                  <option value='above'>Above</option>
+                                  <option value='slanted'>Slanted</option>
+                                  <option value='inside'>Inside</option>
+                                </select>
+                              </div></td>
                             </tr>
                           </tbody>
                         </table>

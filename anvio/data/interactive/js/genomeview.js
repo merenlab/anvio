@@ -36,7 +36,8 @@
  var showLabels = true; // show genome labels?
  var genomeLabelSize = 15; // font size of genome labels
  var showGeneLabels = true; // show gene labels?
- var geneLabelSize = 40; // font size of gene labels
+ var geneLabelSize = 40; // gene label font size
+ var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
  var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
@@ -419,7 +420,7 @@ function loadAll() {
     var gid = opt.target ? opt.target.groupID : null;
     if(gid == null) return;
 
-    if(opt.target.id == 'genomeLine') canvas.sendToBack(opt.target);
+    if(opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && arrowStyle == 3)) canvas.sendBackwards(opt.target);
     if(this.shades) {
       clearShades();
       this.shades = false;
@@ -508,6 +509,11 @@ function loadAll() {
   $('#arrow_style').on('change', function() {
       arrowStyle = parseInt($(this).val());
       draw();
+      $(this).blur();
+  });
+  $('#gene_text_pos').on('change', function() {
+      geneLabelPos = $(this).val();
+      if(!(geneLabelPos == "inside" && arrowStyle != 3)) draw();
       $(this).blur();
   });
   $('#show_genome_labels_box').on('change', function() {
@@ -931,28 +937,24 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
         id: 'geneLabel',
         groupID: genomeID,
         fontSize: geneLabelSize,
+        angle: geneLabelPos == "slanted" ? -10 : 0,
+        left: xDisps[genomeID]+(gene.start+50)*scaleX,
+        scaleX: 0.5,
+        scaleY: 0.5,
         hasControls: false,
         lockMovementX: true,
         lockMovementY: true,
         lockScaling: true,
         hoverCursor: 'text'
       });
-
       if(arrowStyle == 3) {
         label.set({
-          top: y-5,
-          left: xDisplacement+(gene.start+50)*scaleX,
-          scaleX: 0.5,
-          scaleY: 0.5,
+          top: geneLabelPos == "inside" ? y-5 : y-30,
           selectionColor:'rgba(128,128,128,.5)'
         });
       } else {
         label.set({
-          scaleX: 0.5,
-          scaleY: 0.5,
           top: y-30,
-          left: xDisplacement+(gene.start+50)*scaleX,
-          angle: -10,
           selectionColor:'rgba(128,128,128,.2)'
         });
       }
