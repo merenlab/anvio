@@ -131,7 +131,7 @@ function processState(stateName, stateData){
   }
 
   if(stateData['additional-data-layers'][0]['ruler']) {
-    buildAdditionalDataLayersTable('Genome Ruler')
+    buildAdditionalDataLayersTable('Ruler')
     // don't increase group size for ruler since it requires less space
   }
 
@@ -738,15 +738,14 @@ function alignToCluster(gc) {
     alignToGC = gc;
     let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
     for(var i = index+1; i < genomeData.genomes.length; i++) {
-      let genomeID = genomeData.genomes[i][0];
+      let gid = genomeData.genomes[i][0];
       let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if(geneMids == null) continue;
       let geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
-      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[genomeID]);
-      let gid = genomeData.genomes[i][0];
+      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[gid]);
       let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
       for(o of objs) o.left += shift;
-      xDisps[genomeID] += shift;
+      xDisps[gid] += shift;
       canvas.setViewportTransform(canvas.viewportTransform);
 
       // clear and redraw shades
@@ -971,7 +970,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
-  if(additionalDataLayers['ruler']) {
+  if(additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
     let startingTop = marginTop + yOffset + 30
     let startingLeft = xDisps[genomeID]
 
