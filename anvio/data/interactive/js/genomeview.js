@@ -956,7 +956,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       hasControls: false,
       hasBorders: false,
       lockScaling: true,
-      objectCaching: false, // TODO implement for ADL graphs
+      objectCaching: false, 
       groupID: genomeID
     });
     ruler.addWithUpdate();
@@ -991,6 +991,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         hasControls: false,
         hasBorders: false,
         lockScaling: true,
+        objectCaching: false,
         id : 'coverage graph', 
         groupID : genomeID,
         genome : additionalDataLayers['genome']
@@ -1026,6 +1027,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         hasControls: false,
         hasBorders: false,
         lockScaling: true,
+        objectCaching: false,
         id : 'gcContent graph', 
         groupID : genomeID,
         genome : additionalDataLayers['genome']
