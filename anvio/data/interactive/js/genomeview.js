@@ -789,8 +789,8 @@ function viewCluster(gc) {
 
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-      canvas.absolutePan({x: scaleFactor*geneMid + xDisplacement - canvas.getWidth()/2, y: 0});
-      canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125, 125);
+      canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
+      canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
       updateScalePos();
         first = false;
         firstGenomeID = genome[0];
@@ -916,7 +916,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
   let lineObj = new fabric.Line([0,0,genomeMax*scaleX,0], {
         id: 'genomeLine',
         groupID: genomeID,
-        left: xDisplacement,
+        left: xDisps[genomeID],
         top: y + 4,
         stroke: 'black',
         strokeWidth: 2,
@@ -1136,7 +1136,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
     geneID: geneID,
     genomeID: genomeID,
     top: style == 3 ? y-17 : y-11,
-    left: xDisplacement + (1.5+gene.start)*scaleX,
+    left: xDisps[genomeID] + (1.5+gene.start)*scaleX,
     fill: color,
     stroke: 'gray',
     strokeWidth: style == 3 ? 3 : 1.5
