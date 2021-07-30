@@ -974,7 +974,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
       }
   
-      for(let i = 0; i < 1000; i++){
+      for(let i = 0; i < genomeMax; i++){
         let left = i * scaleFactor
         let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
         let segment = `L ${left} ${top}`
@@ -1010,7 +1010,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
       }
   
-      for(let i = 0; i < 1000; i++){ // 
+      for(let i = 0; i < genomeMax; i++){ // 
         let left = i * scaleFactor
         let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
         let segment = `L ${left} ${top}`
