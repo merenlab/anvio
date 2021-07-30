@@ -39,7 +39,6 @@
  var geneLabelSize = 40; // gene label font size
  var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
- var showScale = true; // show nt scale?
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
@@ -312,7 +311,6 @@ function loadAll() {
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#show_genome_labels_box').attr("checked", showLabels);
   $('#show_gene_labels_box').attr("checked", showGeneLabels);
-  $('#show_scale_box').attr("checked", showScale);
   $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
 
   // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
@@ -526,10 +524,6 @@ function loadAll() {
     showGeneLabels = !showGeneLabels;
     draw();
   });
-  $('#show_scale_box').on('change', function() {
-    showScale = !showScale;
-    draw();
-  });
   $('#show_dynamic_scale_box').on('change', function() {
     dynamicScaleInterval = !dynamicScaleInterval;
   });
@@ -571,44 +565,9 @@ function draw(scaleX=scaleFactor) {
     labelSpacing += 30
     y+=spacing;
   }
-  //drawScale(y);
+
   checkGeneLabels();
   drawTestShades();
-}
-
-function drawScale(y, scaleX=scaleFactor) {
-  if(!showScale) return;
-
-  for(var w = 0; w < genomeMax; w+=scaleInterval) {
-    canvas.add(new fabric.Line([0,0,0,20], {left: (w*scaleX+xDisplacement),
-          top: y,
-          stroke: 'black',
-          strokeWidth: 1,
-          fontSize: 10,
-          fontFamily: 'sans-serif',
-          selectable: false}));
-
-    canvas.add(new fabric.Text(w/1000 + " kB", {left: (w*scaleX+5+xDisplacement),
-          top: y,
-          stroke: 'black',
-          strokeWidth: .25,
-          fontSize: 15,
-          fontFamily: 'sans-serif',
-          selectable: false}));
-  }
-
-  canvas.add(new fabric.Line([0,0,100,0], {left: xDisplacement,
-        top: (1.25*y)-4,
-        stroke: 'black',
-        strokeWidth: 2,
-        selectable: false}));
-  canvas.add(new fabric.Text("100 nts", {left: (15+xDisplacement),
-        top: (1.25*y)-4,
-        stroke: 'black',
-        strokeWidth: 1,
-        fontSize: 20,
-        fontFamily: 'sans-serif',
-        selectable: false}));
 }
 
 function zoomIn() {
