@@ -934,8 +934,12 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     let startingTop = marginTop + yOffset + 30
     let startingLeft = xDisps[genomeID]
 
+    // split ruler into several objects to avoid performance cost of large object pixel size
+    let nRulers = 20;
+    let w = 0;
+    for(let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
-    for(let w = 0; w < genomeMax; w+=scaleInterval) {
+      for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
       let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
             stroke: 'black',
             strokeWidth: 1,
@@ -948,7 +952,6 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
             fontFamily: 'sans-serif'});
       ruler.add(tick);
       ruler.add(lbl);
-    }
     ruler.set({
       left: startingLeft,
       top: startingTop,
@@ -959,10 +962,13 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       objectCaching: false, 
       groupID: genomeID
     });
+      }
     ruler.addWithUpdate();
     canvas.add(ruler);
   }
+  }
 
+  // TODO: refactor these into an 'addContinuousData() function?'
   if(additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
       let maxCoverageValue = 0
       let startingTop = marginTop + yOffset + 60
@@ -974,17 +980,20 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         additionalDataLayers['coverage'][i] > maxCoverageValue ? maxCoverageValue = additionalDataLayers['coverage'][i] : null 
       }
   
-      for(let i = 0; i < genomeMax; i++){
-        let left = i * scaleFactor
-        let top = [additionalDataLayers['coverage'][i] / maxCoverageValue] * layerHeight
+      // Too few groups or too many groups will reduce performance due to large object size or large # of objects, respectively
+      // Will have to experiment with different values of 'nGroups' to find the sweet spot
+      let nGroups = 20
+      let j = 0
+      for(let i = 0; i < nGroups; i++) {
+        for(; j < i*genomeMax/nGroups; j++){
+          let left = j * scaleFactor + startingLeft
+          let top = [additionalDataLayers['coverage'][j] / maxCoverageValue] * layerHeight
         let segment = `L ${left} ${top}`
         pathDirective.push(segment)
       }
-  
       let graphObj = new fabric.Path(pathDirective.join(' '))
       graphObj.set({
         top : startingTop,
-        left : startingLeft,
         stroke : additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
         fill : '', //additionalDataLayers['coverage-color'] ? additionalDataLayers['coverage-color'] : 'black',
         lockMovementY: true,
@@ -997,6 +1006,8 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         genome : additionalDataLayers['genome']
       })
       canvas.bringToFront(graphObj)
+        pathDirective = []
+      }
   } 
 
   if(additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
@@ -1010,17 +1021,18 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         additionalDataLayers['gcContent'][i] > maxGCValue ? maxGCValue = additionalDataLayers['gcContent'][i] : null 
       }
   
-      for(let i = 0; i < genomeMax; i++){ // 
-        let left = i * scaleFactor
-        let top = [additionalDataLayers['gcContent'][i] / maxGCValue] * layerHeight
+      let nGroups = 20
+      let j = 0
+      for(let i = 0; i < nGroups; i++) {
+        for(; j < i*genomeMax/nGroups; j++){
+          let left = j * scaleFactor + startingLeft
+          let top = [additionalDataLayers['gcContent'][j] / maxGCValue] * layerHeight
         let segment = `L ${left} ${top}`
         pathDirective.push(segment)
       }
-      
       let graphObj = new fabric.Path(pathDirective.join(' '))
       graphObj.set({
         top : startingTop,
-        left : startingLeft,
         stroke : additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
         fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
         lockMovementY: true,
@@ -1033,6 +1045,8 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
         genome : additionalDataLayers['genome']
       })
       canvas.bringToFront(graphObj)
+        pathDirective = []
+      }
     } 
   
     yOffset += spacing
