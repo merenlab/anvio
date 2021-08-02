@@ -837,7 +837,7 @@ function setPtsPerADL(newResolution) {
   if(isNaN(newResolution)) return;
   newResolution = parseInt(newResolution);
   if(newResolution < 0 || newResolution > genomeMax) {
-    alert(`Invalid value, genome spacing must be in range 0-.` + genomeMax);
+    alert(`Invalid value, genome spacing must be in range 0-${genomeMax}.`);
     return;
   }
   adlPtsPerLayer = newResolution;
