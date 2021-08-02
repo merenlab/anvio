@@ -156,6 +156,17 @@
                           <tbody id='tbody_additionalDataLayers'>
                           </tbody>
                         </table>
+                        <table id="adlCustomizationTable" style="margin-bottom: 20px;">
+                          <tbody>
+                            <tr>
+                              <td>Display up to N data points for numeric layers: N = </td>
+                              <td><input id="adl_pts_per_layer" class="form-control input-sm" type="text" value="10000" size="6"></td>
+                            </tr>
+                            <tr>
+                              <td><button id="showAllADLPtsBtn" type="button" class="btn btn-primary btn-xs" onclick="showAllADLPts()" class="btn btn-outline-primary">Show all data points</button></td>
+                            </tr>
+                          </tbody>
+                        </table>
                         
                         <span class="settings-header">Scale</span>
                         <table id="scaleTable" style="margin-bottom: 20px;">

@@ -534,6 +534,10 @@ function loadAll() {
   $('#show_dynamic_scale_box').on('change', function() {
     dynamicScaleInterval = !dynamicScaleInterval;
   });
+  $('#adl_pts_per_layer').on('change', function() {
+    setPtsPerADL($(this).val());
+    $(this).blur();
+  });
   $('#brush_start, #brush_end').keydown(function(ev) {
       if (ev.which == 13) { // enter key
           let start = parseInt($('#brush_start').val());
@@ -838,6 +842,11 @@ function setPtsPerADL(newResolution) {
   }
   adlPtsPerLayer = newResolution;
   draw();
+}
+
+function showAllADLPts() {
+  setPtsPerADL(genomeMax);
+  $('#showAllADLPtsBtn').blur();
 }
 
 function setGenomeSpacing(newSpacing) {
