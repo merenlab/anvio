@@ -42,7 +42,7 @@
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
- var maxGroupSize = 1 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer.
+ var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
 
  var alignToGC = null;
 
