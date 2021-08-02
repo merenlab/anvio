@@ -165,19 +165,25 @@ function processState(stateName, stateData){
           brush.event(d3.select(".brush").transition());   
     })
   } else {
+    calculateMaxGenomeLength() // remove later, only here to set max length for bookmark
     stateData['display']['bookmarks'] = [ // gen mock data 
       {
-        name : 'marky mark',
+        name : 'entire seq',
+        start : '0', 
+        stop : genomeMax
+      },
+      {
+        name : 'shindig',
         start : '5000',
         stop : '9000'
       },
       {
-        name : 'marklemore',
+        name : 'fiesta',
         start : '15000',
         stop : '19000'
       },
       {
-        name : 'my beautiful cluster',
+        name : 'party',
         start : '25000',
         stop : '29000'
       },
