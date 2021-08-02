@@ -973,7 +973,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       let maxCoverageValue = 0
       let startingTop = marginTop + yOffset + 60
       let startingLeft = xDisps[genomeID]
-      let layerHeight = 50
+      let layerHeight = spacing / maxGroupSize
       let pathDirective = [`M 0 0`]
   
       for(let i = 0; i < additionalDataLayers['coverage'].length; i++){
@@ -1014,7 +1014,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       let maxGCValue = 0
       let startingTop = marginTop + yOffset + 120
       let startingLeft = xDisps[genomeID]
-      let layerHeight = 50
+      let layerHeight = spacing / maxGroupSize
       let pathDirective = [`M 0 0`]
   
       for(let i = 0; i < additionalDataLayers['gcContent'].length; i++){ 
