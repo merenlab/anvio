@@ -41,6 +41,7 @@
  var labelSpacing = 30;  // spacing default for genomeLabel canvas
  var scaleInterval = 100; // nt scale intervals
  var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
+ var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
  var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
 
@@ -828,6 +829,17 @@ function glowGenes(geneParams) {
   canvas.renderAll();
 }
 
+function setPtsPerADL(newResolution) {
+  if(isNaN(newResolution)) return;
+  newResolution = parseInt(newResolution);
+  if(newResolution < 0 || newResolution > genomeMax) {
+    alert(`Invalid value, genome spacing must be in range 0-.` + genomeMax);
+    return;
+  }
+  adlPtsPerLayer = newResolution;
+  draw();
+}
+
 function setGenomeSpacing(newSpacing) {
   if(isNaN(newSpacing)) return;
   newSpacing = parseInt(newSpacing);
@@ -936,6 +948,8 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
+  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
+
   if(additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
     let startingTop = marginTop + yOffset + 30
     let startingLeft = xDisps[genomeID]
@@ -991,7 +1005,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       let nGroups = 20
       let j = 0
       for(let i = 0; i < nGroups; i++) {
-        for(; j < i*genomeMax/nGroups; j++){
+        for(; j < i*genomeMax/nGroups; j+=ptInterval){
           let left = j * scaleFactor + startingLeft
           let top = [additionalDataLayers['coverage'][j] / maxCoverageValue] * layerHeight
         let segment = `L ${left} ${top}`
@@ -1030,7 +1044,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       let nGroups = 20
       let j = 0
       for(let i = 0; i < nGroups; i++) {
-        for(; j < i*genomeMax/nGroups; j++){
+        for(; j < i*genomeMax/nGroups; j+=ptInterval){
           let left = j * scaleFactor + startingLeft
           let top = [additionalDataLayers['gcContent'][j] / maxGCValue] * layerHeight
         let segment = `L ${left} ${top}`
