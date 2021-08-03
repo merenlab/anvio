@@ -171,22 +171,26 @@ function processState(stateName, stateData){
       {
         name : 'entire seq',
         start : '0', 
-        stop : genomeMax
+        stop : genomeMax,
+        description : ''
       },
       {
         name : 'shindig',
         start : '5000',
-        stop : '9000'
+        stop : '9000', 
+        description : ''
       },
       {
         name : 'fiesta',
         start : '15000',
-        stop : '19000'
+        stop : '19000', 
+        description : ''
       },
       {
         name : 'party',
         start : '25000',
-        stop : '29000'
+        stop : '29000', 
+        description : ''
       },
     ]
     stateData['display']['bookmarks'].map(bookmark => {
@@ -1320,7 +1324,8 @@ function createBookmark(){
     {
       name : $('#create_bookmark_input').val(), 
       start : $('#brush_start').val(), 
-      stop : $('#brush_end').val(), 
+      stop : $('#brush_end').val(),
+      description : $('#create_bookmark_description').val(),  
     }
   )
 }
