@@ -1314,6 +1314,9 @@ function updateScalePos() {
   $('#brush_end').val(newEnd);
 }
 
+/*
+ *  capture user bookmark values and store obj in state
+ */
 function createBookmark(){
   if(!$('#create_bookmark_input').val()){
     alert('please provide a name for your bookmark :)')
