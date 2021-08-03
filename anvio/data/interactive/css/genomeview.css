@@ -83,7 +83,7 @@ g.scale rect.background{
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
     opacity: 0.9;
-    width: 420px;
+    width: 530px;
     padding: 20px;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
