@@ -25,13 +25,21 @@ image:
 
 {{ program.authors | safe }}
 
-## Can provide
-
-<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
-
 ## Can consume
 
+{% if program.requires %}
 <p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% else %}
+This program seems to know what its doing. It needs no input material from its user. Good program.
+{% endif %}
+
+## Can provide
+
+{% if program.provides %}
+<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+{% else %}
+This program does not seem to provide any artifacts. Such programs usually print out some information for you to see or alter some anvi'o artifacts without producing any immediate outputs.
+{% endif %}
 
 ## Usage
 
