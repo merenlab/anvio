@@ -964,44 +964,9 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   if(additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-    let startingTop = marginTop + yOffset + 30
-    let startingLeft = xDisps[genomeID]
-
-    // split ruler into several objects to avoid performance cost of large object pixel size
-    let nRulers = 20;
-    let w = 0;
-    for(let i = 0; i < nRulers; i++) {
-    let ruler = new fabric.Group();
-      for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
-      let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
-            stroke: 'black',
-            strokeWidth: 1,
-            fontSize: 10,
-            fontFamily: 'sans-serif'});
-      let lbl = new fabric.Text(w/1000 + " kB", {left: (w*scaleFactor+5),
-            stroke: 'black',
-            strokeWidth: .25,
-            fontSize: 15,
-            fontFamily: 'sans-serif'});
-      ruler.add(tick);
-      ruler.add(lbl);
-    ruler.set({
-      left: startingLeft,
-      top: startingTop,
-      lockMovementY: true,
-      hasControls: false,
-      hasBorders: false,
-      lockScaling: true,
-      objectCaching: false, 
-      groupID: genomeID
-    });
-      }
-    ruler.addWithUpdate();
-    canvas.add(ruler);
-  }
+    buildGroupRulerLayer(genomeID)
   }
 
-  // TODO: refactor these into an 'addContinuousData() function?'
   if(additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
     buildNumericalDataLayer('coverage', 60, genomeID, additionalDataLayers, ptInterval, 'pink')
   } 
@@ -1010,7 +975,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     buildNumericalDataLayer('gcContent', 120, genomeID, additionalDataLayers, ptInterval, 'purple')
   } 
   
-    yOffset += spacing
+  yOffset += spacing
 }
 
 function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, ptInterval, defaultColor){
@@ -1051,6 +1016,44 @@ function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, 
     canvas.bringToFront(graphObj)
       pathDirective = []
     }
+}
+
+function buildGroupRulerLayer(genomeID){
+  let startingTop = marginTop + yOffset + 30
+  let startingLeft = xDisps[genomeID]
+
+  // split ruler into several objects to avoid performance cost of large object pixel size
+  let nRulers = 20;
+  let w = 0;
+  for(let i = 0; i < nRulers; i++) {
+    let ruler = new fabric.Group();
+    for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
+      let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
+            stroke: 'black',
+            strokeWidth: 1,
+            fontSize: 10,
+            fontFamily: 'sans-serif'});
+      let lbl = new fabric.Text(w/1000 + " kB", {left: (w*scaleFactor+5),
+            stroke: 'black',
+            strokeWidth: .25,
+            fontSize: 15,
+            fontFamily: 'sans-serif'});
+      ruler.add(tick);
+      ruler.add(lbl);
+      ruler.set({
+        left: startingLeft,
+        top: startingTop,
+        lockMovementY: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScaling: true,
+        objectCaching: false, 
+        groupID: genomeID
+      });
+      }
+      ruler.addWithUpdate();
+      canvas.add(ruler);
+      }
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
