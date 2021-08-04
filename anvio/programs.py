@@ -686,6 +686,26 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         return d
 
 
+    def get_HTML_formatted_authors_data_mini(self, program):
+        """for a given program, returns a tiny version of the HTML-formatted authors data"""
+
+        d = ""
+
+        for author in program.meta_info['authors']['value']:
+            if 'twitter' in self.authors[author]:
+                author_link = f"http://twitter.com/{self.authors[author]['twitter']}"
+            elif 'linkedin' in self.authors[author]:
+                author_link = f"http://linkedin.com/in/{self.authors[author]['linkedin']}"
+            else:
+                author_link = f"http://github.com/{self.authors[author]['github']}"
+
+            d += '''<div class="page-author-mini"><div class="page-person-photo-mini">'''
+            d += f'''<a href="{author_link}" target="_blank"><img class="page-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
+            d += '''</div></div>\n'''
+
+        return d
+
+
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
@@ -735,7 +755,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
-        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p])) for p in self.programs],
              'artifacts': self.artifacts_info,
              'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
