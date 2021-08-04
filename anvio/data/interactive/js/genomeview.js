@@ -144,8 +144,6 @@ function processState(stateName, stateData){
     maxGroupSize += 1 // increase group size if GC layer exists
   }
 
-
-
   if(stateData.hasOwnProperty('genome-order-method')){
     stateData['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
@@ -970,9 +968,9 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
-  // THE PLAN
-  // users will be able to reorder elements in a genome group via dragging in the UI
-  // this process returns an array of layers, in the order to be rendered
+  //X/ THE PLAN
+  //X/ users will be able to reorder elements in a genome group via dragging in the UI
+  //X/ this process returns an array of layers, in the order to be rendered
   // map through the array, render each layer 'i', increase margin value * i+1
 
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
