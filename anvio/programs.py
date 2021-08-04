@@ -17,6 +17,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.authors import AnvioAuthors
 from anvio.docs import ANVIO_ARTIFACTS
 from anvio.summaryhtml import SummaryHTMLOutput
 
@@ -145,7 +146,7 @@ def parse_help_output(output):
     return usage, description, params, output
 
 
-class AnvioPrograms:
+class AnvioPrograms(AnvioAuthors):
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
         self.run = r
@@ -153,6 +154,9 @@ class AnvioPrograms:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.program_names_to_focus = A("program_names_to_focus")
+
+        # initiate `self.authors`
+        AnvioAuthors.__init__(self, r=self.run, p=self.progress)
 
         try:
             self.main_program_filepaths = M('anvi-interactive')
@@ -226,6 +230,31 @@ class AnvioPrograms:
 
         self.progress.end()
 
+        # here we will go through each program, and see if there are any with no author information
+        programs_with_no_authors = [p for p in self.programs if not len(self.programs[p].meta_info['authors']['value'])]
+        if len(programs_with_no_authors):
+            raise ConfigError(f"The following programs have no author names listed under `__authors__` tag -- every "
+                              f"program in the anvi'o codebase with `__provides__` and/or `__requires__` statements "
+                              f"must also have one or more authors: {', '.join(programs_with_no_authors)}.")
+
+        # here we will go through each program, and see if there are any with authors that
+        # are not described in the AUTHORS.yaml file:
+        programs_with_unknown_authors = set([])
+        unknown_authors = set([])
+        known_authors_in_programs = set([])
+        for program in self.programs:
+            for author in self.programs[program].meta_info['authors']['value']:
+                if author not in self.authors:
+                    programs_with_unknown_authors.add(program)
+                    unknown_authors.add(author)
+                else:
+                    known_authors_in_programs.add(author)
+
+        if len(programs_with_unknown_authors):
+            raise ConfigError(f"The following programs have authors who are not defined in the authors YAML file "
+                              f"({', '.join(unknown_authors)}) -- every author listed in anvi'o programs must have "
+                              f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
+
         # report missing provides/requires information
         self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
                              "statements :/ This may be normal for some programs, but here is the "
@@ -273,6 +302,10 @@ class Program:
             },
             'resources': {
                 'object_name': '__resources__',
+                'null_object': []
+            },
+            'authors': {
+                'object_name': '__authors__',
                 'null_object': []
             },
             'description': {
