@@ -111,6 +111,11 @@ function serializeSettings(){
 
 function processState(stateName, stateData){
   calculateMaxGenomeLength()
+  if(stateData.hasOwnProperty('group-layer-order')){
+    // TODO process
+  } else {
+    stateData['group-layer-order'] = ['Genome', 'Ruler']
+  }
   
   if(stateData.hasOwnProperty('additional-data-layers')){
     // TODO process     
@@ -123,6 +128,7 @@ function processState(stateName, stateData){
   // we can query the first genome group for specific ADL and go from there
   if(stateData['additional-data-layers'][0]['coverage']){
     buildAdditionalDataLayersTable('Coverage')
+    stateData['group-layer-order'].push('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
@@ -132,6 +138,7 @@ function processState(stateName, stateData){
   }
 
   if(stateData['additional-data-layers'][0]['ruler']) {
+    stateData['group-layer-order'].push('GC_Content')
     buildAdditionalDataLayersTable('Ruler')
     // don't increase group size for ruler since it requires less space
   }
@@ -570,7 +577,6 @@ function draw(scaleX=scaleFactor) {
   yOffset = 0 // reset 
   var y = marginTop;
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
-
 
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
@@ -1206,7 +1212,7 @@ function buildAdditionalDataLayersTable(layerLabel){
   var height = '50'; 
   var margin = '25'; 
   var template = '<tr id={layerLabel}>' +
-                  '<td><img src="images/drag.gif" class="drag-icon" id={genomeLabel} /></td>' +
+                  '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
                   '<td> {layerLabel} </td>' +
                   '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
                   '<td>n/a</td>' +
@@ -1217,6 +1223,11 @@ function buildAdditionalDataLayersTable(layerLabel){
                      .replace(new RegExp('{margin}', 'g'), margin)
                      .replace(new RegExp('{layerLabel}', 'g'), layerLabel);   
   $('#tbody_additionalDataLayers').append(template);
+  $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+  $("#tbody_additionalDataLayers").on("sortupdate", (event, ui) => {
+    changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
+  })
 }
 
 function toggleAdditionalDataLayer(e){
@@ -1235,8 +1246,8 @@ function toggleAdditionalDataLayer(e){
 /*
  *  respond to ui, redraw with updated group layer order
  */
-function changeGroupLayersOrder(){
-
+function changeGroupLayersOrder(updatedOrder){
+  console.log(updatedOrder)
 }
 
 function changeGenomeOrder(updatedOrder){
