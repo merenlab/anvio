@@ -16,8 +16,7 @@ __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Evan Kiefl"
-__email__ = "kiefl.evan@gmail.com"
+__authors__ = ['ekiefl']
 __resources__ = [("A conceptual tutorial on the structural biology capabilities of anvio",
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",

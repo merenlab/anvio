@@ -20,8 +20,7 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren', 'ekiefl']
 __requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db", "structure-db", "genes-db"]
 __description__ = "Access self tables, display values, or set new ones totally on your own risk"
 

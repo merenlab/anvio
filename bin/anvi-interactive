@@ -21,8 +21,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ["Doğan Can Kilment", "Gökmen Göksel", "Gökmen Görgen"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren', 'ozcan', 'matthewlawrenceklein', 'isaacfink21', 'blankenberg']
 __resources__ = [("A beginners tutorial on anvi'o interactive interface", "http://merenlab.org/tutorials/interactive-interface/"),
                  ("How to add more data to a display for layers and items", "http://merenlab.org/2017/12/11/additional-data-tables/"),
                  ("An overview of interactive data types", "http://merenlab.org/2016/02/27/the-anvio-interactive-interface/"),
