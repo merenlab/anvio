@@ -961,6 +961,11 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
+  // THE PLAN
+  // users will be able to reorder elements in a genome group via dragging in the UI
+  // this process returns an array of layers, in the order to be rendered
+  // map through the array, render each layer 'i', increase margin value * i+1
+
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   if(additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
