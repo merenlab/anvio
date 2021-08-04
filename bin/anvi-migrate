@@ -18,6 +18,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
 __description__ = "Migrate an anvi'o database or config file to a newer version"
+__authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10']
 __requires__ = ["contigs-db", "profile-db", "pan-db", "genes-db", "genomes-storage-db", "structure-db", "modules-db", "workflow-config"]
 __provides__ = []
 

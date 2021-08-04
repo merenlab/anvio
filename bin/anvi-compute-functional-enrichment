@@ -7,7 +7,6 @@ from anvio.errors import ConfigError
 from anvio.terminal import Run
 
 __description__ = ("A program that is no more. Read on")
-__provides__ = ['functional-enrichment-txt']
 
 def main():
     run = Run()

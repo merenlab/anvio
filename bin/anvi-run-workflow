@@ -14,10 +14,9 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Alon Shaiber"
+__authors__ = ['ShaiberAlon', 'semiller10', 'mschecht']
 __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-workflows/")]
 __tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics"]
-__email__ = "alon.shaiber@gmail.com"
 __description__ = ("Execute, manage, parallelize, and troubleshoot entire 'omics workflows and "
                    "chain together anvi'o and third party programs")
 __requires__ = ["samples-txt", "fasta-txt", "workflow-config"]
