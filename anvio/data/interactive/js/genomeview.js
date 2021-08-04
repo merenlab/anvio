@@ -124,22 +124,23 @@ function processState(stateName, stateData){
     generateMockADL()
   }
   
+
   // working under the assumption that all genome groups with contain the same additional data layers, 
   // we can query the first genome group for specific ADL and go from there
   if(stateData['additional-data-layers'][0]['coverage']){
-    buildAdditionalDataLayersTable('Coverage')
+    buildGroupLayersTable('Coverage')
     stateData['group-layer-order'].push('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
   if(stateData['additional-data-layers'][0]['gcContent']){
-    buildAdditionalDataLayersTable('GC_Content')
+    buildGroupLayersTable('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
 
   if(stateData['additional-data-layers'][0]['ruler']) {
     stateData['group-layer-order'].push('GC_Content')
-    buildAdditionalDataLayersTable('Ruler')
+    buildGroupLayersTable('Ruler')
     // don't increase group size for ruler since it requires less space
   }
 
@@ -1208,7 +1209,7 @@ function buildGenomesTable(genomes, order){
   })
 }
 
-function buildAdditionalDataLayersTable(layerLabel){
+function buildGroupLayersTable(layerLabel){
   var height = '50'; 
   var margin = '25'; 
   var template = '<tr id={layerLabel}>' +
@@ -1247,7 +1248,8 @@ function toggleAdditionalDataLayer(e){
  *  respond to ui, redraw with updated group layer order
  */
 function changeGroupLayersOrder(updatedOrder){
-  console.log(updatedOrder)
+  stateData['group-layer-order'] = updatedOrder
+  draw()
 }
 
 function changeGenomeOrder(updatedOrder){
