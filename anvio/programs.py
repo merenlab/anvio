@@ -548,6 +548,11 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
 
+        os.makedirs(os.path.join(self.output_directory_path, 'images/authors'))
+
+        for author in self.authors:
+            utils.shutil.copy(self.authors[author]['avatar'], os.path.join(self.output_directory_path, 'images/authors', os.path.basename(self.authors[author]['avatar'])))
+
 
     def init_anvio_markdown_variables_conversion_dict(self):
         for program_name in self.all_program_names:
