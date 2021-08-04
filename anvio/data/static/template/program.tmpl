@@ -21,6 +21,10 @@ See **[program help menu](../../../../vignette#{{ program.name }})** or go back 
 {% include _project-anvio-graph.html %}
 {% endverbatim %}
 
+## Authors
+
+{{ program.authors | safe }}
+
 ## Can provide
 
 <p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
