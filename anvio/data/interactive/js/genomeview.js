@@ -978,8 +978,10 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   yOffset += spacing
 }
 
+/*
+ *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
+ */
 function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, ptInterval, defaultColor){
-    console.log(additionalDataLayers);
     let maxGCValue = 0
     let startingTop = marginTop + yOffset + margin
     let startingLeft = xDisps[genomeID]
@@ -1017,7 +1019,9 @@ function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, 
       pathDirective = []
     }
 }
-
+/*
+ *  Generate individual genome group rulers
+ */
 function buildGroupRulerLayer(genomeID){
   let startingTop = marginTop + yOffset + 30
   let startingLeft = xDisps[genomeID]
