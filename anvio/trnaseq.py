@@ -7395,6 +7395,20 @@ class ResultTabulator(object):
         for contig_name, contig_df in mean_spec_cov_df.groupby('contig_name'):
             mean_spec_cov_dict[contig_name] = tuple(contig_df['mean_spec_cov'])
 
+        do_nonspec = True if self.nonspec_profile_db_path else False
+        if do_nonspec:
+            nonspec_profile_db = dbops.ProfileDatabase(self.nonspec_profile_db_path, quiet=True)
+            get_meta_value = nonspec_profile_db.db.get_meta_value
+            self.sample_names = sample_names = get_meta_value('samples').split(', ')
+            mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+            nonspec_profile_db.disconnect()
+            mean_nonspec_cov_df['contig_name'] = mean_nonspec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
+            mean_nonspec_cov_df = mean_nonspec_cov_df.drop(['item', 'layer'], axis=1)
+            mean_nonspec_cov_df = mean_nonspec_cov_df.rename({'value': 'mean_nonspec_cov'}, axis=1)
+            mean_nonspec_cov_dict = {}
+            for contig_name, contig_df in mean_nonspec_cov_df.groupby('contig_name'):
+                mean_nonspec_cov_dict[contig_name] = tuple(contig_df['mean_nonspec_cov'])
+
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in
                                self.contigs_db.db.get_single_column_from_table(tables.hmm_hits_table_name, 'gene_name')]]
@@ -7411,7 +7425,6 @@ class ResultTabulator(object):
         spec_aux_df = spec_aux_df.drop('split_name', axis=1)
         spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
 
-        do_nonspec = True if self.nonspec_profile_db_path else False
         if do_nonspec:
             nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
             nonspec_aux_df = nonspec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
@@ -7432,33 +7445,56 @@ class ResultTabulator(object):
             for contig_name, contig_df in nonspec_aux_df.groupby('contig_name'):
                 nonspec_covs_dict[contig_name] = dict(zip(contig_df['sample_name'], contig_df['coverages']))
 
-        top_header = ("gene_callers_id",
-                      "contig_name",
-                      "anticodon",
-                      "aa",
-                      "domain",
-                      "phylum",
-                      "class",
-                      "order",
-                      "family",
-                      "genus",
-                      "species",
-                      "taxon_percent_id",
-                      "sample_name",
-                      "mean_specific_coverage",
-                      "relative_mean_specific_coverage",
-                      "relative_discriminator_specific_coverage") + tuple(self.ordinal_dict.keys())
-        middle_header = "\t".join(("", ) * (len(top_header) - len(self.ordinal_dict))
-                                  + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
         canonical_dict = self.canonical_dict
-        bottom_header = "\t".join(("", ) * (len(top_header) - len(self.canonical_dict))
-                                  + tuple([canonical_dict[ordinal_name] for ordinal_name in self.ordinal_dict])) + "\n"
-        top_header = "\t".join(top_header) + "\n"
+        spec_top_header = ("gene_callers_id",
+                           "contig_name",
+                           "anticodon",
+                           "aa",
+                           "domain",
+                           "phylum",
+                           "class",
+                           "order",
+                           "family",
+                           "genus",
+                           "species",
+                           "taxon_percent_id",
+                           "sample_name",
+                           "mean_coverage",
+                           "relative_mean_coverage",
+                           "relative_discriminator_coverage") + tuple(self.ordinal_dict.keys())
+        spec_middle_header = "\t".join(("", ) * (len(spec_top_header) - len(self.ordinal_dict))
+                                       + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
+        spec_bottom_header = "\t".join(("", ) * (len(spec_top_header) - len(self.canonical_dict))
+                                       + tuple([canonical_dict[ordinal_name] for ordinal_name in self.ordinal_dict])) + "\n"
+        spec_top_header = "\t".join(spec_top_header) + "\n"
+
+        if do_nonspec:
+            nonspec_top_header = ("gene_callers_id",
+                                  "contig_name",
+                                  "anticodon",
+                                  "aa",
+                                  "domain",
+                                  "phylum",
+                                  "class",
+                                  "order",
+                                  "family",
+                                  "genus",
+                                  "species",
+                                  "taxon_percent_id",
+                                  "sample_name",
+                                  "mean_coverage") + tuple(self.ordinal_dict.keys())
+            nonspec_middle_header = "\t".join(("", ) * (len(spec_top_header) - len(self.ordinal_dict))
+                                              + tuple(map(str, range(1, len(self.ordinal_dict) + 1)))) + "\n"
+            nonspec_bottom_header = "\t".join(("", ) * (len(spec_top_header) - len(self.canonical_dict))
+                                              + tuple([canonical_dict[ordinal_name] for ordinal_name in self.ordinal_dict])) + "\n"
+            nonspec_top_header = "\t".join(nonspec_top_header) + "\n"
+
+
         spec_out_file = open(self.spec_seed_out_path, 'a')
-        spec_out_file.write(top_header + middle_header + bottom_header)
+        spec_out_file.write(spec_top_header + spec_middle_header + spec_bottom_header)
         if do_nonspec:
             nonspec_out_file = open(self.nonspec_seed_out_path, 'a')
-            nonspec_out_file.write(top_header + middle_header + bottom_header)
+            nonspec_out_file.write(nonspec_top_header + nonspec_middle_header + nonspec_bottom_header)
 
         reverse_ordinal_dict = self.reverse_ordinal_dict
         self.contig_name_gene_callers_id_dict = contig_name_gene_callers_id_dict = {}
@@ -7478,31 +7514,39 @@ class ResultTabulator(object):
                                          in zip(sample_mean_spec_covs, sample_total_mean_spec_covs)]
             sample_rel_discriminator_spec_covs = sample_rel_discriminator_spec_cov_dict[contig_name]
 
+            if do_nonspec:
+                sample_mean_nonspec_covs = mean_nonspec_cov_dict[contig_name]
+
             contig_spec_covs_dict = {sample_name: iter(covs) for sample_name, covs in spec_covs_dict[contig_name].items()}
             if do_nonspec:
                 contig_nonspec_covs_dict = {sample_name: iter(covs) for sample_name, covs in nonspec_covs_dict[contig_name].items()}
             sample_range = range(len(contig_spec_covs_dict))
-            contig_output_rows = []
-            for sample_name, mean_cov, rel_mean_cov, rel_discriminator_cov in zip(sample_names,
-                                                                                  sample_mean_spec_covs,
-                                                                                  sample_rel_mean_spec_covs,
-                                                                                  sample_rel_discriminator_spec_covs):
-                contig_output_rows.append([str(gene_callers_id),
-                                           contig_name,
-                                           anticodon,
-                                           aa,
-                                           t_domain,
-                                           t_phylum,
-                                           t_class,
-                                           t_order,
-                                           t_family,
-                                           t_genus,
-                                           t_species,
-                                           t_percent_id,
-                                           sample_name,
-                                           str(round(mean_cov, 1)),
-                                           str(rel_mean_cov),
-                                           str(rel_discriminator_cov)])
+            spec_contig_output_rows = []
+            for sample_name, mean_spec_cov, rel_mean_cov, rel_discriminator_cov in zip(sample_names,
+                                                                                       sample_mean_spec_covs,
+                                                                                       sample_rel_mean_spec_covs,
+                                                                                       sample_rel_discriminator_spec_covs):
+                spec_contig_output_rows.append([str(gene_callers_id),
+                                                contig_name,
+                                                anticodon,
+                                                aa,
+                                                t_domain,
+                                                t_phylum,
+                                                t_class,
+                                                t_order,
+                                                t_family,
+                                                t_genus,
+                                                t_species,
+                                                t_percent_id,
+                                                sample_name,
+                                                str(round(mean_spec_cov, 1)),
+                                                str(rel_mean_cov),
+                                                str(rel_discriminator_cov)])
+
+            if do_nonspec:
+                nonspec_contig_output_rows = []
+                for spec_contig_output_row, mean_nonspec_cov in zip(spec_contig_output_rows, sample_mean_nonspec_covs):
+                    nonspec_contig_output_rows.append(spec_contig_output_row[: -3] + [str(round(mean_nonspec_cov, 1))])
 
             feature_start_in_seq = None
             feature_stop_in_seq = None
@@ -7584,11 +7628,11 @@ class ResultTabulator(object):
 
             contig_feature_coord_dict[contig_name] = feature_coord_map
 
-            for contig_output_row, contig_spec_covs_row in zip(contig_output_rows, tabulated_contig_spec_covs):
-                spec_out_file.write("\t".join(contig_output_row + list(map(str, contig_spec_covs_row))) + "\n")
+            for spec_contig_output_row, contig_spec_covs_row in zip(spec_contig_output_rows, tabulated_contig_spec_covs):
+                spec_out_file.write("\t".join(spec_contig_output_row + list(map(str, contig_spec_covs_row))) + "\n")
             if do_nonspec:
-                for contig_output_row, contig_nonspec_covs_row in zip(contig_output_rows, tabulated_contig_nonspec_covs):
-                    nonspec_out_file.write("\t".join(contig_output_row + list(map(str, contig_nonspec_covs_row))) + "\n")
+                for nonspec_contig_output_row, contig_nonspec_covs_row in zip(nonspec_contig_output_rows, tabulated_contig_nonspec_covs):
+                    nonspec_out_file.write("\t".join(nonspec_contig_output_row + list(map(str, contig_nonspec_covs_row))) + "\n")
 
 
     def generate_modification_output(self):
