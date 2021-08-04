@@ -7680,6 +7680,7 @@ class ResultTabulator(object):
         taxonomy_table_dict = self.taxonomy_table_dict
         contig_feature_coord_dict = self.contig_feature_coord_dict
         canonical_dict = self.canonical_dict
+        sample_names = self.sample_names
         for contig_index, contig_df in var_nts_df.groupby(['gene_callers_id', 'contig_name']):
             gene_callers_id = contig_index[0]
             contig_name = contig_index[1]
@@ -7692,10 +7693,11 @@ class ResultTabulator(object):
             contig_df = contig_df.sort_values('pos')
             feature_coord_dict = contig_feature_coord_dict[contig_name]
             for seed_pos, sub_df in contig_df.groupby('pos'):
-                sub_df = sub_df.sort_values('sample_id')
                 ordinal_name, ordinal_pos = feature_coord_dict[seed_pos]
-                canonical_pos = canonical_dict[ordinal_name]
+                str_seed_pos = str(seed_pos)
                 ordinal_pos = str(ordinal_pos)
+                canonical_pos = str(canonical_dict[ordinal_name])
+                sample_row_dict = {}
                 for sample_row in sub_df.itertuples():
                     out_row = [gene_callers_id,
                                contig_name,
@@ -7709,12 +7711,34 @@ class ResultTabulator(object):
                                t_genus,
                                t_species,
                                t_percent_id,
-                               str(seed_pos),
+                               str_seed_pos,
                                ordinal_name,
                                ordinal_pos,
-                               str(canonical_pos),
+                               canonical_pos,
                                sample_row.reference,
                                sample_row.sample_id]
-                    for nt in UNAMBIG_NTS:
-                        out_row.append(str(getattr(sample_row, nt)))
+                    sample_row_dict[out_row[-1]] = out_row
+                    out_row.extend([str(getattr(sample_row, nt)) for nt in UNAMBIG_NTS])
+                for sample_name in sample_names:
+                    try:
+                        out_row = sample_row_dict[sample_name]
+                    except KeyError:
+                        out_row = [gene_callers_id,
+                                   contig_name,
+                                   anticodon,
+                                   aa,
+                                   t_domain,
+                                   t_phylum,
+                                   t_class,
+                                   t_order,
+                                   t_family,
+                                   t_genus,
+                                   t_species,
+                                   t_percent_id,
+                                   str_seed_pos,
+                                   ordinal_name,
+                                   ordinal_pos,
+                                   canonical_pos,
+                                   sample_row.reference,
+                                   sample_name] + [""] * len(UNAMBIG_NTS)
                     out_file.write("\t".join(out_row) + "\n")
