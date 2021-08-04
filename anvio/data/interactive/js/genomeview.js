@@ -1206,6 +1206,7 @@ function buildAdditionalDataLayersTable(layerLabel){
   var height = '50'; 
   var margin = '25'; 
   var template = '<tr id={layerLabel}>' +
+                  '<td><img src="images/drag.gif" class="drag-icon" id={genomeLabel} /></td>' +
                   '<td> {layerLabel} </td>' +
                   '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
                   '<td>n/a</td>' +
@@ -1229,6 +1230,13 @@ function toggleAdditionalDataLayer(e){
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   draw()
+}
+
+/*
+ *  respond to ui, redraw with updated group layer order
+ */
+function changeGroupLayersOrder(){
+
 }
 
 function changeGenomeOrder(updatedOrder){
