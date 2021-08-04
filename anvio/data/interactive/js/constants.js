@@ -327,7 +327,7 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Func. Homogeneity Ind.',
     },
     'geometric_homogeneity_index': {
@@ -336,7 +336,7 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Geo. Homogeneity Ind.',
     },
     'combined_homogeneity_index': {
@@ -345,7 +345,7 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Comb. Homogeneity Ind.',
     },
     'Gene_cluster_type_LLR': {

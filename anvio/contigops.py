@@ -740,8 +740,15 @@ class GenbankToAnvio:
         genes_excluded = set([])
 
         # A very quick look at the genbank file to see if translated sequences are present in it
+        aa_sequences_present = False
         for genbank_record in self.get_genbank_file_object():
             genes = [gene for gene in genbank_record.features if gene.type =="CDS"]
+
+            # clearly, not every genebank record has to have genes.
+            # just like not every bank has to have money I guess.
+            # IRONIES OF LIFE BUT IN CODING SPACE BECAUSE BIOINFORMATICS.
+            if not len(genes):
+                continue
 
             # do we have AA sequences in this?
             aa_sequences_present = True if 'translation' in genes[0].qualifiers else False
