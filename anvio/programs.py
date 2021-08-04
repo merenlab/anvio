@@ -654,6 +654,33 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
 
+    def get_HTML_formatted_authors_data(self, program):
+        """for a given program, returns HTML-formatted authors data"""
+
+        d = ""
+
+        for author in program.meta_info['authors']['value']:
+            d += '''<div class="page-author"><div class="page-author-info">'''
+            d += f'''<div class="page-person-photo"><img class="page-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
+            d += '''<div class="page-person-info-box">'''
+            d += f'''<span class="page-author-name">{self.authors[author]['name']}</span>'''
+            d += '''<div class="page-author-social-box">'''
+
+            if 'web' in self.authors[author]:
+                d += f'''<a href="{self.authors[author]['web']}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'''
+
+            d += f'''<a href="mailto:{self.authors[author]['email']}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'''
+
+            if 'twitter' in self.authors[author]:
+                d += f'''<a href="http://twitter.com/{self.authors[author]['twitter']}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'''
+
+            d += f'''<a href="http://github.com/{self.authors[author]['github']}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'''
+
+            d += '''</div></div></div></div>\n\n'''
+
+        return d
+
+
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
@@ -675,6 +702,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['program']['authors'] = self.get_HTML_formatted_authors_data(program)
             d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
