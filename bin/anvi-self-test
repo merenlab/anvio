@@ -30,6 +30,7 @@ __description__ = "A script for anvi'o to test itself"
 tests = {'mini'                 : ['run_mini_test.sh'],
          'metagenomics-full'    : ['run_all_tests.sh'],
          'pangenomics'          : ['run_pangenome_tests.sh'],
+         'genome-view'          : ['run_genome_view.sh'],
          'interactive-interface': ['run_manual_interactive.sh'],
          'metabolism'           : ['run_metabolism_tests.sh'],
          'display-functions'    : ['run_display_functions_tests.sh'],
