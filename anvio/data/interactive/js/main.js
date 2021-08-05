@@ -2711,9 +2711,6 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('support-font-size')){
         $('#support_font_size').val(state['support-font-size'])
     }
-    if (state.hasOwnProperty('support-floating-precision')){
-        $('#support_floating_precision').val(state['support-floating-precision'])
-    }
     if(state.hasOwnProperty('support-text-rotation')){
         $('#support_text_rotation').val(state['support-text-rotation'])
     }
