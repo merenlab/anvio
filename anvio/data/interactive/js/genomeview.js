@@ -969,24 +969,17 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
   })
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
-  let marginObj = { // hardcoded values for testing 
-    1 : 30, 
-    2 : 60, 
-    3 : 90, 
-    4 : 120, 
-    5 : 150, 
-    6 : 180
-  }
-
   stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+    let layerPos = [spacing / maxGroupSize] * idx
+
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
       buildGroupRulerLayer(genomeID)
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      buildNumericalDataLayer('coverage', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'pink')
+      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'pink')
     } 
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      buildNumericalDataLayer('gcContent', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'purple')
+      buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple')
     } 
   })
   
