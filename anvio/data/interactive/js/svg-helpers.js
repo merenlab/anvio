@@ -277,12 +277,12 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         }
 
         function setDetails(percentile){
-            if(percentile > .67){
-                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
-            } else if (percentile < .67 && percentile > .33){
-                radius = maxRadius * .7
+            if(percentile > 67){
+                supportValueData.invertSymbol ? radius = maxRadius * 4 : radius = maxRadius
+            } else if (percentile < 67 && percentile > 33){
+                radius = maxRadius * 7
             } else {
-                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 4
             }
 
         }
