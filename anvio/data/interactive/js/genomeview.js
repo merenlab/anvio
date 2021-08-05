@@ -967,6 +967,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
       additionalDataLayers = group
     }
   })
+  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   let marginObj = { // hardcoded values for testing 
     1 : 30, 
@@ -977,17 +978,13 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     6 : 180
   }
 
-  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
-
   stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
       buildGroupRulerLayer(genomeID)
     }
-  
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
       buildNumericalDataLayer('coverage', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'pink')
     } 
-  
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
       buildNumericalDataLayer('gcContent', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'purple')
     } 
@@ -1255,6 +1252,9 @@ function changeGroupLayersOrder(updatedOrder){
   draw()
 }
 
+/*
+ *  respond to ui, redraw with updated genome group order
+ */
 function changeGenomeOrder(updatedOrder){
   let newGenomeOrder = []
   updatedOrder.map(label => {
