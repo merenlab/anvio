@@ -968,24 +968,30 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     }
   })
 
-  //X/ THE PLAN
-  //X/ users will be able to reorder elements in a genome group via dragging in the UI
-  //X/ this process returns an array of layers, in the order to be rendered
-  // map through the array, render each layer 'i', increase margin value * i+1
+  let marginObj = { // hardcoded values for testing 
+    1 : 30, 
+    2 : 60, 
+    3 : 90, 
+    4 : 120, 
+    5 : 150, 
+    6 : 180
+  }
 
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
-  if(additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-    buildGroupRulerLayer(genomeID)
-  }
-
-  if(additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-    buildNumericalDataLayer('coverage', 60, genomeID, additionalDataLayers, ptInterval, 'pink')
-  } 
-
-  if(additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-    buildNumericalDataLayer('gcContent', 120, genomeID, additionalDataLayers, ptInterval, 'purple')
-  } 
+  stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
+      buildGroupRulerLayer(genomeID)
+    }
+  
+    if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
+      buildNumericalDataLayer('coverage', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'pink')
+    } 
+  
+    if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
+      buildNumericalDataLayer('gcContent', marginObj[idx], genomeID, additionalDataLayers, ptInterval, 'purple')
+    } 
+  })
   
   yOffset += spacing
 }
