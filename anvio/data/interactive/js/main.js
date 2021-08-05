@@ -1486,7 +1486,6 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
-    state['support-floating-precision'] = $('#support_floating_precision').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
 
     // sync views object and layers table
