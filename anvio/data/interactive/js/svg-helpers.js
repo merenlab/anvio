@@ -259,7 +259,6 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         if($('#tree_type').val() == 'circlephylogram'){
             drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
         } else {
-            // drawRotatedText(svg_id, p.xy, parseFloat(p.branch_support / 100).toFixed($('#support_floating_precision').val()), -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
             drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
         }
     }
