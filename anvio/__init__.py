@@ -1885,6 +1885,12 @@ D = {
              'help': "A prefix to be used while naming the output files (no file type "
                      "extensions please; just a prefix)."}
                 ),
+    'name-prefix': (
+            ['-N', '--name-prefix'],
+            {'metavar': 'NAME_PREFIX',
+             'type': str,
+             'help': "A prefix to be added to the default name."}
+                ),
     'long-format': (
             ['--long-format'],
             {'default': False,
