@@ -973,7 +973,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     let layerPos = [spacing / maxGroupSize] * idx
 
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-      buildGroupRulerLayer(genomeID)
+      buildGroupRulerLayer(genomeID, layerPos)
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
       buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'pink')
@@ -989,9 +989,9 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
-function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, ptInterval, defaultColor){
+function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor){
     let maxGCValue = 0
-    let startingTop = marginTop + yOffset + margin
+    let startingTop = marginTop + yOffset + layerPos
     let startingLeft = xDisps[genomeID]
     let layerHeight = spacing / maxGroupSize
     let pathDirective = [`M 0 0`]
@@ -1027,8 +1027,8 @@ function buildNumericalDataLayer(layer, margin, genomeID, additionalDataLayers, 
 /*
  *  Generate individual genome group rulers
  */
-function buildGroupRulerLayer(genomeID){
-  let startingTop = marginTop + yOffset + 30
+function buildGroupRulerLayer(genomeID, layerPos){
+  let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
 
   // split ruler into several objects to avoid performance cost of large object pixel size
