@@ -115,11 +115,14 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import multiprocessing as mp
+import matplotlib.pyplot as plt
 
 from hashlib import sha1
 from itertools import chain
 from functools import partial
 from bisect import bisect_left
+from matplotlib.gridspec import GridSpec
+from matplotlib.ticker import MaxNLocator
 from collections import defaultdict, deque, OrderedDict
 
 import anvio
@@ -159,13 +162,17 @@ MAXSIZE = sys.maxsize
 
 ALL_NTS = tuple(constants.nucleotides)
 UNAMBIG_NTS = ('A', 'C', 'G', 'T')
+UNAMBIG_NTS_LIST = list(UNAMBIG_NTS)
 NT_INT_DICT = {nt: i for i, nt in enumerate(UNAMBIG_NTS, start=1)}
 INT_NT_DICT = {i: nt for i, nt in enumerate(UNAMBIG_NTS, start=1)}
 # NUM_NT_BINS is used in counting the number of distinct nucleotides (1, 2, 3, or 4) at positions in
 # internally ungapped alignments: there is one bin (value 0) for end gaps in the alignment.
 NUM_NT_BINS = len(UNAMBIG_NTS) + 1
 
+AMINO_ACIDS = constants.amino_acids
 ANTICODON_AA_DICT = constants.anticodon_to_AA
+ANTICODONS = list(ANTICODON_AA_DICT)
+AA_ANTICODON_DICT = constants.AA_to_anticodons
 TRNA_FEATURE_NAMES = constants.TRNA_FEATURE_NAMES
 
 # The user can specify in `anvi-trnaseq` what defines a long (biological vs. non-templated) 5'
@@ -7742,3 +7749,500 @@ class ResultTabulator(object):
                                    sample_row.reference,
                                    sample_name] + [""] * len(UNAMBIG_NTS)
                     out_file.write("\t".join(out_row) + "\n")
+
+
+class ResultPlotter(object):
+
+    NT_COLORS = ('blue', 'green', 'orange', 'red')
+    RANKS = ('domain', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+    def __init__(self, args, run=terminal.Run(width=100)):
+        self.run = run
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # Group 1: MANDATORY
+        self.contigs_db_path = A('contigs_db')
+        self.spec_txt_path = A('seeds_specific_txt')
+        self.mod_txt_path = A('modifications_txt')
+        self.out_dir = A('output_dir')
+
+        # Group 2: OPTIONAL
+        self.overwrite_out_dest = A('overwrite_output_destinations')
+        # The following parameters are not currently available to the user.
+        self.nonspec_txt_path = None
+        self.cov_cutoff = 1
+
+        if not self.contigs_db_path:
+            raise ConfigError("Please provide the path to a `trnaseq`-variant contigs database using `--contigs-db` or `-c`.")
+        if not self.spec_txt_path:
+            raise ConfigError("Please provide the path to a tRNA seeds table of data including specific coverages using `--seeds-specific-txt` or `-s`.")
+        if not self.mod_txt_path:
+            raise ConfigError("Please provide the path to a tRNA modifications table using `--modifications-txt` or `-m`.")
+
+
+    def go(self):
+        """Load data and get standard input from user to produce plots."""
+        self.sanity_check()
+        self.load_data()
+        self.print_help()
+
+        RANKS = self.RANKS
+        while True:
+            entry = input("\033[36;1;3mInput -> \033[0m")
+
+            if entry == 'q':
+                return
+            elif entry == 'h':
+                self.print_help()
+                continue
+
+            loop_ranks = []
+            taxon_rank_filter = None
+            taxon_filter = None
+            single_aa = None
+            single_anticodon = None
+            out_dir = self.out_dir
+            for field in [field.strip() for field in entry.split(';')]:
+                split_field = field.split(',')
+
+                if len(split_field) == 1:
+                    if split_field[0] == '':
+                        self.run.warning("An empty semicolon-delimited field was given.", "INVALID FIELD")
+                        break
+
+                    single_field = split_field[0]
+                    if single_field in RANKS:
+                        loop_ranks.append(single_field)
+                    elif single_field in AMINO_ACIDS:
+                        if single_aa:
+                            self.run.warning("Multiple amino acids were given.", "INVALID FIELD")
+                            break
+                        single_aa = single_field
+                    elif single_field in ANTICODONS:
+                        if single_anticodon:
+                            self.run.warning("Multiple anticodons were given.", "INVALID FIELD")
+                            break
+                        single_anticodon = single_field
+                    else:
+                        self.run.warning(f"{single_field} is not recognized as a taxonomic rank, amino acid, or anticodon.", "INVALID FIELD")
+                elif len(split_field) == 2:
+                    if split_field[0] == 'outdir':
+                        if os.path.isdir(split_field[1]):
+                            if not os.access(os.path.abspath(split_field[1]), os.W_OK):
+                                self.run.warning(f"Permission denied to create files in {split_field[1]}", "INVALID DIRECTORY PATH")
+                                break
+                        else:
+                            try:
+                                os.mkdir(split_field[1])
+                            except FileNotFoundError:
+                                self.run.warning(f"{split_field[1]}", "INVALID DIRECTORY PATH")
+                                break
+                        out_dir = split_field[1]
+                        continue
+
+                    if taxon_filter:
+                        self.run.warning("Multiple fields with a comma, interpreted as a taxon, were given.", "INVALID FIELD")
+                        break
+                    taxon_rank_filter = split_field[0].strip()
+
+                    if taxon_rank_filter not in RANKS:
+                        self.run.warning(f"{taxon_rank_filter} is not recognized as a taxonomic rank.", "INVALID FIELD")
+                        break
+                    taxon_filter = split_field[1].strip()
+                else:
+                    self.run.warning(f"A field with {len(split_field)} commas was given: '{field}'.", "INVALID FIELD")
+                    break
+            else:
+                if not taxon_rank_filter and not loop_ranks:
+                    self.run.warning(f"A taxon or at least one rank must be given.",
+                                     "PROGRAM REQUIREMENT")
+                    continue
+
+                loop_ranks = sorted(loop_ranks, key=lambda rank: RANKS.index(rank))
+                if taxon_rank_filter and loop_ranks:
+                    if RANKS.index(taxon_rank_filter) >= RANKS.index(loop_ranks[0]):
+                        self.run.warning(f"A taxon ('{taxon_rank_filter} {taxon_filter}') lower than a rank ('{loop_ranks[0]}') was given.", "INVALID FIELD")
+                        continue
+
+                if single_aa and single_anticodon:
+                    if ANTICODON_AA_DICT[single_anticodon] == single_aa:
+                        self.run.warning(f"An amino acid is not needed with the anticodon.",
+                                         "UNNECESSARY FIELD")
+                        single_aa = None
+                    else:
+                        self.run.warning(f"The anticodon ('{single_anticodon}') does not decode the amino acid ('{single_aa}').",
+                                         "INVALID FIELD")
+                        continue
+
+                spec_df = self.spec_df
+                mod_df = self.mod_df
+                nonspec_df = self.nonspec_df if self.nonspec_txt_path else None
+
+                if single_anticodon:
+                    spec_df = spec_df[(spec_df['anticodon'] == single_anticodon).squeeze()]
+                    mod_df = mod_df[(mod_df['anticodon'] == single_anticodon)]
+                    nonspec_df = nonspec_df[(nonspec_df['anticodon'] == single_anticodon).squeeze()] if self.nonspec_txt_path else None
+
+                if taxon_rank_filter:
+                    # Subset the data to the taxon of interest.
+                    spec_df = spec_df[(spec_df[taxon_rank_filter] == taxon_filter).squeeze()]
+                    mod_df = mod_df[(mod_df[taxon_rank_filter] == taxon_filter)]
+                    nonspec_df = nonspec_df[(nonspec_df[taxon_rank_filter] == taxon_filter).squeeze()] if self.nonspec_txt_path else None
+
+                if single_anticodon:
+                    if taxon_filter:
+                        if loop_ranks: # (potentially) multiple taxa at ranks below the taxon filter
+                            for rank in loop_ranks:
+                                self.plot_rank(rank,
+                                               spec_df,
+                                               mod_df,
+                                               ANTICODON_AA_DICT[single_anticodon],
+                                               single_anticodon,
+                                               out_dir,
+                                               nonspec_df=nonspec_df)
+                        else: # single taxon
+                            self.plot_items(spec_df,
+                                            mod_df,
+                                            ANTICODON_AA_DICT[single_anticodon],
+                                            single_anticodon,
+                                            taxon_rank_filter,
+                                            taxon_filter,
+                                            out_dir,
+                                            nonspec_df=nonspec_df)
+                    else: # (potentially) multiple taxa
+                        for rank in loop_ranks:
+                            self.plot_rank(rank,
+                                           spec_df,
+                                           mod_df,
+                                           ANTICODON_AA_DICT[single_anticodon],
+                                           single_anticodon,
+                                           out_dir,
+                                           nonspec_df=nonspec_df)
+                else: # (potentially) multiple anticodons
+                    if single_aa:
+                        for anticodon in AA_ANTICODON_DICT[single_aa]:
+                            anticodon_spec_df = spec_df[(spec_df['anticodon'] == anticodon).squeeze()]
+                            anticodon_mod_df = mod_df[(mod_df['anticodon'] == anticodon)]
+                            anticodon_nonspec_df = nonspec_df[(nonspec_df['anticodon'] == anticodon).squeeze()] if self.nonspec_txt_path else None
+                            if taxon_filter:
+                                if loop_ranks: # (potentially) multiple taxa at ranks below the taxon filter
+                                    for rank in loop_ranks:
+                                        self.plot_rank(rank,
+                                                       anticodon_spec_df,
+                                                       anticodon_mod_df,
+                                                       single_aa,
+                                                       anticodon,
+                                                       out_dir,
+                                                       nonspec_df=anticodon_nonspec_df)
+                                else: # single taxon
+                                    self.plot_items(anticodon_spec_df,
+                                                    anticodon_mod_df,
+                                                    single_aa,
+                                                    anticodon,
+                                                    taxon_rank_filter,
+                                                    taxon_filter,
+                                                    out_dir,
+                                                    nonspec_df=anticodon_nonspec_df)
+                            else: # (potentially) multiple taxa
+                                for rank in loop_ranks:
+                                    self.plot_rank(rank,
+                                                   anticodon_spec_df,
+                                                   anticodon_mod_df,
+                                                   single_aa,
+                                                   anticodon,
+                                                   out_dir,
+                                                   nonspec_df=anticodon_nonspec_df)
+                    else: # all anticodons
+                        for aa, anticodons in AA_ANTICODON_DICT.items():
+                            for anticodon in anticodons:
+                                anticodon_spec_df = spec_df[(spec_df['anticodon'] == anticodon).squeeze()]
+                                anticodon_mod_df = mod_df[(mod_df['anticodon'] == anticodon)]
+                                anticodon_nonspec_df = nonspec_df[(nonspec_df['anticodon'] == anticodon).squeeze()] if self.nonspec_txt_path else None
+                                if taxon_filter:
+                                    if loop_ranks: # (potentially) multiple taxa at ranks below the taxon filter
+                                        for rank in loop_ranks:
+                                            self.plot_rank(rank,
+                                                           anticodon_spec_df,
+                                                           anticodon_mod_df,
+                                                           aa,
+                                                           anticodon,
+                                                           out_dir,
+                                                           nonspec_df=anticodon_nonspec_df)
+                                    else: # single taxon
+                                        self.plot_items(anticodon_spec_df,
+                                                        anticodon_mod_df,
+                                                        aa,
+                                                        anticodon,
+                                                        taxon_rank_filter,
+                                                        taxon_filter,
+                                                        out_dir,
+                                                        nonspec_df=anticodon_nonspec_df)
+                                else: # (potentially) multiple taxa
+                                    for rank in loop_ranks:
+                                        self.plot_rank(rank,
+                                                       anticodon_spec_df,
+                                                       anticodon_mod_df,
+                                                       aa,
+                                                       anticodon,
+                                                       out_dir,
+                                                       nonspec_df=anticodon_nonspec_df)
+                print("\n")
+
+
+    def sanity_check(self):
+        """Check `anvi-plot-trnaseq` arguments."""
+        self.contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
+        if self.contigs_db_info.variant != 'trnaseq':
+            raise ConfigError("The input contigs database is not of the `trnaseq` variant...")
+
+        filesnpaths.is_file_tab_delimited(self.spec_txt_path)
+        if self.nonspec_txt_path:
+            filesnpaths.is_file_tab_delimited(self.nonspec_txt_path)
+        filesnpaths.is_file_tab_delimited(self.mod_txt_path)
+
+        if self.out_dir:
+            filesnpaths.is_output_dir_writable(self.out_dir)
+
+
+    def load_data(self):
+        # Load the tables of seed specific coverages and modifications.
+        self.spec_df = spec_df = pd.read_csv(self.spec_txt_path, sep='\t', header=[0, 1, 2])
+
+        # The column multiindex has 3 levels. Some of the labels in the levels should be empty
+        # strings, but upon loading the table, these are replaced with default values that need to
+        # be changed to empty strings. The column multiindex for the positional coverage columns
+        # also needs to be isolated.
+        new_header = []
+        cov_header = []
+        in_cov_cols = False
+        self.cov_x_labels = cov_x_labels = []
+        for col_names in spec_df.columns:
+            new_col_names = []
+            for col_name in col_names:
+                if 'Unnamed: ' in col_name:
+                    new_col_names.append('')
+                else:
+                    new_col_names.append(col_name)
+                if col_name == 'trna_his_position_0_1':
+                    in_cov_cols = True
+            new_header.append(new_col_names)
+            if in_cov_cols:
+                cov_header.append(tuple(new_col_names))
+                cov_x_labels.append(new_col_names[2])
+        spec_df.columns = pd.MultiIndex.from_tuples(new_header)
+        self.cov_index = pd.MultiIndex.from_tuples(cov_header)
+
+        self.cov_length = len(self.cov_index.levels[0])
+        self.cov_x_values = np.arange(self.cov_length)
+
+        self.mod_y_ticks = np.arange(0, 1.25, 0.25)
+
+        # Each seed in a seeds coverage table has rows for all samples in the same order. Get sample
+        # names from the first seed in the table.
+        self.num_samples = len(set(spec_df['sample_name'].squeeze()))
+        self.sample_names = spec_df['sample_name'].squeeze().iloc[: self.num_samples].tolist()
+
+        self.mod_df = pd.read_csv(self.mod_txt_path, sep='\t', header=0, dtype={'canonical_position': str})
+
+
+    def print_help(self):
+        self.run.warning("", header="INPUT HELP", lc='green')
+        info_single = self.run.info_single
+        info_single("This program generates plots of seed coverage and modification levels across samples.", cut_after=100)
+        info_single("Use a semicolon to separate fields and a comma to separate rank and taxon within a field.", cut_after=100, nl_after=1)
+
+        info_single("Write a single plot by specifying a taxon and anticodon.", mc='cyan')
+        info_single("This input will plot Clostridia Arg-TCT seeds: class, Clostridia; TCT", mc='magenta', level=2)
+        info_single("Redundant but accepted: class, Clostridia; Arg; TCT", mc='magenta', level=2, nl_after=1)
+
+        info_single("Write plots at a single taxonomic rank.", mc='cyan')
+        info_single("Every class + every anticodon: class", mc='magenta', level=2)
+        info_single("Every class + Arg-TCT: class; TCT", mc='magenta', level=2, nl_after=1)
+
+        info_single("Write plots for every anticodon decoding an amino acid.", mc='cyan')
+        info_single("One class + every Arg anticodon: class, Clostridia; Arg", mc='magenta', level=2)
+        info_single("Every class + every Arg anticodon: class; Arg", mc='magenta', level=2, nl_after=1)
+
+        info_single("Write plots for multiple taxonomic ranks.", mc='cyan')
+        info_single("Every phylum and class + every anticodon: phylum; class", mc='magenta', level=2)
+        info_single("Every order in class Clostridia + every anticodon: class, Clostridia; order", mc='magenta', level=2)
+        info_single("Every genus in class Clostridia + Arg-TCT: class, Clostridia; genus; TCT", mc='magenta', level=2)
+        info_single("Every order and family in class Clostridia + every Arg anticodon: class, Clostridia; order; family; Arg", cut_after=120, mc='magenta', level=2)
+        info_single("Invalid: phylum; class, Clostridia", mc='red', level=2, nl_after=1)
+
+        info_single("The output directory can be changed to a new or existing directory.", mc='cyan', cut_after=100)
+        info_single("Example: class, Clostridia; Arg; outdir, plots/class/Clostridia/aa/Arg", mc='magenta', level=2, nl_after=1)
+
+        info_single("Only one taxon, amino acid, or anticodon can be given at a time.", mc='cyan')
+        info_single("Invalid: phylum, Firmicutes; class, Clostridia", mc='red', level=2)
+        info_single("Invalid: class, Clostridia; class, Bacteroidia", mc='red', level=2)
+        info_single("Invalid: Arg; Asp", mc='red', level=2, nl_after=1)
+
+        info_single("Type h for this help message.")
+        info_single("Type q to quit.", nl_after=2)
+
+
+    def plot_rank(self, rank, spec_df, mod_df, aa, anticodon, out_dir, nonspec_df=None):
+        spec_gb = spec_df.groupby(rank)
+        mod_gb = mod_df.groupby(rank)
+        nonspec_gb = nonspec_df.groupby(rank) if self.nonspec_txt_path else None
+
+        for taxon, taxon_spec_df in spec_gb:
+            try:
+                taxon_mod_df = mod_gb.get_group(taxon)
+            except KeyError:
+                taxon_mod_df = pd.DataFrame(columns=self.mod_df.columns)
+            taxon_nonspec_df = nonspec_gb.get_group(taxon) if self.nonspec_txt_path else None
+
+            self.plot_items(taxon_spec_df, taxon_mod_df, aa, anticodon, rank, taxon, out_dir, nonspec_df=taxon_nonspec_df)
+
+
+    def plot_items(self, spec_df, mod_df, aa, anticodon, rank, taxon, out_dir, nonspec_df=None):
+        if spec_df.empty:
+            if self.nonspec_txt_path:
+                if nonspec_df.empty:
+                    self.run.info_single(f"No values for {rank} {taxon} {aa}-{anticodon}")
+                    return
+            else:
+                self.run.info_single(f"No values for {rank} {taxon} {aa}-{anticodon}")
+                return
+
+        sample_spec_gb = spec_df.groupby(('sample_name', '', ''))
+        sample_mod_gb = mod_df.groupby('sample_name')
+        sample_nonspec_gb = nonspec_df.groupby(('sample_name', '', '')) if self.nonspec_txt_path else None
+
+        fig = plt.figure(1)
+        num_samples = self.num_samples
+        GridSpec(num_samples, 1)
+
+        bottom_cov_ax = plt.subplot2grid((num_samples, 1), (num_samples - 1, 0))
+        cov_axs = []
+        for grid_row in range(0, num_samples - 1):
+            cov_ax = plt.subplot2grid((num_samples, 1), (grid_row, 0), sharex=bottom_cov_ax)
+            cov_ax.tick_params(bottom=False, labelbottom=False)
+            cov_axs.append(cov_ax)
+        cov_axs.append(bottom_cov_ax)
+
+        plt.subplots_adjust(hspace=0)
+
+        cov_index = self.cov_index
+        cov_cutoff = self.cov_cutoff
+        cov_length = self.cov_length
+        cov_x_values = self.cov_x_values
+        cov_x_labels = self.cov_x_labels
+        NT_COLORS = self.NT_COLORS
+        mod_y_ticks = self.mod_y_ticks
+        ax_count = -1
+        for sample_name, cov_ax in zip(self.sample_names, cov_axs):
+            ax_count += 1
+            try:
+                sample_spec_df = sample_spec_gb.get_group(sample_name)
+            except KeyError:
+                raise ConfigError("The input seeds specific coverage table appears not to have been generated correctly -- "
+                                  "not every seed has a row for every sample. "
+                                  "If you (wisely) generated the table with `anvi-tabulate-trnaseq` please contact the developer.")
+
+            sum_rel_mean_spec_cov = sample_spec_df['relative_mean_coverage'].sum(axis=0)
+            if sum_rel_mean_spec_cov == 0:
+                cov_ax.tick_params(left=False, right=False, bottom=False, labelleft=False, labelright=False)
+                cov_ax.annotate(f"{sample_name}",
+                                xy=(1.04, 1),
+                                xycoords=('axes fraction', 'axes fraction'),
+                                va='top',
+                                fontsize=3)
+                continue
+
+            # Display seed coverages from bottom to top in descending order of mean specific coverage.
+            sample_spec_df = sample_spec_df.sort_values('mean_coverage', ascending=False)
+
+            spec_cov_array = sample_spec_df[cov_index].values
+            cov_y_values = np.zeros(self.cov_length)
+            for spec_covs, mean_spec_cov in zip(spec_cov_array, sample_spec_df['mean_coverage']):
+                cov_y_values += spec_covs
+                cov_ax.plot(cov_x_values, cov_y_values, linewidth=0.15, color='gray')
+
+            # Plot a line showing the total specific coverage of all seeds under consideration.
+            cov_ax.plot(cov_x_values, spec_cov_array.sum(axis=0), linewidth=0.15, color='purple')
+
+            cov_ax.set_ylim(0)
+            cov_ax.yaxis.set_tick_params(labelsize=2, length=2, pad=0)
+            if ax_count == 0 and ax_count == len(cov_axs) - 1:
+                cov_ax.yaxis.set_major_locator(MaxNLocator(nbins=3, steps=[5], integer=True, min_n_ticks=2))
+            elif ax_count == 0:
+                cov_ax.yaxis.set_major_locator(MaxNLocator(nbins=3, steps=[5], integer=True, prune='lower', min_n_ticks=2))
+            elif ax_count == len(cov_axs) - 1:
+                cov_ax.yaxis.set_major_locator(MaxNLocator(nbins=3, steps=[5], integer=True, prune='upper', min_n_ticks=2))
+            else:
+                cov_ax.yaxis.set_major_locator(MaxNLocator(nbins=3, steps=[5], integer=True, prune='both', min_n_ticks=2))
+
+            sum_rel_discriminator_spec_cov = sample_spec_df['relative_discriminator_coverage'].sum(axis=0)
+            cov_ax.annotate(f"{sample_name}\n\nRel abunds\nmean: {sum_rel_mean_spec_cov:.1e}\n3': {sum_rel_discriminator_spec_cov:.1e}",
+                            xy=(1.04, 0.98),
+                            xycoords=('axes fraction', 'axes fraction'),
+                            va='top',
+                            fontsize=3)
+
+            mod_ax = cov_ax.twinx()
+            try:
+                sample_mod_df = sample_mod_gb.get_group(sample_name)
+            except KeyError:
+                # The seeds under consideration have no modifications.
+                mod_ax.tick_params(right=False, labelright=False)
+                continue
+
+            for ordinal_pos, pos_df in sample_mod_df.groupby('ordinal_position'):
+                total_pos_cov = spec_cov_array[:, ordinal_pos - 1].sum()
+                mod_nt_covs = pos_df[UNAMBIG_NTS_LIST].sum(axis=0)
+                nt_order = np.argsort(mod_nt_covs)[::-1]
+                nt_colors = [NT_COLORS[nt_int] for nt_int in nt_order]
+                prev_mod_nt_freq = 0
+                for mod_nt_cov, nt_color in zip(mod_nt_covs[nt_order], nt_colors):
+                    mod_nt_freq = mod_nt_cov / total_pos_cov
+                    mod_ax.bar([ordinal_pos - 1], prev_mod_nt_freq + mod_nt_freq, width=0.5, bottom=prev_mod_nt_freq, color=nt_color)
+                    prev_mod_nt_freq += mod_nt_freq
+
+            mod_ax.set_ylim(0, 1)
+            if ax_count == 0 and ax_count == len(cov_axs) - 1:
+                mod_ax.set_yticks(mod_y_ticks)
+            elif ax_count == 0:
+                mod_ax.set_yticks(mod_y_ticks[1: ])
+            elif ax_count == len(cov_axs) - 1:
+                mod_ax.set_yticks(mod_y_ticks[: -1])
+            else:
+                mod_ax.set_yticks(mod_y_ticks[1: -1])
+            mod_ax.yaxis.set_tick_params(labelsize=2, length=2, pad=0)
+
+        bottom_cov_ax.set_xlim(-1, cov_length)
+        bottom_cov_ax.set_xticks(cov_x_values)
+        bottom_cov_ax.set_xticklabels(cov_x_labels, fontsize=4, rotation='vertical')
+        bottom_cov_ax.xaxis.set_tick_params(length=2, pad=0)
+
+        top_cov_ax = cov_axs[0]
+        # Place a color key in the upper left corner for modification nt coverages.
+        NT_COLORS = self.NT_COLORS
+        nt_num = 0
+        for nt, nt_color in zip(UNAMBIG_NTS, NT_COLORS):
+            top_cov_ax.annotate(f"{nt}",
+                                xy=(0.01, 1.04 + 0.12 * nt_num),
+                                xycoords=('axes fraction', 'axes fraction'),
+                                fontsize=3,
+                                ha='center',
+                                color=nt_color)
+            nt_num += 1
+
+        top_cov_ax.annotate(f"{aa}-{anticodon}\n{rank.capitalize()} {taxon}",
+                            xy=(0.05, 1.04),
+                            xycoords=('axes fraction', 'axes fraction'),
+                            fontsize=6)
+
+        top_cov_ax.annotate(f"Seeds: {pp(len(sample_spec_df))}",
+                            xy=(1, 1.04),
+                            xycoords=('axes fraction', 'axes fraction'),
+                            ha='right',
+                            fontsize=6)
+
+        filename = f"{aa}_{anticodon}_{rank}_{taxon}.png"
+        out_path = os.path.join(out_dir, filename)
+        overwritten = True if os.path.exists(out_path) else False
+        plt.savefig(out_path, dpi=600, bbox_inches='tight')
+        self.run.info_single(f"{out_path}{' overwritten' if overwritten else ''}", mc='green')
