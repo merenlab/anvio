@@ -2490,18 +2490,18 @@ class TRNASeqDataset(object):
         replacement_info_dict = {'string_T': short_seq_Tf.string}
         feature_index_adjustment = -short_seq_Uf.xtra_5prime_length - len(short_seq_Tf_string)
         feature_starts_from_T_3prime = []
-        for feature_start_index in short_seq_Uf.feature_start_indices:
-            if isinstance(feature_start_index, int):
-                feature_starts_from_T_3prime.append(feature_start_index + feature_index_adjustment)
+        for feature_start in short_seq_Uf.feature_starts:
+            if isinstance(feature_start, int):
+                feature_starts_from_T_3prime.append(feature_start + feature_index_adjustment)
             else:
-                feature_starts_from_T_3prime.append(tuple([strand_start_index + feature_index_adjustment for strand_start_index in feature_start_index]))
+                feature_starts_from_T_3prime.append(tuple([strand_start + feature_index_adjustment for strand_start in feature_start]))
         replacement_info_dict['feature_starts_from_T_3prime'] = feature_starts_from_T_3prime
         feature_stops_from_T_3prime = []
-        for feature_stop_index in short_seq_Uf.feature_stop_indices:
-            if isinstance(feature_stop_index, int):
-                feature_stops_from_T_3prime.append(feature_stop_index + feature_index_adjustment)
+        for feature_stop in short_seq_Uf.feature_stops:
+            if isinstance(feature_stop, int):
+                feature_stops_from_T_3prime.append(feature_stop + feature_index_adjustment)
             else:
-                feature_stops_from_T_3prime.append(tuple([strand_stop_index + feature_index_adjustment for strand_stop_index in feature_stop_index]))
+                feature_stops_from_T_3prime.append(tuple([strand_stop + feature_index_adjustment for strand_stop in feature_stop]))
         replacement_info_dict['feature_stops_from_T_3prime'] = feature_stops_from_T_3prime
         replacement_info_dict['has_His_G'] = short_seq_Uf.has_His_G
         replacement_info_dict['alpha_start_from_T_3prime'] = None if short_seq_Uf.alpha_start is None else short_seq_Uf.alpha_start + feature_index_adjustment
@@ -2678,7 +2678,7 @@ class TRNASeqDataset(object):
                         anticodon_start_relative_to_3prime_terminus = dict_Nf_anticodon[seq_Nf.name]
                     except KeyError:
                         try:
-                            anticodon_loop_start = seq_Tf.feature_start_indices[RELATIVE_ANTICODON_LOOP_INDEX]
+                            anticodon_loop_start = seq_Tf.feature_starts[RELATIVE_ANTICODON_LOOP_INDEX]
                         except IndexError:
                             # The anticodon loop was not reached in the profile.
                             anticodon_loop_start = -1
@@ -2686,7 +2686,7 @@ class TRNASeqDataset(object):
                             # The anticodon loop was profiled.
                             anticodon_start = anticodon_loop_start + 2
                             # The position of the anticodon relative to the 3' terminus is a negative number.
-                            anticodon_start_relative_to_3prime_terminus = anticodon_start - dict_Uf[seq_Tf.names_U[0]].feature_start_indices[-1]
+                            anticodon_start_relative_to_3prime_terminus = anticodon_start - dict_Uf[seq_Tf.names_U[0]].feature_starts[-1]
                         else:
                             # The anticodon loop was not profiled, indicated by a positive number.
                             anticodon_start_relative_to_3prime_terminus = 1
