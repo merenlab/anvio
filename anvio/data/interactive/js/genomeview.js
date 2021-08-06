@@ -791,6 +791,8 @@ function viewCluster(gc) {
       canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
       canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
       updateScalePos();
+        updateRenderWindow();
+        draw();
         first = false;
         firstGenomeID = genome[0];
       }
@@ -1334,16 +1336,7 @@ function adjustScaleInterval() {
  *  Update scale info to match viewport location.
  */
 function updateScalePos() {
-  let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-  let newStart = Math.floor(-1*(canvas.viewportTransform[4]+xDisplacement)/scaleFactor);
-  let newEnd = newStart + (end-start);
-  if(newStart < 0) {
-    newStart = 0;
-    newEnd = end - start;
-  } else if(newEnd > genomeMax) {
-    newEnd = genomeMax;
-    newStart = start + (genomeMax - end);
-  }
+  let [newStart, newEnd] = getNTRangeForVPT();
   brush.extent([newStart, newEnd]);
   brush(d3.select(".brush").transition());
   $('#brush_start').val(newStart);
