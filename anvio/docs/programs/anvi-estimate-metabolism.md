@@ -6,6 +6,15 @@ Given a properly annotated %(contigs-db)s, this program determines which KOs are
 
 For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
+## Prerequisites to using this program
+
+Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program.
+
+Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-kofams)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-kofams)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
+
+1. Run %(anvi-setup-kegg-kofams)s to get data from KEGG onto your computer. This step only needs to be done once.
+2. Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
+
 ## Running metabolism estimation on a single contigs database
 
 There are several possible inputs to this program. For single genomes (isolate genomes or MAGs, for example) you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, estimation is run on each contig individually - that is, only KOfam hits within the same contig are allowed to contribute to the completeness score of a given KEGG module. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
