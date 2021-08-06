@@ -785,18 +785,17 @@ function viewCluster(gc) {
       var targetGeneID = targetGenes[0]; /* TODO: implementation for multiple matching gene IDs */
       var targetGene = genome[1].genes.gene_calls[targetGeneID];
       genes.push({genomeID:genome[0],geneID:targetGeneID});
-
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
       canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
       canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
-      updateScalePos();
-        updateRenderWindow();
-        draw();
-        first = false;
         firstGenomeID = genome[0];
+        first = false;
       }
     }
+    updateScalePos();
+    updateRenderWindow();
+    draw();
     glowGenes(genes);
     return (first ? null : [firstGenomeID, geneMid]);
   } else {
