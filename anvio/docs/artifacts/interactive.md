@@ -43,7 +43,7 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 - %(gene-cluster-inspection)s lets you examine specific gene clusters.
 
-- %(contig-inspection)s shows you detailed contig information. 
+- %(contig-inspection)s shows you detailed contig information.
 
 ## An overview of the display
 
@@ -89,11 +89,11 @@ This is one of the most frequently used tabs in the interface, and there are mul
 Clicking the _Show Additional Settings_ button provides access to myriad additional, more-granular adjustments, including,
 
 * **Dendrogram subsection**. _Radius_ and _Angle_ , and _Edge length normalization_ adjustments for the dendrogram.
-* **Branch support subsection**. Settings f_or displaying _bootstrap values_ on the dendrogram
-* **Selections subsection**. To adjust _height_, _grid_ and/or _shade_ display, as well as selection _name_ settings. 
+* **Branch support subsection**. Settings for displaying _bootstrap values_ on the dendrogram.
+* **Selections subsection**. To adjust _height_, _grid_ and/or _shade_ display, as well as selection _name_ settings.
 * **Layers subsection**. Display and label settings.
-* **Performance subsection**. Whether the SVG output is optimized for performance or granularity (very advanced stuff). 
-* **Layers subsection**. This is arguably the most important subsection in the Main tab that enables you to make very precise adjustments to how things should look like on your screen. You can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple layers_ as well. 
+* **Performance subsection**. Whether the SVG output is optimized for performance or granularity (very advanced stuff).
+* **Layers subsection**. This is arguably the most important subsection in the Main tab that enables you to make very precise adjustments to how things should look like on your screen. You can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple layers_ as well.
 
 ![an anvi'o settings layers](../../images/interactive_interface/interactive-settings-layers.png){:.center-img}
 
@@ -122,7 +122,7 @@ Samples tab is for the additional data you provide the interface through a sampl
 
 - __Customize individual samples information entries.__ Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
 
-### Bins tab 
+### Bins tab
 
 Anvi’o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
 
@@ -134,14 +134,14 @@ Anvi’o allows you to create selections of items shown in the display (whether 
 
 ![an anvi'o bins tab](../../images/interactive_interface/interactive-settings-bins-tab.png){:.center-img}
 
-### Legends tab 
+### Legends tab
 
-The legends tab enables users to easily change individual or batch legend colors for any of their additional data items 
+The legends tab enables users to easily change individual or batch legend colors for any of their additional data items
 <!-- grab legend example from infant gut w/ additional data layer -->
 
 ![an anvi'o legends tab](../../images/interactive_interface/interactive-settings-legends-tab.png){:.center-img}
 
-### Search tab 
+### Search tab
 
 It does what the name suggests. Using this tab you can,
 
@@ -157,14 +157,14 @@ The mouse panel displays the value of items underneath the mouse pointer while t
 
 Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘mouse panel’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
 
-### News panel 
-The news panel provides information and external links tracking major Anvi'o releases and development updates. 
+### News panel
+The news panel provides information and external links tracking major Anvi'o releases and development updates.
 
-### Description panel 
+### Description panel
 
-- The description panel is a flexible, multipurpose space where users can, 
-- Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment. 
-- Display context, references, reproducibility instructions, and any other salient details for published figures. 
+- The description panel is a flexible, multipurpose space where users can,
+- Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment.
+- Display context, references, reproducibility instructions, and any other salient details for published figures.
 ![The Description panel in action](../../images/interactive_interface/interactive-settings-description-panel.png){:.center-img}
 
 ## Interactive interface tips + tricks
@@ -185,14 +185,14 @@ Here are some small conveniences that may help the interface serve you better (w
 
 The interactive interface recognizes a handful of keyboard shortcuts to help speed up your workflow
 
-- The `S` key toggles the Settings panel 
-- The `M` key toggles the Mouse panel 
-- The `N` key toggles the Description panel 
+- The `S` key toggles the Settings panel
+- The `M` key toggles the Mouse panel
+- The `N` key toggles the Description panel
 - The `W` key toggles the News panel
 - The `D` key triggers a redraw of your visualization
-- The `T` key toggles showing the Title panel 
-- Keys `1` through `5` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown. 
-- `CTRL`+`Z` and `CTRL`+`SHIFT`+`Z` will undo or redo bin actions, respectively. 
+- The `T` key toggles showing the Title panel
+- Keys `1` through `5` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown.
+- `CTRL`+`Z` and `CTRL`+`SHIFT`+`Z` will undo or redo bin actions, respectively.
 
 
 
