@@ -11,8 +11,10 @@ any later version.
 
 Please read the COPYING file.
 """
-# __requires__ = ["contigs-db"]
+
+__requires__ = ["contigs-db"]
 __provides__ = ["genes-stats"]
+__authors__ = ['meren']
 __description__ = "A simple script to generate info from search tables, given a contigs-db"
 
 import sys

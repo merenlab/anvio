@@ -1200,9 +1200,9 @@ function buildLayersTable(order, settings)
                 }
                 else
                 {
+                    var height = getNamedLayerDefaults(layer_name, 'height', '90');
+                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
                     var color = "#000000";
-                    var height = '90';
-                    var margin = '15';
                     var color_start = "#DDDDDD";
 
                     if (mode == 'collection') {
@@ -1302,7 +1302,7 @@ function buildLayersTable(order, settings)
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                    var margin = '15';
+                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";

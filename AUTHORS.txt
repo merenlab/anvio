@@ -6,8 +6,8 @@ Evan Kiefl (kiefl.evan at gmail dot com)
 Iva Veseli (iveseli at uchicago.edu)
 Samuel Miller (samuelmiller at uchicago.edu)
 Matthew Schechter (mschechter at uchicago dot edu)
-Isaac Fink (iafink at uchicago dot edu)
 Matthew Lawrence Klein (mtt.l.kln at gmail dot com)
+Isaac Fink (iafink at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
 Florian Trigodet (trigodet dot florian at gmail dot com)
 Emily Fogarty (efogarty at uchicago dot edu)
@@ -23,25 +23,27 @@ Ryan Moore                 University of Delaware                 United States
 Mahmoud Yousef             University of Chicago                  United States
 Emanuel Burgos             University of Wisconsin-Madison        United States
 Gökmen Göksel              Google, Inc.                           United States
-Faruk Uzun                 Monera, Inc.                           Turkey
 Daniel Blankenberg         Genomic Medicine Institute             United States
+Faruk Uzun                 Monera, Inc.                           Turkey
 Gökmen Görgen              Radity, Inc                            Switzerland
 Doğan Can Kilment          Makroser, Inc.                         Turkey
-Srinidhi Varadharajan      University of Oslo                     Norway
 Amy Willis                 University of Washington               United States
+Srinidhi Varadharajan      University of Oslo                     Norway
 Mike Lee                   NASA Ames Research Center              United States
+S. Çağlar Onur             Google, Inc.                           United States
 Xabier Vázquez-Campos      University of New South Wales          Australia
 John Eppley                University of Hawaiʻi at Mānoa         United States
-S. Çağlar Onur             Google, Inc.                           United States
+Jessika Fuessel            University of Chicago                  United States
 Dan Utter                  Harvard University                     United States
-Tom Delmont                Genoscope                              France
-Finlay Maguire             Dalhousie University                   Canada
-M. Fauzi Haroon            Harvard University                     United States
 Elmar Pruesse              University of Colorado Denver          United States
-C. Titus Brown             University of California Davis         United States
-Bryan Merill               Stanford University                    United States
 Lucas Paoli                ETH Zurich                             Switzerland
+Moritz Buck                Uppsala University                     Sweeden
+Tom Delmont                Genoscope                              France
 Inés Martinez              University of Alberta                  Canada
+Bryan Merill               Stanford University                    United States
+C. Titus Brown             University of California Davis         United States
+M. Fauzi Haroon            Harvard University                     United States
+Finlay Maguire             Dalhousie University                   Canada
 
 ===============================================================================
 Developers and contributors no longer on GitHub

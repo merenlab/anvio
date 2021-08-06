@@ -220,26 +220,26 @@ WC_PLUS_WOBBLE_BASE_PAIRS = {
     'G': ('C', 'T')
 }
 
-AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
-                                 'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
-                                 'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},
-                                 'Asp': {"C":4,  "H":7,  "N":1, "O":4, "S":0},
-                                 'Cys': {"C":3,  "H":7,  "N":1, "O":2, "S":1},
-                                 'Gln': {"C":5,  "H":10, "N":2, "O":3, "S":0},
-                                 'Glu': {"C":5,  "H":9,  "N":1, "O":4, "S":0},
-                                 'Gly': {"C":2,  "H":5,  "N":1, "O":2, "S":0},
-                                 'His': {"C":6,  "H":9,  "N":3, "O":2, "S":0},
-                                 'Ile': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Leu': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Lys': {"C":6,  "H":14, "N":2, "O":2, "S":0},
-                                 'Met': {"C":5,  "H":11, "N":1, "O":2, "S":1},
-                                 'Phe': {"C":9,  "H":11, "N":1, "O":2, "S":0},
-                                 'Pro': {"C":5,  "H":9,  "N":1, "O":2, "S":0},
-                                 'Ser': {"C":3,  "H":7,  "N":1, "O":3, "S":0},
-                                 'Thr': {"C":4,  "H":9,  "N":1, "O":3, "S":0},
-                                 'Trp': {"C":11, "H":12, "N":2, "O":2, "S":0},
-                                 'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
-                                 'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
+AA_atomic_composition = {'Ala': Counter({"C":3,  "H":7,  "N":1, "O":2, "S":0}),
+                         'Arg': Counter({"C":6,  "H":14, "N":4, "O":2, "S":0}),
+                         'Asn': Counter({"C":4,  "H":8,  "N":2, "O":3, "S":0}),
+                         'Asp': Counter({"C":4,  "H":7,  "N":1, "O":4, "S":0}),
+                         'Cys': Counter({"C":3,  "H":7,  "N":1, "O":2, "S":1}),
+                         'Gln': Counter({"C":5,  "H":10, "N":2, "O":3, "S":0}),
+                         'Glu': Counter({"C":5,  "H":9,  "N":1, "O":4, "S":0}),
+                         'Gly': Counter({"C":2,  "H":5,  "N":1, "O":2, "S":0}),
+                         'His': Counter({"C":6,  "H":9,  "N":3, "O":2, "S":0}),
+                         'Ile': Counter({"C":6,  "H":13, "N":1, "O":2, "S":0}),
+                         'Leu': Counter({"C":6,  "H":13, "N":1, "O":2, "S":0}),
+                         'Lys': Counter({"C":6,  "H":14, "N":2, "O":2, "S":0}),
+                         'Met': Counter({"C":5,  "H":11, "N":1, "O":2, "S":1}),
+                         'Phe': Counter({"C":9,  "H":11, "N":1, "O":2, "S":0}),
+                         'Pro': Counter({"C":5,  "H":9,  "N":1, "O":2, "S":0}),
+                         'Ser': Counter({"C":3,  "H":7,  "N":1, "O":3, "S":0}),
+                         'Thr': Counter({"C":4,  "H":9,  "N":1, "O":3, "S":0}),
+                         'Trp': Counter({"C":11, "H":12, "N":2, "O":2, "S":0}),
+                         'Tyr': Counter({"C":9,  "H":11, "N":1, "O":3, "S":0}),
+                         'Val': Counter({"C":5,  "H":11, "N":1, "O":2, "S":0})}
 
 # taken from http://prowl.rockefeller.edu/aainfo/volume.htm
 # volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123.

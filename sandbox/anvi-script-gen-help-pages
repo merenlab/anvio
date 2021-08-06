@@ -15,9 +15,8 @@ __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
-__description__ = "Generate a static web page for anvio'o help pages"
+__authors__ = ['meren', 'Jessica-Pan']
+__description__ = "Generate a static web site for anvi'o help pages"
 
 
 run = terminal.Run()
