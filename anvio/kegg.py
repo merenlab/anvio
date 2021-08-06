@@ -2041,13 +2041,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def init_data_from_modules_db(self):
         """This function reads mucho data from the MODULES.db into dictionaries for later access.
 
-        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules in the db.
+        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
+        in the db, keyed by module number.
+        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
 
         We do this once at the start so as to reduce the number of on-the-fly database queries
         that have to happen during the estimation process.
         """
 
         self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+        #self.all_kos_in_db = 
 
 
     def init_paths_for_modules(self):
