@@ -502,10 +502,10 @@ class TrimmedFullProfileSequence(TrimmedSequence):
         self.name = name = represent_U.name
         categories_U = []
         for seq_U in seqs_U:
-            if isinstance(seq_U, UniqueFullProfileSequence):
-                categories_U.append('Uf')
-            elif isinstance(seq_U, UniqueTransferredProfileSequence):
+            if isinstance(seq_U, UniqueTransferredProfileSequence):
                 categories_U.append('Us')
+            elif isinstance(seq_U, UniqueFullProfileSequence):
+                categories_U.append('Uf')
             else:
                 raise Exception(f"A unique sequence with name `{seq_U.name}` of class `{type(seq_U)}` was encountered.")
             seq_U.name_T = name
