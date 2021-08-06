@@ -425,11 +425,7 @@ function loadAll() {
       var e = opt.e;
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
-      if(vpt[4] > 125) {
-        vpt[4] = 125;
-      } else if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125) {
-      vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125;
-      }
+      bindViewportToWindow();
       this.requestRenderAll();
       this.lastPosX = e.clientX;
 
@@ -879,6 +875,17 @@ function showAllADLPts() {
   $('#showAllADLPtsBtn').blur();
 }
 
+function alignRulers() {
+  for(genome of genomeData.genomes) {
+    xDisps[genome[0]] = xDisplacement;
+  }
+  // TODO: update viewport limits to 125 and -1*(genomeMax*scaleFactor-canvas.getWidth()),
+  //        once these limits are implemented based on individual genome displacements.
+  bindViewportToWindow();
+  draw();
+  $('#alignRulerBtn').blur();
+}
+
 function setGenomeSpacing(newSpacing) {
   if(isNaN(newSpacing)) return;
   newSpacing = parseInt(newSpacing);
@@ -1184,6 +1191,18 @@ function getNTRangeForVPT() {
   if(window_left < 0) window_left = 0;
   if(window_right > genomeMax) window_right = genomeMax;
   return [window_left, window_right];
+}
+
+/*
+ *  Resets viewport if outside bounds of the view window, with padding on each end
+ */
+function bindViewportToWindow() {
+  let vpt = canvas.viewportTransform;
+  if(vpt[4] > 125) {
+    vpt[4] = 125;
+  } else if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125) {
+    vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125;
+  }
 }
 
 function getCategoryForKEGGClass(class_str) {
