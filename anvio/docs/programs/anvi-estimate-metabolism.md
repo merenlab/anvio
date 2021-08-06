@@ -1,8 +1,10 @@
-%(anvi-estimate-metabolism)s predicts the metabolic capabilities of organisms based on their genetic content. It relies upon %(kegg-functions)s and metabolism information from the KEGG resource, which is stored in a %(modules-db)s.
+%(anvi-estimate-metabolism)s predicts the metabolic capabilities of organisms based on their genetic content. It relies upon %(kegg-functions)s and metabolism information from [KEGG](https://www.genome.jp/kegg/) (%(kegg-data)s), which is stored in a %(modules-db)s.
 
-The metabolic pathways that this program currently considers are those defined by KOs in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program.
+The metabolic pathways that this program currently considers are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
 
-Given a properly annotated %(contigs-db)s, this program determines which KOs are present and from those determines the completeness of each KEGG module. The results are described in a set of output text files, collectively referred to as %(kegg-metabolism)s.
+Given a properly annotated %(contigs-db)s, this program determines which KOs are present and uses these functions to compute the completeness of each KEGG module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples. 
+
+For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
 ## Running metabolism estimation on a single contigs database
 
