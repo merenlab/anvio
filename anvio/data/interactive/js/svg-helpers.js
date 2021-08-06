@@ -257,9 +257,17 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
-            drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            if(supportValueData.textRotation == '0'){
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            } else {
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            }
         } else {
-            drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            if(supportValueData.textRotation == '0'){
+                drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            } else {
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            }
         }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
