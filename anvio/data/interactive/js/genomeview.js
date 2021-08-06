@@ -44,6 +44,7 @@
  var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
  var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
+ var renderWindow = [];
 
  var alignToGC = null;
 
@@ -256,6 +257,9 @@ function loadAll() {
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   xDisplacement = showLabels ? 120 : 0;
+  for(genome of genomeData.genomes) {
+    xDisps[genome[0]] = xDisplacement;
+  }
 
   // Find max length genome
   calculateMaxGenomeLength()
@@ -318,6 +322,8 @@ function loadAll() {
 
       let ntsToShow = b[1] - b[0];
       scaleFactor = canvas.getWidth()/ntsToShow;
+
+      updateRenderWindow();
 
       if(dynamicScaleInterval) adjustScaleInterval();
 
@@ -398,6 +404,9 @@ function loadAll() {
     }));
   }
 
+  brush.extent([parseInt($('#brush_start').val()),parseInt($('#brush_end').val())]);
+  brush(d3.select(".brush"));
+  updateRenderWindow();
   draw();
 
   // panning
@@ -416,11 +425,19 @@ function loadAll() {
       var e = opt.e;
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
-      if(vpt[4] > 125) vpt[4] = 125;
-      if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125)
+      if(vpt[4] > 125) {
+        vpt[4] = 125;
+      } else if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125) {
       vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125;
+      }
       this.requestRenderAll();
       this.lastPosX = e.clientX;
+
+      let [l,r] = getNTRangeForVPT();
+      if(l < renderWindow[0] || r > renderWindow[1]) {
+        updateRenderWindow();
+        draw();
+      }
     }
   });
   canvas.on('mouse:up', function(opt) {
@@ -581,7 +598,6 @@ function draw(scaleX=scaleFactor) {
 
   for(genome of genomeData.genomes) {
     let label = genome[1].genes.gene_calls[0].contig;
-    xDisps[genome[0]] = xDisplacement;
     addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
     addLayers(label, genome[1], genome[0])
     labelSpacing += 30
@@ -655,6 +671,8 @@ function shadeGeneClusters(geneClusters, colors) {
       for(geneID of genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID_B]) {
         g2.push(genomeB[geneID].start, genomeB[geneID].stop);
       }
+
+      if(g1[0] < renderWindow[0] || g1[1] > renderWindow[1] || g2[0] < renderWindow[0] || g2[1] > renderWindow[1]) break;
 
       g1 = g1.map(val => val*scaleFactor + xDisps[genomeID_A]);
       g2 = g2.map(val => val*scaleFactor + xDisps[genomeID_B]);
@@ -909,11 +927,12 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
+  let [start, stop] = renderWindow.map(x => x*scaleX + xDisps[genomeID]);
+
   // line
-  let lineObj = new fabric.Line([0,0,genomeMax*scaleX,0], {
+  let lineObj = new fabric.Line([start,0,stop,0], {
         id: 'genomeLine',
         groupID: genomeID,
-        left: xDisps[genomeID],
         top: y + 4,
         stroke: 'black',
         strokeWidth: 2,
@@ -925,6 +944,10 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
+
+    if(gene.start < renderWindow[0]) continue;
+    if(gene.stop > renderWindow[1]) return;
+
     let genome = genomeData.genomes.find(g => g[0] == genomeID)[1];
     var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
     canvas.add(geneObj);
@@ -1004,6 +1027,8 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
     let j = 0
     for(let i = 0; i < nGroups; i++) {
       for(; j < i*genomeMax/nGroups; j+=ptInterval){
+        if(j < renderWindow[0]) continue;
+        if(j > renderWindow[1]) break;
         let left = j * scaleFactor + startingLeft
         let top = [additionalDataLayers[layer][j] / maxGCValue] * layerHeight
       let segment = `L ${left} ${top}`
@@ -1037,6 +1062,8 @@ function buildGroupRulerLayer(genomeID, layerPos){
   for(let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
     for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
+      if(w < renderWindow[0]) continue;
+      if(w > renderWindow[1]) break;
       let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
             stroke: 'black',
             strokeWidth: 1,
@@ -1049,6 +1076,7 @@ function buildGroupRulerLayer(genomeID, layerPos){
             fontFamily: 'sans-serif'});
       ruler.add(tick);
       ruler.add(lbl);
+    }
       ruler.set({
         left: startingLeft,
         top: startingTop,
@@ -1059,7 +1087,6 @@ function buildGroupRulerLayer(genomeID, layerPos){
         objectCaching: false, 
         groupID: genomeID
       });
-      }
       ruler.addWithUpdate();
       canvas.add(ruler);
       }
@@ -1144,6 +1171,18 @@ function toggleSettingsPanel() {
         $('#toggle-panel-settings').removeClass('toggle-panel-settings-pos');
         $('#toggle-panel-settings-inner').html('&#9664;');
     }
+}
+
+/*
+ *  @returns [start, stop] nt range for the current viewport and scaleFactor
+ */
+function getNTRangeForVPT() {
+  let vpt = canvas.viewportTransform;
+  let window_left = Math.floor((-1*vpt[4]-xDisplacement)/scaleFactor);
+  let window_right = Math.floor(window_left + canvas.getWidth()*scaleFactor);
+  if(window_left < 0) window_left = 0;
+  if(window_right > genomeMax) window_right = genomeMax;
+  return [window_left, window_right];
 }
 
 function getCategoryForKEGGClass(class_str) {
@@ -1292,7 +1331,7 @@ function adjustScaleInterval() {
 }
 
 /*
- *  Update scale box position to match viewport location.
+ *  Update scale info to match viewport location.
  */
 function updateScalePos() {
   let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
@@ -1309,6 +1348,15 @@ function updateScalePos() {
   brush(d3.select(".brush").transition());
   $('#brush_start').val(newStart);
   $('#brush_end').val(newEnd);
+}
+
+/*
+ *  Update render window based on scale box position
+ */
+function updateRenderWindow() {
+  let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
+  renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
 }
 
 /*
