@@ -3049,6 +3049,7 @@ class TRNASeqDataset(object):
         target_fasta_path = os.path.join(temp_dir_path, 'target.fa')
         dict_Tf = self.dict_Tf
         dict_Uf = self.dict_Uf
+        dict_Us = self.dict_Us
         with open(target_fasta_path, 'w') as target_fasta:
             for seq_Nf in self.dict_Nf.values():
                 string_Nf = seq_Nf.string
@@ -3057,10 +3058,13 @@ class TRNASeqDataset(object):
                 longest_Tf = dict_Tf[seq_Nf.names_T[0]]
                 if longest_Tf.uniq_with_xtra_5prime_count > 0:
                     set_5prime_string = set()
-                    for name_Uf in longest_Tf.names_U:
-                        seq_Uf = dict_Uf[name_Uf]
-                        if seq_Uf.xtra_5prime_length > 0:
-                            set_5prime_string.add(seq_Uf.string[: seq_Uf.xtra_5prime_length])
+                    for name_U in longest_Tf.names_U:
+                        try:
+                            seq_U = dict_Uf[name_U]
+                        except KeyError:
+                            seq_U = dict_Us[name_U]
+                        if seq_U.xtra_5prime_length > 0:
+                            set_5prime_string.add(seq_U.string[: seq_U.xtra_5prime_length])
 
                     # Avoid creating superfluous target seqs that are subseqs of other target seqs
                     # due to a 5' extension of an Nf being a subseq of a longer 5' extension of the
