@@ -327,7 +327,7 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Func. Homogeneity Ind.',
     },
     'geometric_homogeneity_index': {
@@ -336,7 +336,7 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Geo. Homogeneity Ind.',
     },
     'combined_homogeneity_index': {
@@ -345,8 +345,21 @@ var named_layers = {
         'norm': 'none',
         'min': 0,
         'max': 1,
-        'type': 'intensity',
+        'type': 'bar',
         'pretty_name': 'Comb. Homogeneity Ind.',
+    },
+    'Gene_cluster_type_LLR': {
+        'height': 180,
+        'color': '#00AA00',
+        'color-start': '#AA0000',
+        'norm': 'none',
+        'type': 'intensity',
+        'pretty_name': 'Gene Cluster Type (LLR)',
+    },
+    'Gene_cluster_type': {
+        'height': 180,
+        'pretty_name': 'Gene Cluster Type (Class)',
+        'margin': 30,
     },
     'max_num_paralogs': {
         'height': 180,
@@ -479,7 +492,9 @@ named_category_colors = {
     'GU'              : '#65ADC2',
     'EU'              : '#E84646',
     'SINGL'           : '#BCC8CC',
-    'DISC'            : '#BCC8CC'
+    'DISC'            : '#BCC8CC',
+    'CORE'            : '#00AA00',
+    'ACCESSORY'       : '#AA0000',
 };
 
 function getNamedCategoryColor(name)

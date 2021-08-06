@@ -15,8 +15,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Mike Lee"
-__email__ = "michael.lee0517@gmail.com"
+__authors__ = ['AstrobioMike']
 __provides__ = ["contigs-fasta", "external-gene-calls", "functions-txt"]
 __requires__ = ["genbank-file"]
 __description__ = ("This script takes a GenBank file, and outputs a FASTA file, as well as two "
@@ -51,6 +50,12 @@ if __name__ == '__main__':
                              source (default: "NCBI_PGAP")')
     groupC.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
                              source version to be stored in the database (default: "v4.6")')
+    groupC.add_argument("--omit-aa-sequences-column", default=False, action="store_true", help="If amino acid sequences for "
+                            "gene calls are present in the GFF file, anvi'o by default will include an `aa_sequences` column "
+                            "in the external gene calls output file. This is good because then anvi-gen-contigs-database can "
+                            "use that information directly, instead of trying to predict the translated sequences itself. "
+                            "If you would like this program to not report amino acid sequences even when they present and use "
+                            "anvi'o to predict translated sequences later, you can use this flag.")
 
     args = parser.get_args(parser)
 

@@ -166,13 +166,20 @@ class GenomeDescriptions(object):
             sys.exit(0)
 
 
-    def get_HMM_sources_common_to_all_genomes(self):
-        """Returns True if all HMM sources in all genomes are comparable"""
+    def get_HMM_sources_common_to_all_genomes(self, sources_that_must_be_common=None):
+        """Returns True if all HMM sources in all genomes are comparable.
+
+        If you send a list of sources via the parameter `sources_sources_that_must_be_common`, it will also
+        ensure that they are common to all genomes, or will throw an exception.
+        """
+
+        self.progress.new('Identifying HMM sources common to all genomes', progress_total_items=len(self.genomes))
 
         hmm_sources_info_per_genome = {}
 
         # first recover hmm sources info per genome
         for genome_name in self.genomes:
+            self.progress.update(f"Processing '{genome_name}' ...", increment=True)
             if 'hmm_sources_info' not in self.genomes[genome_name]:
                 # someone did not run the expensive `init` function. but we can recover this
                 # here quitte cheaply
@@ -183,6 +190,7 @@ class GenomeDescriptions(object):
 
             hmm_sources_info_per_genome[genome_name] = hmm_sources_info
 
+        self.progress.update('Finalizing ...')
         hmm_sources_found = set([])
         for genome_name in self.genomes:
             [hmm_sources_found.add(s) for s in hmm_sources_info.keys()]
@@ -193,6 +201,23 @@ class GenomeDescriptions(object):
             for hmm_source in hmm_sources_found:
                 if hmm_source not in hmm_sources_info_per_genome[genome_name] and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
+
+        self.progress.end()
+
+        if sources_that_must_be_common:
+            hmm_sources_missing = [s for s in sources_that_must_be_common if s not in hmm_sources_in_all_genomes]
+            if len(hmm_sources_missing):
+                genomes_missing_any = set([])
+
+                for genome_name in self.genomes:
+                    for hmm_source in sources_that_must_be_common:
+                        if hmm_source not in hmm_sources_info_per_genome[genome_name].keys():
+                            genomes_missing_any.add(genome_name)
+
+                raise ConfigError(f"Bad news. {P('An HMM source', len(hmm_sources_missing), alt='Some HMM sources')} "
+                                  f"you really need ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
+                                  f"missing from some of your contigs databases :/ Here is the list: [{', '.join(genomes_missing_any)}].")
+
 
         return hmm_sources_in_all_genomes
 
@@ -281,11 +306,15 @@ class GenomeDescriptions(object):
         else:
             # init will do everything. but it is very expensive. if the user does not want to
             # init all the bulky stuff, we still can give them the contents of the meta tables.
+            self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
+            self.progress.update('...')
             for genome_name in self.genomes:
+                self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
                 contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
                 for key in contigs_db.meta:
                     g[key] = contigs_db.meta[key]
+            self.progress.end()
 
         # we are done hre.
         self.initialized = True
@@ -563,7 +592,8 @@ class GenomeDescriptions(object):
         """Make sure self.genomes is good to go"""
 
         # depending on whether args requested such behavior.
-        self.list_HMM_info_and_quit()
+        if self.list_hmm_sources:
+            self.list_HMM_info_and_quit()
 
         self.progress.new('Sanity checks')
 
@@ -597,10 +627,12 @@ class GenomeDescriptions(object):
                                  "but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in "
                                  "the interface.")
             else:
-                self.progress.end()
-                raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You "
-                                   "can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
-                                                    (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs)))
+                self.progress.reset()
+                self.run.warning(f"Some of the genomes you have for this analysis are missing HMM hits for SCGs ({len(genomes_missing_hmms_for_scgs)} "
+                                 f"of {len(self.genomes)} of them, to be precise). This may or may not be critical for your downstream analyses, but "
+                                 f"if you would like to be certain or run into a bigger problem with the later steps of your analysis, you can always "
+                                 f"run `anvi-run-hmms` on your contigs databases to call your single-copy core genes. For the sake of brevity, here "
+                                 f"is the list of genomes missing SCGs: {','.join(genomes_missing_hmms_for_scgs)}.", header="SCGs ARE NOT CALLED", lc="yellow")
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         self.progress.update("Checking genome names ..")

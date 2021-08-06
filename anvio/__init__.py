@@ -27,6 +27,8 @@ QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
+DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
 
@@ -1709,8 +1711,9 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
-                     "will be calculate with respect to the reference, with respect to the consenus, and with respect to the "
-                     "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
+                     "will be calculated with respect to the reference, to the consenus, and to the "
+                     "most common consensus seen at that site across samples (popular consensus). The number "
+                     "of synonymous and nonsynonymous sites will also be stored for each case. This makes a total of 12 "
                      "added columns. This flag will be ignored if --engine is not CDN."}
                 ),
     'engine': (
