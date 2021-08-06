@@ -2376,12 +2376,14 @@ class TRNASeqDataset(object):
             consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
             inconsis_profile_cluster_count = 0
 
+        unrepresent_complete_profile_Tf_names = []
         for cluster in clusters:
             # Skip initialization of Nf objects, as additional Tf members are later added to the
             # objects after dereplicating Tc and mapping Tm.
             seqs_Tf = cluster.member_extras
+            represent_name = seqs_Tf[0].name
             if len(seqs_Tf) == 1:
-                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
+                dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
                 continue
 
             # Check that there are no shorter Tf in the cluster with a "complete profile".
@@ -2391,11 +2393,18 @@ class TRNASeqDataset(object):
                     complete_profile_indices.append(index_Tf)
 
             if not complete_profile_indices:
-                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
+                dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
                 continue
 
-            if complete_profile_indices == [0]:
-                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
+            if len(complete_profile_indices) == 1:
+                # Most frequently, the longest sequence has a complete profile. There is a crazy
+                # edge case where the longest sequence does not while a shorter sequence erroneously
+                # does have a complete profile, and the shorter sequence appears as a member of
+                # another cluster where it becomes the representative sequences due to
+                # consolidation. Avoid that later consolidation.
+                dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
+                if complete_profile_indices != [0]:
+                    unrepresent_complete_profile_Tf_names.append(seqs_Tf[complete_profile_indices[0]].name)
                 continue
 
             # Reaching this point means that there are multiple Tf with "complete profiles" in the
@@ -2415,6 +2424,12 @@ class TRNASeqDataset(object):
                     # Perhaps more than two Tf in the cluster have "complete" profiles, though this
                     # has not been checked. In this case, consolidate the Tf, retaining the profile
                     # of the shortest.
+
+            if seqs_Tf[complete_profile_indices[-1]].name in unrepresent_complete_profile_Tf_names:
+                complete_profile_indices.pop(-1)
+                if len(complete_profile_indices) == 1:
+                    dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
+                    continue
 
             if anvio.DEBUG:
                 # Report consolidated Tf with different complete feature profiles.
