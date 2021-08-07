@@ -1214,7 +1214,7 @@ function calcXBounds() {
   let min = 9*(10**9), max = -9*(10**9);
   for(let g in xDisps) {
     if(xDisps[g] > max) max = xDisps[g];
-    else if (xDisps[g] < min) min = xDisps[g];
+    if(xDisps[g] < min) min = xDisps[g];
   }
   return [min, max + scaleFactor*genomeMax];
 }
