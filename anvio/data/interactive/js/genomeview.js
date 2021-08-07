@@ -1198,11 +1198,25 @@ function getNTRangeForVPT() {
  */
 function bindViewportToWindow() {
   let vpt = canvas.viewportTransform;
-  if(vpt[4] > 125) {
-    vpt[4] = 125;
-  } else if(vpt[4] < canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125) {
-    vpt[4] = canvas.getWidth() - genomeMax*scaleFactor - xDisplacement - 125;
+  let [l,r] = calcXBounds();
+  if(vpt[4] > 250 - l) {
+    vpt[4] = 250 - l;
+  } else if(vpt[4] < canvas.getWidth() - r - 125) {
+    vpt[4] = canvas.getWidth() - r - 125;
   }
+}
+
+/*
+ *  @returns array [min, max] where
+ *    min = left pos of the leftmost genome, max = right pos of the rightmost genome
+ */
+function calcXBounds() {
+  let min = 9*(10**9), max = -9*(10**9);
+  for(let g in xDisps) {
+    if(xDisps[g] > max) max = xDisps[g];
+    else if (xDisps[g] < min) min = xDisps[g];
+  }
+  return [min, max + scaleFactor*genomeMax];
 }
 
 function getCategoryForKEGGClass(class_str) {
