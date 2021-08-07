@@ -1187,7 +1187,7 @@ function toggleSettingsPanel() {
 function getNTRangeForVPT() {
   let vpt = canvas.viewportTransform;
   let window_left = Math.floor((-1*vpt[4]-xDisplacement)/scaleFactor);
-  let window_right = Math.floor(window_left + canvas.getWidth()*scaleFactor);
+  let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
   if(window_left < 0) window_left = 0;
   if(window_right > genomeMax) window_right = genomeMax;
   return [window_left, window_right];
