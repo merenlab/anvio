@@ -195,6 +195,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             progress.end()
         elif self.inspect_split_name:
             self.split_names_of_interest = set([self.inspect_split_name])
+            self.skip_check_names = True
 
         if self.contigs_db_path:
             self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
