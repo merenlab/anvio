@@ -472,7 +472,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = bamops.BAMFileObject(self.input_file_path)
+
+        try:
+            self.bam = bamops.BAMFileObject(self.input_file_path)
+        except Exception as e:
+            raise ConfigError(f"Sorry, this BAM file does not look like a BAM file :( Here is "
+                              f"the complaint coming from the depths of the codebase: '{e}'.")
+
         self.bam.fetch_filter = self.fetch_filter
         self.num_reads_mapped = self.bam.mapped
         self.progress.end()
