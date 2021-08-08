@@ -316,6 +316,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "inversions": {
+        "name": "INVERSIONS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
