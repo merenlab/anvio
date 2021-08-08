@@ -159,11 +159,12 @@ linkage_method_default = 'ward'
 # Please note that these variable names may change across versions of pysam. See anvio/bamops.py for most
 # up-to-date usage of these filters since we are terrible at updating comments elsewhere in the code after
 # making significant changes to our modules :/
-fetch_filters = {'default'        : None,
-                 'double_forwards': lambda x: x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped,
-                 'double_reverses': lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped,
-                 'inversions'     : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped) or \
-                                              (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped)}
+fetch_filters = {'default'            : None,
+                 'double-forwards'    : lambda x: x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped,
+                 'double-reverses'    : lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped,
+                 'inversions'         : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped) or \
+                                                  (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped) and (abs(x.tlen) < 2000),
+                 'single-mapped-reads': lambda x: x.mate_is_unmapped}
 
 # Whether a cigarstring operation consumes the read, reference, or both
 #
