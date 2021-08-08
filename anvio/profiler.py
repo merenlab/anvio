@@ -161,7 +161,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
+        default_output_dir_prefix = '-PROFILE' if (self.fetch_filter and self.fetch_filter == 'default') else f'-PROFILE-{self.fetch_filter.upper()}'
+        default_output_dir_path = (self.input_file_path[:-4] if self.input_file_path.upper().endswith('.BAM') else self.input_file_path) + default_output_dir_prefix
+
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory or default_output_dir_path, \
                                                                    ok_if_exists=self.overwrite_output_destinations)
 
         self.progress.new('Initializing')
