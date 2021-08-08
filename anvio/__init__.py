@@ -1954,7 +1954,7 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should "
                      "work just fine for most."}
                 ),
-   'browser-path': (
+    'browser-path': (
             ['--browser-path'],
             {'metavar': 'PATH',
              'type': str,
@@ -1965,7 +1965,7 @@ D = {
                      "this parameter to call Google's experimental browser, Canary, which performs better with "
                      "demanding visualizations."}
                 ),
-   'api-url': (
+    'api-url': (
             ['--api-url'],
             {'metavar': 'API_URL',
              'type': str,
