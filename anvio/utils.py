@@ -3910,11 +3910,10 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     cdb = dbi(contigs_db_path)
 
     if cdb.hash != pdb.hash:
-        raise ConfigError('The contigs database and the profile database does not '
-                          'seem to be compatible. More specifically, this contigs '
-                          'database is not the one that was used when %s generated '
-                          'this profile database (%s != %s).'\
-                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
+        raise ConfigError(f"The contigs database and the profile database at '{profile_db_path}' "
+                          f"does not seem to be compatible. More specifically, this contigs "
+                          f"database is not the one that was used when %s generated this profile "
+                          f"database (%s != %s)." % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
     return True
 
 
