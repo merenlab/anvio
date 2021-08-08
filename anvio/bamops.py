@@ -72,7 +72,11 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch(contig_name, start, end):
-            yield read
+            if constants.fetch_filters[self.fetch_filter]:
+                if constants.fetch_filters[self.fetch_filter](read):
+                    yield read
+            else:
+                yield read
 
 
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
