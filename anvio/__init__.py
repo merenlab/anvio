@@ -2044,6 +2044,19 @@ D = {
              'type': float,
              'help': "Maximum number of target sequences to request from BLAST or DIAMOND searches. The default is %(default)g%%."}
                 ),
+    'fetch-filter': (
+            ['--fetch-filter'],
+            {'metavar': 'FILTER',
+             'default': 'default',
+             'type': str,
+             'help': f"By default, anvi'o fetches all reads from a BAM file. Once a read is 'fetched', some "
+                     f"reads may be excluded if you have used parameters such as `--min-percent-identity`. "
+                     f"This parameter, however, impacts which reads are fetched from a BAM file at all. "
+                     f"For details, please consult with the documentation for `anvi-profile` using the URL "
+                     f"you should see at the end of the `--help` output on your terminal. Once you set a filter, "
+                     f"the filter is set to be the `variant` of your resulting single profile database. The " 
+                     f"known filters are the following: {', '.join(constants.fetch_filters.keys())}."}
+                ),
     'min-percent-identity': (
             ['--min-percent-identity'],
             {'metavar': 'PERCENT_IDENTITY',
