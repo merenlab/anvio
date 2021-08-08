@@ -40,7 +40,7 @@ __status__ = "Development"
 
 
 class BAMFileObject(pysam.AlignmentFile):
-    def __init__(self, *args, fetch_filter='default'):
+    def __init__(self, *args):
         """A class that is essentially pysam.AlignmentFile, with some added bonuses
 
         This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
@@ -48,14 +48,10 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         self.input_bam_path = args[0]
-        self.fetch_filter = fetch_filter
 
         filesnpaths.is_file_exists(self.input_bam_path)
 
-        if self.fetch_filter not in fetch_filters:
-            raise ConfigError(f"You passed '{self.fetch_filter}' to filter reads to be profiled from "
-                              f"your BAM file, but it is not a filter anvi'o knows about. Here is "
-                              f"a list of known filters: {', '.join(fetch_filters.keys())}.")
+        self.fetch_filter = 'default'
 
         try:
             pysam.AlignmentFile.__init__(self)
