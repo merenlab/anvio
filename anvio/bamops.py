@@ -91,6 +91,17 @@ class BAMFileObject(pysam.AlignmentFile):
             raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
 
 
+    def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
+        """A wrapper function for `bam.fetch()`.
+
+        Having a single function enables global application of `fetch_filters` to reads
+        reported from a BAM file.
+        """
+
+        for read in self.fetch(contig_name, start, end):
+            yield read
+
+
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
         """Returns an read iterator that trims overhanging reads
 
@@ -98,7 +109,7 @@ class BAMFileObject(pysam.AlignmentFile):
         defined region so that they fit inside the start and stop.
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -146,7 +157,7 @@ class BAMFileObject(pysam.AlignmentFile):
             percent_id_cutoff=95.0
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -211,7 +222,7 @@ class BAMFileObject(pysam.AlignmentFile):
         reads_checked = 0
 
         for contig_name in self.references:
-            for read in self.fetch(contig_name):
+            for read in self.fetch_only(contig_name):
                 if read.cigartuples is None:
                     # if it didn't map we forgive it for not having an MD tag
                     continue
@@ -592,7 +603,7 @@ class Coverage:
     def _fetch_iterator(self, bam, contig_name, start, end):
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
-        for read in bam.fetch(contig_name, start, end):
+        for read in bam.fetch_only(contig_name, start, end):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -958,7 +969,7 @@ class GetReadsFromBAM:
             has_unknown_mate = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
 
                         defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
 
@@ -987,7 +998,7 @@ class GetReadsFromBAM:
                 short_reads_for_splits_dict['UNPAIRED'].update(has_unknown_mate)
             else:
                 for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
                         short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])] = read.query_sequence
             bam_file_object.close()
 
