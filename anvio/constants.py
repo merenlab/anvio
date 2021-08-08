@@ -134,6 +134,36 @@ max_depth_for_coverage = 60000
 distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'
 
+# The purpose of the `fetch_filters` dictionary below is to filter reads as they are
+# read from BAM files especially during anvi'o profiling (the primary client of this
+# dictionary is `anvio/bamops.py`). Essentially, any combination of the following
+# properties defined in the `read` object returned by the `fetch` function of pysam
+# can be added to this dictionary to create new filters that are then globally applied
+# to 'fetched' reads during profiling to exclude those that return `false`:
+#
+#     >>> 'aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples',
+#         'compare', 'flag', 'from_dict', 'fromstring', 'get_aligned_pairs', 'get_blocks', 'get_cigar_stats',
+#         'get_forward_qualities', 'get_forward_sequence', 'get_overlap', 'get_reference_positions',
+#         'get_reference_sequence', 'get_tag', 'get_tags', 'has_tag', 'header', 'infer_query_length',
+#         'infer_read_length', 'inferred_length', 'is_duplicate', 'is_paired', 'is_proper_pair',
+#         'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
+#         'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos',
+#         'mrnm', 'next_reference_id', 'next_reference_name', 'next_reference_start', 'opt', 'overlap', 'pnext',
+#         'pos', 'positions', 'qend', 'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end',
+#         'query_alignment_length', 'query_alignment_qualities', 'query_alignment_sequence',
+#         'query_alignment_start', 'query_length', 'query_name', 'query_qualities', 'query_sequence',
+#         'reference_end', 'reference_id', 'reference_length', 'reference_name', 'reference_start', 'rlen',
+#         'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags', 'template_length', 'tid', 'tlen',
+#         'to_dict', 'to_string', 'tostring'
+#
+# Please note that these variable names may change across versions of pysam. See anvio/bamops.py for most
+# up-to-date usage of these filters since we are terrible at updating comments elsewhere in the code after
+# making significant changes to our modules :/
+fetch_filters = {'default'        : None,
+                 'double_forwards': lambda x: x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped,
+                 'double_reverses': lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped,
+                 'inversions'     : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped) or \
+                                              (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped)}
 
 # Whether a cigarstring operation consumes the read, reference, or both
 #
