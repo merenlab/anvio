@@ -71,6 +71,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
+        self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -177,6 +178,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.skip_INDEL_profiling = True
 
         meta_values = {'db_type': 'profile',
+                       'db_variant': self.fetch_filter,
                        'anvio': __version__,
                        'sample_id': self.sample_id,
                        'samples': self.sample_id,
@@ -238,6 +240,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('contigs_db', True if self.contigs_db_path else False)
         self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
         self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
+        self.run.info('min_percent_identity', self.min_percent_identity, mc='green')
+        self.run.info('fetch_filter', self.fetch_filter, mc='green')
         self.run.info('merged', False)
         self.run.info('blank', self.blank)
         self.run.info('split_length', self.a_meta['split_length'])
@@ -249,7 +253,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('skip_INDEL_profiling', self.skip_INDEL_profiling)
         self.run.info('profile_SCVs', self.profile_SCVs)
-        self.run.info('min_percent_identity', self.min_percent_identity)
         self.run.info('report_variability_full', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
@@ -406,6 +409,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = bamops.BAMFileObject(self.input_file_path, 'rb')
+        self.bam.fetch_filter = self.fetch_filter
         self.progress.end()
 
         self.contig_names = self.bam.references
@@ -466,6 +470,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = bamops.BAMFileObject(self.input_file_path)
+        self.bam.fetch_filter = self.fetch_filter
         self.num_reads_mapped = self.bam.mapped
         self.progress.end()
 
@@ -624,6 +629,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.fetch_filter = self.fetch_filter
 
         while True:
             try:
@@ -727,6 +733,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         """The main method for anvi-profile when num_threads is 1"""
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.fetch_filter = self.fetch_filter
 
         received_contigs = 0
         discarded_contigs = 0
