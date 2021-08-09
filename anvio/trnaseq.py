@@ -2333,11 +2333,11 @@ class TRNASeqDataset(object):
         clusters = Dereplicator(names, reverse_strings, extras=seqs_Tf).prefix_dereplicate()
 
         # Profiling may have found multiple Tf that would here be 3'-dereplicated as having
-        # complete, but different, feature profiles. Consider the shortest "completely profiled" Tf
-        # in the cluster to have the correct profile. Reclassify discrepant 5' nts from Uf in longer
-        # Tf as extra 5' nts. Transfer the profile information from the representative Uf of the
-        # shortest Tf to Uf of longer Tf, replacing these longer Uf with Us objects. Produce a new
-        # Tf object from these Uf and Us.
+        # complete, but different, feature profiles. Assume that the shortest "completely profiled"
+        # Tf in the cluster has the correct profile (with an exception explained with an asterisk
+        # below). Reclassify discrepant 5' nts from Uf in longer Tf as extra 5' nts. Transfer the
+        # profile information from the representative Uf of the shortest Tf to Uf of longer Tf,
+        # replacing these longer Uf with Us objects. Produce a new Tf object from these Uf and Us.
 
         # Similarly, the longest Tf in the cluster may have an erroneous "incomplete profile." If
         # there is a shorter Tf in the cluster with a complete profile, then any longer Tf with an
@@ -2365,16 +2365,10 @@ class TRNASeqDataset(object):
         dict_Uf = self.dict_Uf
 
         # It is possible that trimmed sequences from multiple clusters can consolidate.
-        self.count_consol_Tf = 0
         dict_consol_Tf = {}
 
         # This dict is for an edge case explained below.
         dict_Tf_His = {}
-
-        if anvio.DEBUG:
-            consol_seqs_with_inconsis_profiles_file = open(self.consol_seqs_with_inconsis_profiles_path, 'w')
-            consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
-            inconsis_profile_cluster_count = 0
 
         unrepresent_complete_profile_Tf_names = []
         for cluster in clusters:
@@ -2397,11 +2391,12 @@ class TRNASeqDataset(object):
                 continue
 
             if len(complete_profile_indices) == 1:
-                # Most frequently, the longest sequence has a complete profile. There is a crazy
-                # edge case where the longest sequence does not while a shorter sequence erroneously
-                # does have a complete profile, and the shorter sequence appears as a member of
-                # another cluster where it becomes the representative sequences due to
-                # consolidation. Avoid that later consolidation.
+                # * Most frequently, the longest sequence has a complete profile. An edge case can
+                # occur when the longest sequence does not have a complete profile while a shorter
+                # sequence does. The shorter sequence may appear as a member of another cluster and
+                # become the representative sequence due to consolidation. Prevent that
+                # consolidation from happening, forming a normalized sequence as per usual from the
+                # trimmed sequences, with the longest being representative. *
                 dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
                 if complete_profile_indices != [0]:
                     unrepresent_complete_profile_Tf_names.append(seqs_Tf[complete_profile_indices[0]].name)
@@ -2425,24 +2420,6 @@ class TRNASeqDataset(object):
                     # has not been checked. In this case, consolidate the Tf, retaining the profile
                     # of the shortest.
 
-            if seqs_Tf[complete_profile_indices[-1]].name in unrepresent_complete_profile_Tf_names:
-                complete_profile_indices.pop(-1)
-                if len(complete_profile_indices) == 1:
-                    dict_Nf[represent_name] = NormalizedFullProfileSequence(seqs_Tf)
-                    continue
-
-            if anvio.DEBUG:
-                # Report consolidated Tf with different complete feature profiles.
-                inconsis_profile_cluster_count += 1
-                for seq_Tf in seqs_Tf[: complete_profile_indices[-1] + 1]:
-                    consol_seqs_with_inconsis_profiles_file.write(str(inconsis_profile_cluster_count) + "\t")
-                    consol_seqs_with_inconsis_profiles_file.write("0\t")
-                    consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
-                    for name_Uf in seq_Tf.names_U:
-                        consol_seqs_with_inconsis_profiles_file.write(str(inconsis_profile_cluster_count) + "\t")
-                        consol_seqs_with_inconsis_profiles_file.write("1\t")
-                        consol_seqs_with_inconsis_profiles_file.write(dict_Uf[name_Uf].string + "\n")
-
             short_seq_Tf = seqs_Tf[complete_profile_indices[-1]]
             if short_seq_Tf.name in dict_consol_Tf:
                 # Tf from multiple clusters consolidate with the same shorter Tf with a complete
@@ -2463,8 +2440,6 @@ class TRNASeqDataset(object):
                 dict_consol_Tf[short_seq_Tf.name] = {'short_seq_Tf': short_seq_Tf,
                                                      'long_seqs_Tf': seqs_Tf[: complete_profile_indices[-1]],
                                                      'Nf_members': seqs_Tf[complete_profile_indices[-1] + 1: ]}
-        if anvio.DEBUG:
-            consol_seqs_with_inconsis_profiles_file.close()
 
         # Consider the following edge case. One cluster had two Tf with complete profiles, Tf1 and
         # Tf2, so the two were consolidated, forming Nf1.
@@ -2482,10 +2457,33 @@ class TRNASeqDataset(object):
             else:
                 dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
 
+        consol_seqs_with_inconsis_profiles_file = open(self.consol_seqs_with_inconsis_profiles_path, 'w')
+        consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
+
+        count_consol_Tf = 0
         for subdict_consol_Tf in dict_consol_Tf.values():
-            self.count_consol_Tf += 1
+            if subdict_consol_Tf['short_seq_Tf'].name in unrepresent_complete_profile_Tf_names:
+                long_seqs_Tf = subdict_consol_Tf['long_seqs_Tf']
+                dict_Nf[long_seqs_Tf[0].name] = NormalizedFullProfileSequence(long_seqs_Tf + [subdict_consol_Tf['short_seq_Tf']])
+                continue
+
+            count_consol_Tf += 1
             consol_seq_Tf = self.consolidate_trimmed_sequences(subdict_consol_Tf['short_seq_Tf'], subdict_consol_Tf['long_seqs_Tf'])
             dict_Nf[consol_seq_Tf.name] = NormalizedFullProfileSequence([consol_seq_Tf] + subdict_consol_Tf['Nf_members'])
+
+            # Report consolidated Tf with different complete feature profiles.
+            for seq_Tf in subdict_consol_Tf['long_seqs_Tf'] + subdict_consol_Tf['short_seq_Tf']:
+            # for seq_Tf in seqs_Tf[: complete_profile_indices[-1] + 1]:
+                first_field = str(count_consol_Tf) + "\t"
+                consol_seqs_with_inconsis_profiles_file.write(first_field)
+                consol_seqs_with_inconsis_profiles_file.write("0\t")
+                consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
+                for name_Uf in seq_Tf.names_U:
+                    consol_seqs_with_inconsis_profiles_file.write(first_field)
+                    consol_seqs_with_inconsis_profiles_file.write("1\t")
+                    consol_seqs_with_inconsis_profiles_file.write(dict_Uf[name_Uf].string + "\n")
+        self.count_consol_Tf = count_consol_Tf
+        consol_seqs_with_inconsis_profiles_file.close()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled seqs", time.time() - start_time, is_time_value=True))
