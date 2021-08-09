@@ -4521,7 +4521,7 @@ class TRNASeqDataset(object):
             if seq_Tf.contains_anticodon:
                 anticodon_profiled_trna_reads += seq_Tf.read_count
                 if seq_Tf.has_complete_feature_set:
-                    complete_profiled_trna_reads += seq_Tf.has_complete_feature_set
+                    complete_profiled_trna_reads += seq_Tf.read_count
             if len(seq_Tf.names_N) == 1:
                 spec_reads_Ntrna += seq_Tf.read_count
             else:
