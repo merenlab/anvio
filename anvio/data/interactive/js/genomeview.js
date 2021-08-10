@@ -229,7 +229,7 @@ function processState(stateName, stateData){
       let additionalDataObject = {
         'genome' : genomeLabel,
         'coverage' : coverage,
-        'coverage-color' : 'pink',
+        'coverage-color' : 'blue',
         'gcContent' : gcContent,
         'gcContent-color' : 'purple',
         'ruler' : true // TODO: store any genome-specific scale data here
@@ -949,6 +949,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
+  addBackgroundShade(y, 138, genomeMax, 50, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
@@ -989,7 +990,6 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
       canvas.add(label);
     }
   }
-  addBackgroundShade(y, 138, genomeMax, 50, orderIndex)
 }
 
 function addLayers(label, genome, genomeID, orderIndex){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
@@ -1008,7 +1008,7 @@ function addLayers(label, genome, genomeID, orderIndex){ // this will work along
       buildGroupRulerLayer(genomeID, layerPos, orderIndex)
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'pink', orderIndex)
+      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
     } 
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
       buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
@@ -1411,7 +1411,7 @@ function createBookmark(){
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
   let backgroundShade; 
-  orderIndex % 2 == 0 ? backgroundShade = '#e0e0e0' : backgroundShade = '#949494'
+  orderIndex % 2 == 0 ? backgroundShade = '#f2f2f2' : backgroundShade = '#dedcdc'
 
   let background = new fabric.Rect({
     top: top,
