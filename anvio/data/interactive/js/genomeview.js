@@ -1411,14 +1411,15 @@ function createBookmark(){
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
   let backgroundShade; 
-  orderIndex % 2 == 0 ? backgroundShade = '#f2f2f2' : backgroundShade = '#dedcdc'
+  orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
     top: top,
     left: left,
     width: width,
     height: height,
-    fill: backgroundShade
+    fill: backgroundShade,
+    opacity : .5
   });
   canvas.add(background)
   canvas.sendToBack(background)
