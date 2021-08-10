@@ -19,6 +19,7 @@
  */
 
  var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+ var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
  var canvas;
  var genomeLabelsCanvas;
@@ -256,6 +257,7 @@ function loadAll() {
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
+  $('.container').css({'height' : VIEWER_HEIGHT + 'px', 'overflow-y' : 'auto'})
   xDisplacement = showLabels ? 120 : 0;
   for(genome of genomeData.genomes) {
     xDisps[genome[0]] = xDisplacement;

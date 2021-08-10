@@ -1,5 +1,5 @@
 .container {
-    width: 95%; //this is being overwritten though.
+    width: 95%; 
     align-content: center;
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
