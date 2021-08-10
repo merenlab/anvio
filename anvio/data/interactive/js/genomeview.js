@@ -1406,6 +1406,9 @@ function createBookmark(){
   )
 }
 
+/*
+ *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
+ */
 function addBackgroundShade(top, left, width, height, orderIndex){
   let backgroundShade; 
   orderIndex % 2 == 0 ? backgroundShade = '#e0e0e0' : backgroundShade = '#949494'
