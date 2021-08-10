@@ -930,7 +930,7 @@ function setGenomeLabelSize(newSize) {
   if(showLabels) draw();
 }
 
-function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, idx) {
+function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
@@ -989,11 +989,11 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, idx) {
       canvas.add(label);
     }
   }
+  addBackgroundShade(y, 138, genomeMax, 50, orderIndex)
 }
 
 function addLayers(label, genome, genomeID, orderIndex){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
   let additionalDataLayers;
-  let backgroundShade; 
   stateData['additional-data-layers'].map(group => {
     if(group.genome == label){
       additionalDataLayers = group
@@ -1055,9 +1055,9 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
         genome : additionalDataLayers['genome']
       })
       canvas.bringToFront(graphObj)
-      addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
       pathDirective = []
     }
+    addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
 }
 /*
  *  Generate individual genome group rulers
