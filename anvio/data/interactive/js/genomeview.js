@@ -592,13 +592,13 @@ function draw(scaleX=scaleFactor) {
   var y = marginTop;
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
-  for(genome of genomeData.genomes) {
+  genomeData['genomes'].map((genome, idx) => {
     let label = genome[1].genes.gene_calls[0].contig;
-    addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX)
-    addLayers(label, genome[1], genome[0])
+    addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX, idx)
+    addLayers(label, genome[1], genome[0], idx)
     labelSpacing += 30
     y+=spacing;
-  }
+  })
 
   checkGeneLabels();
   drawTestShades();
@@ -930,7 +930,7 @@ function setGenomeLabelSize(newSize) {
   if(showLabels) draw();
 }
 
-function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
+function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, idx) {
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
@@ -991,8 +991,9 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1) {
   }
 }
 
-function addLayers(label, genome, genomeID){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
+function addLayers(label, genome, genomeID, orderIndex){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
   let additionalDataLayers;
+  let backgroundShade; 
   stateData['additional-data-layers'].map(group => {
     if(group.genome == label){
       additionalDataLayers = group
@@ -1004,13 +1005,13 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
     let layerPos = [spacing / maxGroupSize] * idx
 
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-      buildGroupRulerLayer(genomeID, layerPos)
+      buildGroupRulerLayer(genomeID, layerPos, orderIndex)
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'pink')
+      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'pink', orderIndex)
     } 
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple')
+      buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
     } 
   })
   
@@ -1020,7 +1021,7 @@ function addLayers(label, genome, genomeID){ // this will work alongside addGeno
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
-function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor){
+function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, orderIndex){
     let maxGCValue = 0
     let startingTop = marginTop + yOffset + layerPos
     let startingLeft = xDisps[genomeID]
@@ -1039,28 +1040,29 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
         if(j > renderWindow[1]) break;
         let left = j * scaleFactor + startingLeft
         let top = [additionalDataLayers[layer][j] / maxGCValue] * layerHeight
-      let segment = `L ${left} ${top}`
-      pathDirective.push(segment)
-    }
-    let graphObj = new fabric.Path(pathDirective.join(' '))
-    graphObj.set({
-      top : startingTop,
-      stroke : additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
-      fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
-      selectable: false,
-      objectCaching: false,
-      id : `${layer} graph`, 
-      groupID : genomeID,
-      genome : additionalDataLayers['genome']
-    })
-    canvas.bringToFront(graphObj)
+        let segment = `L ${left} ${top}`
+        pathDirective.push(segment)
+      }
+      let graphObj = new fabric.Path(pathDirective.join(' '))
+      graphObj.set({
+        top : startingTop,
+        stroke : additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
+        fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+        selectable: false,
+        objectCaching: false,
+        id : `${layer} graph`, 
+        groupID : genomeID,
+        genome : additionalDataLayers['genome']
+      })
+      canvas.bringToFront(graphObj)
+      addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
       pathDirective = []
     }
 }
 /*
  *  Generate individual genome group rulers
  */
-function buildGroupRulerLayer(genomeID, layerPos){
+function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
 
@@ -1092,12 +1094,13 @@ function buildGroupRulerLayer(genomeID, layerPos){
         hasControls: false,
         hasBorders: false,
         lockScaling: true,
-        objectCaching: false, 
+        objectCaching: false,
         groupID: genomeID
       });
       ruler.addWithUpdate();
       canvas.add(ruler);
-      }
+  }
+  addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
@@ -1403,6 +1406,20 @@ function createBookmark(){
   )
 }
 
+function addBackgroundShade(top, left, width, height, orderIndex){
+  let backgroundShade; 
+  orderIndex % 2 == 0 ? backgroundShade = '#e0e0e0' : backgroundShade = '#949494'
+
+  let background = new fabric.Rect({
+    top: top,
+    left: left,
+    width: width,
+    height: height,
+    fill: backgroundShade
+  });
+  canvas.add(background)
+  canvas.sendToBack(background)
+}
 var fixHelperModified = function(e, tr) { // ripped from utils.js instead of importing the whole file
   var $originals = tr.children();
   var $helper = tr.clone();
