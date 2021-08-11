@@ -46,7 +46,7 @@ You can estimate metabolism for every individual bin in a collection by providin
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s -C %(collection)s
 {{ codestop }}
 
-The metabolism estimation results for each bin will be printed to the same output file(s). The 'bin_name' column in long-format output will distinguish between results from different bins.
+The metabolism estimation results for each bin will be printed to the same output file(s). The `bin_name` column in long-format output will distinguish between results from different bins.
 
 If you only want estimation results for a single bin, you can instead provide a specific bin name from that collection using the `-b` parameter:
 
