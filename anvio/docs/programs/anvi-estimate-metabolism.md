@@ -93,20 +93,20 @@ Multiple single genomes (also known as %(external-genomes)s) can be analyzed wit
 anvi-estimate-metabolism -e external-genomes.txt
 {{ codestop }}
 
-### Estimation for multiple metagenomes
-
-Multiple metagenomes can be analyzed with the same command by providing a metagenomes input file. Metagenome mode will be used to analyze each contigs database in the file. To see the required format for the metagenomes file, see %(metagenomes)s.
-
-{{ codestart }}
-anvi-estimate-metabolism -M metagenomes.txt
-{{ codestop }}
-
 ### Estimation for multiple bins in different metagenomes
 
 If you have multiple bins (also known as %(internal-genomes)s) across different collections or even different metagenomes, they can be analyzed with the same command by providing an internal genomes file to %(anvi-estimate-metabolism)s. To see the required format for the internal genomes file, see %(internal-genomes)s.
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt
+{{ codestop }}
+
+### Estimation for multiple metagenomes
+
+Multiple metagenomes can be analyzed with the same command by providing a metagenomes input file. Metagenome mode will be used to analyze each contigs database in the file. To see the required format for the metagenomes file, see %(metagenomes)s.
+
+{{ codestart }}
+anvi-estimate-metabolism -M metagenomes.txt
 {{ codestop }}
 
 ## Adjusting module completion threshold
