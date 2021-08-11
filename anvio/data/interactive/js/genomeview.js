@@ -985,12 +985,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
  *  For each genome group, iterate additional layers beyond genome and render where appropriate
  */
 function addLayers(label, genome, genomeID, orderIndex){ 
-  let additionalDataLayers;
-  stateData['additional-data-layers'].map(group => {
-    if(group.genome == label){
-      additionalDataLayers = group
-    }
-  })
+  let additionalDataLayers = stateData['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
