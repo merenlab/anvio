@@ -1367,10 +1367,8 @@ function calculateMaxGenomeLength(){
 }
 
 function calculateMainCanvasHeight(){ // to be used for setting vertical spacing
-  let optimalLayerHeight = 50 // arbitrary value to be set by us experts ;) 
-  // TODO global var spacing should be used here instead of optimalLayerHeight
-  let additionalSpacing = 100 // arbitrary additional spacing for ruler(s), cosmetics
-  let mainCanvasHeight = optimalLayerHeight * maxGroupSize * genomeData.genomes.length + additionalSpacing
+  let additionalSpacing = 100 // arbitrary additional spacing for cosmetics
+  let mainCanvasHeight =  spacing * genomeData.genomes.length + additionalSpacing
   return mainCanvasHeight
 }
 
