@@ -3494,16 +3494,16 @@ class TRNASeqDataset(object):
                 continue
 
             try:
-                # Nf is no longer a representative Nf of a M (for the time being -- M might be
-                # vindicated).
+                # Nf is no longer a representative Nf of a M ... for the time being -- M might be
+                # vindicated.
                 represent_Nb_names.remove(seqs_Nf[0].name)
             except ValueError:
                 pass
 
+            dict_M.pop(seq_M.name)
             found_M = self.decompose_substitution_cluster(np.array(seqs_Nf), represent_Nb_names, excluded_Nf_names, dict_name_Nb_M, dict_M)
             if not found_M:
                 count_rejected_M += 1
-                dict_M.pop(seq_M.name)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
