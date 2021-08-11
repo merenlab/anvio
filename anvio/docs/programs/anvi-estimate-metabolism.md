@@ -15,9 +15,17 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 1. Run %(anvi-setup-kegg-kofams)s to get data from KEGG onto your computer. This step only needs to be done once.
 2. Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
-## Running metabolism estimation on a single contigs database
+## Running metabolism estimation
 
-There are several possible inputs to this program. For single genomes (isolate genomes or MAGs, for example) you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, estimation is run on each contig individually - that is, only KOfam hits within the same contig are allowed to contribute to the completeness score of a given KEGG module. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
+You can run metabolism estimation on any set of annotated sequences, but these sequences typically fall under one of the following categories: 
+
+- Single genomes, also referred to as %(external-genomes)s. These can be isolate genomes or metagenome-assembled genomes, for example. Each one is described in its own individual %(contigs-db)s.
+- %(bin)ss, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
+- Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
+
+As you can see, %(anvi-estimate-metabolism)s always takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+
+Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
 This program always takes one or more contigs database(s) as input, but what is in those contigs dbs depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
