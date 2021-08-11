@@ -1193,8 +1193,35 @@ function getNTRangeForVPT() {
   let vpt = canvas.viewportTransform;
   let window_left = Math.floor((-1*vpt[4]-xDisplacement)/scaleFactor);
   let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
-  if(window_left < 0) window_left = 0;
-  if(window_right > genomeMax) window_right = genomeMax;
+  // if window is out of bounds, shift to be in bounds
+  if(window_left < 0) {
+    window_right -= window_left;
+    window_left = 0;
+  }
+  if(window_right > genomeMax) {
+    window_left -= (window_right - genomeMax);
+    window_right = genomeMax;
+  }
+  return [window_left, window_right];
+}
+
+/*
+ *  @returns [start, stop] proportional (0-1) range, used with scale for non-aligned genomes
+ */
+function getFracForVPT() {
+  let resolution = 4; // number of decimals to show
+  let [x1, x2] = calcXBounds();
+  let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
+  let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
+  // if window is out of bounds, shift to be in bounds
+  if(window_left < 0) {
+    window_right -= window_left;
+    window_left = 0;
+  }
+  if(window_right > 1) {
+    window_left -= (window_right - 1);
+    window_right = 1;
+  }
   return [window_left, window_right];
 }
 
@@ -1213,7 +1240,7 @@ function bindViewportToWindow() {
 
 /*
  *  @returns array [min, max] where
- *    min = left pos of the leftmost genome, max = right pos of the rightmost genome
+ *    min = x-start of the leftmost genome, max = x-end of the rightmost genome
  */
 function calcXBounds() {
   let min = 9*(10**9), max = -9*(10**9);
