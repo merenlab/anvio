@@ -182,38 +182,32 @@ function processState(stateName, stateData){
         name : 'entire seq',
         start : '0', 
         stop : genomeMax,
-        description : ''
+        description : 'a mighty fine placeholder'
       },
       {
         name : 'shindig',
         start : '5000',
         stop : '9000', 
-        description : ''
+        description : 'a beautiful placeholder'
       },
       {
         name : 'fiesta',
         start : '15000',
         stop : '19000', 
-        description : ''
+        description : 'an adequate placeholder'
       },
       {
         name : 'party',
         start : '25000',
         stop : '29000', 
-        description : ''
+        description : 'the very best placeholder'
       },
     ]
     stateData['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
     })
-    $('#bookmarks-select').change(function(){
-      let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
-      $('#brush_start').val(start);
-      $('#brush_end').val(stop);
-      brush.extent([start, stop]);
-          brush(d3.select(".brush").transition());
-          brush.event(d3.select(".brush").transition());   
-    })
+    // set listener for user bookmark selection
+    respondToBookmarkSelect()
   }
   
 
@@ -1435,6 +1429,22 @@ function createBookmark(){
       description : $('#create_bookmark_description').val(),  
     }
   )
+}
+/*
+ *  update sequence position, bookmark description upon user select from dropdown
+ */
+function respondToBookmarkSelect(){
+  $('#bookmarks-select').change(function(e){
+    let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
+    $('#brush_start').val(start);
+    $('#brush_end').val(stop);
+    brush.extent([start, stop]);
+        brush(d3.select(".brush").transition());
+        brush.event(d3.select(".brush").transition());  
+        
+    let selectedBookmark = stateData['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
+    $('#bookmark-description').text(selectedBookmark['description'])
+  })
 }
 
 /*
