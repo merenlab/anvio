@@ -981,8 +981,10 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
     }
   }
 }
-
-function addLayers(label, genome, genomeID, orderIndex){ // this will work alongside addGenome to render out any additional data layers associated with each group (genome)
+/*
+ *  For each genome group, iterate additional layers beyond genome and render where appropriate
+ */
+function addLayers(label, genome, genomeID, orderIndex){ 
   let additionalDataLayers;
   stateData['additional-data-layers'].map(group => {
     if(group.genome == label){
