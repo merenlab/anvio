@@ -933,6 +933,7 @@ function setGenomeLabelSize(newSize) {
 }
 
 function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
+  let layerHeight = spacing / maxGroupSize
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
@@ -951,7 +952,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  addBackgroundShade(y, 138, genomeMax, 50, orderIndex)
+  addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
