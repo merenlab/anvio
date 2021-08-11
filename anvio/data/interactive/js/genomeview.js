@@ -1059,7 +1059,7 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
       canvas.bringToFront(graphObj)
       pathDirective = []
     }
-    addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
+    addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 /*
  *  Generate individual genome group rulers
@@ -1067,6 +1067,8 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
 function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
+  let layerHeight = spacing / maxGroupSize
+
 
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
@@ -1102,7 +1104,7 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
       ruler.addWithUpdate();
       canvas.add(ruler);
   }
-  addBackgroundShade(startingTop, 138, genomeMax, 50, orderIndex)
+  addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
 function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
