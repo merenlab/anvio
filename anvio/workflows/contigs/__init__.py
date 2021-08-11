@@ -55,7 +55,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.default_config.update({"fasta_txt": "fasta.txt",
                                     "anvi_gen_contigs_database": {"--project-name": "{group}"},
                                     "centrifuge": {"threads": 2},
-                                    "anvi_run_hmms": {"run": True, "threads": 5},
+                                    "anvi_run_hmms": {"run": True, "threads": 5, "--also-scan-trnas": True},
                                     "anvi_run_kegg_kofams": {"run": True, "threads": 4},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
