@@ -68,11 +68,14 @@ bin_3
 bin_5
 ```
 
+### Estimation for a metagenome
+
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C COLLECTION_NAME -B bin_ids.txt
+anvi-estimate-metabolism -c CONTIGS.db --metagenome-mode
 {{ codestop }}
 
-Each line in the `bin_ids.txt` file should be a bin name from the %(collection)s.
+{: .notice}
+In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that some modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all KOs in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the KOs will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
 
