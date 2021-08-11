@@ -1420,15 +1420,20 @@ function createBookmark(){
     alert('please provide a name for your bookmark :)')
     return 
   }
-  
-  stateData['display']['bookmarks'].push(
-    {
-      name : $('#create_bookmark_input').val(), 
-      start : $('#brush_start').val(), 
-      stop : $('#brush_end').val(),
-      description : $('#create_bookmark_description').val(),  
-    }
-  )
+  try {
+    stateData['display']['bookmarks'].push(
+      {
+        name : $('#create_bookmark_input').val(), 
+        start : $('#brush_start').val(), 
+        stop : $('#brush_end').val(),
+        description : $('#create_bookmark_description').val(),  
+      }
+    )
+    alert('bookmark successfully created :)')
+  } catch (error) {
+    alert(`anvi'o was unable to save your bookmark because of an error ${error} :/`)
+    // throw to error landing page?
+  }
 }
 /*
  *  update sequence position, bookmark description upon user select from dropdown
