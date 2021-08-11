@@ -27,38 +27,46 @@ As you can see, %(anvi-estimate-metabolism)s always takes one or more contigs da
 
 Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
-This program always takes one or more contigs database(s) as input, but what is in those contigs dbs depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
 ### Estimation for a single genome
 
-{{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db
-{{ codestop }}
-
-### Estimation for a metagenome
+The most basic use-case for this program is when you have one contigs database describing a single genome. Since all of the sequences in this database belong to the same genome, all of the gene annotations will be used for metabolism estimation.
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --metagenome-mode
+anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
-
-{: .notice}
-In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that some modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all KOs in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the KOs will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 ### Estimation for bins in a metagenome
 
-You can estimate metabolism for each bin in a %(collection)s:
+You can estimate metabolism for different subsets of the sequences in your contigs database if you first %(bin)s them and save them as a %(collection)s. For each bin, only the gene annotations from its subset of sequences will contribute to the module completeness scores. 
+
+You can estimate metabolism for every individual bin in a collection by providing the profile database that describes the collection as well as the collection name:
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C COLLECTION_NAME
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s -C %(collection)s
 {{ codestop }}
 
-You can also provide a specific %(bin)s in that %(collection)s to run on:
+The metabolism estimation results for each bin will be printed to the same output file(s). The 'bin_name' column in long-format output will distinguish between results from different bins.
+
+If you only want estimation results for a single bin, you can instead provide a specific bin name from that collection using the `-b` parameter:
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C COLLECTION_NAME -b BIN_NAME
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s -C %(collection)s -b %(bin)s
 {{ codestop }}
 
-Or, you can provide a specific list of bins in a text file:
+Or, to estimate on a subset of bins in the collection, you can provide a text file containing the specific list of bins that you are interested in:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s -C %(collection)s -B bin_ids.txt
+{{ codestop }}
+
+Each line in the `bin_ids.txt` file should be a bin name from the collection (there is no header line). Here is an example file containing three bin names:
+
+```
+bin_1
+bin_3
+bin_5
+```
 
 {{ codestart }}
 anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C COLLECTION_NAME -B bin_ids.txt
