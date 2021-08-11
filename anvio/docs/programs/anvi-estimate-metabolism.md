@@ -20,7 +20,7 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 You can run metabolism estimation on any set of annotated sequences, but these sequences typically fall under one of the following categories: 
 
 - Single genomes, also referred to as %(external-genomes)s. These can be isolate genomes or metagenome-assembled genomes, for example. Each one is described in its own individual %(contigs-db)s.
-- %(bin)ss, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
+- Bins, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
 - Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
 
 As you can see, %(anvi-estimate-metabolism)s always takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
@@ -115,7 +115,7 @@ There are many ways to alter the behavior of this program to fit your needs. You
 
 ### Changing the module completion threshold
 
-As explained in the [technical details section](#step-3-module-completeness) below, KEGG module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated KOs in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
+As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, KEGG module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated KOs in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
 
 Changing this parameter doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output). 
 
