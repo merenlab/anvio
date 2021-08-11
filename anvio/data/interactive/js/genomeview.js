@@ -1070,7 +1070,6 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   let startingLeft = xDisps[genomeID]
   let layerHeight = spacing / maxGroupSize
 
-
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
   let w = 0;
