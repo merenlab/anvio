@@ -1460,6 +1460,7 @@ function addBackgroundShade(top, left, width, height, orderIndex){
     width: width,
     height: height,
     fill: backgroundShade,
+    selectable: false,
     opacity : .5
   });
   canvas.add(background)
