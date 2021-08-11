@@ -1486,6 +1486,7 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
+    state['support-text-rotation'] = $('#support_text_rotation').val()
 
     // sync views object and layers table
     syncViews();
@@ -2708,6 +2709,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('support-font-size')){
         $('#support_font_size').val(state['support-font-size'])
+    }
+    if(state.hasOwnProperty('support-text-rotation')){
+        $('#support_text_rotation').val(state['support-text-rotation'])
     }
 
     // reload layers
