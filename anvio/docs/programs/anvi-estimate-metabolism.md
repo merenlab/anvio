@@ -109,23 +109,28 @@ Multiple metagenomes can be analyzed with the same command by providing a metage
 anvi-estimate-metabolism -M metagenomes.txt
 {{ codestop }}
 
-## Adjusting module completion threshold
+## Adjustable Parameters
 
-KEGG module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the KOs found in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'present' in the genome or metagenome. By default, this module completion threshold is 0.75; that is, 75 percent of the KOs in a module must have a KOfam hit in the contigs database in order for the module to be considered 'complete' as a whole. This threshold can be adjusted.
+There are many ways to alter the behavior of this program to fit your needs. You can find some commonly adjusted parameters below. For a full list of parameters, check the program help (`-h`) output.
 
 ### Changing the module completion threshold
+
+As explained in the [technical details section](#step-3-module-completeness) below, KEGG module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated KOs in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
+
+Changing this parameter doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores or which modules are printed to the output file. Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (ie, by searching for 'True' values in the long-format output). 
 
 In this example, we change the threshold to 50 percent.
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --module-completion-threshold 0.5
+anvi-estimate-metabolism -c %(contigs-db)s --module-completion-threshold 0.5
 {{ codestop }}
 
-## Working with a non-default KEGG data directory
-If you have previously annotated your contigs databases using a non-default KEGG data directory with `--kegg-data-dir` (see %(anvi-run-kegg-kofams)s), or have moved the KEGG data directory that you wish to use to a non-default location, then you will need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
+### Working with a non-default KEGG data directory
+
+If you have previously annotated your contigs databases using a non-default KEGG data directory with `--kegg-data-dir` (see %(anvi-run-kegg-kofams)s), or you have moved the KEGG data directory that you wish to use to a non-default location, then you will need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --kegg-data-dir /path/to/directory/KEGG
+anvi-estimate-metabolism -c %(contigs-db)s --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 ## Controlling output
