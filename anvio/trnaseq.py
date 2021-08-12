@@ -6238,19 +6238,31 @@ class DatabaseConverter(object):
         # The following indel adjustments are very crude because Ni are not currently tracked.
         if summary_M.insert_starts.size:
             insert_starts = summary_M.insert_starts - reduction_5prime
-            first_retained_insert_index = np.where(insert_starts >= 0)[0][0]
-            summary_M.insert_starts = insert_starts[first_retained_insert_index: ]
-            summary_M.insert_strings = summary_M.insert_strings[first_retained_insert_index: ]
-            summary_M.spec_insert_covs = summary_M.spec_insert_covs[first_retained_insert_index: ]
-            summary_M.nonspec_insert_covs = summary_M.nonspec_insert_covs[first_retained_insert_index: ]
+            new_insert_starts = np.where(insert_starts >= 0)[0]
+            summary_M.insert_starts = new_insert_starts
+            if new_insert_starts:
+                first_retained_insert_index = new_insert_starts[0]
+                summary_M.insert_strings = summary_M.insert_strings[first_retained_insert_index: ]
+                summary_M.spec_insert_covs = summary_M.spec_insert_covs[first_retained_insert_index: ]
+                summary_M.nonspec_insert_covs = summary_M.nonspec_insert_covs[first_retained_insert_index: ]
+            else:
+                summary_M.insert_strings = []
+                summary_M.spec_insert_covs = np.zeros(0, dtype=int)
+                summary_M.nonspec_insert_covs = np.zeros(0, dtype=int)
 
         if summary_M.del_starts.size:
             del_starts = summary_M.del_starts - reduction_5prime
-            first_retained_del_index = np.where(del_starts >= 0)[0][0]
-            summary_M.del_starts = del_starts[first_retained_del_index: ]
-            summary_M.del_lengths = summary_M.del_lengths[first_retained_del_index: ]
-            summary_M.spec_del_covs = summary_M.spec_del_covs[first_retained_del_index: ]
-            summary_M.nonspec_del_covs = summary_M.nonspec_del_covs[first_retained_del_index: ]
+            new_del_starts = np.where(del_starts >= 0)[0]
+            summary_M.del_starts = new_del_starts
+            if new_del_starts:
+                first_retained_del_index = new_del_starts[0]
+                summary_M.del_lengths = summary_M.del_lengths[first_retained_del_index: ]
+                summary_M.spec_del_covs = summary_M.spec_del_covs[first_retained_del_index: ]
+                summary_M.nonspec_del_covs = summary_M.nonspec_del_covs[first_retained_del_index: ]
+            else:
+                summary_M.del_lengths = []
+                summary_M.spec_del_covs = np.zeros(0, dtype=int)
+                summary_M.nonspec_del_covs = np.zeros(0, dtype=int)
 
         # Find the nt coverages of M from the Nb remaining in M.
         seq_length = summary_M.spec_nt_covs_dict['A'].size - reduction_5prime
