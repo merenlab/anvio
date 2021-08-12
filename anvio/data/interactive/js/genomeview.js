@@ -128,7 +128,6 @@ function processState(stateName, stateData){
     generateMockADL()
   }
 
-
   // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
   buildGroupLayersTable('Genome')
@@ -205,12 +204,10 @@ function processState(stateName, stateData){
     respondToBookmarkSelect()
   }
 
-
   function generateMockADL(){
     for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
       let gcContent = []
       let coverage = []
-
       for(let j = 0; j < genomeMax; j++){
         gcContent.push(Math.floor(Math.random() * 45))
         coverage.push(Math.floor(Math.random() * 45))
@@ -759,7 +756,7 @@ function alignToCluster(gc) {
       drawTestShades();
     }
   }
-    }
+}
 
 /*
  * Pan viewport to the first gene in the target gene cluster.
@@ -786,8 +783,8 @@ function viewCluster(gc) {
       genes.push({genomeID:genome[0],geneID:targetGeneID});
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-      canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
-      canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
+        canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
+        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
         firstGenomeID = genome[0];
         first = false;
       }
@@ -799,8 +796,8 @@ function viewCluster(gc) {
     return (first ? null : [firstGenomeID, geneMid]);
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
-  return null;
-}
+    return null;
+  }
 }
 
 /*
@@ -1016,7 +1013,6 @@ function addLayers(label, genome, genomeID, orderIndex){
       buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
     }
   })
-
   yOffset += spacing
 }
 
@@ -1213,7 +1209,6 @@ function getNTRangeForVPT() {
 function getFracForVPT() {
   let resolution = 4; // number of decimals to show
   let [x1, x2] = calcXBounds();
-  console.log((-1*canvas.viewportTransform[4] - x1) / (x2 - x1));
   let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
   let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
   // if window is out of bounds, shift to be in bounds
@@ -1272,17 +1267,11 @@ function calcXBounds() {
 }
 
 /*
- *  Toggles scale between nt range and proportional range
+ *  Replaces nt scale with a 0-1 proportional scale
  */
 function setPercentScale() {
-  if(!percentScale) {
-    percentScale = true;
-    //console.log(brush.domain());
-    //var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
-    xScale.domain([0,1]);
-  } else {
-
-  }
+  percentScale = true;
+  xScale.domain([0,1]);
 }
 
 function getCategoryForKEGGClass(class_str) {
@@ -1489,7 +1478,6 @@ function respondToBookmarkSelect(){
     brush.extent([start, stop]);
         brush(d3.select(".brush").transition());
         brush.event(d3.select(".brush").transition());
-
     let selectedBookmark = stateData['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
     $('#bookmark-description').text(selectedBookmark['description'])
   })
