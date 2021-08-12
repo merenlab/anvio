@@ -47,7 +47,6 @@
  let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
  var renderWindow = [];
  var brush;
- var scaleWidth, scaleHeight;
 
  var alignToGC = null;
 
@@ -252,12 +251,7 @@ function loadAll() {
   // Find max length genome
   calculateMaxGenomeLength()
 
-  scaleWidth = canvas.getWidth();
-  scaleHeight = 100;
-
   drawScale();
-
-  $("#scaleSvg").attr("width", scaleWidth + 10);
 
   $('#brush_start').val(0);
   $('#brush_end').val(Math.floor(scaleWidth));
@@ -1215,6 +1209,8 @@ function setPercentScale() {
 }
 
 function drawScale() {
+  let scaleWidth = canvas.getWidth();
+  let scaleHeight = 100;
   let domain = percentScale ? [0,1] : [0,genomeMax];
   let xScale = d3.scale.linear().range([0, scaleWidth]).domain(domain);
   let scaleAxis = d3.svg.axis()
@@ -1234,7 +1230,7 @@ function drawScale() {
               .attr("id", "scaleBox")
               .attr("class","scale")
               .attr("y", 230)
-              .attr("transform", "translate(5,0)");
+              .attr("transform", percentScale ? "translate(10,0)" : "translate(5,0)");
 
   scaleBox.append("g")
               .attr("id", "scaleMarkers")
@@ -1248,6 +1244,8 @@ function drawScale() {
               .selectAll("rect")
               .attr("y", 0)
               .attr("height", scaleHeight);
+
+  $("#scaleSvg").attr("width", percentScale ? scaleWidth + 20 : scaleWidth + 10);
 
   function onBrush(){
       var b = brush.empty() ? xScale.domain() : brush.extent();
