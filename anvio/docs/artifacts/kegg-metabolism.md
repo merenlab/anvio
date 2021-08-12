@@ -70,6 +70,15 @@ Without further ado, here is an example of this output mode (also from the Infan
 | 1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | M00001 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
+Many of the columns in this data overlap with the `modules_mode` columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
+
+- `kofam_hit`: a KO annotation from the contigs database that contributes to a KEGG module
+- `gene_caller_id`: the ID of the gene that is annotated with this KO
+- `contig`: the contig on which this gene is present
+- `path_id`: a unique identifier of the current path through the KEGG module
+- `path`: the current path of KOs through the module (described above), which this KO annotation contributes to
+- `path_completeness`: a fraction between 0 and 1 indicating the proportion of KOs in the current path that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
+
 **Coverage and detection values in the output**
 
 The flag `--add-coverage` can also be used for this output mode, but in this case, the columns that are added (for each sample in the profile database) are slightly different. Here is a mock example:
