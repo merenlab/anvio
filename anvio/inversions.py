@@ -67,23 +67,68 @@ class Inversions:
 
 
     def process_db(self, profile_db_path):
-        self.progress.append(f" recovering coverages")
+        self.progress.append(" recovering coverages")
 
         profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
         sample_id = profile_db.p_meta['sample_id']
 
-        contig_coverages = {}
+        # FIXME: this will need to have more reasonable defaults
+        #        that are also parameterized
+        min_cov = 10
+        min_stretch_length = 50
+        min_distance_between_independent_stretches = 2000
+
+        coverage_stretches_in_contigs = {}
         for contig_name in self.contig_names:
-            contig_coverages[contig_name] = np.array([])
+            contig_coverage = np.array([])
+
             split_names = self.contig_name_to_split_names[contig_name]
 
             for i in range(len(split_names)):
                 split_name = split_names[i]
                 split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash']).get(split_name)
-                contig_coverages[contig_name] = np.concatenate((contig_coverages[contig_name], split_coverages[sample_id]), axis=None)
+                contig_coverage = np.concatenate((contig_coverage, split_coverages[sample_id]), axis=None)
 
-            # SPLIT THIS ARRAY OF HIGH-COVERAGE CHUNKS:
-            contig_coverages[contig_name]
+            # now we know the `contig_coverage`. it is time to break it into stretches
+            # of 'high coverage' regions (as in coverage > `min_cov`), and store that
+            # information into the dictionary `coverage_stretches_in_contigs`
+            coverage_stretches_in_contigs[contig_name] = []
+
+            # to find regions of high coverage, we first need to 'pad' our array to ensure it always
+            # starts and ends with 'low coverage'.
+            regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= min_cov, [False]])
+
+            regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
+            cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
+            cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
+
+            # at this stage, `cov_stretch_start_positions` and `cov_stretch_end_positions` contain pairs of
+            # positions that match to the begining and end of stretches. we will remove those that are too
+            # short to be considered, and store the start/end positions for the remaining stretches of
+            # high coverage into the dictionary `coverage_stretches_in_contigs`
+            for i in range(0, len(cov_stretch_start_positions)):
+                cov_stretch_start, cov_stretch_end = cov_stretch_start_positions[i], cov_stretch_end_positions[i]
+
+                if (cov_stretch_end - cov_stretch_start) >= min_stretch_length:
+                    coverage_stretches_in_contigs[contig_name].append((cov_stretch_start, cov_stretch_end),)
+
+            # now it is time to merge those stretches of coverage if they are close to one another to avoid
+            # over-splitting areas of coverage due to short regions with low-coverage in the middle like this,
+            # where we wish to identify A and B together in a single stretch:
+            #
+            #                A         B
+            #
+            #                -         -
+            #               ---        --
+            #              -----      -----
+            #             --------   --------
+            #           -----------------------
+            # -----------------------------------------------
+            coverage_stretches_in_contigs[contig_name] = utils.merge_stretches(coverage_stretches_in_contigs[contig_name],
+                                                                               min_distance_between_independent_stretches=min_distance_between_independent_stretches)
+
+
+            # DO SOMETHING WITH `coverage_stretches_in_contigs` :)
 
 
     def process(self):
@@ -111,7 +156,7 @@ class Inversions:
         if len(bad_profile_dbs):
             if len(bad_profile_dbs) == len(self.profile_db_paths):
                 if len(bad_profile_dbs) == 1:
-                    summary = f"The only profile database you have here is also the one with the wrong variant :( CONGRATULATIONS."
+                    summary = "The only profile database you have here is also the one with the wrong variant :( CONGRATULATIONS."
                 else:
                     summary = f"But none of the {P('database', len(self.profile_db_paths))} here have the right variant :("
             else:
