@@ -64,10 +64,10 @@ For every KO in the path above that has a hit in the %(contigs-db)s, there will 
 
 Without further ado, here is an example of this output mode (also from the Infant Gut dataset):
 
-| unique_id | db_name | kofam_hit | gene_caller_id | contig | path_id | path | path_completeness | genome_name | kegg_module | module_completeness | module_is_complete |
+| unique_id | db_name | genome_name | kofam_hit | gene_caller_id | contig | path_id | path | path_completeness | kegg_module | module_completeness | module_is_complete |
 |:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
-| 0 | E_faecalis_6240 | K01834 | 2342 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
-| 1 | E_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
+| 0 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01834 | 2342 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
+| 1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | M00001 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 **Coverage and detection values in the output**
