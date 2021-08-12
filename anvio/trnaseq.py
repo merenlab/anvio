@@ -5921,7 +5921,7 @@ class DatabaseConverter(object):
         for seed_index, seed in enumerate(seeds):
             while True:
                 # Remove the longest N (Nu or Nb) with inconsistent full-length profiles until only
-                # N with consistent full-length profiles remain. Exit the while loop at this point.
+                # N with consistent full-length profiles remain. Exit the while loop at that point.
                 seed_length = len(seed.string)
                 longest_Nu_indices = []
                 longest_Nb_indices = []
