@@ -1723,6 +1723,60 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
+def merge_stretches(stretches, min_distance_between_independent_stretches):
+    """A function to merge stretches of indices in an array.
+
+    It takes an array, `stretches`, that looks like this:
+
+        >>> [(3, 9), (14, 27), (32, 36), (38, 42)]
+
+    And returns an array like this, if `min_distance_between_independent_stretches`, say, 3:
+
+        >>> [(3, 9), (14, 27), (32, 42)]
+
+    """
+    stretches_to_merge = []
+
+    # The following state machine determines which entries in a given array
+    # should be merged
+    CURRENT = 0
+    START, END = 0, 1
+    while 1:
+        if not len(stretches):
+            break
+    
+        NEXT = CURRENT + 1
+    
+        if NEXT == len(stretches):
+            stretches_to_merge.append([stretches[CURRENT]])
+            break
+    
+        while 1:
+            if NEXT > len(stretches):
+                break
+    
+            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
+                NEXT = NEXT + 1
+    
+                if NEXT == len(stretches):
+                    break
+            else:
+                break
+    
+        if NEXT > len(stretches):
+            break
+        elif NEXT - CURRENT == 1:
+            stretches_to_merge.append([stretches[CURRENT]])
+            CURRENT += 1
+        else:
+            stretches_to_merge.append(stretches[CURRENT:NEXT])
+            CURRENT = NEXT + 1
+    
+    # here the array `stretches_to_merge` contains all the lists of
+    # stretches that need to be merged.
+    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+
+
 def get_chunk(stream, separator, read_size=4096):
     """Read from a file chunk by chunk based on a separator substring
 
