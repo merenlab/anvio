@@ -102,6 +102,12 @@ unique_id | db_name | genome_name | ko | gene_caller_id | contig | modules_with_
 2 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00850 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
 (...) |(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
+Here are the descriptions of any new columns not yet discussed in the previous sections:
+
+- `ko`: a KO that was annotated in the contigs database
+- `modules_with_ko`: the KEGG modules (if any) that this KO belongs to
+- `definition`: the function of this KO (typically the enzyme name and EC number)
+
 ### Custom Mode (for module data)
 
 The `modules_custom` output mode will have user-defined content and the suffix `modules_custom.txt` (we currently only support output customization for modules data). See %(anvi-estimate-metabolism)s for an example command to work with this mode. The output file will look similar to the `modules` mode output, but with a different (sub)set of columns.
