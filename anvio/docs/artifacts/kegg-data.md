@@ -42,6 +42,7 @@ KEGG
 
 Typically, users will not have to work directly with any of these files, as downstream programs will interface directly with the %(modules-db)s. 
 
-However, for the curious:`ko_list.txt`, `modules.keg`, and all files in the `modules` subfolder are flat text files downloaded from the [KEGG website](https://www.genome.jp/kegg/). The data in these files are processed and organized into the %(modules-db)s for easier programmatic access. 
+However, for the curious:
+`ko_list.txt`, `modules.keg`, and all files in the `modules` subfolder are flat text files downloaded from the [KEGG website](https://www.genome.jp/kegg/). The data in these files are processed and organized into the %(modules-db)s for easier programmatic access. 
 
 The `HMMs` subfolder contains a file of concatentated KOfam profiles (also originally downloaded from [KEGG](https://www.genome.jp/ftp/db/kofam/)), as well as the indexes for this file. Some KOfam profiles do not have a score threshold in the `ko_list.txt` file - these profiles and their corresponding entries from that file live in the `orphan_data` directory. Please note that KOs from the `orphan_data` directory will *not* be annotated in your %(contigs-db)s when you run %(anvi-run-kegg-kofams)s.
