@@ -1905,10 +1905,9 @@ class TRNASeqDataset(object):
 
         start_time = time.time()
 
-        progress = self.progress
         pid = "Profiling tRNA features in unique reads"
-        progress.new(pid)
-        progress.update("...")
+        self.progress.new(pid)
+        self.progress.update("...")
 
         # Count the number of reads and unique reads that have been added to the multiprocessing
         # input queue.
@@ -1936,8 +1935,8 @@ class TRNASeqDataset(object):
         dict_Un = self.dict_Un
         pp_total_uniq_count = pp(len(uniq_read_infos))
         while fetched_profile_count < total_uniq_count:
-            progress.update_pid(pid)
-            progress.update(f"{pp(input_count + 1)}-{pp(interval_stop)}/{pp_total_uniq_count}")
+            self.progress.update_pid(pid)
+            self.progress.update(f"{pp(input_count + 1)}-{pp(interval_stop)}/{pp_total_uniq_count}")
 
             while input_count < interval_stop:
                 for uniq_read_info in uniq_read_infos[interval_start: interval_stop]:
@@ -1976,7 +1975,7 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Reads processed", total_read_count))
             f.write(get_summary_line("Unique seqs processed", total_uniq_count))
 
-        progress.end()
+        self.progress.end()
 
         self.run.info("Reads processed", total_read_count, mc='green')
         self.run.info("Unique seqs processed", total_uniq_count, mc='green')
@@ -2136,62 +2135,65 @@ class TRNASeqDataset(object):
                 max_reads_Un = read_count
         mean_reads_Un = read_count_Un / seq_count_Un
 
-        run = self.run
-        run.warning(None, "PROFILING RESULTS", lc='green', nl_before=1)
-        run.info_single("subject to change -- see summary output file for final results")
+        warning = self.run.warning
+        info_single = self.run.info_single
+        info = self.run.info
 
-        run.warning(None, "Unique seq counts", lc='cyan')
-        run.info("tRNA profile", seq_count_Uf)
-        run.info("Truncated tRNA profile", seq_count_Uc)
-        run.info("No tRNA profile", seq_count_Un)
+        warning(None, "PROFILING RESULTS", lc='green', nl_before=1)
+        info_single("subject to change -- see summary output file for final results")
 
-        run.warning(None, "Read counts", lc='cyan')
-        run.info("tRNA profile", read_count_Uf)
-        run.info("Truncated tRNA profile", read_count_Uc)
-        run.info("No tRNA profile", read_count_Un)
+        warning(None, "Unique seq counts", lc='cyan')
+        info("tRNA profile", seq_count_Uf)
+        info("Truncated tRNA profile", seq_count_Uc)
+        info("No tRNA profile", seq_count_Un)
 
-        run.warning(None, "Unique seqs with tRNA profile", lc='cyan')
-        run.info("Count with anticodon", seq_anticodon_count_Uf)
-        run.info("Count with complete feature set", seq_complete_count_Uf)
-        run.info("Mean reads per seq", round(mean_reads_Uf, 1))
-        run.info("Max reads per seq", max_reads_Uf)
-        run.info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", seq_short_5prime_count_Uf)
-        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", seq_long_5prime_count_Uf)
-        run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uf, 3))
-        run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uf, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uf, 4))
-        run.info("Mean extrapolated 5' nt freq", round(mean_seq_extrap_freq_Uf, 3))
+        warning(None, "Read counts", lc='cyan')
+        info("tRNA profile", read_count_Uf)
+        info("Truncated tRNA profile", read_count_Uc)
+        info("No tRNA profile", read_count_Un)
 
-        run.warning(None, "Unique seqs with truncated tRNA profile", lc='cyan')
-        run.info("Count with anticodon", seq_anticodon_count_Uc)
-        run.info("Mean reads per seq", round(mean_reads_Uc, 1))
-        run.info("Max reads per seq", max_reads_Uc)
-        run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uc, 3))
-        run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uc, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uc, 4))
+        warning(None, "Unique seqs with tRNA profile", lc='cyan')
+        info("Count with anticodon", seq_anticodon_count_Uf)
+        info("Count with complete feature set", seq_complete_count_Uf)
+        info("Mean reads per seq", round(mean_reads_Uf, 1))
+        info("Max reads per seq", max_reads_Uf)
+        info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", seq_short_5prime_count_Uf)
+        info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", seq_long_5prime_count_Uf)
+        info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uf, 3))
+        info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uf, 4))
+        info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uf, 4))
+        info("Mean extrapolated 5' nt freq", round(mean_seq_extrap_freq_Uf, 3))
 
-        run.warning(None, "Unique seqs with no tRNA profile", lc='cyan')
-        run.info("Mean reads per seq", round(mean_reads_Un, 1))
-        run.info("Max reads per seq", max_reads_Un)
+        warning(None, "Unique seqs with truncated tRNA profile", lc='cyan')
+        info("Count with anticodon", seq_anticodon_count_Uc)
+        info("Mean reads per seq", round(mean_reads_Uc, 1))
+        info("Max reads per seq", max_reads_Uc)
+        info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uc, 3))
+        info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uc, 4))
+        info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uc, 4))
 
-        run.warning(None, "Reads with tRNA profile", lc='cyan')
-        run.info("Count with anticodon", read_anticodon_count_Uf)
-        run.info("Count with complete feature set", read_complete_count_Uf)
-        run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uf, 1))
-        run.info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", read_short_5prime_count_Uf)
-        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", read_long_5prime_count_Uf)
-        run.info(f"Mean length ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} nt extension", round(mean_read_5prime_length_Uf, 1))
-        run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uf, 3))
-        run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uf, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uf, 4))
-        run.info("Mean extrapolated 5' nt freq", round(mean_read_extrap_freq_Uf, 3))
+        warning(None, "Unique seqs with no tRNA profile", lc='cyan')
+        info("Mean reads per seq", round(mean_reads_Un, 1))
+        info("Max reads per seq", max_reads_Un)
 
-        run.warning(None, "Reads with truncated tRNA profile", lc='cyan')
-        run.info("Spans anticodon", read_anticodon_count_Uc)
-        run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uc, 1))
-        run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uc, 3))
-        run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uc, 4))
-        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uc, 4), nl_after=2 if self.write_checkpoints else 1)
+        warning(None, "Reads with tRNA profile", lc='cyan')
+        info("Count with anticodon", read_anticodon_count_Uf)
+        info("Count with complete feature set", read_complete_count_Uf)
+        info("Mean length 3' terminus", round(mean_read_3prime_length_Uf, 1))
+        info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", read_short_5prime_count_Uf)
+        info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", read_long_5prime_count_Uf)
+        info(f"Mean length ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} nt extension", round(mean_read_5prime_length_Uf, 1))
+        info("Mean profiled nt freq", round(mean_read_profiled_freq_Uf, 3))
+        info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uf, 4))
+        info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uf, 4))
+        info("Mean extrapolated 5' nt freq", round(mean_read_extrap_freq_Uf, 3))
+
+        warning(None, "Reads with truncated tRNA profile", lc='cyan')
+        info("Spans anticodon", read_anticodon_count_Uc)
+        info("Mean length 3' terminus", round(mean_read_3prime_length_Uc, 1))
+        info("Mean profiled nt freq", round(mean_read_profiled_freq_Uc, 3))
+        info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uc, 4))
+        info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uc, 4), nl_after=2 if self.write_checkpoints else 1)
 
 
     def trim_trna_ends(self):
@@ -2284,29 +2286,32 @@ class TRNASeqDataset(object):
                 max_reads_Tc = read_count
         mean_reads_Tc /= count_Tc
 
-        run = self.run
-        run.warning(None, "TRIMMING RESULTS", lc='green', nl_before=1)
-        run.info_single("subject to change -- see summary output file for final results")
+        warning = self.run.warning
+        info_single = self.run.info_single
+        info = self.run.info
 
-        run.warning(None, "Trimmed seq counts", lc='cyan')
-        run.info("tRNA profile", count_Tf)
-        run.info("Truncated tRNA profile", count_Tc)
+        warning(None, "TRIMMING RESULTS", lc='green', nl_before=1)
+        info_single("subject to change -- see summary output file for final results")
 
-        run.warning(None, "Trimmed seqs with tRNA profile", lc='cyan')
-        run.info("Count with anticodon", anticodon_count_Tf)
-        run.info("Count with complete feature set", complete_count_Tf)
-        run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tf, 1))
-        run.info("Count with single unique seq", single_count_Tf)
-        run.info("Mean reads per seq", round(mean_reads_Tf, 1))
-        run.info("Max reads per seq", max_reads_Tf)
-        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", long_5prime_count_Tf)
+        warning(None, "Trimmed seq counts", lc='cyan')
+        info("tRNA profile", count_Tf)
+        info("Truncated tRNA profile", count_Tc)
 
-        run.warning(None, "Trimmed seqs with truncated tRNA profile", lc='cyan')
-        run.info("Count with anticodon", anticodon_count_Tc)
-        run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tc, 1))
-        run.info("Count with single unique seq", single_uniq_seq_count_Tc)
-        run.info("Mean reads per seq", round(mean_reads_Tc, 1))
-        run.info("Max reads per seq", max_reads_Tc, nl_after=1)
+        warning(None, "Trimmed seqs with tRNA profile", lc='cyan')
+        info("Count with anticodon", anticodon_count_Tf)
+        info("Count with complete feature set", complete_count_Tf)
+        info("Mean unique seqs per seq", round(mean_uniq_seqs_Tf, 1))
+        info("Count with single unique seq", single_count_Tf)
+        info("Mean reads per seq", round(mean_reads_Tf, 1))
+        info("Max reads per seq", max_reads_Tf)
+        info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", long_5prime_count_Tf)
+
+        warning(None, "Trimmed seqs with truncated tRNA profile", lc='cyan')
+        info("Count with anticodon", anticodon_count_Tc)
+        info("Mean unique seqs per seq", round(mean_uniq_seqs_Tc, 1))
+        info("Count with single unique seq", single_uniq_seq_count_Tc)
+        info("Mean reads per seq", round(mean_reads_Tc, 1))
+        info("Max reads per seq", max_reads_Tc, nl_after=1)
 
 
     def threeprime_dereplicate_profiled_trna(self):
@@ -2828,42 +2833,45 @@ class TRNASeqDataset(object):
         mean_spec_reads_Nc /= count_Nc
         mean_nonspec_reads_Nc /= count_Nc
 
-        run = self.run
-        run.warning(None, "3' DEREPLICATION RESULTS", lc='green')
-        run.info_single("subject to change -- see summary output file for final results")
+        warning = self.run.warning
+        info_single = self.run.info_single
+        info = self.run.info
 
-        run.warning(None, "Normalized seq counts", lc='cyan')
-        run.info("tRNA profile", count_Nf)
-        run.info("Truncated tRNA profile", count_Nc)
+        warning(None, "3' DEREPLICATION RESULTS", lc='green')
+        info_single("subject to change -- see summary output file for final results")
 
-        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
-        run.info("Containing anticodon", anticodon_count_Nf)
-        run.info("Containing complete feature set", complete_count_Nf)
-        run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nf, 1))
-        run.info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nf, 1))
-        run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nf, 1))
-        run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nf, 1))
-        run.info("Mean specific reads per seq", round(spec_reads_Nf, 1))
-        run.info("Mean nonspecific reads per seq", round(nonspec_reads_Nf, 1))
-        run.info("Max specific reads per seq", max_spec_reads_Nf)
-        run.info("Max nonspecific reads per seq", max_nonspec_reads_Nf)
-        run.info("Max total reads per seq", max_total_reads_Nf)
-        run.info("Recovered trimmed seqs with truncated profile", count_Tc_trna_Nf)
-        run.info("Recovered unique seqs with truncated profile", count_Uc_trna_Nf)
-        run.info("Recovered reads with truncated profile", read_count_Uc_trna_Nf)
-        run.info("Mean recovered trunc trimmed seqs per seq", round(mean_Tc_trna_Nf, 2))
-        run.info("Mean recovered trunc unique seqs per seq", round(mean_Uc_trna_Nf, 2))
-        run.info("Mean recovered trunc reads per seq", round(mean_Uc_reads_Nf, 2))
-        run.info("Consolidated trimmed tRNA seqs", self.count_consol_Tf, nl_after=1)
+        warning(None, "Normalized seq counts", lc='cyan')
+        info("tRNA profile", count_Nf)
+        info("Truncated tRNA profile", count_Nc)
 
-        run.warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
-        run.info("Containing anticodon", anticodon_count_Nc)
-        run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nc, 1))
-        run.info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nc, 1))
-        run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nc, 1))
-        run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nc, 1))
-        run.info("Mean specific reads per seq", round(mean_spec_reads_Nc, 1))
-        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2 if self.write_checkpoints else 1)
+        warning(None, "Normalized seqs with tRNA profile", lc='cyan')
+        info("Containing anticodon", anticodon_count_Nf)
+        info("Containing complete feature set", complete_count_Nf)
+        info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nf, 1))
+        info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nf, 1))
+        info("Mean specific unique seqs per seq", round(mean_spec_U_Nf, 1))
+        info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nf, 1))
+        info("Mean specific reads per seq", round(spec_reads_Nf, 1))
+        info("Mean nonspecific reads per seq", round(nonspec_reads_Nf, 1))
+        info("Max specific reads per seq", max_spec_reads_Nf)
+        info("Max nonspecific reads per seq", max_nonspec_reads_Nf)
+        info("Max total reads per seq", max_total_reads_Nf)
+        info("Recovered trimmed seqs with truncated profile", count_Tc_trna_Nf)
+        info("Recovered unique seqs with truncated profile", count_Uc_trna_Nf)
+        info("Recovered reads with truncated profile", read_count_Uc_trna_Nf)
+        info("Mean recovered trunc trimmed seqs per seq", round(mean_Tc_trna_Nf, 2))
+        info("Mean recovered trunc unique seqs per seq", round(mean_Uc_trna_Nf, 2))
+        info("Mean recovered trunc reads per seq", round(mean_Uc_reads_Nf, 2))
+        info("Consolidated trimmed tRNA seqs", self.count_consol_Tf, nl_after=1)
+
+        warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
+        info("Containing anticodon", anticodon_count_Nc)
+        info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nc, 1))
+        info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nc, 1))
+        info("Mean specific unique seqs per seq", round(mean_spec_U_Nc, 1))
+        info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nc, 1))
+        info("Mean specific reads per seq", round(mean_spec_reads_Nc, 1))
+        info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2 if self.write_checkpoints else 1)
 
 
     def write_checkpoint_files(self, checkpoint_name):
@@ -2887,18 +2895,19 @@ class TRNASeqDataset(object):
 
 
     def load_checkpoint_files(self, checkpoint_name):
-        progress = self.progress
-        progress.new(f"Loading intermediate files at the \"{checkpoint_name}\" checkpoint")
+        pid = f"Loading intermediate files at the \"{checkpoint_name}\" checkpoint"
+        self.progress.new(pid)
 
         for intermed_file_key, intermed_file_path in self.intermed_file_path_dict[checkpoint_name].items():
-            progress.update(f"{os.path.basename(intermed_file_path)}")
+            self.progress.update_pid(pid)
+            self.progress.update(f"{os.path.basename(intermed_file_path)}")
             with open(intermed_file_path, 'rb') as f:
                 setattr(self, intermed_file_key, pkl.load(f))
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(f"\nAnalysis restarted from the \"{checkpoint_name}\" checkpoint\n")
 
-        progress.end()
+        self.progress.end()
         self.run.info_single(f"Loaded \"{checkpoint_name}\" checkpoint intermediate files from {self.checkpoint_subdir_dict[checkpoint_name]}")
 
 
@@ -3022,9 +3031,8 @@ class TRNASeqDataset(object):
         """
         start_time = time.time()
 
-        progress = self.progress
         pid = "Set up search of unprofiled reads to profiled tRNA"
-        progress.new(pid)
+        self.progress.new(pid)
 
         self.progress.update("Getting queries from unprofiled reads")
         temp_dir_path = filesnpaths.get_temp_directory_path()
@@ -3040,8 +3048,8 @@ class TRNASeqDataset(object):
                 query_count += 1
 
 
-        progress.update_pid(pid)
-        progress.update("Getting targets from profiled tRNAs")
+        self.progress.update_pid(pid)
+        self.progress.update("Getting targets from profiled tRNAs")
         # Un are mapped to Nf with extra 5' bases added when present in underlying U. Multiple
         # targets for each Nf are therefore produced for different 5' extensions.
         target_fasta_path = os.path.join(temp_dir_path, 'target.fa')
@@ -3083,7 +3091,7 @@ class TRNASeqDataset(object):
                         target_fasta.write(f">{seq_Nf.name}-{len(string_5prime)}-{index_5prime}\n{string_5prime}{string_Nf}\n")
                 else:
                     target_fasta.write(f">{seq_Nf.name}-0-0\n{string_Nf}\n") # no extra 5' bases
-        progress.end()
+        self.progress.end()
 
 
         # Use a 10x bigger query chunk size than the Vmatch default, as the rather conservative
@@ -3098,8 +3106,8 @@ class TRNASeqDataset(object):
                                              temp_dir=temp_dir_path)).search_queries()
 
         pid = "Filtering matches"
-        progress.new(pid)
-        progress.update("...")
+        self.progress.new(pid)
+        self.progress.update("...")
 
         self.restructure_fragment_match_table(match_df)
 
@@ -3119,8 +3127,8 @@ class TRNASeqDataset(object):
             num_filtered_queries += 1
             if num_filtered_queries % fragment_filter_progress_interval == 0:
                 pp_progress_interval_end = pp(total_matched_queries if num_filtered_queries + fragment_filter_progress_interval > total_matched_queries else num_filtered_queries + fragment_filter_progress_interval)
-                progress.update_pid(pid)
-                progress.update(f"Queries {pp(num_filtered_queries + 1)}-{pp_progress_interval_end}/{pp_total_matched_queries}")
+                self.progress.update_pid(pid)
+                self.progress.update(f"Queries {pp(num_filtered_queries + 1)}-{pp_progress_interval_end}/{pp_total_matched_queries}")
 
             # Each Un with a validated match will yield a Um and Tm.
             seq_Um = None
@@ -3185,7 +3193,7 @@ class TRNASeqDataset(object):
                             seq_Nf.starts_T_in_N.append(start_Tm_in_Nf)
                             seq_Nf.stops_T_in_N.append(stop_Tm_in_Nf)
                             break
-        progress.end()
+        self.progress.end()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)", time.time() - start_time, is_time_value=True))
@@ -3275,37 +3283,40 @@ class TRNASeqDataset(object):
         nonspec_short_5prime_Nf = len(set(nonspec_short_5prime_Nf_names))
         nonspec_long_5prime_Nf = len(set(nonspec_long_5prime_Nf_names))
 
-        run = self.run
-        run.warning(None, "FRAGMENT MAPPING RESULTS", lc='green', nl_before=1 if self.write_checkpoints else 0)
-        run.info_single("subject to change -- see summary output file for final results")
+        warning = self.run.warning
+        info_single = self.run.info_single
+        info = self.run.info
 
-        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
-        run.info("With specific mapping", count_spec_Nf)
-        run.info("With nonspecific mapping", count_nonspec_Nf)
-        run.info("With any mapping", count_any_Nf)
-        run.info("Mean specific mapped seqs per seq", round(mean_spec_Tm_Nf, 2))
-        run.info("Mean nonspecific mapped seqs per seq", round(mean_nonspec_Tm_Nf, 2))
-        run.info("Mean specific mapped reads per seq", round(spec_reads_Nf, 2))
-        run.info("Mean nonspecific mapped reads per seq", round(nonspec_reads_Nf, 2))
-        run.info(f"With specific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_Nf)
-        run.info(f"With specific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_Nf)
-        run.info(f"With nonspecific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_Nf)
-        run.info(f"With nonspecific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_Nf)
+        warning(None, "FRAGMENT MAPPING RESULTS", lc='green', nl_before=1 if self.write_checkpoints else 0)
+        info_single("subject to change -- see summary output file for final results")
 
-        run.warning(None, "Mapped seq counts", lc='cyan')
-        run.info("Specific seqs", count_spec_Tm)
-        run.info("Specific reads", reads_spec_Tm)
-        run.info(f"Specific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_seq_Tm)
-        run.info(f"Specific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_seq_Tm)
-        run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_Tm)
-        run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_Tm)
+        warning(None, "Normalized seqs with tRNA profile", lc='cyan')
+        info("With specific mapping", count_spec_Nf)
+        info("With nonspecific mapping", count_nonspec_Nf)
+        info("With any mapping", count_any_Nf)
+        info("Mean specific mapped seqs per seq", round(mean_spec_Tm_Nf, 2))
+        info("Mean nonspecific mapped seqs per seq", round(mean_nonspec_Tm_Nf, 2))
+        info("Mean specific mapped reads per seq", round(spec_reads_Nf, 2))
+        info("Mean nonspecific mapped reads per seq", round(nonspec_reads_Nf, 2))
+        info(f"With specific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_Nf)
+        info(f"With specific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_Nf)
+        info(f"With nonspecific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_Nf)
+        info(f"With nonspecific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_Nf)
+
+        warning(None, "Mapped seq counts", lc='cyan')
+        info("Specific seqs", count_spec_Tm)
+        info("Specific reads", reads_spec_Tm)
+        info(f"Specific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_seq_Tm)
+        info(f"Specific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_seq_Tm)
+        info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_Tm)
+        info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_Tm)
         if not PROFILE_ABSENT_3PRIME_TERMINUS:
-            run.info("Seqs only missing a 3' terminus", absent_3prime_terminus_seqs_Tm)
-            run.info("Reads only missing a 3' terminus", absent_3prime_terminus_reads_Tm)
-            run.info_single("Consider including an absent 3' terminus (by using '_') "
-                            "in the `anvi-trnaseq` parameterization of allowed 3' termini "
-                            "if the number of mapped seqs identical to a normalized seq but missing a 3' terminus seems high.",
-                            mc='red')
+            info("Seqs only missing a 3' terminus", absent_3prime_terminus_seqs_Tm)
+            info("Reads only missing a 3' terminus", absent_3prime_terminus_reads_Tm)
+            info_single("Consider including an absent 3' terminus (by using '_') "
+                        "in the `anvi-trnaseq` parameterization of allowed 3' termini "
+                        "if the number of mapped seqs identical to a normalized seq but missing a 3' terminus seems high.",
+                        mc='red')
 
 
     def report_initialized_normalized_sequence_coverage_statistics(self):
@@ -3358,34 +3369,36 @@ class TRNASeqDataset(object):
         mean_spec_cov_Nc /= total_length_Nc
         mean_nonspec_cov_Nc /= total_length_Nc
 
-        run = self.run
-        run.warning(None, "NORMALIZATION RESULTS", lc='green', nl_before=1)
-        run.info_single("subject to change -- see summary output file for final results")
+        warning = self.run.warning
+        info_single = self.run.info_single
+        info = self.run.info
 
-        run.warning(None, "Normalized seqs with tRNA profile", lc='cyan')
-        run.info("Specific reads", spec_read_Nf)
-        run.info("Mean specific coverage", round(mean_spec_cov_Nf, 2))
-        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nf, 2))
-        run.info("Max specific coverage", round(max_spec_cov_Nf, 2))
-        run.info("Max nonspecific coverage", round(max_nonspec_cov_Nf, 2))
-        run.info("Max total coverage", round(max_total_cov_Nf, 2))
+        warning(None, "NORMALIZATION RESULTS", lc='green', nl_before=1)
+        info_single("subject to change -- see summary output file for final results")
 
-        run.warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
-        run.info("Specific reads", spec_read_Nc)
-        run.info("Mean specific coverage", round(mean_spec_cov_Nc, 2))
-        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nc, 2))
-        run.info("Max specific coverage", round(max_spec_cov_Nc, 2))
-        run.info("Max nonspecific coverage", round(max_nonspec_cov_Nc, 2))
-        run.info("Max total coverage", round(max_total_cov_Nc, 2), nl_after=2)
+        warning(None, "Normalized seqs with tRNA profile", lc='cyan')
+        info("Specific reads", spec_read_Nf)
+        info("Mean specific coverage", round(mean_spec_cov_Nf, 2))
+        info("Mean nonspecific coverage", round(mean_nonspec_cov_Nf, 2))
+        info("Max specific coverage", round(max_spec_cov_Nf, 2))
+        info("Max nonspecific coverage", round(max_nonspec_cov_Nf, 2))
+        info("Max total coverage", round(max_total_cov_Nf, 2))
+
+        warning(None, "Normalized seqs with truncated tRNA profile", lc='cyan')
+        info("Specific reads", spec_read_Nc)
+        info("Mean specific coverage", round(mean_spec_cov_Nc, 2))
+        info("Mean nonspecific coverage", round(mean_nonspec_cov_Nc, 2))
+        info("Max specific coverage", round(max_spec_cov_Nc, 2))
+        info("Max nonspecific coverage", round(max_nonspec_cov_Nc, 2))
+        info("Max total coverage", round(max_total_cov_Nc, 2), nl_after=2)
 
 
     def find_substitutions(self):
         """Find sites of potential modification-induced substitutions."""
         start_time = time.time()
-        progress = self.progress
         pid = "Finding modification-induced substitutions"
-        progress.new(pid)
-        progress.update("...")
+        self.progress.new(pid)
+        self.progress.update("...")
 
         # Cluster Nf. Clusters agglomerate Nf that differ from at least one other Nf in the cluster
         # by no more than 3 nts in 100 (by default) in a gapless end-to-end alignment with no
@@ -3398,7 +3411,7 @@ class TRNASeqDataset(object):
             names_Nf.append(name_Nf)
             strings_Nf.append(seq_Nf.string)
             dict_Nf_feature_completeness[name_Nf] = seq_Nf.has_complete_feature_set
-        progress.end()
+        self.progress.end()
 
         agglomerator = Agglomerator(names_Nf, strings_Nf, num_threads=self.num_threads)
         # Provide a priority function for seeding clusters that favors, in order:
@@ -3414,8 +3427,8 @@ class TRNASeqDataset(object):
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
         pid = "Decomposing clusters"
-        progress.new(pid)
-        progress.update("...")
+        self.progress.new(pid)
+        self.progress.update("...")
 
         excluded_Nf_names = [] # used to exclude Nf from being considered as aligned queries in clusters (see below)
         represent_Nb_names = [] # used to prevent the same M from being created twice
@@ -3429,8 +3442,8 @@ class TRNASeqDataset(object):
             num_processed_refs += 1
             if num_processed_refs % decomposition_progress_interval == 0:
                 pp_progress_interval_end = pp(total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval)
-                progress.update_pid(pid)
-                progress.update(f"{pp(num_processed_refs + 1)}-{pp_progress_interval_end}/{pp_total_ref_count}")
+                self.progress.update_pid(pid)
+                self.progress.update(f"{pp(num_processed_refs + 1)}-{pp_progress_interval_end}/{pp_total_ref_count}")
 
             # A mod requires at least 3 different nts to be detected, and each Nf differs by at
             # least 1 nt (mismatch or gap), so for a cluster to form an M, it must contain at least
@@ -3508,7 +3521,7 @@ class TRNASeqDataset(object):
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
 
-        progress.end()
+        self.progress.end()
 
         if count_nonspec_Nb:
             self.run.info_single(f"{pp(count_nonspec_Nb)} nonspecific norm seqs "
@@ -3669,11 +3682,13 @@ class TRNASeqDataset(object):
         mean_sub_per_seq = total_sub_count / count_M
         mean_sub_per_nt = total_sub_count / total_length_M
 
-        run = self.run
-        run.warning(None, "SUBSTITUTION SEARCH RESULTS", lc='green', nl_before=1)
-        run.info("Modified seqs", count_M)
-        run.info("Mean (*potential*) subs per modified seq", round(mean_sub_per_seq, 1))
-        run.info("Mean subs per nt in modified seq", round(mean_sub_per_nt, 3), nl_after=2)
+        warning = self.run.warning
+        info = self.run.info
+
+        warning(None, "SUBSTITUTION SEARCH RESULTS", lc='green', nl_before=1)
+        info("Modified seqs", count_M)
+        info("Mean (*potential*) subs per modified seq", round(mean_sub_per_seq, 1))
+        info("Mean subs per nt in modified seq", round(mean_sub_per_nt, 3), nl_after=2)
 
 
     def find_indels(self):
@@ -3709,9 +3724,7 @@ class TRNASeqDataset(object):
         could theoretically originate from different cDNA seqs, with some containing an indel, and
         others, representing a different tRNA, not containing it."""
         pid = "Finding seqs with mod-induced indels"
-        progress = self.progress
-        run = self.run
-        progress.new(pid)
+        self.progress.new(pid)
 
         # Write FASTA files of queries and targets to a temp dir used in running Vmatch. Do not
         # allow the Vmatch driver to automatically remove the dir, as the FASTA file of Nq is used
@@ -3723,15 +3736,18 @@ class TRNASeqDataset(object):
         fasta_path_Nqf = os.path.join(temp_dir_path, 'Nqf.fa')
 
         # Write a FASTA file of Nb.
-        progress.update("Writing FASTA of norm tRNA seqs with mod-induced subs")
+        self.progress.update_pid(pid)
+        self.progress.update("Writing FASTA of norm tRNA seqs with mod-induced subs")
         count_Nb, max_length_M = self.write_fasta_Nb(fasta_path_Nb)
 
         # Write a FASTA file of Nqf.
-        progress.update("Writing FASTA of norm tRNA seqs without mod-induced subs")
+        self.progress.update_pid(pid)
+        self.progress.update("Writing FASTA of norm tRNA seqs without mod-induced subs")
         count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
         # Search Nqf against Nb.
-        progress.update("Searching for norm tRNA seqs within mod tRNA seqs")
+        self.progress.update_pid(pid)
+        self.progress.update("Searching for norm tRNA seqs within mod tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nb,
                                              fasta_query_file=fasta_path_Nqf,
@@ -3750,18 +3766,19 @@ class TRNASeqDataset(object):
         results_dict = {}
         # The following method updates `results_dict`.
         count_Nqf_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, False)
-        progress.end()
-        run.info_single("Completed indel search Stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2 if self.write_checkpoints else 0)
+        self.progress.end()
+        self.run.info_single("Completed indel search Stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2 if self.write_checkpoints else 0)
 
 
         # Search Nb against Nqf.
-        progress.new(pid)
+        self.progress.new(pid)
         if count_Nqf_with_indels:
             # Indels were found in some Nqf, so rewrite the FASTA file of Nqf to exclude these.
-            progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
+            self.progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
             count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
-        progress.update("Searching for mod tRNA seqs within norm tRNA seqs")
+        self.progress.update_pid(pid)
+        self.progress.update("Searching for mod tRNA seqs within norm tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nqf,
                                              fasta_query_file=fasta_path_Nb,
@@ -3778,18 +3795,19 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nqf_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, True)
-        progress.end()
-        run.info_single("Completed indel search Stage 2/4: mod tRNA seqs within norm tRNA seqs")
+        self.progress.end()
+        self.run.info_single("Completed indel search Stage 2/4: mod tRNA seqs within norm tRNA seqs")
 
 
         # Write a FASTA file of Nc.
-        progress.new(pid)
-        progress.update("Writing FASTA of norm trunc seqs")
+        self.progress.new(pid)
+        self.progress.update("Writing FASTA of norm trunc seqs")
         fasta_path_Nc = os.path.join(temp_dir_path, 'Nc.fa')
         count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
         # Search Nc against Nb.
-        progress.update("Searching for trunc tRNA seqs within mod tRNA seqs")
+        self.progress.update_pid(pid)
+        self.progress.update("Searching for trunc tRNA seqs within mod tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nb,
                                              fasta_query_file=fasta_path_Nc,
@@ -3806,18 +3824,19 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nc_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, False)
-        progress.end()
-        run.info_single("Completed indel search Stage 3/4: trunc tRNA seqs within mod tRNA seqs")
+        self.progress.end()
+        self.run.info_single("Completed indel search Stage 3/4: trunc tRNA seqs within mod tRNA seqs")
 
 
         # Search Nb against Nc.
-        progress.new(pid)
+        self.progress.new(pid)
         if count_Nc_with_indels:
             # Indels were found in some Nc, so rewrite the FASTA file of Nc to exclude these.
-            progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
+            self.progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
             count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
-        progress.update("Searching for mod tRNA seqs within trunc tRNA seqs")
+        self.progress.update_pid(pid)
+        self.progress.update("Searching for mod tRNA seqs within trunc tRNA seqs")
         match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
                                              fasta_db_file=fasta_path_Nc,
                                              fasta_query_file=fasta_path_Nb,
@@ -3834,15 +3853,15 @@ class TRNASeqDataset(object):
         os.remove(parsed_output_path)
 
         count_Nc_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, True)
-        progress.end()
-        run.info_single("Completed indel search Stage 4/4: mod tRNA seqs within trunc tRNA seqs")
+        self.progress.end()
+        self.run.info_single("Completed indel search Stage 4/4: mod tRNA seqs within trunc tRNA seqs")
 
 
         # Consolidate Nq differing by 5' and 3' extensions into a new Ni object.
-        progress.new(pid)
-        progress.update("Finalizing norm seqs with indels")
+        self.progress.new(pid)
+        self.progress.update("Finalizing norm seqs with indels")
         self.add_Ni_to_M(results_dict)
-        progress.end()
+        self.progress.end()
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         set_meta_value = trnaseq_db.db.set_meta_value
@@ -4481,32 +4500,34 @@ class TRNASeqDataset(object):
                 if seq_M.insert_starts or seq_M.del_starts:
                     count_indel_M += 1
 
-        run = self.run
-        run.warning(None, "MODIFICATION ANALYSIS RESULTS", lc='green', nl_before=1)
+        warning = self.run.warning
+        info = self.run.info
 
-        run.warning(None, "Modified seqs", lc='cyan')
-        run.info("Specific reads", spec_read_count_M)
-        run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_count_M)
-        run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_count_M)
-        run.info("Mean specific coverage", round(mean_spec_cov_M, 2))
-        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_M, 2))
-        run.info("Max specific coverage", round(max_spec_cov_M, 2))
-        run.info("Max nonspecific coverage", round(max_nonspec_cov_M, 2))
-        run.info("Max total coverage", round(max_total_cov_M, 2), nl_after=2 if self.skip_indel_profiling else 0)
+        warning(None, "MODIFICATION ANALYSIS RESULTS", lc='green', nl_before=1)
+
+        warning(None, "Modified seqs", lc='cyan')
+        info("Specific reads", spec_read_count_M)
+        info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_count_M)
+        info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_count_M)
+        info("Mean specific coverage", round(mean_spec_cov_M, 2))
+        info("Mean nonspecific coverage", round(mean_nonspec_cov_M, 2))
+        info("Max specific coverage", round(max_spec_cov_M, 2))
+        info("Max nonspecific coverage", round(max_nonspec_cov_M, 2))
+        info("Max total coverage", round(max_total_cov_M, 2), nl_after=2 if self.skip_indel_profiling else 0)
 
         if not self.skip_indel_profiling:
-            run.warning(None, "Results of indel search", lc='cyan')
-            run.info("Modified seqs with indels", count_indel_M)
-            run.info("Modified seqs with insertions", count_insert_M)
-            run.info("Modified seqs with deletions", count_del_M)
+            warning(None, "Results of indel search", lc='cyan')
+            info("Modified seqs with indels", count_indel_M)
+            info("Modified seqs with insertions", count_insert_M)
+            info("Modified seqs with deletions", count_del_M)
 
             trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
             get_meta_value = trnaseq_db.db.get_meta_value
             count_Nqf_with_indels = get_meta_value('count_Nqf_with_indels')
             count_Nc_with_indels = get_meta_value('count_Nc_with_indels')
             trnaseq_db.disconnect()
-            run.info("Normalized tRNA seqs found to have indels", count_Nqf_with_indels)
-            run.info("Normalized trunc seqs found to have indels", count_Nc_with_indels, nl_after=2)
+            info("Normalized tRNA seqs found to have indels", count_Nqf_with_indels)
+            info("Normalized trunc seqs found to have indels", count_Nc_with_indels, nl_after=2)
 
 
     def report_stats(self):
@@ -5404,9 +5425,9 @@ class DatabaseConverter(object):
         loaded_db_count = 0
         trnaseq_db_paths = self.trnaseq_db_paths
         num_trnaseq_db_paths = len(trnaseq_db_paths)
-        progress = self.progress
-        progress.new("Loading seq info from tRNA-seq dbs")
-        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+        pid = "Loading seq info from tRNA-seq dbs"
+        self.progress.new(pid)
+        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -5443,7 +5464,8 @@ class DatabaseConverter(object):
                         # have been retrieved, and the db has been fully processed.
                         db_completion_dict[trnaseq_db_path] += 1
                         loaded_db_count += 1
-                        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+                        self.progress.update_pid(pid)
+                        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
                     except KeyError:
                         # The poison pill has not been returned in the db's M queue.
                         db_completion_dict[trnaseq_db_path] = 1
@@ -5461,7 +5483,8 @@ class DatabaseConverter(object):
                     try:
                         db_completion_dict[trnaseq_db_path] += 1
                         loaded_db_count += 1
-                        progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
+                        self.progress.update_pid(pid)
+                        self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
                     except KeyError:
                         db_completion_dict[trnaseq_db_path] = 1
             except empty:
@@ -5686,13 +5709,14 @@ class DatabaseConverter(object):
         should not distort sample merging for the more abundant tRNA species, in particular, as
         these are most likely to be represented by reads spanning the full length of the tRNA,
         producing the same N."""
-        progress = self.progress
-        progress.new("Forming seed seqs from input samples")
+        pid = "Forming seed seqs from input samples"
+        self.progress.new(pid)
 
         string_N_seed_dict = {}
         for trnaseq_db_num, trnaseq_db_path in enumerate(self.trnaseq_db_paths):
             sample_id = self.trnaseq_db_sample_ids[trnaseq_db_num]
-            progress.update(f"Adding {sample_id}")
+            self.progress.update_pid(pid)
+            self.progress.update(f"Adding {sample_id}")
 
             summaries_Nu = self.dict_summaries_Nu[trnaseq_db_path]
             summaries_M = self.dict_summaries_M[trnaseq_db_path]
@@ -5867,14 +5891,16 @@ class DatabaseConverter(object):
                     for summary_Nb in summary_M.summaries_Nb:
                         string_N_seed_dict[summary_Nb.string] = new_seed
 
-        progress.update("...")
+        self.progress.update_pid(pid)
+        self.progress.update("...")
         # The seed references in the dict need to be dereplicated.
         seeds = list({seed.name: seed for seed in string_N_seed_dict.values()}.values())
 
         # Disregard seeds that do not reach the 5' feature threshold.
         seeds = [seed for seed in seeds if seed.meets_feature_threshold]
 
-        progress.update("Checking feature profiles")
+        self.progress.update_pid(pid)
+        self.progress.update("Checking feature profiles")
         # Reads with extra 5' nts beyond the acceptor stem sometimes generate false positive tRNA
         # feature profiles. These erroneous profiles shoehorn the 5' extra nts into the profile
         # through nt accommodation in variable-length sections of the profile, such as the D loop.
@@ -6056,7 +6082,8 @@ class DatabaseConverter(object):
             seeds.pop(seed_index)
 
 
-        progress.update("Assigning anticodons")
+        self.progress.update_pid(pid)
+        self.progress.update("Assigning anticodons")
         # Assign the anticodon by comparing the mean specific coverage of N comprising the seed, a
         # simpler approximation of extracting the anticodon coverage from each N.
         for seed in seeds:
@@ -6078,7 +6105,8 @@ class DatabaseConverter(object):
         seeds = [seed for seed in seeds if seed.anticodon_string]
 
 
-        progress.update("Calculating coverages")
+        self.progress.update_pid(pid)
+        self.progress.update("Calculating coverages")
         self.sample_total_mean_spec_cov_dict = sample_total_mean_spec_cov_dict = defaultdict(int)
         self.sample_total_discriminator_spec_cov_dict = sample_total_discriminator_spec_cov_dict = defaultdict(int)
         for seed in seeds:
@@ -6147,12 +6175,14 @@ class DatabaseConverter(object):
         self.total_seed_length = sum([len(seed.string) for seed in seeds])
 
         self.set_sample_covs()
-        progress.update("Setting mod-induced substitutions")
+        self.progress.update_pid(pid)
+        self.progress.update("Setting mod-induced substitutions")
         self.set_substitutions()
-        progress.update("Setting mod-induced indels")
+        self.progress.update_pid(pid)
+        self.progress.update("Setting mod-induced indels")
         self.set_sample_indels()
 
-        progress.end()
+        self.progress.end()
         self.run.info("Candidate seeds with feature conflicts", len(names_seeds_with_conflict), nl_before=1, nl_after=1)
 
 
@@ -7804,6 +7834,7 @@ class ResultPlotter(object):
         self.print_help()
 
         RANKS = self.RANKS
+        warning = self.run.warning
         while True:
             entry = input("\033[36;1;3mInput -> \033[0m")
 
@@ -7824,7 +7855,7 @@ class ResultPlotter(object):
 
                 if len(split_field) == 1:
                     if split_field[0] == '':
-                        self.run.warning("An empty semicolon-delimited field was given.", "INVALID FIELD")
+                        warning("An empty semicolon-delimited field was given.", "INVALID FIELD")
                         break
 
                     single_field = split_field[0]
@@ -7832,63 +7863,60 @@ class ResultPlotter(object):
                         loop_ranks.append(single_field)
                     elif single_field in AMINO_ACIDS:
                         if single_aa:
-                            self.run.warning("Multiple amino acids were given.", "INVALID FIELD")
+                            warning("Multiple amino acids were given.", "INVALID FIELD")
                             break
                         single_aa = single_field
                     elif single_field in ANTICODONS:
                         if single_anticodon:
-                            self.run.warning("Multiple anticodons were given.", "INVALID FIELD")
+                            warning("Multiple anticodons were given.", "INVALID FIELD")
                             break
                         single_anticodon = single_field
                     else:
-                        self.run.warning(f"{single_field} is not recognized as a taxonomic rank, amino acid, or anticodon.", "INVALID FIELD")
+                        warning(f"{single_field} is not recognized as a taxonomic rank, amino acid, or anticodon.", "INVALID FIELD")
                 elif len(split_field) == 2:
                     if split_field[0] == 'outdir':
                         if os.path.isdir(split_field[1]):
                             if not os.access(os.path.abspath(split_field[1]), os.W_OK):
-                                self.run.warning(f"Permission denied to create files in {split_field[1]}", "INVALID DIRECTORY PATH")
+                                warning(f"Permission denied to create files in {split_field[1]}", "INVALID DIRECTORY PATH")
                                 break
                         else:
                             try:
                                 os.mkdir(split_field[1])
                             except FileNotFoundError:
-                                self.run.warning(f"{split_field[1]}", "INVALID DIRECTORY PATH")
+                                warning(f"{split_field[1]}", "INVALID DIRECTORY PATH")
                                 break
                         out_dir = split_field[1]
                         continue
 
                     if taxon_filter:
-                        self.run.warning("Multiple fields with a comma, interpreted as a taxon, were given.", "INVALID FIELD")
+                        warning("Multiple fields with a comma, interpreted as a taxon, were given.", "INVALID FIELD")
                         break
                     taxon_rank_filter = split_field[0].strip()
 
                     if taxon_rank_filter not in RANKS:
-                        self.run.warning(f"{taxon_rank_filter} is not recognized as a taxonomic rank.", "INVALID FIELD")
+                        warning(f"{taxon_rank_filter} is not recognized as a taxonomic rank.", "INVALID FIELD")
                         break
                     taxon_filter = split_field[1].strip()
                 else:
-                    self.run.warning(f"A field with {len(split_field)} commas was given: '{field}'.", "INVALID FIELD")
+                    warning(f"A field with {len(split_field)} commas was given: '{field}'.", "INVALID FIELD")
                     break
             else:
                 if not taxon_rank_filter and not loop_ranks:
-                    self.run.warning(f"A taxon or at least one rank must be given.",
-                                     "PROGRAM REQUIREMENT")
+                    warning(f"A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
                     continue
 
                 loop_ranks = sorted(loop_ranks, key=lambda rank: RANKS.index(rank))
                 if taxon_rank_filter and loop_ranks:
                     if RANKS.index(taxon_rank_filter) >= RANKS.index(loop_ranks[0]):
-                        self.run.warning(f"A taxon ('{taxon_rank_filter} {taxon_filter}') lower than a rank ('{loop_ranks[0]}') was given.", "INVALID FIELD")
+                        warning(f"A taxon ('{taxon_rank_filter} {taxon_filter}') lower than a rank ('{loop_ranks[0]}') was given.", "INVALID FIELD")
                         continue
 
                 if single_aa and single_anticodon:
                     if ANTICODON_AA_DICT[single_anticodon] == single_aa:
-                        self.run.warning(f"An amino acid is not needed with the anticodon.",
-                                         "UNNECESSARY FIELD")
+                        warning(f"An amino acid is not needed with the anticodon.", "UNNECESSARY FIELD")
                         single_aa = None
                     else:
-                        self.run.warning(f"The anticodon ('{single_anticodon}') does not decode the amino acid ('{single_aa}').",
-                                         "INVALID FIELD")
+                        warning(f"The anticodon ('{single_anticodon}') does not decode the amino acid ('{single_aa}').", "INVALID FIELD")
                         continue
 
                 spec_df = self.spec_df
