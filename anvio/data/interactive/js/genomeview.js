@@ -1032,10 +1032,11 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
 
     let nGroups = 20
     let j = 0
+    let [l,r] = getRenderNTRange(genomeID);
     for(let i = 0; i < nGroups; i++) {
       for(; j < i*genomeMax/nGroups; j+=ptInterval){
-        if(j < renderWindow[0]) continue;
-        if(j > renderWindow[1]) break;
+        if(j < l) continue;
+        if(j > r) break;
         let left = j * scaleFactor + startingLeft
         let top = [additionalDataLayers[layer][j] / maxGCValue] * layerHeight
         let segment = `L ${left} ${top}`
@@ -1068,10 +1069,10 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
   let w = 0;
+  let [l,r] = getRenderNTRange(genomeID);
   for(let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
     for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
-      let [l,r] = getRenderNTRange(genomeID);
       if(w < l) continue;
       if(w > r) break;
       let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
