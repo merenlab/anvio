@@ -23,7 +23,6 @@
 
  var canvas;
  var genomeLabelsCanvas;
- var brush;
  var genomeMax = 0;
 
  // Settings vars
@@ -47,7 +46,8 @@
  var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
  let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
  var renderWindow = [];
- var xScale;
+ var brush;
+ var scaleWidth, scaleHeight;
 
  var alignToGC = null;
 
@@ -252,74 +252,15 @@ function loadAll() {
   // Find max length genome
   calculateMaxGenomeLength()
 
-  var scaleWidth = canvas.getWidth();
-  var scaleHeight = 100;
+  scaleWidth = canvas.getWidth();
+  scaleHeight = 100;
 
-  xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
-
-  var scaleAxis = d3.svg.axis()
-              .scale(xScale)
-              .tickSize(scaleHeight);
-
-  var scaleArea = d3.svg.area()
-              .interpolate("monotone")
-              .x(function(d) { return xScale(d); })
-              .y0(scaleHeight)
-              .y1(0);
-
-  brush = d3.svg.brush()
-              .x(xScale)
-              .on("brushend", onBrush);
+  drawScale();
 
   $("#scaleSvg").attr("width", scaleWidth + 10);
 
-  var scaleBox = d3.select("#scaleSvg").append("g")
-              .attr("id", "scaleBox")
-              .attr("class","scale")
-              .attr("y", 230)
-              .attr("transform", "translate(5,0)");
-
-  scaleBox.append("g")
-              .attr("class", "x axis top noselect")
-              .attr("transform", "translate(0,0)")
-              .call(scaleAxis);
-
-  scaleBox.append("g")
-              .attr("class", "x brush")
-              .call(brush)
-              .selectAll("rect")
-              .attr("y", 0)
-              .attr("height", scaleHeight);
-
   $('#brush_start').val(0);
   $('#brush_end').val(Math.floor(scaleWidth));
-
-  function onBrush(){
-      var b = brush.empty() ? xScale.domain() : brush.extent();
-
-      if (brush.empty()) {
-          $('.btn-selection-sequence').addClass('disabled').prop('disabled', true);
-      } else {
-          $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
-      }
-
-      if(!percentScale) b = [Math.floor(b[0]), Math.floor(b[1])];
-
-      $('#brush_start').val(b[0]);
-      $('#brush_end').val(b[1]);
-
-      let ntsToShow = b[1] - b[0];
-      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
-      updateRenderWindow();
-
-      if(dynamicScaleInterval) adjustScaleInterval();
-
-      draw();
-      let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
-      canvas.absolutePan({x: moveToX, y: 0});
-
-      // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
-  }
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#show_genome_labels_box').attr("checked", showLabels);
@@ -524,7 +465,7 @@ function loadAll() {
   });
   $('#genome_scale_interval').on('keydown', function(e) {
     if(e.keyCode == 13) { // 13 = enter key
-      setScale($(this).val());
+      setScaleInterval($(this).val());
       $(this).blur();
     }
   });
@@ -878,7 +819,7 @@ function alignRulers() {
     xDisps[genome[0]] = xDisplacement;
   }
   percentScale = false;
-  xScale.domain([0,genomeMax]);
+  drawScale();
   bindViewportToWindow();
   updateScalePos();
   updateRenderWindow();
@@ -897,7 +838,7 @@ function setGenomeSpacing(newSpacing) {
   draw();
 }
 
-function setScale(newScale) {
+function setScaleInterval(newScale) {
   if(isNaN(newScale)) return;
   newScale = parseInt(newScale);
   if(newScale < 50) {
@@ -1270,7 +1211,70 @@ function calcXBounds() {
  */
 function setPercentScale() {
   percentScale = true;
-  xScale.domain([0,1]);
+  drawScale();
+}
+
+function drawScale() {
+  let domain = percentScale ? [0,1] : [0,genomeMax];
+  let xScale = d3.scale.linear().range([0, scaleWidth]).domain(domain);
+  let scaleAxis = d3.svg.axis()
+              .scale(xScale)
+              .tickSize(scaleHeight);
+  let scaleArea = d3.svg.area()
+              .interpolate("monotone")
+              .x(function(d) { return xScale(d); })
+              .y0(scaleHeight)
+              .y1(0);
+  brush = d3.svg.brush()
+              .x(xScale)
+              .on("brushend", onBrush);
+
+  $('#scaleSvg').empty();
+  let scaleBox = d3.select("#scaleSvg").append("g")
+              .attr("id", "scaleBox")
+              .attr("class","scale")
+              .attr("y", 230)
+              .attr("transform", "translate(5,0)");
+
+  scaleBox.append("g")
+              .attr("id", "scaleMarkers")
+              .attr("class", "x axis top noselect")
+              .attr("transform", "translate(0,0)")
+              .call(scaleAxis);
+
+  scaleBox.append("g")
+              .attr("class", "x brush")
+              .call(brush)
+              .selectAll("rect")
+              .attr("y", 0)
+              .attr("height", scaleHeight);
+
+  function onBrush(){
+      var b = brush.empty() ? xScale.domain() : brush.extent();
+
+      if (brush.empty()) {
+          $('.btn-selection-sequence').addClass('disabled').prop('disabled', true);
+      } else {
+          $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
+      }
+
+      if(!percentScale) b = [Math.floor(b[0]), Math.floor(b[1])];
+
+      $('#brush_start').val(b[0]);
+      $('#brush_end').val(b[1]);
+
+      let ntsToShow = b[1] - b[0];
+      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
+      updateRenderWindow();
+
+      if(dynamicScaleInterval) adjustScaleInterval();
+
+      draw();
+      let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
+      canvas.absolutePan({x: moveToX, y: 0});
+
+      // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
+  }
 }
 
 function getCategoryForKEGGClass(class_str) {
