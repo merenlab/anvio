@@ -77,6 +77,7 @@ class Inversions:
         min_cov = 10
         min_stretch_length = 50
         min_distance_between_independent_stretches = 2000
+        num_nts_to_pad_stretches = 100
 
         coverage_stretches_in_contigs = {}
         for contig_name in self.contig_names:
@@ -93,6 +94,9 @@ class Inversions:
             # of 'high coverage' regions (as in coverage > `min_cov`), and store that
             # information into the dictionary `coverage_stretches_in_contigs`
             coverage_stretches_in_contigs[contig_name] = []
+
+            # we also know the contig length here, so let's keep that in mind:
+            contig_length = len(contig_coverage)
 
             # to find regions of high coverage, we first need to 'pad' our array to ensure it always
             # starts and ends with 'low coverage'.
@@ -126,7 +130,11 @@ class Inversions:
             # -----------------------------------------------
             coverage_stretches_in_contigs[contig_name] = utils.merge_stretches(coverage_stretches_in_contigs[contig_name],
                                                                                min_distance_between_independent_stretches=min_distance_between_independent_stretches)
-
+            # extend start and stop positions of merged stretches to ENSURE we are not
+            # missing important information because bioinformatics.
+            coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - num_nts_to_pad_stretches < 0) else e[0] - num_nts_to_pad_stretches,
+                                                           contig_length if (e[1] + num_nts_to_pad_stretches) > contig_length else e[1] + num_nts_to_pad_stretches) \
+                                                                for e in coverage_stretches_in_contigs[contig_name]]
 
             # DO SOMETHING WITH `coverage_stretches_in_contigs` :)
 
