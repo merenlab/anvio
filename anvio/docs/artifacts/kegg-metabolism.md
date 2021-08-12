@@ -34,7 +34,7 @@ What are the data in each of these columns?
 
 **Coverage and detection values in the output**
 
-If you use the flag `--add-coverage` and provide a profile database, additional columns containing coverage and detection data will be added for each sample in the profile database. Here is an mock example of the additional columns you will see (for a generic sample called 'SAMPLE_1'):
+If you use the flag `--add-coverage` and provide a profile database, additional columns containing coverage and detection data will be added for each sample in the profile database. Here is a mock example of the additional columns you will see (for a generic sample called 'SAMPLE_1'):
 
 | SAMPLE_1_gene_coverages | SAMPLE_1_avg_coverage | SAMPLE_1_gene_detection | SAMPLE_1_avg_detection |
 |:--|:--|:--|:--|
