@@ -1297,10 +1297,6 @@ function clamp(num, min, max) {
   return Math.min(Math.max(num, min), max);
 }
 
-function resetScale(){
-  canvas.setZoom(1)
-}
-
 function buildGenomesTable(genomes, order){
   genomes.map(genome => {
     var height = '50';
