@@ -19,6 +19,18 @@ The `modules` mode output file will have the suffix `modules.txt`. Each line in 
 | 1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | M00002 | Glycolysis, core module involving three-carbon compounds | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | """K01803 ((K00134,K00150) K00927,K11389) (K01834,K15633,K15634,K15635) K01689 (K00873,K12406)""" | K01834,K00134,K00873,K01689,K01803,K00927 | 2342,2646,1044,642,226,1041,1042,1043 | 1.0 | True | None |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
+What are the data in each of these columns?
+
+- `unique_id`: a unique integer to identify the row
+- `db_name`: the name of the contigs database from which this data comes (only appears in output from multi-mode, in which multiple DBs are processed at once)
+- `genome_name`/`bin_name`/`contig_name`: the identifier for the current sample, whether that is a genome, bin, or contig from a metagenome assembly
+- `kegg_module`: the KEGG MODULE number for a metabolic pathway
+- `module_name`/`module_class`/`module_category`/`module_subcategory`/`module_definition`: metabolic pathway information from the KEGG MODULE database
+- `kofam_hits_in_module`: a comma-separated list of the KO annotations that were found in the current sample and contribute to this metabolic pathway (these will be KOs from the metabolic pathway definition in the `module_definition` column)
+- `gene_caller_ids_in_module`: a comma-separated list of the genes with KO annotations that contribute to this pathway, in the same order as the annotations in the `kofam_hits_in_module` column
+- `module_completeness`: a fraction between 0 and 1 indicating the proportion of steps in the metabolic pathway that have an associated KO annotation. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
+- `module_is_complete`: a boolean value indicating whether the `module_completeness` score is above a certain threshold or not (the default threshold is 0.75)
+- `warnings`: miscellaneous caveats to consider when interpreting the `module_completeness` score. For example, a warning like "No KOfam profile for K00172" would indicate that we cannot annotate K00172 because we have no HMM profile for that gene family, which means that any metabolic pathway containing this KO can never be fully complete (even if a gene from that family does exist in your sequences). Extra caution should be taken when considering the completeness of modules with warnings
 
 **Coverage and detection values in the output**
 
