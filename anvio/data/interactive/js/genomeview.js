@@ -29,7 +29,7 @@
  // Settings vars
  // TODO migrate below variables to kvp in state
  var stateData = {};
- var mainCanvasHeight; 
+ var mainCanvasHeight;
  var spacing = 50; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
  var marginTop = 20; // vertical margin at the top of the genome display
@@ -45,7 +45,9 @@
  var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
  var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
  var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
+ let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
  var renderWindow = [];
+ var xScale;
 
  var alignToGC = null;
 
@@ -85,7 +87,7 @@ function initData() {
 }
 
 function loadState(){
-  
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -118,16 +120,16 @@ function processState(stateName, stateData){
   } else {
     stateData['group-layer-order'] = ['Genome', 'Ruler']
   }
-  
+
   if(stateData.hasOwnProperty('additional-data-layers')){
-    // TODO process     
+    // TODO process
   } else {
     stateData['additional-data-layers'] = []
     generateMockADL()
   }
-  
 
-  // working under the assumption that all genome groups with contain the same additional data layers, 
+
+  // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
   buildGroupLayersTable('Genome')
   if(stateData['additional-data-layers'][0]['ruler']) {
@@ -160,7 +162,7 @@ function processState(stateName, stateData){
   if(stateData.hasOwnProperty('display')){
     // TODO process
   } else {
-    stateData['display'] = {} 
+    stateData['display'] = {}
     stateData['display']['additionalDataLayers'] = {}
   }
   if(stateData['display'].hasOwnProperty('bookmarks')){
@@ -170,29 +172,29 @@ function processState(stateName, stateData){
     respondToBookmarkSelect()
   } else {
     calculateMaxGenomeLength() // remove later, only here to set max length for bookmark
-    stateData['display']['bookmarks'] = [ // gen mock data 
+    stateData['display']['bookmarks'] = [ // gen mock data
       {
         name : 'entire seq',
-        start : '0', 
+        start : '0',
         stop : genomeMax,
         description : 'a mighty fine placeholder'
       },
       {
         name : 'shindig',
         start : '5000',
-        stop : '9000', 
+        stop : '9000',
         description : 'a beautiful placeholder'
       },
       {
         name : 'fiesta',
         start : '15000',
-        stop : '19000', 
+        stop : '19000',
         description : 'an adequate placeholder'
       },
       {
         name : 'party',
         start : '25000',
-        stop : '29000', 
+        stop : '29000',
         description : 'the very best placeholder'
       },
     ]
@@ -202,13 +204,13 @@ function processState(stateName, stateData){
     // set listener for user bookmark selection
     respondToBookmarkSelect()
   }
-  
+
 
   function generateMockADL(){
     for(let i = 0; i < genomeData.genomes.length; i++){ // generate mock additional data layer content
       let gcContent = []
       let coverage = []
-  
+
       for(let j = 0; j < genomeMax; j++){
         gcContent.push(Math.floor(Math.random() * 45))
         coverage.push(Math.floor(Math.random() * 45))
@@ -256,7 +258,7 @@ function loadAll() {
   var scaleWidth = canvas.getWidth();
   var scaleHeight = 100;
 
-  var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
+  xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
 
   var scaleAxis = d3.svg.axis()
               .scale(xScale)
@@ -304,20 +306,20 @@ function loadAll() {
           $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
       }
 
-      b = [Math.floor(b[0]), Math.floor(b[1])];
+      if(!percentScale) b = [Math.floor(b[0]), Math.floor(b[1])];
 
       $('#brush_start').val(b[0]);
       $('#brush_end').val(b[1]);
 
       let ntsToShow = b[1] - b[0];
-      scaleFactor = canvas.getWidth()/ntsToShow;
-
+      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
       updateRenderWindow();
 
       if(dynamicScaleInterval) adjustScaleInterval();
 
       draw();
-      canvas.absolutePan({x: xDisplacement+scaleFactor*b[0], y: 0});
+      let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
+      canvas.absolutePan({x: moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
   }
@@ -418,7 +420,7 @@ function loadAll() {
       this.requestRenderAll();
       this.lastPosX = e.clientX;
 
-      let [l,r] = getNTRangeForVPT();
+      let [l,r] = percentScale ? getFracForVPT() : getNTRangeForVPT();
       if(l < renderWindow[0] || r > renderWindow[1]) {
         updateRenderWindow();
         draw();
@@ -431,8 +433,16 @@ function loadAll() {
     this.isDragging = false;
     this.selection = true;
     if(!this.shades) {
+      // slid a genome
       this.shades = true;
       drawTestShades();
+      updateScalePos(); // adjust scale box to new sequence breadth
+      bindViewportToWindow();
+      let [l,r] = getFracForVPT();
+      if(l < renderWindow[0] || r > renderWindow[1]) {
+        updateRenderWindow();
+        draw();
+      }
     }
   });
   canvas.on('object:moving', function(opt) {
@@ -457,6 +467,9 @@ function loadAll() {
     //canvas.renderAll();
     this.setViewportTransform(this.viewportTransform);
     //this.previousEvent = opt;
+
+    setPercentScale();
+
     this.prev = opt.target.left;
   });
   canvas.on('mouse:wheel', function(opt) {
@@ -471,7 +484,7 @@ function loadAll() {
     if(newStart < 0) newStart = 0;
     if(newEnd > genomeMax) newEnd = genomeMax;
     if(newEnd - newStart < 50) return;
-    
+
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition()); // if zoom is slow or choppy, try removing .transition()
     brush.event(d3.select(".brush"));
@@ -554,11 +567,12 @@ function loadAll() {
   });
   $('#brush_start, #brush_end').keydown(function(ev) {
       if (ev.which == 13) { // enter key
-          let start = parseInt($('#brush_start').val());
-          let end = parseInt($('#brush_end').val());
+          let [start, end] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())]
+                                          : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+          let endBound = percentScale ? 1 : genomeMax;
 
-          if (isNaN(start) || isNaN(end) || start < 0 || start > genomeMax || end < 0 || end > genomeMax) {
-              alert(`Invalid value, value needs to be in range 0-${genomeMax}.`);
+          if (isNaN(start) || isNaN(end) || start < 0 || start > endBound || end < 0 || end > endBound) {
+              alert(`Invalid value, value needs to be in range 0-${endBound}.`);
               return;
           }
 
@@ -577,7 +591,7 @@ function loadAll() {
 function draw(scaleX=scaleFactor) {
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
-  yOffset = 0 // reset 
+  yOffset = 0 // reset
   var y = marginTop;
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
@@ -868,9 +882,11 @@ function alignRulers() {
   for(genome of genomeData.genomes) {
     xDisps[genome[0]] = xDisplacement;
   }
-  // TODO: update viewport limits to 125 and -1*(genomeMax*scaleFactor-canvas.getWidth()),
-  //        once these limits are implemented based on individual genome displacements.
+  percentScale = false;
+  xScale.domain([0,genomeMax]);
   bindViewportToWindow();
+  updateScalePos();
+  updateRenderWindow();
   draw();
   $('#alignRulerBtn').blur();
 }
@@ -925,7 +941,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
-  let [start, stop] = renderWindow.map(x => x*scaleX + xDisps[genomeID]);
+  let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleX + xDisps[genomeID]);
 
   // line
   let lineObj = new fabric.Line([start,0,stop,0], {
@@ -943,10 +959,9 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
-
-    if(gene.start < renderWindow[0]) continue;
-    if(gene.stop > renderWindow[1]) return;
-
+    let [ntStart, ntStop] = getRenderNTRange(genomeID);
+    if(gene.start < ntStart) continue;
+    if(gene.stop > ntStop) return;
     let genome = genomeData.genomes.find(g => g[0] == genomeID)[1];
     var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
     canvas.add(geneObj);
@@ -984,7 +999,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
 /*
  *  For each genome group, iterate additional layers beyond genome and render where appropriate
  */
-function addLayers(label, genome, genomeID, orderIndex){ 
+function addLayers(label, genome, genomeID, orderIndex){
   let additionalDataLayers = stateData['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
@@ -996,12 +1011,12 @@ function addLayers(label, genome, genomeID, orderIndex){
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
       buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
-    } 
+    }
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
       buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
-    } 
+    }
   })
-  
+
   yOffset += spacing
 }
 
@@ -1015,8 +1030,8 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
     let layerHeight = spacing / maxGroupSize
     let pathDirective = [`M 0 0`]
 
-    for(let i = 0; i < additionalDataLayers[layer].length; i++){ 
-      additionalDataLayers[layer][i] > maxGCValue ? maxGCValue = additionalDataLayers[layer][i] : null 
+    for(let i = 0; i < additionalDataLayers[layer].length; i++){
+      additionalDataLayers[layer][i] > maxGCValue ? maxGCValue = additionalDataLayers[layer][i] : null
     }
 
     let nGroups = 20
@@ -1037,7 +1052,7 @@ function buildNumericalDataLayer(layer, layerPos, genomeID, additionalDataLayers
         fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
         selectable: false,
         objectCaching: false,
-        id : `${layer} graph`, 
+        id : `${layer} graph`,
         groupID : genomeID,
         genome : additionalDataLayers['genome']
       })
@@ -1060,8 +1075,9 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   for(let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
     for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
-      if(w < renderWindow[0]) continue;
-      if(w > renderWindow[1]) break;
+      let [l,r] = getRenderNTRange(genomeID);
+      if(w < l) continue;
+      if(w > r) break;
       let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
             stroke: 'black',
             strokeWidth: 1,
@@ -1197,6 +1213,7 @@ function getNTRangeForVPT() {
 function getFracForVPT() {
   let resolution = 4; // number of decimals to show
   let [x1, x2] = calcXBounds();
+  console.log((-1*canvas.viewportTransform[4] - x1) / (x2 - x1));
   let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
   let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
   // if window is out of bounds, shift to be in bounds
@@ -1209,6 +1226,23 @@ function getFracForVPT() {
     window_right = 1;
   }
   return [window_left, window_right];
+}
+
+/*
+ *  @returns range of renderWindow x-positions for a given proportional range
+ */
+function getRenderXRangeForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
+  return [x1, x2];
+}
+
+function getRenderNTRange(genomeID) {
+  if(!percentScale) return renderWindow;
+  let [l,r] = calcXBounds();
+  let [start, end] = getRenderXRangeForFrac().map(x => x/scaleFactor - xDisps[genomeID]/scaleFactor);
+  return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
 }
 
 /*
@@ -1235,6 +1269,20 @@ function calcXBounds() {
     if(xDisps[g] < min) min = xDisps[g];
   }
   return [min, max + scaleFactor*genomeMax];
+}
+
+/*
+ *  Toggles scale between nt range and proportional range
+ */
+function setPercentScale() {
+  if(!percentScale) {
+    percentScale = true;
+    //console.log(brush.domain());
+    //var xScale = d3.scale.linear().range([0, scaleWidth]).domain([0,genomeMax]);
+    xScale.domain([0,1]);
+  } else {
+
+  }
 }
 
 function getCategoryForKEGGClass(class_str) {
@@ -1294,8 +1342,8 @@ function buildGenomesTable(genomes, order){
 }
 
 function buildGroupLayersTable(layerLabel){
-  var height = '50'; 
-  var margin = '25'; 
+  var height = '50';
+  var margin = '25';
   var template = '<tr id={layerLabel}>' +
                   '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
                   '<td> {layerLabel} </td>' +
@@ -1303,10 +1351,10 @@ function buildGroupLayersTable(layerLabel){
                   '<td>n/a</td>' +
                   '<td>n/a</td>' +
                   '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
-                  '</tr>'; 
+                  '</tr>';
   template = template.replace(new RegExp('{height}', 'g'), height)
                      .replace(new RegExp('{margin}', 'g'), margin)
-                     .replace(new RegExp('{layerLabel}', 'g'), layerLabel);   
+                     .replace(new RegExp('{layerLabel}', 'g'), layerLabel);
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
@@ -1320,7 +1368,7 @@ function toggleAdditionalDataLayer(e){
 
   if(e.target.checked){
     stateData['display']['additionalDataLayers'][layer] = true
-    maxGroupSize += 1 
+    maxGroupSize += 1
   } else {
     stateData['display']['additionalDataLayers'][layer] = false
     maxGroupSize -= 1 // decrease group height if hiding the layer
@@ -1384,7 +1432,7 @@ function adjustScaleInterval() {
  *  Update scale info to match viewport location.
  */
 function updateScalePos() {
-  let [newStart, newEnd] = getNTRangeForVPT();
+  let [newStart, newEnd] = percentScale ? getFracForVPT() : getNTRangeForVPT();
   brush.extent([newStart, newEnd]);
   brush(d3.select(".brush").transition());
   $('#brush_start').val(newStart);
@@ -1395,9 +1443,16 @@ function updateScalePos() {
  *  Update render window based on scale box position
  */
 function updateRenderWindow() {
-  let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-  let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
-  renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
+  if(percentScale) {
+    let resolution = 4; // # decimals to show for renderw window
+    let [start, end] = [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())];
+    let diff = end - start > 0.1 ? Math.round(10**resolution*(end - start) / 2)/10**resolution : 0.05;
+    renderWindow = [clamp(start - diff, 0, 1), clamp(end + diff, 0, 1)];
+  } else {
+    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
+    renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
+  }
 }
 
 /*
@@ -1406,15 +1461,15 @@ function updateRenderWindow() {
 function createBookmark(){
   if(!$('#create_bookmark_input').val()){
     alert('please provide a name for your bookmark :)')
-    return 
+    return
   }
   try {
     stateData['display']['bookmarks'].push(
       {
-        name : $('#create_bookmark_input').val(), 
-        start : $('#brush_start').val(), 
+        name : $('#create_bookmark_input').val(),
+        start : $('#brush_start').val(),
         stop : $('#brush_end').val(),
-        description : $('#create_bookmark_description').val(),  
+        description : $('#create_bookmark_description').val(),
       }
     )
     alert('bookmark successfully created :)')
@@ -1433,8 +1488,8 @@ function respondToBookmarkSelect(){
     $('#brush_end').val(stop);
     brush.extent([start, stop]);
         brush(d3.select(".brush").transition());
-        brush.event(d3.select(".brush").transition());  
-        
+        brush.event(d3.select(".brush").transition());
+
     let selectedBookmark = stateData['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
     $('#bookmark-description').text(selectedBookmark['description'])
   })
@@ -1444,7 +1499,7 @@ function respondToBookmarkSelect(){
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
-  let backgroundShade; 
+  let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
