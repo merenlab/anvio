@@ -114,7 +114,7 @@ The `modules_custom` output mode will have user-defined content and the suffix `
 
 ## Matrix format output
 
-Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output type is to generate matrices of KEGG module statistics for easy visualization and clustering. Currently, the matrix-formatted output includes a module completeness matrix, a matrix of binary module presence/absence values, and a matrix of KO counts. In these matrices, each row is a KEGG module or KO, and each column is an input %(contigs-db)s.
+Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output type is to generate matrices of KEGG module statistics for easy visualization and clustering. Currently, the matrix-formatted output includes a module completeness matrix, a matrix of binary module presence/absence values, and a matrix of KO counts. In these matrices, each row is a KEGG module or KO, and each column is an input sample.
 
 Here is an example of a module completeness matrix, for bins in a metagenome:
 
@@ -127,6 +127,8 @@ Here is an example of a module completeness matrix, for bins in a metagenome:
 | M00005 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
 
+Each cell of the matrix is the completeness score for the corresponding module in the corresponding sample (which is, in this case, a bin).
+
 While the above is the default matrix format, some users may want to include more annotation information in the matrices so that it is easier to know what is going on when looking at the matrix data manually. You can add this metadata to the matrices by using the `--include-metadata` flag when running %(anvi-estimate-metabolism)s, and the output will look something like the following:
 
 | module | module_name | module_class | module_category | module_subcategory | bin_1 | bin_2 | bin_3 | bin_4 | bin_5 | bin_6 |
@@ -135,3 +137,9 @@ While the above is the default matrix format, some users may want to include mor
 | M00002 | Glycolysis, core module involving three-carbon compounds | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | M00003 | Gluconeogenesis, oxaloacetate => fructose-6P | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 0.88 | 0.00 | 1.00 | 0.75 | 1.00 | 0.88 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
+
+The module completeness matrix files will have the suffix `completeness-MATRIX.txt`. 
+
+Module presence/absence matrix files will have the suffix `presence-MATRIX.txt`. In these files, each cell of the matrix will have either a 1.0 or a 0.0. A 1.0 indicates that the module has a completeness score above the module completeness threshold in that sample, while a 0.0 indicates that the module's completeness score is not above the threshold.
+
+Finally, KO hit matrix files will have the suffix `ko_hits-MATRIX.txt`. Each row of the matrix will be a KO, and each column will be an input sample. Cells in this matrix will contain an integer value, representing the number of times the KO was annotated in that sample.
