@@ -417,11 +417,9 @@ function loadAll() {
       this.requestRenderAll();
       this.lastPosX = e.clientX;
 
-      let [l,r] = percentScale ? getFracForVPT() : getNTRangeForVPT();
-      if(l < renderWindow[0] || r > renderWindow[1]) {
-        updateRenderWindow();
-        draw();
-      }
+      /* TODO: find a way to check boundaries for each individual genome so we don't have to redraw every time */
+      updateRenderWindow();
+      draw();
     }
   });
   canvas.on('mouse:up', function(opt) {
