@@ -1744,25 +1744,25 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
     while 1:
         if not len(stretches):
             break
-    
+
         NEXT = CURRENT + 1
-    
+
         if NEXT == len(stretches):
             stretches_to_merge.append([stretches[CURRENT]])
             break
-    
+
         while 1:
             if NEXT > len(stretches):
                 break
-    
+
             if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
                 NEXT = NEXT + 1
-    
+
                 if NEXT == len(stretches):
                     break
             else:
                 break
-    
+
         if NEXT > len(stretches):
             break
         elif NEXT - CURRENT == 1:
@@ -1771,7 +1771,7 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
         else:
             stretches_to_merge.append(stretches[CURRENT:NEXT])
             CURRENT = NEXT + 1
-    
+
     # here the array `stretches_to_merge` contains all the lists of
     # stretches that need to be merged.
     return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
