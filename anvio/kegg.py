@@ -4719,7 +4719,7 @@ class KeggModulesDatabase(KeggContext):
             the 'CLASS' value will be queried from the modules DB.
         """
 
-        if not class_line
+        if not class_line:
             # there should only be one CLASS line per module, so we extract the first list element
             class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
