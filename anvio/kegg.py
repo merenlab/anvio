@@ -2056,7 +2056,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
             if not isinstance(ko_list, list):
                 ko_list = [ko_list]
-            for k in ko_list:
+            # we convert to a set because some modules have duplicate orthology lines for the same KO
+            for k in set(ko_list):
                 if k not in self.all_kos_in_db:
                     self.all_kos_in_db[k] = []
                 self.all_kos_in_db[k].append(mod)
