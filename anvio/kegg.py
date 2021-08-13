@@ -2114,7 +2114,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         "that any modules this KO belongs to can never be fully complete (this includes "
                                         f"{mods_str}). ")
                     for m in mods_it_is_in:
-                        bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
+                        if knum[0] != 'M':
+                            bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
