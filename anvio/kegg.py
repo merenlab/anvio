@@ -4859,7 +4859,12 @@ class KeggModulesDatabase(KeggContext):
 
         RETURNS
         =======
-
+        substrate_name_list : list of str
+            List of substrate compounds
+        intermediate_name_list : list of str
+            List of intermediate compounds
+        product_name_list : list of str
+            List of product compounds
         """
         compound_to_name_dict = self.get_compound_dict_for_module(mnum)
         substrate_compounds, intermediate_compounds, product_compounds = self.get_kegg_module_compound_lists(mnum)
