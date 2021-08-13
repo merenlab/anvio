@@ -2214,7 +2214,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.all_modules_in_db.keys()
-        all_kos = self.kegg_modules_db.get_all_knums_as_list()
+        all_kos = self.all_kos_in_db.keys()
         for mnum in modules:
             bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
                                            "kofam_hits" : {},
@@ -2224,7 +2224,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                           }
         for knum in all_kos:
             if knum not in self.ko_dict:
-                mods_it_is_in = self.kegg_modules_db.get_modules_for_knum(knum)
+                mods_it_is_in = self.all_kos_in_db[knum]
                 if mods_it_is_in:
                     if anvio.DEBUG:
                         mods_str = ", ".join(mods_it_is_in)
@@ -2243,7 +2243,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kos_not_in_modules = []
         for ko, gene_call_id, split, contig in kofam_hits_in_splits:
-            present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
+            present_in_mods = ko in all_kos
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
                 # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here if we haven't already
