@@ -2258,17 +2258,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
-            for m in present_in_mods:
-                bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
-                if ko in bin_level_module_dict[m]["kofam_hits"]:
-                    bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
-                else:
-                    bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
-                bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
-                if contig in bin_level_module_dict[m]["contigs_to_genes"]:
-                    bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
-                else:
-                    bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
+                
+                for m in present_in_mods:
+                    bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
+                    if ko in bin_level_module_dict[m]["kofam_hits"]:
+                        bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
+                    else:
+                        bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
+                    bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
+                    if contig in bin_level_module_dict[m]["contigs_to_genes"]:
+                        bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
+                    else:
+                        bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
