@@ -2071,7 +2071,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.module_paths_dict = {}
         modules = self.all_modules_in_db.keys()
         for m in modules:
-            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
+            module_definition = self.all_modules_in_db[m]["DEFINITION"]
+            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
     def init_gene_coverage(self, gcids_for_kofam_hits):
@@ -4887,14 +4888,23 @@ class KeggModulesDatabase(KeggContext):
         return self.split_by_delim_not_within_parens(def_string, " ")
 
 
-    def unroll_module_definition(self, mnum):
+    def unroll_module_definition(self, mnum, def_lines = None):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
         returns the list of all paths.
 
         This is a driver for the recursive functions that do the actual unrolling of each definition line.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            module number
+        def_lines : list of str
+            The DEFINITION lines for the module. This parameter is optional, and if it is not passed, the module
+            definition will be looked up from the modules DB.
         """
 
-        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        if not def_lines:
+            def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         combined_def_line = ""
         for d in def_lines:
             d = d.strip()
