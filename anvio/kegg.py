@@ -2246,8 +2246,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kos_not_in_modules = []
         for ko, gene_call_id, split, contig in kofam_hits_in_splits:
-            present_in_mods = ko in all_kos
-            if not present_in_mods:
+            if ko not in self.all_kos_in_db:
                 kos_not_in_modules.append(ko)
                 # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here if we haven't already
                 if ko not in bin_level_ko_dict:
@@ -2257,6 +2256,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
+                present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
             for m in present_in_mods:
                 bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
