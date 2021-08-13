@@ -872,6 +872,8 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
   }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleX + xDisps[genomeID]);
+  start = clamp(start, calcXBounds()[0], calcXBounds()[1]);
+  stop = clamp(stop, calcXBounds()[0], calcXBounds()[1]);
 
   // line
   let lineObj = new fabric.Line([start,0,stop,0], {
