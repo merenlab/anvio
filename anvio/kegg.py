@@ -367,7 +367,7 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mod_list = self.all_kos_in_db(knum) if knum in self.all_kos_in_db else None
+        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
         if mod_list:
             mod_list_str = ",".join(mod_list)
         else:
