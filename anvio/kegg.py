@@ -4705,14 +4705,23 @@ class KeggModulesDatabase(KeggContext):
         return class_dict
 
 
-    def get_kegg_module_class_dict(self, mnum):
+    def get_kegg_module_class_dict(self, mnum, class_line=None):
         """This function returns a dictionary of values in the CLASS field for a specific module
 
         It really exists only for convenience to put together the data fetch and parsing functions.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            the module number
+        class_line : str
+            The 'CLASS' string for the module. This parameter is optional, and if it is not provided,
+            the 'CLASS' value will be queried from the modules DB.
         """
 
-        # there should only be one CLASS line per module, so we extract the first list element
-        class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
+        if not class_line
+            # there should only be one CLASS line per module, so we extract the first list element
+            class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
 
 
