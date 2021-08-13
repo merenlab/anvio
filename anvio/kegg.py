@@ -350,10 +350,10 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_line=self.all_modules_in_db[mnum]['CLASS'])
 
         metadata_dict = {}
-        metadata_dict["module_name"] = self.kegg_modules_db.get_module_name(mnum)
+        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
         metadata_dict["module_class"] = mnum_class_dict["class"]
         metadata_dict["module_category"] = mnum_class_dict["category"]
         metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
@@ -367,7 +367,7 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
+        mod_list = self.all_kos_in_db(knum) if knum in self.all_kos_in_db else None
         if mod_list:
             mod_list_str = ",".join(mod_list)
         else:
@@ -3177,7 +3177,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 # fetch module info from db
                 metadata_dict = self.get_module_metadata_dictionary(mnum)
-                module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
+                module_def = '"' + " ".join(self.all_modules_in_db[mnum]["DEFINITION"]) + '"'
                 module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
                 # handle path- and ko-level information
