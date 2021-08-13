@@ -181,6 +181,7 @@ rule anvi_compute_genome_similarity:
     resources: nodes = M.T('anvi_compute_genome_similarity')
     shell: " anvi-compute-genome-similarity {params.internal_genomes_argument} \
                                             {params.external_genomes_argument} \
+                                            -T {threads} \
                                             -o {output.output_dir} \
                                             -p {input.pan_db} \
                                             {params.additional_params} >> {log} 2>&1"

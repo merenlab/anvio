@@ -18,10 +18,9 @@ __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Özcan Esen"
-__email__ = "ozcanesen@gmail.com"
+__authors__ = ['ozcan']
 __requires__ = ['profile-db', 'contigs-db', 'bin']
-__provides__ = ['interactive']
+__provides__ = ['interactive', 'contig-inspection']
 __description__ = "Start an anvi'o inspect interactive interface"
 __resources__ = [("Visualizing contig coverages", "https://merenlab.org/2019/11/25/visualizing-coverages/")]
 

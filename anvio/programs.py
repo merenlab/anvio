@@ -17,6 +17,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.authors import AnvioAuthors
 from anvio.docs import ANVIO_ARTIFACTS
 from anvio.summaryhtml import SummaryHTMLOutput
 
@@ -145,7 +146,7 @@ def parse_help_output(output):
     return usage, description, params, output
 
 
-class AnvioPrograms:
+class AnvioPrograms(AnvioAuthors):
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
         self.run = r
@@ -153,6 +154,9 @@ class AnvioPrograms:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.program_names_to_focus = A("program_names_to_focus")
+
+        # initiate `self.authors`
+        AnvioAuthors.__init__(self, r=self.run, p=self.progress)
 
         try:
             self.main_program_filepaths = M('anvi-interactive')
@@ -226,6 +230,31 @@ class AnvioPrograms:
 
         self.progress.end()
 
+        # here we will go through each program, and see if there are any with no author information
+        programs_with_no_authors = [p for p in self.programs if not len(self.programs[p].meta_info['authors']['value'])]
+        if len(programs_with_no_authors):
+            raise ConfigError(f"The following programs have no author names listed under `__authors__` tag -- every "
+                              f"program in the anvi'o codebase with `__provides__` and/or `__requires__` statements "
+                              f"must also have one or more authors: {', '.join(programs_with_no_authors)}.")
+
+        # here we will go through each program, and see if there are any with authors that
+        # are not described in the AUTHORS.yaml file:
+        programs_with_unknown_authors = set([])
+        unknown_authors = set([])
+        known_authors_in_programs = set([])
+        for program in self.programs:
+            for author in self.programs[program].meta_info['authors']['value']:
+                if author not in self.authors:
+                    programs_with_unknown_authors.add(program)
+                    unknown_authors.add(author)
+                else:
+                    known_authors_in_programs.add(author)
+
+        if len(programs_with_unknown_authors):
+            raise ConfigError(f"The following programs have authors who are not defined in the authors YAML file "
+                              f"({', '.join(unknown_authors)}) -- every author listed in anvi'o programs must have "
+                              f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
+
         # report missing provides/requires information
         self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
                              "statements :/ This may be normal for some programs, but here is the "
@@ -273,6 +302,10 @@ class Program:
             },
             'resources': {
                 'object_name': '__resources__',
+                'null_object': []
+            },
+            'authors': {
+                'object_name': '__authors__',
                 'null_object': []
             },
             'description': {
@@ -515,6 +548,11 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
 
+        os.makedirs(os.path.join(self.output_directory_path, 'images/authors'))
+
+        for author in self.authors:
+            utils.shutil.copy(self.authors[author]['avatar'], os.path.join(self.output_directory_path, 'images/authors', os.path.basename(self.authors[author]['avatar'])))
+
 
     def init_anvio_markdown_variables_conversion_dict(self):
         for program_name in self.all_program_names:
@@ -597,7 +635,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
+        self.progress.new("Rendering artifact pages", progress_total_items=len(ANVIO_ARTIFACTS))
+        self.progress.update('...')
+
         for artifact in ANVIO_ARTIFACTS:
+            self.progress.update(f"'{artifact}' ...", increment=True)
+
             d = {'artifact': ANVIO_ARTIFACTS[artifact],
                  'meta': {'summary_type': 'artifact',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
@@ -612,21 +655,77 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
 
             if anvio.DEBUG:
+                self.progress.reset()
                 run.warning(None, 'THE OUTPUT DICT')
                 import json
                 print(json.dumps(d, indent=2))
 
+            self.progress.update(f"'{artifact}' ... rendering ...", increment=False)
             artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact))
             output_file_path = os.path.join(artifact_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
+
+
+    def get_HTML_formatted_authors_data(self, program):
+        """for a given program, returns HTML-formatted authors data"""
+
+        d = ""
+
+        for author in program.meta_info['authors']['value']:
+            d += '''<div class="page-author"><div class="page-author-info">'''
+            d += f'''<div class="page-person-photo"><img class="page-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
+            d += '''<div class="page-person-info-box">'''
+            d += f'''<span class="page-author-name">{self.authors[author]['name']}</span>'''
+            d += '''<div class="page-author-social-box">'''
+
+            if 'web' in self.authors[author]:
+                d += f'''<a href="{self.authors[author]['web']}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'''
+
+            d += f'''<a href="mailto:{self.authors[author]['email']}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'''
+
+            if 'twitter' in self.authors[author]:
+                d += f'''<a href="http://twitter.com/{self.authors[author]['twitter']}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'''
+
+            d += f'''<a href="http://github.com/{self.authors[author]['github']}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'''
+
+            d += '''</div></div></div></div>\n\n'''
+
+        return d
+
+
+    def get_HTML_formatted_authors_data_mini(self, program):
+        """for a given program, returns a tiny version of the HTML-formatted authors data"""
+
+        d = ""
+
+        for author in program.meta_info['authors']['value']:
+            if 'twitter' in self.authors[author]:
+                author_link = f"http://twitter.com/{self.authors[author]['twitter']}"
+            elif 'linkedin' in self.authors[author]:
+                author_link = f"http://linkedin.com/in/{self.authors[author]['linkedin']}"
+            else:
+                author_link = f"http://github.com/{self.authors[author]['github']}"
+
+            d += '''<div class="page-author-mini"><div class="page-person-photo-mini">'''
+            d += f'''<a href="{author_link}" target="_blank"><img class="page-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
+            d += '''</div></div>\n'''
+
+        return d
 
 
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
+        self.progress.new("Rendering program pages", progress_total_items=len(self.programs))
+        self.progress.update('...')
+
         program_provides_requires_dict = self.get_program_requires_provides_dict()
 
         for program_name in self.programs:
+            self.progress.update(f"'{program_name}' ...", increment=True)
+
             program = self.programs[program_name]
             d = {'program': {},
                  'meta': {'summary_type': 'program',
@@ -642,24 +741,34 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
+            d['program']['authors'] = self.get_HTML_formatted_authors_data(program)
             d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
+                self.progress.reset()
                 run.warning(None, 'THE OUTPUT DICT')
                 import json
                 print(json.dumps(d, indent=2))
 
+            self.progress.update(f"'{program_name}' ... rendering ...", increment=False)
             program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
             output_file_path = os.path.join(program_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
             # create the program network, too
+            self.progress.update(f"'{program_name}' ... rendering ... network json ...", increment=False)
+            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
             program_network = ProgramsNetwork(argparse.Namespace(output_file=os.path.join(program_output_dir, "network.json"), program_names_to_focus=program_name), r=terminal.Run(verbose=False))
             program_network.generate()
+
+        self.progress.end()
 
 
     def generate_index_page(self):
         """Generates the index page for help where all programs and artifacts are listed"""
+
+        self.progress.new("Index page")
+        self.progress.update('...')
 
         # let's add the 'path' for each artifact to simplify
         # access from the template:
@@ -669,7 +778,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
-        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p])) for p in self.programs],
              'artifacts': self.artifacts_info,
              'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
@@ -679,8 +788,13 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
 
+        self.progress.update('Rendering...')
         output_file_path = os.path.join(self.output_directory_path, 'index.md')
+
+        self.progress.update('Writing...')
         open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
 
 
 class ProgramsNetwork(AnvioPrograms):

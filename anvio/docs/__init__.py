@@ -633,5 +633,17 @@ ANVIO_ARTIFACTS ={
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "contig-inspection" : {
+        "name" : "CONTIG INSPECTION", 
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True, 
+        "provided_by_user" : False
+    },
+    "gene-cluster-inspection" : {
+        "name" : "GENE CLUSTER INSPECTION", 
+        "type" : "DISPLAY", 
+        "provided_by_anvio" : True, 
+        "provided_by_user" : False 
     }
 }

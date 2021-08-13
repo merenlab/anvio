@@ -17,8 +17,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren']
 __resources__ = [("Importing functions", "http://merenlab.org/2016/06/18/importing-functions/"),
                  ("Importing GhostKOALA/KEGG annotations", "http://merenlab.org/2018/01/17/importing-ghostkoala-annotations/"),
                  ("Importing VirSorter phage annotaions", "http://merenlab.org/2018/02/08/importing-virsorter-annotations/")]
