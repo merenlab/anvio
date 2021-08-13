@@ -26,10 +26,10 @@ What are the data in each of these columns?
 - `genome_name`/`bin_name`/`contig_name`: the identifier for the current sample, whether that is a genome, bin, or contig from a metagenome assembly
 - `kegg_module`: the KEGG MODULE number for a metabolic pathway
 - `module_name`/`module_class`/`module_category`/`module_subcategory`/`module_definition`: metabolic pathway information from the KEGG MODULE database
-- `kofam_hits_in_module`: a comma-separated list of the KO annotations that were found in the current sample and contribute to this metabolic pathway (these will be KOs from the metabolic pathway definition in the `module_definition` column)
-- `gene_caller_ids_in_module`: a comma-separated list of the genes with KO annotations that contribute to this pathway, in the same order as the annotations in the `kofam_hits_in_module` column
 - `module_completeness`: a fraction between 0 and 1 indicating the proportion of steps in the metabolic pathway that have an associated KO annotation. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
 - `module_is_complete`: a boolean value indicating whether the `module_completeness` score is above a certain threshold or not (the default threshold is 0.75)
+- `kofam_hits_in_module`: a comma-separated list of the KO annotations that were found in the current sample and contribute to this metabolic pathway (these will be KOs from the metabolic pathway definition in the `module_definition` column)
+- `gene_caller_ids_in_module`: a comma-separated list of the genes with KO annotations that contribute to this pathway, in the same order as the annotations in the `kofam_hits_in_module` column
 - `warnings`: miscellaneous caveats to consider when interpreting the `module_completeness` score. For example, a warning like "No KOfam profile for K00172" would indicate that we cannot annotate K00172 because we have no HMM profile for that gene family, which means that any metabolic pathway containing this KO can never be fully complete (even if a gene from that family does exist in your sequences). Extra caution should be taken when considering the completeness of modules with warnings
 
 **Coverage and detection values in the output**
@@ -138,7 +138,7 @@ While the above is the default matrix format, some users may want to include mor
 | M00003 | Gluconeogenesis, oxaloacetate => fructose-6P | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 0.88 | 0.00 | 1.00 | 0.75 | 1.00 | 0.88 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
 
-The module completeness matrix files will have the suffix `completeness-MATRIX.txt`. 
+The module completeness matrix files will have the suffix `completeness-MATRIX.txt`.
 
 Module presence/absence matrix files will have the suffix `presence-MATRIX.txt`. In these files, each cell of the matrix will have either a 1.0 or a 0.0. A 1.0 indicates that the module has a completeness score above the module completeness threshold in that sample, while a 0.0 indicates that the module's completeness score is not above the threshold.
 

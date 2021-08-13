@@ -2,7 +2,7 @@
 
 The metabolic pathways that this program currently considers are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
 
-Given a properly annotated %(contigs-db)s, this program determines which KOs are present and uses these functions to compute the completeness of each KEGG module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples. 
+Given a properly annotated %(contigs-db)s, this program determines which KOs are present and uses these functions to compute the completeness of each KEGG module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
 For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
@@ -17,7 +17,7 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 
 ## Running metabolism estimation
 
-You can run metabolism estimation on any set of annotated sequences, but these sequences typically fall under one of the following categories: 
+You can run metabolism estimation on any set of annotated sequences, but these sequences typically fall under one of the following categories:
 
 - Single genomes, also referred to as %(external-genomes)s. These can be isolate genomes or metagenome-assembled genomes, for example. Each one is described in its own individual %(contigs-db)s.
 - Bins, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
@@ -38,7 +38,7 @@ anvi-estimate-metabolism -c %(contigs-db)s
 
 ### Estimation for bins in a metagenome
 
-You can estimate metabolism for different subsets of the sequences in your contigs database if you first %(bin)s them and save them as a %(collection)s. For each bin, only the gene annotations from its subset of sequences will contribute to the module completeness scores. 
+You can estimate metabolism for different subsets of the sequences in your contigs database if you first %(bin)s them and save them as a %(collection)s. For each bin, only the gene annotations from its subset of sequences will contribute to the module completeness scores.
 
 You can estimate metabolism for every individual bin in a collection by providing the profile database that describes the collection as well as the collection name:
 
@@ -93,7 +93,7 @@ Multiple single genomes (also known as %(external-genomes)s) can be analyzed wit
 anvi-estimate-metabolism -e external-genomes.txt
 {{ codestop }}
 
-### Estimation for multiple bins 
+### Estimation for multiple bins
 
 If you have multiple bins (also known as %(internal-genomes)s), they can be analyzed with the same command by providing an internal genomes file to %(anvi-estimate-metabolism)s. The bins in this file can be from the same collection, from different collections, or even from different metagenomes. To see the required format for the internal genomes file, see %(internal-genomes)s.
 
@@ -117,7 +117,7 @@ There are many ways to alter the behavior of this program to fit your needs. You
 
 As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, KEGG module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated KOs in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
 
-Changing this parameter doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output). 
+Changing this parameter doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output).
 
 In this example, we change the threshold to 50 percent.
 
@@ -149,7 +149,7 @@ To see what long-format output modes are currently available, use the `--list-av
 anvi-estimate-metabolism -c %(contigs-db)s --list-available-modes
 {{ codestop }}
 
-The program will print a list like the one below and then exit. 
+The program will print a list like the one below and then exit.
 
 ```
 AVAILABLE OUTPUT MODES
@@ -190,7 +190,7 @@ To find out what column headers are available, use the `--list-available-output-
 anvi-estimate-metabolism -c %(contigs-db)s --list-available-output-headers
 {{ codestop }}
 
-The program will print a list like the one below and then exit. 
+The program will print a list like the one below and then exit.
 
 ```
 AVAILABLE OUTPUT HEADERS
@@ -224,7 +224,7 @@ ko_definition ................................: The functional annotation associ
 genome_name ..................................: Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules [all output modes]
 ```
 
-As you can see, this flag is also useful when you want to quickly look up the description of each column of data in your output files. 
+As you can see, this flag is also useful when you want to quickly look up the description of each column of data in your output files.
 
 For each header, the output mode(s) that it is applicable to are listed after the description. The headers you can choose from for `modules_custom` output end in either `[modules output mode]` or `[all output modes]`.
 
@@ -248,7 +248,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 
 **Including coverage and detection in long-format output**
 
-If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :) 
+If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --kegg-output-modes modules,kofam_hits_in_modules --add-coverage
@@ -265,13 +265,13 @@ anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --add-coverage --li
 {{ codestop }}
 
 ### Matrix Output
-Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file. 
+Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file.
 
 In each matrix, the rows will describe modules or KOs, the columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
 
 **Obtaining matrix-formatted output**
 
-Getting these matrices is as easy as providing the `--matrix-format`.
+Getting these matrices is as easy as providing the `--matrix-format` flag.
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format
@@ -372,7 +372,7 @@ Regardless of which output type you are working with, there are a few generic op
 %(anvi-estimate-metabolism)s can produce a variety of output files. All will be prefixed with the same string, which by default is `kegg-metabolism`. If you want to change this prefix, use the `-O` flag.
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db -O my-cool-prefix
+anvi-estimate-metabolism -c %(contigs-db)s -O my-cool-prefix
 {{ codestop }}
 
 **Including only complete modules in the output**
@@ -382,7 +382,7 @@ Remember that module completion threshold? Well, you can use that to control whi
 Here is an example of using this flag with long-format output (which is the default, as described above, but we are asking for it explicitly here just to be clear):
 
 {{ codestart }}
-anvi-estimate-metabolism -c CONTIGS.db --kegg-output-modes modules --only-complete
+anvi-estimate-metabolism -c %(contigs-db)s --kegg-output-modes modules --only-complete
 {{ codestop }}
 
 And here is an example of using this flag with matrix output. In this case, we are working with multiple input samples, and the behavior of this flag is slightly different: a module will be included in the matrix if it is at or above the module completion threshold in **at least one sample**. If there are any samples in which that module's completeness is below the threshold, its completeness in that sample will be **represented by a 0.0** in the matrix, regardless of its actual completeness score.
@@ -407,11 +407,11 @@ If you have gotten an error that looks something like this:
 Config Error: The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now.
 ```
 
-This means that the MODULES.db used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
+This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
 
 1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently set up a new %(anvi-setup-kegg-kofams)s (possibly with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, and you have saved your former version of %(kegg-data)s somewhere, then you are in luck - you can simply direct %(anvi-estimate-metabolism)s to use the old version of KEGG with `--kegg-data-dir`. If you didn't save it, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
 2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash (you can use %(anvi-db-info)s on the MODULES.db to find the hash value) as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program.
-3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) have probably been using a non-default (or out-dated) version of %(kegg-data)s. If they have the current default snapshot of KEGG data but you do not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
+3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) have probably been using a non-default (or outdated) version of %(kegg-data)s. If they have the current default snapshot of KEGG data but you do not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
 
 
 ## Technical Details
