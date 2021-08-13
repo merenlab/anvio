@@ -2054,6 +2054,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.all_kos_in_db = {}
         for mod in self.all_modules_in_db:
             ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
+            if not isinstance(ko_list, list):
+                ko_list = [ko_list]
             for k in ko_list:
                 if k not in self.all_kos_in_db:
                     self.all_kos_in_db[k] = []
