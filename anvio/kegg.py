@@ -350,7 +350,7 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_line=self.all_modules_in_db[mnum]['CLASS'])
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_value=self.all_modules_in_db[mnum]['CLASS'])
 
         metadata_dict = {}
         metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
@@ -4708,7 +4708,7 @@ class KeggModulesDatabase(KeggContext):
         return class_dict
 
 
-    def get_kegg_module_class_dict(self, mnum, class_line=None):
+    def get_kegg_module_class_dict(self, mnum, class_value=None):
         """This function returns a dictionary of values in the CLASS field for a specific module
 
         It really exists only for convenience to put together the data fetch and parsing functions.
@@ -4717,12 +4717,12 @@ class KeggModulesDatabase(KeggContext):
         ==========
         mnum : str
             the module number
-        class_line : str
+        class_value : str
             The 'CLASS' string for the module. This parameter is optional, and if it is not provided,
             the 'CLASS' value will be queried from the modules DB.
         """
 
-        if not class_line:
+        if not class_value:
             # there should only be one CLASS line per module, so we extract the first list element
             class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
