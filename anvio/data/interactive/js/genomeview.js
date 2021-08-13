@@ -254,7 +254,7 @@ function loadAll() {
   drawScale();
 
   $('#brush_start').val(0);
-  $('#brush_end').val(Math.floor(scaleWidth));
+  $('#brush_end').val(Math.floor(canvas.getWidth()));
 
   $('#tooltip-body').hide() // set initual tooltip hide value
   $('#show_genome_labels_box').attr("checked", showLabels);
