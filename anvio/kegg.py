@@ -2258,10 +2258,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
-                
+
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
-                    if ko in bin_level_module_dict[m]["kofam_hits"]:
+                    if ko in bin_level_module_dict[m]["kofam_hits"] and gene_call_id not in bin_level_module_dict[m]["kofam_hits"][ko]:
                         bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
                     else:
                         bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
