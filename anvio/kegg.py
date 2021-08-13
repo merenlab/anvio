@@ -3180,7 +3180,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 # fetch module info from db
                 metadata_dict = self.get_module_metadata_dictionary(mnum)
-                module_def = '"' + " ".join(self.all_modules_in_db[mnum]["DEFINITION"]) + '"'
+                definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
+                if not isinstance(definition_list, list):
+                    definition_list = [definition_list]
+                module_def = '"' + " ".join(definition_list) + '"'
                 module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
                 # handle path- and ko-level information
