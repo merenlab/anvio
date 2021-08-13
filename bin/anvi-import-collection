@@ -121,13 +121,13 @@ def main(args):
 
     item_names_shared = set.intersection(db_names, input_names)
     if not len(item_names_shared):
-        raise ConfigError("There is no overlap between the item names found in your input file and item names found in the "
-                          "and this is not cool. For instance one of the names from your file looks like this: "
-                          "'%(from_file)s', and this is one is an example name from the database: '%(from_db)s'. "
-                          "Maybe you need to use the flag `--contigs-mode`. Or maybe the content of the input file "
-                          "has nothing to do with the database you are trying to import it into. Anvi'o doesn't know "
-                          "but it can't continue unless you figure this out :/" % {'from_file': input_names.pop(), \
-                                                                                   'from_db': db_names.pop()})
+        raise ConfigError(f"There is no overlap between the item names found in your input file and the item names found "
+                          f"in the database :( For instance, one of the names in your file looks like this: "
+                          f"'{input_names.pop()}', and in contrast this is an example name from the database: '{db_names.pop()}'. "
+                          f"Solving this may be as easy as adding the flag `--contigs-mode` to your command. Or it may also be "
+                          f"the case that the content of the input file has nothing to do with the database you are trying "
+                          f"to import these items into. Anvi'o is Jon Snow and hopes that you will figure this out and come "
+                          f"back.")
     else:
         run.info("Item names shared between input and db", len(item_names_shared))
 
