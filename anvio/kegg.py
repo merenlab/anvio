@@ -2050,7 +2050,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
-        #self.all_kos_in_db = 
+
+        self.all_kos_in_db = {}
+        for mod in self.all_modules_in_db:
+            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
+            for k in ko_list:
+                if k not in self.all_kos_in_db:
+                    self.all_kos_in_db[k] = []
+                self.all_kos_in_db[k].append(mod)
 
 
     def init_paths_for_modules(self):
