@@ -1988,7 +1988,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         splits_to_use : list
             a list of split names to obtain KOfam hits and gene calls from
         annotation_sources : list
-            which functional annotation sources to obtain gene calls from. Should at least contain 'Kofam' for
+            which functional annotation sources to obtain gene calls from. Should at least contain 'KOfam' for
             default usage. Adding other sources may be necessary when working with user-defined metabolic modules.
 
         RETURNS
