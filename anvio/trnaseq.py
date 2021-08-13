@@ -6240,7 +6240,7 @@ class DatabaseConverter(object):
             insert_starts = summary_M.insert_starts - reduction_5prime
             new_insert_starts = np.where(insert_starts >= 0)[0]
             summary_M.insert_starts = new_insert_starts
-            if new_insert_starts:
+            if new_insert_starts.size:
                 first_retained_insert_index = new_insert_starts[0]
                 summary_M.insert_strings = summary_M.insert_strings[first_retained_insert_index: ]
                 summary_M.spec_insert_covs = summary_M.spec_insert_covs[first_retained_insert_index: ]
@@ -6254,7 +6254,7 @@ class DatabaseConverter(object):
             del_starts = summary_M.del_starts - reduction_5prime
             new_del_starts = np.where(del_starts >= 0)[0]
             summary_M.del_starts = new_del_starts
-            if new_del_starts:
+            if new_del_starts.size:
                 first_retained_del_index = new_del_starts[0]
                 summary_M.del_lengths = summary_M.del_lengths[first_retained_del_index: ]
                 summary_M.spec_del_covs = summary_M.spec_del_covs[first_retained_del_index: ]
