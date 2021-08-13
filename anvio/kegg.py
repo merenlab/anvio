@@ -2072,6 +2072,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         modules = self.all_modules_in_db.keys()
         for m in modules:
             module_definition = self.all_modules_in_db[m]["DEFINITION"]
+            # the below function expects a list
+            if not isinstance(module_definition, list):
+                module_definition = [module_definition]
             self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
