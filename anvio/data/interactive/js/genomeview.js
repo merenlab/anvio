@@ -352,9 +352,11 @@ function loadAll() {
       this.requestRenderAll();
       this.lastPosX = e.clientX;
 
-      /* TODO: find a way to check boundaries for each individual genome so we don't have to redraw every time */
-      updateRenderWindow();
-      draw();
+      let [l,r] = getFracForVPT();
+      if(l < renderWindow[0] || r > renderWindow[1]) {
+        updateRenderWindow();
+        draw();
+      }
     }
   });
   canvas.on('mouse:up', function(opt) {
@@ -368,11 +370,11 @@ function loadAll() {
       drawTestShades();
       updateScalePos(); // adjust scale box to new sequence breadth
       bindViewportToWindow();
-      let [l,r] = getFracForVPT();
-      if(l < renderWindow[0] || r > renderWindow[1]) {
-        updateRenderWindow();
-        draw();
-      }
+      updateRenderWindow();
+      draw();
+
+      /* TODO: find a way to check boundaries for each individual genome so we don't have to redraw every time */
+      /* Goal: redraw only relevant genome/ADLs rather than entire view for performance! */
     }
   });
   canvas.on('object:moving', function(opt) {
@@ -518,19 +520,17 @@ function loadAll() {
   });
 }
 
-function draw(scaleX=scaleFactor) {
+function draw() {
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
   yOffset = 0 // reset
-  var y = marginTop;
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   genomeData['genomes'].map((genome, idx) => {
     let label = genome[1].genes.gene_calls[0].contig;
-    addGenome(label, genome[1].genes.gene_calls, genome[0], y, scaleX=scaleX, idx)
+    addGenome(idx)
     addLayers(label, genome[1], genome[0], idx)
     labelSpacing += 30
-    y+=spacing;
   })
 
   checkGeneLabels();
@@ -865,13 +865,19 @@ function setGenomeLabelSize(newSize) {
   if(showLabels) draw();
 }
 
-function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
+function addGenome(orderIndex) {
+  let genome = genomeData.genomes[orderIndex];
+  let gene_list = genome[1].genes.gene_calls;
+  let genomeLabel = gene_list[0].contig;
+  let genomeID = genome[0];
+
+  let y = marginTop + orderIndex*spacing;
   let layerHeight = spacing / maxGroupSize
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
-  let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleX + xDisps[genomeID]);
+  let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleFactor + xDisps[genomeID]);
   start = clamp(start, calcXBounds()[0], calcXBounds()[1]);
   stop = clamp(stop, calcXBounds()[0], calcXBounds()[1]);
 
@@ -895,7 +901,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
     if(gene.start < ntStart) continue;
     if(gene.stop > ntStop) return;
     let genome = genomeData.genomes.find(g => g[0] == genomeID)[1];
-    var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle,scaleX=scaleX);
+    var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle);
     canvas.add(geneObj);
 
     if(showGeneLabels) {
@@ -904,7 +910,7 @@ function addGenome(genomeLabel, gene_list, genomeID, y, scaleX=1, orderIndex) {
         groupID: genomeID,
         fontSize: geneLabelSize,
         angle: geneLabelPos == "slanted" ? -10 : 0,
-        left: xDisps[genomeID]+(gene.start+50)*scaleX,
+        left: xDisps[genomeID]+(gene.start+50)*scaleFactor,
         scaleX: 0.5,
         scaleY: 0.5,
         hasControls: false,
@@ -1039,7 +1045,7 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
-function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
+function geneArrow(gene, geneID, functions, y, genomeID, style) {
   var cag = null;
   var color = 'gray';
   if(functions) {
@@ -1067,7 +1073,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
   }
   /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
-  let length = (gene.stop-gene.start)*scaleX;
+  let length = (gene.stop-gene.start)*scaleFactor;
   let stemLength = length-25 > 0 ? length-25 : 0;
 
   var arrowPathStr;
@@ -1098,7 +1104,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style, scaleX=1) {
     geneID: geneID,
     genomeID: genomeID,
     top: style == 3 ? y-17 : y-11,
-    left: xDisps[genomeID] + (1.5+gene.start)*scaleX,
+    left: xDisps[genomeID] + (1.5+gene.start)*scaleFactor,
     fill: color,
     stroke: 'gray',
     strokeWidth: style == 3 ? 3 : 1.5
