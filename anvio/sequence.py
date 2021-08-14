@@ -257,6 +257,7 @@ class Palindromes:
 
             self.palindromes[sequence_name].append({'start': start,
                                                     'end': end,
+                                                    'length': end - start,
                                                     'palindrome': fwd,
                                                     'matches': matches,
                                                     'num_mismatches': num_mismatches})
@@ -275,18 +276,22 @@ class Palindromes:
 
         num_sequences = 0
         num_palindromes = 0
+        longest_palindrome = 0
 
         with open(output_file_path, 'w') as output_file:
-            output_file.write("sequence_name\tstart\tend\tpalindrome\tmatches\tnum_mismatches\n")
+            output_file.write("sequence_name\tstart\tend\tlength\tpalindrome\tmatches\tnum_mismatches\n")
 
             for sequence_name in self.palindromes:
                 num_sequences += 1
                 for p in self.palindromes[sequence_name]:
+                    if p['length'] > longest_palindrome:
+                        longest_palindrome = p['length']
                     num_palindromes += 1
-                    output_file.write(f"{sequence_name}\t{p['start']}\t{p['end']}\t{p['palindrome']}\t{p['matches']}\t{p['num_mismatches']}\n")
+                    output_file.write(f"{sequence_name}\t{p['start']}\t{p['end']}\t{p['length']}\t{p['palindrome']}\t{p['matches']}\t{p['num_mismatches']}\n")
 
         self.run.info('Total number of sequences processed', num_sequences, nl_before=1)
         self.run.info('Total number of palindromes found', num_palindromes)
+        self.run.info('Longest palindrome', longest_palindrome)
         self.run.info('Output file', output_file_path, mc='green', nl_before=1, nl_after=1)
 
 
