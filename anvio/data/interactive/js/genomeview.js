@@ -368,13 +368,11 @@ function loadAll() {
       // slid a genome
       this.shades = true;
       drawTestShades();
-      updateScalePos(); // adjust scale box to new sequence breadth
       bindViewportToWindow();
+      updateScalePos(); // adjust scale box to new sequence breadth
       updateRenderWindow();
-      draw();
 
-      /* TODO: find a way to check boundaries for each individual genome so we don't have to redraw every time */
-      /* Goal: redraw only relevant genome/ADLs rather than entire view for performance! */
+      redrawGenome(opt.target.groupID);
     }
   });
   canvas.on('object:moving', function(opt) {
