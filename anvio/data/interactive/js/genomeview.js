@@ -1500,10 +1500,13 @@ function respondToBookmarkSelect(){
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
+  canvas.getObjects().filter(o => o.id == 'background').map(obj => canvas.remove(obj));
+
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
+    id: 'background',
     top: top,
     left: left,
     width: width,
