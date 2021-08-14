@@ -387,19 +387,14 @@ function loadAll() {
 
     let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
 
-    var delta = opt.target.left - this.prev; //this.previousEvent ? opt.pointer.x - this.previousEvent.pointer.x : opt.e.movementX;
-    for(o of objs) {
-      if(o === opt.target) continue;
-      o.left += delta;
-      //o.dirty = true;
-    }
+    var delta = opt.target.left - this.prev;
+    canvas.getObjects().filter(obj => obj.groupID == gid).forEach(o => {
+      if(o !== opt.target) o.left += delta;
+    });
     xDisps[gid] += delta;
-    //canvas.renderAll();
+
     this.setViewportTransform(this.viewportTransform);
-    //this.previousEvent = opt;
-
     setPercentScale();
-
     this.prev = opt.target.left;
   });
   canvas.on('mouse:wheel', function(opt) {
@@ -878,7 +873,7 @@ function addGenome(orderIndex) {
   }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleFactor + xDisps[genomeID]);
-  start = clamp(start, calcXBounds()[0], calcXBounds()[1]);
+  start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBounds()[0], calcXBounds()[1]);
   stop = clamp(stop, calcXBounds()[0], calcXBounds()[1]);
 
   // line
@@ -893,7 +888,7 @@ function addGenome(orderIndex) {
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  addBackgroundShade(y, xDisps[genomeID], genomeMax, layerHeight, orderIndex)
+  addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
