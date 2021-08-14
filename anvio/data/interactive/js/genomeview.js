@@ -597,7 +597,8 @@ function shadeGeneClusters(geneClusters, colors) {
         g2.push(genomeB[geneID].start, genomeB[geneID].stop);
       }
 
-      if(g1[0] < renderWindow[0] || g1[1] > renderWindow[1] || g2[0] < renderWindow[0] || g2[1] > renderWindow[1]) break;
+      let [l,r] = getRenderNTRange();
+      if(g1[0] < l || g1[1] > r || g2[0] < l || g2[1] > r) break;
 
       g1 = g1.map(val => val*scaleFactor + xDisps[genomeID_A]);
       g2 = g2.map(val => val*scaleFactor + xDisps[genomeID_B]);
