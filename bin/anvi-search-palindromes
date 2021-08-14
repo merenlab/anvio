@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A program to find palindromes in sequences."""
+
+import sys
+
+import anvio
+import anvio.tables as t
+import anvio.fastalib as f
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+
+from anvio.sequence import Palindromes
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2021, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['meren']
+__requires__ = ["fasta"]
+__provides__ = ['palindromes-txt']
+__description__ = "A program to find palindromes in sequences"
+
+
+def main(args):
+    p = Palindromes(args)
+
+    if not args.output_file:
+        args.verbose = True
+
+    # FIXME: all this should be handled by the class :/ this is not OK:
+    if args.contigs_db:
+        contigs_db = dbops.ContigsDatabase(args.contigs_db)
+        contig_sequences_dict = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        for sequence_name in contig_sequences_dict:
+            p.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
+    elif args.dna_sequence:
+        p.find(args.dna_sequence)
+    elif args.fasta_file:
+        filesnpaths.is_file_fasta_formatted(args.fasta_file)
+        fasta = f.SequenceSource(args.fasta_file)
+        while next(fasta):
+            p.find(fasta.seq, sequence_name=fasta.id)
+
+    if args.output_file:
+        p.report(args.output_file)
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('SEQUENCE SOURCE', "Where should anvi'o find your sequences?")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
+    groupA.add_argument(*anvio.A('dna-sequence'), **anvio.K('dna-sequence'))
+
+    groupB = parser.add_argument_group('PALINDROME BUT HOW?', "Some essential stuff here about your palindromes")
+    groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
+    groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
+
+    groupC = parser.add_argument_group('OUTPUT', "Output options.")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+    args, unknown = parser.parse_known_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
