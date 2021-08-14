@@ -45,11 +45,15 @@ class Palindromes:
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.verbose = A('verbose') or False
+        self.contigs_db_path = A('contigs_db')
+        self.fasta_file_path = A('fasta_file')
+        self.output_file_path = A('output_file')
 
         self.translate = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
         self.sanity_check()
 
+        self.run.warning(None, header="SEARCH SETTINGS", lc="green")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes')
@@ -58,6 +62,21 @@ class Palindromes:
 
 
     def sanity_check(self):
+        if self.contigs_db_path and self.fasta_file_path:
+            raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
+                              "class, not both :/")
+
+        if self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
+        else:
+            self.verbose = True
+
+        if self.contigs_db_path:
+            anvio.utils.is_contigs_db(self.contigs_db_path)
+
+        if self.fasta_file_path:
+            filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
+
         try:
             self.min_palindrome_length = int(self.min_palindrome_length)
         except:
@@ -82,8 +101,37 @@ class Palindromes:
                               "WE HAVE A PROBLEM WITH LOGIC TOO.")
 
 
+    def process(self):
+        """Processes all sequences in a given contigs database or a FASTA file.
+
+        What this function does depends on the configuration of the class. The member funciton `find`
+        is a more appropriate one to call if there is a single sequence to process.
+        """
+
+        if self.contigs_db_path:
+            contigs_db = anvio.dbops.ContigsDatabase(self.contigs_db_path)
+            contig_sequences_dict = contigs_db.db.get_table_as_dict(anvio.tables.contig_sequences_table_name)
+            for sequence_name in contig_sequences_dict:
+                self.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
+
+        elif self.fasta_file_path:
+            fasta = anvio.fastalib.SequenceSource(self.fasta_file_path)
+            while next(fasta):
+                self.find(fasta.seq, sequence_name=fasta.id)
+
+        else:
+            raise ConfigError("You called the `process` function of the class `Palindromes` without a FASTA "
+                              "file or contigs database to process :(")
+
+        self.report()
+
+
     def find(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
-        """Find palindromes in a sequence, and populate `self.palindromes`"""
+        """Find palindromes in a single sequence, and populate `self.palindromes`
+
+        The member function `process` may be a better one to call with an `args` object. See `anvi-search-palindromes`
+        for example usage.
+        """
 
         if sequence_name in self.palindromes:
             raise ConfigError(f"The sequence '{sequence_name}' is already in `self.palindromes`.")
@@ -271,28 +319,31 @@ class Palindromes:
                 self.run.info('REV', rev, mc='green')
 
 
-    def report(self, output_file_path):
-        filesnpaths.is_output_file_writable(output_file_path)
-
+    def report(self):
         num_sequences = 0
         num_palindromes = 0
         longest_palindrome = 0
 
-        with open(output_file_path, 'w') as output_file:
-            output_file.write("sequence_name\tstart\tend\tlength\tpalindrome\tmatches\tnum_mismatches\n")
+        for sequence_name in self.palindromes:
+            num_sequences += 1
+            for p in self.palindromes[sequence_name]:
+                if p['length'] > longest_palindrome:
+                    longest_palindrome = p['length']
+                num_palindromes += 1
 
-            for sequence_name in self.palindromes:
-                num_sequences += 1
-                for p in self.palindromes[sequence_name]:
-                    if p['length'] > longest_palindrome:
-                        longest_palindrome = p['length']
-                    num_palindromes += 1
-                    output_file.write(f"{sequence_name}\t{p['start']}\t{p['end']}\t{p['length']}\t{p['palindrome']}\t{p['matches']}\t{p['num_mismatches']}\n")
-
-        self.run.info('Total number of sequences processed', num_sequences, nl_before=1)
+        self.run.warning(None, header="SEARCH RESULTS", lc="green")
+        self.run.info('Total number of sequences processed', num_sequences)
         self.run.info('Total number of palindromes found', num_palindromes)
         self.run.info('Longest palindrome', longest_palindrome)
-        self.run.info('Output file', output_file_path, mc='green', nl_before=1, nl_after=1)
+
+        if self.output_file_path:
+            with open(self.output_file_path, 'w') as output_file:
+                output_file.write("sequence_name\tstart\tend\tlength\tpalindrome\tmatches\tnum_mismatches\n")
+                for sequence_name in self.palindromes:
+                    for p in self.palindromes[sequence_name]:
+                        output_file.write(f"{sequence_name}\t{p['start']}\t{p['end']}\t{p['length']}\t{p['palindrome']}\t{p['matches']}\t{p['num_mismatches']}\n")
+
+            self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
 
 
 class Codon:

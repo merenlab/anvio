@@ -32,23 +32,11 @@ def main(args):
     if not args.output_file:
         args.verbose = True
 
-    # FIXME: all this should be handled by the class :/ this is not OK:
-    if args.contigs_db:
-        utils.is_contigs_db(args.contigs_db)
-        contigs_db = dbops.ContigsDatabase(args.contigs_db)
-        contig_sequences_dict = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-        for sequence_name in contig_sequences_dict:
-            p.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
-    elif args.dna_sequence:
+    if args.dna_sequence:
         p.find(args.dna_sequence)
-    elif args.fasta_file:
-        filesnpaths.is_file_fasta_formatted(args.fasta_file)
-        fasta = f.SequenceSource(args.fasta_file)
-        while next(fasta):
-            p.find(fasta.seq, sequence_name=fasta.id)
-
-    if args.output_file:
-        p.report(args.output_file)
+        p.report()
+    else:
+        p.process()
 
 
 if __name__ == "__main__":
