@@ -587,6 +587,8 @@ function shadeGeneClusters(geneClusters, colors) {
     let genomeB = genomeData.genomes[i+1][1].genes.gene_calls;
     let genomeID_A = genomeData.genomes[i][0];
     let genomeID_B = genomeData.genomes[i+1][0];
+    let [l1,r1] = getRenderNTRange(genomeID_A);
+    let [l2,r2] = getRenderNTRange(genomeID_B);
 
     for(gc of geneClusters) {
       let g1 = [], g2 = [];
@@ -597,8 +599,9 @@ function shadeGeneClusters(geneClusters, colors) {
         g2.push(genomeB[geneID].start, genomeB[geneID].stop);
       }
 
-      let [l,r] = getRenderNTRange();
-      if(g1[0] < l || g1[1] > r || g2[0] < l || g2[1] > r) break;
+      // if shades outside render bounds, don't draw them
+      if(g1[1] < l1 && g2[1] < l2) continue;
+      if(g1[0] > r1 && g2[0] > r2) break;
 
       g1 = g1.map(val => val*scaleFactor + xDisps[genomeID_A]);
       g2 = g2.map(val => val*scaleFactor + xDisps[genomeID_B]);
@@ -890,7 +893,7 @@ function addGenome(orderIndex) {
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
+  addBackgroundShade(y, xDisps[genomeID], genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
@@ -1120,6 +1123,7 @@ function redrawGenome(genomeID) {
   let idx = genomeData.genomes.findIndex(obj => obj[0] == genomeID);
   addGenome(idx);
   addLayers(idx);
+  checkGeneLabels();
 }
 
 function toggleSettingsPanel() {
@@ -1186,7 +1190,7 @@ function getRenderXRangeForFrac() {
 function getRenderNTRange(genomeID) {
   if(!percentScale) return renderWindow;
   let [l,r] = calcXBounds();
-  let [start, end] = getRenderXRangeForFrac().map(x => x/scaleFactor - xDisps[genomeID]/scaleFactor);
+  let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
   return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
 }
 
@@ -1500,13 +1504,11 @@ function respondToBookmarkSelect(){
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
-  canvas.getObjects().filter(o => o.id == 'background').forEach(obj => canvas.remove(obj));
-
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
-    id: 'background',
+    groupID: genomeData.genomes[orderIndex][0],
     top: top,
     left: left,
     width: width,
