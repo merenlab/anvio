@@ -1116,7 +1116,7 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
 }
 
 function redrawGenome(genomeID) {
-  for(obj of canvas.getObjects().filter(o => o.groupID == genomeID)) canvas.remove(obj);
+  canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
   let idx = genomeData.genomes.findIndex(obj => obj[0] == genomeID);
   addGenome(idx);
   addLayers(idx);
@@ -1500,7 +1500,7 @@ function respondToBookmarkSelect(){
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
 function addBackgroundShade(top, left, width, height, orderIndex){
-  canvas.getObjects().filter(o => o.id == 'background').map(obj => canvas.remove(obj));
+  canvas.getObjects().filter(o => o.id == 'background').forEach(obj => canvas.remove(obj));
 
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
