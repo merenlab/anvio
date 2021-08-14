@@ -868,8 +868,8 @@ function addGenome(orderIndex) {
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
   let genomeID = genome[0];
-
   let y = marginTop + orderIndex*spacing;
+
   let layerHeight = spacing / maxGroupSize
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
@@ -1114,6 +1114,13 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
   if(gene.direction == 'r') arrow.rotate(180);
 
   return arrow;
+}
+
+function redrawGenome(genomeID) {
+  for(obj of canvas.getObjects().filter(o => o.groupID == genomeID)) canvas.remove(obj);
+  let idx = genomeData.genomes.findIndex(obj => obj[0] == genomeID);
+  addGenome(idx);
+  addLayers(idx);
 }
 
 function toggleSettingsPanel() {
