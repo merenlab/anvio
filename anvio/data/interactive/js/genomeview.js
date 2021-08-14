@@ -523,13 +523,11 @@ function loadAll() {
 function draw() {
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
-  yOffset = 0 // reset
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   genomeData['genomes'].map((genome, idx) => {
-    let label = genome[1].genes.gene_calls[0].contig;
     addGenome(idx)
-    addLayers(label, genome[1], genome[0], idx)
+    addLayers(idx)
     labelSpacing += 30
   })
 
@@ -937,7 +935,12 @@ function addGenome(orderIndex) {
 /*
  *  For each genome group, iterate additional layers beyond genome and render where appropriate
  */
-function addLayers(label, genome, genomeID, orderIndex){
+function addLayers(orderIndex){
+  yOffset = orderIndex * spacing;
+  let genomeID = genomeData.genomes[orderIndex][0];
+  let genome = genomeData.genomes[orderIndex][1];
+  let label = genome.genes.gene_calls[0].contig;
+
   let additionalDataLayers = stateData['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
@@ -954,7 +957,6 @@ function addLayers(label, genome, genomeID, orderIndex){
       buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
     }
   })
-  yOffset += spacing
 }
 
 /*
