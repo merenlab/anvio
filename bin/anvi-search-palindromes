@@ -8,6 +8,7 @@ import anvio
 import anvio.tables as t
 import anvio.fastalib as f
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Palindromes
@@ -33,6 +34,7 @@ def main(args):
 
     # FIXME: all this should be handled by the class :/ this is not OK:
     if args.contigs_db:
+        utils.is_contigs_db(args.contigs_db)
         contigs_db = dbops.ContigsDatabase(args.contigs_db)
         contig_sequences_dict = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
         for sequence_name in contig_sequences_dict:
