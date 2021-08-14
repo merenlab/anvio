@@ -189,8 +189,8 @@ D = {
                 ),
     'fasta-file': (
             ['-f', '--fasta-file'],
-            {'metavar': 'FASTA',
-             'help': "A FASTA-formatted input file"}
+            {'metavar': 'DNA SEQ',
+             'help': "Literally a DNA sequence. For the very lazy."}
                 ),
     'dna-sequence': (
             ['--dna-sequence'],
@@ -1932,7 +1932,7 @@ D = {
             ['--verbose'],
             {'default': False,
              'action': 'store_true',
-             'help': "Be verbose, print more messages whenever possible."}
+             'help': "Be verbose, print more messages whenever possible. You may regret this."}
                 ),
     'concise': (
             ['--concise'],
@@ -2532,6 +2532,20 @@ D = {
             'help': "If this is true, the output file will be in GFF3 format."
         }
     ),
+    'min-palindrome-length': (
+            ['-l', '--min-palindrome-length'],
+            {'default': 10,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The minimum palindrome length."}
+        ),
+    'max-num-mismatches': (
+            ['-m', '--max-num-mismatches'],
+            {'default': 0,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The maximum number of mismatches allowed."}
+        ),
     'export-svg': (
             ['--export-svg'],
             {'type': str,
