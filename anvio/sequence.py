@@ -223,6 +223,23 @@ class Palindromes:
             else:
                 stretches = [stretches[i] for i in range(0, len(stretches)) if i not in indices_to_remove]
 
+        #################################################################################
+        #
+        # Of course, THERE HAS TO BE some dumb projects somewhre with some dumb sequences
+        # in them that are all Ns. Let's remove any sequence in which more than half of
+        # the palindrome nucleotides are Ns.
+        #
+        #################################################################################
+
+        indices_to_remove = set([])
+        for i in range(0, len(stretches)):
+            start, end = stretches[i]
+            if sequence[start:end].count('N') > ((end - start) / 2):
+                indices_to_remove.add(i)
+
+        if len(indices_to_remove):
+            stretches = [stretches[i] for i in range(0, len(stretches)) if i not in indices_to_remove]
+
         ###############################################################################
         #
         # Time to summarize it all
