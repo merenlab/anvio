@@ -27,16 +27,19 @@ __description__ = "A program to find palindromes in sequences"
 
 
 def main(args):
-    p = Palindromes(args)
+    if not (args.dna_sequence or args.contigs_db or args.fasta_file):
+        raise ConfigError("You should send an input sequence source for this program to work.")
 
     if not args.output_file:
         args.verbose = True
 
-    if args.dna_sequence:
+    p = Palindromes(args)
+
+    if args.contigs_db or args.fasta_file:
+        p.process()
+    elif args.dna_sequence:
         p.find(args.dna_sequence)
         p.report()
-    else:
-        p.process()
 
 
 if __name__ == "__main__":

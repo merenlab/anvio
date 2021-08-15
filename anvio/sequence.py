@@ -56,7 +56,7 @@ class Palindromes:
         self.run.warning(None, header="SEARCH SETTINGS", lc="green")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
-        self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes')
+        self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
 
         self.palindromes = {}
 
@@ -111,13 +111,21 @@ class Palindromes:
         if self.contigs_db_path:
             contigs_db = anvio.dbops.ContigsDatabase(self.contigs_db_path)
             contig_sequences_dict = contigs_db.db.get_table_as_dict(anvio.tables.contig_sequences_table_name)
+
+            self.progress.new('Searching', progress_total_items=len(contig_sequences_dict))
             for sequence_name in contig_sequences_dict:
+                self.progress.update(f"{sequence_name} ({pp(len(contig_sequences_dict[sequence_name]['sequence']))} nts)", increment=True)
                 self.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
+            self.progress.end()
 
         elif self.fasta_file_path:
+            num_sequences = anvio.utils.get_num_sequences_in_fasta(self.fasta_file_path)
             fasta = anvio.fastalib.SequenceSource(self.fasta_file_path)
+            self.progress.new('Searching', progress_total_items=num_sequences)
             while next(fasta):
+                self.progress.update(f"{fasta.id} ({pp(len(fasta.seq))} nts)", increment=True)
                 self.find(fasta.seq, sequence_name=fasta.id)
+            self.progress.end()
 
         else:
             raise ConfigError("You called the `process` function of the class `Palindromes` without a FASTA "
@@ -142,8 +150,9 @@ class Palindromes:
         START, END = 0, 1
 
         if sequence_length < self.min_palindrome_length:
-            raise ConfigError(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short to find palindromes "
-                              f"that are at least {self.min_palindrome_length} nts :/ ")
+            self.progress.reset()
+            self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short to find palindromes "
+                             f"that are at least {self.min_palindrome_length} nts, and anvi'o will skip it :/ ")
 
         get_pairs = lambda: (current - distance, current + distance - 1)
         matching_nts = lambda: sequence[l] == ('N' if sequence[r] not in self.translate else self.translate[sequence[r]])
@@ -169,6 +178,7 @@ class Palindromes:
             if current + max_distance > sequence_length:
                 break
 
+            print(distance)
             while 1:
                 l, r = get_pairs()
 
@@ -311,6 +321,7 @@ class Palindromes:
                                                     'num_mismatches': num_mismatches})
 
             if anvio.DEBUG or display_palindromes or self.verbose:
+                self.progress.reset()
                 self.run.warning(None, header=f'{length} nts palindrome at "{start}:{end}"', lc='yellow')
                 self.run.info('Sequence', sequence_name)
                 self.run.info('Num mismatches', f"{num_mismatches}")
