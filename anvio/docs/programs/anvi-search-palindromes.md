@@ -2,9 +2,15 @@ This program finds [palindromes](https://en.wikipedia.org/wiki/Palindromic_seque
 
 Please note that this program will only report perfect palindromes, where the identity and order of nucleotides on one strand match to those on the complementary strand. The current version is **not** designed to search for special cases of palindromes that form [hairpins](https://en.wikipedia.org/wiki/Stem-loop) (because we didn't need them (but if you do, let us know and we will do something)).
 
+
+{:.notice}
+The algorithm processes about 1,000,000 nts in every 2 seconds, and about 10,000,000 nts in every 9 seconds on a laptop computer.
+
+### Sequence input sources
+
 %(anvi-search-palindromes)s can use multiple different sequence sources.
 
-### Contigs database
+#### Contigs database
 
 In this mode %(anvi-search-palindromes)s will go through every contig sequence in a given %(contigs-db)s.
 
@@ -13,7 +19,7 @@ anvi-search-palindromes -c %(contigs-db)s \
                         --output-file %(palindromes-txt)s
 {{ codestop }}
 
-### FASTA file
+#### FASTA file
 
 Alternatively, you can use a %(fasta)s file as input.
 
@@ -22,7 +28,7 @@ anvi-search-palindromes --fasta-file %(fasta)s \
                         --output-file %(palindromes-txt)s
 {{ codestop }}
 
-### DNA sequence
+#### DNA sequence
 
 Those who are lazy can also pass a DNA sequence for quick searches:
 
