@@ -187,15 +187,15 @@ D = {
                      "of this file will be called 'user_view', which will be available as a new item "
                      "in the 'views' combo box in the interface"}
                 ),
-    'fasta-file': (
-            ['-f', '--fasta-file'],
+    'dna-sequence': (
+            ['--dna-sequence'],
             {'metavar': 'DNA SEQ',
              'help': "Literally a DNA sequence. For the very lazy."}
                 ),
-    'dna-sequence': (
-            ['--dna-sequence'],
-            {'metavar': 'FASTA',
-             'help': "A FASTA-formatted input file"}
+    'fasta-file': (
+            ['-f', '--fasta-file'],
+            {'metavar': 'FASTA file',
+             'help': "A FASTA-formatted input file."}
                 ),
     'fasta-text-file': (
             ['-f', '--fasta-text-file'],
