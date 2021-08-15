@@ -1063,7 +1063,15 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
             remote_file_url = '/'.join([self.ctx.target_database['base_url'], self.ctx.target_database['files'][file_key]])
             local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, file_key)
 
-            utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
+            if file_key == 'VERSION':
+                # Don't download the version file, and instead create it your own with the detailed version
+                # number -- the `VERSION` files by GTDB only track major versions, but anvi'o would like to
+                # track minor versions too.
+                with open(local_file_path, 'w') as version_file:
+                    version_file.write(f"{self.ctx.target_database_release}\n")
+            else:
+                # downlaod the remote file.
+                utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
 
             if file_key in ['MSA_ARCHAEA.tar.gz', 'MSA_BACTERIA.tar.gz']:
                 self.progress.new("Downloaded file patrol")

@@ -465,10 +465,10 @@ class ContigsSuperclass(object):
                                                  missing_split_names[0], list(self.splits_basic_info.keys())[0]))
 
             self.progress.end()
-            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database "
-                                 "knows about, to be precise). Nothing to worry about. Probably." \
-                                                % (len(split_names_of_interest), len(self.splits_basic_info)),
-                                  mc="cyan", nl_after=1, nl_before=1)
+            if len(split_names_of_interest) != len(self.splits_basic_info):
+                self.run.info_single(f"FYI: A subset of split sequences are being initialized (to be precise, only "
+                                     f"{len(split_names_of_interest)} of {len(self.splits_basic_info)} splits the contigs database "
+                                     f"knows about). Nothing to worry about. Probably.", mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
         else:
             split_names_of_interest = list(self.splits_basic_info.keys())

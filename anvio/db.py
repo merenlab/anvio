@@ -351,7 +351,7 @@ class DB:
         if DISPLAY_DB_CALLS:
             self.progress.reset()
             self.run.warning(None, header='EXECUTING SQL', lc='yellow', nl_before=1)
-            
+
             self.run.info_single(f"{os.path.abspath(self.db_path)}", cut_after=None, level=0, mc='yellow', nl_after=1)
             self.run.info_single(f"{sql_query}", cut_after=None, level=0, mc='yellow', nl_after=1)
             sql_exec_timer = terminal.Timer()
@@ -710,7 +710,8 @@ class DB:
             return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
 
 
-    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, error_if_no_data=True, log_norm_numeric_values=False):
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, error_if_no_data=True,
+                                log_norm_numeric_values=False, row_num_as_key=False):
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
@@ -826,6 +827,7 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
+        row_num = 0
         for row in rows:
             entry = {}
 
@@ -846,10 +848,21 @@ class DB:
                 else:
                     entry[table_structure[i]] = value
 
-            if string_the_key:
-                results_dict[str(row[0])] = entry
+            if row_num_as_key:
+                entry[table_structure[0]] = row[0]
+
+                if string_the_key:
+                    results_dict[str(row_num)] = entry
+                else:
+                    results_dict[row_num] = entry
+
             else:
-                results_dict[row[0]] = entry
+                if string_the_key:
+                    results_dict[str(row[0])] = entry
+                else:
+                    results_dict[row[0]] = entry
+
+            row_num += 1
 
         return results_dict
 
