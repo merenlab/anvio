@@ -5,14 +5,9 @@
 import sys
 
 import anvio
-import anvio.tables as t
-import anvio.fastalib as f
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Palindromes
 from anvio.argparse import ArgumentParser
+from anvio.sequencefeatures import Palindromes
 from anvio.errors import ConfigError, FilesNPathsError
 
 
