@@ -170,15 +170,13 @@ class Palindromes:
             # distance between pairs of nucleotides
             distance = 1
             num_mismatches = 0
-
             # this variable will keep track of mismatches and their location as we expand from a
             # position to form a palindrome
             mismatch_map = []
 
-            if current + max_distance > sequence_length:
+            if current + max_distance > sequence_length + 1:
                 break
 
-            print(distance)
             while 1:
                 l, r = get_pairs()
 
@@ -245,9 +243,9 @@ class Palindromes:
             if distance - 1 >= (self.min_palindrome_length / 2):
                 stretches.append((current - distance + 1, current + distance - 1),)
 
-            current += distance
+            current += distance - 1
 
-            if current + max_distance >= sequence_length:
+            if (current + max_distance) > sequence_length + 1:
                 break
 
         ###############################################################################
