@@ -25,7 +25,7 @@
  */
 
 /** 
- * ripped from utils.js instead of importing the whole file
+ * ripped from primary utils.js instead of importing the whole file
 */
 var fixHelperModified = function(e, tr) { 
   var $originals = tr.children();
