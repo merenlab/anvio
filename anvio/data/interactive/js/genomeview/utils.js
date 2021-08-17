@@ -23,3 +23,55 @@
  * 
  * 
  */
+
+/** 
+ * ripped from utils.js instead of importing the whole file
+*/
+var fixHelperModified = function(e, tr) { 
+  var $originals = tr.children();
+  var $helper = tr.clone();
+  $helper.children().each(function(index) {
+      $(this).width($originals.eq(index).width());
+  });
+  return $helper;
+};
+
+/*
+ *  return height value for main canvas element
+ */
+function calculateMainCanvasHeight(){
+  let additionalSpacing = 100 // arbitrary additional spacing for cosmetics
+      let mainCanvasHeight =  spacing * genomeData.genomes.length + additionalSpacing
+  return mainCanvasHeight
+}
+
+/*
+ *  Save NT length of the largest genome in `genomeMax`.
+ */
+function calculateMaxGenomeLength(){
+  for(genome of genomeData.genomes) {
+    genome = genome[1].genes.gene_calls;
+    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
+  }
+}
+
+function getCategoryForKEGGClass(class_str) {
+  if(class_str == null) return null;
+
+  var category_name = getClassFromKEGGAnnotation(class_str);
+  return getKeyByValue(KEGG_categories, category_name);
+}
+  
+function getClassFromKEGGAnnotation(class_str) {
+  return class_str.substring(17, class_str.indexOf(';', 17));
+}
+
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
+}
+
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}
