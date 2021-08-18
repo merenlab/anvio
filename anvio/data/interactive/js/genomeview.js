@@ -312,13 +312,14 @@ function loadAll() {
     text: 'Source'
   }));
   for(fn of getFunctionalAnnotations()) {
-    if(!['COG_CATEGORY', 'KEGG_CATEGORY', 'Source'].includes(fn)) continue; // TODO: support any option
+    if(!['COG_CATEGORY', 'KEGG_CATEGORY'].includes(fn)) continue; // TODO: support any option
     $('#gene_color_order').append($('<option>', {
       value: fn,
       text: fn
     }));
   }
-  //generateColorTable(fn_colors=null, fn_type=$('#gene_color_order').val());
+  color_db = $('#gene_color_order').val();
+  generateColorTable(fn_colors=null, fn_type=color_db);
 
   brush.extent([parseInt($('#brush_start').val()),parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
@@ -454,6 +455,7 @@ function loadAll() {
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
       draw();
+      generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
       $(this).blur();
   });
   $('#arrow_style').on('change', function() {
@@ -888,8 +890,7 @@ function addGenome(orderIndex) {
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
     if(gene.start < ntStart) continue;
     if(gene.stop > ntStop) return;
-    let genome = genomeData.genomes.find(g => g[0] == genomeID)[1];
-    var geneObj = geneArrow(gene,geneID,genome.genes.functions[geneID],y,genomeID,arrowStyle);
+    var geneObj = geneArrow(gene,geneID,y,genomeID,arrowStyle);
     canvas.add(geneObj);
 
     if(showGeneLabels) {
@@ -1037,33 +1038,25 @@ function buildGroupRulerLayer(genomeID, layerPos, orderIndex){
   addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
-function geneArrow(gene, geneID, functions, y, genomeID, style) {
-  var cag = null;
-  var color = 'gray';
-  if(functions) {
-    switch(color_db) {
-      case 'COG_CATEGORY':
-        if(functions["COG_CATEGORY"]) cag = functions["COG_CATEGORY"][1];
-        color = cag in default_COG_colors ? default_COG_colors[cag] : 'gray';
-        break;
-      case 'KEGG_CATEGORY':
-        if(functions.hasOwnProperty("KEGG_Class") && functions.KEGG_Class != null) {
-          cag = getCategoryForKEGGClass(functions["KEGG_Class"][1]);
-        }
-        color = cag in default_KEGG_colors ? default_KEGG_colors[cag] : 'gray';
-        break;
-      default:
-        if (gene.source.startsWith('Ribosomal_RNA')) {
-          cag = 'rRNA';
-        } else if (gene.source == 'Transfer_RNAs') {
-          cag = 'tRNA';
-        } else if (gene.functions !== null) {
-          cag = 'Function';
-        }
-        color = cag in default_source_colors ? default_source_colors[cag] : 'gray';
+function geneArrow(gene, geneID, y, genomeID, style) {
+  let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
+  let functions = genomeData.genomes[ind][1].genes.functions[geneID];
+
+  let color = 'gray';
+  let db = getColorDefaults(color_db);
+  let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
+  if(db && db[cag]) {
+    color = db[cag];
+  } else {
+    if (gene.source.startsWith('Ribosomal_RNA')) {
+      cag = 'rRNA';
+    } else if (gene.source == 'Transfer_RNAs') {
+      cag = 'tRNA';
+    } else if (gene.functions !== null) {
+      cag = 'Function';
     }
+    if(cag in default_source_colors) color = default_source_colors[cag];
   }
-  /* Issue here: each genome might be differentially annotated... how to make sure all have COG annotations for example? */
 
   let length = (gene.stop-gene.start)*scaleFactor;
   let stemLength = length-25 > 0 ? length-25 : 0;
@@ -1592,7 +1585,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   // Override default values with any values supplied to fn_colors
   if(fn_colors) db = Object.keys(db).map(cag => Object.keys(fn_colors).includes(cag) ? fn_colors[cag] : db[cag]);
 
-  if(filter_to_split) {
+  if(filter_to_split && fn_type != 'Source') {
     let save = [];
     for(genome of genomeData.genomes) {
       for(geneFunctions of Object.entries(genome[1].genes.functions)) {
