@@ -53,9 +53,6 @@
  var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon, 4 = rect
 
  var color_db;
- var cog_annotated = true, kegg_annotated = false;
- // doesn't make sense to iterate through every gene with dozens of genomes...
- // will need to find an efficient way to find these automatically
 
 var genomeData;
 var xDisps = {};
@@ -314,18 +311,14 @@ function loadAll() {
     value: 'Source',
     text: 'Source'
   }));
-  if(cog_annotated) {
+  for(fn of getFunctionalAnnotations()) {
+    if(!['COG_CATEGORY', 'KEGG_CATEGORY', 'Source'].includes(fn)) continue; // TODO: support any option
     $('#gene_color_order').append($('<option>', {
-      value: 'COG',
-      text: 'COG'
+      value: fn,
+      text: fn
     }));
   }
-  if(kegg_annotated) {
-    $('#gene_color_order').append($('<option>', {
-      value: 'KEGG',
-      text: 'KEGG'
-    }));
-  }
+  //generateColorTable(fn_colors=null, fn_type=$('#gene_color_order').val());
 
   brush.extent([parseInt($('#brush_start').val()),parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
@@ -1049,11 +1042,11 @@ function geneArrow(gene, geneID, functions, y, genomeID, style) {
   var color = 'gray';
   if(functions) {
     switch(color_db) {
-      case 'COG':
+      case 'COG_CATEGORY':
         if(functions["COG_CATEGORY"]) cag = functions["COG_CATEGORY"][1];
         color = cag in default_COG_colors ? default_COG_colors[cag] : 'gray';
         break;
-      case 'KEGG':
+      case 'KEGG_CATEGORY':
         if(functions.hasOwnProperty("KEGG_Class") && functions.KEGG_Class != null) {
           cag = getCategoryForKEGGClass(functions["KEGG_Class"][1]);
         }
@@ -1591,7 +1584,7 @@ function getCagName(category, fn_type) {
  *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
  *  @param filter_to_split : if true, filters categories to only those shown in the split
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true) {
   // TODO: consider call_type? see inspectionalutils.js for how this was dealt with earlier
 
   let db = getColorDefaults(fn_type ? fn_type : 'Source');
@@ -1636,7 +1629,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       let genomeID = entry['genomeID'];
       let geneID = entry['geneID'];
       let color = entry['color'];
-      
+
       if(!genomes.includes(genomeID)) continue;
 
       let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
