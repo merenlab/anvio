@@ -1588,10 +1588,10 @@ function getCagName(category, fn_type) {
  *
  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
  *  @param fn_type :         string indicating function category type: currently one of "COG_CATEGORY", "KEGG_CATEGORY", "Source"
- *  @param highlight_genes : dict matching specific gene caller IDs to hex colors to override other coloring (TODO: how does this work for genome view?)
+ *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
  *  @param filter_to_split : if true, filters categories to only those shown in the split
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split) {
   // TODO: consider call_type? see inspectionalutils.js for how this was dealt with earlier
 
   let db = getColorDefaults(fn_type ? fn_type : 'Source');
@@ -1613,18 +1613,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_sp
   }
 
   $('#tbody_function_colors').empty();
-  Object.keys(db).forEach(function(category){
-    var tbody_content =
-     '<tr id="picker_row_' + category + '"> \
-        <td></td> \
-        <td> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + db[category] + '" background-color="' + db[category] + '" style="background-color: ' + db[category] + '; margin-right:16px; margin-left:16px"></div> \
-        </td> \
-        <td>' + getCagName(category, fn_type) + '</td> \
-      </tr>';
-
-    $('#tbody_function_colors').append(tbody_content);
-  });
+  Object.keys(db).forEach(category => appendColorRow(getCagName(category, fn_type), category, db[category]) );
 
   $('.colorpicker').colpick({
       layout: 'hex',
@@ -1641,5 +1630,54 @@ function generateColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_sp
       $(this).colpickSetColor(this.value);
   });
 
-  // highlight_genes
+  if(highlight_genes) {
+    let genomes = Object.entries(genomeData.genomes).map(g => g[1][0]);
+    for(entry of highlight_genes) {
+      let genomeID = entry['genomeID'];
+      let geneID = entry['geneID'];
+      let color = entry['color'];
+      
+      if(!genomes.includes(genomeID)) continue;
+
+      let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
+      let genes = Object.keys(genomeData.genomes[ind][1].genes.gene_calls);
+      if(!(geneID in genes)) continue;
+
+      let label = genomeID + ', ' + geneID;
+      appendColorRow(label, label, color, prepend=true);
+    }
+    $('colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+            //state['highlight-genes'][el.id.substring(7)] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+  }
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ */
+function appendColorRow(label, cag, color, prepend=false) {
+  var tbody_content =
+   '<tr id="picker_row_' + cag + '"> \
+      <td></td> \
+      <td> \
+        <div id="picker_' + cag + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+      </td> \
+      <td>' + label + '</td> \
+    </tr>';
+
+  if(prepend) {
+    $('#tbody_function_colors').prepend(tbody_content);
+  } else {
+    $('#tbody_function_colors').append(tbody_content);
+  }
 }
