@@ -6,10 +6,10 @@
         <meta charset="UTF-8" />
         <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
         <link rel="stylesheet" type="text/css" href="./css/genomeview.css" />
-        
         <!-- main css file imported for color picker functionality -->
-        <link rel="stylesheet" type="text/css" href="./css/main.css" /> 
-        
+        <link rel="stylesheet" type="text/css" href="./css/main.css" />
+        <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+
         <link rel="shortcut icon" href="#">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
@@ -23,6 +23,7 @@
         <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"></script>
         <script type="text/javascript" src="lib/jquery-ui/ui/button.js"></script>
         <script type="text/javascript" src="lib/jquery-ui/ui/position.js"></script>
+        <script type="text/javascript" src="lib/colpick/colpick.js"></script>
         <script type="text/javascript" src="./js/constants.js"></script>
         <script type="text/javascript" src="./js/genomeview.js"></script>
         <script type="text/javascript" src="./js/genomeview/main.js"></script>
@@ -47,7 +48,7 @@
               <input type="text" class="form-control input-sm" id="brush_start" style= "width: 60px; float:left; margin-right:10px" value="0"></input>
               <input type="text" class="form-control input-sm" id="brush_end" style= "width: 60px; float:left" value="0"></input>
               <select id='bookmarks-select' style= "width: 120px; float:left; margin-left:10px">
-                <option selected="true" disabled="disabled">Bookmarks</option>  
+                <option selected="true" disabled="disabled">Bookmarks</option>
               </select>
               <p id='bookmark-description' style= "width: 300px; float:left; margin-left:10px; font-size: large;"></p>
             </div>
@@ -174,7 +175,7 @@
                             </tr>
                           </tbody>
                         </table>
-                        
+
                         <span class="settings-header">Scale</span>
                         <table id="scaleTable" style="margin-bottom: 20px;">
                           <tbody>
@@ -226,6 +227,14 @@
                           </div>
                         </div>
                         <div id="table_function_colors_container" style="margin-top: 20px; color:black">
+                          <table id="table_function_colors">
+                            <thead id="thead_function_colors">
+                              <td></td>
+                              <td data-help="function-color"><div style="width: 32px;"><b>Color</b></div></td>
+                              <td data-help="function-category"><b>Category</b></td>
+                            </thead>
+                            <tbody id="tbody_function_colors"></tbody>
+                          </table>
                         </div>
                         <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
 

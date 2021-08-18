@@ -1523,3 +1523,123 @@ var fixHelperModified = function(e, tr) { // ripped from utils.js instead of imp
   });
   return $helper;
 };
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js since it can be used in the inspect page]
+ *  @returns array of functional annotation types from table in `genomeData`
+ */
+function getFunctionalAnnotations() {
+  return Object.keys(genomeData.genomes[0][1].genes.functions[0]);
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns relevant category:color dict from constants.js for a given functional annotation
+ */
+function getColorDefaults(fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return default_COG_colors;
+    case 'KEGG_CATEGORY':
+      return default_KEGG_colors;
+    case 'Source':
+      return default_source_colors;
+    default:
+      console.log("Warning: Invalid type for function color table");
+      return null;
+  }
+}
+
+/*
+ *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  @returns target gene's category code for a given functional annotation type.
+ */
+function getCagForType(geneFunctions, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1][0] : null;
+    case 'KEGG_CATEGORY':
+      // TODO
+      return null;
+    default:
+      // TODO
+      return null;
+  }
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
+ */
+function getCagName(category, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return COG_categories[category];
+    case 'KEGG_CATEGORY':
+      return KEGG_categories[category];
+    default:
+      return category;
+  }
+}
+
+/*
+ *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  Generates functional annotation color table for a given color palette.
+ *
+ *  @param fn_colors :       dict matching each category to a hex color code to override defaults
+ *  @param fn_type :         string indicating function category type: currently one of "COG_CATEGORY", "KEGG_CATEGORY", "Source"
+ *  @param highlight_genes : dict matching specific gene caller IDs to hex colors to override other coloring (TODO: how does this work for genome view?)
+ *  @param filter_to_split : if true, filters categories to only those shown in the split
+ */
+function generateColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
+  // TODO: consider call_type? see inspectionalutils.js for how this was dealt with earlier
+
+  let db = getColorDefaults(fn_type ? fn_type : 'Source');
+  if(db == null) return;
+  // Override default values with any values supplied to fn_colors
+  if(fn_colors) db = Object.keys(db).map(cag => Object.keys(fn_colors).includes(cag) ? fn_colors[cag] : db[cag]);
+
+  if(filter_to_split) {
+    let save = [];
+    for(genome of genomeData.genomes) {
+      for(geneFunctions of Object.entries(genome[1].genes.functions)) {
+        let cag = getCagForType(geneFunctions[1], fn_type);
+        if(cag && !save.includes(cag)) save.push(cag);
+      }
+    }
+    Object.keys(db).forEach((cag, color) => {
+      if(!save.includes(cag)) delete db[cag];
+    });
+  }
+
+  $('#tbody_function_colors').empty();
+  Object.keys(db).forEach(function(category){
+    var tbody_content =
+     '<tr id="picker_row_' + category + '"> \
+        <td></td> \
+        <td> \
+          <div id="picker_' + category + '" class="colorpicker" color="' + db[category] + '" background-color="' + db[category] + '" style="background-color: ' + db[category] + '; margin-right:16px; margin-left:16px"></div> \
+        </td> \
+        <td>' + getCagName(category, fn_type) + '</td> \
+      </tr>';
+
+    $('#tbody_function_colors').append(tbody_content);
+  });
+
+  $('.colorpicker').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          // TODO: save new color once state is implemented
+          //state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
+
+  // highlight_genes
+}
