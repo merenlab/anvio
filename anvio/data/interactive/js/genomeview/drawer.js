@@ -26,6 +26,21 @@ var gDrawer = function(settings) {
   this.settings = settings;
 };
 
+gDrawer.prototype.draw = function(){
+  canvas.clear()
+  labelSpacing = 30 // reset to default value upon each draw() call
+  canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
+
+  genomeData['genomes'].map((genome, idx) => {
+    addGenome(idx)
+    addLayers(idx)
+    labelSpacing += 30
+  })
+
+  checkGeneLabels();
+  drawTestShades();
+}
+
 /*
  *  Draw background shades between genes of the same cluster.
  *  TODO: generalize this function to take in [start,stop,val] NT sequence ranges to shade any arbitrary metric
