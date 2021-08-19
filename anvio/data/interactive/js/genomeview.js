@@ -1637,7 +1637,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       let genes = Object.keys(genomeData.genomes[ind][1].genes.gene_calls);
       if(!(geneID in genes)) continue;
 
-      let label = genomeID + ',' + geneID;
+      let label = 'Genome: ' + genomeID + ', Gene: ' + geneID;
       appendColorRow(label, genomeID + '-' + geneID, color, prepend=true);
     }
     $('colorpicker').colpick({
