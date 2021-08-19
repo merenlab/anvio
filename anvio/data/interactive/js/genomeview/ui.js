@@ -125,3 +125,42 @@ function toggleAdditionalDataLayer(e){
   }
   draw()
 }
+
+/*
+ *  capture user bookmark values and store obj in state
+ */
+function createBookmark(){
+  if(!$('#create_bookmark_input').val()){
+    alert('please provide a name for your bookmark :)')
+    return
+  }
+  try {
+    stateData['display']['bookmarks'].push(
+      {
+        name : $('#create_bookmark_input').val(),
+        start : $('#brush_start').val(),
+        stop : $('#brush_end').val(),
+        description : $('#create_bookmark_description').val(),
+      }
+    )
+    alert('bookmark successfully created :)')
+  } catch (error) {
+    alert(`anvi'o was unable to save your bookmark because of an error ${error} :/`)
+    // throw to error landing page?
+  }
+}
+/*
+ *  update sequence position, bookmark description upon user select from dropdown
+ */
+function respondToBookmarkSelect(){
+  $('#bookmarks-select').change(function(e){
+    let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
+    $('#brush_start').val(start);
+    $('#brush_end').val(stop);
+    brush.extent([start, stop]);
+        brush(d3.select(".brush").transition());
+        brush.event(d3.select(".brush").transition());
+    let selectedBookmark = stateData['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
+    $('#bookmark-description').text(selectedBookmark['description'])
+  })
+}
