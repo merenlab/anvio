@@ -454,8 +454,8 @@ function loadAll() {
   });
   $('#gene_color_order').on('change', function() {
       color_db = $(this).val();
-      draw();
       generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
+      draw();
       $(this).blur();
   });
   $('#arrow_style').on('change', function() {
@@ -1043,10 +1043,15 @@ function geneArrow(gene, geneID, y, genomeID, style) {
   let functions = genomeData.genomes[ind][1].genes.functions[geneID];
 
   let color = 'gray';
-  let db = getColorDefaults(color_db);
   let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
-  if(db && db[cag]) {
-    color = db[cag];
+  if(cag) {
+     // TODO: use state instead of hardcoded color pickers
+     let label = genomeID + ', ' + geneID;
+     if($('#picker_' + label).length > 0) {
+       color = $('#picker_' + label).attr('color');
+     } else if($('#picker_' + cag).length > 0) {
+       color = $('#picker_' + cag).attr('color');
+     }
   } else {
     if (gene.source.startsWith('Ribosomal_RNA')) {
       cag = 'rRNA';
@@ -1055,7 +1060,7 @@ function geneArrow(gene, geneID, y, genomeID, style) {
     } else if (gene.functions !== null) {
       cag = 'Function';
     }
-    if(cag in default_source_colors) color = default_source_colors[cag];
+    if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
   }
 
   let length = (gene.stop-gene.start)*scaleFactor;
