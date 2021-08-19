@@ -184,5 +184,6 @@ a{
     padding: 15px;
     margin: 5px;
     position: fixed;
-    bottom : 25px
+    bottom : 25px; 
+    background-color: rgba(255,255,255, 0.8);
 }
