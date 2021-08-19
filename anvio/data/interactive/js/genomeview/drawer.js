@@ -41,6 +41,75 @@ gDrawer.prototype.draw = function(){
   drawTestShades();
 }
 
+gDrawer.prototype.addGenome = function(orderIndex){
+  let genome = genomeData.genomes[orderIndex];
+  let gene_list = genome[1].genes.gene_calls;
+  let genomeLabel = gene_list[0].contig;
+  let genomeID = genome[0];
+  let y = marginTop + orderIndex*spacing;
+
+  let layerHeight = spacing / maxGroupSize
+  if(showLabels) {
+    canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
+  }
+
+  let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleFactor + xDisps[genomeID]);
+  start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBounds()[0], calcXBounds()[1]);
+  stop = clamp(stop, calcXBounds()[0], calcXBounds()[1]);
+
+  // line
+  let lineObj = new fabric.Line([start,0,stop,0], {
+        id: 'genomeLine',
+        groupID: genomeID,
+        top: y + 4,
+        stroke: 'black',
+        strokeWidth: 2,
+        lockMovementY: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScaling: true});
+  canvas.add(lineObj);
+  addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
+
+  for(let geneID in gene_list) {
+    let gene = gene_list[geneID];
+    let [ntStart, ntStop] = getRenderNTRange(genomeID);
+    if(gene.start < ntStart) continue;
+    if(gene.stop > ntStop) return;
+    var geneObj = geneArrow(gene,geneID,y,genomeID,arrowStyle);
+    canvas.add(geneObj);
+
+    if(showGeneLabels) {
+      var label = new fabric.IText("geneID: "+geneID, {
+        id: 'geneLabel',
+        groupID: genomeID,
+        fontSize: geneLabelSize,
+        angle: geneLabelPos == "slanted" ? -10 : 0,
+        left: xDisps[genomeID]+(gene.start+50)*scaleFactor,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        hasControls: false,
+        lockMovementX: true,
+        lockMovementY: true,
+        lockScaling: true,
+        hoverCursor: 'text'
+      });
+      if(arrowStyle == 3) {
+        label.set({
+          top: geneLabelPos == "inside" ? y-5 : y-30,
+          selectionColor:'rgba(128,128,128,.5)'
+        });
+      } else {
+        label.set({
+          top: y-30,
+          selectionColor:'rgba(128,128,128,.2)'
+        });
+      }
+      canvas.add(label);
+    }
+  }
+}
+
 /*
  *  Draw background shades between genes of the same cluster.
  *  TODO: generalize this function to take in [start,stop,val] NT sequence ranges to shade any arbitrary metric
@@ -91,16 +160,36 @@ gDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
   }
 }
 
+gDrawer.prototype.glowGenes = function(geneParams){
+   // convert geneParams format (1) to format (2)
+   if(Array.isArray(geneParams[0].geneID)) {
+    let newParams = [];
+    for(genome of geneParams) {
+      for(gene of genome.geneID) newParams.push({genomeID:genome.genomeID, geneID:gene});
+    }
+    geneParams = newParams;
+  }
+
+  var shadow = new fabric.Shadow({
+    color: 'red',
+    blur: 30
+  });
+  var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && geneParams.some(g => g.genomeID == obj.genomeID && g.geneID == obj.geneID));
+  for(arrow of arrows) {
+    arrow.set('shadow', shadow);
+    arrow.animate('shadow.blur', 0, {
+      duration: 3000,
+      onChange: canvas.renderAll.bind(canvas),
+      onComplete: function(){ arrow.shadow = null; },
+      easing: fabric.util.ease['easeInQuad']
+    });
+  }
+  canvas.renderAll();
+}
+
 /*
  *  Clear all gene links from the canvas.
  */
 gDrawer.prototype.clearShades = function(){
   canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
-}
-
-/*
- *  Temporary function for testing shades.
- */
-gDrawer.prototype.drawTestShades = function(){
-  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"});
 }
