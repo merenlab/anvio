@@ -1044,23 +1044,26 @@ function geneArrow(gene, geneID, y, genomeID, style) {
 
   let color = 'gray';
   let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
-  if(cag) {
-     // TODO: use state instead of hardcoded color pickers
-     let label = genomeID + ', ' + geneID;
-     if($('#picker_' + label).length > 0) {
-       color = $('#picker_' + label).attr('color');
-     } else if($('#picker_' + cag).length > 0) {
-       color = $('#picker_' + cag).attr('color');
-     }
+
+  // TODO: use state instead of hardcoded color pickers
+
+  // check if gene is highlighted
+  let pickerCode = genomeID + '-' + geneID;
+  if($('#picker_' + pickerCode).length > 0) {
+    color = $('#picker_' + pickerCode).attr('color');
   } else {
-    if (gene.source.startsWith('Ribosomal_RNA')) {
-      cag = 'rRNA';
-    } else if (gene.source == 'Transfer_RNAs') {
-      cag = 'tRNA';
-    } else if (gene.functions !== null) {
-      cag = 'Function';
+    if(cag) {
+       if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
+    } else {
+      if (gene.source.startsWith('Ribosomal_RNA')) {
+        cag = 'rRNA';
+      } else if (gene.source == 'Transfer_RNAs') {
+        cag = 'tRNA';
+      } else if (gene.functions !== null) {
+        cag = 'Function';
+      }
+      if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
     }
-    if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
   }
 
   let length = (gene.stop-gene.start)*scaleFactor;
@@ -1634,8 +1637,8 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       let genes = Object.keys(genomeData.genomes[ind][1].genes.gene_calls);
       if(!(geneID in genes)) continue;
 
-      let label = genomeID + ', ' + geneID;
-      appendColorRow(label, label, color, prepend=true);
+      let label = genomeID + ',' + geneID;
+      appendColorRow(label, genomeID + '-' + geneID, color, prepend=true);
     }
     $('colorpicker').colpick({
         layout: 'hex',
