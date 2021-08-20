@@ -227,6 +227,27 @@ gDrawer.prototype.buildGroupRulerLayer = function(){
 }
 
 /*
+ *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
+ */
+gDrawer.prototype.addBackgroundShade = function(top, left, width, height, orderIndex){
+  let backgroundShade;
+  orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
+
+  let background = new fabric.Rect({
+    groupID: genomeData.genomes[orderIndex][0],
+    top: top,
+    left: left,
+    width: width,
+    height: height,
+    fill: backgroundShade,
+    selectable: false,
+    opacity : .5
+  });
+  canvas.add(background)
+  canvas.sendToBack(background)
+}
+
+/*
  *  Draw background shades between genes of the same cluster.
  *  TODO: generalize this function to take in [start,stop,val] NT sequence ranges to shade any arbitrary metric
  *        - add a separate function for retrieving [start,stop,val] given gene cluster IDs
