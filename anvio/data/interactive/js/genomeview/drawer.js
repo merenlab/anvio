@@ -247,6 +247,75 @@ gDrawer.prototype.addBackgroundShade = function(top, left, width, height, orderI
   canvas.sendToBack(background)
 }
 
+gDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
+  let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
+  let functions = genomeData.genomes[ind][1].genes.functions[geneID];
+
+  let color = 'gray';
+  let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
+
+  // TODO: use state instead of hardcoded color pickers
+
+  // check if gene is highlighted
+  let pickerCode = genomeID + '-' + geneID;
+  if($('#picker_' + pickerCode).length > 0) {
+    color = $('#picker_' + pickerCode).attr('color');
+  } else {
+    if(cag) {
+       if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
+    } else {
+      if (gene.source.startsWith('Ribosomal_RNA')) {
+        cag = 'rRNA';
+      } else if (gene.source == 'Transfer_RNAs') {
+        cag = 'tRNA';
+      } else if (gene.functions !== null) {
+        cag = 'Function';
+      }
+      if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
+    }
+  }
+
+  let length = (gene.stop-gene.start)*scaleFactor;
+  let stemLength = length-25 > 0 ? length-25 : 0;
+
+  var arrowPathStr;
+  switch(style) {
+    case 2: // thicker arrows
+      arrowPathStr = 'M ' + stemLength + ' -5 L 0 -5 L 0 15 L ' + stemLength + ' 15 L ' + stemLength + ' 15 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
+      break;
+    case 3: // pentagon arrows
+      arrowPathStr = 'M 0 0 L ' + stemLength + ' 0 L ' + length + ' 20 L ' + stemLength + ' 40 L 0 40 L 0 0 z';
+      break;
+    case 4: // rect arrows
+      arrowPathStr = 'M ' + length + ' -5 L 0 -5 L 0 15 L ' + length + ' 15 z';
+      break;
+    default: // 'inspect page' arrows
+      arrowPathStr = 'M ' + stemLength + ' 0 L 0 0 L 0 10 L ' + stemLength + ' 10 L ' + stemLength + ' 10 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
+      break;
+  }
+
+  var arrow = new fabric.Path(arrowPathStr);
+  arrow.set({
+    id: 'arrow',
+    groupID: genomeID,
+    lockMovementY: true,
+    hasControls: false,
+    hasBorders: false,
+    lockScaling: true,
+    gene: gene,
+    geneID: geneID,
+    genomeID: genomeID,
+    top: style == 3 ? y-17 : y-11,
+    left: xDisps[genomeID] + (1.5+gene.start)*scaleFactor,
+    fill: color,
+    stroke: 'gray',
+    strokeWidth: style == 3 ? 3 : 1.5
+  });
+  if(gene.direction == 'r') arrow.rotate(180);
+
+  return arrow;
+}
+
 /*
  *  Draw background shades between genes of the same cluster.
  *  TODO: generalize this function to take in [start,stop,val] NT sequence ranges to shade any arbitrary metric
