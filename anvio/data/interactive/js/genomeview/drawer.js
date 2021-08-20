@@ -111,6 +111,122 @@ gDrawer.prototype.addGenome = function(orderIndex){
 }
 
 /*
+ *  For each genome group, iterate additional layers beyond genome and render where appropriate
+ */
+gDrawer.prototype.addLayers = function(orderIndex){
+  yOffset = orderIndex * spacing;
+  let genomeID = genomeData.genomes[orderIndex][0];
+  let genome = genomeData.genomes[orderIndex][1];
+  let label = genome.genes.gene_calls[0].contig;
+
+  let additionalDataLayers = stateData['additional-data-layers'].find(group => group.genome == label)
+  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
+
+  stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+    let layerPos = [spacing / maxGroupSize] * idx
+
+    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
+      buildGroupRulerLayer(genomeID, layerPos, orderIndex)
+    }
+    if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
+      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
+    }
+    if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
+      buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
+    }
+  })
+}
+
+/*
+ *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
+ */
+gDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, orderIndex){
+  let maxGCValue = 0
+    let startingTop = marginTop + yOffset + layerPos
+    let startingLeft = xDisps[genomeID]
+    let layerHeight = spacing / maxGroupSize
+    let pathDirective = [`M 0 0`]
+
+    for(let i = 0; i < additionalDataLayers[layer].length; i++){
+      additionalDataLayers[layer][i] > maxGCValue ? maxGCValue = additionalDataLayers[layer][i] : null
+    }
+
+    let nGroups = 20
+    let j = 0
+    let [l,r] = getRenderNTRange(genomeID);
+    for(let i = 0; i < nGroups; i++) {
+      for(; j < i*genomeMax/nGroups; j+=ptInterval){
+        if(j < l) continue;
+        if(j > r) break;
+        let left = j * scaleFactor + startingLeft
+        let top = [additionalDataLayers[layer][j] / maxGCValue] * layerHeight
+        let segment = `L ${left} ${top}`
+        pathDirective.push(segment)
+      }
+      let graphObj = new fabric.Path(pathDirective.join(' '))
+      graphObj.set({
+        top : startingTop,
+        stroke : additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
+        fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+        selectable: false,
+        objectCaching: false,
+        id : `${layer} graph`,
+        groupID : genomeID,
+        genome : additionalDataLayers['genome']
+      })
+      canvas.bringToFront(graphObj)
+      pathDirective = []
+    }
+    addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+}
+
+/*
+ *  Generate individual genome group rulers
+ */
+gDrawer.prototype.buildGroupRulerLayer = function(){
+  let startingTop = marginTop + yOffset + layerPos
+  let startingLeft = xDisps[genomeID]
+  let layerHeight = spacing / maxGroupSize
+
+  // split ruler into several objects to avoid performance cost of large object pixel size
+  let nRulers = 20;
+  let w = 0;
+  let [l,r] = getRenderNTRange(genomeID);
+  for(let i = 0; i < nRulers; i++) {
+    let ruler = new fabric.Group();
+    for(; w < (i+1)*genomeMax/nRulers; w+=scaleInterval) {
+      if(w < l) continue;
+      if(w > r) break;
+      let tick = new fabric.Line([0,0,0,20], {left: (w*scaleFactor),
+            stroke: 'black',
+            strokeWidth: 1,
+            fontSize: 10,
+            fontFamily: 'sans-serif'});
+      let lbl = new fabric.Text(w/1000 + " kB", {left: (w*scaleFactor+5),
+            stroke: 'black',
+            strokeWidth: .25,
+            fontSize: 15,
+            fontFamily: 'sans-serif'});
+      ruler.add(tick);
+      ruler.add(lbl);
+    }
+      ruler.set({
+        left: startingLeft,
+        top: startingTop,
+        lockMovementY: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScaling: true,
+        objectCaching: false,
+        groupID: genomeID
+      });
+      ruler.addWithUpdate();
+      canvas.add(ruler);
+  }
+  addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+}
+
+/*
  *  Draw background shades between genes of the same cluster.
  *  TODO: generalize this function to take in [start,stop,val] NT sequence ranges to shade any arbitrary metric
  *        - add a separate function for retrieving [start,stop,val] given gene cluster IDs
