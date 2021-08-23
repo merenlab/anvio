@@ -59,3 +59,54 @@
     brush(d3.select(".brush").transition());
     brush.event(d3.select(".brush").transition());
   }
+
+  function setPtsPerADL(newResolution) {
+    if(isNaN(newResolution)) return;
+    newResolution = parseInt(newResolution);
+    if(newResolution < 0 || newResolution > genomeMax) {
+      alert(`Invalid value, genome spacing must be in range 0-${genomeMax}.`);
+      return;
+    }
+    adlPtsPerLayer = newResolution;
+    draw();
+  }
+  
+  function showAllADLPts() {
+    setPtsPerADL(genomeMax);
+    $('#showAllADLPtsBtn').blur();
+  }
+  
+  function alignRulers() {
+    for(genome of genomeData.genomes) {
+      xDisps[genome[0]] = xDisplacement;
+    }
+    percentScale = false;
+    drawScale();
+    bindViewportToWindow();
+    updateScalePos();
+    updateRenderWindow();
+    draw();
+    $('#alignRulerBtn').blur();
+  }
+  
+  function setGenomeSpacing(newSpacing) {
+    if(isNaN(newSpacing)) return;
+    newSpacing = parseInt(newSpacing);
+    if(newSpacing < 0 || newSpacing > 1000) {
+      alert(`Invalid value, genome spacing must be in range 0-1000.`);
+      return;
+    }
+    spacing = newSpacing;
+    draw();
+  }
+  
+  function setScaleInterval(newScale) {
+    if(isNaN(newScale)) return;
+    newScale = parseInt(newScale);
+    if(newScale < 50) {
+      alert(`Invalid value, scale interval must be >=50.`);
+      return;
+    }
+    scaleInterval = newScale;
+    draw();
+  }
