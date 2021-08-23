@@ -24,5 +24,38 @@
  */
 
 function drawTestShades() {
-  shadeGeneClusters(["GC_00000034","GC_00000097","GC_00000002"],{"GC_00000034":"green","GC_00000097":"red","GC_00000002":"purple"});
+  shadeGeneClusters(["GC_00000034", "GC_00000097", "GC_00000002"], { "GC_00000034": "green", "GC_00000097": "red", "GC_00000002": "purple" });
+}
+
+function generateMockADL() {
+  for (let i = 0; i < genomeData.genomes.length; i++) { // generate mock additional data layer content
+    let gcContent = []
+    let coverage = []
+    for (let j = 0; j < genomeMax; j++) {
+      gcContent.push(Math.floor(Math.random() * 45))
+      coverage.push(Math.floor(Math.random() * 45))
+    }
+    let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
+    let additionalDataObject = {
+      'genome': genomeLabel,
+      'coverage': coverage,
+      'coverage-color': 'blue',
+      'gcContent': gcContent,
+      'gcContent-color': 'purple',
+      'ruler': true // TODO: store any genome-specific scale data here
+    }
+    stateData['additional-data-layers'].push(additionalDataObject)
+  }
+}
+function generateMockGenomeOrder() {
+  stateData['genome-order-method'] = [{
+    'name': 'cats',
+    'ordering': 'some order'
+  }, {
+    'name': 'dogs',
+    'ordering': 'some other order'
+  }, {
+    'name': 'birds',
+    'ordering': 'beaks to tails'
+  }]
 }
