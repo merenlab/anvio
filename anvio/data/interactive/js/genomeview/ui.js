@@ -164,3 +164,27 @@ function respondToBookmarkSelect(){
     $('#bookmark-description').text(selectedBookmark['description'])
   })
 }
+
+/*
+ *  respond to ui, redraw with updated group layer order
+ */
+function changeGroupLayersOrder(updatedOrder){
+  stateData['group-layer-order'] = updatedOrder
+  draw()
+}
+
+/*
+ *  respond to ui, redraw with updated genome group order
+ */
+function changeGenomeOrder(updatedOrder){
+  let newGenomeOrder = []
+  updatedOrder.map(label => {
+    genomeData.genomes.map(genome => {
+        if(label == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
+          newGenomeOrder.push(genome)
+        }
+    })
+  })
+  genomeData.genomes = newGenomeOrder
+  draw()
+}
