@@ -188,3 +188,83 @@ function changeGenomeOrder(updatedOrder){
   genomeData.genomes = newGenomeOrder
   draw()
 }
+
+/*
+ *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  Generates functional annotation color table for a given color palette.
+ *
+ *  @param fn_colors :       dict matching each category to a hex color code to override defaults
+ *  @param fn_type :         string indicating function category type: currently one of "COG_CATEGORY", "KEGG_CATEGORY", "Source"
+ *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
+ *  @param filter_to_split : if true, filters categories to only those shown in the split
+ */
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true) {
+  // TODO: consider call_type? see inspectionalutils.js for how this was dealt with earlier
+
+  let db = getColorDefaults(fn_type ? fn_type : 'Source');
+  if(db == null) return;
+  // Override default values with any values supplied to fn_colors
+  if(fn_colors) db = Object.keys(db).map(cag => Object.keys(fn_colors).includes(cag) ? fn_colors[cag] : db[cag]);
+
+  if(filter_to_split && fn_type != 'Source') {
+    let save = [];
+    for(genome of genomeData.genomes) {
+      for(geneFunctions of Object.entries(genome[1].genes.functions)) {
+        let cag = getCagForType(geneFunctions[1], fn_type);
+        if(cag && !save.includes(cag)) save.push(cag);
+      }
+    }
+    Object.keys(db).forEach((cag, color) => {
+      if(!save.includes(cag)) delete db[cag];
+    });
+  }
+
+  $('#tbody_function_colors').empty();
+  Object.keys(db).forEach(category => appendColorRow(getCagName(category, fn_type), category, db[category]) );
+
+  $('.colorpicker').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          // TODO: save new color once state is implemented
+          //state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
+
+  if(highlight_genes) {
+    let genomes = Object.entries(genomeData.genomes).map(g => g[1][0]);
+    for(entry of highlight_genes) {
+      let genomeID = entry['genomeID'];
+      let geneID = entry['geneID'];
+      let color = entry['color'];
+
+      if(!genomes.includes(genomeID)) continue;
+
+      let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
+      let genes = Object.keys(genomeData.genomes[ind][1].genes.gene_calls);
+      if(!(geneID in genes)) continue;
+
+      let label = 'Genome: ' + genomeID + ', Gene: ' + geneID;
+      appendColorRow(label, genomeID + '-' + geneID, color, prepend=true);
+    }
+    $('colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+            //state['highlight-genes'][el.id.substring(7)] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+  }
+}
