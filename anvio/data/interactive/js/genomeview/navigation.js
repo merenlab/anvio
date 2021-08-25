@@ -267,3 +267,38 @@ function drawScale() {
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
   }
 }
+
+/*
+ *  Dynamically set scale tick interval based on scaleFactor.
+ */
+function adjustScaleInterval() {
+  let val = Math.floor(100/scaleFactor);
+  let roundToDigits = Math.floor(Math.log10(val)) - 1;
+  let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
+  scaleInterval = newInterval;
+  $('#genome_scale_interval').val(scaleInterval);
+}
+
+/*
+ *  Update scale info to match viewport location.
+ */
+function updateScalePos() {
+  let [newStart, newEnd] = percentScale ? getFracForVPT() : getNTRangeForVPT();
+  brush.extent([newStart, newEnd]);
+  brush(d3.select(".brush").transition());
+  $('#brush_start').val(newStart);
+  $('#brush_end').val(newEnd);
+}
+
+function updateRenderWindow() {
+  if(percentScale) {
+    let resolution = 4; // # decimals to show for renderw window
+    let [start, end] = [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())];
+    let diff = end - start > 0.1 ? Math.round(10**resolution*(end - start) / 2)/10**resolution : 0.05;
+    renderWindow = [clamp(start - diff, 0, 1), clamp(end + diff, 0, 1)];
+  } else {
+    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
+    renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
+  }
+}
