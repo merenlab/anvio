@@ -22,26 +22,26 @@
  * File Overview : The Drawer class defined here is responsible for rendering genomic + associated data passed from main.js to an interactive 
  * browser canvas. This is where most of the heavy lifting should happen, and where most of our Fabric.js library interactions should occur. 
  */
-var gDrawer = function(settings) {
+var GenomeDrawer = function(settings) {
   this.settings = settings;
 };
 
-gDrawer.prototype.draw = function(){
+GenomeDrawer.prototype.draw = function(){
   canvas.clear()
   labelSpacing = 30 // reset to default value upon each draw() call
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   genomeData['genomes'].map((genome, idx) => {
-    addGenome(idx)
-    addLayers(idx)
+    this.addGenome(idx)
+    this.addLayers(idx)
     labelSpacing += 30
   })
 
-  checkGeneLabels();
-  drawTestShades();
+  this.checkGeneLabels();
+  this.drawTestShades();
 }
 
-gDrawer.prototype.addGenome = function(orderIndex){
+GenomeDrawer.prototype.addGenome = function(orderIndex){
   let genome = genomeData.genomes[orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
@@ -113,7 +113,7 @@ gDrawer.prototype.addGenome = function(orderIndex){
 /*
  *  For each genome group, iterate additional layers beyond genome and render where appropriate
  */
-gDrawer.prototype.addLayers = function(orderIndex){
+GenomeDrawer.prototype.addLayers = function(orderIndex){
   yOffset = orderIndex * spacing;
   let genomeID = genomeData.genomes[orderIndex][0];
   let genome = genomeData.genomes[orderIndex][1];
@@ -140,7 +140,7 @@ gDrawer.prototype.addLayers = function(orderIndex){
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
-gDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, orderIndex){
+GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, orderIndex){
   let maxGCValue = 0
     let startingTop = marginTop + yOffset + layerPos
     let startingLeft = xDisps[genomeID]
@@ -183,7 +183,7 @@ gDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, 
 /*
  *  Generate individual genome group rulers
  */
-gDrawer.prototype.buildGroupRulerLayer = function(){
+GenomeDrawer.prototype.buildGroupRulerLayer = function(){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
   let layerHeight = spacing / maxGroupSize
@@ -229,7 +229,7 @@ gDrawer.prototype.buildGroupRulerLayer = function(){
 /*
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
-gDrawer.prototype.addBackgroundShade = function(top, left, width, height, orderIndex){
+GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, orderIndex){
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
@@ -247,7 +247,7 @@ gDrawer.prototype.addBackgroundShade = function(top, left, width, height, orderI
   canvas.sendToBack(background)
 }
 
-gDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
+GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
   let functions = genomeData.genomes[ind][1].genes.functions[geneID];
 
@@ -324,7 +324,7 @@ gDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
  *  @param geneClusters : array of GC IDs to be shaded
  *  @param colors       : dict defining color of each shade, in the form {geneClusterID : hexColor}
  */
-gDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
+GenomeDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
   if(!genomeData.gene_associations["anvio-pangenome"]) return;
 
   let y = marginTop;
@@ -366,7 +366,7 @@ gDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
   }
 }
 
-gDrawer.prototype.glowGenes = function(geneParams){
+GenomeDrawer.prototype.glowGenes = function(geneParams){
    // convert geneParams format (1) to format (2)
    if(Array.isArray(geneParams[0].geneID)) {
     let newParams = [];
@@ -396,6 +396,6 @@ gDrawer.prototype.glowGenes = function(geneParams){
 /*
  *  Clear all gene links from the canvas.
  */
-gDrawer.prototype.clearShades = function(){
+GenomeDrawer.prototype.clearShades = function(){
   canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
 }
