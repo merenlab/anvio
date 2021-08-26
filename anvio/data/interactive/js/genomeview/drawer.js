@@ -69,7 +69,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
@@ -126,13 +126,13 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
     let layerPos = [spacing / maxGroupSize] * idx
 
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-      buildGroupRulerLayer(genomeID, layerPos, orderIndex)
+      this.buildGroupRulerLayer(genomeID, layerPos, orderIndex)
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
+      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
     }
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
+      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
     }
   })
 }
@@ -177,7 +177,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
       canvas.bringToFront(graphObj)
       pathDirective = []
     }
-    addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+    this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
 /*
@@ -223,7 +223,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function(){
       ruler.addWithUpdate();
       canvas.add(ruler);
   }
-  addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
 /*
