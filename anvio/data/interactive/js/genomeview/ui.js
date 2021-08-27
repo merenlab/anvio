@@ -23,6 +23,9 @@
  * As a general rule, processes that invoke jQuery should probably live here. 
  */
 
+/*
+ *  set event listeners for DOM elements, user input, default jquery values
+ */
 function setEventListeners(){
   // panning
   canvas.on('mouse:down', function (opt) {
