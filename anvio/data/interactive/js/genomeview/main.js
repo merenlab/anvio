@@ -244,5 +244,7 @@ function loadAll() {
   brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
   updateRenderWindow();
-  draw();
+  // draw();
+  let drawer = new GenomeDrawer(settings)
+  drawer.draw() 
 }
