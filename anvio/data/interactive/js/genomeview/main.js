@@ -50,6 +50,7 @@
  let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
  var renderWindow = [];
  var brush;
+ var drawer 
 
  var alignToGC = null;
 
@@ -245,6 +246,6 @@ function loadAll() {
   brush(d3.select(".brush"));
   updateRenderWindow();
   // draw();
-  let drawer = new GenomeDrawer(settings)
+  drawer = new GenomeDrawer(settings)
   drawer.draw() 
 }
