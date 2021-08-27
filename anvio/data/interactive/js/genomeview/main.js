@@ -23,6 +23,43 @@
  * genomeview modules to build out UI and render visualizations. Generally speaking, this file should stay pretty lean and purpose-driven.  
  */
 
+ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
+ var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+
+ var canvas;
+ var genomeLabelsCanvas;
+ var genomeMax = 0;
+
+ var stateData = {};
+ var mainCanvasHeight;
+ var spacing = 50; // vertical spacing between genomes
+ var yOffset = 0 // vertical space between additional data layers
+ var marginTop = 20; // vertical margin at the top of the genome display
+ var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
+ var showLabels = true; // show genome labels?
+ var genomeLabelSize = 15; // font size of genome labels
+ var showGeneLabels = true; // show gene labels?
+ var geneLabelSize = 40; // gene label font size
+ var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
+ var labelSpacing = 30;  // spacing default for genomeLabel canvas
+ var scaleInterval = 100; // nt scale intervals
+ var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
+ var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
+ var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
+ var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
+ let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
+ var renderWindow = [];
+ var brush;
+
+ var alignToGC = null;
+
+ var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon, 4 = rect
+
+ var color_db;
+
+var genomeData;
+var xDisps = {};
+
 $(document).ready(function () {
   setEventListeners()
   initData();
