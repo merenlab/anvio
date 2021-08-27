@@ -23,6 +23,216 @@
  * As a general rule, processes that invoke jQuery should probably live here. 
  */
 
+function setEventListeners(){
+  // panning
+  canvas.on('mouse:down', function (opt) {
+    var evt = opt.e;
+    if (evt.shiftKey === true) {
+      this.isDragging = true;
+      this.selection = false;
+      this.lastPosX = evt.clientX;
+    }
+    this.shades = true;
+    if (opt.target && opt.target.groupID) this.prev = opt.target.left;
+  });
+  canvas.on('mouse:move', function (opt) {
+    if (this.isDragging) {
+      var e = opt.e;
+      var vpt = this.viewportTransform;
+      vpt[4] += e.clientX - this.lastPosX;
+      bindViewportToWindow();
+      this.requestRenderAll();
+      this.lastPosX = e.clientX;
+
+      let [l, r] = getFracForVPT();
+      if (l < renderWindow[0] || r > renderWindow[1]) {
+        updateRenderWindow();
+        draw();
+      }
+    }
+  });
+  canvas.on('mouse:up', function (opt) {
+    this.setViewportTransform(this.viewportTransform);
+    if (this.isDragging) updateScalePos();
+    this.isDragging = false;
+    this.selection = true;
+    if (!this.shades) {
+      // slid a genome
+      this.shades = true;
+      drawTestShades();
+      bindViewportToWindow();
+      updateScalePos(); // adjust scale box to new sequence breadth
+      updateRenderWindow();
+
+      redrawGenome(opt.target.groupID);
+    }
+  });
+  canvas.on('object:moving', function (opt) {
+    var gid = opt.target ? opt.target.groupID : null;
+    if (gid == null) return;
+
+    if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && arrowStyle == 3)) canvas.sendBackwards(opt.target);
+    if (this.shades) {
+      clearShades();
+      this.shades = false;
+    }
+
+    let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
+
+    var delta = opt.target.left - this.prev;
+    canvas.getObjects().filter(obj => obj.groupID == gid).forEach(o => {
+      if (o !== opt.target) o.left += delta;
+    });
+    xDisps[gid] += delta;
+
+    this.setViewportTransform(this.viewportTransform);
+    setPercentScale();
+    this.prev = opt.target.left;
+  });
+  canvas.on('mouse:wheel', function (opt) {
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+
+    var delta = opt.e.deltaY;
+    let tmp = scaleFactor * (0.999 ** delta);
+    let diff = tmp - scaleFactor;
+    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let [newStart, newEnd] = [Math.floor(start - diff * genomeMax), Math.floor(end + diff * genomeMax)];
+    if (newStart < 0) newStart = 0;
+    if (newEnd > genomeMax) newEnd = genomeMax;
+    if (newEnd - newStart < 50) return;
+
+    brush.extent([newStart, newEnd]);
+    brush(d3.select(".brush").transition()); // if zoom is slow or choppy, try removing .transition()
+    brush.event(d3.select(".brush"));
+    $('#brush_start').val(newStart);
+    $('#brush_end').val(newEnd);
+  });
+
+  $('#alignClusterInput').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      alignToCluster($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#panClusterInput').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      viewCluster($(this).val());
+      $(this).blur();
+    }
+  });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
+      toggleSettingsPanel();
+    }
+  });
+  $('#genome_spacing').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      setGenomeSpacing($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#gene_label').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      setGeneLabelSize($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#genome_label').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      setGenomeLabelSize($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#genome_scale_interval').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      setScaleInterval($(this).val());
+      $(this).blur();
+    }
+  });
+  $('#gene_color_order').on('change', function () {
+    color_db = $(this).val();
+    generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
+    draw();
+    $(this).blur();
+  });
+  $('#arrow_style').on('change', function () {
+    arrowStyle = parseInt($(this).val());
+    draw();
+    $(this).blur();
+  });
+  $('#gene_text_pos').on('change', function () {
+    geneLabelPos = $(this).val();
+    if (!(geneLabelPos == "inside" && arrowStyle != 3)) draw();
+    $(this).blur();
+  });
+  $('#show_genome_labels_box').on('change', function () {
+    showLabels = !showLabels;
+    xDisplacement = showLabels ? 120 : 0;
+    alignToGC = null;
+    draw();
+  });
+  $('#show_gene_labels_box').on('change', function () {
+    showGeneLabels = !showGeneLabels;
+    draw();
+  });
+  $('#show_dynamic_scale_box').on('change', function () {
+    dynamicScaleInterval = !dynamicScaleInterval;
+  });
+  $('#adl_pts_per_layer').on('change', function () {
+    setPtsPerADL($(this).val());
+    $(this).blur();
+  });
+  $('#brush_start, #brush_end').keydown(function (ev) {
+    if (ev.which == 13) { // enter key
+      let [start, end] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())]
+        : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+      let endBound = percentScale ? 1 : genomeMax;
+
+      if (isNaN(start) || isNaN(end) || start < 0 || start > endBound || end < 0 || end > endBound) {
+        alert(`Invalid value, value needs to be in range 0-${endBound}.`);
+        return;
+      }
+
+      if (start >= end) {
+        alert('Starting value cannot be greater or equal to the ending value.');
+        return;
+      }
+
+      brush.extent([start, end]);
+      brush(d3.select(".brush").transition());
+      brush.event(d3.select(".brush").transition());
+    }
+  });
+
+  $('#brush_start').val(0);
+  $('#brush_end').val(Math.floor(canvas.getWidth()));
+
+  $('#tooltip-body').hide() // set initual tooltip hide value
+  $('#show_genome_labels_box').attr("checked", showLabels);
+  $('#show_gene_labels_box').attr("checked", showGeneLabels);
+  $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
+
+  // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
+
+  // disable group selection
+  canvas.on('selection:created', (e) => {
+    if (e.target.type === 'activeSelection') {
+      canvas.discardActiveObject();
+    }
+  })
+
+  canvas.on('mouse:over', (event) => {
+    if (event.target && event.target.id === 'arrow') {
+      showToolTip(event)
+    }
+  })
+
+  canvas.on('mouse:out', (event) => {
+    $('#tooltip-body').html('').hide()
+  })
+}
+
 function showToolTip(event){
   $('#tooltip-body').show().append(`
     <p></p>
