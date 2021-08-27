@@ -50,7 +50,8 @@ function setEventListeners(){
       let [l, r] = getFracForVPT();
       if (l < renderWindow[0] || r > renderWindow[1]) {
         updateRenderWindow();
-        draw();
+        // draw();
+        drawer.draw()
       }
     }
   });
@@ -156,12 +157,14 @@ function setEventListeners(){
   $('#gene_color_order').on('change', function () {
     color_db = $(this).val();
     generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
-    draw();
+    // draw();
+    drawer,draw()
     $(this).blur();
   });
   $('#arrow_style').on('change', function () {
     arrowStyle = parseInt($(this).val());
-    draw();
+    // draw();
+    drawer.draw()
     $(this).blur();
   });
   $('#gene_text_pos').on('change', function () {
@@ -173,11 +176,13 @@ function setEventListeners(){
     showLabels = !showLabels;
     xDisplacement = showLabels ? 120 : 0;
     alignToGC = null;
-    draw();
+    // draw();
+    drawer.draw()
   });
   $('#show_gene_labels_box').on('change', function () {
     showGeneLabels = !showGeneLabels;
-    draw();
+    // draw();
+    drawer.draw()
   });
   $('#show_dynamic_scale_box').on('change', function () {
     dynamicScaleInterval = !dynamicScaleInterval;
@@ -336,7 +341,8 @@ function toggleAdditionalDataLayer(e){
     stateData['display']['additionalDataLayers'][layer] = false
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
-  draw()
+  // draw()
+  drawer.draw()
 }
 
 /*
@@ -383,7 +389,8 @@ function respondToBookmarkSelect(){
  */
 function changeGroupLayersOrder(updatedOrder){
   stateData['group-layer-order'] = updatedOrder
-  draw()
+  // draw()
+  drawer.draw()
 }
 
 /*
@@ -399,7 +406,8 @@ function changeGenomeOrder(updatedOrder){
     })
   })
   genomeData.genomes = newGenomeOrder
-  draw()
+  // draw()
+  drawer.draw()
 }
 
 /*
