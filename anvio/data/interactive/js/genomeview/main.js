@@ -19,7 +19,7 @@
  */
 
 /**
- * File Overview : This file is the entrypoint for genomeview. Here, genomic + state data are are retrieved from the backend, processed, and passed to the various other
+ * File Overview : This file is the entrypoint for genomeview. Here, genomic + state data are retrieved from the backend, processed, and passed to the various other
  * genomeview modules to build out UI and render visualizations. Generally speaking, this file should stay pretty lean and purpose-driven.  
  */
 
