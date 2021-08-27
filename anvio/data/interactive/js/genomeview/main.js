@@ -227,30 +227,6 @@ function loadAll() {
     $("#genome_spacing").val(spacing);
   }
 
-  function showToolTip(event) {
-    $('#tooltip-body').show().append(`
-            <p></p>
-            <style type="text/css">
-              .tftable {font-size:12px;color:#333333;width:100%;border-width: 1px;border-color: #729ea5;border-collapse: collapse;}
-              .tftable th {font-size:12px;background-color:#acc8cc;border-width: 1px;padding: 8px;border-style: solid;border-color: #729ea5;text-align:left;}
-              .tftable tr {background-color:#d4e3e5;}
-              .tftable td {font-size:12px;border-width: 1px;padding: 8px;border-style: solid;border-color: #729ea5;}
-              .tftable tr:hover {background-color:#ffffff;}
-            </style>
-      
-            <table class="tftable" border="1">
-              <tr><th>Data</th><th>Value</th></tr>
-              <tr><td>Split</td><td>${event.target.gene.contig}</td></tr>
-              <tr><td>Start in Contig</td><td>${event.target.gene.start}</td></tr>
-              <tr><td>Length</td><td>${event.target.gene.stop - event.target.gene.start}</td></tr>
-              <tr><td>Gene Callers ID</td><td>${event.target.geneID}</td></tr>
-              <tr><td>Gene Cluster</td><td>${genomeData.gene_associations["anvio-pangenome"] ? genomeData.gene_associations["anvio-pangenome"]["genome-and-gene-names-to-gene-clusters"][event.target.genomeID][event.target.geneID] : "None"}</td></tr>
-            </table>
-            <button>some action</button>
-            <button>some other action</button>
-            `).css({ 'position': 'absolute', 'left': event.e.clientX, 'top': event.e.clientY })
-  }
-
   $('#gene_color_order').append($('<option>', {
     value: 'Source',
     text: 'Source'
