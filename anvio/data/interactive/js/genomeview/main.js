@@ -26,8 +26,7 @@
 $(document).ready(function () {
   setEventListeners()
   initData();
-  // loadState();
-  processState('default', stateData) // lifted here until loadState is hooked in from backend
+  loadState();
   loadAll();
 });
 
@@ -50,23 +49,25 @@ function initData() {
 }
 
 function loadState() {
-  $.ajax({
-    type: 'GET',
-    cache: false,
-    url: '/data/genome_view/state/get/' + state_name,
-    success: function (response) {
-      try {
-        // processState(state_name, response[0]); process actual response from backend
-        processState(state_name, mockStateData); // process mock state data
-      } catch (e) {
-        console.error("Exception thrown", e.stack);
-        toastr.error('Failed to parse state data, ' + e);
-        defer.reject();
-        return;
-      }
-      // waitingDialog.hide();
-    }
-  })
+  // $.ajax({
+  //   type: 'GET',
+  //   cache: false,
+  //   url: '/data/genome_view/state/get/' + state_name,
+  //   success: function (response) {
+  //     try {
+  //       // processState(state_name, response[0]); process actual response from backend
+  //       processState(state_name, mockStateData); // process mock state data
+  //     } catch (e) {
+  //       console.error("Exception thrown", e.stack);
+  //       toastr.error('Failed to parse state data, ' + e);
+  //       defer.reject();
+  //       return;
+  //     }
+  //     // waitingDialog.hide();
+  //   }
+  // })
+  processState('default', stateData) // moved here until state route is hooked in from backend
+
 }
 
 function serializeSettings() {
