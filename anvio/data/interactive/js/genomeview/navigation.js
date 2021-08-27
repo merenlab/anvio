@@ -49,7 +49,8 @@
     if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
       scaleFactor = 0.01;
       if(dynamicScaleInterval) adjustScaleInterval();
-    draw();
+    // draw();
+    drawer.draw()
       return;
     }
     if(newStart < 0) newStart = 0;
@@ -68,7 +69,8 @@
       return;
     }
     adlPtsPerLayer = newResolution;
-    draw();
+    // draw();
+    drawer.draw()
   }
   
   function showAllADLPts() {
@@ -85,7 +87,8 @@
     bindViewportToWindow();
     updateScalePos();
     updateRenderWindow();
-    draw();
+    // draw();
+    drawer.draw()
     $('#alignRulerBtn').blur();
   }
   
@@ -97,7 +100,8 @@
       return;
     }
     spacing = newSpacing;
-    draw();
+    // draw();
+    drawer.draw()
   }
   
   function setScaleInterval(newScale) {
@@ -108,7 +112,8 @@
       return;
     }
     scaleInterval = newScale;
-    draw();
+    // draw();
+    drawer.draw()
   }
 
   /*
@@ -260,7 +265,8 @@ function drawScale() {
 
       if(dynamicScaleInterval) adjustScaleInterval();
 
-      draw();
+      // draw();
+      drawer.draw()
       let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
       canvas.absolutePan({x: moveToX, y: 0});
 
