@@ -31,6 +31,7 @@
  var genomeMax = 0;
 
  var stateData = {};
+ var settings = {} // packaged obj sent off to GenomeDrawer
  var mainCanvasHeight;
  var spacing = 50; // vertical spacing between genomes
  var yOffset = 0 // vertical space between additional data layers
@@ -220,6 +221,8 @@ function loadAll() {
   brush(d3.select(".brush"));
   updateRenderWindow();
   // draw();
+
+  settings = Object.assign(settings, genome, stateData)
   drawer = new GenomeDrawer(settings)
   drawer.draw() 
 }
