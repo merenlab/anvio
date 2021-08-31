@@ -146,6 +146,23 @@ function getFracForVPT() {
   return [window_left, window_right];
 }
 
+/*
+ *  @returns range of renderWindow x-positions for a given proportional range
+ */
+function getRenderXRangeForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
+  return [x1, x2];
+}
+
+function getRenderNTRange(genomeID) {
+  if(!percentScale) return renderWindow;
+  let [l,r] = calcXBounds();
+  let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
+  return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
+}
+
 function getCategoryForKEGGClass(class_str) {
   if(class_str == null) return null;
 
