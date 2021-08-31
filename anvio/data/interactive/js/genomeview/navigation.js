@@ -151,17 +151,6 @@ function drawScale() {
 }
 
 /*
- *  Dynamically set scale tick interval based on scaleFactor.
- */
-function adjustScaleInterval() {
-  let val = Math.floor(100/scaleFactor);
-  let roundToDigits = Math.floor(Math.log10(val)) - 1;
-  let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
-  scaleInterval = newInterval;
-  $('#genome_scale_interval').val(scaleInterval);
-}
-
-/*
  *  Update scale info to match viewport location.
  */
 function updateScalePos() {

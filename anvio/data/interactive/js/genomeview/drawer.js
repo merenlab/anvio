@@ -519,3 +519,14 @@ GenomeDrawer.prototype.redrawSingleGenome = function(genomeID){
   addLayers(idx);
   checkGeneLabels();
 }
+
+/*
+ *  Dynamically set scale tick interval based on scaleFactor.
+ */
+GenomeDrawer.prototype.adjustScaleInterval = function(){
+  let val = Math.floor(100/scaleFactor);
+  let roundToDigits = Math.floor(Math.log10(val)) - 1;
+  let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
+  scaleInterval = newInterval;
+  $('#genome_scale_interval').val(scaleInterval);
+}
