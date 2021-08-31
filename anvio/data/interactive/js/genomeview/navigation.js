@@ -308,3 +308,45 @@ function updateRenderWindow() {
     renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
   }
 }
+
+/*
+ * Pan viewport to the first gene in the target gene cluster.
+ *
+ * @param gc : target gene cluster ID
+ * @returns tuple [a,b] where
+ *  a is genomeID of the first genome containing `gc` and
+ *  b is NT position of the middle of the target gene
+*/
+function viewCluster(gc) {
+  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+
+  let genes = [];
+  let geneMid;
+  let first = true;
+  let firstGenomeID;
+
+  if(!gc || gc in genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"]) {
+    for(genome of genomeData.genomes) {
+      var targetGenes = getGenesOfGC(genome[0], gc);
+      if(targetGenes == null) continue;
+      var targetGeneID = targetGenes[0]; /* TODO: implementation for multiple matching gene IDs */
+      var targetGene = genome[1].genes.gene_calls[targetGeneID];
+      genes.push({genomeID:genome[0],geneID:targetGeneID});
+      if(first) {
+        geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
+        canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
+        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
+        firstGenomeID = genome[0];
+        first = false;
+      }
+    }
+    updateScalePos();
+    updateRenderWindow();
+    draw();
+    glowGenes(genes);
+    return (first ? null : [firstGenomeID, geneMid]);
+  } else {
+    console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
+    return null;
+  }
+}

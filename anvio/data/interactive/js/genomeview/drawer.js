@@ -366,6 +366,13 @@ GenomeDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
   }
 }
 
+/*
+ *  Add a temporary glow effect around given gene(s).
+ *
+ *  @param geneParams : array of dicts, in one of two formats:
+ *    (1) [{genomeID: gid_1, geneID: [id_1, id_2, ...]}, ...]
+ *    (2) [{genomeID: gid_1, geneID: id_1}, ...]
+ */
 GenomeDrawer.prototype.glowGenes = function(geneParams){
    // convert geneParams format (1) to format (2)
    if(Array.isArray(geneParams[0].geneID)) {
