@@ -1553,7 +1553,8 @@ function getCustomColorDict(fn_type) {
   let cags = [];
   genomeData.genomes.forEach(genome => {
     Object.values(genome[1].genes.functions).forEach(fn => {
-      if(fn && fn[fn_type] && fn[fn_type][1] && !cags.includes(fn[fn_type][1])) cags.push(fn[fn_type][1]);
+      let cag = getCagForType(fn, fn_type);
+      if(cag && !cags.includes(cag)) cags.push(cag);
     });
   });
 
@@ -1578,7 +1579,8 @@ function getCagForType(geneFunctions, fn_type) {
       // TODO
       return null;
     default:
-      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1] : null;
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      return out;
   }
 }
 
@@ -1617,9 +1619,9 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   if(filter_to_split && fn_type != 'Source') {
     let save = [];
     for(genome of genomeData.genomes) {
-      let genes = Object.values(genome[1].genes);
-      for(gene of genes) {
-        let cag = getCagForType(gene.functions, fn_type);
+      let geneFuns = Object.values(genome[1].genes.functions);
+      for(funs of geneFuns) {
+        let cag = getCagForType(funs, fn_type);
         if(cag && !save.includes(cag)) save.push(cag);
       }
     }
