@@ -163,6 +163,20 @@ function getRenderNTRange(genomeID) {
   return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
 }
 
+/*
+ *  @returns array [min, max] where
+ *    min = x-start of the leftmost genome, max = x-end of the rightmost genome
+ */
+function calcXBounds() {
+  let min = 9*(10**9), max = -9*(10**9);
+  for(let g in xDisps) {
+    if(xDisps[g] > max) max = xDisps[g];
+    if(xDisps[g] < min) min = xDisps[g];
+  }
+  return [min, max + scaleFactor*genomeMax];
+}
+
+
 function getCategoryForKEGGClass(class_str) {
   if(class_str == null) return null;
 

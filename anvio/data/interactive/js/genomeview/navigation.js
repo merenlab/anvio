@@ -75,19 +75,6 @@ function bindViewportToWindow() {
 }
 
 /*
- *  @returns array [min, max] where
- *    min = x-start of the leftmost genome, max = x-end of the rightmost genome
- */
-function calcXBounds() {
-  let min = 9*(10**9), max = -9*(10**9);
-  for(let g in xDisps) {
-    if(xDisps[g] > max) max = xDisps[g];
-    if(xDisps[g] < min) min = xDisps[g];
-  }
-  return [min, max + scaleFactor*genomeMax];
-}
-
-/*
  *  Replaces nt scale with a 0-1 proportional scale
  */
 function setPercentScale() {
