@@ -63,7 +63,6 @@ var genomeData;
 var xDisps = {};
 
 $(document).ready(function () {
-  setEventListeners()
   initData();
   loadState();
   loadAll();
@@ -222,6 +221,7 @@ function loadAll() {
   updateRenderWindow();
   // draw();
 
+  setEventListeners()
   settings = Object.assign(settings, genome, stateData)
   drawer = new GenomeDrawer(settings)
   drawer.draw() 
