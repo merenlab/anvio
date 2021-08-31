@@ -410,8 +410,9 @@ function changeGenomeOrder(updatedOrder){
   drawer.draw()
 }
 
+
 /*
- *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  [TO BE ADDED TO 'regular' utils.js]
  *  Generates functional annotation color table for a given color palette.
  *
  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
@@ -430,8 +431,9 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   if(filter_to_split && fn_type != 'Source') {
     let save = [];
     for(genome of genomeData.genomes) {
-      for(geneFunctions of Object.entries(genome[1].genes.functions)) {
-        let cag = getCagForType(geneFunctions[1], fn_type);
+      let geneFuns = Object.values(genome[1].genes.functions);
+      for(funs of geneFuns) {
+        let cag = getCagForType(funs, fn_type);
         if(cag && !save.includes(cag)) save.push(cag);
       }
     }
