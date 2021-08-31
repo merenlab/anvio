@@ -512,3 +512,15 @@ function appendColorRow(label, cag, color, prepend=false) {
     $('#tbody_function_colors').append(tbody_content);
   }
 }
+
+/*
+ * [TO BE ADDED to genomeview/UI.js OR 'regular' utils.js]
+ * Resets function color table to the default set
+ *
+ * @param fn_colors: If set, resets state to this dictionary instead of the defaults.
+ */
+function resetFunctionColors(fn_colors=null) {
+  // TODO: this should reset color dictionaries in state and then redraw table, once state is implemented
+  if($('#gene_color_order') == null) return;
+  generateColorTable(fn_colors, color_db);
+}
