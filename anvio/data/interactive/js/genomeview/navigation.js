@@ -60,23 +60,6 @@
     brush(d3.select(".brush").transition());
     brush.event(d3.select(".brush").transition());
   }
-
-  function setPtsPerADL(newResolution) {
-    if(isNaN(newResolution)) return;
-    newResolution = parseInt(newResolution);
-    if(newResolution < 0 || newResolution > genomeMax) {
-      alert(`Invalid value, genome spacing must be in range 0-${genomeMax}.`);
-      return;
-    }
-    adlPtsPerLayer = newResolution;
-    // draw();
-    drawer.draw()
-  }
-  
-  function showAllADLPts() {
-    setPtsPerADL(genomeMax);
-    $('#showAllADLPtsBtn').blur();
-  }
   
   function alignRulers() {
     for(genome of genomeData.genomes) {

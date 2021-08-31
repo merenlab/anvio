@@ -449,3 +449,8 @@ GenomeDrawer.prototype.setPtsPerADL = function (){
   adlPtsPerLayer = newResolution;
   draw();
 }
+
+GenomeDrawer.prototype.showAllADLPts = function(){
+  setPtsPerADL(genomeMax);
+  $('#showAllADLPtsBtn').blur();
+}
