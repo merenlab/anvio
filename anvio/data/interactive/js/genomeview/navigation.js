@@ -61,18 +61,6 @@
     brush.event(d3.select(".brush").transition());
   }
   
-  function setGenomeSpacing(newSpacing) {
-    if(isNaN(newSpacing)) return;
-    newSpacing = parseInt(newSpacing);
-    if(newSpacing < 0 || newSpacing > 1000) {
-      alert(`Invalid value, genome spacing must be in range 0-1000.`);
-      return;
-    }
-    spacing = newSpacing;
-    // draw();
-    drawer.draw()
-  }
-  
   function setScaleInterval(newScale) {
     if(isNaN(newScale)) return;
     newScale = parseInt(newScale);
