@@ -176,6 +176,89 @@ function calcXBounds() {
   return [min, max + scaleFactor*genomeMax];
 }
 
+/*
+ *  [TO BE ADDED TO 'regular' utils.js since it can be used in the inspect page]
+ *  @returns array of functional annotation types from table in `genomeData`
+ */
+function getFunctionalAnnotations() {
+  return Object.keys(genomeData.genomes[0][1].genes.functions[0]);
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns relevant category:color dict from constants.js for a given functional annotation
+ */
+function getColorDefaults(fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return default_COG_colors;
+    case 'KEGG_CATEGORY':
+      return default_KEGG_colors;
+    case 'Source':
+      return default_source_colors;
+    default:
+      // user-supplied color table
+      return getCustomColorDict(fn_type);
+  }
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type) {
+  if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
+
+  let cags = [];
+  genomeData.genomes.forEach(genome => {
+    Object.values(genome[1].genes.functions).forEach(fn => {
+      let cag = getCagForType(fn, fn_type);
+      if(cag && !cags.includes(cag)) cags.push(cag);
+    });
+  });
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+  delete out["undefined"];
+
+  return out;
+}
+
+/*
+ *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  @returns target gene's category code for a given functional annotation type.
+ */
+function getCagForType(geneFunctions, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1][0] : null;
+    case 'KEGG_CATEGORY':
+      // TODO
+      return null;
+    default:
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';')); // or semicolon-separated
+      return out;
+  }
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
+ */
+function getCagName(category, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return COG_categories[category];
+    case 'KEGG_CATEGORY':
+      return KEGG_categories[category];
+    default:
+      return category;
+  }
+}
 
 function getCategoryForKEGGClass(class_str) {
   if(class_str == null) return null;
