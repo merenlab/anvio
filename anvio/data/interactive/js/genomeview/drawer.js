@@ -478,3 +478,14 @@ GenomeDrawer.prototype.setGenomeSpacing = function(){
   spacing = newSpacing;
   draw();
 }
+
+GenomeDrawer.prototype.setScaleInterval = function(newScale){
+  if(isNaN(newScale)) return;
+  newScale = parseInt(newScale);
+  if(newScale < 50) {
+    alert(`Invalid value, scale interval must be >=50.`);
+    return;
+  }
+  scaleInterval = newScale;
+  draw();
+}

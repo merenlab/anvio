@@ -60,18 +60,6 @@
     brush(d3.select(".brush").transition());
     brush.event(d3.select(".brush").transition());
   }
-  
-  function setScaleInterval(newScale) {
-    if(isNaN(newScale)) return;
-    newScale = parseInt(newScale);
-    if(newScale < 50) {
-      alert(`Invalid value, scale interval must be >=50.`);
-      return;
-    }
-    scaleInterval = newScale;
-    // draw();
-    drawer.draw()
-  }
 
   /*
  *  @returns [start, stop] nt range for the current viewport and scaleFactor
