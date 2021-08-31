@@ -68,7 +68,7 @@ function setEventListeners(){
       updateScalePos(); // adjust scale box to new sequence breadth
       updateRenderWindow();
 
-      redrawGenome(opt.target.groupID);
+      GenomeDrawer.redrawSingleGenome(opt.target.groupID);
     }
   });
   canvas.on('object:moving', function (opt) {

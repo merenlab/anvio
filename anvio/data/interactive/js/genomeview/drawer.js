@@ -511,3 +511,11 @@ GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
   genomeLabelSize = newSize;
   if(showLabels) draw();
 }
+
+GenomeDrawer.prototype.redrawSingleGenome = function(genomeID){
+  canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
+  let idx = genomeData.genomes.findIndex(obj => obj[0] == genomeID);
+  addGenome(idx);
+  addLayers(idx);
+  checkGeneLabels();
+}
