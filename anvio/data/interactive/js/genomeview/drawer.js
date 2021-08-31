@@ -489,3 +489,14 @@ GenomeDrawer.prototype.setScaleInterval = function(newScale){
   scaleInterval = newScale;
   draw();
 }
+
+GenomeDrawer.prototype.setGeneLabelSize = function(newSize){
+  if(isNaN(newSize)) return;
+  newSize = parseInt(newSize);
+  if(newSize < 0 || newSize > 1000) {
+    alert(`Invalid value, gene label size must be in range 0-1000.`);
+    return;
+  }
+  geneLabelSize = newSize;
+  if(showGeneLabels) draw();
+}
