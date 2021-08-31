@@ -467,3 +467,14 @@ GenomeDrawer.prototype.alignRulers = function(){
   draw();
   $('#alignRulerBtn').blur();
 }
+
+GenomeDrawer.prototype.setGenomeSpacing = function(){
+  if(isNaN(newSpacing)) return;
+  newSpacing = parseInt(newSpacing);
+  if(newSpacing < 0 || newSpacing > 1000) {
+    alert(`Invalid value, genome spacing must be in range 0-1000.`);
+    return;
+  }
+  spacing = newSpacing;
+  draw();
+}
