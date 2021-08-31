@@ -1580,6 +1580,7 @@ function getCagForType(geneFunctions, fn_type) {
       return null;
     default:
       let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
       return out;
   }
 }
