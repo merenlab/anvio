@@ -312,7 +312,6 @@ function loadAll() {
     text: 'Source'
   }));
   for(fn of getFunctionalAnnotations()) {
-    if(!['COG_CATEGORY', 'KEGG_CATEGORY'].includes(fn)) continue; // TODO: support any option
     $('#gene_color_order').append($('<option>', {
       value: fn,
       text: fn
@@ -1539,9 +1538,32 @@ function getColorDefaults(fn_type) {
     case 'Source':
       return default_source_colors;
     default:
-      console.log("Warning: Invalid type for function color table");
-      return null;
+      // user-supplied color table
+      return getCustomColorDict(fn_type);
   }
+}
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type) {
+  if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
+
+  let cags = [];
+  genomeData.genomes.forEach(genome => {
+    Object.values(genome[1].genes.functions).forEach(fn => {
+      if(fn && fn[fn_type] && fn[fn_type][1] && !cags.includes(fn[fn_type][1])) cags.push(fn[fn_type][1]);
+    });
+  });
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+  delete out["undefined"];
+
+  return out;
 }
 
 /*
@@ -1556,8 +1578,7 @@ function getCagForType(geneFunctions, fn_type) {
       // TODO
       return null;
     default:
-      // TODO
-      return null;
+      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1] : null;
   }
 }
 
@@ -1577,7 +1598,7 @@ function getCagName(category, fn_type) {
 }
 
 /*
- *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
+ *  [TO BE ADDED TO 'regular' utils.js]
  *  Generates functional annotation color table for a given color palette.
  *
  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
@@ -1596,8 +1617,9 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   if(filter_to_split && fn_type != 'Source') {
     let save = [];
     for(genome of genomeData.genomes) {
-      for(geneFunctions of Object.entries(genome[1].genes.functions)) {
-        let cag = getCagForType(geneFunctions[1], fn_type);
+      let genes = Object.values(genome[1].genes);
+      for(gene of genes) {
+        let cag = getCagForType(gene.functions, fn_type);
         if(cag && !save.includes(cag)) save.push(cag);
       }
     }

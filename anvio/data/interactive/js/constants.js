@@ -107,6 +107,9 @@ var default_source_colors = {
   'rRNA': '#b22222'
 }
 
+// default colors for user-supplied functional annotations
+var custom_cag_colors = Object.values(default_COG_colors).concat(Object.values(default_KEGG_colors));
+
 var named_functional_sources = {
     'EGGNOG_BACT': {
         'accession_decorator': (function (d) {
