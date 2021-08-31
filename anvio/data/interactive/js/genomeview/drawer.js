@@ -500,3 +500,14 @@ GenomeDrawer.prototype.setGeneLabelSize = function(newSize){
   geneLabelSize = newSize;
   if(showGeneLabels) draw();
 }
+
+GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
+  if(isNaN(newSize)) return;
+  newSize = parseInt(newSize);
+  if(newSize < 0 || newSize > 1000) {
+    alert(`Invalid value, genome label size must be in range 0-1000.`);
+    return;
+  }
+  genomeLabelSize = newSize;
+  if(showLabels) draw();
+}
