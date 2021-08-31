@@ -491,3 +491,24 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
     });
   }
 }
+
+/*
+ *  [TO BE ADDED TO 'regular' utils.js]
+ */
+function appendColorRow(label, cag, color, prepend=false) {
+  let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
+  var tbody_content =
+   '<tr id="picker_row_' + code + '"> \
+      <td></td> \
+      <td> \
+        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+      </td> \
+      <td>' + label + '</td> \
+    </tr>';
+
+  if(prepend) {
+    $('#tbody_function_colors').prepend(tbody_content);
+  } else {
+    $('#tbody_function_colors').append(tbody_content);
+  }
+}
