@@ -1042,7 +1042,7 @@ function geneArrow(gene, geneID, y, genomeID, style) {
   let functions = genomeData.genomes[ind][1].genes.functions[geneID];
 
   let color = 'gray';
-  let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
+  let cag = getCagForType(functions, color_db);
 
   // TODO: use state instead of hardcoded color pickers
 
@@ -1052,7 +1052,8 @@ function geneArrow(gene, geneID, y, genomeID, style) {
     color = $('#picker_' + pickerCode).attr('color');
   } else {
     if(cag) {
-       if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
+      let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
+      if($('#picker_' + code).length > 0) color = $('#picker_' + code).attr('color');
     } else {
       if (gene.source.startsWith('Ribosomal_RNA')) {
         cag = 'rRNA';
@@ -1581,6 +1582,7 @@ function getCagForType(geneFunctions, fn_type) {
     default:
       let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
       if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';')); // or semicolon-separated
       return out;
   }
 }
@@ -1685,11 +1687,12 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
  *  [TO BE ADDED TO 'regular' utils.js]
  */
 function appendColorRow(label, cag, color, prepend=false) {
+  let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
   var tbody_content =
-   '<tr id="picker_row_' + cag + '"> \
+   '<tr id="picker_row_' + code + '"> \
       <td></td> \
       <td> \
-        <div id="picker_' + cag + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
       </td> \
       <td>' + label + '</td> \
     </tr>';
