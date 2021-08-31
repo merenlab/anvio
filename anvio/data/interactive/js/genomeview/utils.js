@@ -107,6 +107,25 @@ function checkGeneLabels() {
   }
 }
 
+ /*
+ *  @returns [start, stop] nt range for the current viewport and scaleFactor
+ */
+ function getNTRangeForVPT() {
+  let vpt = canvas.viewportTransform;
+  let window_left = Math.floor((-1*vpt[4]-xDisplacement)/scaleFactor);
+  let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
+  // if window is out of bounds, shift to be in bounds
+  if(window_left < 0) {
+    window_right -= window_left;
+    window_left = 0;
+  }
+  if(window_right > genomeMax) {
+    window_left -= (window_right - genomeMax);
+    window_right = genomeMax;
+  }
+  return [window_left, window_right];
+}
+
 function getCategoryForKEGGClass(class_str) {
   if(class_str == null) return null;
 
