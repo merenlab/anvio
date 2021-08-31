@@ -454,3 +454,16 @@ GenomeDrawer.prototype.showAllADLPts = function(){
   setPtsPerADL(genomeMax);
   $('#showAllADLPtsBtn').blur();
 }
+
+GenomeDrawer.prototype.alignRulers = function(){
+  for(genome of genomeData.genomes) {
+    xDisps[genome[0]] = xDisplacement;
+  }
+  percentScale = false;
+  drawScale();
+  bindViewportToWindow();
+  updateScalePos();
+  updateRenderWindow();
+  draw();
+  $('#alignRulerBtn').blur();
+}

@@ -61,20 +61,6 @@
     brush.event(d3.select(".brush").transition());
   }
   
-  function alignRulers() {
-    for(genome of genomeData.genomes) {
-      xDisps[genome[0]] = xDisplacement;
-    }
-    percentScale = false;
-    drawScale();
-    bindViewportToWindow();
-    updateScalePos();
-    updateRenderWindow();
-    // draw();
-    drawer.draw()
-    $('#alignRulerBtn').blur();
-  }
-  
   function setGenomeSpacing(newSpacing) {
     if(isNaN(newSpacing)) return;
     newSpacing = parseInt(newSpacing);
