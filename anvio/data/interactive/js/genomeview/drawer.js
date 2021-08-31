@@ -394,6 +394,38 @@ GenomeDrawer.prototype.glowGenes = function(geneParams){
 }
 
 /*
+ *  Shift genomes horizontally to align genes around the target gene cluster.
+ *
+ *  @param gc : target gene cluster ID
+ */
+GenomeDrawer.prototype.alignToCluster = function(gc){
+  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+
+  let targetGeneInfo = viewCluster(gc);
+  if(targetGeneInfo == null) return;
+  let [firstGenomeID, targetGeneMid] = targetGeneInfo;
+  if(firstGenomeID != null) {
+    alignToGC = gc;
+    let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
+    for(var i = index+1; i < genomeData.genomes.length; i++) {
+      let gid = genomeData.genomes[i][0];
+      let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
+      if(geneMids == null) continue;
+      let geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
+      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[gid]);
+      let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
+      for(o of objs) o.left += shift;
+      xDisps[gid] += shift;
+      canvas.setViewportTransform(canvas.viewportTransform);
+
+      // clear and redraw shades
+      clearShades();
+      drawTestShades();
+    }
+  }
+}
+
+/*
  *  Clear all gene links from the canvas.
  */
 GenomeDrawer.prototype.clearShades = function(){
