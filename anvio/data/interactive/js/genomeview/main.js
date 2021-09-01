@@ -230,7 +230,6 @@ function loadAll() {
   // draw();
 
   setEventListeners()
-  settings = Object.assign(settings, genomeData, stateData)
   drawer = new GenomeDrawer(settings)
   drawer.draw() 
 }
