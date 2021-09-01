@@ -334,10 +334,10 @@ function toggleAdditionalDataLayer(e){
   let layer = e.target.id.split('-')[0]
 
   if(e.target.checked){
-    stateData['display']['additionalDataLayers'][layer] = true
+    settings['display']['additionalDataLayers'][layer] = true
     maxGroupSize += 1
   } else {
-    stateData['display']['additionalDataLayers'][layer] = false
+    settings['display']['additionalDataLayers'][layer] = false
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   // draw()
@@ -353,7 +353,7 @@ function createBookmark(){
     return
   }
   try {
-    stateData['display']['bookmarks'].push(
+    settings['display']['bookmarks'].push(
       {
         name : $('#create_bookmark_input').val(),
         start : $('#brush_start').val(),
@@ -378,7 +378,7 @@ function respondToBookmarkSelect(){
     brush.extent([start, stop]);
         brush(d3.select(".brush").transition());
         brush.event(d3.select(".brush").transition());
-    let selectedBookmark = stateData['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
+    let selectedBookmark = settings['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
     $('#bookmark-description').text(selectedBookmark['description'])
   })
 }
@@ -387,7 +387,7 @@ function respondToBookmarkSelect(){
  *  respond to ui, redraw with updated group layer order
  */
 function changeGroupLayersOrder(updatedOrder){
-  stateData['group-layer-order'] = updatedOrder
+  settings['group-layer-order'] = updatedOrder
   // draw()
   drawer.draw()
 }
