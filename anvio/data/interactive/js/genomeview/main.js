@@ -117,44 +117,47 @@ function serializeSettings() {
 function processState(stateName, stateData) {
   calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
-    // TODO process
+    settings['group-layer-order'] = stateData['group-layer-order']
   } else {
-    stateData['group-layer-order'] = ['Genome', 'Ruler']
+    settings['group-layer-order'] = ['Genome', 'Ruler']
   }
 
   if (stateData.hasOwnProperty('additional-data-layers')) {
-    // TODO process
+    settings['additional-data-layers'] = stateData['additional-data-layers']
   } else {
     stateData['additional-data-layers'] = []
     generateMockADL()
+    settings['additional-data-layers'] = stateData['additional-data-layers']
   }
 
   // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
   buildGroupLayersTable('Genome')
+
   if (stateData['additional-data-layers'][0]['ruler']) {
     buildGroupLayersTable('Ruler')
-    // don't increase group size for ruler since it requires less space
   }
   if (stateData['additional-data-layers'][0]['coverage']) {
     buildGroupLayersTable('Coverage')
-    stateData['group-layer-order'].push('Coverage')
+    settings['group-layer-order'].push('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
   if (stateData['additional-data-layers'][0]['gcContent']) {
     buildGroupLayersTable('GC_Content')
-    stateData['group-layer-order'].push('GC_Content')
+    settings['group-layer-order'].push('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
 
   if (stateData.hasOwnProperty('genome-order-method')) {
-    stateData['genome-order-method'].forEach(orderMethod => {
+    settings['genome-order-method'] = stateData['genome-order-method']
+    settings['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   } else {
     generateMockGenomeOrder()
-    stateData['genome-order-method'].forEach(orderMethod => {
+    settings['genome-order-method'] = stateData['genome-order-method']
+    settings['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
   }
@@ -222,7 +225,7 @@ function loadAll() {
   // draw();
 
   setEventListeners()
-  settings = Object.assign(settings, genome, stateData)
+  settings = Object.assign(settings, genomeData, stateData)
   drawer = new GenomeDrawer(settings)
   drawer.draw() 
 }
