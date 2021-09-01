@@ -67,8 +67,7 @@ function setEventListeners(){
       bindViewportToWindow();
       updateScalePos(); // adjust scale box to new sequence breadth
       updateRenderWindow();
-
-      GenomeDrawer.redrawSingleGenome(opt.target.groupID);
+      drawer.redrawSingleGenome(opt.target.groupID);
     }
   });
   canvas.on('object:moving', function (opt) {
@@ -77,7 +76,7 @@ function setEventListeners(){
 
     if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && arrowStyle == 3)) canvas.sendBackwards(opt.target);
     if (this.shades) {
-      clearShades();
+      drawer.clearShades();
       this.shades = false;
     }
 
@@ -115,7 +114,7 @@ function setEventListeners(){
 
   $('#alignClusterInput').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
-      alignToCluster($(this).val());
+      drawer.alignToCluster($(this).val());
       $(this).blur();
     }
   });
@@ -132,25 +131,25 @@ function setEventListeners(){
   });
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
-      setGenomeSpacing($(this).val());
+      drawer.setGenomeSpacing($(this).val());
       $(this).blur();
     }
   });
   $('#gene_label').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
-      setGeneLabelSize($(this).val());
+      drawer.setGeneLabelSize($(this).val());
       $(this).blur();
     }
   });
   $('#genome_label').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
-      setGenomeLabelSize($(this).val());
+      drawer.setGenomeLabelSize($(this).val());
       $(this).blur();
     }
   });
   $('#genome_scale_interval').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
-      setScaleInterval($(this).val());
+      drawer.setScaleInterval($(this).val());
       $(this).blur();
     }
   });
@@ -158,7 +157,7 @@ function setEventListeners(){
     color_db = $(this).val();
     generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
     // draw();
-    drawer,draw()
+    drawer.draw()
     $(this).blur();
   });
   $('#arrow_style').on('change', function () {
@@ -188,7 +187,7 @@ function setEventListeners(){
     dynamicScaleInterval = !dynamicScaleInterval;
   });
   $('#adl_pts_per_layer').on('change', function () {
-    setPtsPerADL($(this).val());
+    drawer.setPtsPerADL($(this).val());
     $(this).blur();
   });
   $('#brush_start, #brush_end').keydown(function (ev) {
