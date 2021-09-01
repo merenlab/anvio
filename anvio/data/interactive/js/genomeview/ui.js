@@ -429,7 +429,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 
   if(filter_to_split && fn_type != 'Source') {
     let save = [];
-    for(genome of genomeData.genomes) {
+    for(genome of settings['genomeData']['genomes']) {
       let geneFuns = Object.values(genome[1].genes.functions);
       for(funs of geneFuns) {
         let cag = getCagForType(funs, fn_type);
@@ -460,7 +460,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   });
 
   if(highlight_genes) {
-    let genomes = Object.entries(genomeData.genomes).map(g => g[1][0]);
+    let genomes = Object.entries(settings['genomeData']['genomes']).map(g => g[1][0]);
     for(entry of highlight_genes) {
       let genomeID = entry['genomeID'];
       let geneID = entry['geneID'];
@@ -468,8 +468,8 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 
       if(!genomes.includes(genomeID)) continue;
 
-      let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
-      let genes = Object.keys(genomeData.genomes[ind][1].genes.gene_calls);
+      let ind = settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
+      let genes = Object.keys(settings['genomeData']['genomes'][ind][1].genes.gene_calls);
       if(!(geneID in genes)) continue;
 
       let label = 'Genome: ' + genomeID + ', Gene: ' + geneID;
