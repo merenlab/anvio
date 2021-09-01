@@ -82,7 +82,7 @@ function initData() {
 
       let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
       genomeData.genomes = genomes // this will be phased out for settings obj below
-      settings['genomeData'] = genomes
+      settings['genomeData']['genomes'] = genomes
     }
   });
 }
@@ -189,13 +189,13 @@ function processState(stateName, stateData) {
 }
 
 function loadAll() {
-  buildGenomesTable(genomeData.genomes, 'alphabetical') // hardcode order method until backend order data is hooked in
+  buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
   xDisplacement = showLabels ? 120 : 0;
-  for (genome of genomeData.genomes) {
+  for (genome of settings['genomeData']['genomes']) {
     xDisps[genome[0]] = xDisplacement;
   }
 
