@@ -82,6 +82,7 @@ function initData() {
 
       let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
       genomeData.genomes = genomes // this will be phased out for settings obj below
+      settings['genomeData'] = genomeData
       settings['genomeData']['genomes'] = genomes
     }
   });
@@ -126,25 +127,24 @@ function processState(stateName, stateData) {
   if (stateData.hasOwnProperty('additional-data-layers')) {
     settings['additional-data-layers'] = stateData['additional-data-layers']
   } else {
-    stateData['additional-data-layers'] = []
+    settings['additional-data-layers'] = []
     generateMockADL()
-    settings['additional-data-layers'] = stateData['additional-data-layers']
   }
 
   // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
   buildGroupLayersTable('Genome')
 
-  if (stateData['additional-data-layers'][0]['ruler']) {
+  if (stateData.hasOwnProperty(['additional-data-layers'][0]['ruler'])) {
     buildGroupLayersTable('Ruler')
   }
-  if (stateData['additional-data-layers'][0]['coverage']) {
+  if (stateData.hasOwnProperty(['additional-data-layers'][0]['coverage'])) {
     buildGroupLayersTable('Coverage')
     settings['group-layer-order'].push('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
-  if (stateData['additional-data-layers'][0]['gcContent']) {
+  if (stateData.hasOwnProperty(['additional-data-layers'][0]['gcContent'])) {
     buildGroupLayersTable('GC_Content')
     settings['group-layer-order'].push('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
@@ -157,7 +157,6 @@ function processState(stateName, stateData) {
     })
   } else {
     generateMockGenomeOrder()
-    settings['genome-order-method'] = stateData['genome-order-method']
     settings['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
