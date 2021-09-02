@@ -122,7 +122,7 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
   let additionalDataLayers = settings['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
-  stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+  settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     let layerPos = [spacing / maxGroupSize] * idx
 
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
@@ -234,7 +234,7 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
-    groupID: genomeData.genomes[orderIndex][0],
+    groupID: settings['genomeData']['genomes'][orderIndex][0],
     top: top,
     left: left,
     width: width,
@@ -248,8 +248,8 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
 }
 
 GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
-  let ind = genomeData.genomes.findIndex(g => g[0] == genomeID);
-  let functions = genomeData.genomes[ind][1].genes.functions[geneID];
+  let ind = settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
+  let functions = settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
 
   let color = 'gray';
   let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
@@ -329,10 +329,10 @@ GenomeDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
 
   let y = marginTop;
   for(var i = 0; i < genomeData.genomes.length-1; i++) {
-    let genomeA = genomeData.genomes[i][1].genes.gene_calls;
-    let genomeB = genomeData.genomes[i+1][1].genes.gene_calls;
-    let genomeID_A = genomeData.genomes[i][0];
-    let genomeID_B = genomeData.genomes[i+1][0];
+    let genomeA = settings['genomeData']['genomes'][i][1].genes.gene_calls;
+    let genomeB = settings['genomeData']['genomes'][i+1][1].genes.gene_calls;
+    let genomeID_A = settings['genomeData']['genomes'][i][0];
+    let genomeID_B = settings['genomeData']['genomes'][i+1][0];
     let [l1,r1] = getRenderNTRange(genomeID_A);
     let [l2,r2] = getRenderNTRange(genomeID_B);
 
@@ -406,15 +406,15 @@ GenomeDrawer.prototype.glowGenes = function(geneParams){
  *  @param gc : target gene cluster ID
  */
 GenomeDrawer.prototype.alignToCluster = function(gc){
-  if(!genomeData.gene_associations["anvio-pangenome"]) return;
+  if(!settings['genomeData']['gene_associations']["anvio-pangenome"]) return;
 
   let targetGeneInfo = viewCluster(gc);
   if(targetGeneInfo == null) return;
   let [firstGenomeID, targetGeneMid] = targetGeneInfo;
   if(firstGenomeID != null) {
     alignToGC = gc;
-    let index = genomeData.genomes.findIndex(g => g[0] == firstGenomeID);
-    for(var i = index+1; i < genomeData.genomes.length; i++) {
+    let index = settings['genomeData']['genomes'].findIndex(g => g[0] == firstGenomeID);
+    for(var i = index+1; i < settings['genomeData']['genomes'].length; i++) {
       let gid = genomeData.genomes[i][0];
       let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if(geneMids == null) continue;
@@ -447,16 +447,16 @@ GenomeDrawer.prototype.setPtsPerADL = function (){
     return;
   }
   adlPtsPerLayer = newResolution;
-  draw();
+  this.draw();
 }
 
 GenomeDrawer.prototype.showAllADLPts = function(){
-  setPtsPerADL(genomeMax);
+  this.setPtsPerADL(genomeMax);
   $('#showAllADLPtsBtn').blur();
 }
 
 GenomeDrawer.prototype.alignRulers = function(){
-  for(genome of genomeData.genomes) {
+  for(genome of settings['genomeData']['genomes']) {
     xDisps[genome[0]] = xDisplacement;
   }
   percentScale = false;
@@ -464,7 +464,7 @@ GenomeDrawer.prototype.alignRulers = function(){
   bindViewportToWindow();
   updateScalePos();
   updateRenderWindow();
-  draw();
+  this.draw();
   $('#alignRulerBtn').blur();
 }
 
