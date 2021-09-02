@@ -42,7 +42,7 @@ var fixHelperModified = function(e, tr) {
  */
 function calculateMainCanvasHeight(){
   let additionalSpacing = 100 // arbitrary additional spacing for cosmetics
-      let mainCanvasHeight =  spacing * genomeData.genomes.length + additionalSpacing
+      let mainCanvasHeight =  spacing * settings['genomeData']['genomes'].length + additionalSpacing
   return mainCanvasHeight
 }
 
@@ -64,7 +64,7 @@ function getGenePosForGenome(genomeID, gc) {
   var targetGenes = getGenesOfGC(genomeID, gc);
   if(targetGenes == null) return null;
 
-  let genome = genomeData.genomes.find(g => g[0] == genomeID);
+  let genome = settings['genomeData']['genomes'].find(g => g[0] == genomeID);
   let mids = [];
   for(geneID of targetGenes) {
     let gene = genome[1].genes.gene_calls[geneID];
@@ -78,7 +78,7 @@ function getGenePosForGenome(genomeID, gc) {
  *  @returns array of geneIDs in a given genome with a specified gene cluster
  */
 function getGenesOfGC(genomeID, gc) {
-  var targetGenes = genomeData.gene_associations["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID];
+  var targetGenes = settings['genomeData']['gene_associations']["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID];
   return targetGenes.length > 0 ? targetGenes : null;
 }
 
