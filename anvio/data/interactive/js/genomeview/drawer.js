@@ -183,7 +183,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
 /*
  *  Generate individual genome group rulers
  */
-GenomeDrawer.prototype.buildGroupRulerLayer = function(){
+GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, orderIndex){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
   let layerHeight = spacing / maxGroupSize
