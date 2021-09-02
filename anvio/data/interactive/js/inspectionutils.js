@@ -405,22 +405,6 @@ function get_comp_nt_color(nts){
         return "black";
 }
 
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
-}
-
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js
 function GetMaxMin(input_array) {
     var max = Number.MIN_VALUE, min = Number.MAX_VALUE;

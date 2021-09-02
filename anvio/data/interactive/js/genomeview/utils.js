@@ -247,14 +247,3 @@ function getCagName(category, fn_type) {
       return category;
   }
 }
-
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}

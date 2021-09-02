@@ -49,6 +49,17 @@ function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
 }
 
+function getCategoryForKEGGClass(class_str) {
+  if(class_str == null) return null;
+
+  var category_name = getClassFromKEGGAnnotation(class_str);
+  return getKeyByValue(KEGG_categories, category_name);
+}
+
+function getClassFromKEGGAnnotation(class_str) {
+  return class_str.substring(17, class_str.indexOf(';', 17));
+}
+
 function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({
         type: 'GET',
