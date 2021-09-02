@@ -60,6 +60,102 @@ function getClassFromKEGGAnnotation(class_str) {
   return class_str.substring(17, class_str.indexOf(';', 17));
 }
 
+//-----------------------------------------------------------------------------
+// Gene function coloring
+//-----------------------------------------------------------------------------
+
+/*
+ *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
+ */
+function getCagName(category, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return COG_categories[category];
+    case 'KEGG_CATEGORY':
+      return KEGG_categories[category];
+    default:
+      return category;
+  }
+}
+
+/*
+ *  @returns target gene's category code for a given functional annotation type.
+ */
+function getCagForType(geneFunctions, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1][0] : null;
+    case 'KEGG_CATEGORY':
+      // TODO
+      return null;
+    default:
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';')); // or semicolon-separated
+      return out;
+  }
+}
+
+/*
+ *  @returns relevant category:color dict from constants.js for a given functional annotation
+ */
+function getColorDefaults(fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+      return default_COG_colors;
+    case 'KEGG_CATEGORY':
+      return default_KEGG_colors;
+    case 'Source':
+      return default_source_colors;
+    default:
+      // user-supplied color table
+      return getCustomColorDict(fn_type);
+  }
+}
+
+/*
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type) {
+  if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
+
+  let cags = [];
+  genomeData.genomes.forEach(genome => {
+    Object.values(genome[1].genes.functions).forEach(fn => {
+      let cag = getCagForType(fn, fn_type);
+      if(cag && !cags.includes(cag)) cags.push(cag);
+    });
+  });
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+  delete out["undefined"];
+
+  return out;
+}
+
+function appendColorRow(label, cag, color, prepend=false) {
+  let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
+  var tbody_content =
+   '<tr id="picker_row_' + code + '"> \
+      <td></td> \
+      <td> \
+        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+      </td> \
+      <td>' + label + '</td> \
+    </tr>';
+
+  if(prepend) {
+    $('#tbody_function_colors').prepend(tbody_content);
+  } else {
+    $('#tbody_function_colors').append(tbody_content);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({
         type: 'GET',

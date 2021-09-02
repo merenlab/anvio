@@ -19,8 +19,8 @@
  */
 
 /**
- * File Overview : This file contains functions related to building + updating UI elements and responding to user interaction with those elements. 
- * As a general rule, processes that invoke jQuery should probably live here. 
+ * File Overview : This file contains functions related to building + updating UI elements and responding to user interaction with those elements.
+ * As a general rule, processes that invoke jQuery should probably live here.
  */
 
 /*
@@ -300,14 +300,14 @@ function buildGenomesTable(genomes, order){
 
     $('#tbody_genomes').append(template);
   })
-  
+
   $("#tbody_genomes").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
   $("#tbody_genomes").on("sortupdate", (event, ui) => {
     changeGenomeOrder($("#tbody_genomes").sortable('toArray'))
   })
 }
-  
+
 function buildGroupLayersTable(layerLabel){
   var height = '50';
   var margin = '25';
@@ -329,7 +329,7 @@ function buildGroupLayersTable(layerLabel){
     changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
   })
 }
-  
+
 function toggleAdditionalDataLayer(e){
   let layer = e.target.id.split('-')[0]
 
@@ -488,27 +488,6 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
-  }
-}
-
-/*
- *  [TO BE ADDED TO 'regular' utils.js]
- */
-function appendColorRow(label, cag, color, prepend=false) {
-  let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
-  var tbody_content =
-   '<tr id="picker_row_' + code + '"> \
-      <td></td> \
-      <td> \
-        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
-      </td> \
-      <td>' + label + '</td> \
-    </tr>';
-
-  if(prepend) {
-    $('#tbody_function_colors').prepend(tbody_content);
-  } else {
-    $('#tbody_function_colors').append(tbody_content);
   }
 }
 
