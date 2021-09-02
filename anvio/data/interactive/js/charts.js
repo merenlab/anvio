@@ -219,7 +219,7 @@ function loadAll() {
                     }
 
                     if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
-                    if(gene.functions.hasOwnProperty("KEGG_Class")) kegg_annotated = true;
+                    if(gene.functions.hasOwnProperty("KEGG_CLASS")) kegg_annotated = true;
                     if(cog_annotated && kegg_annotated) return;
                   }
                 });
@@ -272,22 +272,22 @@ function loadAll() {
                 mcags = Object.keys(default_source_colors);
                 if(cog_annotated) {
                   $('#gene_color_order').append($('<option>', {
-                    value: 'COG',
-                    text: 'COG'
+                    value: 'COG_CATEGORY',
+                    text: 'COG_CATEGORY'
                   }));
 
-                  if(!state.hasOwnProperty('cog-colors')) {
-                    state['cog-colors'] = default_COG_colors
+                  if(!state.hasOwnProperty('cog_category-colors')) {
+                    state['cog_category-colors'] = default_COG_colors
                   }
                 }
                 if(kegg_annotated) {
                   $('#gene_color_order').append($('<option>', {
-                    value: 'KEGG',
-                    text: 'KEGG'
+                    value: 'KEGG_CLASS',
+                    text: 'KEGG_CLASS'
                   }));
 
-                  if(!state.hasOwnProperty('kegg-colors')) {
-                    state['kegg-colors'] = default_KEGG_colors
+                  if(!state.hasOwnProperty('kegg_class-colors')) {
+                    state['kegg_class-colors'] = default_KEGG_colors
                   }
                 }
 
@@ -423,10 +423,10 @@ function loadAll() {
                 }).change(function() {
                     state['gene-fn-db'] = $(this).val();
                     switch($(this).val()) {
-                      case "COG":
+                      case "COG_CATEGORY":
                         mcags = Object.keys(COG_categories);
                         break;
-                      case "KEGG":
+                      case "KEGG_CLASS":
                         mcags = Object.keys(KEGG_categories);
                         break;
                       case "Source":
@@ -576,61 +576,38 @@ function get_box_id_for_AA(aa, id_start) {
   return id;
 }
 
-/*
- *  Generates KEGG color table html given a color palette.
- *
- *  Params:
- *   - fn_colors:         a dictionary matching each category to a hex color code
- *   - fn_type:           a string indicating function category type: one of "COG", "KEGG", "Source"
- *   - highlight_genes:   a dictionary matching specific gene caller IDs to hex colors to override other coloring
- *   - filter_to_split: if true, filters categories to only those shown in the split
- */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
+
+ /*
+  *  Generates functional annotation color table for a given color palette.
+  *
+  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
+  *  @param fn_type :         string indicating function category type
+  *  @param highlight_genes : a dictionary matching specific gene caller IDs to hex colors to override other coloring
+  *  @param filter_to_split : if true, filters categories to only those shown in the split
+  */
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true) {
   info("Generating gene functional annotation color table");
-  var db = (function(type){
-    switch(type) {
-      case "COG":
-        return COG_categories;
-      case "KEGG":
-        return KEGG_categories;
-      case "Source":
-        return default_source_colors;
-      default:
-        console.log("Warning: Invalid type for function color table");
-        return null;
-    }
-  })(fn_type);
+
+  let db = getColorDefaults(fn_type ? fn_type : 'Source');
   if(db == null) return;
-
-  $('#tbody_function_colors').empty();
-
-  if(fn_type != "Source" && filter_to_split) {
-    var new_colors = {};
-    for(gene of genes) {
-      if(gene.functions && gene.functions[fn_type + "_CATEGORY"]) {
-        new_colors[gene.functions[fn_type + "_CATEGORY"][0][0]] = fn_colors[gene.functions[fn_type + "_CATEGORY"][0][0]]
-      }
-    }
-    if(Object.keys(new_colors).length > 0) fn_colors = new_colors;
+  // Override default values with any values supplied to fn_colors
+  if(fn_colors) {
+    Object.keys(db).forEach(cag => { if(Object.keys(fn_colors).includes(cag)) db[cag] = fn_colors[cag] });
   }
 
-  Object.keys(db).forEach(function(category){
-    if(!(category in fn_colors)) {
-      return;
+  if(filter_to_split && fn_type != 'Source') {
+    let save = [];
+    for(gene of genes) {
+      let cag = getCagForType(gene.functions, fn_type);
+      if(cag && !save.includes(cag)) save.push(cag);
     }
-    var category_name = (fn_type == "Source" ? category : db[category]);
+    Object.keys(db).forEach((cag, color) => {
+      if(!save.includes(cag)) delete db[cag];
+    });
+  }
 
-    var tbody_content =
-     '<tr id="picker_row_' + category + '"> \
-        <td></td> \
-        <td> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px; margin-left:16px"></div> \
-        </td> \
-        <td>' + category_name + '</td> \
-      </tr>';
-
-    $('#tbody_function_colors').append(tbody_content);
-  });
+  $('#tbody_function_colors').empty();
+  Object.keys(db).forEach(category => appendColorRow(getCagName(category, fn_type), category, db[category]) );
 
   $('.colorpicker').colpick({
       layout: 'hex',
@@ -647,39 +624,25 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filt
       $(this).colpickSetColor(this.value);
   });
 
-  if(!isEmpty(highlight_genes)) {
-
+  if(highlight_genes) {
     for(gene of genes) {
-      var gene_callers_id = "" + gene.gene_callers_id;
-      if(Object.keys(highlight_genes).includes(gene_callers_id)) {
-        var tbody_content =
-         '<tr id="picker_row_' + gene_callers_id + '"> \
-            <td></td> \
-            <td> \
-              <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
-            </td> \
-            <td>Gene ID: ' + gene_callers_id + '</td> \
-          </tr>';
-
-        $('#tbody_function_colors').prepend(tbody_content);
-
-        $('#picker_' + gene_callers_id).colpick({
-            layout: 'hex',
-            submit: 0,
-            colorScheme: 'light',
-            onChange: function(hsb, hex, rgb, el, bySetColor) {
-                $(el).css('background-color', '#' + hex);
-                $(el).attr('color', '#' + hex);
-
-                state['highlight-genes'][el.id.substring(7)] = '#' + hex;
-                if (!bySetColor) $(el).val(hex);
-            }
-        }).keyup(function() {
-            $(this).colpickSetColor(this.value);
-        });
-      }
+      let gene_id = "" + gene.gene_callers_id;
+      if(Object.keys(highlight_genes).includes(gene_id)) appendColorRow(label, "Gene ID: " + gene_id, highlight_genes[gene_id], prepend=true);
     }
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
 
+            state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
   }
 }
 
@@ -825,11 +788,11 @@ function resetFunctionColors(fn_colors=null) {
     case 'Source':
       Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
       break;
-    case 'COG':
-      Object.assign(state['cog-colors'], fn_colors ? fn_colors : default_COG_colors);
+    case 'COG_CATEGORY':
+      Object.assign(state['cog_category-colors'], fn_colors ? fn_colors : default_COG_colors);
       break;
-    case 'KEGG':
-      Object.assign(state['kegg-colors'], fn_colors ? fn_colors : default_KEGG_colors);
+    case 'KEGG_CLASS':
+      Object.assign(state['kegg_class-colors'], fn_colors ? fn_colors : default_KEGG_colors);
       break;
   }
 
@@ -1453,8 +1416,8 @@ function saveState()
 function processState(state_name, state) {
     // set color defaults
     if(!state['source-colors']) state['source-colors'] = default_source_colors;
-    if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
-    if(!state['kegg-colors']) state['kegg-colors'] = default_KEGG_colors;
+    if(!state['cog_category-colors']) state['cog_category-colors'] = default_COG_colors;
+    if(!state['kegg_class-colors']) state['kegg_class-colors'] = default_KEGG_colors;
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
       state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
