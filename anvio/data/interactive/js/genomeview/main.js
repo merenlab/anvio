@@ -129,7 +129,7 @@ function processState(stateName, stateData) {
   // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
   buildGroupLayersTable('Genome')
-  if (settings['additional-data-layers'][0]['ruler']) {
+  if (settings['additional-data-layers'][0]['ruler']) { // TODO fix conditional check, avoid undefined error when obj doesn't exist 
     buildGroupLayersTable('Ruler')
   } 
 
