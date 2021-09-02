@@ -31,7 +31,7 @@ GenomeDrawer.prototype.draw = function(){
   labelSpacing = 30 // reset to default value upon each draw() call
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
-  genomeData['genomes'].map((genome, idx) => {
+  settings['genomeData']['genomes'].map((genome, idx) => {
     this.addGenome(idx)
     this.addLayers(idx)
     labelSpacing += 30
@@ -42,7 +42,7 @@ GenomeDrawer.prototype.draw = function(){
 }
 
 GenomeDrawer.prototype.addGenome = function(orderIndex){
-  let genome = genomeData.genomes[orderIndex];
+  let genome = settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
   let genomeID = genome[0];
@@ -76,7 +76,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
     if(gene.start < ntStart) continue;
     if(gene.stop > ntStop) return;
-    var geneObj = geneArrow(gene,geneID,y,genomeID,arrowStyle);
+    var geneObj = this.geneArrow(gene,geneID,y,genomeID,arrowStyle);
     canvas.add(geneObj);
 
     if(showGeneLabels) {
@@ -115,11 +115,11 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
  */
 GenomeDrawer.prototype.addLayers = function(orderIndex){
   yOffset = orderIndex * spacing;
-  let genomeID = genomeData.genomes[orderIndex][0];
-  let genome = genomeData.genomes[orderIndex][1];
+  let genomeID = settings['genomeData']['genomes'][orderIndex][0];
+  let genome = settings['genomeData']['genomes'][orderIndex][1];
   let label = genome.genes.gene_calls[0].contig;
 
-  let additionalDataLayers = stateData['additional-data-layers'].find(group => group.genome == label)
+  let additionalDataLayers = settings['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   stateData['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
