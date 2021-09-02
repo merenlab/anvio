@@ -476,7 +476,7 @@ GenomeDrawer.prototype.setGenomeSpacing = function(){
     return;
   }
   spacing = newSpacing;
-  draw();
+  this.draw();
 }
 
 GenomeDrawer.prototype.setScaleInterval = function(newScale){
@@ -487,7 +487,7 @@ GenomeDrawer.prototype.setScaleInterval = function(newScale){
     return;
   }
   scaleInterval = newScale;
-  draw();
+  this.draw();
 }
 
 GenomeDrawer.prototype.setGeneLabelSize = function(newSize){
@@ -498,7 +498,7 @@ GenomeDrawer.prototype.setGeneLabelSize = function(newSize){
     return;
   }
   geneLabelSize = newSize;
-  if(showGeneLabels) draw();
+  if(showGeneLabels) this.draw();
 }
 
 GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
@@ -509,14 +509,14 @@ GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
     return;
   }
   genomeLabelSize = newSize;
-  if(showLabels) draw();
+  if(showLabels) this.draw();
 }
 
 GenomeDrawer.prototype.redrawSingleGenome = function(genomeID){
   canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
-  let idx = genomeData.genomes.findIndex(obj => obj[0] == genomeID);
-  addGenome(idx);
-  addLayers(idx);
+  let idx = settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
+  this.addGenome(idx);
+  this.addLayers(idx);
   checkGeneLabels();
 }
 
