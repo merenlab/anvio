@@ -28,14 +28,14 @@ function drawTestShades() {
 }
 
 function generateMockADL() {
-  for (let i = 0; i < genomeData.genomes.length; i++) { // generate mock additional data layer content
+  for (let i = 0; i < settings['genomeData']['genomes'].length; i++) { // generate mock additional data layer content
     let gcContent = []
     let coverage = []
     for (let j = 0; j < genomeMax; j++) {
       gcContent.push(Math.floor(Math.random() * 45))
       coverage.push(Math.floor(Math.random() * 45))
     }
-    let genomeLabel = Object.keys(genomeData.genomes[i][1]['contigs']['info'])[0];
+    let genomeLabel = Object.keys(settings['genomeData']['genomes'][i][1]['contigs']['info'])[0];
     let additionalDataObject = {
       'genome': genomeLabel,
       'coverage': coverage,
@@ -44,11 +44,11 @@ function generateMockADL() {
       'gcContent-color': 'purple',
       'ruler': true // TODO: store any genome-specific scale data here
     }
-    stateData['additional-data-layers'].push(additionalDataObject)
+    settings['additional-data-layers'].push(additionalDataObject)
   }
 }
 function generateMockGenomeOrder() {
-  stateData['genome-order-method'] = [{
+  settings['genome-order-method'] = [{
     'name': 'cats',
     'ordering': 'some order'
   }, {
