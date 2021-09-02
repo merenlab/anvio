@@ -37,8 +37,8 @@ GenomeDrawer.prototype.draw = function(){
     labelSpacing += 30
   })
 
-  this.checkGeneLabels();
-  this.drawTestShades();
+  checkGeneLabels();
+  drawTestShades();
 }
 
 GenomeDrawer.prototype.addGenome = function(orderIndex){

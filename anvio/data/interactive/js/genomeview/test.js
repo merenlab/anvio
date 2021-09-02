@@ -24,7 +24,7 @@
  */
 
 function drawTestShades() {
-  shadeGeneClusters(["GC_00000034", "GC_00000097", "GC_00000002"], { "GC_00000034": "green", "GC_00000097": "red", "GC_00000002": "purple" });
+  drawer.shadeGeneClusters(["GC_00000034", "GC_00000097", "GC_00000002"], { "GC_00000034": "green", "GC_00000097": "red", "GC_00000002": "purple" });
 }
 
 function generateMockADL() {
