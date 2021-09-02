@@ -290,28 +290,22 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
       var y = 10 + (gene.level * 20);
 
-      var category = "none";
-      if(colortype == "COG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
-          category = gene.functions["COG_CATEGORY"][0][0];
-        }
-        if(category == null || category == "X") category = "none";
-      } else if(colortype == "KEGG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
-          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
-        }
-        if(category == null) category = "none";
-      } else if(colortype == "Source") {
-        if (gene.source.startsWith('Ribosomal_RNA')) {
-          category = 'rRNA';
-        } else if (gene.source == 'Transfer_RNAs') {
-          category = 'tRNA';
-        } else if (gene.functions !== null) {
-          category = 'Function';
-        } else {
-          category = "None";
+
+      let category = getCagForType(gene.functions, colortype);
+
+      if(!category) {
+        category = "none";
+        if(colortype == "Source") {
+          if (gene.source.startsWith('Ribosomal_RNA')) {
+            category = 'rRNA';
+          } else if (gene.source == 'Transfer_RNAs') {
+            category = 'tRNA';
+          } else if (gene.functions !== null) {
+            category = 'Function';
+          }
         }
       }
+
       if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
         category = gene.gene_callers_id;
       }

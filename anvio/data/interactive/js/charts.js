@@ -434,10 +434,10 @@ function loadAll() {
                 }).change(function() {
                     state['gene-fn-db'] = $(this).val();
                     switch($(this).val()) {
-                      case "COG":
+                      case "COG_CATEGORY":
                         mcags = Object.keys(COG_categories);
                         break;
-                      case "KEGG":
+                      case "KEGG_CLASS":
                         mcags = Object.keys(KEGG_categories);
                         break;
                       case "Source":
@@ -671,13 +671,25 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, fi
       $(this).colpickSetColor(this.value);
   });
 
-  if(!isEmpty(highlight_genes)) {
-
+  if(highlight_genes) {
     for(gene of genes) {
       let gene_id = "" + gene.gene_callers_id;
       if(Object.keys(highlight_genes).includes(gene_id)) appendColorRow("Gene ID: " + gene_id, gene_id, highlight_genes[gene_id], prepend=true);
     }
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
 
+            state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
   }
 }
 
@@ -828,12 +840,10 @@ function resetFunctionColors(fn_colors=null) {
       Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
       break;
     case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
       Object.assign(state['cog_category-colors'], fn_colors ? fn_colors : default_COG_colors);
       break;
-    case 'KEGG':
-      Object.assign(state['kegg-colors'], fn_colors ? fn_colors : default_KEGG_colors);
+    case 'KEGG_CLASS':
+      Object.assign(state['kegg_class-colors'], fn_colors ? fn_colors : default_KEGG_colors);
       break;
   }
 
