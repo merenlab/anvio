@@ -139,7 +139,7 @@ function drawScale() {
       scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
       updateRenderWindow();
 
-      if(dynamicScaleInterval) adjustScaleInterval();
+      if(dynamicScaleInterval) drawer.adjustScaleInterval();
 
       // draw();
       drawer.draw()
