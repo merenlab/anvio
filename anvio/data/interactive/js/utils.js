@@ -34,6 +34,10 @@ function is_large_angle(a, b) {
     return (Math.abs(b - a) > Math.PI) ? 1 : 0;
 }
 
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}
+
 function info(step) {
     // a funciton to keep user posted about what is going on.
     timestamp = (new Date(Date.now())).toLocaleString().substr(11,7);
