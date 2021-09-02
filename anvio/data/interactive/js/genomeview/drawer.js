@@ -468,7 +468,7 @@ GenomeDrawer.prototype.alignRulers = function(){
   $('#alignRulerBtn').blur();
 }
 
-GenomeDrawer.prototype.setGenomeSpacing = function(){
+GenomeDrawer.prototype.setGenomeSpacing = function(newSpacing){
   if(isNaN(newSpacing)) return;
   newSpacing = parseInt(newSpacing);
   if(newSpacing < 0 || newSpacing > 1000) {
