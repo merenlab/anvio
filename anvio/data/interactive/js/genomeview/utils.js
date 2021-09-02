@@ -19,23 +19,11 @@
  */
 
 /**
- * File Overview : This file contains utility functions used throughout genomeview. As a general rule, 
- * functions defined here explicitly return some value or mutate an existing global variable. Functions 
- * defined here should not interact directly with elements of UI, state, or canvas objects. 
+ * File Overview : This file contains utility functions used throughout genomeview. As a general rule,
+ * functions defined here explicitly return some value or mutate an existing global variable. Functions
+ * defined here should not interact directly with elements of UI, state, or canvas objects.
  */
 
-
-/** 
- * ripped from primary utils.js instead of importing the whole file
-*/
-var fixHelperModified = function(e, tr) { 
-  var $originals = tr.children();
-  var $helper = tr.clone();
-  $helper.children().each(function(index) {
-      $(this).width($originals.eq(index).width());
-  });
-  return $helper;
-};
 
 /*
  *  return height value for main canvas element
@@ -266,16 +254,7 @@ function getCategoryForKEGGClass(class_str) {
   var category_name = getClassFromKEGGAnnotation(class_str);
   return getKeyByValue(KEGG_categories, category_name);
 }
-  
+
 function getClassFromKEGGAnnotation(class_str) {
   return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
-}
-
-function clamp(num, min, max) {
-  return Math.min(Math.max(num, min), max);
 }
