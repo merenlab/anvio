@@ -42,7 +42,7 @@ GenomeDrawer.prototype.draw = function(){
 }
 
 GenomeDrawer.prototype.addGenome = function(orderIndex){
-  let genome = settings['genomeData']['genomes'][orderIndex];
+  let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
   let genomeID = genome[0];
@@ -115,14 +115,14 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
  */
 GenomeDrawer.prototype.addLayers = function(orderIndex){
   yOffset = orderIndex * spacing;
-  let genomeID = settings['genomeData']['genomes'][orderIndex][0];
-  let genome = settings['genomeData']['genomes'][orderIndex][1];
+  let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
+  let genome = this.settings['genomeData']['genomes'][orderIndex][1];
   let label = genome.genes.gene_calls[0].contig;
 
-  let additionalDataLayers = settings['additional-data-layers'].find(group => group.genome == label)
+  let additionalDataLayers = this.settings['additional-data-layers'].find(group => group.genome == label)
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
-  settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+  this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     let layerPos = [spacing / maxGroupSize] * idx
 
     if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
@@ -234,7 +234,7 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let background = new fabric.Rect({
-    groupID: settings['genomeData']['genomes'][orderIndex][0],
+    groupID: this.settings['genomeData']['genomes'][orderIndex][0],
     top: top,
     left: left,
     width: width,
@@ -248,8 +248,8 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
 }
 
 GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
-  let ind = settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
-  let functions = settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
+  let ind = this.settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
+  let functions = this.settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
 
   let color = 'gray';
   let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
@@ -329,10 +329,10 @@ GenomeDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
 
   let y = marginTop;
   for(var i = 0; i < genomeData.genomes.length-1; i++) {
-    let genomeA = settings['genomeData']['genomes'][i][1].genes.gene_calls;
-    let genomeB = settings['genomeData']['genomes'][i+1][1].genes.gene_calls;
-    let genomeID_A = settings['genomeData']['genomes'][i][0];
-    let genomeID_B = settings['genomeData']['genomes'][i+1][0];
+    let genomeA = this.settings['genomeData']['genomes'][i][1].genes.gene_calls;
+    let genomeB = this.settings['genomeData']['genomes'][i+1][1].genes.gene_calls;
+    let genomeID_A = this.settings['genomeData']['genomes'][i][0];
+    let genomeID_B = this.settings['genomeData']['genomes'][i+1][0];
     let [l1,r1] = getRenderNTRange(genomeID_A);
     let [l2,r2] = getRenderNTRange(genomeID_B);
 
@@ -406,15 +406,15 @@ GenomeDrawer.prototype.glowGenes = function(geneParams){
  *  @param gc : target gene cluster ID
  */
 GenomeDrawer.prototype.alignToCluster = function(gc){
-  if(!settings['genomeData']['gene_associations']["anvio-pangenome"]) return;
+  if(!this.settings['genomeData']['gene_associations']["anvio-pangenome"]) return;
 
   let targetGeneInfo = viewCluster(gc);
   if(targetGeneInfo == null) return;
   let [firstGenomeID, targetGeneMid] = targetGeneInfo;
   if(firstGenomeID != null) {
     alignToGC = gc;
-    let index = settings['genomeData']['genomes'].findIndex(g => g[0] == firstGenomeID);
-    for(var i = index+1; i < settings['genomeData']['genomes'].length; i++) {
+    let index = this.settings['genomeData']['genomes'].findIndex(g => g[0] == firstGenomeID);
+    for(var i = index+1; i < this.settings['genomeData']['genomes'].length; i++) {
       let gid = genomeData.genomes[i][0];
       let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if(geneMids == null) continue;
@@ -456,7 +456,7 @@ GenomeDrawer.prototype.showAllADLPts = function(){
 }
 
 GenomeDrawer.prototype.alignRulers = function(){
-  for(genome of settings['genomeData']['genomes']) {
+  for(genome of this.settings['genomeData']['genomes']) {
     xDisps[genome[0]] = xDisplacement;
   }
   percentScale = false;
@@ -514,7 +514,7 @@ GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
 
 GenomeDrawer.prototype.redrawSingleGenome = function(genomeID){
   canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
-  let idx = settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
+  let idx = this.settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
   this.addGenome(idx);
   this.addLayers(idx);
   checkGeneLabels();
