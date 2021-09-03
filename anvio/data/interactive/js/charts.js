@@ -55,8 +55,6 @@ var select_boxes = {};
 var curr_height;
 var show_cags_in_split = true;
 
-var mcags;
-
 function loadAll() {
     info("Initiated");
     $.ajaxPrefilter(function(options) {
@@ -252,7 +250,6 @@ function loadAll() {
                   state['source-colors'] = default_source_colors;
                 }
                 generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes'], show_cags_in_split);
-                mcags = Object.keys(default_source_colors);
                 for(fn of getFunctionalAnnotations()) {
                   $('#gene_color_order').append($('<option>', {
                     value: fn,
@@ -395,16 +392,6 @@ function loadAll() {
 
                 }).change(function() {
                     state['gene-fn-db'] = $(this).val();
-                    switch($(this).val()) {
-                      case "COG_CATEGORY":
-                        mcags = Object.keys(COG_categories);
-                        break;
-                      case "KEGG_CLASS":
-                        mcags = Object.keys(KEGG_categories);
-                        break;
-                      case "Source":
-                        mcags = Object.keys(default_source_colors);
-                    }
                     resetFunctionColors(state[$(this).val().toLowerCase() + '-colors']);
                     redrawArrows();
                     $(this).blur();
@@ -745,7 +732,6 @@ function resetArrowMarkers() {
   $('#contextSvgDefs').empty();
 
   defineArrowMarkers($('#gene_color_order').val());
-  //defineArrowMarkers(null, cags=mcags);
   defineArrowMarkers(null, cags=Object.keys(state['highlight-genes']), noneMarker=false);
 }
 
@@ -1404,7 +1390,6 @@ function processState(state_name, state) {
     $('#gene_color_order').val(state['gene-fn-db']);
 
     generateFunctionColorTable(state[state['gene-fn-db'].toLowerCase() + '-colors'], state['gene-fn-db'], highlight_genes=state['highlight-genes'], show_cags_in_split);
-    mcags = Object.keys(state[state['gene-fn-db'].toLowerCase() + '-colors']);
     this.state = state;
 
     if(!state['highlight-genes']) {
