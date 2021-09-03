@@ -1492,8 +1492,10 @@ function saveState()
 function processState(state_name, state) {
     // set color defaults
     if(!state['source-colors']) state['source-colors'] = default_source_colors;
-    if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
-    if(!state['kegg-colors']) state['kegg-colors'] = default_KEGG_colors;
+    for(fn of getFunctionalAnnotations()) {
+      let prop = fn.toLowerCase() + '-colors';
+      if(!state[prop]) state[prop] = getColorDefaults(fn);
+    }
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
       state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
