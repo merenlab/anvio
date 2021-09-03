@@ -2433,7 +2433,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
         self.progress.new('Calculating per-site synonymous fraction')
-        progress.update('...')
+        self.progress.update('...')
 
         # Some lookups
         coding_codons = sorted(constants.coding_codons)
@@ -2449,9 +2449,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                     is_synonymous[i, j] = False
 
         # Populate necessary per-site info
-        progress.update('...')
+        self.progress.update('...')
         if comparison == 'popular_consensus':
-            progress.update('Finding popular consensus; You have time for a quick stretch')
+            self.progress.update('Finding popular consensus; You have time for a quick stretch')
             self.data['popular_consensus'] = self.data.\
                 groupby('unique_pos_identifier')\
                 ['consensus'].\
