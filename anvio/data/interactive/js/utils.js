@@ -70,8 +70,10 @@ function getClassFromKEGGAnnotation(class_str) {
 function getCagName(category, fn_type) {
   switch(fn_type) {
     case 'COG_CATEGORY':
+    case 'COG14_CATEGORY':
+    case 'COG20_CATEGORY':
       return COG_categories[category];
-    case 'KEGG_CATEGORY':
+    case 'KEGG_CLASS':
       return KEGG_categories[category];
     default:
       return category;
@@ -84,13 +86,16 @@ function getCagName(category, fn_type) {
 function getCagForType(geneFunctions, fn_type) {
   switch(fn_type) {
     case 'COG_CATEGORY':
-      return geneFunctions && geneFunctions[fn_type] && geneFunctions["COG_CATEGORY"][1][0] != 'X' ? geneFunctions["COG_CATEGORY"][1][0] : null;
+    case 'COG14_CATEGORY':
+    case 'COG20_CATEGORY':
+      return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
     case 'KEGG_CLASS':
-      return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]) : null;
+      return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions[fn_type][1]) : null;
     default:
-      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][0] : null;
       if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
-      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';')); // or semicolon-separated
+      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
+      if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
       return out;
   }
 }
@@ -101,8 +106,10 @@ function getCagForType(geneFunctions, fn_type) {
 function getColorDefaults(fn_type) {
   switch(fn_type) {
     case 'COG_CATEGORY':
+    case 'COG14_CATEGORY':
+    case 'COG20_CATEGORY':
       return default_COG_colors;
-    case 'KEGG_CATEGORY':
+    case 'KEGG_CLASS':
       return default_KEGG_colors;
     case 'Source':
       return default_source_colors;
@@ -113,7 +120,7 @@ function getColorDefaults(fn_type) {
 }
 
 function appendColorRow(label, cag, color, prepend=false) {
-  let code = cag.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_');
+  let code = getCleanCagCode(cag);
   var tbody_content =
    '<tr id="picker_row_' + code + '"> \
       <td></td> \
@@ -128,6 +135,11 @@ function appendColorRow(label, cag, color, prepend=false) {
   } else {
     $('#tbody_function_colors').append(tbody_content);
   }
+}
+
+function getCleanCagCode(code) {
+  if(!isNaN(code)) return code;
+  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_');
 }
 
 //-----------------------------------------------------------------------------

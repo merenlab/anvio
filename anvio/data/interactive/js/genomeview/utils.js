@@ -165,7 +165,6 @@ function calcXBounds() {
 }
 
 /*
- *  [TO BE ADDED TO 'regular' utils.js since it can be used in the inspect page]
  *  @returns array of functional annotation types from table in `genomeData`
  */
 function getFunctionalAnnotations() {

@@ -294,7 +294,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       let category = getCagForType(gene.functions, colortype);
 
       if(!category) {
-        category = "none";
+        category = "None";
         if(colortype == "Source") {
           if (gene.source.startsWith('Ribosomal_RNA')) {
             category = 'rRNA';
@@ -324,6 +324,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
+      category = getCleanCagCode(category);
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
@@ -388,11 +389,9 @@ function getGeneEndpts(_start, _stop) {
 function getCustomColorDict(fn_type) {
   let genes = geneParser["data"];
 
-  let cags = [];
-  genes.forEach(gene => {
-    let cag = getCagForType(gene.functions, fn_type);
-    if(cag && !cags.includes(cag)) cags.push(cag);
-  });
+  let cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
+                                              .filter(o => o != null);
+  cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
@@ -401,6 +400,17 @@ function getCustomColorDict(fn_type) {
   delete out["undefined"];
 
   return out;
+  console.log(out);
+}
+
+/*
+ *  @returns array of functional annotation types from genes
+ */
+function getFunctionalAnnotations() {
+  for(gene of geneParser["data"]) {
+    if(!gene.functions) continue;
+    return Object.keys(gene.functions);
+  }
 }
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
