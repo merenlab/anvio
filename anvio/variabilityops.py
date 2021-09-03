@@ -2433,7 +2433,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
         self.progress.new('Calculating per-site synonymous fraction')
-        progress.update('...')
+        self.progress.update('...')
 
         # Some lookups
         coding_codons = sorted(constants.coding_codons)
@@ -2449,9 +2449,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                     is_synonymous[i, j] = False
 
         # Populate necessary per-site info
-        progress.update('...')
+        self.progress.update('...')
         if comparison == 'popular_consensus':
-            progress.update('Finding popular consensus; You have time for a quick stretch')
+            self.progress.update('Finding popular consensus; You have time for a quick stretch')
             self.data['popular_consensus'] = self.data.\
                 groupby('unique_pos_identifier')\
                 ['consensus'].\
@@ -2518,7 +2518,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None, add_potentials=False):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None, add_potentials=False, log_transform=False):
         """Calculate new columns in self.data corresponding to each site's contribution to a grouping
 
         First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
@@ -2552,6 +2552,8 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             passed, it should be a (len(self.data), 2) shaped numpy array. potentials[:,0] and
             potentials[:,1] specify the amount that each SCV's fS and fS values should be divided by
             to yield pS and pN.
+        log_transform : bool, False
+            Log tranforms pN and pS values by log10(x + 1e-4).
 
         Returns
         =======
@@ -2578,8 +2580,15 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         group_tag = (grouping + '_') if grouping != 'site' else ''
         pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
+        if log_transform:
+            pN_name, pS_name = 'log_' + pN_name, 'log_' + pS_name
+
         self.data[pS_name] = frac_syns/potentials[:, 0]
         self.data[pN_name] = frac_nonsyns/potentials[:, 1]
+
+        if log_transform:
+            self.data[pS_name] = np.log10(self.data[pS_name] + 1e-4)
+            self.data[pN_name] = np.log10(self.data[pN_name] + 1e-4)
 
         if add_potentials:
             nN_name, nS_name = f"nN_{group_tag}{comparison}", f"nS_{group_tag}{comparison}"
