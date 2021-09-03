@@ -744,22 +744,10 @@ function resetArrowMarkers() {
 function resetFunctionColors(fn_colors=null) {
   info("Resetting functional annotation colors");
   if($('#gene_color_order') == null) return;
+  let prop = $('#gene_color_order').val().toLowerCase() + '-colors';
+  Object.assign(state[prop], fn_colors ? fn_colors : getColorDefaults($('#gene_color_order')));
 
-  switch($('#gene_color_order').val()) {
-    case 'Source':
-      Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
-      break;
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      Object.assign(state['cog_category-colors'], fn_colors ? fn_colors : default_COG_colors);
-      break;
-    case 'KEGG_CLASS':
-      Object.assign(state['kegg_class-colors'], fn_colors ? fn_colors : default_KEGG_colors);
-      break;
-  }
-
-  generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
+  generateFunctionColorTable(state[prop],
                              $('#gene_color_order').val(),
                              state['highlight-genes'],
                              show_cags_in_split);
