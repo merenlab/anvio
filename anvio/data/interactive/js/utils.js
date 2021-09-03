@@ -92,7 +92,7 @@ function getCagForType(geneFunctions, fn_type) {
     case 'KEGG_CLASS':
       return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions[fn_type][1]) : null;
     default:
-      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][0] : null;
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
       if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
       if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
       if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
