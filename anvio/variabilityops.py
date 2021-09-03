@@ -583,6 +583,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                 max_filter=self.max_departure_from_consensus,
                                 max_condition=self.max_departure_from_consensus < 1),
             F(self.recover_allele_counts_for_all_samples),
+            F(self.add_invariant_sites),
             F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
             F(self.compute_comprehensive_variability_scores),
             F(self.compute_gene_coverage_fields),
@@ -767,6 +768,10 @@ class VariabilitySuper(VariabilityFilter, object):
             except:
                 raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
                                   "ids anvi'o would use. There is something wrong here :(")
+
+
+    def add_invariant_sites(self):
+        return
 
 
     def convert_counts_to_frequencies(self, retain_counts=False, remove_zero_cov_entries=False):
@@ -2239,7 +2244,7 @@ class QuinceModeWrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
     This wrapper exists outside of the actual classes for these engines since
-    the way they recover these frequencies is pretty much identical except one
+    the way they recover these counts is pretty much identical except one
     place where the engine needs to be specifically.
     """
     def __init__(self):
@@ -2434,6 +2439,13 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
             self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
             self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
+
+
+    def add_invariant_sites(self):
+        if not self.kiefl_mode:
+            return
+
+        self.run.info_single('here!')
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
