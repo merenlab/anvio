@@ -534,6 +534,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.max_departure_from_consensus = A('max_departure_from_consensus', float) or 1
         self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
         # output
+        self.kiefl_mode = A('kiefl_mode', bool)
         self.quince_mode = A('quince_mode', bool)
         self.compute_gene_coverage_stats = A('compute_gene_coverage_stats', bool)
         self.output_file_path = A('output_file', null)
@@ -681,6 +682,12 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine not in variability_engines:
             raise ConfigError("The VariabilitySuper class is inherited with an unknown engine. "
                               "WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
+
+        if self.kiefl_mode:
+            if self.quince_mode:
+                raise ConfigError("You can't run --kiefl-mode and --quince-mode concurrently.")
+            if self.engine not in ('CDN',):
+                raise ConfigError("--kiefl-mode is only available when reporting single codon variants (--engine CDN)")
 
         if not self.table_provided:
             if not self.contigs_db_path:
