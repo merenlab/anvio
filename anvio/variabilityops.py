@@ -582,7 +582,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                 min_condition=self.min_departure_from_consensus > 0,
                                 max_filter=self.max_departure_from_consensus,
                                 max_condition=self.max_departure_from_consensus < 1),
-            F(self.recover_base_frequencies_for_all_samples),
+            F(self.recover_allele_counts_for_all_samples),
             F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
             F(self.compute_comprehensive_variability_scores),
             F(self.compute_gene_coverage_fields),
@@ -2115,7 +2115,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
 
 
-    def recover_base_frequencies_for_all_samples(self):
+    def recover_allele_counts_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
         if not self.quince_mode:
@@ -2247,7 +2247,7 @@ class QuinceModeWrapperForFancyEngines(object):
             raise ConfigError("This fancy class is only relevant to be inherited from within CDN or AA engines :(")
 
 
-    def recover_base_frequencies_for_all_samples(self):
+    def recover_allele_counts_for_all_samples(self):
         if not self.quince_mode:
             return
 
@@ -3094,7 +3094,7 @@ class VariabilityFixationIndex(object):
             try:
                 self.v.apply_preliminary_filters()
                 self.v.set_unique_pos_identification_numbers()
-                self.v.recover_base_frequencies_for_all_samples()
+                self.v.recover_allele_counts_for_all_samples()
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
             except self.v.EndProcess:
                 raise ConfigError("After filtering, no positions remain. See the filtering summary above.")
