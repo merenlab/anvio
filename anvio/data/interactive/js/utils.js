@@ -73,7 +73,7 @@ function getCagForType(geneFunctions, fn_type) {
     case 'COG14_CATEGORY':
     case 'COG20_CATEGORY':
       return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
-    case 'KEGG_CLASS':
+    case 'KEGG_Class':
       return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions[fn_type][1]) : null;
     default:
       let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
@@ -93,7 +93,7 @@ function getColorDefaults(fn_type) {
     case 'COG14_CATEGORY':
     case 'COG20_CATEGORY':
       return default_COG_colors;
-    case 'KEGG_CLASS':
+    case 'KEGG_Class':
       return default_KEGG_colors;
     case 'Source':
       return default_source_colors;
