@@ -2466,6 +2466,7 @@ class TRNASeqDataset(object):
         consol_seqs_with_inconsis_profiles_file.write("Index\tTrimmed (0) or Unique (1)\tSequence\n")
 
         count_consol_Tf = 0
+        dict_Us = self.dict_Us
         for subdict_consol_Tf in dict_consol_Tf.values():
             if subdict_consol_Tf['short_seq_Tf'].name in unrepresent_complete_profile_Tf_names:
                 long_seqs_Tf = subdict_consol_Tf['long_seqs_Tf']
@@ -2482,10 +2483,10 @@ class TRNASeqDataset(object):
                 consol_seqs_with_inconsis_profiles_file.write(first_field)
                 consol_seqs_with_inconsis_profiles_file.write("0\t")
                 consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
-                for name_Uf in seq_Tf.names_U:
+                for name_Us in seq_Tf.names_U:
                     consol_seqs_with_inconsis_profiles_file.write(first_field)
                     consol_seqs_with_inconsis_profiles_file.write("1\t")
-                    consol_seqs_with_inconsis_profiles_file.write(dict_Uf[name_Uf].string + "\n")
+                    consol_seqs_with_inconsis_profiles_file.write(dict_Us[name_Us].string + "\n")
         self.count_consol_Tf = count_consol_Tf
         consol_seqs_with_inconsis_profiles_file.close()
 
