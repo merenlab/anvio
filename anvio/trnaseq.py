@@ -2478,8 +2478,8 @@ class TRNASeqDataset(object):
             dict_Nf[consol_seq_Tf.name] = NormalizedFullProfileSequence([consol_seq_Tf] + subdict_consol_Tf['Nf_members'])
 
             # Report consolidated Tf with different complete feature profiles.
-            for seq_Tf in subdict_consol_Tf['long_seqs_Tf'] + [subdict_consol_Tf['short_seq_Tf']]:
-                first_field = str(count_consol_Tf) + "\t"
+            first_field = str(count_consol_Tf) + "\t"
+            for seq_Tf in subdict_consol_Tf['long_seqs_Tf']:
                 consol_seqs_with_inconsis_profiles_file.write(first_field)
                 consol_seqs_with_inconsis_profiles_file.write("0\t")
                 consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
@@ -2487,6 +2487,15 @@ class TRNASeqDataset(object):
                     consol_seqs_with_inconsis_profiles_file.write(first_field)
                     consol_seqs_with_inconsis_profiles_file.write("1\t")
                     consol_seqs_with_inconsis_profiles_file.write(dict_Us[name_Us].string + "\n")
+            seq_Tf = subdict_consol_Tf['short_seq_Tf']
+            consol_seqs_with_inconsis_profiles_file.write(first_field)
+            consol_seqs_with_inconsis_profiles_file.write("0\t")
+            consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
+            for name_Uf in seq_Tf.names_U:
+                consol_seqs_with_inconsis_profiles_file.write(first_field)
+                consol_seqs_with_inconsis_profiles_file.write("1\t")
+                consol_seqs_with_inconsis_profiles_file.write(dict_Uf[name_Uf].string + "\n")
+
         self.count_consol_Tf = count_consol_Tf
         consol_seqs_with_inconsis_profiles_file.close()
 
