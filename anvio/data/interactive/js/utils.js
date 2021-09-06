@@ -65,22 +65,6 @@ function getClassFromKEGGAnnotation(class_str) {
 //-----------------------------------------------------------------------------
 
 /*
- *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
- */
-function getCagName(category, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return COG_categories[category];
-    case 'KEGG_CLASS':
-      return KEGG_categories[category];
-    default:
-      return category;
-  }
-}
-
-/*
  *  @returns target gene's category code for a given functional annotation type.
  */
 function getCagForType(geneFunctions, fn_type) {
@@ -119,8 +103,8 @@ function getColorDefaults(fn_type) {
   }
 }
 
-function appendColorRow(label, cag, color, prepend=false) {
-  let code = getCleanCagCode(cag);
+function appendColorRow(label, cagCode, color, prepend=false) {
+  let code = getCleanCagCode(cagCode);
   var tbody_content =
    '<tr id="picker_row_' + code + '"> \
       <td></td> \

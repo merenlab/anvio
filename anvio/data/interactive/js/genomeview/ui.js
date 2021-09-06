@@ -443,7 +443,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   }
 
   $('#tbody_function_colors').empty();
-  Object.keys(db).forEach(category => appendColorRow(getCagName(category, fn_type), category, db[category]) );
+  Object.keys(db).forEach(category => appendColorRow(category, category, db[category]) );
 
   $('.colorpicker').colpick({
       layout: 'hex',

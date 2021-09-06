@@ -400,7 +400,6 @@ function getCustomColorDict(fn_type) {
   delete out["undefined"];
 
   return out;
-  console.log(out);
 }
 
 /*

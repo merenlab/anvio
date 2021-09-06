@@ -19,8 +19,8 @@
  */
 
 /**
- * File Overview : The Drawer class defined here is responsible for rendering genomic + associated data passed from main.js to an interactive 
- * browser canvas. This is where most of the heavy lifting should happen, and where most of our Fabric.js library interactions should occur. 
+ * File Overview : The Drawer class defined here is responsible for rendering genomic + associated data passed from main.js to an interactive
+ * browser canvas. This is where most of the heavy lifting should happen, and where most of our Fabric.js library interactions should occur.
  */
 var GenomeDrawer = function(settings) {
   this.settings = settings;
@@ -252,7 +252,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   let functions = this.settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
 
   let color = 'gray';
-  let cag = functions && functions[color_db] ? functions[color_db][1][0] : null;
+  let cag = getCagForType(functions, color_db);
 
   // TODO: use state instead of hardcoded color pickers
 
@@ -262,6 +262,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
     color = $('#picker_' + pickerCode).attr('color');
   } else {
     if(cag) {
+       cag = getCleanCagCode(cag);
        if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
     } else {
       if (gene.source.startsWith('Ribosomal_RNA')) {
