@@ -2477,8 +2477,7 @@ class TRNASeqDataset(object):
             dict_Nf[consol_seq_Tf.name] = NormalizedFullProfileSequence([consol_seq_Tf] + subdict_consol_Tf['Nf_members'])
 
             # Report consolidated Tf with different complete feature profiles.
-            for seq_Tf in subdict_consol_Tf['long_seqs_Tf'] + subdict_consol_Tf['short_seq_Tf']:
-            # for seq_Tf in seqs_Tf[: complete_profile_indices[-1] + 1]:
+            for seq_Tf in subdict_consol_Tf['long_seqs_Tf'] + [subdict_consol_Tf['short_seq_Tf']]:
                 first_field = str(count_consol_Tf) + "\t"
                 consol_seqs_with_inconsis_profiles_file.write(first_field)
                 consol_seqs_with_inconsis_profiles_file.write("0\t")
