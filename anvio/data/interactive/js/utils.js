@@ -85,7 +85,7 @@ function getColorDefaults(fn_type) {
     case 'Source':
       return default_source_colors;
     default:
-      // user-supplied color table
+      // defer to program-specific implementation for handling user-supplied color tables
       return getCustomColorDict(fn_type);
   }
 }
