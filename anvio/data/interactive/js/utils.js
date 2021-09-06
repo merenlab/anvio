@@ -49,17 +49,6 @@ function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
 }
 
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
 //-----------------------------------------------------------------------------
 // Gene function coloring
 //-----------------------------------------------------------------------------
@@ -73,8 +62,6 @@ function getCagForType(geneFunctions, fn_type) {
     case 'COG14_CATEGORY':
     case 'COG20_CATEGORY':
       return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
-    case 'KEGG_Class':
-      return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions[fn_type][1]) : null;
     default:
       let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
       if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
