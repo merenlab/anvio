@@ -76,7 +76,6 @@ function initData() {
       console.log(data);
 
       let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
-      genomeData.genomes = genomes // this will be phased out for settings obj below
       settings['genomeData'] = genomeData
       settings['genomeData']['genomes'] = genomes
     }
