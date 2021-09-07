@@ -20,7 +20,7 @@
 
 /**
  * File Overview : This file is the entrypoint for genomeview. Here, genomic + state data are retrieved from the backend, processed, and passed to the various other
- * genomeview modules to build out UI and render visualizations. Generally speaking, this file should stay pretty lean and purpose-driven.  
+ * genomeview modules to build out UI and render visualizations. Generally speaking, this file should stay pretty lean and purpose-driven.
  */
 
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
@@ -53,7 +53,7 @@ var mainCanvasHeight;
 var canvas;
 var genomeLabelsCanvas;
 var brush;
-var drawer 
+var drawer
 var color_db;
 var genomeData;
 
@@ -131,7 +131,7 @@ function processState(stateName, stateData) {
   buildGroupLayersTable('Genome')
   if (settings['additional-data-layers'][0]['ruler']) { // TODO fix conditional check, avoid undefined error when obj doesn't exist 
     buildGroupLayersTable('Ruler')
-  } 
+  }
 
   if (settings['additional-data-layers'][0]['coverage']) {
     buildGroupLayersTable('Coverage')
@@ -209,7 +209,6 @@ function loadAll() {
     text: 'Source'
   }));
   for (fn of getFunctionalAnnotations()) {
-    if (!['COG_CATEGORY', 'KEGG_CATEGORY'].includes(fn)) continue; // TODO: support any option
     $('#gene_color_order').append($('<option>', {
       value: fn,
       text: fn
@@ -226,5 +225,5 @@ function loadAll() {
   setEventListeners()
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
-  drawer.draw() 
+  drawer.draw()
 }

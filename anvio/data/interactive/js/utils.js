@@ -34,11 +34,86 @@ function is_large_angle(a, b) {
     return (Math.abs(b - a) > Math.PI) ? 1 : 0;
 }
 
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}
+
 function info(step) {
     // a funciton to keep user posted about what is going on.
     timestamp = (new Date(Date.now())).toLocaleString().substr(11,7);
     console.log(step + " (" + timestamp + ").");
 }
+
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
+}
+
+//-----------------------------------------------------------------------------
+// Gene function coloring
+//-----------------------------------------------------------------------------
+
+/*
+ *  @returns target gene's category code for a given functional annotation type.
+ */
+function getCagForType(geneFunctions, fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+    case 'COG14_CATEGORY':
+    case 'COG20_CATEGORY':
+      return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
+    default:
+      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
+      if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
+      return out;
+  }
+}
+
+/*
+ *  @returns relevant category:color dict from constants.js for a given functional annotation
+ */
+function getColorDefaults(fn_type) {
+  switch(fn_type) {
+    case 'COG_CATEGORY':
+    case 'COG14_CATEGORY':
+    case 'COG20_CATEGORY':
+      return default_COG_colors;
+    case 'KEGG_Class':
+      return default_KEGG_colors;
+    case 'Source':
+      return default_source_colors;
+    default:
+      // defer to program-specific implementation for handling user-supplied color tables
+      return getCustomColorDict(fn_type);
+  }
+}
+
+function appendColorRow(label, cagCode, color, prepend=false) {
+  let code = getCleanCagCode(cagCode);
+  var tbody_content =
+   '<tr id="picker_row_' + code + '"> \
+      <td></td> \
+      <td> \
+        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+      </td> \
+      <td>' + label + '</td> \
+    </tr>';
+
+  if(prepend) {
+    $('#tbody_function_colors').prepend(tbody_content);
+  } else {
+    $('#tbody_function_colors').append(tbody_content);
+  }
+}
+
+function getCleanCagCode(code) {
+  if(!isNaN(code)) return code;
+  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_');
+}
+
+//-----------------------------------------------------------------------------
 
 function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({

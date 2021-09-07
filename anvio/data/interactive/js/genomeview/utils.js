@@ -19,23 +19,11 @@
  */
 
 /**
- * File Overview : This file contains utility functions used throughout genomeview. As a general rule, 
- * functions defined here explicitly return some value or mutate an existing global variable. Functions 
- * defined here should not interact directly with elements of UI, state, or canvas objects. 
+ * File Overview : This file contains utility functions used throughout genomeview. As a general rule,
+ * functions defined here explicitly return some value or mutate an existing global variable. Functions
+ * defined here should not interact directly with elements of UI, state, or canvas objects.
  */
 
-
-/** 
- * ripped from primary utils.js instead of importing the whole file
-*/
-var fixHelperModified = function(e, tr) { 
-  var $originals = tr.children();
-  var $helper = tr.clone();
-  $helper.children().each(function(index) {
-      $(this).width($originals.eq(index).width());
-  });
-  return $helper;
-};
 
 /*
  *  return height value for main canvas element
@@ -177,7 +165,6 @@ function calcXBounds() {
 }
 
 /*
- *  [TO BE ADDED TO 'regular' utils.js since it can be used in the inspect page]
  *  @returns array of functional annotation types from table in `genomeData`
  */
 function getFunctionalAnnotations() {
@@ -185,25 +172,6 @@ function getFunctionalAnnotations() {
 }
 
 /*
- *  [TO BE ADDED TO 'regular' utils.js]
- *  @returns relevant category:color dict from constants.js for a given functional annotation
- */
-function getColorDefaults(fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-      return default_COG_colors;
-    case 'KEGG_CATEGORY':
-      return default_KEGG_colors;
-    case 'Source':
-      return default_source_colors;
-    default:
-      // user-supplied color table
-      return getCustomColorDict(fn_type);
-  }
-}
-
-/*
- *  [TO BE ADDED TO 'regular' utils.js]
  *  @returns arbitrary category:color dict given a list of categories
  */
 function getCustomColorDict(fn_type) {
@@ -224,58 +192,4 @@ function getCustomColorDict(fn_type) {
   delete out["undefined"];
 
   return out;
-}
-
-/*
- *  [TO BE ADDED TO genomeview/UI.js ... OR potentially 'regular' utils.js]
- *  @returns target gene's category code for a given functional annotation type.
- */
-function getCagForType(geneFunctions, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-      return geneFunctions && geneFunctions[fn_type] ? geneFunctions[fn_type][1][0] : null;
-    case 'KEGG_CATEGORY':
-      // TODO
-      return null;
-    default:
-      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
-      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
-      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';')); // or semicolon-separated
-      return out;
-  }
-}
-
-/*
- *  [TO BE ADDED TO 'regular' utils.js]
- *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
- */
-function getCagName(category, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-      return COG_categories[category];
-    case 'KEGG_CATEGORY':
-      return KEGG_categories[category];
-    default:
-      return category;
-  }
-}
-
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-  
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
-}
-
-function clamp(num, min, max) {
-  return Math.min(Math.max(num, min), max);
 }

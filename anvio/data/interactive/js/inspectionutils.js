@@ -290,28 +290,22 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
       var y = 10 + (gene.level * 20);
 
-      var category = "none";
-      if(colortype == "COG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
-          category = gene.functions["COG_CATEGORY"][0][0];
-        }
-        if(category == null || category == "X") category = "none";
-      } else if(colortype == "KEGG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
-          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
-        }
-        if(category == null) category = "none";
-      } else if(colortype == "Source") {
-        if (gene.source.startsWith('Ribosomal_RNA')) {
-          category = 'rRNA';
-        } else if (gene.source == 'Transfer_RNAs') {
-          category = 'tRNA';
-        } else if (gene.functions !== null) {
-          category = 'Function';
-        } else {
-          category = "None";
+
+      let category = getCagForType(gene.functions, colortype);
+
+      if(!category) {
+        category = "None";
+        if(colortype == "Source") {
+          if (gene.source.startsWith('Ribosomal_RNA')) {
+            category = 'rRNA';
+          } else if (gene.source == 'Transfer_RNAs') {
+            category = 'tRNA';
+          } else if (gene.functions !== null) {
+            category = 'Function';
+          }
         }
       }
+
       if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
         category = gene.gene_callers_id;
       }
@@ -330,6 +324,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
+      category = getCleanCagCode(category);
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
@@ -388,6 +383,35 @@ function getGeneEndpts(_start, _stop) {
   return ret;
 }
 
+/*
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type) {
+  let genes = geneParser["data"];
+
+  let cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
+                                              .filter(o => o != null);
+  cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+  delete out["undefined"];
+
+  return out;
+}
+
+/*
+ *  @returns array of functional annotation types from genes
+ */
+function getFunctionalAnnotations() {
+  for(gene of geneParser["data"]) {
+    if(!gene.functions) continue;
+    return Object.keys(gene.functions);
+  }
+}
+
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
 function get_comp_nt_color(nts){
@@ -403,22 +427,6 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
-}
-
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js
