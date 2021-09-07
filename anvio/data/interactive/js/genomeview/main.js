@@ -157,12 +157,10 @@ function processState(stateName, stateData) {
   }
 
   if (stateData.hasOwnProperty('display')) {
-    // TODO process
     settings['display'] = stateData['display']
   } else {
-    stateData['display'] = {}
-    stateData['display']['additionalDataLayers'] = {}
-    settings['display'] = stateData['display']
+    settings['display'] = {}
+    settings['display']['additionalDataLayers'] = {}
   }
   if (stateData['display'].hasOwnProperty('bookmarks')) {
     settings['display']['bookmarks'] = stateData['bookmarks']
