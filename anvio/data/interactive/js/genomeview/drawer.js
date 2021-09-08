@@ -44,7 +44,10 @@ GenomeDrawer.prototype.draw = function(){
  *  For each genome group, iterate additional all layers and render where appropriate
  */
 GenomeDrawer.prototype.addLayers = function(orderIndex){
+  let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
+
   yOffset = orderIndex * spacing;
+  let layerPos = 0
   let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
   let genome = this.settings['genomeData']['genomes'][orderIndex][1];
   let label = genome.genes.gene_calls[0].contig;
@@ -53,30 +56,44 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
-    let layerPos = [spacing / maxGroupSize] * idx
-
     if(layer == 'Genome' && $('#Genome-show').is(':checked')){
-      this.addGenome(orderIndex)
-    }
-    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-      this.buildGroupRulerLayer(genomeID, layerPos, orderIndex)
+      this.addGenome(orderIndex, dataLayerHeight)
+      layerPos += dataLayerHeight
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
+      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
+      layerPos += dataLayerHeight
     }
     if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
+      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
+      layerPos += dataLayerHeight
+    }
+    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
+      this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
+      layerPos += rulerHeight
     }
   })
 }
-GenomeDrawer.prototype.addGenome = function(orderIndex){
+
+/*
+ *  programmatically calculate layer height values, given that the ruler layer should be allocated comparatively less space
+ */
+GenomeDrawer.prototype.calculateLayerSizes = function(){
+  let parityHeight = spacing / maxGroupSize
+  let rulerHeight = Math.floor(parityHeight * .7) // some arbitrary percentage of parity since ruler should get less y-axis space
+
+  // with the extra space carved out by a smaller rulerHeight, distribute the excess evenly amongst all layers that are NOT rulers
+  let dataLayerHeight = Math.floor(parityHeight * (1 + (.3 / (maxGroupSize -1))) )
+  return [dataLayerHeight, rulerHeight]
+}
+
+GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
   let genomeID = genome[0];
   let y = marginTop + orderIndex*spacing;
 
-  let layerHeight = spacing / maxGroupSize
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
@@ -142,11 +159,10 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
-GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, orderIndex){
-  let maxGCValue = 0
+GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex){
+    let maxGCValue = 0
     let startingTop = marginTop + yOffset + layerPos
     let startingLeft = xDisps[genomeID]
-    let layerHeight = spacing / maxGroupSize
     let pathDirective = [`M 0 0`]
 
     for(let i = 0; i < additionalDataLayers[layer].length; i++){
@@ -185,10 +201,10 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
 /*
  *  Generate individual genome group rulers
  */
-GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, orderIndex){
+GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layerHeight, orderIndex){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
-  let layerHeight = [spacing / maxGroupSize]
+  // let layerHeight = (spacing / maxGroupSize)
 
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
