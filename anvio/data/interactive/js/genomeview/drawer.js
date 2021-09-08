@@ -533,7 +533,6 @@ GenomeDrawer.prototype.setGenomeLabelSize = function(newSize){
 GenomeDrawer.prototype.redrawSingleGenome = function(genomeID){
   canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
   let idx = this.settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
-  this.addGenome(idx);
   this.addLayers(idx);
   checkGeneLabels();
 }
