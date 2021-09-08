@@ -1547,7 +1547,7 @@ class TRNASeqDataset(object):
         total_time_start = time.time()
 
         self.sanity_check()
-        if '_' in self.param_3prime_termini:
+        if '' in self.parsed_3prime_termini:
             global PROFILE_ABSENT_3PRIME_TERMINUS
             PROFILE_ABSENT_3PRIME_TERMINUS = True
 
@@ -1733,10 +1733,10 @@ class TRNASeqDataset(object):
                               "`--num-threads` wants a value greater than 0. "
                               f"Last we checked, {self.num_threads} is not greater than 0.")
 
-        self.param_3prime_termini = self.threeprime_termini_sanity_check()
-        trnaidentifier.TRNAFeatureParameterizer.set_threeprime_termini(self.param_3prime_termini)
+        self.parsed_3prime_termini = self.threeprime_termini_sanity_check()
+        trnaidentifier.TRNAFeatureParameterizer.set_threeprime_termini(self.parsed_3prime_termini)
         # The following variable is only used as part of a heuristic in `find_indels`.
-        self.max_length_3prime_terminus = max([len(t) for t in self.param_3prime_termini])
+        self.max_length_3prime_terminus = max([len(t) for t in self.parsed_3prime_termini])
 
         self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
 
@@ -1849,6 +1849,8 @@ class TRNASeqDataset(object):
                     f.write(get_summary_line(param_name.replace('Number allowed unpaired', "Allowed number of unpaired bps"), param_value))
                     continue
                 f.write(get_summary_line(param_name, param_value))
+            # Use `param_3prime_termini` rather than `parsed_3prime_termini` here to write "_"
+            # rather than "" for an absent 3' terminus.
             f.write(get_summary_line("Allowed 3' termini", ",".join(self.param_3prime_termini)))
             f.write(get_summary_line("Min length of \"long\" 5' extension", MIN_LENGTH_LONG_5PRIME_EXTENSION))
 
