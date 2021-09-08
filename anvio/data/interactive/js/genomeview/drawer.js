@@ -54,7 +54,6 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     let layerPos = [spacing / maxGroupSize] * idx
-    console.log(this.settings['group-layer-order'])
 
     if(layer == 'Genome' && $('#Genome-show').is(':checked')){
       this.addGenome(orderIndex)
