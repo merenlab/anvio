@@ -31,7 +31,7 @@ GenomeDrawer.prototype.draw = function(){
   labelSpacing = 30 // reset to default value upon each draw() call
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
-  settings['genomeData']['genomes'].map((genome, idx) => {
+  this.settings['genomeData']['genomes'].map((genome, idx) => {
     this.addLayers(idx)
     labelSpacing += 30
   })
