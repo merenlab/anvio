@@ -32,7 +32,6 @@ GenomeDrawer.prototype.draw = function(){
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
 
   settings['genomeData']['genomes'].map((genome, idx) => {
-    this.addGenome(idx)
     this.addLayers(idx)
     labelSpacing += 30
   })
@@ -41,6 +40,36 @@ GenomeDrawer.prototype.draw = function(){
   drawTestShades();
 }
 
+/*
+ *  For each genome group, iterate additional all layers and render where appropriate
+ */
+GenomeDrawer.prototype.addLayers = function(orderIndex){
+  yOffset = orderIndex * spacing;
+  let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
+  let genome = this.settings['genomeData']['genomes'][orderIndex][1];
+  let label = genome.genes.gene_calls[0].contig;
+
+  let additionalDataLayers = this.settings['additional-data-layers'].find(group => group.genome == label)
+  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
+
+  this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+    let layerPos = [spacing / maxGroupSize] * idx
+    console.log(this.settings['group-layer-order'])
+
+    if(layer == 'Genome' && $('#Genome-show').is(':checked')){
+      this.addGenome(orderIndex)
+    }
+    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
+      this.buildGroupRulerLayer(genomeID, layerPos, orderIndex)
+    }
+    if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
+      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
+    }
+    if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
+      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
+    }
+  })
+}
 GenomeDrawer.prototype.addGenome = function(orderIndex){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
@@ -110,32 +139,6 @@ GenomeDrawer.prototype.addGenome = function(orderIndex){
   }
 }
 
-/*
- *  For each genome group, iterate additional layers beyond genome and render where appropriate
- */
-GenomeDrawer.prototype.addLayers = function(orderIndex){
-  yOffset = orderIndex * spacing;
-  let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
-  let genome = this.settings['genomeData']['genomes'][orderIndex][1];
-  let label = genome.genes.gene_calls[0].contig;
-
-  let additionalDataLayers = this.settings['additional-data-layers'].find(group => group.genome == label)
-  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
-
-  this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
-    let layerPos = [spacing / maxGroupSize] * idx
-
-    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
-      this.buildGroupRulerLayer(genomeID, layerPos, orderIndex)
-    }
-    if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', orderIndex)
-    }
-    if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', orderIndex)
-    }
-  })
-}
 
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
@@ -186,7 +189,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
 GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, orderIndex){
   let startingTop = marginTop + yOffset + layerPos
   let startingLeft = xDisps[genomeID]
-  let layerHeight = spacing / maxGroupSize
+  let layerHeight = [spacing / maxGroupSize]
 
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
