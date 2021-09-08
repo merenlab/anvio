@@ -154,8 +154,6 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight){
     }
   }
 }
-
-
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
