@@ -245,7 +245,6 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
     selectable: false,
     opacity : .5
   });
-  canvas.add(background)
   canvas.sendToBack(background)
 }
 
