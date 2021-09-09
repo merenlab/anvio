@@ -321,7 +321,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
     gene: gene,
     geneID: geneID,
     genomeID: genomeID,
-    top: style == 3 ? y-17 : y-11,
+    top: style == 3 ? y-17 : y-11, // TODO update this offset to reflect genome layer height (we want to render this arrow in the middle of its allocated height)
     left: xDisps[genomeID] + (1.5+gene.start)*scaleFactor,
     fill: color,
     stroke: 'gray',
