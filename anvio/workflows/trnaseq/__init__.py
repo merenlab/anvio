@@ -247,6 +247,13 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
         self.target_files = self.get_target_files()
 
+        # The `anvi-run-workflow --cluster` option, which submits each rule as a separate job,
+        # requires that the rule's log directory exist before running the rule. This workflow
+        # differs from others by writing log files for each sample to log directories for each
+        # sample.
+        for sample_name in self.sample_names:
+            filesnpaths.gen_output_directory(os.path.join(self.dirs_dict['00_LOGS'], sample_name))
+
 
     def check_samples_txt(self):
         """Check the format and content of the file of sample information provided by the user."""
