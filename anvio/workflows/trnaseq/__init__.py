@@ -252,7 +252,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         # differs from others by writing log files for each sample to log directories for each
         # sample.
         for sample_name in self.sample_names:
-            filesnpaths.gen_output_directory(os.path.join(self.dirs_dict['00_LOGS'], sample_name))
+            filesnpaths.gen_output_directory(os.path.join(self.dirs_dict['LOGS_DIR'], sample_name))
 
 
     def check_samples_txt(self):
