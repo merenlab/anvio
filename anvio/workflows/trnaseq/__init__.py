@@ -207,9 +207,9 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         super().init()
 
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
-        self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
+        self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output']) if self.run_iu_merge_pairs else False
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
-        self.gzip_anvi_reformat_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
+        self.gzip_anvi_reformat_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output']) if self.run_anvi_reformat_fasta else False
         self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
         self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
