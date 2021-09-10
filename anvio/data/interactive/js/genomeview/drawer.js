@@ -57,7 +57,7 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if(layer == 'Genome' && $('#Genome-show').is(':checked')){
-      this.addGenome(orderIndex, dataLayerHeight)
+      this.addGenome(orderIndex, dataLayerHeight, layerPos)
       layerPos += dataLayerHeight
     }
     if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
@@ -87,12 +87,12 @@ GenomeDrawer.prototype.calculateLayerSizes = function(){
   return [dataLayerHeight, rulerHeight]
 }
 
-GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight){
+GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeLabel = gene_list[0].contig;
   let genomeID = genome[0];
-  let y = marginTop + orderIndex*spacing;
+  let y = marginTop + yOffset + layerPos + (layerHeight / 2) // render arrows in the center of genome layer's allotted vertical space
 
   if(showLabels) {
     canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
@@ -114,7 +114,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight){
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  this.addBackgroundShade(y, start, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade((marginTop + yOffset + layerPos), start, genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
