@@ -127,22 +127,20 @@ function processState(stateName, stateData) {
 
   // working under the assumption that all genome groups with contain the same additional data layers,
   // we can query the first genome group for specific ADL and go from there
-  buildGroupLayersTable('Genome')
-  if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['ruler']) { // TODO fix conditional check, avoid undefined error when obj doesn't exist 
-    buildGroupLayersTable('Ruler')
-  }
 
   if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['coverage']) {
-    buildGroupLayersTable('Coverage')
     settings['group-layer-order'].unshift('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
   if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['gcContent']) {
-    buildGroupLayersTable('GC_Content')
     settings['group-layer-order'].unshift('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
+
+  settings['group-layer-order'].map(layer => {
+    buildGroupLayersTable(layer)
+  })
 
   if (stateData.hasOwnProperty('genome-order-method')) {
     settings['genome-order-method'] = stateData['genome-order-method']
