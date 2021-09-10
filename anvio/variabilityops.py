@@ -2445,89 +2445,102 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         if not self.kiefl_mode:
             return
 
-        with terminal.TimeCode():
-            d = {
-                'entry_id': [],
-                'unique_pos_identifier': [],
-                'sample_id': [],
-                'corresponding_gene_call': [],
-                'gene_length': [],
-                'codon_order_in_gene': [],
-                'codon_number': [],
-                'departure_from_reference': [],
-                'coverage': [],
-                'reference': [],
-            }
-            d.update({
-                codon: [] for codon in constants.codons
-            })
+        self.progress.new("Adding invariant sites (--kiefl-mode)")
+        self.progress.update("...")
 
-            samples_wanted = set(self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids)
-            get_gene_codons = lambda gene_callers_id: utils.get_list_of_codons_for_gene_call(self.genes_in_contigs_dict[gene_callers_id], self.contig_sequences)
+        d = {
+            'entry_id': [],
+            'unique_pos_identifier': [],
+            'sample_id': [],
+            'corresponding_gene_call': [],
+            'gene_length': [],
+            'codon_order_in_gene': [],
+            'codon_number': [],
+            'departure_from_reference': [],
+            'coverage': [],
+            'reference': [],
+        }
+        d.update({
+            codon: [] for codon in constants.codons
+        })
 
-            next_entry_id = self.data['entry_id'].max() + 1
-            next_unique_pos_identifier = self.data['unique_pos_identifier'].max() + 1
+        samples_wanted = set(self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids)
+        get_gene_codons = lambda gene_callers_id: utils.get_list_of_codons_for_gene_call(self.genes_in_contigs_dict[gene_callers_id], self.contig_sequences)
 
-            for corresponding_gene_call, gene_df in self.data.groupby(['corresponding_gene_call']):
-                gene_length = self.get_gene_length(corresponding_gene_call)
+        next_entry_id = self.data['entry_id'].max() + 1
+        next_unique_pos_identifier = self.data['unique_pos_identifier'].max() + 1
 
-                # First, add sites that are invariant in some, but not all samples
-                for codon_order_in_gene, codon_df in gene_df.groupby('codon_order_in_gene'):
-                    if codon_df.shape[0] < len(samples_wanted):
-                        # This site is invariant in at least one sample
-                        example_row = codon_df.iloc[0][['reference', 'unique_pos_identifier']]
-                        reference, unique_pos_identifier = example_row
+        for corresponding_gene_call, gene_df in self.data.groupby(['corresponding_gene_call']):
+            gene_length = self.get_gene_length(corresponding_gene_call)
 
-                        present_sample_ids = set(codon_df['sample_id'])
-                        missing_sample_ids = samples_wanted - present_sample_ids
-                        num_missing_samples = len(missing_sample_ids)
+            # First, add sites that are invariant in some, but not all samples
+            for codon_order_in_gene, codon_df in gene_df.groupby('codon_order_in_gene'):
+                if codon_df.shape[0] < len(samples_wanted):
+                    # This site is invariant in at least one sample
+                    example_row = codon_df.iloc[0][['reference', 'unique_pos_identifier']]
+                    reference, unique_pos_identifier = example_row
 
-                        d['entry_id'].extend(range(next_entry_id, next_entry_id + num_missing_samples))
-                        d['unique_pos_identifier'].extend([unique_pos_identifier]*num_missing_samples)
-                        d['sample_id'].extend(missing_sample_ids)
-                        d['corresponding_gene_call'].extend([corresponding_gene_call]*num_missing_samples)
-                        d['gene_length'].extend([gene_length]*num_missing_samples)
-                        d['codon_order_in_gene'].extend([codon_order_in_gene]*num_missing_samples)
-                        d['codon_number'].extend([codon_order_in_gene+1]*num_missing_samples)
-                        d['departure_from_reference'].extend([0]*num_missing_samples)
-                        d['coverage'].extend([1]*num_missing_samples)
-                        d['reference'].extend([reference]*num_missing_samples)
-                        d[reference].extend([1]*num_missing_samples)
-                        for codon in constants.codons:
-                            if codon == reference:
-                                continue
-                            d[codon].extend([0]*num_missing_samples)
+                    present_sample_ids = set(codon_df['sample_id'])
+                    missing_sample_ids = samples_wanted - present_sample_ids
+                    num_missing_samples = len(missing_sample_ids)
 
-                        next_entry_id += num_missing_samples
-
-                # Second, add sites that are invariant in all samples
-                codons = get_gene_codons(corresponding_gene_call)
-                present_codon_order_in_genes = set(gene_df['codon_order_in_gene'].unique())
-                missing_codon_order_in_genes = set(range(len(codons))) - present_codon_order_in_genes
-                num_samples = len(samples_wanted)
-
-                for codon_order_in_gene in missing_codon_order_in_genes:
-                    reference = codons[codon_order_in_gene]
-                    d['entry_id'].extend(range(next_entry_id, next_entry_id + num_samples))
-                    d['unique_pos_identifier'].extend([next_unique_pos_identifier]*num_samples)
-                    d['sample_id'].extend(samples_wanted)
-                    d['corresponding_gene_call'].extend([corresponding_gene_call]*num_samples)
-                    d['gene_length'].extend([gene_length]*num_samples)
-                    d['codon_order_in_gene'].extend([codon_order_in_gene]*num_samples)
-                    d['codon_number'].extend([codon_order_in_gene+1]*num_samples)
-                    d['departure_from_reference'].extend([0]*num_samples)
-                    d['coverage'].extend([1]*num_samples)
-                    d['reference'].extend([reference]*num_samples)
-                    d[reference].extend([1]*num_samples)
+                    d['entry_id'].extend(range(next_entry_id, next_entry_id + num_missing_samples))
+                    d['unique_pos_identifier'].extend([unique_pos_identifier]*num_missing_samples)
+                    d['sample_id'].extend(missing_sample_ids)
+                    d['corresponding_gene_call'].extend([corresponding_gene_call]*num_missing_samples)
+                    d['gene_length'].extend([gene_length]*num_missing_samples)
+                    d['codon_order_in_gene'].extend([codon_order_in_gene]*num_missing_samples)
+                    d['codon_number'].extend([codon_order_in_gene+1]*num_missing_samples)
+                    d['departure_from_reference'].extend([0]*num_missing_samples)
+                    d['coverage'].extend([1]*num_missing_samples)
+                    d['reference'].extend([reference]*num_missing_samples)
+                    d[reference].extend([1]*num_missing_samples)
                     for codon in constants.codons:
                         if codon == reference:
                             continue
-                        d[codon].extend([0]*num_samples)
+                        d[codon].extend([0]*num_missing_samples)
 
-                    next_entry_id += num_samples
-                    next_unique_pos_identifier += 1
+                    next_entry_id += num_missing_samples
 
-            df = pd.DataFrame(d)
+            # Second, add sites that are invariant in all samples
+            codons = get_gene_codons(corresponding_gene_call)
+            present_codon_order_in_genes = set(gene_df['codon_order_in_gene'].unique())
+            missing_codon_order_in_genes = set(range(len(codons))) - present_codon_order_in_genes
+            num_samples = len(samples_wanted)
+
+            for codon_order_in_gene in missing_codon_order_in_genes:
+                reference = codons[codon_order_in_gene]
+                d['entry_id'].extend(range(next_entry_id, next_entry_id + num_samples))
+                d['unique_pos_identifier'].extend([next_unique_pos_identifier]*num_samples)
+                d['sample_id'].extend(samples_wanted)
+                d['corresponding_gene_call'].extend([corresponding_gene_call]*num_samples)
+                d['gene_length'].extend([gene_length]*num_samples)
+                d['codon_order_in_gene'].extend([codon_order_in_gene]*num_samples)
+                d['codon_number'].extend([codon_order_in_gene+1]*num_samples)
+                d['departure_from_reference'].extend([0]*num_samples)
+                d['coverage'].extend([1]*num_samples)
+                d['reference'].extend([reference]*num_samples)
+                d[reference].extend([1]*num_samples)
+                for codon in constants.codons:
+                    if codon == reference:
+                        continue
+                    d[codon].extend([0]*num_samples)
+
+                next_entry_id += num_samples
+                next_unique_pos_identifier += 1
+
+        new_entries = pd.DataFrame(d)
+
+        # concatenate new columns to self.data
+        entries_before = len(self.data.index)
+        self.data = pd.concat([self.data, new_entries], sort=False)
+        self.data.set_index('entry_id', drop=False, inplace=True)
+        entries_after = len(self.data.index)
+
+        self.progress.end()
+
+        self.compute_additional_fields(list(new_entries["entry_id"]))
+        self.report_change_in_entry_number(entries_before, entries_after, reason="kiefl mode")
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
