@@ -57,18 +57,11 @@ function getKeyByValue(object, value) {
  *  @returns target gene's category code for a given functional annotation type.
  */
 function getCagForType(geneFunctions, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
-    default:
-      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
-      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
-      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
-      if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
-      return out;
-  }
+  let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+  if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+  if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
+  if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
+  return out;
 }
 
 /*
