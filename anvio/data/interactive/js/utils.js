@@ -67,17 +67,12 @@ function getClassFromKEGGAnnotation(class_str) {
 /*
  *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
  */
-function getCagName(category, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return COG_categories[category];
-    case 'KEGG_CLASS':
-      return KEGG_categories[category];
-    default:
-      return category;
-  }
+function getCagForType(geneFunctions, fn_type) {
+  let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+  if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+  if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
+  if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
+  return out;
 }
 
 /*
