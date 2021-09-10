@@ -386,17 +386,18 @@ function getGeneEndpts(_start, _stop) {
 /*
  *  @returns arbitrary category:color dict given a list of categories
  */
-function getCustomColorDict(fn_type) {
-  let genes = geneParser["data"];
-
-  let cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
-                                              .filter(o => o != null);
-  cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
+function getCustomColorDict(fn_type, cags=null) {
+  if(!cags) {
+    cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
+                                                .filter(o => o != null);
+    cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
+  }
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
+  out["Other"] = "#808080";
   delete out["undefined"];
 
   return out;

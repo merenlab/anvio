@@ -174,21 +174,24 @@ function getFunctionalAnnotations() {
 /*
  *  @returns arbitrary category:color dict given a list of categories
  */
-function getCustomColorDict(fn_type) {
+function getCustomColorDict(fn_type, cags=null) {
   if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
 
-  let cags = [];
-  genomeData.genomes.forEach(genome => {
-    Object.values(genome[1].genes.functions).forEach(fn => {
-      let cag = getCagForType(fn, fn_type);
-      if(cag && !cags.includes(cag)) cags.push(cag);
+  if(!cags) {
+    cags = [];
+    genomeData.genomes.forEach(genome => {
+      Object.values(genome[1].genes.functions).forEach(fn => {
+        let cag = getCagForType(fn, fn_type);
+        if(cag && !cags.includes(cag)) cags.push(cag);
+      });
     });
-  });
+  }
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
+  out["Other"] = "#808080";
   delete out["undefined"];
 
   return out;

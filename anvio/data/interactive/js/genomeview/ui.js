@@ -417,33 +417,50 @@ function changeGenomeOrder(updatedOrder){
  *  @param fn_type :         string indicating function category type
  *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
  *  @param filter_to_split : if true, filters categories to only those shown in the split
+ *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true) {
-  // TODO: consider call_type? see inspectionalutils.js for how this was dealt with earlier
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=false) {
+  let db, counts;
+  if(fn_type == 'Source') {
+    db = default_source_colors;
+  } else {
+    counts = [];
 
-  let db = getColorDefaults(fn_type ? fn_type : 'Source');
-  if(db == null) return;
+    // Traverse categories
+    for(genome of settings['genomeData']['genomes']) {
+      let geneFuns = Object.values(genome[1].genes.functions);
+      for(funs of geneFuns) {
+        let cag = getCagForType(funs, fn_type);
+        counts.push(cag ? cag : "Other");
+      }
+    }
+
+    // Get counts for each category
+    counts = counts.reduce((counts, val) => {
+      counts[val] = counts[val] ? counts[val]+1 : 1;
+      return counts;
+    }, {});
+
+    // Sort categories
+    counts = Object.fromEntries(
+      Object.entries(counts).sort(function(first, second) {
+        return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
+      })
+    );
+
+    // Create custom color dict from categories
+    db = getCustomColorDict(fn_type, cags=Object.keys(counts));
+  }
+
   // Override default values with any values supplied to fn_colors
   if(fn_colors) {
     Object.keys(db).forEach(cag => { if(Object.keys(fn_colors).includes(cag)) db[cag] = fn_colors[cag] });
   }
 
-  if(filter_to_split && fn_type != 'Source') {
-    let save = [];
-    for(genome of settings['genomeData']['genomes']) {
-      let geneFuns = Object.values(genome[1].genes.functions);
-      for(funs of geneFuns) {
-        let cag = getCagForType(funs, fn_type);
-        if(cag && !save.includes(cag)) save.push(cag);
-      }
-    }
-    Object.keys(db).forEach((cag, color) => {
-      if(!save.includes(cag)) delete db[cag];
-    });
-  }
-
   $('#tbody_function_colors').empty();
-  Object.keys(db).forEach(category => appendColorRow(category, category, db[category]) );
+  Object.keys(db).forEach(category =>
+    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category])
+  );
 
   $('.colorpicker').colpick({
       layout: 'hex',
