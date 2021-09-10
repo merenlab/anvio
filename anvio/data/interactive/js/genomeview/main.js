@@ -134,13 +134,13 @@ function processState(stateName, stateData) {
 
   if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['coverage']) {
     buildGroupLayersTable('Coverage')
-    settings['group-layer-order'].push('Coverage')
+    settings['group-layer-order'].unshift('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
   if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['gcContent']) {
     buildGroupLayersTable('GC_Content')
-    settings['group-layer-order'].push('GC_Content')
+    settings['group-layer-order'].unshift('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
 
