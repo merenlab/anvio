@@ -2510,6 +2510,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
             for codon_order_in_gene in missing_codon_order_in_genes:
                 reference = codons[codon_order_in_gene]
+                if reference is None:
+                    # Ambiguous codon (contains at least one N)
+                    continue
                 d['entry_id'].extend(range(next_entry_id, next_entry_id + num_samples))
                 d['unique_pos_identifier'].extend([next_unique_pos_identifier]*num_samples)
                 d['sample_id'].extend(samples_wanted)
