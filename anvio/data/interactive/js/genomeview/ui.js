@@ -418,8 +418,9 @@ function changeGenomeOrder(updatedOrder){
  *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
  *  @param filter_to_split : if true, filters categories to only those shown in the split
  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
+ *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=false) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count = 2) {
   let db, counts;
   if(fn_type == 'Source') {
     db = default_source_colors;
@@ -441,13 +442,12 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       return counts;
     }, {});
 
-    // Sort categories
+    // Filter by count + sort categories
     counts = Object.fromEntries(
-      Object.entries(counts).sort(function(first, second) {
+      Object.entries(counts).filter(([cag, count]) => count > thresh_count).sort(function(first, second) {
         return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
       })
     );
-
     // Create custom color dict from categories
     db = getCustomColorDict(fn_type, cags=Object.keys(counts));
   }
