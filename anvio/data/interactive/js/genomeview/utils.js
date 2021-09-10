@@ -187,13 +187,15 @@ function getCustomColorDict(fn_type, cags=null) {
       });
     });
   }
+  
+  // move "Other" to end of list
+  if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
-  if(cags["Other"]) out["Other"] = "#808080";
+  if(out["Other"]) out["Other"] = "#808080";
   delete out["undefined"];
-
   return out;
 }
