@@ -183,6 +183,7 @@ function getCustomColorDict(fn_type, cags=null) {
       Object.values(genome[1].genes.functions).forEach(fn => {
         let cag = getCagForType(fn, fn_type);
         if(cag && !cags.includes(cag)) cags.push(cag);
+        if(!cag && !cags.includes("Other")) cags.push("Other");
       });
     });
   }
@@ -191,7 +192,7 @@ function getCustomColorDict(fn_type, cags=null) {
     out[cags[index]] = field;
     return out;
   }, {});
-  out["Other"] = "#808080";
+  if(cags["Other"]) out["Other"] = "#808080";
   delete out["undefined"];
 
   return out;

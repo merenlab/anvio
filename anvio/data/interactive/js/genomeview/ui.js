@@ -429,9 +429,9 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 
     // Traverse categories
     for(genome of settings['genomeData']['genomes']) {
-      let geneFuns = Object.values(genome[1].genes.functions);
-      for(funs of geneFuns) {
-        let cag = getCagForType(funs, fn_type);
+      let geneFuns = genome[1].genes.functions;
+      for(let i = 0; i < Object.keys(geneFuns)[Object.keys(geneFuns).length-1]; i++) {
+        let cag = getCagForType(geneFuns[i], fn_type);
         counts.push(cag ? cag : "Other");
       }
     }

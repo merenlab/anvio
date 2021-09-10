@@ -266,7 +266,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   let ind = this.settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
   let functions = this.settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
 
-  let color = 'gray';
+  let color = $('#picker_Other').attr('color') ? $('#picker_Other').attr('color') : 'gray';
   let cag = getCagForType(functions, color_db);
 
   // TODO: use state instead of hardcoded color pickers
