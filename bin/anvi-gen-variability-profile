@@ -76,6 +76,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupG.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
     groupG.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
+    groupG.add_argument(*anvio.A('kiefl-mode'), **anvio.K('kiefl-mode'))
 
     groupH = parser.add_argument_group('OUTPUT', 'Output file and style')
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt', 'metavar': 'VARIABILITY_PROFILE'}))

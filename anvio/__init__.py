@@ -1673,15 +1673,26 @@ D = {
             ['--quince-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "The default behavior is to report base frequencies of nucleotide positions only if there "
-                     "is any variation reported during profiling (which by default uses some heuristics to minimize "
+             'help': "The default behavior is to report allele frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize "
                      "the impact of error-driven variation). So, if there are 10 samples, and a given position has been "
                      "reported as a variable site during profiling in only one of those samples, there will be no "
                      "information will be stored in the database for the remaining 9. When this flag is "
-                     "used, we go back to each sample, and report base frequencies for each sample at this position "
+                     "used, we go back to each sample, and report allele frequencies for each sample at this position, "
                      "even if they do not vary. It will take considerably longer to report when this flag is on, and the use "
                      "of it will increase the file size dramatically, however it is inevitable for some statistical approaches "
-                     "(as well as for some beautiful visualizations)."}
+                     "and visualizations."}
+                ),
+    'kiefl-mode': (
+            ['--kiefl-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The default behavior is to report codon frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). "
+                     "When this flag is used, all positions are reported, regardless of whether they contained variation in any "
+                     "sample. The reference codon for all such entries is given an codon frequency of 1. All other entries (aka "
+                     "those with legitimate variation to be reported) remain unchanged. This flag is only valid when --engine CDN "
+                     "is chosen, and is incompatible wth --quince-mode."}
                 ),
     'include-contig-names': (
             ['--include-contig-names'],
