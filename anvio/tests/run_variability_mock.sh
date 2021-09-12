@@ -127,6 +127,16 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
 
 head test-output/variability_AA.txt
 
+INFO "anvi-gen-variability for AA (--kiefl-mode)"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                             -c test-output/single_contig.db \
+                             -o test-output/variability_AA_kiefl.txt \
+                             --splits-of-interest test-output/splits_of_interest.txt \
+                             --kiefl-mode \
+                             --engine AA
+
+head test-output/variability_AA_kiefl.txt
+
 INFO "anvi-gen-variability for CDN"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              -c test-output/single_contig.db \
