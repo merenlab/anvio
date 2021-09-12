@@ -188,6 +188,7 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
         shell('anvi-estimate-scg-taxonomy -c {input.contigsDB} \
                                           --metagenome-mode \
                                           --scg-name-for-metagenome-mode {wildcards.ribosomal_protein_name} \
+                                          --report-scg-sequences-file-prefix \
                                           -T {threads} \
                                           -o {output} &> {log}')
 
