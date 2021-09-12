@@ -1691,8 +1691,8 @@ D = {
                      "during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). "
                      "When this flag is used, all positions are reported, regardless of whether they contained variation in any "
                      "sample. The reference codon for all such entries is given an codon frequency of 1. All other entries (aka "
-                     "those with legitimate variation to be reported) remain unchanged. This flag is only valid when --engine CDN "
-                     "is chosen, and is incompatible wth --quince-mode."}
+                     "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
+                     "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
     'include-contig-names': (
             ['--include-contig-names'],

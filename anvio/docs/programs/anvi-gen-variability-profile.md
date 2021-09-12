@@ -124,7 +124,7 @@ You can also set `--quince-mode`, which reports the variability data across all 
 
 ### --kiefl-mode
 
-The default behavior is to report codon frequencies only at positions where variation was reported during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). Fair enough, but for some diabolical cases, you may want to report _even_ invariant positions. When this flag is used, all positions are reported, regardless of whether they contained variation in any sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka those with legitimate variation to be reported) remain unchanged. This flag is only valid when `--engine CDN` is chosen, and is incompatible wth `--quince-mode`.
+The default behavior is to report codon/amino-acid frequencies only at positions where variation was reported during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). Fair enough, but for some diabolical cases, you may want to report _even_ invariant positions. When this flag is used, all positions are reported, regardless of whether they contained variation in any sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` or `--engine CDN` and is incompatible wth `--quince-mode`.
 
 This flag was added in this [pull request](https://github.com/merenlab/anvio/pull/1794) where you can read about all of the tests that were performed to ensure this mode is behaving properly.
 
