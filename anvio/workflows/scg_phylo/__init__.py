@@ -27,13 +27,12 @@ __email__ = "mschechter@uchicago.edu"
 
 run = terminal.Run()
 
-
 class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='scg_phylo')
 
-        # SCG_phylo Snakemake rules
+        # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
                            'filter_hmm_hits_by_query_coverage',
                            'anvi_get_sequences_for_hmm_hits_SCGs',
@@ -57,11 +56,11 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['SCG_protein_list']) # user must input which Ribosomal proteins will be used for workflow
-        self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the SCG MSA
+        self.general_params.extend(['Reference_protein_list']) # user must input which Reference proteins will be used for workflow
+        self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the MSA
 
 
-        # Parameters for each rule that are accessible in the config file
+        # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['-I']
@@ -78,12 +77,12 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
-        # Set default values for certain accessible parameters
+        # Set default values for parameters accessible in config.json file
         self.default_config.update({
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'anvi_script_reformat_fasta': {'threads': 5},
-            'SCG_protein_list': 'SCG_protein_list.txt',
+            'Reference_protein_list': 'reference_protein_list.txt',
             'MSA_gap_threshold': '',
             'anvi_run_hmms_hmmsearch': {'threads': 5, '-I': 'Bacteria_71'},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
@@ -103,35 +102,25 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             'run_metagenomics_workflow': {'threads': 10, 'clusterize': False}
             })
 
-        # The magical line that will put the whole metagenomics workflow into a dir to keep things organized, thanks Sam!
-        # self.dirs_dict = {directory: 'METAGENOMICS_WORKFLOW/' + dir_path for directory,dir_path in self.dirs_dict.items()}
-
-        # Adding directories specific to Ribo_phylo workflow
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'SCG_WORKFLOW/01_SCG_HMM_HITS'})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_TAXONOMY_DIR": "SCG_WORKFLOW/02_SCG_TAXONOMY"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "SCG_WORKFLOW/03_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "SCG_WORKFLOW/04_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "SCG_WORKFLOW/05_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "SCG_WORKFLOW/06_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "SCG_WORKFLOW/07_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "SCG_WORKFLOW/08_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "SCG_WORKFLOW/9_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        # Directory structure for Snakemake workflow
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "ECO_PHYLO_WORKFLOW/03_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "ECO_PHYLO_WORKFLOW/04_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "ECO_PHYLO_WORKFLOW/05_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "ECO_PHYLO_WORKFLOW/06_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "ECO_PHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECO_PHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
 
         super().init()
-        # WorkflowSuperclass().init()
 
-        self.dirs_dict.update({"LOGS_DIR": "SCG_WORKFLOW/00_LOGS"})
-        try:
-            os.rmdir("00_LOGS")
-        except:
-            pass
+        # Re-assigning LOGS/ dir to inside ECO_PHYLO_WORKFLOW/ dir
+        self.dirs_dict.update({"LOGS_DIR": "ECO_PHYLO_WORKFLOW/00_LOGS"})
 
-
-        # initiating a list to fill with names of contigDBs
         self.names_list = []
         self.names_dirs = []
 
@@ -150,7 +139,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.names_list.extend(self.metagenomes_name_list)
 
             except IndexError as e:
-                raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
+                raise ConfigError("The metagenomes.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.metagenomes_df, e))
 
         # Load external-genomes.txt
@@ -165,8 +154,9 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
                 self.input_dirs_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_dirname_list)))
                 self.names_dirs.extend(self.external_genomes_dirname_list)
                 self.names_list.extend(self.external_genomes_names_list)
+
             except IndexError as e:
-                raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
+                raise ConfigError("The external-genomes.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.external_genomes_df, e))
 
         # Make a unique list
@@ -180,15 +170,17 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
 
-        # Load Ribosomal protein list
-        self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
-        filesnpaths.is_file_exists(self.SCG_protein_list_path)
+        # Load Reference protein list
+        self.Reference_protein_list_path = self.get_param_value_from_config(['Reference_protein_list'])
+        filesnpaths.is_file_exists(self.Reference_protein_list_path)
         try:
-            self.SCG_protein_df = pd.read_csv(self.SCG_protein_list_path, sep='\t', index_col=False)
-            self.SCG_protein_list = self.SCG_protein_df['Ribosomal_protein'].to_list()
+            self.Reference_protein_df = pd.read_csv(self.Reference_protein_list_path, sep='\t', index_col=False)
+            self.Reference_protein_list = self.Reference_protein_df.iloc[:, 0].to_list() 
+
         except IndexError as e:
-            raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
+            raise ConfigError("The reference_protein_list.txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
@@ -204,7 +196,17 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for ribosomal_protein_name in self.SCG_protein_list:
+        for ribosomal_protein_name in self.Reference_protein_list:
+
+            # anvi-estimate-scg-taxonomy target files
+            for sample_name in self.names_list:
+                AA_fasta = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{ribosomal_protein_name}_AA.fa")
+                DNA_fasta = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{ribosomal_protein_name}_DNA.fa")
+                target_files.extend([AA_fasta, DNA_fasta])
+
+            # # Count num sequences removed per step
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{ribosomal_protein_name}/{ribosomal_protein_name}.fa")
+            # target_files.append(target_file)
 
             # Count num sequences removed per step
             tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
@@ -212,40 +214,8 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Get final misc data for anvi-interactive display of tree
-            tail_path = "%s_all_misc_data_final.tsv" % (ribosomal_protein_name)
+            tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
-
-            # Get fasta of nt SCGs for mapping
-            tail_path = "%s_scgs_for_mapping.fna" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
-
-            # Get external-gene-calls file for fasta of nt SCGs for mapping
-            tail_path = "%s_external_gene_calls_all_renamed.tsv" % (ribosomal_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
-            target_files.append(target_file)
-
-            # Get state.json file for final visualization
-            tail_path = "%s_SCG_WORKFLOW_state.json" % (ribosomal_protein_name)
-            target_file = os.path.join("SCG_WORKFLOW", tail_path)
-            target_files.append(target_file)
-
-            # Import anvio interactive state file 
-            tail_path = "%s_state_imported.done" % (ribosomal_protein_name)
-            target_file = os.path.join(tail_path)
-            target_files.append(target_file)
-
-            # The FINAL trees :)
-            # For iq-tree
-            if self.run_iqtree == True:
-                tail_path = "%s.iqtree" % (ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
-                target_files.append(target_file)
-            # for fasttree
-            elif self.run_fasttree == True:
-                tail_path = "%s.nwk" % (ribosomal_protein_name)
-                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
-                target_files.append(target_file)
 
         return target_files
