@@ -773,6 +773,45 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
+    def store_sequences_for_items(self, items_taxonomy_super_dict):
+        """Report sequences for items if possible"""
+
+        if self.ctx.focus != 'scgs':
+            raise ConfigError("This function is only tested in SCGs mode. If you need to report "
+                              "sequences for taxonomy items reported in other foci, please get in "
+                              "touch with anvi'o developers.")
+
+        if not self.scg_name_for_metagenome_mode:
+            raise ConfigError("You can't ask anvi'o to store seqeunces for SCGs unless you are "
+                              "working with a specific SCG name :(")
+
+        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        c = ContigsSuperclass(self.args, r=run_quiet)
+        
+        gene_caller_ids = [v['gene_callers_id'] for v in d.values()]
+
+        gene_caller_ids_list, sequences_dict = c.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+
+        if not len(gene_caller_ids_list):
+            raise ConfigError("Something that should have never happened, happened :/ Please re-run the same command with "
+                              "`--debug` and send the Traceback to an anvi'o developer.")
+
+        dna_sequences_output_file_path = self.sequences_file_path_prefix + '_DNA.fa'
+        amino_acid_sequences_output_file_path = self.sequences_file_path_prefix + '_AA.fa'
+        with open(amino_acid_sequences_output_file_path, 'w') as aa_sequences_output, open(dna_sequences_output_file_path, 'w') as dna_sequences_output:
+            for entry in d.values():
+                header = f"{entry['gene_name']}_{entry['gene_callers_id']}" 
+                dna_sequence = sequences_dict[entry['gene_callers_id']]['sequence']
+                amino_acid_sequence = sequences_dict[entry['gene_callers_id']]['aa_sequence']
+
+                aa_sequences_output.write(f">{header}\n{amino_acid_sequence}\n")
+                dna_sequences_output.write(f">{header}\n{dna_sequence}\n")
+
+        self.run.info("DNA sequences for SCGs", dna_sequences_output_file_path, nl_before=1)
+        self.run.info("AA sequences for SCGs", amino_acid_sequences_output_file_path)
+
+
     def store_taxonomy_per_item(self, items_taxonomy_super_dict):
         if self.scgs_focus:
             headers = ['bin_name', 'gene_name', 'percent_identity']
