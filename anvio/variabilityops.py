@@ -687,6 +687,8 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.kiefl_mode:
             if self.quince_mode:
                 raise ConfigError("You can't run --kiefl-mode and --quince-mode concurrently.")
+            if self.engine not in ('AA', 'CDN'):
+                raise ConfigError("--kiefl-mode is only compatible with `--engine AA` or `--engine CDN`.")
 
         if not self.table_provided:
             if not self.contigs_db_path:
