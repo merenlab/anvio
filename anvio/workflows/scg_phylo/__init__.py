@@ -28,7 +28,6 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 
-# class RibosomalPhylogeneticsWorkflow(MetagenomicsWorkflow, WorkflowSuperClass):
 class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -104,10 +103,8 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             'run_metagenomics_workflow': {'threads': 10, 'clusterize': False}
             })
 
-        # Workflow directory structure
-
         # The magical line that will put the whole metagenomics workflow into a dir to keep things organized, thanks Sam!
-        self.dirs_dict = {directory: 'METAGENOMICS_WORKFLOW/' + dir_path for directory,dir_path in self.dirs_dict.items()}
+        # self.dirs_dict = {directory: 'METAGENOMICS_WORKFLOW/' + dir_path for directory,dir_path in self.dirs_dict.items()}
 
         # Adding directories specific to Ribo_phylo workflow
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": 'SCG_WORKFLOW/01_SCG_HMM_HITS'})
