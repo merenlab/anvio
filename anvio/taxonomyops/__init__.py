@@ -664,6 +664,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         if self.per_item_output_file:
             self.store_taxonomy_per_item(items_taxonomy_super_dict)
 
+        if self.sequences_file_path_prefix:
+            self.store_sequences_for_items(items_taxonomy_super_dict)
+
 
     def print_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
         self.progress.reset()

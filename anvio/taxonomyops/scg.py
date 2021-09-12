@@ -209,6 +209,9 @@ class SanityCheck(object):
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
+                if self.sequences_file_path_prefix:
+                    filesnpaths.is_output_file_writable(self.sequences_file_path_prefix)
+
                 if self.raw_output or self.matrix_format:
                     raise ConfigError("Haha in this mode you can't ask for the raw output or matrix format .. yet (we know that "
                                       "the parameter space of this program is like a mine field and we are very upset about it "
@@ -329,6 +332,7 @@ class SCGTaxonomyArgs(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.sequences_file_path_prefix = A('report_scg_sequences_file_prefix')
         self.per_scg_output_file = A('per_scg_output_file')
         self.all_hits_output_file_path = A('all_hits_output_file')
         self.output_file_prefix = A('output_file_prefix')
@@ -348,6 +352,7 @@ class SCGTaxonomyArgs(object):
             # very cute. we shall make that happen.
             self.metagenomes = None
             self.output_file_path = None
+            self.sequences_file_path_prefix = None
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
