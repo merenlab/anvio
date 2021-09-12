@@ -49,7 +49,7 @@ Anvi'o programs perform atomic tasks that can be weaved together to implement co
 
 Listed below **a total of {{ programs|length }} programs**.
 
-{% for program_name, url, desc in programs %}
+{% for program_name, url, desc, authors_html in programs %}
 <div style="width:100%;">
 <table class="programs-table">
 <tbody>
@@ -60,12 +60,19 @@ Listed below **a total of {{ programs|length }} programs**.
 </tr>
 <tr>
     <td class="artifact-r-td">
-    <span class="artifact-emoji">🧀</span> {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    <span class="artifact-emoji">🧀</span>
+        {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% if value|lookup:"requires" %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% else %}<span class="artifact-r" markdown="1">n/a</span>{% endif %}{% endif %}{% endfor %}
     </td>
 </tr>
 <tr>
     <td class="artifact-p-td">
-    <span class="artifact-emoji">🍕</span> {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}
+    <span class="artifact-emoji">🍕</span>
+        {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% if value|lookup:"provides" %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p" markdown="1">[{{name}}]({{path}}) <img src="images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %} </span>{% else %}</span> {% endif %}{% endfor %}{% else %}<span class="artifact-p" markdown="1">n/a</span>{% endif %}{% endif %}{% endfor %}
+    </td>
+</tr>
+<tr style="border:none;">
+    <td class="program-td">
+        <span class="artifact-emoji">🧠</span> {{ authors_html | safe }}
     </td>
 </tr>
 </tbody>

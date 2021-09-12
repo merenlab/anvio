@@ -13,8 +13,7 @@ __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren']
 __description__ = ("Tabulates TAB-delmited data with headers in terminal: `cat table.txt | anvi-script-tabulate`")
 
 

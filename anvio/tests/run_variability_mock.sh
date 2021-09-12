@@ -138,6 +138,16 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
 
 head test-output/variability_CDN.txt
 
+INFO "anvi-gen-variability for CDN (--kiefl-mode)"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                             -c test-output/single_contig.db \
+                             -o test-output/variability_CDN_kiefl.txt \
+                             --splits-of-interest test-output/splits_of_interest.txt \
+                             --include-site-pnps \
+                             --kiefl-mode \
+                             --engine CDN
+
+head test-output/variability_CDN_kiefl.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT"
 anvi-gen-fixation-index-matrix -p test-output/SAMPLES-MERGED/PROFILE.db \

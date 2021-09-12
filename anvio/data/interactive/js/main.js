@@ -1200,9 +1200,9 @@ function buildLayersTable(order, settings)
                 }
                 else
                 {
+                    var height = getNamedLayerDefaults(layer_name, 'height', '90');
+                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
                     var color = "#000000";
-                    var height = '90';
-                    var margin = '15';
                     var color_start = "#DDDDDD";
 
                     if (mode == 'collection') {
@@ -1302,7 +1302,7 @@ function buildLayersTable(order, settings)
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                    var margin = '15';
+                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1486,6 +1486,7 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
+    state['support-text-rotation'] = $('#support_text_rotation').val()
 
     // sync views object and layers table
     syncViews();
@@ -2708,6 +2709,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('support-font-size')){
         $('#support_font_size').val(state['support-font-size'])
+    }
+    if(state.hasOwnProperty('support-text-rotation')){
+        $('#support_text_rotation').val(state['support-text-rotation'])
     }
 
     // reload layers

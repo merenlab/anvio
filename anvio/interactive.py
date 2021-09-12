@@ -698,7 +698,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.split_sequences = None
         if self.p_meta['splits_fasta']:
             filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
-            self.split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+
+            # the utils.get_FASTA_file_as_dictionary returns a dictionary, but anvi'o expects
+            # a different format when bottleroutes accesses interactive.split_sequences. so
+            # here we will first turn the naive dictionary from get_FASTA_file_as_dictionary
+            # into a dictionary with 'sequence' keys:
+            self.split_sequences = {}
+            split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+            for split_name in split_sequences:
+                self.split_sequences[split_name] = {'sequence': split_sequences[split_name]}
 
             names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
@@ -709,8 +717,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
-                self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]),
-                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id])}
+                self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]['sequence']),
+                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id]['sequence'])}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
@@ -733,7 +741,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
-        self.title = self.args.title or self.p_meta['sample_id']
+        self.title = self.title or self.p_meta['sample_id']
 
         # did the user ask anvi'o to add an additional layer to summarize proportion of functions per split?
         self.update_items_additional_data_with_functions_per_split_summary()
@@ -2119,14 +2127,64 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                 'max': int(FIND_MAX('coverage', buff=1))
             },
             {
-                'name': 'synonymity',
-                'title': 'Synonymity',
+                'name': 'log_pN_popular_consensus',
+                'title': 'log10(pN) [popular consensus]',
                 'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
-                'step': 0.01,
-                'min': 0,
-                'max': 1,
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pN_popular_consensus', buff=1e-3)),
+                'max': float(FIND_MAX('log_pN_popular_consensus', buff=1e-3))
+            },
+            {
+                'name': 'log_pN_consensus',
+                'title': 'log10(pN) [consensus]',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pN_consensus', buff=1e-3)),
+                'max': float(FIND_MAX('log_pN_consensus', buff=1e-3))
+            },
+            {
+                'name': 'log_pN_reference',
+                'title': 'log10(pN) [reference]',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pN_reference', buff=1e-3)),
+                'max': float(FIND_MAX('log_pN_reference', buff=1e-3))
+            },
+            {
+                'name': 'log_pS_popular_consensus',
+                'title': 'log10(pS) [popular consensus]',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pS_popular_consensus', buff=1e-3)),
+                'max': float(FIND_MAX('log_pS_popular_consensus', buff=1e-3))
+            },
+            {
+                'name': 'log_pS_consensus',
+                'title': 'log10(pS) [consensus]',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pS_consensus', buff=1e-3)),
+                'max': float(FIND_MAX('log_pS_consensus', buff=1e-3))
+            },
+            {
+                'name': 'log_pS_reference',
+                'title': 'log10(pS) [reference]',
+                'as_view': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1e-3,
+                'min': float(FIND_MIN('log_pS_reference', buff=1e-3)),
+                'max': float(FIND_MAX('log_pS_reference', buff=1e-3))
             },
             {
                 'name': 'entropy',
@@ -2501,6 +2559,11 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                 self.args.compute_gene_coverage_stats = True
                 var = variability_engines[engine](self.args, p=terminal.Progress(verbose=verbose), r=terminal.Run(verbose=verbose))
                 var.stealth_filtering = stealth
+
+                if engine == 'CDN':
+                    var.process_functions.append((var.calc_pN_pS, dict(grouping='site', comparison='reference', add_potentials=False, log_transform=True)))
+                    var.process_functions.append((var.calc_pN_pS, dict(grouping='site', comparison='consensus', add_potentials=False, log_transform=True)))
+                    var.process_functions.append((var.calc_pN_pS, dict(grouping='site', comparison='popular_consensus', add_potentials=False, log_transform=True)))
 
                 # we convert counts to frequencies so high-covered samples do not skew averaging
                 # across samples

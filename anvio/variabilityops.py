@@ -534,6 +534,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.max_departure_from_consensus = A('max_departure_from_consensus', float) or 1
         self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
         # output
+        self.kiefl_mode = A('kiefl_mode', bool)
         self.quince_mode = A('quince_mode', bool)
         self.compute_gene_coverage_stats = A('compute_gene_coverage_stats', bool)
         self.output_file_path = A('output_file', null)
@@ -581,7 +582,8 @@ class VariabilitySuper(VariabilityFilter, object):
                                 min_condition=self.min_departure_from_consensus > 0,
                                 max_filter=self.max_departure_from_consensus,
                                 max_condition=self.max_departure_from_consensus < 1),
-            F(self.recover_base_frequencies_for_all_samples),
+            F(self.recover_allele_counts_for_all_samples),
+            F(self.add_invariant_sites),
             F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
             F(self.compute_comprehensive_variability_scores),
             F(self.compute_gene_coverage_fields),
@@ -654,10 +656,16 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('kullback_leibler_divergence_normalized', float),
                 ('pN_consensus', float),
                 ('pS_consensus', float),
+                ('nN_consensus', float),
+                ('nS_consensus', float),
                 ('pN_reference', float),
                 ('pS_reference', float),
+                ('nN_reference', float),
+                ('nS_reference', float),
                 ('pN_popular_consensus', float),
                 ('pS_popular_consensus', float),
+                ('nN_popular_consensus', float),
+                ('nS_popular_consensus', float),
             ],
             'SSMs': [
             ],
@@ -675,6 +683,12 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine not in variability_engines:
             raise ConfigError("The VariabilitySuper class is inherited with an unknown engine. "
                               "WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
+
+        if self.kiefl_mode:
+            if self.quince_mode:
+                raise ConfigError("You can't run --kiefl-mode and --quince-mode concurrently.")
+            if self.engine not in ('CDN',):
+                raise ConfigError("--kiefl-mode is only available when reporting single codon variants (--engine CDN)")
 
         if not self.table_provided:
             if not self.contigs_db_path:
@@ -754,6 +768,10 @@ class VariabilitySuper(VariabilityFilter, object):
             except:
                 raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
                                   "ids anvi'o would use. There is something wrong here :(")
+
+
+    def add_invariant_sites(self):
+        return
 
 
     def convert_counts_to_frequencies(self, retain_counts=False, remove_zero_cov_entries=False):
@@ -2102,7 +2120,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
 
 
-    def recover_base_frequencies_for_all_samples(self):
+    def recover_allele_counts_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
         if not self.quince_mode:
@@ -2226,7 +2244,7 @@ class QuinceModeWrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
     This wrapper exists outside of the actual classes for these engines since
-    the way they recover these frequencies is pretty much identical except one
+    the way they recover these counts is pretty much identical except one
     place where the engine needs to be specifically.
     """
     def __init__(self):
@@ -2234,7 +2252,7 @@ class QuinceModeWrapperForFancyEngines(object):
             raise ConfigError("This fancy class is only relevant to be inherited from within CDN or AA engines :(")
 
 
-    def recover_base_frequencies_for_all_samples(self):
+    def recover_allele_counts_for_all_samples(self):
         if not self.quince_mode:
             return
 
@@ -2418,16 +2436,121 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
         if self.include_site_pnps:
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'reference'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'consensus'))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison = 'popular_consensus'))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
+
+
+    def add_invariant_sites(self):
+        if not self.kiefl_mode:
+            return
+
+        self.progress.new("Adding invariant sites (--kiefl-mode)")
+        self.progress.update("...")
+
+        d = {
+            'entry_id': [],
+            'unique_pos_identifier': [],
+            'sample_id': [],
+            'corresponding_gene_call': [],
+            'gene_length': [],
+            'codon_order_in_gene': [],
+            'codon_number': [],
+            'departure_from_reference': [],
+            'coverage': [],
+            'reference': [],
+        }
+        d.update({
+            codon: [] for codon in constants.codons
+        })
+
+        samples_wanted = set(self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids)
+        get_gene_codons = lambda gene_callers_id: utils.get_list_of_codons_for_gene_call(self.genes_in_contigs_dict[gene_callers_id], self.contig_sequences)
+
+        next_entry_id = self.data['entry_id'].max() + 1
+        next_unique_pos_identifier = self.data['unique_pos_identifier'].max() + 1
+
+        for corresponding_gene_call, gene_df in self.data.groupby(['corresponding_gene_call']):
+            gene_length = self.get_gene_length(corresponding_gene_call)
+
+            # First, add sites that are invariant in some, but not all samples
+            for codon_order_in_gene, codon_df in gene_df.groupby('codon_order_in_gene'):
+                if codon_df.shape[0] < len(samples_wanted):
+                    # This site is invariant in at least one sample
+                    example_row = codon_df.iloc[0][['reference', 'unique_pos_identifier']]
+                    reference, unique_pos_identifier = example_row
+
+                    present_sample_ids = set(codon_df['sample_id'])
+                    missing_sample_ids = samples_wanted - present_sample_ids
+                    num_missing_samples = len(missing_sample_ids)
+
+                    d['entry_id'].extend(range(next_entry_id, next_entry_id + num_missing_samples))
+                    d['unique_pos_identifier'].extend([unique_pos_identifier]*num_missing_samples)
+                    d['sample_id'].extend(missing_sample_ids)
+                    d['corresponding_gene_call'].extend([corresponding_gene_call]*num_missing_samples)
+                    d['gene_length'].extend([gene_length]*num_missing_samples)
+                    d['codon_order_in_gene'].extend([codon_order_in_gene]*num_missing_samples)
+                    d['codon_number'].extend([codon_order_in_gene+1]*num_missing_samples)
+                    d['departure_from_reference'].extend([0]*num_missing_samples)
+                    d['coverage'].extend([1]*num_missing_samples)
+                    d['reference'].extend([reference]*num_missing_samples)
+                    d[reference].extend([1]*num_missing_samples)
+                    for codon in constants.codons:
+                        if codon == reference:
+                            continue
+                        d[codon].extend([0]*num_missing_samples)
+
+                    next_entry_id += num_missing_samples
+
+            # Second, add sites that are invariant in all samples
+            codons = get_gene_codons(corresponding_gene_call)
+            present_codon_order_in_genes = set(gene_df['codon_order_in_gene'].unique())
+            missing_codon_order_in_genes = set(range(len(codons))) - present_codon_order_in_genes
+            num_samples = len(samples_wanted)
+
+            for codon_order_in_gene in missing_codon_order_in_genes:
+                reference = codons[codon_order_in_gene]
+                if reference is None:
+                    # Ambiguous codon (contains at least one N)
+                    continue
+                d['entry_id'].extend(range(next_entry_id, next_entry_id + num_samples))
+                d['unique_pos_identifier'].extend([next_unique_pos_identifier]*num_samples)
+                d['sample_id'].extend(samples_wanted)
+                d['corresponding_gene_call'].extend([corresponding_gene_call]*num_samples)
+                d['gene_length'].extend([gene_length]*num_samples)
+                d['codon_order_in_gene'].extend([codon_order_in_gene]*num_samples)
+                d['codon_number'].extend([codon_order_in_gene+1]*num_samples)
+                d['departure_from_reference'].extend([0]*num_samples)
+                d['coverage'].extend([1]*num_samples)
+                d['reference'].extend([reference]*num_samples)
+                d[reference].extend([1]*num_samples)
+                for codon in constants.codons:
+                    if codon == reference:
+                        continue
+                    d[codon].extend([0]*num_samples)
+
+                next_entry_id += num_samples
+                next_unique_pos_identifier += 1
+
+        new_entries = pd.DataFrame(d)
+
+        # concatenate new columns to self.data
+        entries_before = len(self.data.index)
+        self.data = pd.concat([self.data, new_entries], sort=False)
+        self.data.set_index('entry_id', drop=False, inplace=True)
+        entries_after = len(self.data.index)
+
+        self.progress.end()
+
+        self.compute_additional_fields(list(new_entries["entry_id"]))
+        self.report_change_in_entry_number(entries_before, entries_after, reason="kiefl mode")
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
         """Compute the fraction of synonymous and non-synonymous substitutions relative to a reference"""
 
         self.progress.new('Calculating per-site synonymous fraction')
-        progress.update('...')
+        self.progress.update('...')
 
         # Some lookups
         coding_codons = sorted(constants.coding_codons)
@@ -2443,9 +2566,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                     is_synonymous[i, j] = False
 
         # Populate necessary per-site info
-        progress.update('...')
+        self.progress.update('...')
         if comparison == 'popular_consensus':
-            progress.update('Finding popular consensus; You have time for a quick stretch')
+            self.progress.update('Finding popular consensus; You have time for a quick stretch')
             self.data['popular_consensus'] = self.data.\
                 groupby('unique_pos_identifier')\
                 ['consensus'].\
@@ -2512,7 +2635,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         return potentials
 
 
-    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None):
+    def calc_pN_pS(self, contigs_db=None, grouping='site', comparison='reference', potentials=None, add_potentials=False, log_transform=False):
         """Calculate new columns in self.data corresponding to each site's contribution to a grouping
 
         First, this function calculates fN and fS for each SCV relative to a comparison codon (see `comparison`).
@@ -2546,13 +2669,17 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             passed, it should be a (len(self.data), 2) shaped numpy array. potentials[:,0] and
             potentials[:,1] specify the amount that each SCV's fS and fS values should be divided by
             to yield pS and pN.
+        log_transform : bool, False
+            Log tranforms pN and pS values by log10(x + 1e-4).
 
         Returns
         =======
         output : None
             This function does not return anything. It creates 2 new columns in `self.data` with
             names pN_{grouping}_{comparison} and pS_{grouping}_{comparison}, unless `grouping` is
-            'site', in which case the column names are pN_{comparison} and pS_{comparison}.
+            'site', in which case the column names are pN_{comparison} and pS_{comparison}. If
+            add_potentials is True, the number of synonymous and nonsynonymous sites will be
+            added as the columns nS_{grouping}_{comparison} and nN_{grouping}_{comparison}.
         """
 
         if contigs_db is None:
@@ -2570,8 +2697,20 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         group_tag = (grouping + '_') if grouping != 'site' else ''
         pN_name, pS_name = f"pN_{group_tag}{comparison}", f"pS_{group_tag}{comparison}"
+        if log_transform:
+            pN_name, pS_name = 'log_' + pN_name, 'log_' + pS_name
+
         self.data[pS_name] = frac_syns/potentials[:, 0]
         self.data[pN_name] = frac_nonsyns/potentials[:, 1]
+
+        if log_transform:
+            self.data[pS_name] = np.log10(self.data[pS_name] + 1e-4)
+            self.data[pN_name] = np.log10(self.data[pN_name] + 1e-4)
+
+        if add_potentials:
+            nN_name, nS_name = f"nN_{group_tag}{comparison}", f"nS_{group_tag}{comparison}"
+            self.data[nS_name] = potentials[:, 0]
+            self.data[nN_name] = potentials[:, 1]
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
@@ -3065,7 +3204,7 @@ class VariabilityFixationIndex(object):
             try:
                 self.v.apply_preliminary_filters()
                 self.v.set_unique_pos_identification_numbers()
-                self.v.recover_base_frequencies_for_all_samples()
+                self.v.recover_allele_counts_for_all_samples()
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
             except self.v.EndProcess:
                 raise ConfigError("After filtering, no positions remain. See the filtering summary above.")

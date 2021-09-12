@@ -465,10 +465,10 @@ class ContigsSuperclass(object):
                                                  missing_split_names[0], list(self.splits_basic_info.keys())[0]))
 
             self.progress.end()
-            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database "
-                                 "knows about, to be precise). Nothing to worry about. Probably." \
-                                                % (len(split_names_of_interest), len(self.splits_basic_info)),
-                                  mc="cyan", nl_after=1, nl_before=1)
+            if len(split_names_of_interest) != len(self.splits_basic_info):
+                self.run.info_single(f"FYI: A subset of split sequences are being initialized (to be precise, only "
+                                     f"{len(split_names_of_interest)} of {len(self.splits_basic_info)} splits the contigs database "
+                                     f"knows about). Nothing to worry about. Probably.", mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
         else:
             split_names_of_interest = list(self.splits_basic_info.keys())
@@ -1275,7 +1275,7 @@ class ContigsSuperclass(object):
 
         # let's see if there are functions
         gene_functions_found = False
-        if 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
+        if self.a_meta['gene_function_sources'] and 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
             self.init_functions(requested_sources=["COG20_FUNCTION"])
             gene_functions_found = True
             self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
@@ -4274,11 +4274,15 @@ class ContigsDatabase:
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls_file_path:
-                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
-                    input_file_path=external_gene_calls_file_path,
-                    ignore_internal_stop_codons=ignore_internal_stop_codons,
-                    skip_predict_frame=skip_predict_frame,
-                )
+                try:
+                    gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
+                        input_file_path=external_gene_calls_file_path,
+                        ignore_internal_stop_codons=ignore_internal_stop_codons,
+                        skip_predict_frame=skip_predict_frame,
+                    )
+                except ConfigError as e:
+                    os.remove(self.db_path)
+                    raise ConfigError(e.clear_text())
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
 

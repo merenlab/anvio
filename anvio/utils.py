@@ -1586,9 +1586,10 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
-        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end "
-                          "with a stop codon and is therefore probably not what you want. If you "
-                          "want to continue anyways, use the just_do_it flag")
+        raise ConfigError("The sequence `get_synonymous_and_non_synonymous_potential` received does "
+                          "end with a stop codon and may be irrelevant for this analysis. If you "
+                          "want to continue anyways, include the flag `--just-do-it` in your call "
+                          "(if you are a programmer see the function header).")
 
     synonymous_potential = 0
     num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG

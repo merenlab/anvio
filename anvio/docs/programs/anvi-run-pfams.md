@@ -12,14 +12,14 @@ To run, you'll need to provide a %(contigs-db)s. If you stored the %(pfams-data)
 Here is a default run: 
 
 {{ codestart }}
-anvi-run-ncbi-cogs -c %(contigs-db)s \
+anvi-run-pfams -c %(contigs-db)s \
             --pfam-data-dir %(pfams-data)s 
 {{ codestop }}
 
 By default, this uses `hmmsearch` to run HMMs. You can choose to use `hmmscan` instead by running
 
 {{ codestart }}
-anvi-run-ncbi-cogs -c %(contigs-db)s \
+anvi-run-pfams -c %(contigs-db)s \
             --pfam-data-dir %(pfams-data)s \
             --hmmer-program hmmscan
 {{ codestop }}
