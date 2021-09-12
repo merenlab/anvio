@@ -687,8 +687,8 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.kiefl_mode:
             if self.quince_mode:
                 raise ConfigError("You can't run --kiefl-mode and --quince-mode concurrently.")
-            if self.engine not in ('CDN',):
-                raise ConfigError("--kiefl-mode is only available when reporting single codon variants (--engine CDN)")
+            if self.engine not in ('AA', 'CDN'):
+                raise ConfigError("--kiefl-mode is only compatible with `--engine AA` or `--engine CDN`.")
 
         if not self.table_provided:
             if not self.contigs_db_path:
@@ -768,10 +768,6 @@ class VariabilitySuper(VariabilityFilter, object):
             except:
                 raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
                                   "ids anvi'o would use. There is something wrong here :(")
-
-
-    def add_invariant_sites(self):
-        return
 
 
     def convert_counts_to_frequencies(self, retain_counts=False, remove_zero_cov_entries=False):
@@ -2120,6 +2116,10 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
 
 
+    def add_invariant_sites(self):
+        return
+
+
     def recover_allele_counts_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
@@ -2240,7 +2240,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
-class QuinceModeWrapperForFancyEngines(object):
+class WrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
     This wrapper exists outside of the actual classes for these engines since
@@ -2387,60 +2387,6 @@ class QuinceModeWrapperForFancyEngines(object):
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
-class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
-    def __init__(self, args={}, p=progress, r=run):
-        self.run = r
-        self.progress = p
-
-        self.engine = 'AA'
-
-        # Init Meta
-        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
-
-        # Init the quince mode recoverer
-        QuinceModeWrapperForFancyEngines.__init__(self)
-
-
-    def convert_item_coverages(self):
-        for amino_acid in sorted(constants.amino_acids):
-            codons = constants.AA_to_codons[amino_acid]
-            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].sum(axis = 1)
-            self.data = self.data.drop(codons, axis=1)
-
-
-    def convert_reference_info(self):
-        self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
-        self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
-
-        # This filters out positions that were variable as codons, but are non-varying as amino acids
-        smallest_float = np.finfo(np.float).eps
-        self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
-
-
-class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
-    def __init__(self, args={}, p=progress, r=run):
-        self.run = r
-        self.progress = p
-
-        self.engine = 'CDN'
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
-        self.include_site_pnps = A('include_site_pnps', null)
-
-        # Init Meta
-        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
-
-        # Init the quince mode recoverer
-        QuinceModeWrapperForFancyEngines.__init__(self)
-
-        # add codon specific functions to self.process
-        F = lambda f, **kwargs: (f, kwargs)
-        if self.include_site_pnps:
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
-            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
-
-
     def add_invariant_sites(self):
         if not self.kiefl_mode:
             return
@@ -2461,7 +2407,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             'reference': [],
         }
         d.update({
-            codon: [] for codon in constants.codons
+            item: [] for item in self.items
         })
 
         samples_wanted = set(self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids)
@@ -2495,10 +2441,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                     d['coverage'].extend([1]*num_missing_samples)
                     d['reference'].extend([reference]*num_missing_samples)
                     d[reference].extend([1]*num_missing_samples)
-                    for codon in constants.codons:
-                        if codon == reference:
+                    for item in self.items:
+                        if item == reference:
                             continue
-                        d[codon].extend([0]*num_missing_samples)
+                        d[item].extend([0]*num_missing_samples)
 
                     next_entry_id += num_missing_samples
 
@@ -2509,9 +2455,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
             num_samples = len(samples_wanted)
 
             for codon_order_in_gene in missing_codon_order_in_genes:
-                reference = codons[codon_order_in_gene]
-                if reference is None:
-                    # Ambiguous codon (contains at least one N)
+                reference = constants.codon_to_AA.get(codons[codon_order_in_gene]) if self.engine == 'AA' else codons[codon_order_in_gene]
+                if not reference:
+                    # reference could be None (--engine CDN) or 0 (--engine AA) if item is ambiguous
+                    # (nucleotide sequence contains at least one N)
                     continue
                 d['entry_id'].extend(range(next_entry_id, next_entry_id + num_samples))
                 d['unique_pos_identifier'].extend([next_unique_pos_identifier]*num_samples)
@@ -2524,10 +2471,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
                 d['coverage'].extend([1]*num_samples)
                 d['reference'].extend([reference]*num_samples)
                 d[reference].extend([1]*num_samples)
-                for codon in constants.codons:
-                    if codon == reference:
+                for item in self.items:
+                    if item == reference:
                         continue
-                    d[codon].extend([0]*num_samples)
+                    d[item].extend([0]*num_samples)
 
                 next_entry_id += num_samples
                 next_unique_pos_identifier += 1
@@ -2544,6 +2491,60 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
         self.compute_additional_fields(list(new_entries["entry_id"]))
         self.report_change_in_entry_number(entries_before, entries_after, reason="kiefl mode")
+
+
+class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFancyEngines):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.engine = 'AA'
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+
+        # Init the quince mode recoverer
+        WrapperForFancyEngines.__init__(self)
+
+
+    def convert_item_coverages(self):
+        for amino_acid in sorted(constants.amino_acids):
+            codons = constants.AA_to_codons[amino_acid]
+            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].sum(axis = 1)
+            self.data = self.data.drop(codons, axis=1)
+
+
+    def convert_reference_info(self):
+        self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
+        self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
+
+        # This filters out positions that were variable as codons, but are non-varying as amino acids
+        smallest_float = np.finfo(np.float).eps
+        self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
+
+
+class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFancyEngines):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.engine = 'CDN'
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.include_site_pnps = A('include_site_pnps', null)
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+
+        # Init the quince mode recoverer
+        WrapperForFancyEngines.__init__(self)
+
+        # add codon specific functions to self.process
+        F = lambda f, **kwargs: (f, kwargs)
+        if self.include_site_pnps:
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='reference', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='consensus', add_potentials=True))
+            self.process_functions.append(F(self.calc_pN_pS, grouping='site', comparison='popular_consensus', add_potentials=True))
 
 
     def calc_synonymous_fraction(self, comparison='reference'):
