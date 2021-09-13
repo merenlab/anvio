@@ -9,6 +9,11 @@ import os.path
 # clustered with other metagenome derived SCGs then takes note of it in
 # the misc data file.
 
+# remove excessive header lines in concatenated file first
+lines = open(snakemake.input.misc_data).readlines()
+new_content = [l for l in lines[1:] if not l.startswith('scg_name')]
+open(snakemake.input.misc_data, "w").writelines([lines[0]] + new_content)
+
 # Import
 #-------
 misc_data = pd.read_csv(snakemake.input.misc_data, \
@@ -38,10 +43,10 @@ for seq in seq_in_tree_list:
     if check is True:
       sup_list.append(seq)
 
-misc_data['has_genomic_SCG_in_cluster'] = np.where(misc_data['new_header'].isin(sup_list), 'yes', 'no')
+misc_data['has_genomic_SCG_in_cluster'] = np.where(misc_data['scg_name'].isin(sup_list), 'yes', 'no')
 
 # Make split name column for mapping
-misc_data['split_name'] = misc_data['new_header'].astype(str) + '_split_00001'
+misc_data['split_name'] = misc_data['scg_name'].astype(str) + '_split_00001'
 first_column = misc_data.pop('split_name')
 misc_data.insert(0, 'split_name', first_column)
 
