@@ -39,9 +39,9 @@ function generateMockADL() {
     let additionalDataObject = {
       'genome': genomeLabel,
       'coverage': coverage,
-      'coverage-color': 'blue',
+      'coverage-color': '#05cde3',
       'gcContent': gcContent,
-      'gcContent-color': 'purple',
+      'gcContent-color': '#9b07e0',
       'ruler': true // TODO: store any genome-specific scale data here
     }
     settings['additional-data-layers'].push(additionalDataObject)
