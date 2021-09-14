@@ -311,7 +311,6 @@ function buildGenomesTable(genomes, order){
 function buildGroupLayersTable(layerLabel){
   var height = '50';
   var margin = '25';
-  console.log(layerLabel)
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
     var template = '<tr id={layerLabel}>' +
                     '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
