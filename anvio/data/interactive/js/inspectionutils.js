@@ -334,7 +334,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
+           .attr('stroke', $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {

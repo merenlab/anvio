@@ -96,27 +96,8 @@ function getCagForType(geneFunctions, fn_type) {
   }
 }
 
-/*
- *  @returns relevant category:color dict from constants.js for a given functional annotation
- */
-function getColorDefaults(fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return default_COG_colors;
-    case 'KEGG_CLASS':
-      return default_KEGG_colors;
-    case 'Source':
-      return default_source_colors;
-    default:
-      // user-supplied color table
-      return getCustomColorDict(fn_type);
-  }
-}
-
-function appendColorRow(label, cag, color, prepend=false) {
-  let code = getCleanCagCode(cag);
+function appendColorRow(label, cagCode, color, prepend=false) {
+  let code = getCleanCagCode(cagCode);
   var tbody_content =
    '<tr id="picker_row_' + code + '"> \
       <td></td> \

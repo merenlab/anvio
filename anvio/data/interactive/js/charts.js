@@ -273,7 +273,7 @@ function loadAll() {
                   }));
                   let prop = fn.toLowerCase() + '-colors';
                   if(!state.hasOwnProperty(prop)) {
-                    state[prop] = getColorDefaults(fn);
+                    state[prop] = getCustomColorDict(fn);
                   }
                 }
 
@@ -587,61 +587,63 @@ function get_box_id_for_AA(aa, id_start) {
   return id;
 }
 
-/*
- *  Generates KEGG color table html given a color palette.
- *
- *  Params:
- *   - fn_colors:         a dictionary matching each category to a hex color code
- *   - fn_type:           a string indicating function category type: one of "COG", "KEGG", "Source"
- *   - highlight_genes:   a dictionary matching specific gene caller IDs to hex colors to override other coloring
- *   - filter_to_split: if true, filters categories to only those shown in the split
- */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
+
+ /*
+  *  Generates functional annotation color table for a given color palette.
+  *
+  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
+  *  @param fn_type :         string indicating function category type
+  *  @param highlight_genes : a dictionary matching specific gene caller IDs to hex colors to override other coloring
+  *  @param filter_to_split : if true, filters categories to only those shown in the split
+  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
+  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
+  */
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count=1) {
   info("Generating gene functional annotation color table");
-  var db = (function(type){
-    switch(type) {
-      case "COG":
-        return COG_categories;
-      case "KEGG":
-        return KEGG_categories;
-      case "Source":
-        return default_source_colors;
-      default:
-        console.log("Warning: Invalid type for function color table");
-        return null;
-    }
-  })(fn_type);
-  if(db == null) return;
 
-  $('#tbody_function_colors').empty();
+  let db, counts;
+  if(fn_type == 'Source') {
+    db = default_source_colors;
+  } else {
+    counts = [];
 
-  if(fn_type != "Source" && filter_to_split) {
-    var new_colors = {};
+    // Traverse categories
     for(gene of genes) {
-      if(gene.functions && gene.functions[fn_type + "_CATEGORY"]) {
-        new_colors[gene.functions[fn_type + "_CATEGORY"][0][0]] = fn_colors[gene.functions[fn_type + "_CATEGORY"][0][0]]
-      }
+      let cag = getCagForType(gene.functions, fn_type);
+      counts.push(cag ? cag : "None");
     }
-    if(Object.keys(new_colors).length > 0) fn_colors = new_colors;
+
+    // Get counts for each category
+    counts = counts.reduce((counts, val) => {
+      counts[val] = counts[val] ? counts[val]+1 : 1;
+      return counts;
+    }, {});
+
+    // Filter by count + sort categories
+    let count_removed = 0;
+    counts = Object.fromEntries(
+      Object.entries(counts).filter(([cag,count]) => {
+        if(count < thresh_count) count_removed += count;
+        return count >= thresh_count || cag == "None";
+      }).sort(function(first, second) {
+        return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
+      })
+    );
+    if(count_removed > 0) counts["Other"] = count_removed;
+
+    // Create custom color dict from categories
+    db = getCustomColorDict(fn_type, cags=Object.keys(counts));
   }
 
-  Object.keys(db).forEach(function(category){
-    if(!(category in fn_colors)) {
-      return;
-    }
-    var category_name = (fn_type == "Source" ? category : db[category]);
+  // Override default values with any values supplied to fn_colors
+  if(fn_colors) {
+    Object.keys(db).forEach(cag => { if(Object.keys(fn_colors).includes(cag)) db[cag] = fn_colors[cag] });
+  }
 
-    var tbody_content =
-     '<tr id="picker_row_' + category + '"> \
-        <td></td> \
-        <td> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px; margin-left:16px"></div> \
-        </td> \
-        <td>' + category_name + '</td> \
-      </tr>';
-
-    $('#tbody_function_colors').append(tbody_content);
-  });
+  $('#tbody_function_colors').empty();
+  Object.keys(db).forEach(category =>
+    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category])
+  );
 
   $('.colorpicker').colpick({
       layout: 'hex',
@@ -785,7 +787,7 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
         .attr('viewBox', '-5 -5 10 10')
         .append('svg:path')
           .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-          .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
+          .attr('fill', $('#picker_' + category).attr('color'));
   });
 }
 
@@ -808,7 +810,7 @@ function resetFunctionColors(fn_colors=null) {
   info("Resetting functional annotation colors");
   if($('#gene_color_order') == null) return;
   let prop = $('#gene_color_order').val().toLowerCase() + '-colors';
-  Object.assign(state[prop], fn_colors ? fn_colors : getColorDefaults($('#gene_color_order')));
+  Object.assign(state[prop], fn_colors ? fn_colors : getCustomColorDict($('#gene_color_order')));
 
   switch($('#gene_color_order').val()) {
     case 'Source':
@@ -1457,7 +1459,7 @@ function processState(state_name, state) {
     if(!state['source-colors']) state['source-colors'] = default_source_colors;
     for(fn of getFunctionalAnnotations()) {
       let prop = fn.toLowerCase() + '-colors';
-      if(!state[prop]) state[prop] = getColorDefaults(fn);
+      if(!state[prop]) state[prop] = getCustomColorDict(fn);
     }
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
