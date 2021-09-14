@@ -328,7 +328,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
+           .attr('stroke', $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
@@ -387,19 +387,25 @@ function getGeneEndpts(_start, _stop) {
  *  @returns arbitrary category:color dict given a list of categories
  */
 function getCustomColorDict(fn_type, cags=null) {
+  if(fn_type == "Source") return default_source_colors;
+
   if(!cags) {
     cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
-                                                .filter(o => o != null);
+                                                .filter(o => { if(!o) o = "None"; return o != null });
     cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
   }
+
+  // move "Other" and "None" to end of list
+  if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
+  if(cags.includes("None")) cags.push(cags.splice(cags.indexOf("None"), 1)[0]);
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
-  out["Other"] = "#808080";
+  if(out["Other"]) out["Other"] = "#FFFFFF";
+  if(out["None"]) out["None"] = "#808080";
   delete out["undefined"];
-
   return out;
 }
 
@@ -411,6 +417,7 @@ function getFunctionalAnnotations() {
     if(!gene.functions) continue;
     return Object.keys(gene.functions);
   }
+  return [];
 }
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
