@@ -84,7 +84,7 @@ function appendColorRow(label, cagCode, color, prepend=false) {
 
 function getCleanCagCode(code) {
   if(!isNaN(code)) return code;
-  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_').split('.').join('_');
+  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_').split('.').join('_').split('\'').join('_').split('\"').join('_');
 }
 
 //-----------------------------------------------------------------------------
