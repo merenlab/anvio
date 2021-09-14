@@ -795,16 +795,16 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         gene_caller_ids = [v['gene_callers_id'] for v in d.values()]
 
         gene_caller_ids_list, sequences_dict = c.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
-
         if not len(gene_caller_ids_list):
             raise ConfigError("Something that should have never happened, happened :/ Please re-run the same command with "
                               "`--debug` and send the Traceback to an anvi'o developer.")
 
         dna_sequences_output_file_path = self.sequences_file_path_prefix + '_DNA.fa'
         amino_acid_sequences_output_file_path = self.sequences_file_path_prefix + '_AA.fa'
+        contigs_db_name = os.path.basename(self.contigs_db_path).replace(".db", "")
         with open(amino_acid_sequences_output_file_path, 'w') as aa_sequences_output, open(dna_sequences_output_file_path, 'w') as dna_sequences_output:
             for entry in d.values():
-                header = f"{entry['gene_name']}_{entry['gene_callers_id']}" 
+                header = f"{contigs_db_name}_{entry['gene_name']}_{entry['gene_callers_id']}"
                 dna_sequence = sequences_dict[entry['gene_callers_id']]['sequence']
                 amino_acid_sequence = sequences_dict[entry['gene_callers_id']]['aa_sequence']
 
