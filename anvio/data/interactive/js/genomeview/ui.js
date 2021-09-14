@@ -311,14 +311,26 @@ function buildGenomesTable(genomes, order){
 function buildGroupLayersTable(layerLabel){
   var height = '50';
   var margin = '25';
-  var template = '<tr id={layerLabel}>' +
-                  '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
-                  '<td> {layerLabel} </td>' +
-                  '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
-                  '<td>n/a</td>' +
-                  '<td>n/a</td>' +
-                  '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
-                  '</tr>';
+  console.log(layerLabel)
+  if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
+    var template = '<tr id={layerLabel}>' +
+                    '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
+                    '<td> {layerLabel} </td>' +
+                    '<td style="margin-left: 5px;"> n/a </td>' +
+                    '<td>n/a</td>' +
+                    '<td>n/a</td>' +
+                    '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
+                    '</tr>';
+  } else {
+    var template = '<tr id={layerLabel}>' +
+                    '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
+                    '<td> {layerLabel} </td>' +
+                    '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
+                    '<td>n/a</td>' +
+                    '<td>n/a</td>' +
+                    '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
+                    '</tr>';
+  }
   template = template.replace(new RegExp('{height}', 'g'), height)
                       .replace(new RegExp('{margin}', 'g'), margin)
                       .replace(new RegExp('{layerLabel}', 'g'), layerLabel);
