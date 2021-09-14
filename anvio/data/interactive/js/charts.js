@@ -257,7 +257,7 @@ function loadAll() {
                   }));
                   let prop = fn.toLowerCase() + '-colors';
                   if(!state.hasOwnProperty(prop)) {
-                    state[prop] = getColorDefaults(fn);
+                    state[prop] = getCustomColorDict(fn);
                   }
                 }
 
@@ -544,30 +544,55 @@ function get_box_id_for_AA(aa, id_start) {
   *  @param fn_type :         string indicating function category type
   *  @param highlight_genes : a dictionary matching specific gene caller IDs to hex colors to override other coloring
   *  @param filter_to_split : if true, filters categories to only those shown in the split
+  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
+  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
   */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true) {
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count=1) {
   info("Generating gene functional annotation color table");
 
-  let db = getColorDefaults(fn_type ? fn_type : 'Source');
-  if(db == null) return;
+  let db, counts;
+  if(fn_type == 'Source') {
+    db = default_source_colors;
+  } else {
+    counts = [];
+
+    // Traverse categories
+    for(gene of genes) {
+      let cag = getCagForType(gene.functions, fn_type);
+      counts.push(cag ? cag : "None");
+    }
+
+    // Get counts for each category
+    counts = counts.reduce((counts, val) => {
+      counts[val] = counts[val] ? counts[val]+1 : 1;
+      return counts;
+    }, {});
+
+    // Filter by count + sort categories
+    let count_removed = 0;
+    counts = Object.fromEntries(
+      Object.entries(counts).filter(([cag,count]) => {
+        if(count < thresh_count) count_removed += count;
+        return count >= thresh_count || cag == "None";
+      }).sort(function(first, second) {
+        return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
+      })
+    );
+    if(count_removed > 0) counts["Other"] = count_removed;
+
+    // Create custom color dict from categories
+    db = getCustomColorDict(fn_type, cags=Object.keys(counts));
+  }
+
   // Override default values with any values supplied to fn_colors
   if(fn_colors) {
     Object.keys(db).forEach(cag => { if(Object.keys(fn_colors).includes(cag)) db[cag] = fn_colors[cag] });
   }
 
-  if(filter_to_split && fn_type != 'Source') {
-    let save = [];
-    for(gene of genes) {
-      let cag = getCagForType(gene.functions, fn_type);
-      if(cag && !save.includes(cag)) save.push(cag);
-    }
-    Object.keys(db).forEach((cag, color) => {
-      if(!save.includes(cag)) delete db[cag];
-    });
-  }
-
   $('#tbody_function_colors').empty();
-  Object.keys(db).forEach(category => appendColorRow(category, category, db[category]) );
+  Object.keys(db).forEach(category =>
+    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category])
+  );
 
   $('.colorpicker').colpick({
       layout: 'hex',
@@ -706,8 +731,8 @@ function redrawArrows() {
 }
 
 function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
-  if(!cags) cags = Object.keys(getColorDefaults(fn_type));
-  if(noneMarker) cags = ["none"].concat(cags);
+  if(!cags) cags = Object.keys(getCustomColorDict(fn_type));
+  if(noneMarker) cags = ["None"].concat(cags);
   cags.forEach(category => {
     if(category.indexOf(',') != -1) category = category.substr(0,category.indexOf(','));
     if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
@@ -723,7 +748,7 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
         .attr('viewBox', '-5 -5 10 10')
         .append('svg:path')
           .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-          .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
+          .attr('fill', $('#picker_' + category).attr('color'));
   });
 }
 
@@ -745,7 +770,7 @@ function resetFunctionColors(fn_colors=null) {
   info("Resetting functional annotation colors");
   if($('#gene_color_order') == null) return;
   let prop = $('#gene_color_order').val().toLowerCase() + '-colors';
-  Object.assign(state[prop], fn_colors ? fn_colors : getColorDefaults($('#gene_color_order')));
+  Object.assign(state[prop], fn_colors ? fn_colors : getCustomColorDict($('#gene_color_order')));
 
   generateFunctionColorTable(state[prop],
                              $('#gene_color_order').val(),
@@ -1369,7 +1394,7 @@ function processState(state_name, state) {
     if(!state['source-colors']) state['source-colors'] = default_source_colors;
     for(fn of getFunctionalAnnotations()) {
       let prop = fn.toLowerCase() + '-colors';
-      if(!state[prop]) state[prop] = getColorDefaults(fn);
+      if(!state[prop]) state[prop] = getCustomColorDict(fn);
     }
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {

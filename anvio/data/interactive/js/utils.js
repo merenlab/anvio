@@ -64,25 +64,6 @@ function getCagForType(geneFunctions, fn_type) {
   return out;
 }
 
-/*
- *  @returns relevant category:color dict from constants.js for a given functional annotation
- */
-function getColorDefaults(fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return default_COG_colors;
-    case 'KEGG_Class':
-      return default_KEGG_colors;
-    case 'Source':
-      return default_source_colors;
-    default:
-      // defer to program-specific implementation for handling user-supplied color tables
-      return getCustomColorDict(fn_type);
-  }
-}
-
 function appendColorRow(label, cagCode, color, prepend=false) {
   let code = getCleanCagCode(cagCode);
   var tbody_content =
