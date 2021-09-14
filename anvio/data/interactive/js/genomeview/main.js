@@ -47,8 +47,9 @@ var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. T
 var showLabels = true; // show genome labels?
 var showGeneLabels = true; // show gene labels?
 var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
-let percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
+var percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
 var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
+var thresh_count = 4; // min # occurences of annotation for filtering gene color table
 var mainCanvasHeight;
 var canvas;
 var genomeLabelsCanvas;

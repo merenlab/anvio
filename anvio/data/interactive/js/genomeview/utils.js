@@ -201,3 +201,7 @@ function getCustomColorDict(fn_type, cags=null) {
   delete out["undefined"];
   return out;
 }
+
+function orderColorTable(order) {
+  generateColorTable(null, $("#gene_color_order").val(), highlight_genes=null, filter_to_split=true, sort_by_count=(order=='count'), thresh_count=thresh_count)
+}
