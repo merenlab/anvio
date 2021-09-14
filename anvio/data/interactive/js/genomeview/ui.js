@@ -432,7 +432,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       let geneFuns = genome[1].genes.functions;
       for(let i = 0; i < Object.keys(geneFuns)[Object.keys(geneFuns).length-1]; i++) {
         let cag = getCagForType(geneFuns[i], fn_type);
-        counts.push(cag ? cag : "Other");
+        counts.push(cag ? cag : "None");
       }
     }
 
@@ -447,15 +447,13 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
     counts = Object.fromEntries(
       Object.entries(counts).filter(([cag,count]) => {
         if(count < thresh_count) count_removed += count;
-        return count >= thresh_count || cag == "Other";
+        return count >= thresh_count || cag == "None";
       }).sort(function(first, second) {
         return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
       })
     );
-    if(count_removed > 0) {
-      if(!counts["Other"]) counts["Other"] = 0;
-      counts["Other"] += count_removed;
-    }
+    if(count_removed > 0) counts["Other"] = count_removed;
+
     // Create custom color dict from categories
     db = getCustomColorDict(fn_type, cags=Object.keys(counts));
   }

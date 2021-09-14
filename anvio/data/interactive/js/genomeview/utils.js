@@ -183,19 +183,21 @@ function getCustomColorDict(fn_type, cags=null) {
       Object.values(genome[1].genes.functions).forEach(fn => {
         let cag = getCagForType(fn, fn_type);
         if(cag && !cags.includes(cag)) cags.push(cag);
-        if(!cag && !cags.includes("Other")) cags.push("Other");
+        if(!cag && !cags.includes("None")) cags.push("None");
       });
     });
   }
-  
-  // move "Other" to end of list
+
+  // move "Other" and "None" to end of list
   if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
+  if(cags.includes("None")) cags.push(cags.splice(cags.indexOf("None"), 1)[0]);
 
   let out = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
-  if(out["Other"]) out["Other"] = "#808080";
+  if(out["Other"]) out["Other"] = "#FFFFFF";
+  if(out["None"]) out["None"] = "#808080";
   delete out["undefined"];
   return out;
 }

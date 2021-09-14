@@ -266,7 +266,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   let ind = this.settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
   let functions = this.settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
 
-  let color = $('#picker_Other').attr('color') ? $('#picker_Other').attr('color') : 'gray';
+  let color = $('#picker_None').length > 0 ? $('#picker_None').attr('color') : 'gray';
   let cag = getCagForType(functions, color_db);
 
   // TODO: use state instead of hardcoded color pickers
@@ -278,7 +278,8 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   } else {
     if(cag) {
        cag = getCleanCagCode(cag);
-       if($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
+       let color_other = $('#picker_Other').length > 0 ? $('#picker_Other').attr('color') : 'white';
+       color = $('#picker_' + cag).length > 0 ? $('#picker_' + cag).attr('color') : color_other;
     } else {
       if (gene.source.startsWith('Ribosomal_RNA')) {
         cag = 'rRNA';
