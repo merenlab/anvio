@@ -198,16 +198,6 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
 
         for ribosomal_protein_name in self.Reference_protein_list:
 
-            # anvi-estimate-scg-taxonomy target files
-            for sample_name in self.names_list:
-                AA_fasta = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{ribosomal_protein_name}_AA.fa")
-                DNA_fasta = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{ribosomal_protein_name}_DNA.fa")
-                target_files.extend([AA_fasta, DNA_fasta])
-
-            # # Count num sequences removed per step
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{ribosomal_protein_name}/{ribosomal_protein_name}.fa")
-            # target_files.append(target_file)
-
             # Count num sequences removed per step
             tail_path = "%s_stats.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], ribosomal_protein_name, tail_path)
@@ -217,5 +207,26 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             tail_path = "%s_all_misc_data.tsv" % (ribosomal_protein_name)
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], ribosomal_protein_name, tail_path)
             target_files.append(target_file)
+
+            # Get all external-gene-calls files
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{ribosomal_protein_name}/{ribosomal_protein_name}_external_gene_calls_all.tsv")
+            target_files.append(target_file)
+
+            # Get fasta of nt SCGs for mapping
+            tail_path = "%s_references_for_mapping_NT.fa" % (ribosomal_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], ribosomal_protein_name, tail_path)
+            target_files.append(target_file)
+
+            # The FINAL trees :)
+            # For iq-tree
+            if self.run_iqtree == True:
+                tail_path = "%s.iqtree" % (ribosomal_protein_name)
+                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
+                target_files.append(target_file)
+            # for fasttree
+            elif self.run_fasttree == True:
+                tail_path = "%s.nwk" % (ribosomal_protein_name)
+                target_file = os.path.join(self.dirs_dict['TREES'], ribosomal_protein_name, tail_path)
+                target_files.append(target_file)
 
         return target_files
