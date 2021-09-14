@@ -309,6 +309,11 @@ function buildGenomesTable(genomes, order){
 }
 
 function buildGroupLayersTable(layerLabel){
+  let color; 
+  
+  if(layerLabel == 'GC_Content') color = settings['additional-data-layers'][0]['gcContent-color'] 
+  if(layerLabel == 'Coverage') color = settings['additional-data-layers'][0]['coverage-color']  
+
   var height = '50';
   var margin = '25';
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
@@ -324,7 +329,7 @@ function buildGroupLayersTable(layerLabel){
     var template = '<tr id={layerLabel}>' +
                     '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
                     '<td> {layerLabel} </td>' +
-                    '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div></td>' +
+                    '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: {color}" color={color} background-color={color} ></div></td>' +
                     '<td>n/a</td>' +
                     '<td>n/a</td>' +
                     '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
@@ -332,13 +337,28 @@ function buildGroupLayersTable(layerLabel){
   }
   template = template.replace(new RegExp('{height}', 'g'), height)
                       .replace(new RegExp('{margin}', 'g'), margin)
-                      .replace(new RegExp('{layerLabel}', 'g'), layerLabel);
+                      .replace(new RegExp('{layerLabel}', 'g'), layerLabel)
+                      .replace(new RegExp('{color}', 'g'), color);
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
   $("#tbody_additionalDataLayers").on("sortupdate", (event, ui) => {
     changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
   })
+
+  // $(`#${layerLabel}_color`).colpick({
+  //   layout: 'hex',
+  //   submit: 0,
+  //   colorScheme: 'light',
+  //   onChange: function(hsb, hex, rgb, el, bySetColor) {
+  //       $(el).css('background-color', '#' + bySetColor);
+  //       $(el).attr('color', '#' + bySetColor);
+  //       if (!bySetColor) $(el).val(hex);
+  //   }
+  // }).keyup(function() {
+  //     $(this).colpickSetColor(this.value);
+  //   console.log(this)
+  // });
 }
 
 function toggleAdditionalDataLayer(e){
