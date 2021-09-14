@@ -451,7 +451,7 @@ function changeGenomeOrder(updatedOrder){
  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count_gene_colors) {
   let db, counts;
   if(fn_type == 'Source') {
     db = default_source_colors;
