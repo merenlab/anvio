@@ -420,7 +420,7 @@ function changeGenomeOrder(updatedOrder){
  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count = 2) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count = 4) {
   let db, counts;
   if(fn_type == 'Source') {
     db = default_source_colors;
@@ -442,9 +442,17 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       return counts;
     }, {});
 
+    for(c of Object.keys(counts)) {
+      if(counts[c] < thresh_count) {
+        if(!counts["Other"]) counts["Other"] = 0;
+        counts["Other"] += counts[c];
+        delete counts[c];
+      }
+    }
+
     // Filter by count + sort categories
     counts = Object.fromEntries(
-      Object.entries(counts).filter(([cag, count]) => count > thresh_count).sort(function(first, second) {
+      Object.entries(counts).sort(function(first, second) {
         return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
       })
     );
