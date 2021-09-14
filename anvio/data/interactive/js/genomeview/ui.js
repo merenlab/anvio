@@ -442,20 +442,20 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       return counts;
     }, {});
 
-    for(c of Object.keys(counts)) {
-      if(counts[c] < thresh_count) {
-        if(!counts["Other"]) counts["Other"] = 0;
-        counts["Other"] += counts[c];
-        delete counts[c];
-      }
-    }
-
     // Filter by count + sort categories
+    let count_removed = 0;
     counts = Object.fromEntries(
-      Object.entries(counts).sort(function(first, second) {
+      Object.entries(counts).filter(([cag,count]) => {
+        if(count < thresh_count) count_removed += count;
+        return count >= thresh_count || cag == "Other";
+      }).sort(function(first, second) {
         return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
       })
     );
+    if(count_removed > 0) {
+      if(!counts["Other"]) counts["Other"] = 0;
+      counts["Other"] += count_removed;
+    }
     // Create custom color dict from categories
     db = getCustomColorDict(fn_type, cags=Object.keys(counts));
   }
