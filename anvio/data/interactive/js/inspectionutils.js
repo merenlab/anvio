@@ -388,6 +388,80 @@ function getGeneEndpts(_start, _stop) {
   return ret;
 }
 
+/*
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type, cags=null, order=null) {
+  if(fn_type == "Source") return default_source_colors;
+
+  if(!cags) {
+    cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
+                                                .filter(o => { if(!o) o = "None"; return o != null });
+    cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
+  }
+
+  // move "Other" and "None" to end of list
+  if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
+  if(cags.includes("None")) cags.push(cags.splice(cags.indexOf("None"), 1)[0]);
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+
+  // sort using order
+  if(order) {
+    let colors = Object.values(out);
+    Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
+  }
+
+  if(cags.includes("Other")) out["Other"] = "#FFFFFF";
+  if(cags.includes("None")) out["None"] = "#808080";
+  delete out["undefined"];
+  return out;
+  console.log(out);
+}
+
+/*
+ *  @returns array of functional annotation types from genes
+ */
+function getFunctionalAnnotations() {
+  for(gene of geneParser["data"]) {
+    if(!gene.functions) continue;
+    return Object.keys(gene.functions);
+  }
+  return [];
+}
+
+/*
+ *  @returns array of functional annotation types from genes
+ */
+function getFunctionalAnnotations() {
+  for(gene of geneParser["data"]) {
+    if(!gene.functions) continue;
+    return Object.keys(gene.functions);
+  }
+  return [];
+}
+
+function orderColorTable(order) {
+  order_gene_colors_by_count = order == 'count';
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+}
+
+function filterColorTable(thresh) {
+  if(isNaN(thresh)) {
+    alert("Error: filtering threshold must be numeric");
+    return;
+  } else if(thresh < 1) {
+    alert("Error: filtering threshold must be an integer >= 1");
+    return;
+  }
+  thresh_count_gene_colors = thresh;
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+  redrawArrows();
+}
+
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
 
 function get_comp_nt_color(nts){
