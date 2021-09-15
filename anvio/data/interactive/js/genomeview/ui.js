@@ -327,8 +327,6 @@ function buildGroupLayersTable(layerLabel){
                     '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
                     '<td> {layerLabel} </td>' +
                     '<td style="margin-left: 5px;"> n/a </td>' +
-                    '<td>n/a</td>' +
-                    '<td>n/a</td>' +
                     '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
                     '</tr>';
   } else {
@@ -336,8 +334,6 @@ function buildGroupLayersTable(layerLabel){
                     '<td><img src="images/drag.gif" class="drag-icon" id={layerLabel} /></td>' +
                     '<td> {layerLabel} </td>' +
                     '<td><div id="{layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: {color}" color={color} background-color={color} ></div></td>' +
-                    '<td>n/a</td>' +
-                    '<td>n/a</td>' +
                     '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
                     '</tr>';
   }
