@@ -347,19 +347,18 @@ function buildGroupLayersTable(layerLabel){
     changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
   })
 
-  // $(`#${layerLabel}_color`).colpick({
-  //   layout: 'hex',
-  //   submit: 0,
-  //   colorScheme: 'light',
-  //   onChange: function(hsb, hex, rgb, el, bySetColor) {
-  //       $(el).css('background-color', '#' + bySetColor);
-  //       $(el).attr('color', '#' + bySetColor);
-  //       if (!bySetColor) $(el).val(hex);
-  //   }
-  // }).keyup(function() {
-  //     $(this).colpickSetColor(this.value);
-  //   console.log(this)
-  // });
+  $(`#${layerLabel}_color`).colpick({
+    layout: 'hex',
+    submit: 0,
+    colorScheme: 'light',
+    onChange: function(hsb, hex, rgb, el, bySetColor) {
+        $(el).css('background-color', '#' + hex);
+        $(el).attr('color', '#' + hex);
+        if (!bySetColor) $(el).val(hex);
+    }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
 }
 
 function toggleAdditionalDataLayer(e){
