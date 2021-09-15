@@ -355,6 +355,9 @@ function buildGroupLayersTable(layerLabel){
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
+
+        if(layerLabel == 'Coverage') settings['additional-data-layers'][0]['coverage-color'] = `#${hex}`
+        if(layerLabel == 'GC_Content') settings['additional-data-layers'][0]['gcContent-color'] = `#${hex}`
     }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
