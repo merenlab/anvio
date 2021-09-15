@@ -354,10 +354,14 @@ function buildGroupLayersTable(layerLabel){
     onChange: function(hsb, hex, rgb, el, bySetColor) {
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
-        if (!bySetColor) $(el).val(hex);
 
-        if(layerLabel == 'Coverage') settings['additional-data-layers'][0]['coverage-color'] = `#${hex}`
-        if(layerLabel == 'GC_Content') settings['additional-data-layers'][0]['gcContent-color'] = `#${hex}`
+        if(bySetColor){
+          if(layerLabel == 'Coverage') settings['additional-data-layers'][0]['coverage-color'] = `#${hex}`
+          if(layerLabel == 'GC_Content') settings['additional-data-layers'][0]['gcContent-color'] = `#${hex}`
+          drawer.draw()
+        } else {
+          $(el).val(hex);
+        }
     }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
