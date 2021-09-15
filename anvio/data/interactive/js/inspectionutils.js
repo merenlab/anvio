@@ -292,6 +292,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
 
       let category = getCagForType(gene.functions, colortype);
+      category = getCleanCagCode(category);
 
       if(!category) {
         category = "none";
@@ -324,11 +325,11 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
-      category = getCleanCagCode(category);
+      let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', $('#picker_' + category).attr('color'))
+           .attr('stroke', color)
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {

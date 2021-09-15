@@ -54,6 +54,8 @@ var gene_offset_y = 0;
 var select_boxes = {};
 var curr_height;
 var show_cags_in_split = true;
+var thresh_count_gene_colors = 1;
+var order_gene_colors_by_count = true;
 
 var mcags;
 
@@ -448,6 +450,13 @@ function loadAll() {
                     $(this).blur();
                 });
 
+                $('#thresh_count').on('keydown', function(e) {
+                  if (e.keyCode == 13) { // 13 = enter key
+                    filterColorTable($(this).val());
+                    $(this).blur();
+                  }
+                });
+
                 $('#largeIndelInput').on('keydown', function(e) {
                   if(e.keyCode == 13) { // 13 = enter key
                     if($(this).val() < 1 || $(this).val() > 9999) {
@@ -598,7 +607,7 @@ function get_box_id_for_AA(aa, id_start) {
   *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
   *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
   */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=true, thresh_count=1) {
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=order_gene_colors_by_count, thresh_count=thresh_count_gene_colors) {
   info("Generating gene functional annotation color table");
 
   let db, counts;
@@ -800,6 +809,7 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
     if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
     if(category.indexOf('!!!') != -1) category = category.substr(0,category.indexOf('!!!'));
     category = getCleanCagCode(category);
+    let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
     contextSvg.select('#contextSvgDefs').append('svg:marker')
         .attr('id', 'arrow_' + category )
         .attr('markerHeight', 2)
@@ -810,7 +820,7 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
         .attr('viewBox', '-5 -5 10 10')
         .append('svg:path')
           .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-          .attr('fill', $('#picker_' + category).attr('color'));
+          .attr('fill', color);
   });
 }
 
