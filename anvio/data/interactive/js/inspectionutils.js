@@ -411,8 +411,8 @@ function getCustomColorDict(fn_type, cags=null, order=null) {
     Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
   }
 
-  if(out["Other"]) out["Other"] = "#FFFFFF";
-  if(out["None"]) out["None"] = "#808080";
+  if(cags.includes("Other")) out["Other"] = "#FFFFFF";
+  if(cags.includes("None")) out["None"] = "#808080";
   delete out["undefined"];
   return out;
 }
