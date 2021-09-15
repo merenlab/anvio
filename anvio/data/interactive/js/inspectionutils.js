@@ -387,7 +387,7 @@ function getGeneEndpts(_start, _stop) {
 /*
  *  @returns arbitrary category:color dict given a list of categories
  */
-function getCustomColorDict(fn_type, cags=null) {
+function getCustomColorDict(fn_type, cags=null, order=null) {
   if(fn_type == "Source") return default_source_colors;
 
   if(!cags) {
@@ -404,6 +404,13 @@ function getCustomColorDict(fn_type, cags=null) {
     out[cags[index]] = field;
     return out;
   }, {});
+
+  // sort using order
+  if(order) {
+    let colors = Object.values(out);
+    Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
+  }
+
   if(out["Other"]) out["Other"] = "#FFFFFF";
   if(out["None"]) out["None"] = "#808080";
   delete out["undefined"];

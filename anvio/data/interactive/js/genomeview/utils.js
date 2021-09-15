@@ -174,7 +174,7 @@ function getFunctionalAnnotations() {
 /*
  *  @returns arbitrary category:color dict given a list of categories
  */
-function getCustomColorDict(fn_type, cags=null) {
+function getCustomColorDict(fn_type, cags=null, order=null) {
   if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
 
   if(!cags) {
@@ -196,6 +196,13 @@ function getCustomColorDict(fn_type, cags=null) {
     out[cags[index]] = field;
     return out;
   }, {});
+
+  // sort using order
+  if(order) {
+    let colors = Object.values(out);
+    Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
+  }
+
   if(out["Other"]) out["Other"] = "#FFFFFF";
   if(out["None"]) out["None"] = "#808080";
   delete out["undefined"];
