@@ -183,6 +183,12 @@ function setEventListeners(){
     // draw();
     drawer.draw()
   });
+  $('#thresh_count').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      filterColorTable($(this).val());
+      $(this).blur();
+    }
+  });
   $('#show_dynamic_scale_box').on('change', function () {
     dynamicScaleInterval = !dynamicScaleInterval;
   });

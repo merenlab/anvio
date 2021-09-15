@@ -206,3 +206,16 @@ function orderColorTable(order) {
   order_gene_colors_by_count = order == 'count';
   generateColorTable(null, $("#gene_color_order").val());
 }
+
+function filterColorTable(thresh) {
+  if(isNaN(thresh)) {
+    alert("Error: filtering threshold must be numeric");
+    return;
+  } else if(thresh < 1) {
+    alert("Error: filtering threshold must be an integer >= 1");
+    return;
+  }
+  thresh_count_gene_colors = thresh;
+  generateColorTable(null, $("#gene_color_order").val());
+  drawer.draw();
+}
