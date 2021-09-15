@@ -337,10 +337,9 @@ function buildGroupLayersTable(layerLabel){
                     '<td><input type="checkbox" class="additional_selectors" id={layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>' +
                     '</tr>';
   }
-  template = template.replace(new RegExp('{height}', 'g'), height)
-                      .replace(new RegExp('{margin}', 'g'), margin)
-                      .replace(new RegExp('{layerLabel}', 'g'), layerLabel)
-                      .replace(new RegExp('{color}', 'g'), color);
+  template = template.replace(new RegExp('{layerLabel}', 'g'), layerLabel)
+                     .replace(new RegExp('{color}', 'g'), color);
+                     
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
