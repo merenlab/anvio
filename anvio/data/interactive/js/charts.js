@@ -619,20 +619,31 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, fi
       return counts;
     }, {});
 
-    // Filter by count + sort categories
+    // Filter by count
     let count_removed = 0;
     counts = Object.fromEntries(
       Object.entries(counts).filter(([cag,count]) => {
         if(count < thresh_count) count_removed += count;
         return count >= thresh_count || cag == "None";
-      }).sort(function(first, second) {
+      })
+    );
+
+    // Save pre-sort order
+    let order = {};
+    for(let i = 0; i < Object.keys(counts).length; i++) {
+      order[Object.keys(counts)[i]] = i;
+    }
+
+    // Sort categories
+    counts = Object.fromEntries(
+      Object.entries(counts).sort(function(first, second) {
         return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
       })
     );
     if(count_removed > 0) counts["Other"] = count_removed;
 
     // Create custom color dict from categories
-    db = getCustomColorDict(fn_type, cags=Object.keys(counts));
+    db = getCustomColorDict(fn_type, cags=Object.keys(counts), order=order);
   }
 
   // Override default values with any values supplied to fn_colors
