@@ -292,6 +292,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
 
       let category = getCagForType(gene.functions, colortype);
+      category = getCleanCagCode(category);
 
       if(!category) {
         category = "None";
@@ -324,11 +325,11 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
-      category = getCleanCagCode(category);
+      let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', $('#picker_' + category).attr('color'))
+           .attr('stroke', color)
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
@@ -418,6 +419,24 @@ function getFunctionalAnnotations() {
     return Object.keys(gene.functions);
   }
   return [];
+}
+
+function orderColorTable(order) {
+  order_gene_colors_by_count = order == 'count';
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+}
+
+function filterColorTable(thresh) {
+  if(isNaN(thresh)) {
+    alert("Error: filtering threshold must be numeric");
+    return;
+  } else if(thresh < 1) {
+    alert("Error: filtering threshold must be an integer >= 1");
+    return;
+  }
+  thresh_count_gene_colors = thresh;
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+  redrawArrows();
 }
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
