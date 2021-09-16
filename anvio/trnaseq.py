@@ -8083,7 +8083,8 @@ class ResultPlotter(object):
 
     def load_data(self):
         # Load the tables of seed specific coverages and modifications.
-        self.spec_df = spec_df = pd.read_csv(self.spec_txt_path, sep='\t', header=[0, 1, 2])
+        dtype_dict = {rank: str for rank in self.RANKS}
+        self.spec_df = spec_df = pd.read_csv(self.spec_txt_path, sep='\t', header=[0, 1, 2], dtype=dtype_dict)
 
         # The column multiindex has 3 levels. Some of the labels in the levels should be empty
         # strings, but upon loading the table, these are replaced with default values that need to
@@ -8119,7 +8120,10 @@ class ResultPlotter(object):
         self.num_samples = len(set(spec_df['sample_name'].squeeze()))
         self.sample_names = spec_df['sample_name'].squeeze().iloc[: self.num_samples].tolist()
 
-        self.mod_df = pd.read_csv(self.mod_txt_path, sep='\t', header=0, dtype={'canonical_position': str})
+        dtype_dict = {rank: str for rank in self.RANKS}
+        dtype_dict['ordinal_position'] = pd.Int16Dtype()
+        dtype_dict['canonical_position'] = str
+        self.mod_df = pd.read_csv(self.mod_txt_path, sep='\t', header=0, dtype=dtype_dict)
 
 
     def print_help(self):
