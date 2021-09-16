@@ -108,6 +108,10 @@ Here are the descriptions of any new columns not yet discussed in the previous s
 - `modules_with_ko`: the KEGG modules (if any) that this KO belongs to
 - `definition`: the function of this KO (typically the enzyme name and EC number)
 
+**Coverage and detection values in the output**
+
+If you use the flag `--add-coverage` and provide a profile database, you will get the same additional columns per row as described above in for `kofam_hits_in_modules` mode. That is, you will get one column per sample for coverage (containing the coverage value of the KO hit in the sample) and one column per sample for detection (containing the detection value of the KO hit in the sample). 
+
 ### Custom Mode (for module data)
 
 The `modules_custom` output mode will have user-defined content and the suffix `modules_custom.txt` (we currently only support output customization for modules data). See %(anvi-estimate-metabolism)s for an example command to work with this mode. The output file will look similar to the `modules` mode output, but with a different (sub)set of columns.
