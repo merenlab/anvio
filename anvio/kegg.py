@@ -2006,7 +2006,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofam_hits_in_modules',
+                                                       'mode_type': 'kofam_hits_in_modules', 'kofam_hits'
                                                        'description': f"Mean coverage of gene with KOfam hit in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
@@ -2016,7 +2016,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
-                                                             'mode_type': 'modules',
+                                                             'mode_type': 'modules', 'kofam_hits'
                                                              'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
@@ -2035,6 +2035,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # we update the header list for the affected modes
         self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["kofam_hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
@@ -3341,6 +3342,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["modules_with_ko"] = metadata_dict["modules_with_ko"]
                     if "ko_definition" in headers_to_include:
                         d[self.ko_unique_id]["ko_definition"] = metadata_dict["ko_definition"]
+
+                    if self.add_coverage:
+                        if not self.profile_db:
+                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                              "not been initialized, therefore we cannot add coverage values to your output. "
+                                              "This is likely a bug or developer mistake. It is a sad day :(")
+
+                        for s in self.coverage_sample_list:
+                            sample_cov_header = s + "_coverage"
+                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                            sample_det_header = s + "_detection"
+                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
