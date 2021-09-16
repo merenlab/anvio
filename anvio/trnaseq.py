@@ -7770,10 +7770,19 @@ class ResultTabulator(object):
             contig_df = contig_df.sort_values('pos')
             feature_coord_dict = contig_feature_coord_dict[contig_name]
             for seed_pos, sub_df in contig_df.groupby('pos'):
-                ordinal_name, ordinal_pos = feature_coord_dict[seed_pos]
+                try:
+                    ordinal_name, ordinal_pos = feature_coord_dict[seed_pos]
+                except KeyError:
+                    # The modification position may be 5' of the 5'-most feature defined in the
+                    # seed.
+                    ordinal_name = 'NA'
+                    ordinal_pos = 'NA'
                 str_seed_pos = str(seed_pos)
                 ordinal_pos = str(ordinal_pos)
-                canonical_pos = str(canonical_dict[ordinal_name])
+                try:
+                    canonical_pos = str(canonical_dict[ordinal_name])
+                except KeyError:
+                    canonical_pos = 'NA'
                 sample_row_dict = {}
                 for sample_row in sub_df.itertuples():
                     out_row = [gene_callers_id,
@@ -8259,7 +8268,12 @@ class ResultPlotter(object):
                 continue
 
             for ordinal_pos, pos_df in sample_mod_df.groupby('ordinal_position'):
-                total_pos_cov = spec_cov_array[:, ordinal_pos - 1].sum()
+                try:
+                    total_pos_cov = spec_cov_array[:, ordinal_pos - 1].sum()
+                except IndexError:
+                    # The ordinal position is NaN when the modification position is 5' of the
+                    # 5'-most feature defined in the seed.
+                    continue
                 mod_nt_covs = pos_df[UNAMBIG_NTS_LIST].sum(axis=0)
                 nt_order = np.argsort(mod_nt_covs)[::-1]
                 nt_colors = [NT_COLORS[nt_int] for nt_int in nt_order]
