@@ -286,24 +286,20 @@ function buildGenomesTable(genomes, order){
   genomes.map(genome => {
     var height = '50';
     var margin = '15';
-    var template = '<tr id={genomeLabel}>' +
-                  '<td><img src="images/drag.gif" class="drag-icon" id={genomeLabel} /></td>' +
-                  '<td> {genomeLabel} </td>' +
-                  '<td>n/a</td>' +
-                  '<td>n/a</td>' +
-                  '<td>n/a</td>' +
-                  '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                  '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                  '<td>n/a</td>' +
-                  '<td>n/a</td>' +
-                  '<td><input type="checkbox" class="layer_selectors"></input></td>' +
-                  '</tr>';
     let genomeLabel= Object.keys(genome[1]['contigs']['info']);
-
-    template = template.replace(new RegExp('{height}', 'g'), height)
-                        .replace(new RegExp('{margin}', 'g'), margin)
-                        .replace(new RegExp('{genomeLabel}', 'g'), genomeLabel);
-
+    var template = `<tr id=${genomeLabel}> 
+                  <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td> 
+                  <td> ${genomeLabel} </td> 
+                  <td>n/a</td> 
+                  <td>n/a</td> 
+                  <td>n/a</td> 
+                  <td><input class="input-height" type="text" size="3" id="height_${genomeLabel}" value="${height}"></input></td> 
+                  <td class="column-margin"><input class="input-margin" type="text" size="3" id="margin_${genomeLabel}" value="${margin}"></input></td> 
+                  <td>n/a</td> 
+                  <td>n/a</td> 
+                  <td><input type="checkbox" class="layer_selectors"></input></td> 
+                  </tr>;`
+                  
     $('#tbody_genomes').append(template);
   })
 
