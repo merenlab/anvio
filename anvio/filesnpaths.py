@@ -300,6 +300,8 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
                                        f"extention in the same directory). You can do it via `samtools`, or using the "
                                        f"anvi'o program 'anvi-init-bam'.")
 
+    return True
+
 
 def is_program_exists(program):
     """adapted from http://stackoverflow.com/a/377028"""
