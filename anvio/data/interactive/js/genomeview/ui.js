@@ -571,10 +571,10 @@ function resetFunctionColors(fn_colors=null) {
 /*
  *  Responds to 'Apply' button in Settings panel under batch coloring
  */
- function batchColor(legend_id=2) {
-     var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
-     var color = $('#batch_colorpicker_' + legend_id).attr('color');
-     var randomize_color = $('#batch_randomcolor_' + legend_id).is(':checked');
+ function batchColor() {
+     var rule = $('[name=batch_rule]:checked').val()
+     var color = $('#batch_colorpicker').attr('color');
+     var randomize_color = $('#batch_randomcolor').is(':checked');
 
      let fn_type = $('#gene_color_order').val();
      let dict = getCustomColorDict(fn_type);
@@ -587,12 +587,12 @@ function resetFunctionColors(fn_colors=null) {
        if(rule == 'all') {
          $("#picker_" + code).colpickSetColor(color);
        } else if(rule == 'name') {
-         if(category.indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
+         if(category.indexOf($('#name_rule').val().toLowerCase()) > -1) {
            $("#picker_" + code).colpickSetColor(color);
          }
        } else if(rule == 'count') {
          let count = counts[category];
-         if (eval(count + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
+         if (eval(count + unescape($('#count_rule').val()) + " " + parseFloat($('#count_rule_value').val()))) {
            $("#picker_" + code).colpickSetColor(color);
          }
        }
