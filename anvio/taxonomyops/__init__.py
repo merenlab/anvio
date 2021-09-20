@@ -791,7 +791,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
 
         c = ContigsSuperclass(self.args, r=run_quiet)
-        
+
         gene_caller_ids = [v['gene_callers_id'] for v in d.values()]
 
         gene_caller_ids_list, sequences_dict = c.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
@@ -801,7 +801,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
         dna_sequences_output_file_path = self.sequences_file_path_prefix + '_DNA.fa'
         amino_acid_sequences_output_file_path = self.sequences_file_path_prefix + '_AA.fa'
-        contigs_db_name = os.path.basename(self.contigs_db_path).replace(".db", "")
+
+        contigs_db_name = c.a_meta['project_name']
+
         with open(amino_acid_sequences_output_file_path, 'w') as aa_sequences_output, open(dna_sequences_output_file_path, 'w') as dna_sequences_output:
             for entry in d.values():
                 header = f"{contigs_db_name}_{entry['gene_name']}_{entry['gene_callers_id']}"
