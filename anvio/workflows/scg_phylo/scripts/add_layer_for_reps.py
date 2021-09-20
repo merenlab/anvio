@@ -17,13 +17,15 @@ open(snakemake.input.misc_data, "w").writelines([lines[0]] + new_content)
 # Import
 #-------
 misc_data = pd.read_csv(snakemake.input.misc_data, \
-                  sep="\t", \
-                  index_col=False)
+                        sep="\t", \
+                        index_col=False)
 
+print(misc_data)
+sys.exit()
 cluster_rep_index = pd.read_csv(snakemake.params.cluster_rep_index, \
-                  sep="\t", \
-                  index_col=False, \
-                  names=["representative", "cluster_members"])
+                                sep="\t", \
+                                index_col=False, \
+                                names=["representative", "cluster_members"])
 
 fasta_df = pd.DataFrame({'header': [], 'sequence': []})
 
@@ -53,6 +55,6 @@ misc_data.insert(0, 'split_name', first_column)
 # Export
 #-------
 misc_data.to_csv(snakemake.output.misc_data_final, \
-           sep="\t", \
-           index=None, \
-           na_rep="NA")
+                 sep="\t", \
+                 index=None, \
+                 na_rep="NA")

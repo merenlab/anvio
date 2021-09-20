@@ -19,6 +19,9 @@ misc_data = pd.read_csv(snakemake.input.misc_data, \
                   sep="\t", \
                   index_col=False)
 
+print(misc_data)
+sys.exit()
+
 cluster_rep_index = pd.read_csv(snakemake.params.cluster_rep_index, \
                   sep="\t", \
                   index_col=False, \
