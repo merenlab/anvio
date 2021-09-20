@@ -5,9 +5,6 @@ import numpy as np
 import glob
 import os.path
 
-# This script replaces the contig name of the external_gene_calls
-# file with the reformated name.
-
 # This script reformats the names from the external_gene_calls.txt file (which comes from anvi-get-sequences-for-gene-calls) with 
 # the names of sequences from anvi-estimate-scg-taxonomy
 
@@ -22,7 +19,6 @@ headers = pd.read_csv(snakemake.input.headers, \
                       sep="\t", \
                       index_col=False,
                       names=["contig"])
-
 # Make new columns
 #-----------------
 external_gene_calls[['sample_name', 'contig_number', 'gene_callers_id']] = external_gene_calls['contig'].str.split('_',expand=True)
@@ -32,7 +28,6 @@ external_gene_calls['contig'] = external_gene_calls['sample_name'] + '_' + exter
 # # Join reformat_report with external_gene_calls
 #------------------------------------------------
 external_gene_calls_filtered = external_gene_calls.merge(headers, on="contig", how="inner").drop(columns=['reference_protein_name', 'sample_name', 'contig_number', 'reference_protein_name'])
-
 
 # # Write file
 #-------------
