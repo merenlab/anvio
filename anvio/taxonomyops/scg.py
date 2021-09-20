@@ -526,6 +526,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         for metagenome_name in scg_taxonomy_super_dict_multi:
             args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
+            args.name = metagenome_name
 
             if self.metagenome_mode:
                 args.metagenome_mode = True
@@ -947,6 +948,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck, TaxonomyEstimator
         self.collection_name = A('collection_name')
         self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
         self.bin_id = A('bin_id')
+        self.name = A('name')
 
         SCGTaxonomyArgs.__init__(self, self.args)
 
