@@ -451,7 +451,7 @@ function changeGenomeOrder(updatedOrder){
  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
 function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count_gene_colors) {
-  let db, counts;
+  let db;
   if(fn_type == 'Source') {
     db = default_source_colors;
   } else {
@@ -567,3 +567,36 @@ function resetFunctionColors(fn_colors=null) {
   if($('#gene_color_order') == null) return;
   generateColorTable(fn_colors, color_db);
 }
+
+/*
+ *  Responds to 'Apply' button in Settings panel under batch coloring
+ */
+ function batchColor(legend_id=2) {
+     var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
+     var color = $('#batch_colorpicker_' + legend_id).attr('color');
+     var randomize_color = $('#batch_randomcolor_' + legend_id).is(':checked');
+
+     let fn_type = $('#gene_color_order').val();
+     let dict = getCustomColorDict(fn_type);
+     Object.keys(dict).forEach(category => {
+       if(randomize_color) {
+         // color = randomColor();
+         // TODO: instead of using default color dict for random colors, dynamically create random color here to avoid similarity to chosen group color
+       }
+       let code = getCleanCagCode(category);
+       if(rule == 'all') {
+         $("#picker_" + code).colpickSetColor(color);
+       } else if(rule == 'name') {
+         if(category.indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
+           $("#picker_" + code).colpickSetColor(color);
+         }
+       } else if(rule == 'count') {
+         let count = counts[category];
+         if (eval(count + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
+           $("#picker_" + code).colpickSetColor(color);
+         }
+       }
+     });
+
+     drawer.draw();
+ }

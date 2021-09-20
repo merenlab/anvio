@@ -58,6 +58,7 @@ var genomeLabelsCanvas;
 var brush;
 var drawer
 var color_db;
+var counts; // stores # occurences for each category in the current function type
 var genomeData;
 
 $(document).ready(function () {
