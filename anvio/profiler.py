@@ -463,6 +463,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def init_profile_from_BAM(self):
+        filesnpaths.is_file_bam_file(self.input_file_path)
+
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = bamops.BAMFileObject(self.input_file_path)
