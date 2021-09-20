@@ -846,11 +846,16 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
 
     def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+
+        c = ContigsSuperclass(self.args, r=run_quiet)
+        contigs_db_name = os.path.basename(c.contigs_db_path).split('.')[:-1][0]
+
         d = {}
 
         if self.metagenome_mode:
             for item_hit in items_taxonomy_super_dict['taxonomy'][self.contigs_db_project_name][self._ITEMS.lower()].values():
-                item_hit_name = '%s_%d' % (item_hit[self._VARIABLE_NAME_IN_TABLE], item_hit['gene_callers_id'])
+                item_hit_name = '%s_%s_%d' % (contigs_db_name, item_hit[self._VARIABLE_NAME_IN_TABLE], item_hit['gene_callers_id'])
+
                 d[item_hit_name] = item_hit
 
                 if self.compute_item_coverages:
