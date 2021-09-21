@@ -7,6 +7,7 @@ import os
 import sys
 import shutil
 import argparse
+import numpy as np
 import multiprocessing
 
 from collections import OrderedDict
@@ -42,6 +43,238 @@ __email__ = "a.murat.eren@gmail.com"
 null_progress = terminal.Progress(verbose=False)
 null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
+
+
+class BAMProfilerQuick:
+    """A class for rapid profiling of BAM files that produce text files rather than profile dbs"""
+
+    def __init__(self, args, skip_sanity_check=False, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.bam_file_paths = A('bam_files')
+        self.contigs_db_path = A('contigs_db')
+        self.output_file_path = A('output_file')
+        self.gene_level_stats = A('gene_mode')
+        self.gene_caller = A('gene_caller')
+        self.report_minimal = A('report_minimal')
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+        self.run.info('Contigs DB', self.contigs_db_path)
+        self.run.info('Num BAM files', len(self.bam_file_paths))
+        self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
+
+
+        # to be filled later if necessary
+        self.contigs_basic_info = {}
+        self.gene_calls_per_contig = {}
+
+
+    def sanity_check(self):
+        if not self.contigs_db_path:
+            raise ConfigError("You need to provide an anvi'o contigs database for this to work :/")
+
+        utils.is_contigs_db(self.contigs_db_path)
+
+        if not len(self.bam_file_paths):
+            raise ConfigError("You need to provide at least one BAM file for this to work.")
+
+        if not self.output_file_path:
+            raise ConfigError("Please provide an output file path.")
+
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+
+        # find all the bad BAM files
+        bad_bam_files = [f for f in self.bam_file_paths if not filesnpaths.is_file_bam_file(f, dont_raise=True)]
+        if len(bad_bam_files):
+            raise ConfigError(f"Not all of your BAM files look like BAM files. Here is the list that "
+                              f"samtools didn't like: {', '.join(bad_bam_files)}")
+
+        if self.gene_level_stats:
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+            genes_are_called = contigs_db.meta['genes_are_called']
+            gene_callers_list = contigs_db.meta['gene_callers']
+            contigs_db.disconnect()
+
+            if not genes_are_called:
+                raise ConfigError("There are no gene calls in this contigs database :/ You can't use the flag "
+                                  "`--report-gene-level-stats`. Yes.")
+
+            gene_callers = [tpl[0] for tpl in gene_callers_list]
+            if self.gene_caller not in gene_callers:
+                dbops.ContigsDatabase(self.contigs_db_path).list_gene_caller_sources()
+                raise ConfigError(f"The gene caller '{self.gene_caller}' is not among those that are found in "
+                                  f"the contigs database (and shown above for your convenience).")
+
+
+
+    def process(self):
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+
+        self.run.warning(None, header="CONTIGS DB", lc="green")
+        self.run.info("Number of contigs", pp(contigs_db.meta['num_contigs']))
+        self.run.info("Total num nucleotides", pp(contigs_db.meta['total_length']))
+        self.run.info("Genes are called", "Yes" if contigs_db.meta['genes_are_called'] else "No :/")
+
+        self.run.info("Reporting mode", "GENES" if self.gene_level_stats else "CONTIGS", mc='green')
+        if self.gene_level_stats:
+            self.run.info("Gene caller", self.gene_caller)
+            self.run.info("Number of genes", pp([tpl[1] for tpl in contigs_db.meta['gene_callers'] if tpl[0] == self.gene_caller][0]))
+
+        self.progress.new('Reading data into memory')
+        self.progress.update('Contigs basic info table ...')
+        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name)
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+        if self.gene_level_stats:
+            self.recover_gene_data()
+        
+        self.report_stats()
+
+
+    def recover_gene_data(self):
+        # if we are working with genes, we need to first read the gene calls table into
+        # memory
+        self.progress.new('Reading data into memory')
+        self.progress.update('Gene calls table ...')
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=f"source == '{self.gene_caller}'", error_if_no_data=True)
+
+        # and then update contigs basic info to easily track gene calls in a given contig
+        # for reporting purposes
+        self.progress.update('Updating contigs basic info ...')
+        for gene_callers_id in self.genes_in_contigs:
+            contig_name = self.genes_in_contigs[gene_callers_id]['contig']
+
+            if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
+                self.contigs_basic_info[contig_name]['gene_caller_ids'] = set([gene_callers_id])
+            else:
+                self.contigs_basic_info[contig_name]['gene_caller_ids'].add(gene_callers_id)
+
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+
+    def report_stats(self):
+        """Iterates through bam files, reports contigs stats"""
+
+        # the total number of items we will process is equal to the number of contigs that will
+        # have to be processed for each BAM file
+        total_num_items = len(self.bam_file_paths) * len(self.contigs_basic_info)
+        total_num_bam_files = len(self.bam_file_paths)
+        contig_names = list(self.contigs_basic_info.keys())
+        num_contigs = len(self.contigs_basic_info)
+
+        self.progress.new("Bleep bloop", progress_total_items=total_num_items)
+        self.progress.update('...')
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        with open(self.output_file_path, 'w') as output:
+            if self.report_minimal and not self.gene_level_stats:
+                header = ['contig', 'sample', 'length', 'gc_content', 'detection', 'mean_cov']
+            elif not self.report_minimal and not self.gene_level_stats:
+                header = ['contig', 'sample', 'length', 'gc_content',  'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+            elif self.report_minimal and self.gene_level_stats:
+                header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov']
+            else:
+                header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+
+            output.write('\t'.join(header) + '\n')
+
+            for i in range(0, total_num_bam_files):
+                bam_file_path = self.bam_file_paths[i]
+
+                bam = bamops.BAMFileObject(bam_file_path, 'rb')
+                bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
+
+                contigs_stats = {}
+                for j in range(0, num_contigs):
+                    contig_name = contig_names[j]
+
+                    if j - 1 == 0 or j % 100 == 0:
+
+                        if mem_tracker.measure():
+                            mem_usage = mem_tracker.get_last()
+                            mem_diff = mem_tracker.get_last_diff()
+
+                        self.progress.increment(increment_to=((i * num_contigs) + j))
+                        self.progress.update(f"BAM {i+1}/{pp(total_num_bam_files)} :: CONTIG {pp(j)}/{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+
+                    c = bamops.Coverage()
+
+                    try:
+                        c.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
+                    except:
+                        continue
+
+                    if self.report_minimal and not self.gene_level_stats:
+                        # we are in contigs mode, and want a minimal report
+                        mean = np.mean(c.c)
+                        detection = np.sum(c.c > 0) / len(c.c)
+                        output.write(f"{contig_name}\t"
+                                     f"{bam_file_name}\t"
+                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{detection:.4}\t"
+                                     f"{mean:.4}\n")
+                    elif not self.report_minimal and not self.gene_level_stats:
+                        # we are in contigs mode, but want an extended report
+                        C = utils.CoverageStats(c.c, skip_outliers=True)
+                        output.write(f"{contig_name}\t"
+                                     f"{bam_file_name}\t"
+                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{C.detection:.4}\t"
+                                     f"{C.mean:.4}\t"
+                                     f"{C.mean_Q2Q3:.4}\t"
+                                     f"{C.median}\t"
+                                     f"{C.min}\t"
+                                     f"{C.max}\t"
+                                     f"{C.std:.4}\n")
+                    elif self.gene_level_stats:
+                        # we are in gene mode!
+                        for gene_callers_id in self.contigs_basic_info[contig_name]['gene_caller_ids']:
+                            g = self.genes_in_contigs[gene_callers_id]
+                            gc = c.c[g['start']:g['stop']]
+
+                            if self.report_minimal:
+                                # we want a minimal report
+                                mean = np.mean(gc)
+                                detection = np.sum(gc > 0) / len(gc)
+                                output.write(f"{gene_callers_id}\t"
+                                             f"{contig_name}\t"
+                                             f"{bam_file_name}\t"
+                                             f"{g['stop'] - g['start']}\t"
+                                             f"{detection:.4}\t"
+                                             f"{mean:.4}\n")
+                            else:
+                                GC = utils.CoverageStats(gc, skip_outliers=True)
+                                output.write(f"{gene_callers_id}\t"
+                                             f"{contig_name}\t"
+                                             f"{bam_file_name}\t"
+                                             f"{g['stop'] - g['start']}\t"
+                                             f"{GC.detection:.4}\t"
+                                             f"{GC.mean:.4}\t"
+                                             f"{GC.mean_Q2Q3:.4}\t"
+                                             f"{GC.median}\t"
+                                             f"{GC.min}\t"
+                                             f"{GC.max}\t"
+                                             f"{GC.std:.4}\n")
+                    else:
+                        raise ConfigError("We need an adult :(")
+
+                bam.close()
+
+            self.progress.end()
 
 
 class BAMProfiler(dbops.ContigsSuperclass):
