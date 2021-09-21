@@ -82,6 +82,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "bam-stats-txt": {
+        "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "protein-structure-txt": {
         "name": "PDB FILE",
         "type": "TXT",
