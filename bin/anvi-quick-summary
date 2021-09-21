@@ -39,14 +39,12 @@ class RapidSummarizer:
         self.profile_db_paths = A('profile_dbs')
         self.collection_name = A('collection_name')
         self.output_file_prefix = A('output_file_prefix') or self.collection_name
-        self.matrix_format = A('matrix_format')
         self.stats_to_summarize = ["detection", "mean_coverage_Q2Q3"]
 
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num profile DBs', len(self.profile_db_paths))
         self.run.info('Collection', self.collection_name)
         self.run.info('Output prefix', self.output_file_prefix)
-        self.run.info('Matrix format', self.matrix_format)
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -80,12 +78,12 @@ class RapidSummarizer:
         contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
         splits_basic_info = contigs_db.get_table_as_dict(t.splits_info_table_name)
         contigs_db.disconnect()
-        
+
         self.progress.update("Loading collection info from profile db")
         profile_db = db.DB(self.profile_db_paths[0], None, ignore_version=True)
         collection = {s:b for s,b in profile_db.get_some_columns_from_table(t.collections_splits_table_name, 'split,bin_name', f"""collection_name = '{self.collection_name}'""")}
         self.progress.end()
-        
+
         # obtain statistics from all profile dbs
         self.progress.new("Summarizing statistics from profile dbs", progress_total_items=len(self.profile_db_paths))
         stats_per_bin = {} # 3-level dict containing weighted avg of statistics per bin per sample, keyed by bin and then by sample and then by statistic name
@@ -103,7 +101,7 @@ class RapidSummarizer:
 
                 stat_table_name = stat + "_splits"
                 stat_table_splits = {i:v for i,v in profile_db.get_some_columns_from_table(stat_table_name, 'item,value')}
-                
+
                 # compute statistic per bin, normalized by split length
                 all_vals_per_bin = {} # list of stat values for each split in bin
                 all_lens_per_bin = {} # list of split lengths (weights) for each split in bin
@@ -124,13 +122,13 @@ class RapidSummarizer:
                         stats_per_bin[bin_name] = {}
                     if sample_id not in stats_per_bin[bin_name]:
                         stats_per_bin[bin_name][sample_id] = {}
-                    stats_per_bin[bin_name][sample_id][stat] = np.average(all_vals_per_bin[bin_name], weights=all_lens_per_bin[bin_name])    
+                    stats_per_bin[bin_name][sample_id][stat] = np.average(all_vals_per_bin[bin_name], weights=all_lens_per_bin[bin_name])
 
             profile_db.disconnect()
 
             self.progress.increment()
             self.progress.reset()
-        
+
         self.progress.end()
 
         # print stats to output file
@@ -151,21 +149,6 @@ class RapidSummarizer:
         utils.store_dict_as_TAB_delimited_file(output_dict, output_file_name, headers=header_list)
         self.run.info("Output file", output_file_name)
 
-        # also provide matrices if requested
-        if self.matrix_format:
-            for s in self.stats_to_summarize:
-                matrix_output_path = self.output_file_prefix + f"-{s}_matrix.txt"
-
-                # we need to convert the dictionary to a 2-level dictionary containing just this statistic
-                matrix_dict = {}
-                for bin_name, sample_dict in stats_per_bin.items():
-                    if bin_name not in matrix_dict:
-                        matrix_dict[bin_name] = {}
-                    for sample, stat_dict in sample_dict.items():
-                        matrix_dict[bin_name][sample] = stat_dict[s]
-
-                utils.store_dict_as_TAB_delimited_file(matrix_dict, matrix_output_path, key_header="bin")
-                self.run.info("Matrix output", matrix_output_path)
 
         self.progress.end()
 
@@ -181,9 +164,6 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    parser.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you choose this option, you will get a separate "
-                                                                               "matrix file for each statistic in addition to the usual long-format "
-                                                                               "output file"}))
 
     #args = parser.get_args(parser)
     args = parser.parse_args()
