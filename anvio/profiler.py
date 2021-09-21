@@ -134,7 +134,7 @@ class BAMProfilerQuick:
 
         if self.gene_level_stats:
             self.recover_gene_data()
-        
+
         self.report_stats()
 
 
@@ -242,6 +242,11 @@ class BAMProfilerQuick:
                                      f"{C.std:.4}\n")
                     elif self.gene_level_stats:
                         # we are in gene mode!
+                        if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
+                            # this means we don't have a gene call in this contig. Long hair don't
+                            # care. MOVING ON.
+                            continue
+
                         for gene_callers_id in self.contigs_basic_info[contig_name]['gene_caller_ids']:
                             g = self.genes_in_contigs[gene_callers_id]
                             gc = c.c[g['start']:g['stop']]
