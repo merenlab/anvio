@@ -446,11 +446,11 @@ function changeGenomeOrder(updatedOrder){
  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
  *  @param fn_type :         string indicating function category type
  *  @param highlight_genes : array of format [{genomeID: 'g01', geneID: 3, color: '#FF0000'}, ...] to override other coloring for specific genes
- *  @param filter_to_split : if true, filters categories to only those shown in the split
+ *  @param filter_to_window : if true, filters categories to only those shown in the current render window
  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count_gene_colors) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_window=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count_gene_colors) {
   let db;
   if(fn_type == 'Source') {
     db = default_source_colors;
@@ -459,9 +459,13 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 
     // Traverse categories
     for(genome of settings['genomeData']['genomes']) {
-      let geneFuns = genome[1].genes.functions;
-      for(let i = 0; i < Object.keys(geneFuns)[Object.keys(geneFuns).length-1]; i++) {
-        let cag = getCagForType(geneFuns[i], fn_type);
+      let gene_calls = genome[1].genes.gene_calls;
+      let gene_funs = genome[1].genes.functions;
+
+      for(let i = 0; i < Object.keys(gene_calls)[Object.keys(gene_calls).length-1]; i++) {
+        console.log(gene_calls[i].start < renderWindow[0] || gene_calls[i].stop > renderWindow[1])
+        if(gene_calls[i].start < renderWindow[0] || gene_calls[i].stop > renderWindow[1]) continue;
+        let cag = getCagForType(gene_funs[i], fn_type);
         counts.push(cag ? cag : "None");
       }
     }

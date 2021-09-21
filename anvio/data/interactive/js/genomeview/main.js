@@ -51,7 +51,7 @@ var percentScale = false; // if true, scale measured in proportions (0-1) of tot
 var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
 var thresh_count_gene_colors = 4; // min # occurences of annotation for filtering gene color table
 var order_gene_colors_by_count = true; // if true, order annotations on gene color table by descending order of count, otherwise order alphabetically
-var filter_gene_colors_to_window = true; // if true, only display gene colors in current render window, otherwise show all gene colors in split
+var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var mainCanvasHeight;
 var canvas;
 var genomeLabelsCanvas;
