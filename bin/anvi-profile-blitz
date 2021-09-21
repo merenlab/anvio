@@ -22,8 +22,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__provides__ = ["coverages-txt"]
-__requires__ = ["bam-file", "contigs-db",]
+__provides__ = ["coverages-txt", "detection-txt", "genes-stats", "contigs-stats"]
+__requires__ = ["bam-file", "contigs-db"]
 __description__ = ("Rapid profiling of BAM files to get contig- or gene-level coverage and detection stats. "
                    "Unlike `anvi-profile`, which is another anvi'o program that can profile BAM files, this "
                    "program is designed to be very quick and only report long-format files for various "
