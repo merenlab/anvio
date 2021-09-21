@@ -848,7 +848,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
     def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
 
         c = ContigsSuperclass(self.args, r=run_quiet)
-        contigs_db_name = os.path.basename(c.contigs_db_path).split('.')[:-1][0]
+        contigs_db_name = c.a_meta['project_name_str']
 
         d = {}
 
