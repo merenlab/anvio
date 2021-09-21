@@ -192,21 +192,21 @@ function getCustomColorDict(fn_type, cags=null, order=null) {
   if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
   if(cags.includes("None")) cags.push(cags.splice(cags.indexOf("None"), 1)[0]);
 
-  let out = custom_cag_colors.reduce((out, field, index) => {
+  let dict = custom_cag_colors.reduce((out, field, index) => {
     out[cags[index]] = field;
     return out;
   }, {});
 
   // sort using order
   if(order) {
-    let colors = Object.values(out);
-    Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
+    let colors = Object.values(dict);
+    Object.keys(dict).forEach(cag => { dict[cag] = colors[order[cag]] });
   }
 
-  if(out["Other"]) out["Other"] = "#FFFFFF";
-  if(out["None"]) out["None"] = "#808080";
-  delete out["undefined"];
-  return out;
+  if(dict["Other"]) dict["Other"] = "#FFFFFF";
+  if(dict["None"]) dict["None"] = "#808080";
+  delete dict["undefined"];
+  return dict;
 }
 
 function orderColorTable(order) {

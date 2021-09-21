@@ -497,6 +497,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 
     // Create custom color dict from categories
     db = getCustomColorDict(fn_type, cags=Object.keys(counts), order=order);
+    if(Object.keys(db).includes("Other") && !db["Other"]) db["Other"] = "#FFFFFF"; //  bug fix
   }
 
   // Override default values with any values supplied to fn_colors
