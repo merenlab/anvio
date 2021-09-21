@@ -171,6 +171,11 @@ function updateRenderWindow() {
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
     let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
     renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
+
+    if(filter_gene_colors_to_window) {
+      generateColorTable(null, color_db);
+      // TODO: filter to window for percent scale, too
+    }
   }
 }
 
@@ -214,4 +219,3 @@ function viewCluster(gc) {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
     return null;
   }
-}
