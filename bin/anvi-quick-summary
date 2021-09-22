@@ -88,6 +88,8 @@ class RapidSummarizer:
         if not collection:
             raise ConfigError(f"Someone did an oopsie :) The collection '{self.collection_name}' does not exist "
                               f"in the profile database at {self.profile_db_paths[0]}.")
+        split_list = ','.join(["'%s'" % split_name for split_name in collection.keys()])
+        splits_where_clause = f'''item IN ({split_list})'''
 
         # prepare for appending to output file
         output_file_name = self.output_file_prefix + "-quick_summary.txt"
@@ -111,7 +113,7 @@ class RapidSummarizer:
                     continue
 
                 stat_table_name = stat + "_splits"
-                stat_table_splits = {i:v for i,v in profile_db.get_some_columns_from_table(stat_table_name, 'item,value')}
+                stat_table_splits = {i:v for i,v in profile_db.get_some_columns_from_table(stat_table_name, 'item,value', where_clause=splits_where_clause)}
 
                 # compute statistic per bin, normalized by split length
                 all_vals_per_bin = {} # list of stat values for each split in bin
