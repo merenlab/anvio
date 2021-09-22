@@ -43,9 +43,11 @@ If you provide an `--output-file` parameter, your results will be stored into a 
 
 Here is an example with a single sequence and no output file path:
 
-```
+{{ codestart }}
 %(anvi-search-palindromes)s --dna-sequence CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
+{{ codestop }}
 
+```
 SEARCH SETTINGS
 ===============================================
 Minimum palindrome length ....................: 10
@@ -70,13 +72,15 @@ Longest palindrome ...........................: 58
 
 Here is another example with a %(contigs-db)s, an output file path, and the `--verbose` flag:
 
-```
+{{ codestart }}
 %(anvi-search-palindromes)s -c CONTIGS.db \
                          --min-palindrome-length 50 \
                          --max-num-mismatches 1 \
                          --output-file palindromes.txt \
                          --verbose
+{{ codestop }}
 
+```
 SEARCH SETTINGS
 ===============================================
 Minimum palindrome length ....................: 56
