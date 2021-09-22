@@ -777,10 +777,12 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
     def store_scg_taxonomy_super_dict_raw(self, scg_taxonomy_super_dict_multi):
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+        # anvio.P(d)
+        # sys.exit
 
         taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
 
-        header = ['metagenome_name', 'gene_name', 'gene_callers_id', 'percent_identity']
+        header = ['identifier', 'metagenome_name', 'gene_name', 'gene_callers_id', 'percent_identity']
 
         if self.compute_scg_coverages:
             header += ['coverage']
@@ -793,7 +795,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             for metagenome_name in d:
                 for gene_name in d[metagenome_name]:
-                    output.write('\t'.join([metagenome_name] + [str(d[metagenome_name][gene_name][h]) for h in header[1:]]) + '\n')
+                    output.write('\t'.join([gene_name] + [metagenome_name] + [str(d[metagenome_name][gene_name][h]) for h in header[2:]]) + '\n')
 
         self.run.info("Raw output", output_file_path)
 
