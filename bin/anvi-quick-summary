@@ -87,7 +87,7 @@ class RapidSummarizer:
 
         # prepare for appending to output file
         output_file_name = self.output_file_prefix + "-quick_summary.txt"
-        output_file = AppendableFile(output_file, append_type=dict, fail_if_file_exists=True)
+        output_file = AppendableFile(output_file_name, append_type=dict, fail_if_file_exists=True)
         header_list = ['unique_id', 'bin_name', 'sample'] + self.stats_to_summarize
         key = 0         # arbitrary int to serve as unique index in output
 
