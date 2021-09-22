@@ -11,9 +11,9 @@ suppressMessages(lapply(packages, library, character.only = TRUE))
 option_list = list(
   make_option(c("-s", "--SCG"), action="store", default=NA, type='character',
               help="name of scg"),
-  make_option(c("--ribophylopath"), action="store", default=NA, type='character',
+  make_option(c("--ECO_PHYLO_PATH"), action="store", default=NA, type='character',
               help="choose 'Num_references' or 'clustering_threshold'"),
-  make_option(c("--profilepath"), action="store", default=NA, type='character',
+  make_option(c("--METAGENOMICS_WORKFLOW_PATH"), action="store", default=NA, type='character',
               help="input data")
 )
 
@@ -21,54 +21,52 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 #####
 # SCG = "Ribosomal_S2"
-# ribophylopath = "RIBO_PHYLO_WORKFLOW_90"
-# profilepath = "PROFILE_SCGs_competitive_90"
+# ECO_PHYLO_PATH = "ECO_PHYLO_WORKFLOW"
+# METAGENOMICS_WORKFLOW_PATH = "METAGENOMICS_WORKFLOW"
 ####
 
-bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
+bind_taxa_coverage <- function(SCG, ECO_PHYLO_PATH, METAGENOMICS_WORKFLOW_PATH){
   
   # make paths
   #-----------
   # misc data
-  misc_data_path_suffix <- stringr::str_c(SCG, "_all_misc_data.tsv")
-  misc_data_path <- path(ribophylopath, "06_MISC_DATA/", SCG, misc_data_path_suffix)
-  
-  # reformat file
-  reformat_file_suffix <- stringr::str_c(SCG, "-reformat-report.txt")
-  reformat_file_path <- path(profilepath, "02_FASTA/", SCG, reformat_file_suffix)
+  misc_data_path_suffix <- stringr::str_c(SCG, "_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt")
+  misc_data_path <- path(ECO_PHYLO_PATH, "01_REFERENCE_PROTEIN_DATA/", misc_data_path_suffix)
   
   # gene_calls
-  gene_calls_path <- path(profilepath, "07_SUMMARY/", SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_calls.txt")
+  gene_calls_path <- path(METAGENOMICS_WORKFLOW_PATH, "07_SUMMARY/", SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_calls.txt")
   
   # Mapping data
-  mapping_data_path <-  path(profilepath, "07_SUMMARY/", SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_coverages.txt")
+  mapping_data_path <-  path(METAGENOMICS_WORKFLOW_PATH, "07_SUMMARY/", SCG, "bin_by_bin/EVERYTHING/EVERYTHING-gene_coverages.txt")
   
   # tree path
   tree_path_suffix <- stringr::str_c(SCG, ".nwk")
-  tree_path <-  path(ribophylopath, "05_TREES/", SCG, tree_path_suffix)
+  tree_path <-  path(ECO_PHYLO_PATH, "05_TREES/", SCG, tree_path_suffix)
   
   # external-gene-calls
   external_gene_calls_path_suffix <- stringr::str_c(SCG, "_external_gene_calls_all_renamed.tsv")
-  external_gene_calls_path <-  path(ribophylopath, "02_NR_FASTAS/", SCG, external_gene_calls_path_suffix)
+  external_gene_calls_path <-  path(ECO_PHYLO_PATH, "02_NR_FASTAS/", SCG, external_gene_calls_path_suffix)
   
   # Output file
   outfile_path_suffix <- stringr::str_c(SCG, "_all_misc_data_final_coverage.tsv")
-  outfile_path <- path(ribophylopath, "06_MISC_DATA/", SCG, outfile_path_suffix)
+  outfile_path <- path(ECO_PHYLO_PATH, "06_MISC_DATA/", SCG, outfile_path_suffix)
   
   # tree out path
   tree_path_out_suffix <- stringr::str_c(SCG, "_renamed.nwk")
-  tree_path_out <- path(ribophylopath, "05_TREES/", SCG, tree_path_out_suffix)
+  tree_path_out <- path(ECO_PHYLO_PATH, "05_TREES/", SCG, tree_path_out_suffix)
   
   # Load data
   #----------
   
   ######
-  # misc_data_path <- "ECO_PHYLO_WORKFLOW/06_MISC_DATA/Ribosomal_S2/Ribosomal_S2_all_misc_data.tsv"
+  # misc_data_path <- "ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA/Ribosomal_S2_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"
+  # reformat_file_path <- "METAGENOMICS_WORKFLOW/02_FASTA/Ribosomal_L16/Ribosomal_L16-reformat-report.txt"
   # gene_calls_path <- "METAGENOMICS_WORKFLOW/07_SUMMARY/Ribosomal_S2/bin_by_bin/EVERYTHING/EVERYTHING-gene_calls.txt"
   # mapping_data_path <- "METAGENOMICS_WORKFLOW/07_SUMMARY/Ribosomal_S2/bin_by_bin/EVERYTHING/EVERYTHING-gene_coverages.txt"
   # tree_path <- "ECO_PHYLO_WORKFLOW/05_TREES/Ribosomal_S2/Ribosomal_S2.nwk"
   # external_gene_calls_path <- "ECO_PHYLO_WORKFLOW/02_NR_FASTAS/Ribosomal_S2/Ribosomal_S2_external_gene_calls_all_renamed.tsv"
   #####
+  
   
   misc_data <- read_tsv(misc_data_path)
   gene_calls <- read_tsv(gene_calls_path)
@@ -94,18 +92,7 @@ bind_taxa_coverage <- function(SCG, ribophylopath, profilepath){
   write.tree(ntree, file = tree_path_out)
   # gold: https://tbradley1013.github.io/2018/06/19/subsetting-phylogenetic-trees/
   
-  # # Make final table
-  # final <- misc_data %>%
-  #   rename(contig = new_header) %>%
-  #   left_join(index) %>%
-  #   select(-gene_callers_id) %>%
-  #   rename(orig_name = contig, name = final_name) %>%
-  #   select(name, orig_name, sample, contig_db_type, t_domain, t_phylum, t_class, t_order, t_family, t_genus, t_species, has_genomic_SCG_in_cluster) %>%
-  #   filter(!is.na(name))
-
-  # final %>%
-  #   write_tsv(outfile_path)
 }
 
-bind_taxa_coverage(SCG = opt$SCG, ribophylopath = opt$ribophylopath, profilepath = opt$profilepath)
+bind_taxa_coverage(SCG = opt$SCG, ECO_PHYLO_PATH = opt$ECO_PHYLO_PATH, METAGENOMICS_WORKFLOW_PATH = opt$METAGENOMICS_WORKFLOW_PATH)
 
