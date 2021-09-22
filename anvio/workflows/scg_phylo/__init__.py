@@ -127,6 +127,7 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
         self.input_dirs_dict = {}
+
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
             try:
@@ -158,6 +159,8 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             except IndexError as e:
                 raise ConfigError("The external-genomes.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.external_genomes_df, e))
+        else:
+            self.external_genomes_names_list = []
 
         # Make a unique list
         self.names_dirs = list(set(self.names_dirs))
@@ -203,18 +206,15 @@ class SCGPhylogeneticsWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
             target_files.append(target_file)
 
-            # Get final misc data for anvi-interactive display of tree
-            tail_path = "%s_all_misc_data.tsv" % (reference_protein_name)
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], reference_protein_name, tail_path)
-            target_files.append(target_file)
-
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{reference_protein_name}/{reference_protein_name}_all_misc_data.tsv")
-            target_files.append(target_file)
-
+            # Import state file to customize interactive interface
             target_file = os.path.join(f"{reference_protein_name}_state_imported.done")
             target_files.append(target_file)
 
+            # Reformat names to match splits in interactive interface
             target_file = os.path.join(f"{reference_protein_name}_combined.done")
+            target_files.append(target_file)
+
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{reference_protein_name}_misc.tsv")
             target_files.append(target_file)
 
             # The FINAL trees :)

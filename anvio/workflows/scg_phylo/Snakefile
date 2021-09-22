@@ -5,6 +5,7 @@ import json
 import os.path
 import argparse
 
+import numpy as np
 import pandas as pd
 
 import anvio
@@ -45,7 +46,7 @@ rule anvi_run_hmms_hmmsearch:
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table")
     params:
         hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
-    threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
       hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
       contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
@@ -73,7 +74,7 @@ rule filter_hmm_hits_by_query_coverage:
         hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
-    threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
       contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
       domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch/hmm.domtable" % wildcards.sample_name)
@@ -89,26 +90,114 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
     """Get SCG taxonomy for SCGs in Reference_protein_list.txt and the associated NT and AA sequences for each HMM hit"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{sample_name}_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{reference_protein_name}.log")
     input:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_contigsDB_filtered.done"),
-        contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "{sample_name}-contigs.db"))
+        done_files = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}_contigsDB_filtered.done"), sample_names = M.names_list),
+        metagenomes_txt = M.get_param_value_from_config(['metagenomes'])
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{reference_protein_name}_anvi_estimate_scg_taxonomy_for_SCGs.done"),
-        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_estimate_scg_taxonomy_results.tsv"),
-        DNA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_DNA.fa"),
-        AA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_AA.fa")
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_anvi_estimate_scg_taxonomy_for_SCGs.done"),
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
+        DNA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_DNA.fa"),
+        AA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_AA.fa")
     params:
-        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}")
+        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}"),
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_estimate_scg_taxonomy_results"),
     threads: M.T('anvi_estimate_scg_taxonomy_for_SCGs')
     run:
-        shell('anvi-estimate-scg-taxonomy -c {input.contigsDB} \
+        shell('anvi-estimate-scg-taxonomy -M {input.metagenomes_txt} \
                                           --metagenome-mode \
                                           --scg-name-for-metagenome-mode {wildcards.reference_protein_name} \
                                           --report-scg-sequences-file-prefix {params.fasta_prefix} \
                                           -T {threads} \
-                                          -o {output.taxonomy} &> {log}')
+                                          --raw-output \
+                                          -O {params.taxonomy} &> {log}')
         shell('touch {output.done}')
+
+def extract_misc_from_taxonomy_file(input_taxonomy, mmseqs_cluster_rep_index, final_sequences_headers, output):
+    """Add contig_db_type to misc data"""
+
+    # Import data
+    #------------
+    misc_data = pd.read_csv(input_taxonomy, \
+                            sep="\t", \
+                            index_col=None)
+
+    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, \
+                                    sep="\t", \
+                                    index_col=False, \
+                                    names=["representative", "cluster_members"])
+
+    final_sequences_headers = pd.read_csv(final_sequences_headers, \
+                                    sep="\t", \
+                                    index_col=False, \
+                                    header=None)
+
+    # If metagenome_name is in external_genomes_names_list then it's a genome
+    #------------------------------------------------------------------------
+    misc_data["contig_db_type"] = np.where(misc_data["metagenome_name"].isin(M.external_genomes_names_list), "genome", "metagenome")
+
+    # Detect if there is a genomic reference protein in cluster
+    #----------------------------------------------------------
+    cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
+
+    sup_list = []
+    for seq in final_sequences_headers.iloc[:, 0].tolist():
+        cluster_members_list = cluster_rep_index_dict[seq]
+        for external_genome in M.external_genomes_names_list:
+            check = any(external_genome in s for s in cluster_members_list)
+            if check is True:
+                sup_list.append(seq)
+
+
+    misc_data['has_genomic_reference_protein_in_cluster'] = np.where(misc_data['identifier'].isin(sup_list), 'yes', 'no')
+
+    # Make split name column for mapping
+    #-----------------------------------
+    misc_data['split_name'] = misc_data['identifier'].astype(str) + '_split_00001'
+    first_column = misc_data.pop('split_name')
+    misc_data.insert(0, 'split_name', first_column)
+
+    # Count size of clusters
+    #-----------------------
+    df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
+
+    misc_data = pd.merge(misc_data, df, left_on='identifier', right_on='cluster_members')
+
+    misc_data = misc_data[['split_name', 'identifier', 'percent_identity', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size', 't_domain', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species']]
+
+    # Export
+    #-------
+    misc_data.to_csv(output, \
+                    sep="\t", \
+                    index=None, \
+                    na_rep="NA")
+
+def count_cluster_size(group):
+    c = group['cluster_members'].count()
+    group['cluster_size'] = c
+
+    return group
+
+
+rule add_misc_data_to_taxonomy:
+    """Add simplified fasta headers to the misc data file"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{reference_protein_name}.log")
+    input:
+        taxonomy = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.taxonomy,
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
+    output:
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}_misc.tsv")
+    params:
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_cluster.tsv")
+    threads: M.T('anvi_get_external_gene_calls_file')
+    run:
+        """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
+        extract_misc_from_taxonomy_file(input_taxonomy = input.taxonomy,
+                                                       mmseqs_cluster_rep_index = params.cluster_rep_index,
+                                                       final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                                                       output = output.misc_data_final)
 
 
 rule anvi_get_external_gene_calls_file:
@@ -123,7 +212,7 @@ rule anvi_get_external_gene_calls_file:
         external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls.tsv")
     params:
         fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_orfs.fna")),
-    threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
         shell('anvi-get-sequences-for-gene-calls -c {input.contigsDB} \
                                                  --external-gene-calls {output.external_gene_calls} \
@@ -163,44 +252,6 @@ rule rename_and_filter_external_gene_calls_file_all:
         "scripts/rename_external_gene_calls_file.py"
 
 
-rule cat_scgs_to_one_fasta_nt:
-    """Cat all SCG sequences from seperate metagenomes into one fasta"""
-
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{reference_protein_name}.log")
-    input:
-        fasta = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_DNA.fa"), sample_names = M.names_list),
-    output:
-        fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_NT.fa"),
-    threads: M.T('cat_ribo_proteins_to_one_fasta')
-    run:
-        shell("cat {input.fasta} >> {output.fasta_all} 2> {log}")
-
-
-rule cat_scgs_to_one_fasta_aa:
-    """Cat all SCG AA sequences from seperate metagenomes into one fasta"""
-
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{reference_protein_name}.log")
-    input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_AA.fa"), sample_names = M.names_list, reference_protein_names = M.Reference_protein_list)
-    output: fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_AA.fa")
-    threads: M.T('cat_ribo_proteins_to_one_fasta')
-    run:
-        shell("cat {input} >> {output} 2> {log}")
-
-
-rule cat_misc_data_to_one_file:
-    """Cat all sequence misc data from separate samples in one tsv"""
-
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{reference_protein_name}.log")
-    input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{{reference_protein_name}}_estimate_scg_taxonomy_results.tsv"), sample_name = M.names_list)
-    output: os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}/{reference_protein_name}_all_misc_data.tsv")
-    threads: M.T('cat_misc_data_to_one_file')
-    run:
-        shell("cat {input} >> {output} 2> {log}")
-
-
 rule cluster_X_percent_sim_mmseqs:
     """
     Cluster SCG NT sequences with mmseqs to remove redundant SCG sequences which will prevent non-specific read recruitment
@@ -209,7 +260,7 @@ rule cluster_X_percent_sim_mmseqs:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{reference_protein_name}.log")
-    input: rules.cat_scgs_to_one_fasta_nt.output
+    input: rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_rep_seq.fasta")
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR"),
@@ -230,7 +281,7 @@ rule subset_AA_seqs_with_mmseqs_reps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{reference_protein_name}.log")
     input:
-        fa = rules.cat_scgs_to_one_fasta_aa.output,
+        fa = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.AA_fasta,
         reps = rules.cluster_X_percent_sim_mmseqs.output
     output:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_AA_subset.fa"),
@@ -297,7 +348,7 @@ rule count_num_sequences_filtered:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{reference_protein_name}.log")
     input:
-        step1 = rules.cat_scgs_to_one_fasta_nt.output,
+        step1 = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta,
         step2 = rules.cluster_X_percent_sim_mmseqs.output,
         step3 = rules.remove_sequences_with_X_percent_gaps.output
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{reference_protein_name}/{reference_protein_name}_stats.tsv")
@@ -306,7 +357,7 @@ rule count_num_sequences_filtered:
         """
         # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
         step1=$(grep -c '>' {input.step1})
-        echo -e "cat_scgs_to_one_fasta_nt\t$step1\t{input.step1}\n" > {output}
+        echo -e "anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta\t$step1\t{input.step1}\n" > {output}
 
         # How many SCGs do we have after we cluster them at the nt level and pick representatives?
         step2=$(grep -c '>' {input.step2})
@@ -320,51 +371,18 @@ rule count_num_sequences_filtered:
         echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
         """
 
-# if M.external_genomes:
-#     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
-#         """
-#         """
-#         version: 1.0
-#         input:
-#             misc_data = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}/{reference_protein_name}_all_misc_data.tmp"),
-#             final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_aligned_trimmed_filtered.fa")
-#         output:
-#             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}/{reference_protein_name}_all_misc_data.tsv")
-#         params:
-#             external_genomes = M.external_genomes_names_list,
-#             cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_cluster.tsv")
-#         threads: M.T('join_renamed_fasta_with_misc_data')
-#         script:
-#           "scripts/add_layer_for_reps.py"
-
-# else:
-#     rule add_misc_layer_to_detect_if_genomic_SCG_in_cluster:
-#         """
-#         """
-#         version: 1.0
-#         input:
-#             misc_data = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}/{reference_protein_name}_all_misc_data.tmp"),
-#             final_list_of_sequences_for_tree_calculation = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_aligned_trimmed_filtered.fa")
-#         output:
-#             misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}/{reference_protein_name}_all_misc_data.tsv")
-#         params:
-#             cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_cluster.tsv")
-#         threads: M.T('join_renamed_fasta_with_misc_data')
-#         script:
-#             "scripts/add_layer_for_reps_no_external_genomes.py"
-
 
 rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     """Filter for SCG NT sequences what will be used for read recruitment later"""
 
     version: 1.0
     input:
-        fasta = rules.cat_scgs_to_one_fasta_nt.output,
+        fasta = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta,
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
         NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_references_for_mapping_NT.fa"),
         headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
-    threads: M.T('join_renamed_fasta_with_misc_data')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
         shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
         shell("anvi-script-reformat-fasta {input.fasta} -I {output.headers} -o {output.NT_for_mapping}")
@@ -378,7 +396,7 @@ rule make_fasta_txt:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_all_renamed.done"), reference_protein_names = M.Reference_protein_list)
     output:
         fasta_txt = os.path.join("ECO_PHYLO_WORKFLOW", "fasta.txt"),
-    threads: M.T('join_renamed_fasta_with_misc_data')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
         fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_references_for_mapping_NT.fa') for r in M.Reference_protein_list]
         external_gene_calls = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_all_renamed.tsv') for r in M.Reference_protein_list]
@@ -397,7 +415,7 @@ rule make_metagenomics_config_file:
         rules.make_fasta_txt.output.fasta_txt
     output:
         config = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_config.json")
-    threads: M.T('join_renamed_fasta_with_misc_data')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
 
         shell('anvi-run-workflow -w metagenomics --get-default-config {output.config}')
@@ -454,7 +472,7 @@ rule make_ECO_PHYLO_WORKFLOW_state_file:
         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
     output:
         state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
-    threads: M.T('join_renamed_fasta_with_misc_data')
+    threads: M.T('anvi_get_external_gene_calls_file')
     run:
         state_dict = {}
 
@@ -466,7 +484,7 @@ rule make_ECO_PHYLO_WORKFLOW_state_file:
         num_tree_tips = pd.read_csv(input.num_tree_tips, \
                   sep="\t", \
                   index_col=None)
-        
+
         num_SCGs = num_tree_tips.shape[0]
         num_metagenomes = len(M.input_dirs_dict)
 
@@ -486,12 +504,7 @@ rule make_ECO_PHYLO_WORKFLOW_state_file:
         for metagenome in M.input_dirs_dict:
           metagenomes.append(metagenome)
 
-
-        if M.mode == "both":
-          last_layers = ["contig_db_type", "has_genomic_SCG_in_cluster", "orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
-
-        else:
-          last_layers = ["orig_name", "sample", "split_name", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species",]
+        last_layers = ['split_name', 'percent_identity', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size', 't_domain', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species']
 
         layer_order = first_layers + metagenomes + last_layers
 
@@ -587,13 +600,12 @@ rule add_default_collection:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{reference_protein_name}.log")
-    input: 
-        metagenomics_workflow_done = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
+    input: metagenomics_workflow_done = os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
     params:
         contigsDB = ancient(os.path.join("METAGENOMICS_WORKFLOW/03_CONTIGS", "{reference_protein_name}-contigs.db")),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
     output: touch(os.path.join("METAGENOMICS_WORKFLOW", "{reference_protein_name}_add_default_collection.done"))
-    threads: M.T('cat_misc_data_to_one_file')
+    threads: 2
     shell:
         """
         anvi-script-add-default-collection -c {params.contigsDB} \
@@ -613,7 +625,7 @@ rule anvi_summarize:
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db"),
         output_dir = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}")
     output: touch(os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done"))
-    threads: M.T('cat_misc_data_to_one_file')
+    threads: 2
     shell:
         """
         anvi-summarize -c {params.contigsDB} \
@@ -625,7 +637,7 @@ rule anvi_summarize:
 
         """
 
-rule combine_data:
+rule rename_tree_tips:
     """Joins read recruitment and taxonomy data for interactive interface"""
 
     version: 1.0
@@ -633,14 +645,14 @@ rule combine_data:
     input:
         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
     output: touch(os.path.join("{reference_protein_name}_combined.done"))
-    threads: M.T('cat_misc_data_to_one_file')
+    threads: 2
     shell:
         """
         script=$(which anvi-self-test | sed 's|bin/anvi-self-test|anvio/workflows/scg_phylo/scripts/convert_names_to_split_names.R|')
 
         Rscript "$script" --SCG {wildcards.reference_protein_name} \
-                          --ribophylopath ECO_PHYLO_WORKFLOW \
-                          --profilepath METAGENOMICS_WORKFLOW &> {log}
+                          --ECO_PHYLO_PATH ECO_PHYLO_WORKFLOW \
+                          --METAGENOMICS_WORKFLOW_PATH METAGENOMICS_WORKFLOW &> {log}
         """
 
 rule anvi_import_state:
@@ -654,7 +666,7 @@ rule anvi_import_state:
         state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
     output: touch(os.path.join("{reference_protein_name}_state_imported.done"))
-    threads: M.T('cat_misc_data_to_one_file')
+    threads: 2
     shell:
         """
         anvi-import-state -p {params.profileDB} \
