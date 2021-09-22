@@ -81,7 +81,7 @@ class RapidSummarizer:
         contigs_db.disconnect()
 
         self.progress.update("Loading collection info from profile db")
-        profile_db = db.DB(self.profile_db_paths[0], None, ignore_version=True)
+        profile_db = db.DB(self.profile_db_paths[0], None, ignore_version=False)
         collection = {s:b for s,b in profile_db.get_some_columns_from_table(t.collections_splits_table_name, 'split,bin_name', f"""collection_name = '{self.collection_name}'""")}
         self.progress.end()
 
