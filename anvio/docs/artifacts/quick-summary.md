@@ -1,6 +1,6 @@
-The output of %(anvi-quick-summary)s.
+The output of %(anvi-summary-blitz)s.
 
-%(anvi-quick-summary)s summarizes read-recruitment statistics for a collection of bins across multiple samples. It produces long format output in which each row contains the (weighted) average statistics of a bin in a sample. Each statistic is summarized in a different column of the file.
+%(anvi-summary-blitz)s summarizes read-recruitment statistics for a collection of bins across multiple samples. It produces long format output in which each row contains the (weighted) average statistics of a bin in a sample. Each statistic is summarized in a different column of the file.
 
 Here is an example output file from this program, summarizing `detection` and `mean_coverage_Q2Q3` data (the default statistics) for 3 bins across multiple samples:
 
@@ -14,4 +14,4 @@ unique_id | bin_name | sample | detection | mean_coverage_Q2Q3
 5 | bin_3 | sample_2 | 0.001595914458984989 | 0.0
 [...] | [...] |[...] |[...] |[...]
 
-The `unique_id` column is just a unique index for each row. Each column after the `sample` column contains a different statistic (to learn how to include different or additional statistics in this output, read the %(anvi-quick-summary)s page.)
+The `unique_id` column is just a unique index for each row. Each column after the `sample` column contains a different statistic (to learn how to include different or additional statistics in this output, read the %(anvi-summary-blitz)s page.)
