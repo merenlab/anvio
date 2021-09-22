@@ -1,14 +1,15 @@
+The output of %{anvi-quick-summary}s.
 
+%{anvi-quick-summary}s summarizes read-recruitment statistics for a collection of bins across multiple samples. It produces long format output in which each row contains the (weighted) average statistics of a bin in a sample. Each statistic is summarized in a different column of the file.
 
-This program will summarize the same collection across all of your profile databases. However, the program will use only the first profile database in the argument list to learn about what is in the collection, so it is not exactly necessary to have this collection defined for all of the other profile databases (though one could argue that it is a good idea to do this regardless...). The collection name you provide to this program must be a collection that is present in at least the first profile database in the argument list. 
+Here is an example output file from this program, summarizing detection and mean_coverage_Q2Q3 data for 3 bins across multiple samples:
 
-## Common errors
-
-If you get an error that looks like this:
-```
-Config Error: The database at [PROFILE.db] does not seem to have a table named
-              `detection_splits` :/ Here is a list of table names this database knows:
-              [...]
-```
-
-That means your profile databases are not the correct version. The tables we are accessing in this program were introduced in profile database version 36. So the solution to this error is to migrate your databases to at least that version, using %{anvi-migrate}s. :)
+unique_id | bin_name | sample | detection | mean_coverage_Q2Q3
+|:---|:---|:---|:---|:---|
+0 | bin_1 | sample_1 | 0.015553023620503776 | 1.0272713907674214
+1 | bin_2 | sample_1 | 0.0004871607502275562 | 0.0
+2 | bin_3 | sample_1 | 0.0023636043452898497 | 0.0
+3 | bin_1 | sample_2 | 0.015767421346662747 | 1.1101759286484367
+4 | bin_2 | sample_2 | 0.0004871607502275562 | 0.0
+5 | bin_3 | sample_2 | 0.001595914458984989 | 0.0
+[...] | [...] |[...] |[...] |[...]
