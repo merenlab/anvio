@@ -1,6 +1,6 @@
-The output of %{anvi-quick-summary}s.
+The output of %(anvi-quick-summary)s.
 
-%{anvi-quick-summary}s summarizes read-recruitment statistics for a collection of bins across multiple samples. It produces long format output in which each row contains the (weighted) average statistics of a bin in a sample. Each statistic is summarized in a different column of the file.
+%(anvi-quick-summary)s summarizes read-recruitment statistics for a collection of bins across multiple samples. It produces long format output in which each row contains the (weighted) average statistics of a bin in a sample. Each statistic is summarized in a different column of the file.
 
 Here is an example output file from this program, summarizing detection and mean_coverage_Q2Q3 data for 3 bins across multiple samples:
 
