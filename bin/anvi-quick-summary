@@ -159,7 +159,8 @@ if __name__ == '__main__':
                         help = "Anvo'o single profiles to summarize")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True,
+                                 'help': "Name of the collection you wish to summarize. The SAME collection must be present in all of your single profiles."}))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     args = parser.get_args(parser)
