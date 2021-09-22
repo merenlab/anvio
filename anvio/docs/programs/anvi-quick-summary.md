@@ -7,27 +7,27 @@ The output will be a text file, and you can find details about its format by cli
 ### Basic usage
 
 In addition to your list of %(single-profile-db)ss, you must provide this program with their corresponding contigs database and a collection name.
-{{ codestart ))
+{{ codestart }}
 anvi-quick-summary -c %(contigs-db)s -C %(collection)s PROFILE_1.db PROFILE_2.db PROFILE_3.db [...]
-{{ codestop ))
+{{ codestop }}
 
 The program will summarize the same collection across all of your profile databases. However, it will use only the first profile database in the argument list to learn about what is in the collection, so it is not exactly necessary to have this collection defined for all of the other profile databases (though one could argue that it is a good idea to do this regardless...). The collection name you provide to this program must be a collection that is present in at least the first profile database in the argument list. In the example above, only `PROFILE_1.db` is strictly required to include the collection you wish to summarize (though all other profiles must contain the same splits as this first profile, which should not be a problem if you generated them all in the same way).
 
 ### Choosing a different output prefix
 
 By default, the output file will be prefixed with the collection name that you provided. If you wish to set a different prefix, you can use the `--output-file-prefix`, or `-O`, parameter:
-{{ codestart ))
+{{ codestart }}
 anvi-quick-summary -c %(contigs-db)s -C %(collection)s -O new_prefix PROFILE_1.db PROFILE_2.db PROFILE_3.db [...]
-{{ codestop ))
+{{ codestop }}
 
 No matter what, the output will end in `*-quick_summary.txt`. There is no option to change this. Sorry (not sorry).
 
 ### Choosing which statistics to summarize
 
 The default statistics that will be summarized are detection and something called 'mean_coverage_Q2Q3' (which is [this](https://merenlab.org/2017/05/08/anvio-views/#mean-overage-q2q3)). You can choose which statistics to summarize by providing them as a comma-separated list (no spaces in the list) to the `--stats-to-summarize`, or `-S`, parameter:
-{{ codestart ))
+{{ codestart }}
 anvi-quick-summary -c %(contigs-db)s -C %(collection)s -S  PROFILE_1.db PROFILE_2.db PROFILE_3.db [...]
-{{ codestop ))
+{{ codestop }}
 
 Each statistic will get its own column in the output file.
 
