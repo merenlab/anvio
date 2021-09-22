@@ -50,7 +50,6 @@ function setEventListeners(){
       let [l, r] = getFracForVPT();
       if (l < renderWindow[0] || r > renderWindow[1]) {
         updateRenderWindow();
-        // draw();
         drawer.draw()
       }
     }
@@ -61,7 +60,7 @@ function setEventListeners(){
     this.isDragging = false;
     this.selection = true;
     if (!this.shades) {
-      // slid a genome
+      // slide a genome
       this.shades = true;
       drawTestShades();
       bindViewportToWindow();
@@ -156,13 +155,11 @@ function setEventListeners(){
   $('#gene_color_order').on('change', function () {
     color_db = $(this).val();
     generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
-    // draw();
     drawer.draw()
     $(this).blur();
   });
   $('#arrow_style').on('change', function () {
     arrowStyle = parseInt($(this).val());
-    // draw();
     drawer.draw()
     $(this).blur();
   });
@@ -175,12 +172,10 @@ function setEventListeners(){
     showLabels = !showLabels;
     xDisplacement = showLabels ? 120 : 0;
     alignToGC = null;
-    // draw();
     drawer.draw()
   });
   $('#show_gene_labels_box').on('change', function () {
     showGeneLabels = !showGeneLabels;
-    // draw();
     drawer.draw()
   });
   $('#thresh_count').on('keydown', function (e) {
@@ -370,7 +365,6 @@ function toggleAdditionalDataLayer(e){
     settings['display']['additionalDataLayers'][layer] = false
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
-  // draw()
   drawer.draw()
 }
 
@@ -418,7 +412,6 @@ function respondToBookmarkSelect(){
  */
 function changeGroupLayersOrder(updatedOrder){
   settings['group-layer-order'] = updatedOrder
-  // draw()
   drawer.draw()
 }
 
@@ -435,7 +428,6 @@ function changeGenomeOrder(updatedOrder){
     })
   })
   settings['genomeData']['genomes'] = newGenomeOrder
-  // draw()
   drawer.draw()
 }
 
