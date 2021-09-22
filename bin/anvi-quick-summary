@@ -40,12 +40,18 @@ class RapidSummarizer:
         self.profile_db_paths = A('profile_dbs')
         self.collection_name = A('collection_name')
         self.output_file_prefix = A('output_file_prefix') or self.collection_name
-        self.stats_to_summarize = ["detection", "mean_coverage_Q2Q3"]
+        self.stats_to_summarize = A('stats_to_summarize')
+
+        if self.stats_to_summarize:
+            self.stats_to_summarize = self.stats_to_summarize.split(',')
+        else:
+            self.stats_to_summarize = ["detection", "mean_coverage_Q2Q3"]
 
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num profile DBs', len(self.profile_db_paths))
         self.run.info('Collection', self.collection_name)
         self.run.info('Output prefix', self.output_file_prefix)
+        self.run.info('Summarizing stats', ", ".join(self.stats_to_summarize))
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -171,6 +177,7 @@ if __name__ == '__main__':
                                          "across all of your input profiles. This collection must be defined in at least the "
                                          "first profile in the argument list."}))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    parser.add_argument(*anvio.A('stats-to-summarize'), **anvio.K('stats-to-summarize'))
 
     args = parser.get_args(parser)
 
