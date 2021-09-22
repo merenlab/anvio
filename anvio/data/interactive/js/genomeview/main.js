@@ -218,7 +218,6 @@ function loadAll() {
   brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
   updateRenderWindow();
-  // draw();
 
   setEventListeners()
   console.log('Sending this data obj to GenomeDrawer', settings)
