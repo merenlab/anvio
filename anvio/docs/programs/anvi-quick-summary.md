@@ -26,7 +26,7 @@ No matter what, the output will end in `*-quick_summary.txt`. There is no option
 
 The default statistics that will be summarized are detection and something called 'mean_coverage_Q2Q3' (which is [this](https://merenlab.org/2017/05/08/anvio-views/#mean-overage-q2q3)). You can choose which statistics to summarize by providing them as a comma-separated list (no spaces in the list) to the `--stats-to-summarize`, or `-S`, parameter:
 {{ codestart }}
-anvi-quick-summary -c %(contigs-db)s -C %(collection)s -S  PROFILE_1.db PROFILE_2.db PROFILE_3.db [...]
+anvi-quick-summary -c %(contigs-db)s -C %(collection)s -S std_coverage,mean_coverage,detection PROFILE_1.db PROFILE_2.db PROFILE_3.db [...]
 {{ codestop }}
 
 Each statistic will get its own column in the output file.
