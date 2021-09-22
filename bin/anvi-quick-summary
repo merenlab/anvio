@@ -85,6 +85,10 @@ class RapidSummarizer:
         collection = {s:b for s,b in profile_db.get_some_columns_from_table(t.collections_splits_table_name, 'split,bin_name', f"""collection_name = '{self.collection_name}'""")}
         self.progress.end()
 
+        if not collection:
+            raise ConfigError(f"Someone did an oopsie :) The collection '{self.collection_name}' does not exist "
+                              f"in the profile database at {self.profile_db_paths[0]}.")
+
         # prepare for appending to output file
         output_file_name = self.output_file_prefix + "-quick_summary.txt"
         output_file = AppendableFile(output_file_name, append_type=dict, fail_if_file_exists=True)
