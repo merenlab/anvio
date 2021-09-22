@@ -49,7 +49,6 @@
     if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
       scaleFactor = 0.01;
       if(dynamicScaleInterval) adjustScaleInterval();
-    // draw();
     drawer.draw()
       return;
     }
@@ -141,7 +140,6 @@ function drawScale() {
 
       if(dynamicScaleInterval) drawer.adjustScaleInterval();
 
-      // draw();
       drawer.draw()
       let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
       canvas.absolutePan({x: moveToX, y: 0});
