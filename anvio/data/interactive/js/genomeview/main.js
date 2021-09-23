@@ -112,6 +112,15 @@ function serializeSettings() {
   // TODO same process as the serializeSettings() function for anvi-interactive
   // first we run through all of the UI element default values and store them as state
   // then we update them as necessary below in processState
+  let state = {}
+
+  state['genome-spacing'] = $('#genome_spacing').val()
+  state['order-method'] = $('#genome_order_select').val()
+  state['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked')
+  state['genome-scale-interval'] = $('#genome_scale_interval').val()
+  state['arrow-stype'] = $('#arrow_style').val()
+  state['group-layer-order'] = settings['group-layer-order']
+  state['bookmarks'] = settings['display']['bookmarks']
 }
 
 function processState(stateName, stateData) {
