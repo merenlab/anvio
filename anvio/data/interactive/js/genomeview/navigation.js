@@ -217,3 +217,4 @@ function viewCluster(gc) {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
     return null;
   }
+}
