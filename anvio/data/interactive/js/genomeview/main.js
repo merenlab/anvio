@@ -121,6 +121,12 @@ function serializeSettings() {
   state['arrow-stype'] = $('#arrow_style').val()
   state['group-layer-order'] = settings['group-layer-order']
   state['bookmarks'] = settings['display']['bookmarks']
+  state['gene-color-order'] = $('#gene_color_order').val()
+  state['gene-link-style'] = $('#link_style').val()
+  state['gene-shade-style'] = $('#shade_by').val()
+  state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
+  state['genome-label-size'] = $('#genome_label').val()
+  state['genome-label-color'] = $('#genome_label_color').attr(':color')
 }
 
 function processState(stateName, stateData) {
