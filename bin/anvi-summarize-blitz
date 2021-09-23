@@ -22,10 +22,10 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'ivagljiva']
+__authors__ = ['ivagljiva']
 __requires__ = ['single-profile-db', 'contigs-db']
 __provides__ = ['quick-summary']
-__description__ = "Summarize essential information from many anvi'o profiles"
+__description__ = "FAST summary of many anvi'o single profile databases (without having to use the program anvi-merge)."
 __resources__ = []
 
 
@@ -39,7 +39,7 @@ class RapidSummarizer:
         self.contigs_db_path = A('contigs_db')
         self.profile_db_paths = A('profile_dbs')
         self.collection_name = A('collection_name')
-        self.output_file_prefix = A('output_file_prefix') or self.collection_name
+        self.output_file_path = A('output_file') or self.collection_name + '-SUMMARY-BLITZ.txt'
         self.stats_to_summarize = A('stats_to_summarize')
 
         if self.stats_to_summarize:
@@ -50,7 +50,6 @@ class RapidSummarizer:
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num profile DBs', len(self.profile_db_paths))
         self.run.info('Collection', self.collection_name)
-        self.run.info('Output prefix', self.output_file_prefix)
         self.run.info('Summarizing stats', ", ".join(self.stats_to_summarize))
 
         if not skip_sanity_check:
@@ -99,8 +98,7 @@ class RapidSummarizer:
         splits_where_clause = f'''item IN ({split_list})'''
 
         # prepare for appending to output file
-        output_file_name = self.output_file_prefix + "-quick_summary.txt"
-        output_file = AppendableFile(output_file_name, append_type=dict, fail_if_file_exists=True)
+        output_file = AppendableFile(self.output_file_path, append_type=dict, fail_if_file_exists=True)
         header_list = ['unique_id', 'bin_name', 'sample'] + self.stats_to_summarize
         key = 0         # arbitrary int to serve as unique index in output
 
@@ -162,7 +160,7 @@ class RapidSummarizer:
             self.progress.reset()
 
         self.progress.end()
-        self.run.info("Output file", output_file_name)
+        self.run.info("Output file", self.output_file_path)
 
 
 if __name__ == '__main__':
@@ -176,7 +174,7 @@ if __name__ == '__main__':
                                  'help': "Name of the collection you wish to summarize. The SAME collection will be summarized "
                                          "across all of your input profiles. This collection must be defined in at least the "
                                          "first profile in the argument list."}))
-    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('stats-to-summarize'), **anvio.K('stats-to-summarize'))
 
     args = parser.get_args(parser)
