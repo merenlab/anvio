@@ -230,11 +230,24 @@ do
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
                                     -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
                                     --parser krakenuniq
+
+    INFO "Importing a collection"
+    anvi-import-collection -c $output_dir/CONTIGS.db \
+                           -p $output_dir/SAMPLE-$f/PROFILE.db \
+                           -C CONCOCT \
+                           $files/concoct_mini_test.txt
 done
+
+INFO "Fast summary of the single profile databases"
+anvi-summarize-blitz $output_dir/SAMPLE-0*/PROFILE.db \
+                     -c $output_dir/CONTIGS.db \
+                     -C CONCOCT \
+                     -o $output_dir/SUMMARY-BLITZ.txt
+SHOW_FILE $output_dir/SUMMARY-BLITZ.txt
 
 # Run anvi-profile on one of the samples using the multi-process routine, just to make sure it does
 # not crash. FIXME Ideally, this step would compare the identicalness of
-# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db 
+# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db
 INFO "Profiling sample SAMPLE-01 with --force-multi"
 anvi-profile -i $output_dir/SAMPLE-01.bam \
              -o $output_dir/MULTI-THREAD-SAMPLE-01 \
