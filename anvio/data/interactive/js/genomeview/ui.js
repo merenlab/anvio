@@ -178,6 +178,10 @@ function setEventListeners(){
     showGeneLabels = !showGeneLabels;
     drawer.draw()
   });
+  $('#show_only_cags_in_window').on('change', function () {
+    filter_gene_colors_to_window = !filter_gene_colors_to_window;
+    generateColorTable(null, color_db);
+  });
   $('#thresh_count').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       filterColorTable($(this).val());
