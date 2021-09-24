@@ -86,6 +86,6 @@ anvi-profile-blitz %(bam-file)s \
 
 The memory use will be correlated linaerly with the size of the %(contigs-db)s, but once everything is loaded, the memory usage will not increase substantially over time.
 
-With the flag `--report-minimal`, %(anvi-profile-blitz)s profiled on a laptop computer 100,000 contigs that contained 1 billion nts in 6 minutes and used  ~300 Mb memory. This contigs database had 1.5 million genes, and memory usage increased to 1.7 Gb when %(anvi-profile-blitz)s run in `--gene-mode`.
+With the flag `--report-minimal`, %(anvi-profile-blitz)s profiled on a laptop computer 100,000 contigs that contained 1 billion nts in 6 minutes and used  ~300 Mb memory. This contigs database had 1.5 million genes, and memory usage increased to 1.7 Gb when %(anvi-profile-blitz)s run in `--gene-mode`. The flag `--gene-mode` does not change time complexity dramatically.
 
-`--gene-mode` does not change time complexity dramatically.
+Anvi'o has this program because [Emile Faure](https://twitter.com/faureemile) presented us with a [challenge](https://anvio.slack.com/archives/C8SFMGYF3/p1631723790065300): Emile had a ~140 Gb anvi'o %(contigs-db)s that contained nearly 70 million contig sequences from over 200 single-assembled metagenomes, and wanted to learn the coverages of each gene in the contigs database in 200 metagenomes individually. Yet the combination of %(anvi-profile)s and %(anvi-summarize)s jobs would take **more than 40 days** to complete. Since all Emile needed was to learn the coverages from BAM files, we implemented %(anvi-profile-blitz)s to skip the profiling step. The run took **8 hours to compute and report coverage values for 175 million genes in 70 million contigs**, and the memory use remained below 200 Gb.
