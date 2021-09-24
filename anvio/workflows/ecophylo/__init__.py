@@ -30,7 +30,7 @@ run = terminal.Run()
 class EcoPhyloWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='scg_phylo')
+        self.init_workflow_super_class(args, workflow_name='ecophylo')
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
