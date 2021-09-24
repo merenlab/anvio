@@ -578,6 +578,8 @@ function resetFunctionColors(fn_colors=null) {
 
      let fn_type = $('#gene_color_order').val();
      let dict = getCustomColorDict(fn_type);
+     if(Object.keys(counts).includes("Other")) dict["Other"] = $("#picker_Other").attr('color') ? $("#picker_Other").attr('color') : "#FFFFFF";
+
      Object.keys(dict).forEach(category => {
        if(randomize_color) {
          // color = randomColor();
