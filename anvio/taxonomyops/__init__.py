@@ -846,9 +846,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
 
     def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
-
-        c = ContigsSuperclass(self.args, r=run_quiet)
-        contigs_db_name = c.a_meta['project_name_str']
+        contigs_db_name = anvio.dbops.ContigsDatabase(self.contigs_db_path).meta['project_name_str']
 
         d = {}
 
