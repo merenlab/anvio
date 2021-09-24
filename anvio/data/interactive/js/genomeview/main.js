@@ -105,7 +105,6 @@ function loadState() {
   //   }
   // })
   processState('default', stateData) // moved here until state route is hooked in from backend
-
 }
 
 function serializeSettings() {
@@ -121,7 +120,6 @@ function serializeSettings() {
   state['arrow-stype'] = $('#arrow_style').val()
   state['group-layer-order'] = settings['group-layer-order']
   state['bookmarks'] = settings['display']['bookmarks']
-  state['gene-color-order'] = $('#gene_color_order').val()
   state['gene-link-style'] = $('#link_style').val()
   state['gene-shade-style'] = $('#shade_by').val()
   state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
@@ -134,6 +132,17 @@ function serializeSettings() {
   state['gc-window-size'] = $('#gc_window_size').val()
   state['gc-step-size'] = $('#gc_step_size').val()
   state['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
+  state['gene-color-order'] = $('#gene_color_order').val()
+  state['annotation-color-dict'] = []
+
+  $('.annotation_color').each((idx, row) => {
+    let color = $(row).attr('color')
+    let id = ($(row).attr('id').split('_')[1])
+    state['annotation-color-dict'].push({
+      id : id, 
+      color : color 
+    })
+  })
 }
 
 function processState(stateName, stateData) {
