@@ -127,6 +127,13 @@ function serializeSettings() {
   state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
   state['genome-label-size'] = $('#genome_label').val()
   state['genome-label-color'] = $('#genome_label_color').attr(':color')
+  state['show-gene-labels'] = $('#show_gene_labels_box').us(':checked')
+  state['gene-label-size'] = $('#gene_label').val()
+  state['gene-label-color'] = $('#gene_label_color').attr(':color')
+  state['gene-text-position'] = $('#gene_text_pos').val()
+  state['gc-window-size'] = $('#gc_window_size').val()
+  state['gc-step-size'] = $('#gc_step_size').val()
+  state['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
 }
 
 function processState(stateName, stateData) {
