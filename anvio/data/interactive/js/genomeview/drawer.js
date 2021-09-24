@@ -456,7 +456,7 @@ GenomeDrawer.prototype.clearShades = function(){
   canvas.getObjects().filter(obj => obj.id == 'link').forEach((l) => { canvas.remove(l) });
 }
 
-GenomeDrawer.prototype.setPtsPerADL = function (){
+GenomeDrawer.prototype.setPtsPerADL = function(newResolution){
   if(isNaN(newResolution)) return;
   newResolution = parseInt(newResolution);
   if(newResolution < 0 || newResolution > genomeMax) {

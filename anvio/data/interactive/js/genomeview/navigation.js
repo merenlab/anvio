@@ -210,7 +210,7 @@ function viewCluster(gc) {
     }
     updateScalePos();
     updateRenderWindow();
-    draw();
+    drawer.draw();
     glowGenes(genes);
     return (first ? null : [firstGenomeID, geneMid]);
   } else {
