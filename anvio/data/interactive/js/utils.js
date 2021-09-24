@@ -90,7 +90,7 @@ function appendColorRow(label, cagCode, color, prepend=false) {
    '<tr id="picker_row_' + code + '"> \
       <td></td> \
       <td> \
-        <div id="picker_' + code + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+        <div id="picker_' + code + '" class="colorpicker annotation_color" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
       </td> \
       <td>' + label + '</td> \
     </tr>';
