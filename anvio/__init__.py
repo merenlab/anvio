@@ -1955,6 +1955,13 @@ D = {
              'action': 'store_true',
              'help': "Don't be verbose, print less messages whenever possible."}
                 ),
+    'report-minimal': (
+            ['--report-minimal'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report minimum amount of data for higher performance whenever possible. This flag turn "
+                     "your output files into bare minimums for speed gains."}
+                ),
     'just-do-it': (
             ['--just-do-it'],
             {'default': False,
