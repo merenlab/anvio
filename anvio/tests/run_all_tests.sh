@@ -42,6 +42,19 @@ anvi-gen-contigs-database -f $files/contigs.fa \
 INFO "Displaying the info for the contigs databse"
 anvi-db-info $output_dir/CONTIGS.db
 
+INFO "Rapid profiling of BAM files with anvi-profile blitz in gene mode"
+anvi-profile-blitz $output_dir/*bam \
+                   -c $output_dir/CONTIGS.db \
+                   --gene-mode \
+                   -o $output_dir/PROFILE-BLITZ-GENES.txt
+
+INFO "Rapid profiling of BAM files with anvi-profile blitz in contig mode"
+anvi-profile-blitz $output_dir/*bam \
+                   -c $output_dir/CONTIGS.db \
+                   --gene-mode \
+                   -o $output_dir/PROFILE-BLITZ-CONTIGS.txt
+SHOW_FILE $output_dir/PROFILE-BLITZ-CONTIGS.txt
+
 INFO "Setting a new self value in the self table of the contigs databse"
 anvi-db-info $output_dir/CONTIGS.db \
              --self-key 'a_new_test_key' \
