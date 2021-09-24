@@ -39,6 +39,8 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
+# default target release for everything:
+DEFAULT_GTDB_RELEASE = 'v202.0'
 
 # if you need to change this, you're in trouble :) not really, but yes, you are..
 locally_known_SCG_names = ['Ribosomal_S2',
@@ -77,7 +79,7 @@ class SCGTaxonomyContext(AccessionIdToTaxonomy):
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
         self.target_database_name = "GTDB"
-        self.target_database_release = database_release or 'v95.0'
+        self.target_database_release = database_release or DEFAULT_GTDB_RELEASE
 
         self.target_database_releases_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/GTDB-RELEASES.yaml')
         self.target_database_releases = utils.get_yaml_as_dict(self.target_database_releases_yaml)
@@ -1046,6 +1048,10 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
         self.ctx = ctx
 
+        self.run.warning(None, header='GTDB DATABASE VERSIONS', lc='green')
+        self.run.info('Known releases', ', '.join(self.ctx.target_database_releases.keys()))
+        self.run.info('Target release for setup', self.ctx.target_database_release, mc='green')
+
         SanityCheck.__init__(self)
 
 
@@ -1230,6 +1236,16 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
     def create_search_databases(self):
         """Creates all the search databases"""
+
+        # let's first check if FASTA files are in place
+        missing_FASTA_files = [(s['fasta'] + '.gz') for s in self.ctx.SCGs.values() if not os.path.exists(s['fasta'] + '.gz')]
+        if len(missing_FASTA_files):
+            self.run.warning(None, header="MISSING FASTA FILES")
+            for missing_FASTA_file in missing_FASTA_files:
+                self.run.info_single(f"{missing_FASTA_file}", cut_after=None, mc='red')
+            raise ConfigError("The source FASTA files (from which the setup builds databases) do not seem to be in place :/ "
+                              "You probably should run the setup with the flag `--reset` to download everything from scracth "
+                              "and rebuild these FASTA files. FASTA files that are not where they needed to be listed above.")
 
         self.progress.new("Creating search databases")
         self.progress.update("Removing any database that still exists in the output directory...")
