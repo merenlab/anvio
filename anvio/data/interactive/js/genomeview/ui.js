@@ -589,7 +589,7 @@ function resetFunctionColors(fn_colors=null) {
        if(rule == 'all') {
          $("#picker_" + code).colpickSetColor(color);
        } else if(rule == 'name') {
-         if(category.indexOf($('#name_rule').val().toLowerCase()) > -1) {
+         if(category.toLowerCase().indexOf($('#name_rule').val().toLowerCase()) > -1) {
            $("#picker_" + code).colpickSetColor(color);
          }
        } else if(rule == 'count') {
