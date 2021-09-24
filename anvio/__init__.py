@@ -3216,6 +3216,16 @@ D = {
              'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
                      "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
                      "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
+    ),
+    'stats-to-summarize': (
+            ['--stats-to-summarize', '-S'],
+            {'default': None,
+             'metavar': 'STATS',
+             'type': str,
+             'help': "Use this flag to indicate which statistics you want summarized, as "
+                     "a comma-separated list. The default stats are 'detection' and "
+                     "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
+                     "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     )
 }
 

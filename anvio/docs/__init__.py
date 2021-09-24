@@ -508,6 +508,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "quick-summary": {
+        "name": "QUICK SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",
@@ -641,15 +647,15 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "contig-inspection" : {
-        "name" : "CONTIG INSPECTION", 
+        "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",
-        "provided_by_anvio" : True, 
+        "provided_by_anvio" : True,
         "provided_by_user" : False
     },
     "gene-cluster-inspection" : {
-        "name" : "GENE CLUSTER INSPECTION", 
-        "type" : "DISPLAY", 
-        "provided_by_anvio" : True, 
-        "provided_by_user" : False 
+        "name" : "GENE CLUSTER INSPECTION",
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True,
+        "provided_by_user" : False
     }
 }
