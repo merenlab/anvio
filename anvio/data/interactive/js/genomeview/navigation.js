@@ -211,7 +211,7 @@ function viewCluster(gc) {
     updateScalePos();
     updateRenderWindow();
     drawer.draw();
-    glowGenes(genes);
+    drawer.glowGenes(genes);
     return (first ? null : [firstGenomeID, geneMid]);
   } else {
     console.log('Warning: ' + gc + ' is not a gene cluster in data structure');
