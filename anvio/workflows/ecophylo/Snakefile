@@ -463,7 +463,7 @@ rule run_metagenomics_workflow:
             shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd ..')
 
 
-rule make_ECO_PHYLO_WORKFLOW_state_file:
+rule make_anvio_state_file:
     """Make a state file customized for ribo_phylo workflow interactive interface"""
 
     version: 1.0
@@ -661,7 +661,7 @@ rule anvi_import_state:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{reference_protein_name}.log")
     input:
-        rules.make_ECO_PHYLO_WORKFLOW_state_file.output
+        rules.make_anvio_state_file.output
     params:
         state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
