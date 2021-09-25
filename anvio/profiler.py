@@ -122,9 +122,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
         # Initialize contigs db
-        dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
+        dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
+        # the line below is kind of out of place, but it is necessary. here is why: we don't want to
+        # see any run messages from ContigsSuper in profiler output. But when we pass a `run=null_run`
+        # to the the class, due to inheritance, it also modifies our own `self.run` with the null one
+        # so here we basically re-engage our `self.run` (funny detail, no one cares, but I do because
+        # I have no friends):
+        self.run = terminal.Run(width=50)
 
         self.bam = None
         self.contigs = []
