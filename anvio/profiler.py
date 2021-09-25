@@ -181,7 +181,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.skip_INDEL_profiling = True
 
         meta_values = {'db_type': 'profile',
-                       'db_variant': self.fetch_filter,
                        'anvio': __version__,
                        'sample_id': self.sample_id,
                        'samples': self.sample_id,
@@ -195,6 +194,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
                        'min_percent_identity': self.min_percent_identity or 0,
+                       'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],

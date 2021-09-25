@@ -51,7 +51,7 @@ class BAMFileObject(pysam.AlignmentFile):
 
         filesnpaths.is_file_exists(self.input_bam_path)
 
-        self.fetch_filter = 'default'
+        self.fetch_filter = None
 
         try:
             pysam.AlignmentFile.__init__(self)

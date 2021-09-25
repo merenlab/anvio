@@ -2047,15 +2047,15 @@ D = {
     'fetch-filter': (
             ['--fetch-filter'],
             {'metavar': 'FILTER',
-             'default': 'default',
+             'default': None,
              'type': str,
              'help': f"By default, anvi'o fetches all reads from a BAM file. Once a read is 'fetched', some "
                      f"reads may be excluded if you have used parameters such as `--min-percent-identity`. "
-                     f"This parameter, however, impacts which reads are fetched from a BAM file at all. "
-                     f"For details, please consult with the documentation for `anvi-profile` using the URL "
-                     f"you should see at the end of the `--help` output on your terminal. Once you set a filter, "
-                     f"the filter is set to be the `variant` of your resulting single profile database. The " 
-                     f"known filters are the following: {', '.join(constants.fetch_filters.keys())}."}
+                     f"But the `--fetch-filter` is different as it determines WHICH reads from a BAM file "
+                     f"will be used for profiling at all. You can do a lot of fun things with this parameter. "
+                     f"For details, please read the online documentation for `anvi-profile` using the URL "
+                     f"you should see at the end of the `--help` output on your terminal. The known filters are "
+                     f"the following: {', '.join([k for k in constants.fetch_filters.keys() if k])}."}
                 ),
     'min-percent-identity': (
             ['--min-percent-identity'],
