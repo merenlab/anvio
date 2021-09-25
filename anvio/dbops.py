@@ -1269,7 +1269,7 @@ class ContigsSuperclass(object):
 
         # let's see if there are functions
         gene_functions_found = False
-        if 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
+        if self.a_meta['gene_function_sources'] and 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
             self.init_functions(requested_sources=["COG20_FUNCTION"])
             gene_functions_found = True
             self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "

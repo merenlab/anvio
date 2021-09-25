@@ -361,9 +361,13 @@ D = {
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     "requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you "
-                     "if you were a rebel and have used `--external-gene-callers` or something." % constants.default_gene_caller}
+             'default': constants.default_gene_caller,
+             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
+                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
+                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
+                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
+                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
@@ -1673,15 +1677,26 @@ D = {
             ['--quince-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "The default behavior is to report base frequencies of nucleotide positions only if there "
-                     "is any variation reported during profiling (which by default uses some heuristics to minimize "
+             'help': "The default behavior is to report allele frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize "
                      "the impact of error-driven variation). So, if there are 10 samples, and a given position has been "
                      "reported as a variable site during profiling in only one of those samples, there will be no "
                      "information will be stored in the database for the remaining 9. When this flag is "
-                     "used, we go back to each sample, and report base frequencies for each sample at this position "
+                     "used, we go back to each sample, and report allele frequencies for each sample at this position, "
                      "even if they do not vary. It will take considerably longer to report when this flag is on, and the use "
                      "of it will increase the file size dramatically, however it is inevitable for some statistical approaches "
-                     "(as well as for some beautiful visualizations)."}
+                     "and visualizations."}
+                ),
+    'kiefl-mode': (
+            ['--kiefl-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The default behavior is to report codon/amino-acid frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). "
+                     "When this flag is used, all positions are reported, regardless of whether they contained variation in any "
+                     "sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka "
+                     "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
+                     "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
     'include-contig-names': (
             ['--include-contig-names'],
@@ -1939,6 +1954,13 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Don't be verbose, print less messages whenever possible."}
+                ),
+    'report-minimal': (
+            ['--report-minimal'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report minimum amount of data for higher performance whenever possible. This flag turn "
+                     "your output files into bare minimums for speed gains."}
                 ),
     'just-do-it': (
             ['--just-do-it'],
@@ -3221,6 +3243,16 @@ D = {
              'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
                      "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
                      "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
+    ),
+    'stats-to-summarize': (
+            ['--stats-to-summarize', '-S'],
+            {'default': None,
+             'metavar': 'STATS',
+             'type': str,
+             'help': "Use this flag to indicate which statistics you want summarized, as "
+                     "a comma-separated list. The default stats are 'detection' and "
+                     "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
+                     "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     )
 }
 

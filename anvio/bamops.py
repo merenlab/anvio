@@ -49,19 +49,9 @@ class BAMFileObject(pysam.AlignmentFile):
 
         self.input_bam_path = args[0]
 
-        filesnpaths.is_file_exists(self.input_bam_path)
+        filesnpaths.is_file_bam_file(self.input_bam_path)
 
-        self.fetch_filter = None
-
-        try:
-            pysam.AlignmentFile.__init__(self)
-        except ValueError as e:
-            raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
-
-        try:
-            self.mapped
-        except ValueError:
-            raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
+        pysam.AlignmentFile.__init__(self)
 
 
     def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
