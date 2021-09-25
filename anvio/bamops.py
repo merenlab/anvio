@@ -138,7 +138,7 @@ class PairedEndTemplateDist:
 
         if self.output_file_path:
             self.report()
-    
+
         if self.plot_data:
             self.plot_histogram()
 
@@ -173,7 +173,7 @@ class PairedEndTemplateDist:
                                       'min'      : f"",
                                       'max'      : f"",
                                       'std'      : f""}
- 
+
         self.progress.end()
 
         headers = ['contig', 'length', 'num_reads_considered', 'mean', 'mean_Q2Q3', 'median', 'min', 'max', 'std']
