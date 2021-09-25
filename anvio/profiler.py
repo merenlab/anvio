@@ -298,8 +298,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # update layer additional data table content
         if self.layer_additional_data:
-            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run, p=self.progress)
+            self.progress.new("Additional layer data")
+            self.progress.update("Updating the profile db ...")
+            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=null_run, p=null_progress)
             layer_additional_data_table.add({self.sample_id: self.layer_additional_data}, self.layer_additional_keys)
+            self.progress.end()
+
+            self.run.info("Additional data added to the new profile DB", f"{', '.join(self.layer_additional_keys)}", nl_before=1)
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
