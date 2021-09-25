@@ -168,11 +168,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
-        default_output_dir_prefix = '-PROFILE' if (self.fetch_filter and self.fetch_filter == 'default') else f'-PROFILE-{self.fetch_filter.upper()}'
-        default_output_dir_path = (self.input_file_path[:-4] if self.input_file_path.upper().endswith('.BAM') else self.input_file_path) + default_output_dir_prefix
+        if self.output_directory:
+            self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
+        else:
+            output_dir_path = os.path.dirname(os.path.abspath(self.input_file_path))
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory or default_output_dir_path, \
-                                                                   ok_if_exists=self.overwrite_output_destinations)
+            if self.sample_id:
+                self.output_directory = filesnpaths.check_output_directory(os.path.join(output_dir_path, self.sample_id), ok_if_exists=self.overwrite_output_destinations)
+            else:
+                raise ConfigError("There is no `self.sample_id`, there is no `self.output_directory` :/ Anvi'o needs an adult :(")
 
         self.progress.new('Initializing')
 
@@ -381,11 +385,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             if self.input_file_path:
                 self.input_file_path = os.path.abspath(self.input_file_path)
-                self.sample_id = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
-                self.sample_id = self.sample_id.replace('-', '_')
-                self.sample_id = self.sample_id.replace('.', '_')
+                self.sample_id = os.path.splitext(os.path.basename(self.input_file_path))[0]
+                self.sample_id = self.sample_id.replace('-', '_').replace('.', '_').replace(' ', '_')
+
                 if self.sample_id[0] in constants.digits:
                     self.sample_id = 's' + self.sample_id
+
+                if self.fetch_filter:
+                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper()}"
+
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
                 self.serialized_profile_path = os.path.abspath(self.serialized_profile_path)
