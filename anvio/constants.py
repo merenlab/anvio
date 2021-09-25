@@ -164,7 +164,8 @@ fetch_filters = {None                 : None,
                  'double-reverses'    : lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped,
                  'inversions'         : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped) or \
                                                   (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped) and (abs(x.tlen) < 2000),
-                 'single-mapped-reads': lambda x: x.mate_is_unmapped}
+                 'single-mapped-reads': lambda x: x.mate_is_unmapped,
+                 'distant-pairs-1K'   : lambda x: x.is_paired and not x.mate_is_unmapped and abs(x.tlen) > 1000}
 
 # Whether a cigarstring operation consumes the read, reference, or both
 #
