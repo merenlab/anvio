@@ -100,6 +100,15 @@ class DatabaseInfo:
                 dbops.ContigsDatabase(self.db_path).list_available_hmm_sources()
             except:
                 pass
+        elif self.db_type == 'genomestorage':
+            database = dbi.DBInfo(self.db_path)
+            genome_names = database.load_db().get_single_column_from_table(t.genome_info_table_name, 'genome_name')
+
+            run.warning(None, header=f"GENOMES IN STORAGE (n={len(genome_names)})", lc="green")
+            run.info_single(f"{', '.join(genome_names)}", cut_after=120, level=0)
+        else:
+            # no additional information for you.
+            pass
 
 
     def get_db_self(self):

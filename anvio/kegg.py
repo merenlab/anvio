@@ -350,10 +350,10 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_value=self.all_modules_in_db[mnum]['CLASS'])
 
         metadata_dict = {}
-        metadata_dict["module_name"] = self.kegg_modules_db.get_module_name(mnum)
+        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
         metadata_dict["module_class"] = mnum_class_dict["class"]
         metadata_dict["module_category"] = mnum_class_dict["category"]
         metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
@@ -367,7 +367,7 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mod_list = self.kegg_modules_db.get_modules_for_knum(knum)
+        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
         if mod_list:
             mod_list_str = ",".join(mod_list)
         else:
@@ -1738,6 +1738,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # init the base class
         KeggContext.__init__(self, self.args)
 
+        # let user know what they told anvi'o to work
+        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.collection_name:
+            self.run.info('Collection', self.collection_name)
+        if self.bin_id:
+            self.run.info('Bin ID', self.bin_id)
+        elif self.bin_ids_file:
+            self.run.info('Bin IDs file', self.bin_ids_file)
+
         # init the KO dictionary
         self.setup_ko_dict()
 
@@ -1804,7 +1815,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### ATOMIC ESTIMATION FUNCTIONS #########
 
-    def init_hits_and_splits(self):
+    def init_hits_and_splits(self, annotation_sources=['KOfam']):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
         We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
@@ -1813,72 +1824,71 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         This function gets this info as a list of tuples (one tuple per kofam hit), and it makes sure that these lists don't include
         hits that we shouldn't be considering.
 
+        PARAMETERS
+        ==========
+        annotation_sources : list
+            which functional annotation sources to obtain gene calls from. Should at least contain 'Kofam' for
+            default usage. Adding other sources may be necessary when working with user-defined metabolic modules.
+
         RETURNS
         =======
         kofam_gene_split_contig : list
             (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
-        self.progress.new('Loading data from Contigs DB')
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
-        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
-        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
-                                                               where_clause="source = 'KOfam'")
-        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
-        contigs_db.disconnect()
+        self.progress.new("Loading split data from contigs DB")
+        split_names_in_contigs_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+        splits_to_use = split_names_in_contigs_db
 
-        # get rid of gene calls that are not associated with KOfam hits.
-        all_gene_calls_in_splits = set([tpl[0] for tpl in genes_in_splits])
-        gene_calls_with_kofam_hits = set([tpl[0] for tpl in kofam_hits])
-        gene_calls_without_kofam_hits = all_gene_calls_in_splits.difference(gene_calls_with_kofam_hits)
-
-        if gene_calls_without_kofam_hits:
-            self.progress.update("Removing %s gene calls without KOfam hits" % len(gene_calls_without_kofam_hits))
-            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in gene_calls_without_kofam_hits]
-            genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
-            if anvio.DEBUG:
-                self.progress.reset()
-                self.run.warning("The following gene calls in your contigs DB were removed from consideration as they "
-                                 "do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
-
-
-        # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
+        # first, resolve differences in splits between profile and contigs db
         if self.profile_db_path:
+            self.progress.update("Loading split data from profile DB")
             # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
             if utils.is_blank_profile(self.profile_db_path):
                 self.progress.reset()
-                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism for you. "
-                                 "But we cannot load splits from the profile DB, so instead we are assuming that you are interested in "
-                                 "ALL splits and we will load those from the contigs database.")
-                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism "
+                                 "for you. But we cannot load splits from the profile DB, so instead we are assuming that "
+                                 "you are interested in ALL splits and we will load those from the contigs database.")
             else:
                 split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
-            split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
-            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+                splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
-            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
+                if len(splits_missing_in_profile_db):
+                    min_contig_length_in_profile_db = pp(ProfileDatabase(self.profile_db_path).meta['min_contig_length'])
+                    num_splits_contig = pp(len(split_names_in_contigs_db))
+                    num_splits_profile = pp(len(split_names_in_profile_db))
+                    num_missing = pp(len(splits_missing_in_profile_db))
+                    self.progress.reset()
+                    self.run.warning(f"Please note that anvi'o found {num_splits_contig} splits in your contigs database. "
+                                     f"But only {num_splits_profile} of them appear in the profile database. As a result, "
+                                     f"anvi'o will now remove the {num_missing} splits that occur only in the contigs db "
+                                     f"from all downstream analyses. Where is this difference coming from though? Well. This "
+                                     f"is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
+                                     f"step can exclude many contigs from downstream analyses (often for good reasons, too). For "
+                                     f"instance, in your case the minimum contig length set in the profile database is "
+                                     f"{min_contig_length_in_profile_db} nts. Anvi'o hopes that this explains some things.")
+                    splits_to_use = split_names_in_profile_db
 
-            if len(splits_missing_in_profile_db):
-                self.progress.reset()
-                self.run.warning("Please note that anvi'o found %s splits in your contigs database with KOfam hits. But only %s of them "
-                                 "appear in the profile database. As a result, anvi'o will now remove the %s splits with KOfam hits "
-                                 "that occur only in the contigs db from all downstream analyses. Where is this difference coming from though? "
-                                 "Well. This is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
-                                 "step can exclude many contigs from downstream analyses (often for good reasons, too). For "
-                                 "instance, in your case the minimum contig length goes as low as %s nts in your contigs database. "
-                                 "Yet, the minimum contig length set in the profile databaes is %s nts. Hence the difference. Anvi'o "
-                                 "hopes that this explaines some things." % (pp(len(split_names_in_contigs_db)),
-                                                                             pp(len(split_names_in_profile_db)),
-                                                                             pp(len(splits_missing_in_profile_db)),
-                                                                             pp(min_contig_length_in_contigs_db),
-                                                                             pp(min_contig_length_in_profile_db)))
 
-                self.progress.update("Removing %s splits (and associated gene calls) that were missing from the profile db" % pp(len(splits_missing_in_profile_db)))
-                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in splits_missing_in_profile_db]
-                remaining_gene_calls = [tpl[0] for tpl in genes_in_splits]
-                genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] in remaining_gene_calls]
-                kofam_hits = [tpl for tpl in kofam_hits if tpl[0] in remaining_gene_calls]
+        self.progress.update('Loading gene call data from contigs DB')
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+
+        split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
+        splits_where_clause = f'''split IN ({split_list})'''
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split",
+                                                                    where_clause=splits_where_clause)
+
+        gene_list = ','.join(["'%s'" % gcid for gcid,split in genes_in_splits])
+        contigs_where_clause = f'''gene_callers_id IN ({gene_list})'''
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig",
+                                                                     where_clause=contigs_where_clause)
+
+        source_list = ','.join(["'%s'" % src for src in annotation_sources])
+        hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
+                                                               where_clause=hits_where_clause)
+
+        contigs_db.disconnect()
 
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
@@ -1895,16 +1905,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.progress.update("Done")
         self.progress.end()
 
-        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
-        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
-        self.run.info('Metagenome mode', self.metagenome_mode)
-        if self.collection_name:
-            self.run.info('Collection', self.collection_name)
-        if self.bin_id:
-            self.run.info('Bin ID', self.bin_id)
-        elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file)
 
         if not self.quiet and not len(kofam_hits):
             self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
@@ -1913,6 +1914,31 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
 
         return kofam_gene_split_contig
+
+
+    def init_data_from_modules_db(self):
+        """This function reads mucho data from the MODULES.db into dictionaries for later access.
+
+        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
+        in the db, keyed by module number.
+        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
+
+        We do this once at the start so as to reduce the number of on-the-fly database queries
+        that have to happen during the estimation process.
+        """
+
+        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+
+        self.all_kos_in_db = {}
+        for mod in self.all_modules_in_db:
+            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
+            if not isinstance(ko_list, list):
+                ko_list = [ko_list]
+            # we convert to a set because some modules have duplicate orthology lines for the same KO
+            for k in set(ko_list):
+                if k not in self.all_kos_in_db:
+                    self.all_kos_in_db[k] = []
+                self.all_kos_in_db[k].append(mod)
 
 
     def init_paths_for_modules(self):
@@ -1924,9 +1950,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.module_paths_dict = {}
-        modules = self.kegg_modules_db.get_all_modules_as_list()
+        modules = self.all_modules_in_db.keys()
         for m in modules:
-            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m)
+            module_definition = self.all_modules_in_db[m]["DEFINITION"]
+            # the below function expects a list
+            if not isinstance(module_definition, list):
+                module_definition = [module_definition]
+            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
     def init_gene_coverage(self, gcids_for_kofam_hits):
@@ -1976,7 +2006,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofam_hits_in_modules',
+                                                       'mode_type': 'kofam_hits_in_modules', 'kofam_hits'
                                                        'description': f"Mean coverage of gene with KOfam hit in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
@@ -1986,7 +2016,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
-                                                             'mode_type': 'modules',
+                                                             'mode_type': 'modules', 'kofam_hits'
                                                              'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
@@ -2005,6 +2035,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # we update the header list for the affected modes
         self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["kofam_hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
@@ -2065,8 +2096,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Number of splits", len(split_list))
 
         # initialize all modules with empty lists and dicts for kos, gene calls
-        modules = self.kegg_modules_db.get_all_modules_as_list()
-        all_kos = self.kegg_modules_db.get_all_knums_as_list()
+        modules = self.all_modules_in_db.keys()
+        all_kos = self.all_kos_in_db.keys()
         for mnum in modules:
             bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
                                            "kofam_hits" : {},
@@ -2076,7 +2107,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                           }
         for knum in all_kos:
             if knum not in self.ko_dict:
-                mods_it_is_in = self.kegg_modules_db.get_modules_for_knum(knum)
+                mods_it_is_in = self.all_kos_in_db[knum]
                 if mods_it_is_in:
                     if anvio.DEBUG:
                         mods_str = ", ".join(mods_it_is_in)
@@ -2084,7 +2115,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         "that any modules this KO belongs to can never be fully complete (this includes "
                                         f"{mods_str}). ")
                     for m in mods_it_is_in:
-                        bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
+                        if knum[0] != 'M':
+                            bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
@@ -2095,8 +2127,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kos_not_in_modules = []
         for ko, gene_call_id, split, contig in kofam_hits_in_splits:
-            present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
-            if not present_in_mods:
+            if ko not in self.all_kos_in_db:
                 kos_not_in_modules.append(ko)
                 # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here if we haven't already
                 if ko not in bin_level_ko_dict:
@@ -2106,18 +2137,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
+                present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
-            for m in present_in_mods:
-                bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
-                if ko in bin_level_module_dict[m]["kofam_hits"]:
-                    bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
-                else:
-                    bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
-                bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
-                if contig in bin_level_module_dict[m]["contigs_to_genes"]:
-                    bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
-                else:
-                    bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
+
+                for m in present_in_mods:
+                    bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
+                    if ko in bin_level_module_dict[m]["kofam_hits"] and gene_call_id not in bin_level_module_dict[m]["kofam_hits"][ko]:
+                        bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
+                    else:
+                        bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
+                    bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
+                    if contig in bin_level_module_dict[m]["contigs_to_genes"]:
+                        bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
+                    else:
+                        bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
@@ -2707,10 +2740,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
 
-            if not len(ko_in_bin):
-                self.progress.reset()
-                self.run.warning(f"It seems the bin '{bin_name}' contains zero KOfam hits. Just so you know.")
-
             metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
 
             if not self.store_json_without_estimation:
@@ -2810,6 +2839,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         bins_found = []
         additional_keys = set([])
 
+        self.init_data_from_modules_db()
         self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
@@ -2900,6 +2930,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
+            self.init_data_from_modules_db()
 
             kofam_hits_info = self.init_hits_and_splits()
             self.init_paths_for_modules()
@@ -3034,7 +3065,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 # fetch module info from db
                 metadata_dict = self.get_module_metadata_dictionary(mnum)
-                module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
+                definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
+                if not isinstance(definition_list, list):
+                    definition_list = [definition_list]
+                module_def = '"' + " ".join(definition_list) + '"'
                 module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
                 # handle path- and ko-level information
@@ -3120,11 +3154,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 kos_in_mod = sorted(c_dict['kofam_hits'].keys())
                                 # gene call list should be in same order as KO list
                                 gcids_in_mod = []
+                                kos_in_mod_list = []
                                 if kos_in_mod:
                                     for ko in kos_in_mod:
                                         gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                                        kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
                                 if "kofam_hits_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                                    d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
@@ -3187,11 +3223,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     kos_in_mod = sorted(c_dict['kofam_hits'].keys())
                     # gene call list should be in same order as KO list
                     gcids_in_mod = []
+                    kos_in_mod_list = []
                     if kos_in_mod:
                         for ko in kos_in_mod:
                             gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                            kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
                     if "kofam_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                        d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
@@ -3206,8 +3244,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             gene_coverages_in_mod = []
                             gene_detection_in_mod = []
                             for gc in gcids_in_mod:
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc])
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][int(gc)])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][int(gc)])
 
                             d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
@@ -3304,6 +3342,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["modules_with_ko"] = metadata_dict["modules_with_ko"]
                     if "ko_definition" in headers_to_include:
                         d[self.ko_unique_id]["ko_definition"] = metadata_dict["ko_definition"]
+
+                    if self.add_coverage:
+                        if not self.profile_db:
+                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                              "not been initialized, therefore we cannot add coverage values to your output. "
+                                              "This is likely a bug or developer mistake. It is a sad day :(")
+
+                        for s in self.coverage_sample_list:
+                            sample_cov_header = s + "_coverage"
+                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                            sample_det_header = s + "_detection"
+                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
@@ -3950,6 +4000,16 @@ class KeggModulesDatabase(KeggContext):
 
     This DB should be created in the Kegg Data folder during KEGG setup, and will be populated with information from the
     Kegg Module files.
+
+    If you want to load an existing database from the python terminal, all you need is the path to the database and an
+    empty args object:
+    ```
+    >>> import argparse
+    >>> from anvio import kegg
+    >>> path_to_db = "YOUR/PATH/HERE/MODULES.db"
+    >>> args = argparse.Namespace()
+    >>> kegg.KeggModulesDatabase(path_to_db, args)
+    ```
     """
 
     def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
@@ -4366,6 +4426,55 @@ class KeggModulesDatabase(KeggContext):
 
 ######### MODULES TABLE ACCESS FUNCTIONS #########
 
+    def get_modules_table_data_values_as_dict(self, data_names_of_interest=[]):
+        """This function loads the modules table and returns it as a dictionary (of data values only) keyed by module.
+
+        PARAMETERS
+        ==========
+        data_names_of_interest : list of str
+            the returned dictionary will contain only data names from this list. If the list is empty,
+            all data names are returned.
+
+        RETURNS
+        =======
+        module_dictionary : dict of dicts
+            data for each module in the modules table. Outer dictionary is keyed by module number and
+            inner dictionary is keyed by data name
+        """
+
+        if data_names_of_interest:
+            data_names_list = [f"'{n}'" for n in data_names_of_interest]
+            where_clause_string = f"data_name in ({','.join(data_names_list)})"
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_mod_table = self.db.get_table_as_dict(self.module_table_name, row_num_as_key=True)
+        # the returned dictionary is keyed by an arbitrary integer, and each value is a dict containing one row from the modules table
+        # ex of one row in this dict: 0: {'module': 'M00001', 'data_name': 'ENTRY', 'data_value': 'M00001', 'data_definition': 'Pathway', 'line': 1}
+
+        # now we convert this to a per-module dictionary
+        module_dictionary = {}
+        for entry in dict_from_mod_table:
+            mod = dict_from_mod_table[entry]['module']
+            data_name = dict_from_mod_table[entry]['data_name']
+            data_value = dict_from_mod_table[entry]['data_value']
+
+            if mod not in module_dictionary:
+                module_dictionary[mod] = {}
+
+            if data_name not in module_dictionary[mod]:
+                module_dictionary[mod][data_name] = data_value
+            else:
+                if isinstance(module_dictionary[mod][data_name], list):
+                    module_dictionary[mod][data_name].append(data_value)
+                else:
+                    # this is a data name that has multiple values, so we need to convert it to a list
+                    existing_val = module_dictionary[mod][data_name]
+                    module_dictionary[mod][data_name] = [existing_val, data_value]
+
+        return module_dictionary
+
+
     def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
@@ -4503,14 +4612,23 @@ class KeggModulesDatabase(KeggContext):
         return class_dict
 
 
-    def get_kegg_module_class_dict(self, mnum):
+    def get_kegg_module_class_dict(self, mnum, class_value=None):
         """This function returns a dictionary of values in the CLASS field for a specific module
 
         It really exists only for convenience to put together the data fetch and parsing functions.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            the module number
+        class_value : str
+            The 'CLASS' string for the module. This parameter is optional, and if it is not provided,
+            the 'CLASS' value will be queried from the modules DB.
         """
 
-        # there should only be one CLASS line per module, so we extract the first list element
-        class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
+        if not class_value:
+            # there should only be one CLASS line per module, so we extract the first list element
+            class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
 
 
@@ -4658,7 +4776,12 @@ class KeggModulesDatabase(KeggContext):
 
         RETURNS
         =======
-
+        substrate_name_list : list of str
+            List of substrate compounds
+        intermediate_name_list : list of str
+            List of intermediate compounds
+        product_name_list : list of str
+            List of product compounds
         """
         compound_to_name_dict = self.get_compound_dict_for_module(mnum)
         substrate_compounds, intermediate_compounds, product_compounds = self.get_kegg_module_compound_lists(mnum)
@@ -4681,14 +4804,23 @@ class KeggModulesDatabase(KeggContext):
         return self.split_by_delim_not_within_parens(def_string, " ")
 
 
-    def unroll_module_definition(self, mnum):
+    def unroll_module_definition(self, mnum, def_lines = None):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
         returns the list of all paths.
 
         This is a driver for the recursive functions that do the actual unrolling of each definition line.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            module number
+        def_lines : list of str
+            The DEFINITION lines for the module. This parameter is optional, and if it is not passed, the module
+            definition will be looked up from the modules DB.
         """
 
-        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        if not def_lines:
+            def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         combined_def_line = ""
         for d in def_lines:
             d = d.strip()

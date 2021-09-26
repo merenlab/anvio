@@ -82,6 +82,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "bam-stats-txt": {
+        "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "protein-structure-txt": {
         "name": "PDB FILE",
         "type": "TXT",
@@ -508,6 +514,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "quick-summary": {
+        "name": "QUICK SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",
@@ -639,5 +651,17 @@ ANVIO_ARTIFACTS ={
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "contig-inspection" : {
+        "name" : "CONTIG INSPECTION",
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True,
+        "provided_by_user" : False
+    },
+    "gene-cluster-inspection" : {
+        "name" : "GENE CLUSTER INSPECTION",
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True,
+        "provided_by_user" : False
     }
 }

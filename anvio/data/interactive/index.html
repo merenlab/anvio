@@ -240,11 +240,10 @@
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-md-8">
-                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' max='100' min='0'> to
-                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' max='100' min='0'>
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'> to
+                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-
                                     <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
                                         <div class="col-md-8">
@@ -291,6 +290,12 @@
                                         <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
                                         <div class="col-md-8">
                                             <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id='show_text_rotation'>
+                                        <label class="col-md-4 settings-label" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
                                         </div>
                                     </div>
                                 </div>

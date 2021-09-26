@@ -197,7 +197,7 @@ class COGs:
 
         if not aa_sequences_file_path:
             aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
-            dbops.ContigsSuperclass(self.args).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
+            dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
                                                                                   report_aa_sequences=True,
                                                                                   simple_headers=True)
 

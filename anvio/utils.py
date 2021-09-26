@@ -424,6 +424,31 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+class CoverageStats:
+    """This class should replace `coverage_c` function in bamops"""
+
+    def __init__(self, coverage, skip_outliers=False):
+        self.min = np.amin(coverage)
+        self.max = np.amax(coverage)
+        self.median = np.median(coverage)
+        self.mean = np.mean(coverage)
+        self.std = np.std(coverage)
+        self.detection = np.sum(coverage > 0) / len(coverage)
+
+        if coverage.size < 4:
+            self.mean_Q2Q3 = self.mean
+        else:
+            sorted_c = sorted(coverage)
+            Q = int(coverage.size * 0.25)
+            Q2Q3 = sorted_c[Q:-Q]
+            self.mean_Q2Q3 = np.mean(Q2Q3)
+
+        if skip_outliers:
+            self.is_outlier = None
+        else:
+            self.is_outlier = utils.get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+
 class RunInDirectory(object):
     """ Run any block of code in a specified directory. Return to original directory
 
@@ -1586,9 +1611,10 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
-        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end "
-                          "with a stop codon and is therefore probably not what you want. If you "
-                          "want to continue anyways, use the just_do_it flag")
+        raise ConfigError("The sequence `get_synonymous_and_non_synonymous_potential` received does "
+                          "end with a stop codon and may be irrelevant for this analysis. If you "
+                          "want to continue anyways, include the flag `--just-do-it` in your call "
+                          "(if you are a programmer see the function header).")
 
     synonymous_potential = 0
     num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG

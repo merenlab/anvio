@@ -247,7 +247,6 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 }
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
-
     function checkInRange(){ // check to see if SV data point is within user specified range
         if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
             return true
@@ -257,7 +256,19 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
     }
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
-        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+        if($('#tree_type').val() == 'circlephylogram'){
+            if(supportValueData.textRotation == '0'){
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            } else {
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            }
+        } else {
+            if(supportValueData.textRotation == '0'){
+                drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            } else {
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            }
+        }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
         drawSymbol()
@@ -285,9 +296,10 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
         function makeCircle(){ // time to make the gravy
             setDetails(calculatePercentile())
+            console.log(calculatePercentile())
 
-            circle.setAttribute('cx', p0.x)
-            circle.setAttribute('cy', p0.y)
+            circle.setAttribute('cx', p.xy.x)
+            circle.setAttribute('cy', p.xy.y)
             circle.setAttribute('r', radius)
             circle.setAttribute('id', p.id)
             circle.setAttribute('fill', supportValueData.symbolColor )
@@ -427,7 +439,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family
     text.appendChild(textNode);
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
-
+    
     // trim long text
 
     if (maxLength > 0)

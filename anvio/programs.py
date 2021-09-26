@@ -635,7 +635,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
+        self.progress.new("Rendering artifact pages", progress_total_items=len(ANVIO_ARTIFACTS))
+        self.progress.update('...')
+
         for artifact in ANVIO_ARTIFACTS:
+            self.progress.update(f"'{artifact}' ...", increment=True)
+
             d = {'artifact': ANVIO_ARTIFACTS[artifact],
                  'meta': {'summary_type': 'artifact',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
@@ -650,13 +655,17 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
 
             if anvio.DEBUG:
+                self.progress.reset()
                 run.warning(None, 'THE OUTPUT DICT')
                 import json
                 print(json.dumps(d, indent=2))
 
+            self.progress.update(f"'{artifact}' ... rendering ...", increment=False)
             artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact))
             output_file_path = os.path.join(artifact_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
 
 
     def get_HTML_formatted_authors_data(self, program):
@@ -709,9 +718,14 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
+        self.progress.new("Rendering program pages", progress_total_items=len(self.programs))
+        self.progress.update('...')
+
         program_provides_requires_dict = self.get_program_requires_provides_dict()
 
         for program_name in self.programs:
+            self.progress.update(f"'{program_name}' ...", increment=True)
+
             program = self.programs[program_name]
             d = {'program': {},
                  'meta': {'summary_type': 'program',
@@ -731,21 +745,30 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
+                self.progress.reset()
                 run.warning(None, 'THE OUTPUT DICT')
                 import json
                 print(json.dumps(d, indent=2))
 
+            self.progress.update(f"'{program_name}' ... rendering ...", increment=False)
             program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
             output_file_path = os.path.join(program_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
             # create the program network, too
+            self.progress.update(f"'{program_name}' ... rendering ... network json ...", increment=False)
+            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
             program_network = ProgramsNetwork(argparse.Namespace(output_file=os.path.join(program_output_dir, "network.json"), program_names_to_focus=program_name), r=terminal.Run(verbose=False))
             program_network.generate()
+
+        self.progress.end()
 
 
     def generate_index_page(self):
         """Generates the index page for help where all programs and artifacts are listed"""
+
+        self.progress.new("Index page")
+        self.progress.update('...')
 
         # let's add the 'path' for each artifact to simplify
         # access from the template:
@@ -765,8 +788,13 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
 
+        self.progress.update('Rendering...')
         output_file_path = os.path.join(self.output_directory_path, 'index.md')
+
+        self.progress.update('Writing...')
         open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
 
 
 class ProgramsNetwork(AnvioPrograms):

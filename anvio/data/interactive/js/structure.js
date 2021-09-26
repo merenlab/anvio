@@ -468,7 +468,8 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
                     } else {
                         // append to body
-                        tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
+                        tooltip_HTML_variant_body += `<tr><td>log10(pN) [popular consensus])</td><td>${variability[group][residue]['log_pN_popular_consensus'].toFixed(4)}</td></tr>`
+                        tooltip_HTML_variant_body += `<tr><td>log10(pS) [popular consensus])</td><td>${variability[group][residue]['log_pS_popular_consensus'].toFixed(4)}</td></tr>`
                     }
 
                     var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`

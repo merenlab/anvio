@@ -5,9 +5,10 @@
 import os
 import json
 import time
+import pysam
 import shutil
-import tempfile
 import tarfile
+import tempfile
 
 import anvio
 import anvio.fastalib as u
@@ -272,6 +273,34 @@ def is_file_tar_file(file_path, dont_raise=False):
             return False
         else:
             raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
+
+
+def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
+    """Checks if a BAM file is a proper BAM file, AND if it is intexed"""
+
+    is_file_exists(file_path)
+
+    try:
+        bam_file = pysam.AlignmentFile(file_path, "rb")
+    except Exception as e:
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The BAM file you have there upsets samtools very much: '{e}'.")
+
+    if not ok_if_not_indexed:
+        try:
+            bam_file.mapped
+        except ValueError:
+            if dont_raise:
+                return False
+            else:
+                raise FilesNPathsError(f"The BAM file at '{file_path}' does not seem to be indexed (when a BAM file) "
+                                       f"is indexed, you usually find a file with the same name that ends with '.bam.bai' "
+                                       f"extention in the same directory). You can do it via `samtools`, or using the "
+                                       f"anvi'o program 'anvi-init-bam'.")
+
+    return True
 
 
 def is_program_exists(program):

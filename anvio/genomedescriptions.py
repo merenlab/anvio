@@ -1359,6 +1359,16 @@ class AggregateFunctions:
         if not self.layer_groups_defined:
             return
 
+        # let's check if layer names from the groups file has anything to do with
+        # the layer names that are considered at this point.
+        layer_names_with_group_association = [l for l in self.layer_names_considered if l in self.layer_name_to_group_name]
+        if not len(layer_names_with_group_association):
+            raise ConfigError(f"Something is wrong here :/ You provide some group associations for your genomes, however, "
+                              f"the genome names anvi'o gathered from your databases does not seem to have anything to do "
+                              f"with those names. You probably need to fix this. Here is an example genome name from your "
+                              f"group associations: '{list(self.layer_name_to_group_name.keys())[0]}'. In comparison, here "
+                              f"Here is an example genome name from your anvi'o databases: '{self.layer_names_considered.pop()}'.")
+
         for key_hash in self.functions_across_layers_frequency:
             if key_hash not in self.functions_across_groups_frequency:
                 self.functions_across_groups_frequency[key_hash] = Counter({})
