@@ -3879,6 +3879,11 @@ def is_profile_db(db_path):
     return True
 
 
+def is_genome_view_db(db_path):
+    dbi(db_path, expecting='genome-view')
+    return True
+
+
 def is_structure_db(db_path):
     dbi(db_path, expecting='structure')
     return True

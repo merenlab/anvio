@@ -33,8 +33,9 @@ class TablesForStates(Table):
         self.db_path = db_path
         self.states = {}
 
-        if utils.get_db_type(self.db_path) not in ['profile', 'pan', 'structure', 'genes']:
-            raise ConfigError("Your database '%s' does not seem to have states table, which anvi'o tries to access.")
+        if utils.get_db_type(self.db_path) not in ['profile', 'pan', 'structure', 'genes', 'genome-view']:
+            raise ConfigError(f"Your database at {self.db_path} has a type that does not seem to be compatible "
+                              f"with `TablesForStates` class. You better be working with a new database type :(")
 
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
 

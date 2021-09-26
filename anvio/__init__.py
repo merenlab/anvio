@@ -136,6 +136,12 @@ D = {
              'required': True,
              'help': "Anvi'o structure database."}
                 ),
+    'genome-view-db': (
+            ['-E', '--genome-view-db'],
+            {'metavar': "GENOME_VIEW_DB",
+             'required': False,
+             'help': "Anvi'o genome view database."}
+                ),
     'only-if-structure': (
             ['--only-if-structure'],
             {'default': False,
@@ -3284,19 +3290,21 @@ def get_version_tuples():
             ("Genome data storage version", __genomes_storage_version__),
             ("Structure DB version", __structure__version__),
             ("KEGG Modules DB version", __kegg_modules_version__),
-            ("tRNA-seq DB version", __trnaseq__version__)]
+            ("tRNA-seq DB version", __trnaseq__version__),
+            ("Genome view DB version", __genome_view_db__version__)]
 
 
 def print_version():
     run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
-    run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
+    run.info("Profile database", __profile__version__)
     run.info("Pan database", __pan__version__)
     run.info("Genome data storage", __genomes_storage_version__)
     run.info("Auxiliary data storage", __auxiliary_data_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)
-    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
+    run.info("tRNA-seq database", __trnaseq__version__)
+    run.info("Genome view database", __genome_view_db__version__, nl_after=1)
 
 
 __version__, \
@@ -3309,7 +3317,8 @@ __auxiliary_data_version__, \
 __genomes_storage_version__ , \
 __structure__version__, \
 __kegg_modules_version__, \
-__trnaseq__version__ = set_version()
+__trnaseq__version__, \
+__genome_view_db__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:
