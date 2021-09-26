@@ -4571,6 +4571,79 @@ class TRNASeqDatabase:
         self.db.disconnect()
 
 
+class GenomeViewDatabase:
+    """To create an empty genome view database and/or access one."""
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
+        self.db = None
+        self.db_path = db_path
+        self.db_type = 'genome-view'
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+        if not os.path.exists(self.db_path):
+            return
+
+        self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
+
+        for key in []:
+            try:
+                self.meta[key] = int(self.meta[key])
+            except:
+                pass
+
+        self.genomes = set([s.strip() for s in self.meta['genomes'].split(',')])
+
+
+        # open the database
+        self.db = db.DB(self.db_path, anvio.__genome_view_db__version__)
+
+        self.run.info('Genome view database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+        self.run.info('Genomes', self.meta['genomes'], quiet=self.quiet)
+
+
+    def touch(self):
+        """Creates an empty genome view database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
+        is_db_ok_to_create(self.db_path, self.db_type)
+
+        self.db = db.DB(self.db_path, anvio.__genome_view_db__version__, new_database=True)
+
+        # creating empty default tables
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('genome_view_db_hash', self.get_hash())
+
+        self.disconnect()
+
+        self.run.info('Genome view database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+
+
+    def get_hash(self):
+        return 'hash' + str('%08x' % random.randrange(16**8))
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 ####################################################################################################
 #
 #     TABLES
