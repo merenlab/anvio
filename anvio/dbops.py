@@ -139,7 +139,7 @@ class ContigsSuperclass(object):
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
         D = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual' or D('mode') == 'genomeview':
+        if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual' or D('mode') == 'genome-view':
             return
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
