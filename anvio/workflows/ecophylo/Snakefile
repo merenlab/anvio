@@ -648,7 +648,7 @@ rule rename_tree_tips:
     threads: 2
     shell:
         """
-        script=$(which anvi-self-test | sed 's|bin/anvi-self-test|anvio/workflows/scg_phylo/scripts/convert_names_to_split_names.R|')
+        script=$(which anvi-self-test | sed 's|bin/anvi-self-test|anvio/workflows/ecophylo/scripts/convert_names_to_split_names.R|')
 
         Rscript "$script" --SCG {wildcards.reference_protein_name} \
                           --ECO_PHYLO_PATH ECO_PHYLO_WORKFLOW \
