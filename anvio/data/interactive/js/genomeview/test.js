@@ -19,8 +19,8 @@
  */
 
 /**
- * File Overview : This file contains temporary functions and processes used to test various functionality within 
- * genomeview. They are gathered here so as not to pollute the other genomeview files. 
+ * File Overview : This file contains temporary functions and processes used to test various functionality within
+ * genomeview. They are gathered here so as not to pollute the other genomeview files.
  */
 
 function drawTestShades() {
@@ -45,7 +45,18 @@ function generateMockADL() {
       'ruler': true // TODO: store any genome-specific scale data here
     }
     settings['additional-data-layers'].push(additionalDataObject)
+
   }
+  $.ajax({
+    type: 'POST',
+    cache: false,
+    url: '/data/get_genome_view_adl',
+    async: false,
+    data: {'adl' : JSON.stringify(settings['additional-data-layers'])},
+    success: function (resp) {
+      console.log(resp)
+    }
+  });
 }
 function generateMockGenomeOrder() {
   settings['genome-order-method'] = [{
@@ -61,7 +72,7 @@ function generateMockGenomeOrder() {
 }
 
 function generateMockBookmarks(){
-  let bookmarks = [ 
+  let bookmarks = [
     {
       name: 'entire seq',
       start: '0',
