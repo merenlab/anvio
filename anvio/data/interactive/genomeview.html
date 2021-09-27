@@ -4,26 +4,28 @@
         <title id="window-title">Genome View</title>
         <meta name="google" value="notranslate">
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+        <script type="text/javascript" src="js/error.js"></script>
+
+        <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" onerror='alertDependencyError("bootstrap`")' />
+        <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" onerror='alertDependencyError("colpick-css")'/>
         <link rel="stylesheet" type="text/css" href="./css/genomeview.css" />
         <!-- main css file imported for color picker functionality -->
         <link rel="stylesheet" type="text/css" href="./css/main.css" />
-        <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
 
         <link rel="shortcut icon" href="#">
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
-        <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/core.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/button.js"></script>
-        <script type="text/javascript" src="lib/jquery-ui/ui/position.js"></script>
-        <script type="text/javascript" src="lib/colpick/colpick.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+        <script type="text/javascript" src="lib/d3.js/d3.min.js" onerror='alertDependencyError("d3")'></script>
+        <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
+        <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+        <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
         <script type="text/javascript" src="./js/constants.js"></script>
         <script type="text/javascript" src="./js/utils.js"></script>
         <script type="text/javascript" src="./js/genomeview/main.js"></script>
@@ -33,7 +35,7 @@
         <script type="text/javascript" src="./js/genomeview/ui.js"></script>
         <script type="text/javascript" src="./js/genomeview/utils.js"></script>
 
-        <script src="./lib/fabric/dist/fabric.js"></script>
+        <script src="./lib/fabric/dist/fabric.js" onerror='alertDependencyError("fabric")'></script>
     </head>
     <body>
         <div class="container">
