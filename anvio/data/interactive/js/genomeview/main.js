@@ -139,8 +139,8 @@ function serializeSettings() {
     let color = $(row).attr('color')
     let id = ($(row).attr('id').split('_')[1])
     state['annotation-color-dict'].push({
-      id : id, 
-      color : color 
+      id : id,
+      color : color
     })
   })
 }
