@@ -1455,7 +1455,7 @@ function serializeSettings(use_layer_names) {
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
     state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
-    state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked'); 
+    state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked');
     state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
     state['invert-shade-for-bins'] = $('#invert_shade_for_bins').is(':checked');
     state['inverse-fill-opacity'] = $('#inverse_fill_opacity').val();
@@ -2371,23 +2371,23 @@ function loadState()
 
 function processState(state_name, state) {
     let serializedState = serializeSettings(true)
-    // state obj returned from serializeSettings, representing the default state anvio generates. 
-    // We can now check it against the user supplied state to update/ADD values in the default. 
+    // state obj returned from serializeSettings, representing the default state anvio generates.
+    // We can now check it against the user supplied state to update/ADD values in the default.
     let modifiedItems = []
     // keep track of the things we update and let the user know their state data has been tweaked
-    
-    function traverseNestedData(serializedStateObj, providedStateObj){ 
-        isObject = item => typeof item === 'object' ? true : false // check and end recursion if not provided an object 
+
+    function traverseNestedData(serializedStateObj, providedStateObj){
+        isObject = item => typeof item === 'object' ? true : false // check and end recursion if not provided an object
 
         if(isObject(serializedStateObj)){
             Object.entries(serializedStateObj).forEach(([key, value]) => {
-                if(serializedStateObj[key] === providedStateObj[key]){ // if user's state element matches anvio's generated state element, do nothing 
-                    return 
-                } else if(providedStateObj[key] == null || providedStateObj[key] == undefined){ // if user's state is missing an element found in anvio's generated state , add it 
-                    providedStateObj[key] = value                     
+                if(serializedStateObj[key] === providedStateObj[key]){ // if user's state element matches anvio's generated state element, do nothing
+                    return
+                } else if(providedStateObj[key] == null || providedStateObj[key] == undefined){ // if user's state is missing an element found in anvio's generated state , add it
+                    providedStateObj[key] = value
                 } else if (providedStateObj[key] !== value){ // user's state element doesnt match anvio's, so we go again
-                    traverseNestedData(serializedStateObj[key], providedStateObj[key])       
-                } 
+                    traverseNestedData(serializedStateObj[key], providedStateObj[key])
+                }
             })
         }
     }
@@ -2459,7 +2459,7 @@ function processState(state_name, state) {
             }
         }
 
-    } else { // generate layer order if not in state 
+    } else { // generate layer order if not in state
         layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
     }
 
@@ -2474,7 +2474,7 @@ function processState(state_name, state) {
         modifiedItems.push('views')
     }
 
-    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) { 
+    if (state.hasOwnProperty('layers') && state['layers'] === serializedState['layers']) {
         layers = {};
         for (let key in state['layers'])
         {
@@ -2533,64 +2533,64 @@ function processState(state_name, state) {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
             }
         }
-    } 
+    }
 
     if (state.hasOwnProperty('tree-type')){
         $('#tree_type').val(state['tree-type']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('angle-min')){
         $('#angle-min').val(state['angle-min']);
-    } 
+    }
 
     if (state.hasOwnProperty('tree-height')){
         $('#tree_height').val(state['tree-height']);
-    } 
+    }
 
     if (state.hasOwnProperty('tree-width')){
         $('#tree_width').val(state['tree-width']);
-    } 
+    }
 
     if (state.hasOwnProperty('angle-max')){
         $('#angle-max').val(state['angle-max']);
-    } 
+    }
 
     if (state.hasOwnProperty('tree-radius')) {
         $('#tree-radius-container').show();
         $('#tree-radius').val(state['tree-radius']);
-    } 
+    }
 
     if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
         $('#trees_container').val(state['order-by']);
-    } 
+    }
 
     if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
         $('#views_container').val(state['current-view']);
-    } 
+    }
 
     if (state.hasOwnProperty('max-font-size')) {
         $('#max_font_size').val(state['max-font-size']);
-    } 
+    }
 
     if (state.hasOwnProperty('max-font-size-label')) {
         $('#max_font_size_label').val(state['max-font-size-label']);
-    } 
+    }
 
     if (state.hasOwnProperty('layer-margin')){
         $('#layer-margin').val(state['layer-margin']);
-    } 
+    }
 
     if (state.hasOwnProperty('outer-ring-height')){
         $('#outer-ring-height').val(state['outer-ring-height']);
-    } 
+    }
 
     if (state.hasOwnProperty('outer-ring-margin')){
         $('#outer-ring-margin').val(state['outer-ring-margin']);
-    } 
+    }
 
     if (state.hasOwnProperty('edge-normalization')){
         $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-    } 
+    }
 
     if (state.hasOwnProperty('optimize-speed')){
         $('#optimize_speed').prop('checked', state['optimize-speed']);
@@ -2598,46 +2598,46 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('custom-layer-margin')){
         $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
-    } 
+    }
 
     if (state.hasOwnProperty('grid-width')) {
         $('#grid_width').val(state['grid-width']);
-    } 
+    }
 
     if (state.hasOwnProperty('bin-labels-font-size')) {
         $('#bin_labels_font_size').val(state['bin-labels-font-size']);
-    } 
+    }
 
     if (state.hasOwnProperty('bin-labels-angle')) {
         $('#bin_labels_angle').val(state['bin-labels-angle']);
-    } 
+    }
 
     if (state.hasOwnProperty('show-bin-labels')) {
         $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-    } 
+    }
 
     if (state.hasOwnProperty('show-shade-for-bins')) {
-        $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change'); 
+        $('#show_shade_for_bins').prop('checked', state['show-shade-for-bins']).trigger('change');
     }
     if (state.hasOwnProperty('shade-fill-opacity')){
-        $('#shade_fill_opacity').val(state['shade-fill-opacity']); 
+        $('#shade_fill_opacity').val(state['shade-fill-opacity']);
     }
     if (state.hasOwnProperty('invert-shade-for-bins')){
         $('#invert_shade_for_bins').prop('checked', state['invert-shade-for-bins']);
@@ -2650,27 +2650,27 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('samples-edge-length-normalization')) {
         $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
-    } 
+    }
 
     if (state.hasOwnProperty('samples-ignore-branch-length')) {
         $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
-    } 
+    }
 
     if (state.hasOwnProperty('samples-tree-height')) {
         $('#samples_tree_height').val(state['samples-tree-height']);
-    } 
+    }
 
     if (state.hasOwnProperty('background-opacity')) {
         $('#background_opacity').val(state['background-opacity']);
-    } 
+    }
 
     if (state.hasOwnProperty('draw-guide-lines')) {
         $('#draw_guide_lines').val(state['draw-guide-lines'])
-    } 
+    }
 
     if (state.hasOwnProperty('begins-from-branch')) {
         $('#begins_from_branch').val(state['begins-from-branch'])
-    } 
+    }
 
     // bootstrap values
     if (state.hasOwnProperty('show-support-values')){
@@ -2724,14 +2724,14 @@ function processState(state_name, state) {
                 samples_categorical_colors[key] = state['samples-categorical-colors'][key];
             }
         }
-    } 
+    }
     if (state.hasOwnProperty('samples-stack-bar-colors')) {
         for (let key in state['samples-stack-bar-colors']) {
             if (key in samples_stack_bar_colors) {
                 samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
             }
         }
-    } 
+    }
 
     buildLayersTable(layer_order, views[current_view]);
 
@@ -2741,10 +2741,10 @@ function processState(state_name, state) {
         state['samples-layers'] = serializedState['samples-layers']
         state['samples-layer-order'] = serializedState['samples-layer-order']
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-    } else { 
+    } else {
         traverseNestedData(serializedState['samples-layers'], state['samples-layers'])
         state['samples-layer-order'] = serializedState['samples-layer-order']
-        
+
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
         modifiedItems.push('samples layer order, samples layers')
     }
@@ -2763,14 +2763,14 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
         $('#samples_order').val(state['samples-order']).trigger('change');
-    } 
+    }
 
     populateColorDicts();
     buildLegendTables();
 
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
-    
+
 }
 
 
