@@ -47,7 +47,7 @@ function setEventListeners(){
       this.requestRenderAll();
       this.lastPosX = e.clientX;
 
-      let [l, r] = getFracForVPT();
+      let [l, r] = percentScale ? getFracForVPT() : getNTRangeForVPT();
       if (l < renderWindow[0] || r > renderWindow[1]) {
         updateRenderWindow();
         drawer.draw()
