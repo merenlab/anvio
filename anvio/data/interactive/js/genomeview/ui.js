@@ -286,19 +286,19 @@ function buildGenomesTable(genomes, order){
     var height = '50';
     var margin = '15';
     let genomeLabel= Object.keys(genome[1]['contigs']['info']);
-    var template = `<tr id=${genomeLabel}> 
-                  <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td> 
-                  <td> ${genomeLabel} </td> 
-                  <td>n/a</td> 
-                  <td>n/a</td> 
-                  <td>n/a</td> 
-                  <td><input class="input-height" type="text" size="3" id="height_${genomeLabel}" value="${height}"></input></td> 
-                  <td class="column-margin"><input class="input-margin" type="text" size="3" id="margin_${genomeLabel}" value="${margin}"></input></td> 
-                  <td>n/a</td> 
-                  <td>n/a</td> 
-                  <td><input type="checkbox" class="layer_selectors"></input></td> 
+    var template = `<tr id=${genomeLabel}>
+                  <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
+                  <td> ${genomeLabel} </td>
+                  <td>n/a</td>
+                  <td>n/a</td>
+                  <td>n/a</td>
+                  <td><input class="input-height" type="text" size="3" id="height_${genomeLabel}" value="${height}"></input></td>
+                  <td class="column-margin"><input class="input-margin" type="text" size="3" id="margin_${genomeLabel}" value="${margin}"></input></td>
+                  <td>n/a</td>
+                  <td>n/a</td>
+                  <td><input type="checkbox" class="layer_selectors"></input></td>
                   </tr>;`
-                  
+
     $('#tbody_genomes').append(template);
   })
 
@@ -310,27 +310,27 @@ function buildGenomesTable(genomes, order){
 }
 
 function buildGroupLayersTable(layerLabel){
-  let color; 
-  
-  if(layerLabel == 'GC_Content') color = settings['additional-data-layers'][0]['gcContent-color'] 
-  if(layerLabel == 'Coverage') color = settings['additional-data-layers'][0]['coverage-color']  
+  let color;
+
+  if(layerLabel == 'GC_Content') color = settings['additional-data-layers'][0]['gcContent-color']
+  if(layerLabel == 'Coverage') color = settings['additional-data-layers'][0]['coverage-color']
 
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
-    var template =  `<tr id=${layerLabel}> 
-                    <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td> 
-                    <td> ${layerLabel} </td> 
-                    <td style="margin-left: 5px;"> n/a </td> 
-                    <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td> 
+    var template =  `<tr id=${layerLabel}>
+                    <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td>
+                    <td> ${layerLabel} </td>
+                    <td style="margin-left: 5px;"> n/a </td>
+                    <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>
                     </tr>;`
   } else {
-    var template =  `<tr id=${layerLabel}> 
-                     <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td> 
+    var template =  `<tr id=${layerLabel}>
+                     <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td>
                      <td> ${layerLabel} </td>' +
-                     <td><div id="${layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: ${color}" color=${color} background-color=${color} ></div></td> 
-                     <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td> 
+                     <td><div id="${layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: ${color}" color=${color} background-color=${color} ></div></td>
+                     <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>
                      </tr>;`
   }
-                     
+
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
