@@ -182,6 +182,7 @@ class BottleApplication(Bottle):
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/get_genome_view_data',               callback=self.get_genome_view_data, method='POST')
+        self.route('/data/get_genome_view_adl',                callback=self.get_genome_view_ADL, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
@@ -1356,6 +1357,12 @@ class BottleApplication(Bottle):
         except Exception as e:
             return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
 
+    def get_genome_view_ADL(self):
+        try:
+            adl = json.loads(request.forms.get('adl'))
+            return json.dumps({'adl post req response' : adl})
+        except Exception as e:
+            return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
 
     def get_column_info(self):
         gene_callers_id = int(request.forms.get('gene_callers_id'))
@@ -1477,7 +1484,7 @@ class BottleApplication(Bottle):
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
+
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
