@@ -28,29 +28,7 @@ function drawTestShades() {
 }
 
 function generateMockADL() {
-  let dataLayerObj = {}
-  dataLayerObj['layers'] = ['Coverage', 'GC_content']
-  dataLayerObj['data'] = {}
-
   for (let i = 0; i < settings['genomeData']['genomes'].length; i++) { // generate mock additional data layer content
-    let genome = settings['genomeData']['genomes'][i][0]
-    dataLayerObj['data'][genome] = {}
-    dataLayerObj['data'][genome]['Coverage'] = {}
-    dataLayerObj['data'][genome]['GC_content'] = {}
-
-    Object.entries(settings['genomeData']['genomes'][i][1]['contigs']['info']).forEach(contig => {
-      let contigName = contig[0]
-      let contigLength = contig[1]['length']
-      let gcContent = []
-      let coverage = []
-      for (let j = 0; j < contigLength; j++) {
-        gcContent.push(Math.floor(Math.random() * 45))
-        coverage.push(Math.floor(Math.random() * 45))
-      }
-      dataLayerObj['data'][genome]['GC_content'][contigName] = gcContent
-      dataLayerObj['data'][genome]['Coverage'][contigName] = coverage
-    })
-
     let gcContent = []
     let coverage = []
     for (let j = 0; j < genomeMax; j++) {
@@ -68,18 +46,7 @@ function generateMockADL() {
       'ruler': true // TODO: store any genome-specific scale data here
     }
     settings['additional-data-layers'].push(additionalDataObject)
-
   }
-  $.ajax({
-    type: 'POST',
-    cache: false,
-    url: '/data/get_genome_view_adl',
-    async: false,
-    data: {'adl' : JSON.stringify(dataLayerObj)},
-    success: function (resp) {
-      console.log(resp)
-    }
-  });
 }
 function generateMockGenomeOrder() {
   settings['genome-order-method'] = [{
