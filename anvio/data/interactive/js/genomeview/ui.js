@@ -312,8 +312,8 @@ function buildGenomesTable(genomes, order){
 function buildGroupLayersTable(layerLabel){
   let color;
 
-  if(layerLabel == 'GC_Content') color = settings['additional-data-layers'][0]['gcContent-color']
-  if(layerLabel == 'Coverage') color = settings['additional-data-layers'][0]['coverage-color']
+  if(layerLabel == 'GC_Content') color = '#9B9B9B' // TODO: replace hardcoded values w state data
+  if(layerLabel == 'Coverage') color = '#3D3D3D'
 
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
     var template =  `<tr id=${layerLabel}>
