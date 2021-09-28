@@ -15,4 +15,5 @@ anvi-script-gen-genomes-file --input-dir $output_dir \
                              -o $output_dir/external-genomes.txt
 
 INFO "Running genome view"
-anvi-display-genomes -e $output_dir/external-genomes.txt
+anvi-display-genomes -e $output_dir/external-genomes.txt \
+                     -E genome-view.db
