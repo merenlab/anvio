@@ -52,7 +52,8 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
   let genome = this.settings['genomeData']['genomes'][orderIndex][1];
   let label = genome.genes.gene_calls[0].contig;
 
-  let additionalDataLayers = this.settings['additional-data-layers'].find(group => group.genome == label)
+  let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
+
   let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
@@ -60,15 +61,15 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
       this.addGenome(orderIndex, dataLayerHeight, layerPos)
       layerPos += dataLayerHeight
     }
-    if(layer == 'Coverage' && additionalDataLayers['coverage'] && $('#Coverage-show').is(':checked')){
-      this.buildNumericalDataLayer('coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
+    if(layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')){
+      this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
       layerPos += dataLayerHeight
     }
-    if(layer == 'GC_Content' && additionalDataLayers['gcContent'] && $('#GC_Content-show').is(':checked')){
-      this.buildNumericalDataLayer('gcContent', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
+    if(layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')){
+      this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
       layerPos += dataLayerHeight
     }
-    if(layer == 'Ruler' && additionalDataLayers['ruler'] && $('#Ruler-show').is(':checked')) {
+    if(layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
       this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
       layerPos += rulerHeight
     }
@@ -158,14 +159,20 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
 GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex){
-    let maxGCValue = 0
+    // TODO this will need to be refactored once we begin testing genomes comprised of multiple contigs
+    let contigObj = Object.values(additionalDataLayers)[0]
+    let contigArr = Object.values(contigObj)[0]
+
+    let maxDataLayerValue = 0
     let startingTop = marginTop + yOffset + layerPos
     let startingLeft = xDisps[genomeID]
     let pathDirective = [`M 0 0`]
 
-    for(let i = 0; i < additionalDataLayers[layer].length; i++){
-      additionalDataLayers[layer][i] > maxGCValue ? maxGCValue = additionalDataLayers[layer][i] : null
+    for(let i = 0; i < contigArr.length; i++){
+      contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
     }
+
+    console.log(maxDataLayerValue)
 
     let nGroups = 20
     let j = 0
@@ -175,20 +182,20 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
         if(j < l) continue;
         if(j > r) break;
         let left = j * scaleFactor + startingLeft
-        let top = [additionalDataLayers[layer][j] / maxGCValue] * layerHeight
+        let top = [contigArr[j] / maxDataLayerValue] * layerHeight
         let segment = `L ${left} ${top}`
         pathDirective.push(segment)
       }
       let graphObj = new fabric.Path(pathDirective.join(' '))
       graphObj.set({
         top : startingTop,
-        stroke : additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
+        stroke : 'black', //additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
         fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
         selectable: false,
         objectCaching: false,
         id : `${layer} graph`,
         groupID : genomeID,
-        genome : additionalDataLayers['genome']
+        genome : genomeID
       })
       canvas.bringToFront(graphObj)
       pathDirective = []
