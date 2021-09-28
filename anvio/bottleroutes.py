@@ -182,7 +182,7 @@ class BottleApplication(Bottle):
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/get_genome_view_data',               callback=self.get_genome_view_data, method='POST')
-        self.route('/data/get_genome_view_adl',                callback=self.get_genome_view_ADL, method='POST')
+        self.route('/data/get_genome_view_adl',                callback=self.get_genome_view_continuous_data_layers, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
@@ -1357,12 +1357,16 @@ class BottleApplication(Bottle):
         except Exception as e:
             return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
 
-    def get_genome_view_ADL(self):
+
+    def get_genome_view_continuous_data_layers(self):
+        """populate continuous data layers, and send them back to the frontend"""
+
         try:
-            adl = json.loads(request.forms.get('adl'))
-            return json.dumps({'adl post req response' : adl})
+            self.interactive.populate_genome_continuous_data_layers()
+            return json.dumps(self.interactive.continuous_data_layers)
         except Exception as e:
             return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
+
 
     def get_column_info(self):
         gene_callers_id = int(request.forms.get('gene_callers_id'))
