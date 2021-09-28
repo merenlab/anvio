@@ -63,6 +63,7 @@ var genomeData;
 
 $(document).ready(function () {
   initData();
+  loadAdditionalDataLayers()
   loadState();
   loadAll();
 });
@@ -82,6 +83,18 @@ function initData() {
       let genomes = Object.entries(genomeData.genomes) // an array of 2d arrays, where each genome[0] is the object key, and genome[1] is the value
       settings['genomeData'] = genomeData
       settings['genomeData']['genomes'] = genomes
+    }
+  });
+}
+
+function loadAdditionalDataLayers(){
+  $.ajax({
+    type: 'POST',
+    cache: false,
+    url: '/data/get_genome_view_adl',
+    async: false,
+    success: function (resp) {
+      console.log('resp', resp)
     }
   });
 }
