@@ -956,7 +956,62 @@ class AggregateGenomes(object):
 
 
     def populate_genome_continuous_data_layers(self, skip_GC_content=False):
-        """Function to populate continuous data layers."""
+        """Function to populate continuous data layers.
+
+        Calling this function will poupulate the `self.continuous_data_layers` data structure, which will
+        look something like this:
+
+            >>> {
+            >>>   "layers": [
+            >>>     "GC_content",
+            >>>     "Another_layer"
+            >>>   ],
+            >>>   "data": {
+            >>>     "GENOME_01": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_A": [(...)],
+            >>>         "CONTIG_B": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_A": [(...)],
+            >>>         "CONTIG_B": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     },
+            >>>     "GENOME_02": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_C": [(...)],
+            >>>         "CONTIG_D": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_C": [(...)],
+            >>>         "CONTIG_D": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     },
+            >>>     "GENOME_03": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_E": [(...)],
+            >>>         "CONTIG_F": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_E": [(...)],
+            >>>         "CONTIG_F": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     }
+            >>>   }
+            >>> }
+
+
+        Please note: The number of data points in continuous data layers for a given contig will always
+        be equal or less than the number of nucleotides in the same contig. When displaying htese data,
+        one should always assume that the first data point matches to teh first nucleotide position, and
+        cut the information in the layer short when necessary.
+        """
 
         if not self.initialized:
             raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
