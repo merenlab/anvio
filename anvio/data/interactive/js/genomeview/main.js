@@ -94,7 +94,8 @@ function loadAdditionalDataLayers(){
     url: '/data/get_genome_view_adl',
     async: false,
     success: function (resp) {
-      console.log('resp', resp)
+      settings['additional-data-layers'] = resp
+      settings['additional-data-layers']['layers'].push('ruler') // add ruler by default
     }
   });
 }
@@ -168,20 +169,14 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('additional-data-layers')) {
     settings['additional-data-layers'] = stateData['additional-data-layers']
-  } else {
-    settings['additional-data-layers'] = []
-    generateMockADL()
   }
 
-  // working under the assumption that all genome groups with contain the same additional data layers,
-  // we can query the first genome group for specific ADL and go from there
-
-  if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['coverage']) {
+  if (settings['additional-data-layers'] && settings['additional-data-layers']['layers'].includes('Coverage')) {
     settings['group-layer-order'].unshift('Coverage')
     maxGroupSize += 1 // increase group size if coverage layer exists
   }
 
-  if (settings['additional-data-layers'] && settings['additional-data-layers'][0]['gcContent']) {
+  if (settings['additional-data-layers'] && settings['additional-data-layers']['layers'].includes('GC_content')) {
     settings['group-layer-order'].unshift('GC_Content')
     maxGroupSize += 1 // increase group size if GC layer exists
   }
