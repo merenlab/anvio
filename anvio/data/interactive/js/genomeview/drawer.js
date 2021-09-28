@@ -172,8 +172,6 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
       contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
     }
 
-    console.log(maxDataLayerValue)
-
     let nGroups = 20
     let j = 0
     let [l,r] = getRenderNTRange(genomeID);
