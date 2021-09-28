@@ -10,29 +10,20 @@ import os.path
 
 # Import tables
 #--------------
-external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls_all, \
+external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls, \
                                   delim_whitespace=True, \
                                   index_col=False)
 
-
-headers = pd.read_csv(snakemake.input.headers, \
-                      sep="\t", \
-                      index_col=False,
-                      names=["contig"])
 # Make new columns
 #-----------------
-external_gene_calls[['sample_name', 'contig_number', 'gene_callers_id']] = external_gene_calls['contig'].str.split('_',expand=True)
+external_gene_calls[['sample_name', 'contig_number', 'gene_callers_id']] = external_gene_calls['contig'].str.rsplit('_',2, expand=True)
 external_gene_calls['reference_protein_name'] = snakemake.wildcards.reference_protein_name
 external_gene_calls['contig'] = external_gene_calls['sample_name'] + '_' + external_gene_calls['reference_protein_name'] + '_' + external_gene_calls['gene_callers_id']
+external_gene_calls = external_gene_calls[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]]
 
-# # Join reformat_report with external_gene_calls
-#------------------------------------------------
-external_gene_calls_filtered = external_gene_calls.merge(headers, on="contig", how="inner").drop(columns=['reference_protein_name', 'sample_name', 'contig_number', 'reference_protein_name'])
-
-# # Write file
+# Write file
 #-------------
-external_gene_calls_filtered.to_csv(snakemake.output.external_gene_calls_renamed, \
-                                    sep="\t", \
-                                    index=False, \
-                                    header=True, \
-                                    na_rep="NA")
+external_gene_calls.to_csv(snakemake.output.external_gene_calls_renamed, \
+                           sep="\t", \
+                           index=False, \
+                           header=True)

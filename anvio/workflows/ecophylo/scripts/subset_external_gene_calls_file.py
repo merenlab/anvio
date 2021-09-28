@@ -1,0 +1,31 @@
+from Bio import SeqIO
+
+import pandas as pd
+import numpy as np
+import glob
+import os.path
+
+# This script reformats the names from the external_gene_calls.txt file (which comes from anvi-get-sequences-for-gene-calls) with 
+# the names of sequences from anvi-estimate-scg-taxonomy
+
+# Import tables
+#--------------
+external_gene_calls_all = pd.read_csv(snakemake.input.external_gene_calls_all, \
+                                      delim_whitespace=True, \
+                                      index_col=False)
+
+headers = pd.read_csv(snakemake.input.headers, \
+                      sep="\t", \
+                      index_col=False,
+                      names=["contig"])
+
+# Make new columns
+#-----------------
+external_gene_calls_subset = external_gene_calls_all.merge(headers, on="contig", how="inner")
+
+# Write file
+#-------------
+external_gene_calls_subset.to_csv(snakemake.output.external_gene_calls_subset, \
+                           sep="\t", \
+                           index=False, \
+                           header=True)

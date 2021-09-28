@@ -52,12 +52,12 @@ rule anvi_run_hmms_hmmsearch:
       contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
 
       shell("anvi-run-hmms -c %s \
-                         --hmmer-program hmmsearch \
-                         --hmmer-output-dir %s \
-                         -I {params.hmm_source} \
-                         --domain-hits-table \
-                         --just-do-it \
-                         -T {threads} 2> {log}" % (contigsDB, hmmer_output_dir))
+                           --hmmer-program hmmsearch \
+                           --hmmer-output-dir %s \
+                           -I {params.hmm_source} \
+                           --domain-hits-table \
+                           --just-do-it \
+                           -T {threads} 2> {log}" % (contigsDB, hmmer_output_dir))
 
 rule filter_hmm_hits_by_query_coverage:
     """Filter hmm_hits table by query coverage using domtblout"""
@@ -219,13 +219,30 @@ rule anvi_get_external_gene_calls_file:
                                                  -o {params.fasta} 2> {log}')
 
 
+rule rename_and_filter_external_gene_calls_file:
+    """
+    Create primary key from external-gene-calls.txt to join with references sequences to make
+    a contigsDB for the metagenomics workflow
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{sample_name}_{reference_protein_name}.log")
+    input:
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls.tsv")
+    output:
+        external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls_renamed.tsv")
+    threads: 5
+    script:
+        "scripts/rename_external_gene_calls_file.py"
+
+
 rule cat_external_gene_calls_file:
     """Cat all external_gene_calls files from all samples into one file"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{reference_protein_name}.log")
     input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_external_gene_calls.tsv"), sample_names = M.names_list, reference_protein_names = M.Reference_protein_list),
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, reference_protein_names = M.Reference_protein_list),
     output:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all.tsv"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
@@ -233,11 +250,8 @@ rule cat_external_gene_calls_file:
         shell("cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")
 
 
-rule rename_and_filter_external_gene_calls_file_all:
-    """
-    Create primary key from external-gene-calls.txt to join with references sequences to make
-    a contigsDB for the metagenomics workflow
-    """
+rule subset_external_gene_calls_file_all:
+    """"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{reference_protein_name}.log")
@@ -245,11 +259,10 @@ rule rename_and_filter_external_gene_calls_file_all:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all.tsv"),
         headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
     output:
-        external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all_renamed.tsv"),
-        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all_renamed.done"))
+        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_subset.tsv"),
     threads: 5
     script:
-        "scripts/rename_external_gene_calls_file.py"
+        "scripts/subset_external_gene_calls_file.py"
 
 
 rule cluster_X_percent_sim_mmseqs:
@@ -393,13 +406,14 @@ rule make_fasta_txt:
 
     version: 1.0
     input:
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_all_renamed.done"), reference_protein_names = M.Reference_protein_list)
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_subset.tsv"), reference_protein_names = M.Reference_protein_list),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_references_for_mapping_NT.fa"), reference_protein_names = M.Reference_protein_list),
     output:
         fasta_txt = os.path.join("ECO_PHYLO_WORKFLOW", "fasta.txt"),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
         fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_references_for_mapping_NT.fa') for r in M.Reference_protein_list]
-        external_gene_calls = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_all_renamed.tsv') for r in M.Reference_protein_list]
+        external_gene_calls = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_subset.tsv') for r in M.Reference_protein_list]
 
         list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.Reference_protein_list, fastas, external_gene_calls)]
 
@@ -468,7 +482,7 @@ rule make_anvio_state_file:
 
     version: 1.0
     input:
-        num_tree_tips = rules.rename_and_filter_external_gene_calls_file_all.output.external_gene_calls_renamed,
+        num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
     output:
         state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
@@ -482,8 +496,8 @@ rule make_anvio_state_file:
 
         # height and width
         num_tree_tips = pd.read_csv(input.num_tree_tips, \
-                  sep="\t", \
-                  index_col=None)
+                                    sep="\t", \
+                                    index_col=None)
 
         num_SCGs = num_tree_tips.shape[0]
         num_metagenomes = len(M.input_dirs_dict)
@@ -557,7 +571,7 @@ rule make_anvio_state_file:
                   json.dump(state_dict, outfile, indent=4)
 
 if M.run_iqtree == True:
-  rule iqtree:
+  rule calculate_tree:
       """Calculate a phylogenetic tree using iqtree"""
 
       version: 1.0
@@ -580,7 +594,7 @@ if M.run_iqtree == True:
                   {params.additional_params} >> {log} 2>&1"
 
 elif M.run_fasttree == True:
-  rule fasttree:
+  rule calculate_tree:
       """Want to go faster?? Then Fasttree"""
 
       version: 1.0
@@ -637,23 +651,31 @@ rule anvi_summarize:
 
         """
 
+
 rule rename_tree_tips:
     """Joins read recruitment and taxonomy data for interactive interface"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "combine_data_{reference_protein_name}.log")
     input:
-        done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
-    output: touch(os.path.join("{reference_protein_name}_combined.done"))
+        done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done"),
+        tree = rules.calculate_tree.output.tree
+    output:
+        done = os.path.join("{reference_protein_name}_combined.done"),
+        tree = os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}_renamed.nwk")
     threads: 2
-    shell:
-        """
-        script=$(which anvi-self-test | sed 's|bin/anvi-self-test|anvio/workflows/ecophylo/scripts/convert_names_to_split_names.R|')
+    run:
+        from ete3 import Tree
 
-        Rscript "$script" --SCG {wildcards.reference_protein_name} \
-                          --ECO_PHYLO_PATH ECO_PHYLO_WORKFLOW \
-                          --METAGENOMICS_WORKFLOW_PATH METAGENOMICS_WORKFLOW &> {log}
-        """
+        t = Tree(input.tree)
+
+        for leaf in t:
+            leaf.name = leaf.name + "_split_00001"
+
+        t.write(format = 1, outfile = output.tree)
+
+        shell('touch {output}')
+
 
 rule anvi_import_state:
     """Import state file for interactive interface"""
