@@ -840,6 +840,9 @@ class AggregateGenomes(object):
         self.genomes = {}
         self.gene_associations = {}
 
+        # things to fill in optionally
+        self.continuous_data_layers = {'layers': set([]), 'data': {}}
+
         # let's have this ready for convenience:
         self.genome_names = list(self.genome_descriptions.genomes.keys())
 
@@ -847,7 +850,7 @@ class AggregateGenomes(object):
             self.init()
 
 
-    def init(self):
+    def init(self, populate_continuous_data=True):
         """Learn everything about genomes of interest.
 
         Calling this funciton will populate multiple critical dictionaries this class
@@ -870,7 +873,10 @@ class AggregateGenomes(object):
             # learn all about contigs:
             self.genomes[genome_name]['contigs'] = self.get_contigs_dict(genome_name)
 
-            self.initialized = True
+        self.initialized = True
+
+        if populate_continuous_data:
+            self.populate_genome_continuous_data_layers()
 
 
     def get_gene_associations(self):
@@ -923,6 +929,47 @@ class AggregateGenomes(object):
         d['functions'], d['aa'], d['dna'] = self.genome_descriptions.get_functions_and_sequences_dicts_from_contigs_db(genome_name)
 
         return d
+
+
+    def populate_continuous_GC_content_data(self):
+        """Add sliding window GC-content change per contig"""
+
+        if not self.initialized:
+            raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
+
+        self.continuous_data_layers['layers'].add('GC_content')
+
+        self.progress.new('Populating continuous data', progress_total_items=len(self.genomes))
+        for genome_name in self.genomes:
+            self.progress.update(f"GC-content for {genome_name}", increment=True)
+
+            if genome_name not in self.continuous_data_layers['data']:
+                self.continuous_data_layers['data'][genome_name] = {}
+
+            self.continuous_data_layers['data'][genome_name]['GC_content'] = {}
+
+            for contig_name in self.genomes[genome_name]['contigs']['info']:
+                contig_sequence = self.genomes[genome_name]['contigs']['dna'][contig_name]['sequence']
+                self.continuous_data_layers['data'][genome_name]['GC_content'][contig_name] = utils.get_GC_content_for_sequence_as_an_array(contig_sequence)
+
+        self.progress.end()
+
+
+    def populate_genome_continuous_data_layers(self, skip_GC_content=False):
+        """Function to populate continuous data layers."""
+
+        if not self.initialized:
+            raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
+
+        # reset in case it was previously populated
+        self.continuous_data_layers = {'layers': set([]), 'data': {}}
+
+        for genome_name in self.genomes:
+            self.continuous_data_layers['data'][genome_name] = {}
+
+        # add GC-content
+        if not skip_GC_content:
+            self.populate_continuous_GC_content_data()
 
 
     def get_contigs_dict(self, genome_name):
