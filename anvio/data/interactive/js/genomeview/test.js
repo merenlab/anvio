@@ -28,6 +28,8 @@ function drawTestShades() {
 }
 
 function generateMockADL() {
+  settings['mock-additional-data-layers'] = []
+
   for (let i = 0; i < settings['genomeData']['genomes'].length; i++) { // generate mock additional data layer content
     let gcContent = []
     let coverage = []
@@ -45,7 +47,7 @@ function generateMockADL() {
       'gcContent-color': '#9b07e0',
       'ruler': true // TODO: store any genome-specific scale data here
     }
-    settings['additional-data-layers'].push(additionalDataObject)
+    settings['mock-additional-data-layers'].push(additionalDataObject)
   }
 }
 function generateMockGenomeOrder() {
