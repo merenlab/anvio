@@ -841,7 +841,7 @@ class AggregateGenomes(object):
         self.gene_associations = {}
 
         # things to fill in optionally
-        self.continuous_data_layers = {'layers': set([]), 'data': {}}
+        self.continuous_data_layers = {'layers': [], 'data': {}}
 
         # let's have this ready for convenience:
         self.genome_names = list(self.genome_descriptions.genomes.keys())
@@ -937,7 +937,8 @@ class AggregateGenomes(object):
         if not self.initialized:
             raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
 
-        self.continuous_data_layers['layers'].add('GC_content')
+        if 'GC_content' not in self.continuous_data_layers['layers']:
+            self.continuous_data_layers['layers'].append('GC_content')
 
         self.progress.new('Populating continuous data', progress_total_items=len(self.genomes))
         for genome_name in self.genomes:
@@ -1017,7 +1018,7 @@ class AggregateGenomes(object):
             raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
 
         # reset in case it was previously populated
-        self.continuous_data_layers = {'layers': set([]), 'data': {}}
+        self.continuous_data_layers = {'layers': [], 'data': {}}
 
         for genome_name in self.genomes:
             self.continuous_data_layers['data'][genome_name] = {}
