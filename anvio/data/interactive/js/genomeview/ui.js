@@ -283,9 +283,10 @@ function toggleSettingsPanel() {
 
 function buildGenomesTable(genomes, order){
   genomes.map(genome => {
+    console.log(genome[0])
     var height = '50';
     var margin = '15';
-    let genomeLabel= Object.keys(genome[1]['contigs']['info']);
+    let genomeLabel= genome[0];
     var template = `<tr id=${genomeLabel}>
                   <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
                   <td> ${genomeLabel} </td>
