@@ -427,7 +427,7 @@ function changeGenomeOrder(updatedOrder){
   let newGenomeOrder = []
   updatedOrder.map(label => {
     settings['genomeData']['genomes'].map(genome => {
-        if(label == Object.keys(genome[1]['contigs']['info'])[0]){ // matching label text to first contig name of each genome
+        if(label == genome[0]){ // matching label text to first contig name of each genome
           newGenomeOrder.push(genome)
         }
     })
