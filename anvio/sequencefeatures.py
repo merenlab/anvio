@@ -3,7 +3,9 @@
 
 """Classes to deal with sequence features"""
 
+import os
 import argparse
+import xml.etree.ElementTree as ET
 
 import anvio
 import anvio.utils as utils
@@ -13,6 +15,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.drivers.blast import BLAST
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -25,6 +28,24 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 pp = terminal.pretty_print
+run_quiet = terminal.Run(verbose=False)
+
+
+class Palindrome:
+    def __init__(self):
+        self.query_start = None
+        self.query_end = None
+        self.query_sequence = None
+        self.hit_start = None
+        self.hit_end = None
+        self.hit_sequence = None
+        self.num_mismatches = None
+        self.length = None
+        self.distance = None
+        self.matches = ''
+
+    def __str__(self):
+        return f"{self.query_sequence} ({self.query_start}:{self.query_end}) :: {self.hit_sequence} ({self.hit_start}:{self.hit_end})"
 
 
 class Palindromes:
@@ -36,6 +57,7 @@ class Palindromes:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
+        self.min_gap_length = A('min_gap_length') or 0
         self.verbose = A('verbose') or False
         self.contigs_db_path = A('contigs_db')
         self.fasta_file_path = A('fasta_file')
@@ -48,6 +70,7 @@ class Palindromes:
         self.run.warning(None, header="SEARCH SETTINGS", lc="green")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
+        self.run.info('Minimum gap length', self.min_gap_length)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
 
         self.palindromes = {}
@@ -79,7 +102,7 @@ class Palindromes:
         except:
             raise ConfigError("Maximum number of mismatches must be an integer.")
 
-        if self.min_palindrome_length % 2 != 0:
+        if not self.min_gap_length and self.min_palindrome_length % 2 != 0:
             raise ConfigError("OK. The minimum palindrome length parameter must be an `even` integer. You know, "
                               "because that's how palindromes work.")
 
@@ -96,8 +119,8 @@ class Palindromes:
     def process(self):
         """Processes all sequences in a given contigs database or a FASTA file.
 
-        What this function does depends on the configuration of the class. The member funciton `find`
-        is a more appropriate one to call if there is a single sequence to process.
+        What this function does depends on the configuration of the class. Member functions `find_gapless`
+        or `find_with_gaps` may be more appropriate to call if there is a single sequence to process.
         """
 
         if self.contigs_db_path:
@@ -107,7 +130,7 @@ class Palindromes:
             self.progress.new('Searching', progress_total_items=len(contig_sequences_dict))
             for sequence_name in contig_sequences_dict:
                 self.progress.update(f"{sequence_name} ({pp(len(contig_sequences_dict[sequence_name]['sequence']))} nts)", increment=True)
-                self.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
+                self.find_gapless(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
             self.progress.end()
 
         elif self.fasta_file_path:
@@ -116,7 +139,7 @@ class Palindromes:
             self.progress.new('Searching', progress_total_items=num_sequences)
             while next(fasta):
                 self.progress.update(f"{fasta.id} ({pp(len(fasta.seq))} nts)", increment=True)
-                self.find(fasta.seq, sequence_name=fasta.id)
+                self.find_gapless(fasta.seq, sequence_name=fasta.id)
             self.progress.end()
 
         else:
@@ -127,7 +150,121 @@ class Palindromes:
 
 
     def find(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
-        """Find palindromes in a single sequence, and populate `self.palindromes`
+        """Wrapper function to find gapless or with gaps"""
+
+        if self.min_gap_length:
+            self.find_with_gaps(sequence, sequence_name=sequence_name, display_palindromes=display_palindromes)
+        else:
+            self.find_gapless(sequence, sequence_name=sequence_name, display_palindromes=display_palindromes)
+
+
+    def find_with_gaps(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
+        """Find palindromes with gaps in a single sequence, and populate `self.palindromes`
+
+        A palindrome with gaps is one that looks like this, with some gaps between the two palindromic ends of
+        a given sequence:
+
+        >>> ATCGxxxCGAT
+
+        The member function `process` may be a better one to call with an `args` object. See `anvi-search-palindromes`
+        for example usage.
+        """
+
+        if sequence_name in self.palindromes:
+            raise ConfigError(f"The sequence '{sequence_name}' is already in `self.palindromes`.")
+
+        sequence = sequence.upper()
+        sequence_length = len(sequence)
+
+        if sequence_length < self.min_palindrome_length * 2 + self.min_gap_length:
+            self.progress.reset()
+            self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short "
+                             f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
+                             f"{self.min_gap_length} nucleoties in between :/ Anvi'o will skip it.")
+
+        # setup BLAST job
+        tmp_dir = filesnpaths.get_temp_directory_path()
+        fasta_file_path = os.path.join(tmp_dir, 'sequence.fa')
+        results_file_path = os.path.join(tmp_dir, 'hits.xml')
+        with open(fasta_file_path, 'w') as fasta_file:
+            fasta_file.write(f'>sequence\n{sequence}\n')
+
+        # run blast
+        blast = BLAST(fasta_file_path, search_program='blastn', run=run_quiet)
+        blast.evalue = 10
+        blast.min_pct_id = 100 - self.max_num_mismatches
+        blast.search_output_path = results_file_path
+        blast.makedb(dbtype='nucl')
+        blast.blast(outputfmt='5', word_size=10, strand='minus')
+
+        
+        # parse BLAST XML output
+        root = ET.parse(blast.search_output_path).getroot()
+        query_starts = set([])
+        candidates = []
+        for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
+
+            query_sequence_name = query_sequence_xml.find('Iteration_query-def').text
+
+            for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
+
+                hit_num =int(hit_xml.find('Hit_num').text)
+
+                for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
+                    p = Palindrome()
+                    
+                    p.query_start = int(hsp_xml.find('Hsp_query-from').text)
+                    p.query_end = int(hsp_xml.find('Hsp_query-to').text)
+                    p.hit_start = int(hsp_xml.find('Hsp_hit-to').text)
+                    p.hit_end = int(hsp_xml.find('Hsp_hit-from').text)
+
+                    if p.hit_end in query_starts:
+                        continue
+                    else:
+                        query_starts.add(p.query_start)
+
+                    p.query_sequence = hsp_xml.find('Hsp_qseq').text
+                    p.hit_sequence = hsp_xml.find('Hsp_hseq').text
+                    p.length = int(hsp_xml.find('Hsp_align-len').text)
+                    p.num_gaps = int(hsp_xml.find('Hsp_gaps').text)
+                    p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
+                    p.matches = hsp_xml.find('Hsp_midline').text
+                    p.distance = p.query_end - p.hit_start
+
+                    if p.num_gaps > 1:
+                        continue
+
+                    if p.distance < self.min_gap_length:
+                        continue
+
+                    if p.num_mismatches > self.max_num_mismatches:
+                        continue
+                    
+                    if p.length < self.min_palindrome_length:
+                        continue
+
+                    candidates.append(p)
+
+                    if anvio.DEBUG or display_palindromes or self.verbose:
+                        self.progress.reset()
+                        self.run.warning(None, header=f'{p.length} nts palindrome at "{p.query_start}:{p.query_end}"', lc='yellow')
+                        self.run.info('Query start/stop', f"{p.query_start}/{p.query_end}", mc='green')
+                        self.run.info('Hit start/stop', f"{p.hit_start}/{p.hit_end}", mc='green')
+                        self.run.info('Distance', f"{p.distance}", mc='red')
+                        self.run.info('FDW', p.query_sequence, mc='green')
+                        self.run.info('ALN', p.matches, mc='green')
+                        self.run.info('REV', p.hit_sequence, mc='green')
+
+        return candidates
+
+
+    def find_gapless(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
+        """Find gapless palindromes in a single sequence, and populate `self.palindromes`
+
+        A gapless palindrome is one that looks like this, with no gaps between the two palindromic ends of
+        a given sequence:
+
+        >>> ATCGCGAT
 
         The member function `process` may be a better one to call with an `args` object. See `anvi-search-palindromes`
         for example usage.
