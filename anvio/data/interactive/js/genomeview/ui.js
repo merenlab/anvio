@@ -426,11 +426,7 @@ function changeGroupLayersOrder(updatedOrder){
 function changeGenomeOrder(updatedOrder){
   let newGenomeOrder = []
   updatedOrder.map(label => {
-    settings['genomeData']['genomes'].map(genome => {
-        if(label == genome[0]){ // matching label text to first contig name of each genome
-          newGenomeOrder.push(genome)
-        }
-    })
+    newGenomeOrder.push(settings['genomeData']['genomes'].find(genome => genome[0] == label))
   })
   settings['genomeData']['genomes'] = newGenomeOrder
   drawer.draw()
