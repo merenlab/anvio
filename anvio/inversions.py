@@ -15,6 +15,7 @@ import anvio.terminal as terminal
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.sequencefeatures import Palindromes
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -42,6 +43,8 @@ class Inversions:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.profile_db_paths = A('profile_dbs')
+        self.min_palindrome_length = A('min_palindrome_length') or 10
+        self.max_num_mismatches = A('max_num_mismatches') or 0
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -50,6 +53,7 @@ class Inversions:
         split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
         contigs_db.disconnect()
 
         # next, we will generate a dictionary to convert contig names to split names
@@ -79,6 +83,9 @@ class Inversions:
         min_distance_between_independent_stretches = 2000
         num_nts_to_pad_stretches = 100
 
+        # populate coverage stretches in contigs based on coverage data in this
+        # particular profile_db. we will then go through each stretch to find
+        # those that include palindromic sequences
         coverage_stretches_in_contigs = {}
         for contig_name in self.contig_names:
             contig_coverage = np.array([])
@@ -136,7 +143,27 @@ class Inversions:
                                                            contig_length if (e[1] + num_nts_to_pad_stretches) > contig_length else e[1] + num_nts_to_pad_stretches) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
-            # DO SOMETHING WITH `coverage_stretches_in_contigs` :)
+        # time to go through each stretch and look for palindromes
+        # first, we will set up the Palindromes class
+        palindromes = Palindromes(argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
+                                                     max_num_mismatches=self.max_num_mismatches),
+                                  run=run_quiet,
+                                  progress=progress_quiet)
+
+        # now we can go through all the stretches to look for palindromes
+        for contig_name in coverage_stretches_in_contigs:
+            contig_sequence = self.contig_sequences[contig_name]['sequence']
+            for start, stop in coverage_stretches_in_contigs[contig_name]:
+                stretch_sequence = contig_sequence[start:stop]
+                sequence_name = f"{contig_name}_{start}_{stop}"
+
+                candidates = palindromes.find_with_gaps(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
+
+                if not len(candidates):
+                    continue
+
+                for candidate in candidates:
+                    print(candidate)
 
 
     def process(self):
