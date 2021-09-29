@@ -91,12 +91,11 @@ GenomeDrawer.prototype.calculateLayerSizes = function(){
 GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
-  let genomeLabel = genome[0]
   let genomeID = genome[0];
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) // render arrows in the center of genome layer's allotted vertical space
 
   if(showLabels) {
-    canvas.add(new fabric.Text(genomeLabel, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
+    canvas.add(new fabric.Text(genomeID, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
   }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x*scaleFactor + xDisps[genomeID]);
