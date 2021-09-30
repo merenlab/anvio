@@ -223,11 +223,18 @@ class Palindromes:
                     p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
                     p.midline = ''.join(['|' if p.first_sequence[i] == p.second_sequence[i] else 'x' for i in range(0, len(p.first_sequence))])
 
-                    # this is the crazy part: read the function docstring
-                    if p.num_mismatches > self.max_num_mismatches:
+                    if p.num_mismatches > self.max_num_mismatches or p.num_gaps > 0:
+                        # this is the crazy part: read the function docstring for `get_split_palindromes`.
+                        # briefly, we conclude that there are too many mismatches in this match, we will
+                        # try and see if there is anything we can salvage from it.
                         p_list = self.get_split_palindromes(p, display_palindromes=display_palindromes)
-                    else:
+                    elif p.length >= self.min_palindrome_length:
+                        # there aren't too many mismatches, and the length of it checks out. we will
+                        # continue processing this hit as a sole palindrome
                         p_list = [p]
+                    else:
+                        # buckle your seat belt Dorothy, 'cause Kansas is going bye-bye:
+                        continue
 
                     for sp in p_list:
                         if anvio.DEBUG or display_palindromes or self.verbose:
