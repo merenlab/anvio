@@ -210,7 +210,11 @@ class Palindromes:
                     p.midline = ''.join(['|' if p.first_sequence[i] == p.second_sequence[i] else 'x' for i in range(0, len(p.first_sequence))])
                     p.distance = p.second_start - p.first_start
 
-                    p_list = [p]
+                    # this is the crazy part: read the function docstring
+                    if p.num_mismatches > self.max_num_mismatches:
+                        p_list = self.get_split_palindromes(p, display_palindromes=display_palindromes)
+                    else:
+                        p_list = [p]
 
                     for sp in p_list:
                         if anvio.DEBUG or display_palindromes or self.verbose:
@@ -225,6 +229,198 @@ class Palindromes:
                             self.run.info('2nd sequence', sp.second_sequence, mc='green')
 
                         self.palindromes[sequence_name].append(sp)
+
+
+    def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3):
+        """Takes a mismatch map, returns longest palindrome start/ends that satisfy all constraints
+
+        If you would like to test this function, a palindrome mismatch map looks
+        like this:
+
+            >>> s = 'ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo'
+
+        The rest of the code will document itself using the mismatch map `s` as an example :)
+        """
+
+        if len(s) < min_palindrome_length:
+            return []
+
+        # The purpose here is ot find the longest stretches of 'o'
+        # characters in a given string of mismatch map `s` (which
+        # correspond to matching nts in a palindromic sequence)
+        # without violating the maximum number of mismatches allowed
+        # by the user (which correspond to `c`) characters. The gaps
+        # `-` are not allowed by any means, so they are ignored.
+        #
+        # A single pass of this algorithm over a `s` to
+        # identify sections of it with allowed number of mismathces
+        # will not give an opportunity to identify longest possible
+        # stretches of palindromic sequences. however, a moving
+        # start position WILL consider all combinations of substrings,
+        # which can later be considered to find best ones. it is
+        # difficult to imagine without an example, so for the string `s`
+        # shown above, `starts` will look like this:
+        #
+        # >>> [0, 3, 20, 24, 26, 27, 29, 30, 32, 42, 44, 45, 47, 65, 67, 71]
+        starts = [0] + [pos + 1 for pos, c in enumerate(s) if c == 'x']
+
+        # running the state machine below for a given `start` will collect
+        # every matching stretch that contains an acceptable number of
+        # mismatches. For instance, for a max mismatch requirement of two,
+        # the iterations over `s` will identify start-end positions that
+        # will yeild the following substrings:
+        #
+        # >>>  s: ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo
+        #
+        # >>>  0: ooxooooooooooooooooxooo oxxo xoxooooooooo oxxo ooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>>  3: .. ooooooooooooooooxoooxo xox oxoooooooooxo xoxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 20: ................... oooxox oxxo oooooooooxox oxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 24: ....................... oxxo xoxooooooooo oxxo ooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 26: ......................... xox oxoooooooooxo xoxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 27: .......................... oxxo oooooooooxox oxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 29: ............................ xoxooooooooo oxxo ooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 30: ............................. oxoooooooooxo xoxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 32: ............................... oooooooooxox oxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 42: ......................................... oxxo ooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 44: ........................................... xoxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 45: ............................................ oxooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 47: .............................................. ooooooooo  ooo o xoxooo oooooooooooooooooo
+        # >>> 65: ................................................................ oxoooxoooooooooooooooooo
+        # >>> 67: .................................................................. oooxoooooooooooooooooo
+        # >>> 71: ...................................................................... oooooooooooooooooo
+        #
+        # thus, the list `W` will contain start-end positions for every
+        # possible stretch that do not include gap characters.
+        W = []
+        for start in starts:
+            end = start
+            num_mismatches = 0
+
+            while 1:
+                if s[start] == 'x':
+                    start += 1
+                    continue
+
+                if s[end] == 'o':
+                    end += 1
+                elif s[end] == 'x':
+                    num_mismatches += 1
+
+                    if num_mismatches > max_num_mismatches:
+                        W.append((start, end), )
+                        num_mismatches = 0
+                        start = end + 1
+                        end = start
+                    else:
+                        end += 1
+                else:
+                    W.append((start, end), )
+                    num_mismatches = 0
+                    start = end + 1
+                    end = start
+
+                if end + 1 > len(s):
+                    if end > start:
+                        W.append((start, end), )
+
+                    break
+
+        # remove all the short ones:
+        W = [(start, end) for (start, end) in W if end - start > min_palindrome_length]
+
+        # sort all based on substring length
+        W = sorted(W, key=lambda x: x[1] - x[0], reverse=True)
+
+        # the following code will pop the longest substring from W[0], then
+        # remove all the ones that overlap with it, and take the longest one
+        # among those that remain, until all items in `W` are considered.
+        F = []
+        while 1:
+            if not len(W):
+                break
+
+            _start, _end = W.pop(0)
+            F.append((_start, _end), )
+
+            W = [(start, end) for (start, end) in W if (start < _start and end < _start) or (start > _end and end > _end)]
+
+        # now `F` contains the longest substrings with maximum number of
+        # mismatches allowed, which will look like this for the `s` with
+        # various minimum length (ML) and max mismatches (MM) parameters:
+        #
+        # >>>    input s: ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo
+        #
+        # >>> ML 5; MM 0:    oooooooooooooooo             ooooooooo      ooooooooo               oooooooooooooooooo
+        # >>> ML 5; MM 1:    ooooooooooooooooxooo         oooooooooxo  oxooooooooo           oooxoooooooooooooooooo
+        # >>> ML 5; MM 2: ooxooooooooooooooooxooo       oxoooooooooxo xoxooooooooo         oxoooxoooooooooooooooooo
+        # >>> ML15; MM 3: ooxooooooooooooooooxoooxo                                        oxoooxoooooooooooooooooo
+        # >>> (...)
+
+        return(sorted(F))
+
+
+    def get_split_palindromes(self, p, display_palindromes=False):
+        """Takes a palindrome object, and splits it into multiple.
+
+        The goal here is to make use of BLAST matches that may include too many mismatches or
+        gaps, and find long palindromic regions that still fit our criteria of maximum number
+        of mismatches and minimum length.
+
+        We go through the mismatch map, resolve regions that still could be good candidates
+        to be considered as palindromes, and return a list of curated palindrome objects.
+        """
+
+        split_palindromes = []
+        mismatch_map = []
+
+        if anvio.DEBUG or display_palindromes or self.verbose:
+            self.progress.reset()
+            self.run.warning(None, header=f'SPLITTING A HIT', lc='red')
+            self.run.info('1st sequence', p.first_sequence, mc='green')
+            self.run.info('ALN', p.midline, mc='green')
+            self.run.info('2nd sequence', p.second_sequence, mc='green')
+
+        for i in range(0, len(p.first_sequence)):
+            if p.first_sequence[i] == p.second_sequence[i]:
+                mismatch_map.append('o')
+            elif '-' in [p.first_sequence[i], p.second_sequence[i]]:
+                mismatch_map.append('-')
+            else:
+                mismatch_map.append('x')
+
+        mismatch_map = ''.join(mismatch_map)
+
+        substrings = self.resolve_mismatch_map(mismatch_map,
+                                               min_palindrome_length=self.min_palindrome_length,
+                                               max_num_mismatches=self.max_num_mismatches)
+
+        self.run.info('Num substrings found', len(substrings), mc='red')
+
+        # using these substrings we will generate a list of `Palindrome` objects
+        # to replace the mother object.
+        for start, end in substrings:
+            split_p = Palindrome()
+            split_p.first_start = p.first_start + start
+            split_p.first_end = p.first_start + end
+            split_p.first_sequence = p.first_sequence[start:end]
+            split_p.second_start = p.second_start + start
+            split_p.second_end = p.second_start + end 
+            split_p.second_sequence = p.second_sequence[start:end]
+            split_p.midline = p.midline[start:end]
+            split_p.num_mismatches = split_p.midline.count('x')
+            split_p.length = end - start
+            split_p.distance = p.distance
+
+            split_palindromes.append(split_p)
+
+            if anvio.DEBUG or display_palindromes or self.verbose:
+                self.progress.reset()
+                self.run.info_single(f"    Split [{start}:{end}]", nl_before=1, level=2, mc="red")
+                self.run.info('    1st sequence', split_p.first_sequence, mc='green')
+                self.run.info('    ALN', split_p.midline, mc='green')
+                self.run.info('    2nd sequence', split_p.second_sequence, mc='green')
+
+        return split_palindromes
 
 
     def report(self):
