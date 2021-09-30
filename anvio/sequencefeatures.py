@@ -103,14 +103,6 @@ class Palindromes:
         except:
             raise ConfigError("Maximum number of mismatches must be an integer.")
 
-        if not self.min_gap_length and self.min_palindrome_length % 2 != 0:
-            raise ConfigError("OK. The minimum palindrome length parameter must be an `even` integer. You know, "
-                              "because that's how palindromes work.")
-
-        if self.max_num_mismatches > self.min_palindrome_length:
-            raise ConfigError("The maximum number of mismatches you want to allow in your palindromes is larger "
-                              "than the minimum palindrome length you ask for. This makes no sense :(")
-
         if self.min_palindrome_length < 5:
             raise ConfigError("For everyone's sake, we set the minimum value for the minimum palindrome length to "
                               "4. You have a problem with that? WELL, WELCOME TO THE CLUB, YOU'LL FIT RIGHT IN -- "
