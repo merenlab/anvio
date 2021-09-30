@@ -206,6 +206,18 @@ class Palindromes:
                     if p.distance < 0 or p.distance < self.min_distance:
                         continue
 
+                    # before we continue, we will test for a special case: internal palindromes
+                    # within larger palindromes of 0 distance. IT DOES HAPPEN I PROM.
+                    if p.distance == 0:
+                        internal_palindrome = False
+                        for _p in self.palindromes[sequence_name]:
+                            if p.first_start > _p.first_start and p.first_start < _p.first_end:
+                                internal_palindrome = True
+                                break
+
+                        if internal_palindrome:
+                            continue
+
                     p.length = int(hsp_xml.find('Hsp_align-len').text)
                     p.num_gaps = int(hsp_xml.find('Hsp_gaps').text)
                     p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
