@@ -55,9 +55,10 @@ class Palindromes:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.num_threads = int(A('num_threads')) or 1
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
-        self.min_gap_length = A('min_gap_length') or 0
+        self.min_distance = A('min_gap_length') or 0
         self.verbose = A('verbose') or False
         self.contigs_db_path = A('contigs_db')
         self.fasta_file_path = A('fasta_file')
@@ -70,7 +71,7 @@ class Palindromes:
         self.run.warning(None, header="SEARCH SETTINGS", lc="green")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
-        self.run.info('Minimum gap length', self.min_gap_length)
+        self.run.info('Minimum gap length', self.min_distance)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
 
         self.palindromes = {}
