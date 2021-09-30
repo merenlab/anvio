@@ -123,16 +123,17 @@ class Palindromes:
             self.progress.new('Searching', progress_total_items=len(contig_sequences_dict))
             for sequence_name in contig_sequences_dict:
                 self.progress.update(f"{sequence_name} ({pp(len(contig_sequences_dict[sequence_name]['sequence']))} nts)", increment=True)
-                self.find_gapless(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
+                self.find(contig_sequences_dict[sequence_name]['sequence'], sequence_name=sequence_name)
             self.progress.end()
 
         elif self.fasta_file_path:
             num_sequences = utils.get_num_sequences_in_fasta(self.fasta_file_path)
             fasta = anvio.fastalib.SequenceSource(self.fasta_file_path)
             self.progress.new('Searching', progress_total_items=num_sequences)
+
             while next(fasta):
                 self.progress.update(f"{fasta.id} ({pp(len(fasta.seq))} nts)", increment=True)
-                self.find_gapless(fasta.seq, sequence_name=fasta.id)
+                self.find(fasta.seq, sequence_name=fasta.id)
             self.progress.end()
 
         else:
@@ -151,19 +152,22 @@ class Palindromes:
 
         if sequence_name in self.palindromes:
             raise ConfigError(f"The sequence '{sequence_name}' is already in `self.palindromes`.")
+        else:
+            self.palindromes[sequence_name] = []
 
         sequence = sequence.upper()
         sequence_length = len(sequence)
 
-        if sequence_length < self.min_palindrome_length * 2 + self.min_gap_length:
+        if sequence_length < self.min_palindrome_length * 2 + self.min_distance:
             self.progress.reset()
             self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short "
                              f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
-                             f"{self.min_gap_length} nucleoties in between :/ Anvi'o will skip it.")
+                             f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
         # setup BLAST job
         tmp_dir = filesnpaths.get_temp_directory_path()
         fasta_file_path = os.path.join(tmp_dir, 'sequence.fa')
+        log_file_path = os.path.join(tmp_dir, 'blast-log.txt')
         results_file_path = os.path.join(tmp_dir, 'hits.xml')
         with open(fasta_file_path, 'w') as fasta_file:
             fasta_file.write(f'>sequence\n{sequence}\n')
@@ -171,73 +175,56 @@ class Palindromes:
         # run blast
         blast = BLAST(fasta_file_path, search_program='blastn', run=run_quiet)
         blast.evalue = 10
+        blast.num_threads = self.num_threads
         blast.min_pct_id = 100 - self.max_num_mismatches
         blast.search_output_path = results_file_path
+        blast.log_file_path = log_file_path
         blast.makedb(dbtype='nucl')
         blast.blast(outputfmt='5', word_size=10, strand='minus')
 
-        
-        # parse BLAST XML output
+        # parse the BLAST XML output
         root = ET.parse(blast.search_output_path).getroot()
-        query_starts = set([])
-        candidates = []
+        positions_processed = set([])
         for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
-
-            query_sequence_name = query_sequence_xml.find('Iteration_query-def').text
-
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
-
                 hit_num =int(hit_xml.find('Hit_num').text)
 
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
                     p = Palindrome()
-                    
-                    p.query_start = int(hsp_xml.find('Hsp_query-from').text)
-                    p.query_end = int(hsp_xml.find('Hsp_query-to').text)
-                    p.hit_start = int(hsp_xml.find('Hsp_hit-to').text)
-                    p.hit_end = int(hsp_xml.find('Hsp_hit-from').text)
 
-                    if p.hit_end in query_starts:
+                    p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
+                    p.first_end = int(hsp_xml.find('Hsp_query-to').text)
+                    p.first_sequence = hsp_xml.find('Hsp_qseq').text
+                    p.second_start = int(hsp_xml.find('Hsp_hit-to').text) - 1
+                    p.second_end = int(hsp_xml.find('Hsp_hit-from').text)
+                    p.second_sequence = hsp_xml.find('Hsp_hseq').text
+
+                    if p.first_start in positions_processed:
                         continue
                     else:
-                        query_starts.add(p.query_start)
+                        positions_processed.add(p.second_end)
 
-                    p.query_sequence = hsp_xml.find('Hsp_qseq').text
-                    p.hit_sequence = hsp_xml.find('Hsp_hseq').text
                     p.length = int(hsp_xml.find('Hsp_align-len').text)
                     p.num_gaps = int(hsp_xml.find('Hsp_gaps').text)
                     p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
-                    p.matches = hsp_xml.find('Hsp_midline').text
-                    p.distance = p.query_end - p.hit_start
+                    p.midline = ''.join(['|' if p.first_sequence[i] == p.second_sequence[i] else 'x' for i in range(0, len(p.first_sequence))])
+                    p.distance = p.second_start - p.first_start
 
-                    if p.num_gaps > 1:
-                        continue
+                    p_list = [p]
 
-                    if p.distance < self.min_gap_length:
-                        continue
+                    for sp in p_list:
+                        if anvio.DEBUG or display_palindromes or self.verbose:
+                            self.progress.reset()
+                            self.run.warning(None, header=f'{sp.length} nts palindrome"', lc='yellow')
+                            self.run.info('1st sequence [start:stop]', f"[{sp.first_start}:{sp.first_end}]", mc='green')
+                            self.run.info('2nd sequence [start:stop]', f"[{sp.second_start}:{sp.second_end}]", mc='green')
+                            self.run.info('Number of mismatches', f"{sp.num_mismatches}", mc='red')
+                            self.run.info('Distance between', f"{sp.distance}", mc='yellow')
+                            self.run.info('1st sequence', sp.first_sequence, mc='green')
+                            self.run.info('ALN', sp.midline, mc='green')
+                            self.run.info('2nd sequence', sp.second_sequence, mc='green')
 
-                    if p.num_mismatches > self.max_num_mismatches:
-                        continue
-                    
-                    if p.length < self.min_palindrome_length:
-                        continue
-
-                    candidates.append(p)
-
-                    if anvio.DEBUG or display_palindromes or self.verbose:
-                        self.progress.reset()
-                        self.run.warning(None, header=f'{p.length} nts palindrome at "{p.query_start}:{p.query_end}"', lc='yellow')
-                        self.run.info('Query start/stop', f"{p.query_start}/{p.query_end}", mc='green')
-                        self.run.info('Hit start/stop', f"{p.hit_start}/{p.hit_end}", mc='green')
-                        self.run.info('Distance', f"{p.distance}", mc='red')
-                        self.run.info('FDW', p.query_sequence, mc='green')
-                        self.run.info('ALN', p.matches, mc='green')
-                        self.run.info('REV', p.hit_sequence, mc='green')
-
-        return candidates
-
-
-
+                        self.palindromes[sequence_name].append(sp)
 
 
     def report(self):
