@@ -184,7 +184,6 @@ class Palindromes:
 
         # parse the BLAST XML output
         root = ET.parse(blast.search_output_path).getroot()
-        positions_processed = set([])
         for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
                 hit_num =int(hit_xml.find('Hit_num').text)
@@ -198,17 +197,17 @@ class Palindromes:
                     p.second_start = int(hsp_xml.find('Hsp_hit-to').text) - 1
                     p.second_end = int(hsp_xml.find('Hsp_hit-from').text)
                     p.second_sequence = hsp_xml.find('Hsp_hseq').text
+                    p.distance = p.second_start - p.first_start
 
-                    if p.first_start in positions_processed:
+                    # for each hit, there will be a copy of its reverse
+                    # complement. this is a way to make sure we keep only one 
+                    if p.distance < 0:
                         continue
-                    else:
-                        positions_processed.add(p.second_end)
 
                     p.length = int(hsp_xml.find('Hsp_align-len').text)
                     p.num_gaps = int(hsp_xml.find('Hsp_gaps').text)
                     p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
                     p.midline = ''.join(['|' if p.first_sequence[i] == p.second_sequence[i] else 'x' for i in range(0, len(p.first_sequence))])
-                    p.distance = p.second_start - p.first_start
 
                     # this is the crazy part: read the function docstring
                     if p.num_mismatches > self.max_num_mismatches:
