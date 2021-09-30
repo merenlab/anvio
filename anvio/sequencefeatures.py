@@ -165,10 +165,10 @@ class Palindromes:
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
         # setup BLAST job
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        fasta_file_path = os.path.join(tmp_dir, 'sequence.fa')
-        log_file_path = os.path.join(tmp_dir, 'blast-log.txt')
-        results_file_path = os.path.join(tmp_dir, 'hits.xml')
+        BLAST_search_tmp_dir = filesnpaths.get_temp_directory_path()
+        fasta_file_path = os.path.join(BLAST_search_tmp_dir, 'sequence.fa')
+        log_file_path = os.path.join(BLAST_search_tmp_dir, 'blast-log.txt')
+        results_file_path = os.path.join(BLAST_search_tmp_dir, 'hits.xml')
         with open(fasta_file_path, 'w') as fasta_file:
             fasta_file.write(f'>sequence\n{sequence}\n')
 
@@ -249,6 +249,12 @@ class Palindromes:
                             self.run.info('2nd sequence', sp.second_sequence, mc='green')
 
                         self.palindromes[sequence_name].append(sp)
+
+        # clean after yourself
+        if anvio.DEBUG:
+            self.run.info("BLAST temporary dir kept", BLAST_search_tmp_dir, nl_before=1, mc='red')
+        else:
+            filesnpaths.shutil.rmtree(BLAST_search_tmp_dir)
 
 
     def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3):
