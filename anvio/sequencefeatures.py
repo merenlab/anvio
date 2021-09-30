@@ -393,13 +393,6 @@ class Palindromes:
         split_palindromes = []
         mismatch_map = []
 
-        if anvio.DEBUG or display_palindromes or self.verbose:
-            self.progress.reset()
-            self.run.warning(None, header=f'SPLITTING A HIT', lc='red')
-            self.run.info('1st sequence', p.first_sequence, mc='green')
-            self.run.info('ALN', p.midline, mc='green')
-            self.run.info('2nd sequence', p.second_sequence, mc='green')
-
         for i in range(0, len(p.first_sequence)):
             if p.first_sequence[i] == p.second_sequence[i]:
                 mismatch_map.append('o')
@@ -414,6 +407,17 @@ class Palindromes:
         substrings = self.resolve_mismatch_map(mismatch_map,
                                                min_palindrome_length=self.min_palindrome_length,
                                                max_num_mismatches=self.max_num_mismatches)
+
+        # if we don't get any substrings, it means it is time to go back
+        if not len(substrings):
+            return []
+
+        if anvio.DEBUG or display_palindromes or self.verbose:
+            self.progress.reset()
+            self.run.warning(None, header=f'SPLITTING A HIT', lc='red')
+            self.run.info('1st sequence', p.first_sequence, mc='green')
+            self.run.info('ALN', p.midline, mc='green')
+            self.run.info('2nd sequence', p.second_sequence, mc='green')
 
         # using these substrings we will generate a list of `Palindrome` objects
         # to replace the mother object.
