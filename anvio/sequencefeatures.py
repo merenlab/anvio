@@ -389,11 +389,10 @@ class Palindromes:
 
         mismatch_map = ''.join(mismatch_map)
 
+        # get all the best substrings by resolving the mismatch map
         substrings = self.resolve_mismatch_map(mismatch_map,
                                                min_palindrome_length=self.min_palindrome_length,
                                                max_num_mismatches=self.max_num_mismatches)
-
-        self.run.info('Num substrings found', len(substrings), mc='red')
 
         # using these substrings we will generate a list of `Palindrome` objects
         # to replace the mother object.
