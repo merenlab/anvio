@@ -444,7 +444,7 @@ class Palindromes:
         self.run.info('Longest palindrome', longest_palindrome)
         self.run.info('Most distant palindrome', most_distant_palindrome)
 
-        headers = ["sequence_name", "length", "first_start", "first_end", "first_sequence", "second_start", "second_end", "second_sequence", "distance", "num_gaps", "num_mismatches", "midline"]
+        headers = ["sequence_name", "length", "first_start", "first_end", "first_sequence", "second_start", "second_end", "second_sequence", "distance", "num_mismatches", "midline"]
         if self.output_file_path:
             with open(self.output_file_path, 'w') as output_file:
                 output_file.write('\t'.join(headers) + '\n')
