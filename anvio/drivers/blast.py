@@ -55,13 +55,11 @@ class BLAST:
 
         self.search_program = search_program
         self.search_output_path = 'blast-search-results.txt'
+        self.log_file_path = 'blast-log.txt'
         self.max_target_seqs = None
 
         utils.is_program_exists('makeblastdb')
         utils.is_program_exists(self.search_program)
-
-        if not self.run.log_file_path:
-            self.run.log_file_path = 'blast-log-file.txt'
 
         # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
@@ -95,7 +93,7 @@ class BLAST:
         if not len(glob.glob(expected_output)):
             self.progress.end()
             raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing. "
-                              "Please check the log file here: '%s'" % (process, self.run.log_file_path))
+                              "Please check the log file here: '%s'" % (process, self.log_file_path))
 
 
     def makedb(self, output_db_path=None, dbtype='prot'):
@@ -111,7 +109,7 @@ class BLAST:
                     '-dbtype', dbtype,
                     '-out', output_db_path or self.target_fasta]
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        utils.run_command(cmd_line, self.log_file_path)
 
         self.progress.end()
 
@@ -150,7 +148,7 @@ class BLAST:
         self.progress.new('BLAST')
         self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        utils.run_command(cmd_line, self.log_file_path)
 
         self.progress.end()
 
@@ -181,7 +179,7 @@ class BLAST:
         self.progress.new('BLAST')
         self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence, remove_log_file_if_exists=False)
+        output = utils.run_command_STDIN(cmd_line, self.log_file_path, multisequence, remove_log_file_if_exists=False)
 
         self.progress.end()
 
