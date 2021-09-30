@@ -58,7 +58,7 @@ class Palindromes:
         self.num_threads = int(A('num_threads')) or 1
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
-        self.min_distance = A('min_gap_length') or 0
+        self.min_distance = A('min_distance') or 0
         self.verbose = A('verbose') or False
         self.contigs_db_path = A('contigs_db')
         self.fasta_file_path = A('fasta_file')
@@ -199,9 +199,11 @@ class Palindromes:
                     p.second_sequence = hsp_xml.find('Hsp_hseq').text
                     p.distance = p.second_start - p.first_start
 
-                    # for each hit, there will be a copy of its reverse
-                    # complement. this is a way to make sure we keep only one 
-                    if p.distance < 0:
+                    # for each hit, there will be a copy of its reverse complement.
+                    # the first half of the if statement below is to control for that
+                    # and make sure we keep only one of them. the other half is to
+                    # remove those that do not meet the minimum distance criterion.
+                    if p.distance < 0 or p.distance < self.min_distance:
                         continue
 
                     p.length = int(hsp_xml.find('Hsp_align-len').text)
