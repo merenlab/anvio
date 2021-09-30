@@ -2561,14 +2561,15 @@ D = {
              'type': int,
              'help': "The minimum palindrome length."}
         ),
-    'min-gap-length': (
-            ['-g', '--min-gap-length'],
+    'min-distance': (
+            ['-d', '--min-distance'],
             {'default': 0,
              'metavar': 'INT',
              'type': int,
-             'help': "The minimum gap between the palindromes (which is asking for the number of `x` in the "
-                     "sequence `ATCGxxxCGAT`). The default is zero, which means the algorithm will try to "
-                     "report sequences that are like ATCGCGAT with no gaps in between."}
+             'help': "The minimum distance between the palindromic sequences (this parameter is essentially "
+                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is zero, "
+                     "which means the program will report sequences that are like `ATCGCGAT` with no gaps "
+                     "between the palindrome where the palindromic sequence matches itself."}
         ),
     'max-num-mismatches': (
             ['-m', '--max-num-mismatches'],
