@@ -180,7 +180,13 @@ class Palindromes:
         blast.search_output_path = results_file_path
         blast.log_file_path = log_file_path
         blast.makedb(dbtype='nucl')
-        blast.blast(outputfmt='5', word_size=10, strand='minus')
+
+        if self.min_palindrome_length < 20 and len(sequence) > 10000:
+            self.run.warning("Please note, you are searching for palindromes that are as short as {self.min_palindrome_length} "
+                             "in a sequence that is {pp(len(sequence))} nts long. If your BLAST search takes a VERY long time "
+                             "you may want to go for longer palindromes by setting a different `--min-palindrome-length` parameter.")
+
+        blast.blast(outputfmt='5', word_size=self.min_palindrome_length, strand='minus')
 
         # parse the BLAST XML output
         root = ET.parse(blast.search_output_path).getroot()
