@@ -6,6 +6,7 @@ import sys
 
 import anvio
 
+from anvio.terminal import time_program
 from anvio.argparse import ArgumentParser
 from anvio.sequencefeatures import Palindromes
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,6 +22,7 @@ __provides__ = ['palindromes-txt']
 __description__ = "A program to find palindromes in sequences"
 
 
+@time_program
 def main(args):
     if not (args.dna_sequence or args.contigs_db or args.fasta_file):
         raise ConfigError("You should send an input sequence source for this program to work.")
@@ -48,11 +50,14 @@ if __name__ == "__main__":
     groupB = parser.add_argument_group('PALINDROME BUT HOW?', "Some essential stuff here about your palindromes")
     groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
     groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
-    groupB.add_argument(*anvio.A('min-gap-length'), **anvio.K('min-gap-length'))
+    groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
 
-    groupC = parser.add_argument_group('OUTPUT', "Output options.")
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupC = parser.add_argument_group('PERFORMANCE', "Yes.")
+    groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    groupD = parser.add_argument_group('OUTPUT', "Output options.")
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
     args, unknown = parser.parse_known_args()
 
