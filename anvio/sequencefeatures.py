@@ -33,19 +33,19 @@ run_quiet = terminal.Run(verbose=False)
 
 class Palindrome:
     def __init__(self):
-        self.query_start = None
-        self.query_end = None
-        self.query_sequence = None
-        self.hit_start = None
-        self.hit_end = None
-        self.hit_sequence = None
+        self.first_start = None
+        self.fisrt_end = None
+        self.first_sequence = None
+        self.second_start = None
+        self.second_end = None
+        self.second_sequence = None
         self.num_mismatches = None
         self.length = None
         self.distance = None
-        self.matches = ''
+        self.midline = ''
 
     def __str__(self):
-        return f"{self.query_sequence} ({self.query_start}:{self.query_end}) :: {self.hit_sequence} ({self.hit_start}:{self.hit_end})"
+        return f"{self.first_sequence} ({self.first_start}:{self.first_end}) :: {self.second_sequence} ({self.second_start}:{self.second_end})"
 
 
 class Palindromes:
