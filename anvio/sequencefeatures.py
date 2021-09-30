@@ -29,10 +29,12 @@ __email__ = "a.murat.eren@gmail.com"
 
 pp = terminal.pretty_print
 run_quiet = terminal.Run(verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
 
 
 class Palindrome:
-    def __init__(self):
+    def __init__(self, run=terminal.Run()):
+        self.run=run
         self.first_start = None
         self.fisrt_end = None
         self.first_sequence = None
@@ -44,8 +46,20 @@ class Palindrome:
         self.distance = None
         self.midline = ''
 
+
     def __str__(self):
         return f"{self.first_sequence} ({self.first_start}:{self.first_end}) :: {self.second_sequence} ({self.second_start}:{self.second_end})"
+
+
+    def display(self):
+        self.run.warning(None, header=f'{self.length} nts palindrome"', lc='yellow')
+        self.run.info('1st sequence [start:stop]', f"[{self.first_start}:{self.first_end}]", mc='green')
+        self.run.info('2nd sequence [start:stop]', f"[{self.second_start}:{self.second_end}]", mc='green')
+        self.run.info('Number of mismatches', f"{self.num_mismatches}", mc='red')
+        self.run.info('Distance between', f"{self.distance}", mc='yellow')
+        self.run.info('1st sequence', self.first_sequence, mc='green')
+        self.run.info('ALN', self.midline, mc='green')
+        self.run.info('2nd sequence', self.second_sequence, mc='green')
 
 
 class Palindromes:
@@ -55,7 +69,7 @@ class Palindromes:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.num_threads = int(A('num_threads')) or 1
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
@@ -173,7 +187,7 @@ class Palindromes:
             fasta_file.write(f'>sequence\n{sequence}\n')
 
         # run blast
-        blast = BLAST(fasta_file_path, search_program='blastn', run=run_quiet)
+        blast = BLAST(fasta_file_path, search_program='blastn', run=run_quiet, progress=progress_quiet)
         blast.evalue = 10
         blast.num_threads = self.num_threads
         blast.min_pct_id = 100 - self.max_num_mismatches
@@ -195,7 +209,7 @@ class Palindromes:
                 hit_num =int(hit_xml.find('Hit_num').text)
 
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
-                    p = Palindrome()
+                    p = Palindrome(run=self.run)
 
                     p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
                     p.first_end = int(hsp_xml.find('Hsp_query-to').text)
@@ -245,14 +259,7 @@ class Palindromes:
                     for sp in p_list:
                         if anvio.DEBUG or display_palindromes or self.verbose:
                             self.progress.reset()
-                            self.run.warning(None, header=f'{sp.length} nts palindrome"', lc='yellow')
-                            self.run.info('1st sequence [start:stop]', f"[{sp.first_start}:{sp.first_end}]", mc='green')
-                            self.run.info('2nd sequence [start:stop]', f"[{sp.second_start}:{sp.second_end}]", mc='green')
-                            self.run.info('Number of mismatches', f"{sp.num_mismatches}", mc='red')
-                            self.run.info('Distance between', f"{sp.distance}", mc='yellow')
-                            self.run.info('1st sequence', sp.first_sequence, mc='green')
-                            self.run.info('ALN', sp.midline, mc='green')
-                            self.run.info('2nd sequence', sp.second_sequence, mc='green')
+                            sp.display()
 
                         self.palindromes[sequence_name].append(sp)
 
