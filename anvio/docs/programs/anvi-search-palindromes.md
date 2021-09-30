@@ -1,10 +1,9 @@
-This program finds [palindromes](https://en.wikipedia.org/wiki/Palindromic_sequence) in any DNA sequence. It will search for palindromes that exceeds a minimum length defined by the user (default is 10) and that do not have more internal mismatches than the number of those allowed by the user (default is 0). It will optionally report the search results as a %(palindromes-txt)s.
+This program finds [palindromes](https://en.wikipedia.org/wiki/Palindromic_sequence) in any DNA sequence. It will search for palindromes that mathes criteria listed by the user (i.e., minimum lenght of the palindromic sequences, maximum number of mismatches, and minimum distance between the two palindromic regions). The program will print out its findings (and tribulations) and will optionally report the search results as a %(palindromes-txt)s.
 
-Please note that this program will only report perfect palindromes, where the identity and order of nucleotides on one strand match to those on the complementary strand. The current version is **not** designed to search for special cases of palindromes that form [hairpins](https://en.wikipedia.org/wiki/Stem-loop) (because we didn't need them (but if you do, let us know and we will do something)).
-
+Please note that this program can find both perfect palindromes (i.e., the identity and order of nucleotides on one strand match to those on the complementary strand) and special cases of palindromes that form [hairpins](https://en.wikipedia.org/wiki/Stem-loop). You can use the minimum distance parameter to target any group of palindromes (i.e., minimum distance of 0 will report only perfect palindromes).
 
 {:.notice}
-The algorithm processes about 1,000,000 nts in every 2 seconds, and about 10,000,000 nts in every 9 seconds on a laptop computer.
+The speed of the algorithm will depend on the minimum palindrome length parameter. The shorter the palindrome length, the longer the processing time. Searching for palindromes longer than 50 nts in a 10,000,000 nts long sequence takes about 4 seconds on a laptop.
 
 ### Sequence input sources
 
@@ -52,22 +51,26 @@ SEARCH SETTINGS
 ===============================================
 Minimum palindrome length ....................: 10
 Number of mismatches allowed .................: 0
+Minimum gap length ...........................: 0
 Be verbose? ..................................: Yes
 
 
-58 nts palindrome at "0:58"
+58 nts palindrome"
 ===============================================
-Sequence .....................................: (a sequence does not have a name)
-Num mismatches ...............................: 0
-FDW ..........................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
+1st sequence [start:stop] ....................: [0:58]
+2nd sequence [start:stop] ....................: [0:58]
+Number of mismatches .........................: 0
+Distance between .............................: 0
+1st sequence .................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
 ALN ..........................................: ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-REV ..........................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
+2nd sequence .................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
 
 SEARCH RESULTS
 ===============================================
 Total number of sequences processed ..........: 1
 Total number of palindromes found ............: 1
 Longest palindrome ...........................: 58
+Most distant palindrome ......................: 0
 ```
 
 Here is another example with a %(contigs-db)s, an output file path, and the `--verbose` flag:
@@ -83,43 +86,29 @@ Here is another example with a %(contigs-db)s, an output file path, and the `--v
 ```
 SEARCH SETTINGS
 ===============================================
-Minimum palindrome length ....................: 56
-Number of mismatches allowed .................: 2
+Minimum palindrome length ....................: 50
+Number of mismatches allowed .................: 1
+Minimum gap length ...........................: 0
 Be verbose? ..................................: Yes
 
-
-56 nts palindrome at "1067670:1067726"
+147 nts palindrome"
 ===============================================
-Sequence .....................................: Day17a_QCcontig1
-Num mismatches ...............................: 2
-FDW ..........................................: TAAGAAAATACCCTTGGTTTATTAAGACGACTTAATAAACCAAGGGTATTTTTTTA
-ALN ..........................................: |||x||||||||||||||||||||||x||x||||||||||||||||||||||x|||
-REV ..........................................: TAAAAAAATACCCTTGGTTTATTAAGTCGTCTTAATAAACCAAGGGTATTTTCTTA
-
-58 nts palindrome at "187419:187477"
-===============================================
-Sequence .....................................: Day17a_QCcontig6
-Num mismatches ...............................: 2
-FDW ..........................................: TCAACACTAAAAAAGCAAACAAAACGCGTAAACGTTTTGTTTGCTTTTTTAGTGTTGA
-ALN ..........................................: ||||||||||||||||||||||||||xx||xx||||||||||||||||||||||||||
-REV ..........................................: TCAACACTAAAAAAGCAAACAAAACGTTTACGCGTTTTGTTTGCTTTTTTAGTGTTGA
-
-58 nts palindrome at "323612:323670"
-===============================================
-Sequence .....................................: Day17a_QCcontig74
-Num mismatches ...............................: 0
-FDW ..........................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
-ALN ..........................................: ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-REV ..........................................: CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG
+1st sequence [start:stop] ....................: [268872:269019]
+2nd sequence [start:stop] ....................: [269631:269778]
+Number of mismatches .........................: 1
+Distance between .............................: 759
+1st sequence .................................: TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAAGCTAGAAAAA
+ALN ..........................................: |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||x|||||||||
+2nd sequence .................................: TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAAACTAGAAAAA
 
 SEARCH RESULTS
 ===============================================
-Total number of sequences processed ..........: 4,189
-Total number of palindromes found ............: 3
-Longest palindrome ...........................: 58
+Total number of sequences processed ..........: 11
+Total number of palindromes found ............: 1
+Longest palindrome ...........................: 147
+Most distant palindrome ......................: 759
 
 Output file ..................................: palindromes.txt
-
 ```
 
 
@@ -127,7 +116,7 @@ Output file ..................................: palindromes.txt
 
 Just like everything else in anvi'o, you can access the functionality the program `anvi-search-palindromes` offers without using the program itself by inheriting an instance from the `Palindromes` class and use it in your own Python scripts.
 
-Here is an example:
+Here is an example, first with an input file and then an ad hoc sequence. Starting with the file (i.e., an anvi'o %(contigs-db)s):
 
 ``` python
 # import argparse to pass arguments to the class
@@ -146,21 +135,72 @@ from anvio.terminal import Progress, Run
 # via `fasta_file='FILE.fa'` instead of `contigs_db='CONTIGS.db'`:
 p = Palindromes(argparse.Namespace(contigs_db='CONTIGS.db', min_palindrome_length=50), run=Run(verbose=False), progress=Progress(verbose=False))
 p.process()
+```
 
-# once the processing is done, the palindromes are stored in a member dictionary:
+Once the processing is done, the palindromes are stored in a member dictionary, which contains a key for each sequence:
+
+``` python
 print(p.palindromes)
 
->>> {'Day17a_QCcontig23': [{'start': 51287, 'end': 51337, 'length': 50, 'palindrome': 'ATAAATAAACAGAGGCCTTAGAAATATTTCTAAGGCCTCTGTTTATTTAT', 'matches': '||||||||||||||||||||||||||||||||||||||||||||||||||', 'num_mismatches': 0}], 
-     'Day17a_QCcontig33': [{'start': 309701, 'end': 309757, 'length': 56, 'palindrome': 'TAAATAAGTTACAATAATAATTGTTATCGATAACAATTATTATTGTAACTTATTTA', 'matches': '||||||||||||||||||||||||||||||||||||||||||||||||||||||||', 'num_mismatches': 0}], 
-     'Day17a_QCcontig60': [{'start': 213563, 'end': 213613, 'length': 50, 'palindrome': 'CCTGACATGGCAAAACCCTCTACCNNGGTAGAGGGTTTTGCCATGTCAGG', 'matches': '||||||||||||||||||||||||||||||||||||||||||||||||||', 'num_mismatches': 0}], 
-     'Day17a_QCcontig74': [{'start': 323612, 'end': 323670, 'length': 58, 'palindrome': 'CATTGACGTTGACGGCGACCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG', 'matches': '||||||||||||||||||||||||||||||||||||||||||||||||||||||||||', 'num_mismatches': 0}], 
-     'Day17a_QCcontig90': [{'start': 227448, 'end': 227504, 'length': 56, 'palindrome': 'CGAGACATGATTGAGCGCCGTGACGGTCGACCGTCACGGCGCTCAATCATGTCTCG', 'matches': '||||||||||||||||||||||||||||||||||||||||||||||||||||||||', 'num_mismatches': 0}]}
+>>> {'Day17a_QCcontig1' : [],
+     'Day17a_QCcontig2' : [],
+     'Day17a_QCcontig4' : [<anvio.sequencefeatures.Palindrome object at 0x7f8d6072f278>],
+     'Day17a_QCcontig6' : [],
+     'Day17a_QCcontig10': [], 
+     'Day17a_QCcontig16': [],
+     'Day17a_QCcontig23': [],
+     'Day17a_QCcontig24': [],
+     'Day17a_QCcontig45': [],
+     'Day17a_QCcontig54': [],
+     'Day17a_QCcontig97': []}
 
+```
 
-# alternatively you can get an instance without any input files,
+Non-empty arrays are the proper palindromes found in a given sequence, described with an instance of the class `Palindrome` which is defined as the following:
+
+``` python
+class Palindrome:
+    def __init__(self, run=terminal.Run()):
+        self.run=run
+        self.first_start = None
+        self.fisrt_end = None
+        self.first_sequence = None
+        self.second_start = None
+        self.second_end = None
+        self.second_sequence = None
+        self.num_mismatches = None
+        self.length = None
+        self.distance = None
+        self.midline = ''
+```
+
+Not only you can access to each member variable to deal with them, you can easily display the contents of one using the `display()` function:
+
+``` python
+palindrome = p.palindromes['Day17a_QCcontig4'][0]
+print(palindrome)
+
+>>> TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAA (268872:269009) :: TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAA (269631:269768)
+
+palindrome.display()
+
+>>> 137 nts palindrome"
+>>> ===============================================
+>>> 1st sequence [start:stop] ....................: [268872:269009]
+>>> 2nd sequence [start:stop] ....................: [269631:269768]
+>>> Number of mismatches .........................: 0
+>>> Distance between .............................: 759
+>>> 1st sequence .................................: TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAA
+>>> ALN ..........................................: |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+>>> 2nd sequence .................................: TTTCGTAATACTTTTTTGCAGTAGGCATCAAATTGGTGTTGTATAGATTTCTCATTATAATTTTGTTGCATGATAATATGCTCCTTTTTCCCCTTTCCACTAATACAACAATCAGAGAGCCCCTTTTTTTCGAAAAA
+```
+
+Alternatively you can process an ad hoc sequence without any input files,
+
+``` python
 p = Palindromes()
 
-# and perhaps set some values,
+# let's set some values for fun,
 p.min_palindrome_length = 14
 p.max_num_mismatches = 1
 
@@ -177,6 +217,9 @@ for sequence_name in some_sequences:
 # tadaaa:
 print(p.palindromes)
 
->>> {'a_sequence': [{'start': 0, 'end': 58, 'length': 58, 'palindrome': 'CATTGACGTTGACGGCGTCCGGTCGGTGATCACCGACCGGTCGCCGTCAACGTCAATG', 'matches': '|||||||||||||||||x||||||||||||||||||||||x|||||||||||||||||', 'num_mismatches': 1}], 
-     'antoher_sequence': [{'start': 0, 'end': 14, 'length': 14, 'palindrome': 'AAATCGGCCGATTT', 'matches': '||||||||||||||', 'num_mismatches': 0}]}
+>>> {'a_sequence': [<anvio.sequencefeatures.Palindrome object at 0x7fce807ddb00>],
+     'antoher_sequence': [<anvio.sequencefeatures.Palindrome object at 0x7fce807ddc88>],
+     'sequence_with_no_palindrome': []}
 ```
+
+If you are a programmer and need more from this module, please let us know.
