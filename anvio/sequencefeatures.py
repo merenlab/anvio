@@ -35,6 +35,8 @@ progress_quiet = terminal.Progress(verbose=False)
 class Palindrome:
     def __init__(self, run=terminal.Run()):
         self.run=run
+
+        self.sequence_name = None
         self.first_start = None
         self.fisrt_end = None
         self.first_sequence = None
@@ -211,6 +213,7 @@ class Palindromes:
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
                     p = Palindrome(run=self.run)
 
+                    p.sequence_name = sequence_name
                     p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
                     p.first_end = int(hsp_xml.find('Hsp_query-to').text)
                     p.first_sequence = hsp_xml.find('Hsp_qseq').text
@@ -442,11 +445,12 @@ class Palindromes:
         # to replace the mother object.
         for start, end in substrings:
             split_p = Palindrome()
+            split_p.sequence_name = p.sequence_name
             split_p.first_start = p.first_start + start
             split_p.first_end = p.first_start + end
             split_p.first_sequence = p.first_sequence[start:end]
             split_p.second_start = p.second_start + start
-            split_p.second_end = p.second_start + end 
+            split_p.second_end = p.second_start + end
             split_p.second_sequence = p.second_sequence[start:end]
             split_p.midline = p.midline[start:end]
             split_p.num_mismatches = split_p.midline.count('x')
@@ -492,6 +496,6 @@ class Palindromes:
                 output_file.write('\t'.join(headers) + '\n')
                 for sequence_name in self.palindromes:
                     for palindrome in self.palindromes[sequence_name]:
-                        output_file.write('\t'.join([f"{sequence_name}"] + [f"{getattr(palindrome, h)}" for h in headers[1:]]) + '\n')
+                        output_file.write('\t'.join([f"{getattr(palindrome, h)}" for h in headers]) + '\n')
 
             self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
