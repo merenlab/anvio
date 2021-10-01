@@ -38,7 +38,7 @@ class Palindrome:
 
         self.sequence_name = None
         self.first_start = None
-        self.fisrt_end = None
+        self.first_end = None
         self.first_sequence = None
         self.second_start = None
         self.second_end = None
@@ -50,10 +50,17 @@ class Palindrome:
 
 
     def __str__(self):
-        return f"{self.first_sequence} ({self.first_start}:{self.first_end}) :: {self.second_sequence} ({self.second_start}:{self.second_end})"
+        return f"Len: {self.length}; Dist: {self.distance}; {self.first_sequence} ({self.first_start}:{self.first_end}) :: {self.second_sequence} ({self.second_start}:{self.second_end})"
 
 
     def display(self):
+
+        # we don't care what `verbose` variable the original instance may have. if
+        # the user requests to `display` things, we will display it, and then store
+        # the original state again.
+        verbose = self.run.verbose
+        self.run.verbose = True
+
         self.run.warning(None, header=f'{self.length} nts palindrome"', lc='yellow')
         self.run.info('1st sequence [start:stop]', f"[{self.first_start}:{self.first_end}]", mc='green')
         self.run.info('2nd sequence [start:stop]', f"[{self.second_start}:{self.second_end}]", mc='green')
@@ -62,6 +69,9 @@ class Palindrome:
         self.run.info('1st sequence', self.first_sequence, mc='green')
         self.run.info('ALN', self.midline, mc='green')
         self.run.info('2nd sequence', self.second_sequence, mc='green')
+
+        # store the original verbose state
+        self.run.verbose = verbose
 
 
 class Palindromes:
