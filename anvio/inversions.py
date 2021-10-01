@@ -211,22 +211,22 @@ class Inversions:
                     region_A_end = inversion_candidate.first_start
                     region_A = stretch_sequence[region_A_start:region_A_end]
 
-                    region_B_start = inversion_candidate.first_end + 1
+                    region_B_start = inversion_candidate.first_end
                     region_B_end = inversion_candidate.first_end + 6
                     region_B = stretch_sequence[region_B_start:region_B_end]
 
-                    region_C_start = inversion_candidate.second_start - 7
-                    region_C_end = inversion_candidate.second_start - 1
+                    region_C_start = inversion_candidate.second_start - 6
+                    region_C_end = inversion_candidate.second_start
                     region_C = stretch_sequence[region_C_start:region_C_end]
 
-                    region_D_start = inversion_candidate.second_end + 1
+                    region_D_start = inversion_candidate.second_end
                     region_D_end = inversion_candidate.second_end + 6
                     region_D = stretch_sequence[region_D_start:region_D_end]
 
                     construct_v1_left = region_A + inversion_candidate.first_sequence + utils.rev_comp(region_C)
-                    construct_v1_right = utils.rev_comp(region_B) + inversion_candidate.second_sequence + region_D
+                    construct_v1_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.second_sequence) + region_D
 
-                    construct_v2_left = region_A + utils.rev_comp(inversion_candidate.second_sequence) + utils.rev_comp(region_C)
+                    construct_v2_left = region_A + inversion_candidate.second_sequence + utils.rev_comp(region_C)
                     construct_v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
 
                     if anvio.DEBUG or self.verbose:
