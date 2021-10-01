@@ -35,9 +35,17 @@ if __name__ == '__main__':
     groupA.add_argument('-p', '--profile-dbs', metavar = 'SINGLE PROFILE(S)', nargs='+',
                                 help = "Anvi'o single profile databases of 'inversions' variant.")
 
-    groupB = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "For the never satisfied.")
-    groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupB = parser.add_argument_group('FINDING PALINDROMES', "Some essential stuff here about your palindromes")
+    groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
+    groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
+    groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
+
+    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "For the never satisfied.")
+    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+
     args = parser.get_args(parser)
+
 
     try:
         main(args)
