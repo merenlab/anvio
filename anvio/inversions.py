@@ -45,6 +45,7 @@ class Inversions:
         self.profile_db_paths = A('profile_dbs')
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
+        self.verbose = A('verbose')
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -71,7 +72,15 @@ class Inversions:
 
 
     def process_db(self, profile_db_path):
-        self.progress.append(" recovering coverages")
+        """Function that does everything"""
+
+        profile_name = dbi.DBInfo(profile_db_path).get_self_table()['sample_id']
+
+        self.progress.new(f"Processing '{profile_name}'")
+
+        ################################################################################
+        self.progress.update("Recovering the coverage data")
+        ################################################################################
 
         profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
         sample_id = profile_db.p_meta['sample_id']
@@ -83,6 +92,9 @@ class Inversions:
         min_distance_between_independent_stretches = 2000
         num_nts_to_pad_stretches = 100
 
+        ################################################################################
+        self.progress.update("Computing coverage stretches")
+        ################################################################################
         # populate coverage stretches in contigs based on coverage data in this
         # particular profile_db. we will then go through each stretch to find
         # those that include palindromic sequences
@@ -143,12 +155,16 @@ class Inversions:
                                                            contig_length if (e[1] + num_nts_to_pad_stretches) > contig_length else e[1] + num_nts_to_pad_stretches) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
+        ################################################################################
+        self.progress.update("Identifying palindromes within stretches")
+        ################################################################################
         # time to go through each stretch and look for palindromes
         # first, we will set up the Palindromes class
-        palindromes = Palindromes(argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
-                                                     max_num_mismatches=self.max_num_mismatches),
-                                  run=run_quiet,
-                                  progress=progress_quiet)
+        _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length, max_num_mismatches=self.max_num_mismatches)
+        P = Palindromes(_args,
+                        run=run_quiet,
+                        progress=progress_quiet)
+        P.verbose = False
 
         # now we can go through all the stretches to look for palindromes
         for contig_name in coverage_stretches_in_contigs:
@@ -157,25 +173,26 @@ class Inversions:
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
 
-                candidates = palindromes.find_with_gaps(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
+                P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
 
-                if not len(candidates):
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+                    self.run.warning(None, header=f"Palindromes in {sequence_name}")
+                    self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
+                    [p.display() for p in P.palindromes[sequence_name]]
+
+                if not len(P.palindromes[sequence_name]):
                     continue
 
-                for candidate in candidates:
-                    print(candidate)
+                for inversion_candidate in P.palindromes[sequence_name]:
+                    pass
+
+        self.progress.end()
 
 
     def process(self):
-        self.progress.new("Processing coverages", progress_total_items=len(self.profile_db_paths))
-        self.progress.update('...')
-
         for profile_db_path in self.profile_db_paths:
-            profile_name = dbi.DBInfo(profile_db_path).get_self_table()['sample_id']
-            self.progress.update(f"{profile_name} ...", increment=True)
             self.process_db(profile_db_path)
-
-        self.progress.end()
 
 
     def sanity_check(self):
