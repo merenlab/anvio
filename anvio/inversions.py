@@ -29,7 +29,7 @@ __status__ = "Development"
 
 
 pp = terminal.pretty_print
-P = terminal.pluralize
+PL = terminal.pluralize
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
@@ -43,8 +43,12 @@ class Inversions:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.profile_db_paths = A('profile_dbs')
+
+        # palindrome search parameters
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
+        self.min_distance_palindrome = A('min-distance') or 50
+
         self.verbose = A('verbose')
 
         if not skip_sanity_check:
@@ -163,7 +167,10 @@ class Inversions:
         ################################################################################
         # time to go through each stretch and look for palindromes
         # first, we will set up the Palindromes class
-        _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length, max_num_mismatches=self.max_num_mismatches)
+        _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
+                                   max_num_mismatches=self.max_num_mismatches,
+                                   min_distance=self.min_distance_palindrome)
+
         P = Palindromes(_args,
                         run=run_quiet,
                         progress=progress_quiet)
@@ -177,24 +184,57 @@ class Inversions:
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
 
-                P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
-
+                # before we go any further, let's print out the sequence in consideration
+                # for the user if they used `--verbose`
                 if anvio.DEBUG or self.verbose:
                     self.progress.reset()
                     self.run.warning(None, header=f"Palindromes in {sequence_name}")
                     self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
-
-                    for p in P.palindromes[sequence_name]:
-                        p.display()
-
                     self.run.info_single(f"Coverage:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
-                if not len(P.palindromes[sequence_name]):
-                    continue
+                # find palindromes in the region of interest
+                P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
 
+                if not len(P.palindromes[sequence_name]):
+                    # there is no palindrome in this one
+                    self.run.info_single("No palindromes in this one :/", mc="red")
+                    continue
+                else:
+                    self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
+
+                # this is important. here we test each our inversion candidate by reconstructing
+                # Florian's imaginary sequences to see if they truly occur anywhere
                 for inversion_candidate in P.palindromes[sequence_name]:
-                    pass
+                    region_A_start = inversion_candidate.first_start - 6
+                    region_A_end = inversion_candidate.first_start
+                    region_A = stretch_sequence[region_A_start:region_A_end]
+
+                    region_B_start = inversion_candidate.first_end + 1
+                    region_B_end = inversion_candidate.first_end + 6
+                    region_B = stretch_sequence[region_B_start:region_B_end]
+
+                    region_C_start = inversion_candidate.second_start - 7
+                    region_C_end = inversion_candidate.second_start - 1
+                    region_C = stretch_sequence[region_C_start:region_C_end]
+
+                    region_D_start = inversion_candidate.second_end + 1
+                    region_D_end = inversion_candidate.second_end + 6
+                    region_D = stretch_sequence[region_D_start:region_D_end]
+
+                    construct_v1_left = region_A + inversion_candidate.first_sequence + utils.rev_comp(region_C)
+                    construct_v1_right = utils.rev_comp(region_B) + inversion_candidate.second_sequence + region_D
+
+                    construct_v2_left = region_A + utils.rev_comp(inversion_candidate.second_sequence) + utils.rev_comp(region_C)
+                    construct_v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
+
+                    if anvio.DEBUG or self.verbose:
+                        inversion_candidate.display()
+                        self.run.info("Construct v1 left", construct_v1_left, mc="cyan")
+                        self.run.info("Construct v1 right", construct_v1_right, mc="cyan")
+                        self.run.info("Construct v2 left", construct_v2_left, mc="cyan")
+                        self.run.info("Construct v2 right", construct_v2_right, mc="cyan")
+
 
         self.progress.end()
 
@@ -239,10 +279,10 @@ class Inversions:
                 if len(bad_profile_dbs) == 1:
                     summary = "The only profile database you have here is also the one with the wrong variant :( CONGRATULATIONS."
                 else:
-                    summary = f"But none of the {P('database', len(self.profile_db_paths))} here have the right variant :("
+                    summary = f"But none of the {PL('database', len(self.profile_db_paths))} here have the right variant :("
             else:
-                summary = (f"Of the total of {P('database', len(self.profile_db_paths))} "
-                           f"you are working with, {len(bad_profile_dbs)} {P('does not', len(bad_profile_dbs), alt='do not')} have "
+                summary = (f"Of the total of {PL('database', len(self.profile_db_paths))} "
+                           f"you are working with, {len(bad_profile_dbs)} {PL('does not', len(bad_profile_dbs), alt='do not')} have "
                            f"the right variant :/")
 
             raise ConfigError(f"To report inversions, you must provide this program with one or more profile "
