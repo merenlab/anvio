@@ -2563,13 +2563,14 @@ D = {
         ),
     'min-distance': (
             ['-d', '--min-distance'],
-            {'default': 0,
+            {'default': 50,
              'metavar': 'INT',
              'type': int,
              'help': "The minimum distance between the palindromic sequences (this parameter is essentially "
-                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is zero, "
-                     "which means the program will report sequences that are like `ATCGCGAT` with no gaps "
-                     "between the palindrome where the palindromic sequence matches itself."}
+                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is 50, "
+                     "which means the algorithm will never report by default sequences that are like "
+                     "`ATCGCGAT` with no gaps between the palindrome where the palindromic sequence matches "
+                     "itself (but you can get such palindromes by setting this parameter to 0)."}
         ),
     'max-num-mismatches': (
             ['-m', '--max-num-mismatches'],
