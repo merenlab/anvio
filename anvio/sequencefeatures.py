@@ -61,7 +61,7 @@ class Palindrome:
         verbose = self.run.verbose
         self.run.verbose = True
 
-        self.run.warning(None, header=f'{self.length} nts palindrome"', lc='yellow')
+        self.run.warning(None, header=f'{self.length} nts palindrome', lc='yellow')
         self.run.info('1st sequence [start:stop]', f"[{self.first_start}:{self.first_end}]", mc='green')
         self.run.info('2nd sequence [start:stop]', f"[{self.second_start}:{self.second_end}]", mc='green')
         self.run.info('Number of mismatches', f"{self.num_mismatches}", mc='red')
