@@ -3,6 +3,7 @@
 """A module to characterize Florian's inversions"""
 
 import os
+import sys
 import argparse
 import numpy as np
 
@@ -246,6 +247,7 @@ class Inversions:
             self.run.warning("You don't have the `plotext` library to plot data :/ You can "
                              "install it by running `pip install plotext` in your anvi'o "
                              "environment.", header="NO PLOT FOR YOU :(")
+            sys.exit()
 
         plt.clp()
         plt.title(f"{sequence_name}")

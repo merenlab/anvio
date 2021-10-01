@@ -189,6 +189,7 @@ class PairedEndTemplateDist:
             self.run.warning("You don't have the `plotext` library to plot data :/ You can "
                              "install it by running `pip install plotext` in your anvi'o "
                              "environment.", header="NO PLOT FOR YOU :(")
+            return
 
         self.progress.new("Bleep bloop")
         self.progress.update('Merging all tlens from all contigs ...')
