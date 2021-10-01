@@ -98,6 +98,7 @@ class Inversions:
         # populate coverage stretches in contigs based on coverage data in this
         # particular profile_db. we will then go through each stretch to find
         # those that include palindromic sequences
+        contig_coverages = {}
         coverage_stretches_in_contigs = {}
         for contig_name in self.contig_names:
             contig_coverage = np.array([])
@@ -155,6 +156,8 @@ class Inversions:
                                                            contig_length if (e[1] + num_nts_to_pad_stretches) > contig_length else e[1] + num_nts_to_pad_stretches) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
+            contig_coverages[contig_name] = contig_coverage
+
         ################################################################################
         self.progress.update("Identifying palindromes within stretches")
         ################################################################################
@@ -170,6 +173,7 @@ class Inversions:
         for contig_name in coverage_stretches_in_contigs:
             contig_sequence = self.contig_sequences[contig_name]['sequence']
             for start, stop in coverage_stretches_in_contigs[contig_name]:
+                stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
 
@@ -179,7 +183,12 @@ class Inversions:
                     self.progress.reset()
                     self.run.warning(None, header=f"Palindromes in {sequence_name}")
                     self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
-                    [p.display() for p in P.palindromes[sequence_name]]
+
+                    for p in P.palindromes[sequence_name]:
+                        p.display()
+
+                    self.run.info_single(f"Coverage:", nl_before=1, nl_after=1)
+                    self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
                 if not len(P.palindromes[sequence_name]):
                     continue
