@@ -190,6 +190,26 @@ class Inversions:
         self.progress.end()
 
 
+    def plot_coverage(self, sequence_name, coverage, num_bins=100):
+        try:
+            import plotext as plt
+        except:
+            self.run.warning("You don't have the `plotext` library to plot data :/ You can "
+                             "install it by running `pip install plotext` in your anvi'o "
+                             "environment.", header="NO PLOT FOR YOU :(")
+
+        plt.clp()
+        plt.title(f"{sequence_name}")
+        plt.xlabel("Position")
+        plt.ylabel("Coverage")
+        plt.plot(coverage, fillx = True)
+        plt.plotsize(self.progress.terminal_width, 25)
+        plt.canvas_color("cloud")
+        plt.axes_color("cloud")
+        plt.ticks_color("iron")
+        plt.show()
+
+
     def process(self):
         for profile_db_path in self.profile_db_paths:
             self.process_db(profile_db_path)
