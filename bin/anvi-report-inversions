@@ -35,6 +35,8 @@ if __name__ == '__main__':
     groupA.add_argument('-p', '--profile-dbs', metavar = 'SINGLE PROFILE(S)', nargs='+',
                                 help = "Anvi'o single profile databases of 'inversions' variant.")
 
+    groupB = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "For the never satisfied.")
+    groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
     args = parser.get_args(parser)
 
     try:
