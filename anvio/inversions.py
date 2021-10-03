@@ -42,14 +42,21 @@ class Inversions:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.contigs_db_path = A('contigs_db')
-        self.profile_db_paths = A('profile_dbs')
+        self.bams_and_profiles_file_path = A('bams_and_profiles')
+
+        if not self.bams_and_profiles_file_path:
+            raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` arguemnt.")
+
+        # get these filled in immediately
+        self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
+        self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values()]
 
         # palindrome search parameters
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance_palindrome = A('min-distance') or 50
 
+        # be talkative or not
         self.verbose = A('verbose')
 
         if not skip_sanity_check:
@@ -76,12 +83,13 @@ class Inversions:
         self.contig_names = sorted(list(self.contig_name_to_split_names.keys()))
 
 
-    def process_db(self, profile_db_path):
-        """Function that does everything"""
+    def process_db(self, entry_name, profile_db_path, bam_file_path):
+        """Function that does everything.
 
-        profile_name = dbi.DBInfo(profile_db_path).get_self_table()['sample_id']
+        `entry_name` is the entry name in bams and profiles file.
+        """
 
-        self.progress.new(f"Processing '{profile_name}'")
+        self.progress.new(f"Processing '{entry_name}'")
 
         ################################################################################
         self.progress.update("Recovering the coverage data")
@@ -262,19 +270,13 @@ class Inversions:
 
 
     def process(self):
-        for profile_db_path in self.profile_db_paths:
-            self.process_db(profile_db_path)
+        for entry_name in self.profile_db_bam_file_pairs:
+            bam_file_path = self.profile_db_bam_file_pairs[entry_name]['bam_file_path']
+            profile_db_path = self.profile_db_bam_file_pairs[entry_name]['profile_db_path']
+            self.process_db(entry_name, profile_db_path, bam_file_path)
 
 
     def sanity_check(self):
-        utils.is_contigs_db(self.contigs_db_path)
-
-        if len(set([os.path.abspath(p) for p in self.profile_db_paths])) != len(self.profile_db_paths):
-            raise ConfigError("We don't like redundant profile databases. Every database should appear "
-                              "only once in the list of databases to be processed. RULES, yo.")
-
-        [utils.is_profile_db_and_contigs_db_compatible(p, self.contigs_db_path) for p in self.profile_db_paths]
-
         bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(p).variant != 'inversions']
         if len(bad_profile_dbs):
             if len(bad_profile_dbs) == len(self.profile_db_paths):

@@ -30,10 +30,8 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('INPUT DATABASES', "Input anvi'o databases")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupA.add_argument('-p', '--profile-dbs', metavar = 'SINGLE PROFILE(S)', nargs='+',
-                                help = "Anvi'o single profile databases of 'inversions' variant.")
+    groupA = parser.add_argument_group('INPUT DATA', "Essentially a BAMs and profiles file")
+    groupA.add_argument(*anvio.A('bams-and-profiles'), **anvio.K('bams-and-profiles'))
 
     groupB = parser.add_argument_group('FINDING PALINDROMES', "Some essential stuff here about your palindromes")
     groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
