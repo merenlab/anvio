@@ -172,7 +172,7 @@ class Inversions:
             contig_coverages[contig_name] = contig_coverage
 
         ################################################################################
-        self.progress.update("Identifying palindromes within stretches")
+        self.progress.update("Getting ready to process stretches")
         ################################################################################
         # time to go through each stretch and look for palindromes
         # first, we will set up the Palindromes class
@@ -185,7 +185,12 @@ class Inversions:
                         progress=progress_quiet)
         P.verbose = False
 
-        # now we can go through all the stretches to look for palindromes
+        # now we can go through all the stretches to look for palindromes. this is a LOOOOOONG loop.
+        # down below, we will got through each contig name, find stretches of good coverage of FWD/FWD
+        # and REV/REV reads (since their coverage values are stored in the profile db of 'inversions'
+        # type), find palindromes in those sequences that match to those coverage stretches, build some
+        # constructs, and then go through every FWD/FWD and REV/REV read from the BAM file to see if
+        # our constructs occur in any of them, which is the only 100% proof of an active inversion.
         for contig_name in coverage_stretches_in_contigs:
             contig_sequence = self.contig_sequences[contig_name]['sequence']
             for start, stop in coverage_stretches_in_contigs[contig_name]:
@@ -202,18 +207,20 @@ class Inversions:
                     self.run.info_single(f"Coverage:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
-                # find palindromes in the region of interest
+                ################################################################################
+                self.progress.update(f"{contig_name}: looking for palindromes")
+                ################################################################################
                 P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
 
                 if not len(P.palindromes[sequence_name]):
                     # there is no palindrome in this one
-                    self.run.info_single("No palindromes in this one :/", mc="red")
+                    if anvio.DEBUG or self.verbose:
+                        self.run.info_single("No palindromes in this one :/", mc="red")
                     continue
                 else:
-                    self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
+                    if anvio.DEBUG or self.verbose:
+                        self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
 
-                # this is important. here we test each our inversion candidate by reconstructing
-                # Florian's imaginary sequences to see if they truly occur anywhere
                 for inversion_candidate in P.palindromes[sequence_name]:
                     region_A_start = inversion_candidate.first_start - 6
                     region_A_end = inversion_candidate.first_start
