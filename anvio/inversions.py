@@ -209,7 +209,7 @@ class Inversions:
                 # for the user if they used `--verbose`
                 if anvio.DEBUG or self.verbose:
                     self.progress.reset()
-                    self.run.warning(None, header=f"Palindromes in {sequence_name}")
+                    self.run.warning(None, header=f"Palindromes in {sequence_name}", lc='yellow', nl_before=3)
                     self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
                     self.run.info_single(f"Coverage:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
@@ -222,10 +222,12 @@ class Inversions:
                 if not len(P.palindromes[sequence_name]):
                     # there is no palindrome in this one
                     if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
                         self.run.info_single("No palindromes in this one :/", mc="red")
                     continue
                 else:
                     if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
                         self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
 
                 ################################################################################
@@ -265,6 +267,7 @@ class Inversions:
                     inversion_candidate.v2_right = construct_v2_right
 
                     if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
                         inversion_candidate.display()
                         self.run.info("Construct v1 left", construct_v1_left, mc="cyan")
                         self.run.info("Construct v1 right", construct_v1_right, mc="cyan")
