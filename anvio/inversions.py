@@ -12,6 +12,7 @@ import anvio.tables as t
 import anvio.dbinfo as dbi
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.auxiliarydataops as auxiliarydataops
 
@@ -97,6 +98,12 @@ class Inversions:
 
         profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
         sample_id = profile_db.p_meta['sample_id']
+
+        # here we open our bam file with an inversions fetch filter.
+        # we will access to it later when it is time to get the FWD/FWD and
+        # REV/REV reads.
+        bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
+        bam_file.fetch_filter = 'inversions'
 
         # FIXME: this will need to have more reasonable defaults
         #        that are also parameterized
@@ -221,6 +228,13 @@ class Inversions:
                     if anvio.DEBUG or self.verbose:
                         self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
 
+                ################################################################################
+                self.progress.update(f"{contig_name}: building constructs")
+                ################################################################################
+                # this is important. here we are getting ready to test each our inversion candidate
+                # by reconstructing Florian's imaginary sequences. in the next step we will see if
+                # any of these sequences are in any of the FWD/FWD or REV/REV reads
+                inversion_candidates = []
                 for inversion_candidate in P.palindromes[sequence_name]:
                     region_A_start = inversion_candidate.first_start - 6
                     region_A_end = inversion_candidate.first_start
@@ -244,6 +258,12 @@ class Inversions:
                     construct_v2_left = region_A + inversion_candidate.second_sequence + utils.rev_comp(region_C)
                     construct_v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
 
+                    # update the palindrome instance with its constructs
+                    inversion_candidate.v1_left = construct_v1_left
+                    inversion_candidate.v1_right = construct_v1_right
+                    inversion_candidate.v2_left = construct_v2_left
+                    inversion_candidate.v2_right = construct_v2_right
+
                     if anvio.DEBUG or self.verbose:
                         inversion_candidate.display()
                         self.run.info("Construct v1 left", construct_v1_left, mc="cyan")
@@ -251,6 +271,30 @@ class Inversions:
                         self.run.info("Construct v2 left", construct_v2_left, mc="cyan")
                         self.run.info("Construct v2 right", construct_v2_right, mc="cyan")
 
+                    inversion_candidates.append(inversion_candidate)
+
+                # here we have, for a given `contig_name` and `start` and `stop` positions of a stretch in it, we have our inversion candidates,
+                ################################################################################
+                self.progress.update(f"{contig_name}[{start}:{stop}]: testing constructs")
+                ################################################################################
+                true_inversions = []
+                for read in bam_file.fetch_only(contig_name, start=start, end=stop):
+                    hit = False
+                    for inversion_candidate in inversion_candidates:
+                        if inversion_candidate.v1_left in read.query_sequence:
+                            hit = True
+                        elif inversion_candidate.v1_right in read.query_sequence:
+                            hit = True
+                        elif inversion_candidate.v2_left in read.query_sequence:
+                            hit = True
+                        elif inversion_candidate.v2_right in read.query_sequence:
+                            hit = True
+                    if hit:
+                        true_inversions.append(inversion_candidate)
+                        break
+
+                # FIXME: this is what we have now:
+                # print(contig_name, start, stop, true_inversions)
 
         self.progress.end()
 
