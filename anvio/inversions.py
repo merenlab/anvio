@@ -296,8 +296,19 @@ class Inversions:
                         true_inversions.append(inversion_candidate)
                         break
 
-                # FIXME: this is what we have now:
-                # print(contig_name, start, stop, true_inversions)
+                if anvio.DEBUG or self.verbose:
+                    if not len(true_inversions):
+                        self.progress.reset()
+                        self.run.info_single(f"No true inversions in this one: none of the REV/REV or FWD/FWD reads "
+                                             f"had any of the constructs in {PL('inversion candidate', len(inversion_candidates))}.",
+                                             mc="red", nl_before=1)
+                    else:
+                        self.progress.reset()
+                        self.run.info_single(f"The following {PL('inversion candidate', len(inversion_candidates))} "
+                                             f"had one or more perfect matches to their constructs in REV/REV or "
+                                             f"FWD/FWD reads from the BAM file:", mc="green", nl_before=1)
+                        for true_inversion in true_inversions:
+                            true_inversion.display()
 
         self.progress.end()
 
