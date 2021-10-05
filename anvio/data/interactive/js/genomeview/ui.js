@@ -283,7 +283,6 @@ function toggleSettingsPanel() {
 
 function buildGenomesTable(genomes, order){
   genomes.map(genome => {
-    console.log(genome[0])
     var height = '50';
     var margin = '15';
     let genomeLabel= genome[0];
