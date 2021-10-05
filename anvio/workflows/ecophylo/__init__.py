@@ -73,7 +73,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -193,6 +193,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Decide to clusterize metagenomic workflow
         self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
+        self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'cluster_submission_params'])
 
         self.target_files = self.get_target_files()
 

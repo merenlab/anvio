@@ -469,10 +469,15 @@ rule run_metagenomics_workflow:
         config = rules.make_metagenomics_config_file.output.config,
     output:
         touch(os.path.join("METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
+    params:
+        HPC_string = M.metagenomics_workflow_HPC_string
     threads: M.T('run_metagenomics_workflow')
     run:
         if M.clusterize_metagenomics_workflow == True:
             shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd ..')
+        elif M.metagenomics_workflow_HPC_string:
+            HPC_string = params.HPC_string
+            shell(f'cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd ..')
         else:
             shell('cd METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd ..')
 
