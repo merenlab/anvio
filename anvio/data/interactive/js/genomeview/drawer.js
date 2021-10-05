@@ -161,6 +161,14 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     // TODO this will need to be refactored once we begin testing genomes comprised of multiple contigs
     let contigObj = Object.values(additionalDataLayers)[0]
     let contigArr = Object.values(contigObj)[0]
+    let stroke = 'black'
+
+    if(layer == 'Coverage'){
+      this.settings['display']['additional-data-layers']['coverage'] ? stroke = this.settings['display']['additional-data-layers']['coverage'] : stroke = 'black'
+    }
+    if(layer == 'GC_content'){
+      this.settings['display']['additional-data-layers']['gc-content'] ? stroke = this.settings['display']['additional-data-layers']['gc-content'] : stroke = 'black'
+    }
 
     let maxDataLayerValue = 0
     let startingTop = marginTop + yOffset + layerPos
@@ -186,8 +194,8 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
       let graphObj = new fabric.Path(pathDirective.join(' '))
       graphObj.set({
         top : startingTop,
-        stroke : 'black', //additionalDataLayers[layer] ? additionalDataLayers[`${layer}-color`] : defaultColor,
-        fill : '', //additionalDataLayers['gcContent-color'] ? additionalDataLayers['gcContent-color'] : 'black',
+        stroke : stroke,
+        fill : '',
         selectable: false,
         objectCaching: false,
         id : `${layer} graph`,
@@ -381,7 +389,7 @@ GenomeDrawer.prototype.shadeGeneClusters = function(geneClusters, colors){
         selectable: false
       });
       path.sendBackwards();
-      canvas.sendToBack(path);
+      canvas.sendBackwards(path);
     }
     y += spacing
   }
