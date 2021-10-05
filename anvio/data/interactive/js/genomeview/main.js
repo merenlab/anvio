@@ -199,18 +199,15 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('display')) {
     settings['display'] = stateData['display']
-  } else {
-    settings['display'] = {}
-    settings['display']['additionalDataLayers'] = {}
-  }
-
-  if(stateData['display'].hasOwnProperty('additional-data-layers')){ // grab stored color values for ADLs
     if(stateData['display']['additional-data-layers']['coverage']){
       settings['display']['additional-data-layers']['coverage'] = stateData['display']['additional-data-layers']['coverage']
     }
     if(stateData['display']['additional-data-layers']['gc-content']){
       settings['display']['additional-data-layers']['gc-content'] = stateData['display']['additional-data-layers']['gc-content']
     }
+  } else {
+    settings['display'] = {}
+    settings['display']['additional-data-layers'] = {}
   }
 
   if (stateData['display'] && stateData['display'].hasOwnProperty('bookmarks')) {
