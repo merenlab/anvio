@@ -226,3 +226,49 @@ function filterColorTable(thresh) {
   generateColorTable(null, $("#gene_color_order").val());
   drawer.draw();
 }
+
+function showSaveStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#saveState_list').empty();
+
+            for (let state_name in state_list) {
+                var _select = "";
+                if (state_name == current_state_name)
+                {
+                    _select = ' selected="selected"';
+                }
+                $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
+            }
+
+            $('#modSaveState').modal('show');
+            if ($('#saveState_list').val() === null) {
+                $('#saveState_name').val('default');
+            } else {
+                $('#saveState_list').trigger('change');
+            }
+        }
+    });
+}
+
+function showLoadStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#loadState_list').empty();
+
+            for (let state_name in state_list) {
+                $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
+            }
+
+            $('#modLoadState').modal('show');
+        }
+    });
+}
