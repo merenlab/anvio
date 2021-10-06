@@ -227,8 +227,7 @@ function filterColorTable(thresh) {
   drawer.draw();
 }
 
-function showSaveStateWindow()
-{
+function showSaveStateWindow(){
     $.ajax({
         type: 'GET',
         cache: false,
@@ -251,12 +250,14 @@ function showSaveStateWindow()
             } else {
                 $('#saveState_list').trigger('change');
             }
+        },
+        error: function(error){
+          console.log('got an error', error)
         }
     });
 }
 
-function showLoadStateWindow()
-{
+function showLoadStateWindow(){
     $.ajax({
         type: 'GET',
         cache: false,
@@ -269,6 +270,65 @@ function showLoadStateWindow()
             }
 
             $('#modLoadState').modal('show');
+        }
+    });
+}
+
+function saveState()
+{
+    var name = $('#saveState_name').val();
+
+    if (name.length==0) {
+        $('#saveState_name').focus();
+        return;
+    }
+
+    var state_exists = false;
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        async: false,
+        url: '/state/all',
+        success: function(state_list) {
+            for (let state_name in state_list) {
+                if (state_name == name)
+                {
+                    state_exists = true;
+                }
+            }
+
+        }
+    });
+
+    if (state_exists && !confirm('"' + name + '" already exist, do you want to overwrite it?')) {
+        return;
+    }
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/state/save/' + name,
+        data: {
+            'content': JSON.stringify(serializeSettings(true), null, 4)
+        },
+        success: function(response) {
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
+
+            if (response['status_code']==0)
+            {
+                toastr.error("Failed, Interface running in read only mode.");
+            }
+            else if (response['status_code']==1)
+            {
+                // successfull
+                $('#modSaveState').modal('hide');
+
+                current_state_name = name;
+                toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
         }
     });
 }
