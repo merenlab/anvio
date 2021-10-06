@@ -25,7 +25,7 @@ __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
 
-M = EcoPhyloWorkflow(argparse.Namespace(config=config))
+M = ExternalEcoPhyloWorkflow(argparse.Namespace(config=config))
 M.init()
 
 dirs_dict = M.dirs_dict

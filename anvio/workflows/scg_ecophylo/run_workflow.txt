@@ -1,0 +1,141 @@
+# List workflows
+anvi-run-workflow --list-workflows
+
+# make default config file
+anvi-run-workflow -w ribo_phylo --get-default-config ribo_phylo_config.json
+
+# Test workflow
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --dry-run
+
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json
+
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json -A --until count_num_sequences_filtered
+
+anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --save-workflow-graph
+
+ anvi-run-workflow -w ribo_phylo -c config.json -A --cores 15
+
+# checkout tree
+## iq-tree
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa \
+                 --manual
+
+## fasttree
+SCG="Ribosomal_S2"
+anvi-interactive -p RIBO_PHYLO_WORKFLOW/06_TREES/${SCG}"/${SCG}"_profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/${SCG}"/${SCG}".nwk \
+                 -A RIBO_PHYLO_WORKFLOW/07_MISC_DATA/$SCG/"${SCG}"_all_misc_data_final.tsv \
+                 -f RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/${SCG}"/${SCG}"_aligned_trimmed_filtered.faa \
+                 --manual
+
+## Check out where all your reads went
+cat RIBO_PHYLO_WORKFLOW/05_SEQUENCE_STATS/Ribosomal_L16/Ribosomal_L16_stats.tsv
+
+## Quickly check the distribution of SCG read lengths
+### All SCGs
+samtools faidx RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna
+cut -f2 RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_all.fna.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+# OR
+awk '!/^>/{print length}' file.fa | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+
+### input alignment
+samtools faidx RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa
+cut -f2 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa.fai | Rscript -e 'data <- as.numeric (readLines ("stdin")); png("fasta_histogram.png"); hist(data); dev.off()'
+
+
+# Clusterize it
+clusterize "anvi-run-workflow -w ribo_phylo -c ribo_phylo_config.json --additional-params --cluster 'clusterize -j={rule} -o={log} -n={threads} -x' --cores 80 --resource nodes=80 --latency-wait 100 --keep-going --rerun-incomplete"
+
+# LOG
+cat /project2/meren/COLLABORATIONS/LoisMaignien/ACE_SO_metagenomes/analyses/SCGs_20201026/clusterize_LdusAVuzZy.log
+
+anvi-interactive -p 07_TREES/Ribosomal_L16/Ribosomal_L16_profile.db \
+                 -t 07_TREES/Ribosomal_L16/Ribosomal_L16.treefile \
+                 -A 08_MISC_DATA/Ribosomal_L16/Ribosomal_L16_all_misc_data_final.tsv   \
+                 --manual
+
+
+anvi-interactive -p Ribosomal_L16_profile.db \
+                 -t Ribosomal_L16.treefile \
+                 -A Ribosomal_L16_all_misc_data_final.tsv   \
+                 --manual
+
+
+# Mapping
+mkdir profile_SCGs && cd profile_SCGs
+anvi-run-workflow -w metagenomics --get-default-config config.json
+# Checklist for metagenomics config file
+- [ ] turn OFF all annotation steps
+- [ ] turn OFF minoche read filtering
+- [ ] REFERENCES mode
+- [ ] adjust min contig length in profile to really small (default it 1000 nt and some SCGs have less)
+- [ ] 
+
+
+# Ok now let's mapp the metagenomes to the reads
+
+# samples_txt
+
+mkdir -p PROFILE_SCGs
+cd PROFILE_SCGs
+
+# cp samples_txt to this dir and add relative paths
+cp ../samples.txt .
+
+# fasta_txt
+# located here: 
+echo -e "name\tpath" > fasta.txt
+echo -e "Ribosomal_l16\t../RIBO_PHYLO_WORKFLOW/03_NR_FASTAS/Ribosomal_L16/Ribosomal_L16_scgs_for_mapping.fna" >> fasta.txt
+
+# Sync with midway
+rsync -av OSD/ mschechter@midway2.rcc.uchicago.edu:/project2/meren/PEOPLE/mschechter/OSD
+
+# run workflow
+si
+
+anvi-run-workflow -w metagenomics -c config.json -A --cores 10
+
+
+anvi-script-add-default-collection -c 03_CONTIGS/Ribosomal_l16-contigs.db \
+                                   -p 05_ANVIO_PROFILE/Ribosomal_l16/ERR771092/PROFILE.db
+
+anvi-summarize -c 03_CONTIGS/Ribosomal_l16-contigs.db \
+               -p 05_ANVIO_PROFILE/Ribosomal_l16/ERR771092/PROFILE.db \
+               -o 07_SUMMARY/Ribosomal_l16 \
+               -C DEFAULT \
+               --init-gene-coverages
+
+rscript add_mapping_data_to_misc.R
+
+anvi-interactive --manual \
+                 -p fake-profile.db \
+                 -t RIBO_PHYLO_WORKFLOW/06_TREES/Ribosomal_L16/Ribosomal_L16.tree \
+                 -A profile_SCGs/07_SUMMARY/Ribosomal_L16/Ribosomal_L16_all_misc_data_final_coverage.tsv
+
+
+
+NOTES
+- https://www.nature.com/articles/s41591-018-0202-8?WT.feed_name=subjects_microbiome
+Looming questions that I should keep in mind when looking at the output of this workflow:
+- Do I consistently ge tthe sam enumber of seuqneces that are metagenome or genome derived?
+- Do the hav_genomic_SCGF_in_cluster categorical variable consistent if the workflow is run twice on the same dataset?
+  + NO because mmseqs more than likely has some stochasisity to when it picks representatives but I need to confirm this
+- 
+
+
+
+Examine potential sequence outliers and their progression through the MSA filtering process:
+```
+seq_header="PSW_125_05M_000000000121"
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned.faa
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed.faa
+grep $seq_header -A 10 -B 10 RIBO_PHYLO_WORKFLOW/04_MSA/MSA_1/Ribosomal_L16/Ribosomal_L16_aligned_trimmed_filtered.faa
+```
+
+For when the time comes to unleash the beast, the pachiadaki SAGs are here:
+```
+ls /project2/meren/PEOPLE/ekiefl/JORTATAP/V01/PACHIADAKI_SAGS/02_CONTIGS/*-contigs.db
+```
