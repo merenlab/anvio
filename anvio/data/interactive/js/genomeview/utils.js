@@ -310,7 +310,7 @@ function saveState()
         cache: false,
         url: '/state/save/' + name,
         data: {
-            'content': JSON.stringify(serializeSettings(true), null, 4)
+            'content': JSON.stringify(serializeSettings())
         },
         success: function(response) {
             if (typeof response != 'object') {
