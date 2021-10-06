@@ -37,27 +37,30 @@ rule anvi_run_hmms_hmmsearch:
     """Run hmmsearch with input HMMs to get domtblout"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch_{sample_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch_{sample_name}_{external_hmm}.log")
     input:
     output:
-        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-contigs-hmmsearch.done")),
-        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.domtable"),
-        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed"),
-        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table")
+        touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_{external_hmm}-contigs-hmmsearch.done")),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_{external_hmm}_dom_hmmsearch/hmm.domtable"),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_{external_hmm}_dom_hmmsearch/hmm.table.fixed"),
+        os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_{external_hmm}_dom_hmmsearch/hmm.table")
     params:
         hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
-      hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
       contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
+      external_hmm_dir = os.path.join(M.external_HMM_dict[wildcards.external_hmm], "%s-contigs.db" % wildcards.sample_name)
+      hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
 
       shell("anvi-run-hmms -c %s \
                            --hmmer-program hmmsearch \
+                           --hmm-profile-dir %s \
                            --hmmer-output-dir %s \
                            -I {params.hmm_source} \
                            --domain-hits-table \
                            --just-do-it \
-                           -T {threads} 2> {log}" % (contigsDB, hmmer_output_dir))
+                           -T {threads} 2> {log}" % (contigsDB, external_hmm_dir, hmmer_output_dir))
+
 
 rule filter_hmm_hits_by_query_coverage:
     """Filter hmm_hits table by query coverage using domtblout"""

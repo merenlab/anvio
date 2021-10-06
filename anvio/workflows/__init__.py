@@ -633,7 +633,7 @@ def get_workflow_snake_file_path(workflow):
     workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
 
     if not os.path.isdir(workflow_dir):
-        raise ConfigError("Anvi'o does not know about the workflow '%s' :/")
+        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
 
     snakefile_path = os.path.join(workflow_dir, 'Snakefile')
 

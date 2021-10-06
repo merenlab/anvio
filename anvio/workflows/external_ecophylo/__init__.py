@@ -56,14 +56,13 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['Reference_protein_list']) # user must input which Reference proteins will be used for workflow
-        self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the MSA
+        self.general_params.extend(['external_hmm_list']) # user must input which Reference proteins will be used for workflow
 
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['-I']
+        # rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['-I']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage', 'additional_params']
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
@@ -82,9 +81,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'anvi_script_reformat_fasta': {'threads': 5},
-            'Reference_protein_list': 'reference_protein_list.txt',
-            'MSA_gap_threshold': '',
-            'anvi_run_hmms_hmmsearch': {'threads': 5, '-I': 'Bacteria_71'},
+            'external_hmm_list': 'external_hmm_list.txt',
+            'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
@@ -173,16 +171,17 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
 
-        # Load Reference protein list
-        self.Reference_protein_list_path = self.get_param_value_from_config(['Reference_protein_list'])
-        filesnpaths.is_file_exists(self.Reference_protein_list_path)
-        try:
-            self.Reference_protein_df = pd.read_csv(self.Reference_protein_list_path, sep='\t', index_col=False)
-            self.Reference_protein_list = self.Reference_protein_df.iloc[:, 0].to_list() 
+        # Load External HMM list
+        self.external_hmm_list_path = self.get_param_value_from_config(['external_hmm_list'])
+        if self.external_hmm_list_path: 
+            filesnpaths.is_file_exists(self.external_hmm_list_path)
+            try:
+                external_HMM_df = pd.read_csv(self.external_hmm_list_path, sep='\t', index_col=False)
+                self.external_HMM_dict = dict(zip(external_HMM_df.name, external_HMM_df.path))
 
-        except IndexError as e:
-            raise ConfigError("The reference_protein_list.txt file, '%s', does not appear to be properly formatted. "
-                              "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+            except IndexError as e:
+                raise ConfigError("The external_hmm_list.txt file, '%s', does not appear to be properly formatted. "
+                                  "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
@@ -200,34 +199,36 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for reference_protein_name in self.Reference_protein_list:
+        for sample in self.names_dirs:
+            for external_hmm in self.external_HMM_dict.keys():
+                print(f"{sample}_{external_hmm}")
 
             # Count num sequences removed per step
-            tail_path = "%s_stats.tsv" % (reference_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
+            tail_path = f"{external_hmm}_stats.tsv"
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], external_hmm, tail_path)
             target_files.append(target_file)
 
             # Import state file to customize interactive interface
-            target_file = os.path.join(f"{reference_protein_name}_state_imported.done")
+            target_file = os.path.join(f"{external_hmm}_state_imported.done")
             target_files.append(target_file)
 
             # Reformat names to match splits in interactive interface
-            target_file = os.path.join(f"{reference_protein_name}_combined.done")
+            target_file = os.path.join(f"{external_hmm}_combined.done")
             target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{reference_protein_name}_misc.tsv")
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
             target_files.append(target_file)
 
             # The FINAL trees :)
             # iq-tree
             if self.run_iqtree == True:
-                tail_path = "%s.iqtree" % (reference_protein_name)
-                target_file = os.path.join(self.dirs_dict['TREES'], reference_protein_name, tail_path)
+                tail_path = "%s.iqtree" % (external_hmm)
+                target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
                 target_files.append(target_file)
             # fasttree
             elif self.run_fasttree == True:
-                tail_path = "%s.nwk" % (reference_protein_name)
-                target_file = os.path.join(self.dirs_dict['TREES'], reference_protein_name, tail_path)
+                tail_path = "%s.nwk" % (external_hmm)
+                target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
                 target_files.append(target_file)
 
         return target_files
