@@ -466,8 +466,12 @@ class BottleApplication(Bottle):
 
     def get_state(self, state_name):
         if state_name in self.interactive.states_table.states:
+
             state = self.interactive.states_table.states[state_name]
             state_dict = json.loads(state['content'])
+
+            if self.interactive.mode == 'genome-view':
+                return json.dumps({'content' : state_dict})
 
             if self.interactive.mode == 'structure':
                 return json.dumps({'content': state['content']})
@@ -484,7 +488,7 @@ class BottleApplication(Bottle):
 
                 return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
-        return json.dumps("")
+        return json.dumps('')
 
 
     def charts(self, order_name, item_name):
