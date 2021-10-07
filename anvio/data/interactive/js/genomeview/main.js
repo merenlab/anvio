@@ -26,6 +26,7 @@
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 var VIEWER_HEIGHT = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
+var current_state_name = null
 var alignToGC = null;
 var stateData = {};
 var settings = {} // packaged obj sent off to GenomeDrawer
@@ -82,7 +83,8 @@ $(document).ready(function () {
 
   initData();
   loadAdditionalDataLayers()
-  loadState();
+  processState('default', stateData)
+  // loadState();
   loadAll();
 });
 
@@ -119,24 +121,33 @@ function loadAdditionalDataLayers(){
 }
 
 function loadState() {
-  // $.ajax({
-  //   type: 'GET',
-  //   cache: false,
-  //   url: '/data/genome_view/state/get/' + state_name,
-  //   success: function (response) {
-  //     try {
-  //       // processState(state_name, response[0]); process actual response from backend
-  //       processState(state_name, mockStateData); // process mock state data
-  //     } catch (e) {
-  //       console.error("Exception thrown", e.stack);
-  //       toastr.error('Failed to parse state data, ' + e);
-  //       defer.reject();
-  //       return;
-  //     }
-  //     // waitingDialog.hide();
-  //   }
-  // })
-  processState('default', stateData) // moved here until state route is hooked in from backend
+
+  var defer = $.Deferred();
+    $('#modLoadState').modal('hide');
+    if ($('#loadState_list').val() == null) {
+        defer.reject();
+        return;
+    }
+
+    var state_name = $('#loadState_list').val();
+
+  $.ajax({
+    type: 'GET',
+    cache: false,
+    url: '/state/get/' + state_name,
+    success: function (response) {
+      try {
+        console.log(response[0])
+        // processState(state_name, response[0]);
+      } catch (e) {
+        console.error("Exception thrown", e.stack);
+        toastr.error('Failed to parse state data, ' + e);
+        defer.reject();
+        return;
+      }
+    }
+  })
+  // processState('default', stateData) // moved here until state route is hooked in from backend
 }
 
 function serializeSettings() {
