@@ -137,17 +137,18 @@ function loadState() {
     url: '/state/get/' + state_name,
     success: function (response) {
       try {
-        console.log(response[0])
-        // processState(state_name, response[0]);
+        processState(state_name, response['content']);
       } catch (e) {
         console.error("Exception thrown", e.stack);
         toastr.error('Failed to parse state data, ' + e);
         defer.reject();
         return;
       }
+    },
+    error: function(resp){
+      console.log(resp)
     }
   })
-  // processState('default', stateData) // moved here until state route is hooked in from backend
 }
 
 function serializeSettings() {
@@ -191,6 +192,8 @@ function serializeSettings() {
 }
 
 function processState(stateName, stateData) {
+  settings['state-name'] = stateName
+
   calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
     settings['group-layer-order'] = stateData['group-layer-order']
