@@ -138,6 +138,7 @@ function loadState() {
     success: function (response) {
       try {
         processState(state_name, response['content']);
+        loadAll()
       } catch (e) {
         console.error("Exception thrown", e.stack);
         toastr.error('Failed to parse state data, ' + e);
@@ -263,6 +264,7 @@ function processState(stateName, stateData) {
 function loadAll() {
   buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
   canvas = new fabric.Canvas('myCanvas');
+  canvas.clear() // clear existing canvas if loadAll is being called from loadState
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
