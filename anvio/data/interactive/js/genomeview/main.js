@@ -83,7 +83,6 @@ $(document).ready(function () {
   initData();
   loadAdditionalDataLayers()
   processState('default', stateData)
-  // loadState();
   loadAll();
 });
 
