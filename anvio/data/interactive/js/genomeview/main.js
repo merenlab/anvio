@@ -80,7 +80,7 @@ $(document).ready(function () {
     "showMethod": "fadeIn",
     "hideMethod": "fadeOut",
   }
-
+  $('.loading-screen').show();
   initData();
   loadAdditionalDataLayers()
   processState('default', stateData)

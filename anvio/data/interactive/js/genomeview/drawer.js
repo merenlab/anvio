@@ -38,6 +38,7 @@ GenomeDrawer.prototype.draw = function(){
 
   checkGeneLabels();
   drawTestShades();
+  $('.loading-screen').hide();
 }
 
 /*
