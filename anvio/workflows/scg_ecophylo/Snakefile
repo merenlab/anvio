@@ -14,7 +14,7 @@ import anvio.workflows as w
 
 from Bio import SeqIO
 from anvio.errors import ConfigError
-from anvio.workflows.ecophylo import EcoPhyloWorkflow
+from anvio.workflows.scg_ecophylo import SCGEcoPhyloWorkflow
 
 __author__ = "Matthew S. Schechter"
 __copyright__ = "Copyright 2017, The anvio Project"

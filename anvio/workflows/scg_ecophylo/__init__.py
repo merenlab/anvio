@@ -30,7 +30,7 @@ run = terminal.Run()
 class SCGEcoPhyloWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='ecophylo')
+        self.init_workflow_super_class(args, workflow_name='scg_ecophylo')
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
@@ -103,14 +103,14 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             })
 
         # Directory structure for Snakemake workflow
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "ECO_PHYLO_WORKFLOW/03_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "ECO_PHYLO_WORKFLOW/04_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "ECO_PHYLO_WORKFLOW/05_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "ECO_PHYLO_WORKFLOW/06_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "ECO_PHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECO_PHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "SCG_ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "SCG_ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "SCG_ECO_PHYLO_WORKFLOW/03_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "SCG_ECO_PHYLO_WORKFLOW/04_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "SCG_ECO_PHYLO_WORKFLOW/05_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "SCG_ECO_PHYLO_WORKFLOW/06_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "SCG_ECO_PHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "SCG_ECO_PHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
@@ -118,8 +118,8 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
 
         super().init()
 
-        # Re-assigning LOGS/ dir to inside ECO_PHYLO_WORKFLOW/ dir
-        self.dirs_dict.update({"LOGS_DIR": "ECO_PHYLO_WORKFLOW/00_LOGS"})
+        # Re-assigning LOGS/ dir to inside SCG_ECO_PHYLO_WORKFLOW/ dir
+        self.dirs_dict.update({"LOGS_DIR": "SCG_ECO_PHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
         self.names_dirs = []
