@@ -410,7 +410,7 @@ rule make_fasta_txt:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_subset.tsv"), reference_protein_names = M.Reference_protein_list),
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_references_for_mapping_NT.fa"), reference_protein_names = M.Reference_protein_list),
     output:
-        fasta_txt = os.path.join("ECO_PHYLO_WORKFLOW", "fasta.txt"),
+        fasta_txt = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "fasta.txt"),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
         fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_references_for_mapping_NT.fa') for r in M.Reference_protein_list]
@@ -437,7 +437,7 @@ rule make_metagenomics_config_file:
 
         config = open(output.config)
         config_dict = json.load(config)
-        config_dict['fasta_txt'] = '../ECO_PHYLO_WORKFLOW/fasta.txt'
+        config_dict['fasta_txt'] = '../SCG_ECO_PHYLO_WORKFLOW/fasta.txt'
         config_dict['samples_txt'] = '../samples.txt'
         config_dict['references_mode'] = True
         config_dict['anvi_run_hmms']['run'] = False
@@ -491,7 +491,7 @@ rule make_anvio_state_file:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
     output:
-        state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
+        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
         state_dict = {}
@@ -691,7 +691,7 @@ rule anvi_import_state:
     input:
         rules.make_anvio_state_file.output
     params:
-        state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
+        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
         profileDB = os.path.join("METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
     output: touch(os.path.join("{reference_protein_name}_state_imported.done"))
     threads: 2
