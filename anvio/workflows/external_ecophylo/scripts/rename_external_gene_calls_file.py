@@ -10,16 +10,25 @@ import os.path
 
 # Import tables
 #--------------
-external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls, \
+external_gene_calls = pd.read_csv(snakemake.input.external_gene_calls_all, \
                                   delim_whitespace=True, \
                                   index_col=False)
 
 # Make new columns
 #-----------------
 external_gene_calls[['sample_name', 'contig_number', 'gene_callers_id']] = external_gene_calls['contig'].str.rsplit('_',2, expand=True)
-external_gene_calls['reference_protein_name'] = snakemake.wildcards.reference_protein_name
+external_gene_calls['reference_protein_name'] = snakemake.wildcards.external_hmm
 external_gene_calls['contig'] = external_gene_calls['sample_name'] + '_' + external_gene_calls['reference_protein_name'] + '_' + external_gene_calls['gene_callers_id']
 external_gene_calls = external_gene_calls[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]]
+
+
+
+# Import import fasta as dataframe
+# fasta_df = pd.DataFrame({'header': [], 'sequence': []})
+
+# for seq_record in SeqIO.parse(str(snakemake.input.reps), "fasta"):
+#     fasta_df = fasta_df.append({'header': str(seq_record.description), 'sequence': str(seq_record.seq)}, ignore_index=True)
+
 
 # Write file
 #-------------

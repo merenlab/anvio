@@ -30,7 +30,7 @@ run = terminal.Run()
 class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='ecophylo')
+        self.init_workflow_super_class(args, workflow_name='external_ecophylo')
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
@@ -183,6 +183,10 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 raise ConfigError("The external_hmm_list.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
+            if any("_" in s for s in self.external_HMM_dict.keys()):
+                raise ConfigError(f"Please do not use underscores in your external HMM names in: "
+                                  f"{self.external_hmm_list_path}")
+
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
@@ -199,9 +203,23 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for sample in self.names_dirs:
-            for external_hmm in self.external_HMM_dict.keys():
-                print(f"{sample}_{external_hmm}")
+        for external_hmm in self.external_HMM_dict.keys():
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.tsv")
+            target_files.append(target_file)
+
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_all.fna")
+            # target_files.append(target_file)
+
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
+            # target_files.append(target_file)
+
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_subset.tsv")
+            # target_files.append(target_file)
+            # for sample_name in self.names_list:
+            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}_{external_hmm}-contigs-hmmsearch.done")
+            #     target_files.append(target_file)
+
+
 
             # Count num sequences removed per step
             tail_path = f"{external_hmm}_stats.tsv"
@@ -213,11 +231,11 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Reformat names to match splits in interactive interface
-            target_file = os.path.join(f"{external_hmm}_combined.done")
-            target_files.append(target_file)
+            # target_file = os.path.join(f"{external_hmm}_combined.done")
+            # target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
+            # target_files.append(target_file)
 
             # The FINAL trees :)
             # iq-tree
@@ -230,5 +248,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 tail_path = "%s.nwk" % (external_hmm)
                 target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
                 target_files.append(target_file)
+
+            print(target_files)
 
         return target_files
