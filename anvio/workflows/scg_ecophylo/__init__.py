@@ -56,14 +56,12 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['Reference_protein_list']) # user must input which Reference proteins will be used for workflow
-        self.general_params.extend(['MSA_gap_threshold']) # user can input a num gaps threshold to filter the MSA
-
+        self.general_params.extend(['SCG_protein_list']) # user must input which Reference proteins will be used for workflow
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['-I']
+        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['--installed-hmm-profile']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage', 'additional_params']
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
@@ -82,9 +80,8 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'anvi_script_reformat_fasta': {'threads': 5},
-            'Reference_protein_list': 'reference_protein_list.txt',
-            'MSA_gap_threshold': '',
-            'anvi_run_hmms_hmmsearch': {'threads': 5, '-I': 'Bacteria_71'},
+            'SCG_protein_list': 'SCG_protein_list.txt',
+            'anvi_run_hmms_hmmsearch': {'threads': 5, '--installed-hmm-profile': 'Bacteria_71'},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
@@ -174,14 +171,14 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             self.mode = 'both'
 
         # Load Reference protein list
-        self.Reference_protein_list_path = self.get_param_value_from_config(['Reference_protein_list'])
-        filesnpaths.is_file_exists(self.Reference_protein_list_path)
+        self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
+        filesnpaths.is_file_exists(self.SCG_protein_list_path)
         try:
-            self.Reference_protein_df = pd.read_csv(self.Reference_protein_list_path, sep='\t', index_col=False)
-            self.Reference_protein_list = self.Reference_protein_df.iloc[:, 0].to_list() 
+            self.Reference_protein_df = pd.read_csv(self.SCG_protein_list_path, sep='\t', index_col=False)
+            self.SCG_protein_list = self.Reference_protein_df.iloc[:, 0].to_list() 
 
         except IndexError as e:
-            raise ConfigError("The reference_protein_list.txt file, '%s', does not appear to be properly formatted. "
+            raise ConfigError("The SCG_protein_list.txt file, '%s', does not appear to be properly formatted. "
                               "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
         # Pick which tree algorithm
@@ -200,7 +197,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for reference_protein_name in self.Reference_protein_list:
+        for reference_protein_name in self.SCG_protein_list:
 
             # Count num sequences removed per step
             tail_path = "%s_stats.tsv" % (reference_protein_name)

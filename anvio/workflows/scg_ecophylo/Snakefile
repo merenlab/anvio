@@ -45,8 +45,8 @@ rule anvi_run_hmms_hmmsearch:
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table.fixed"),
         os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}_dom_hmmsearch/hmm.table")
     params:
-        hmm_source = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--hmm-source']),
-    threads: M.T('anvi_get_external_gene_calls_file')
+        hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
+    threads: M.T('anvi_run_hmms_hmmsearch')
     run:
       hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "%s_dom_hmmsearch" % wildcards.sample_name)
       contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name)
@@ -87,7 +87,7 @@ rule filter_hmm_hits_by_query_coverage:
 
 
 rule anvi_estimate_scg_taxonomy_for_SCGs:
-    """Get SCG taxonomy for SCGs in Reference_protein_list.txt and the associated NT and AA sequences for each HMM hit"""
+    """Get SCG taxonomy for SCGs in SCG_protein_list.txt and the associated NT and AA sequences for each HMM hit"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{reference_protein_name}.log")
@@ -243,7 +243,7 @@ rule cat_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{reference_protein_name}.log")
     input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, reference_protein_names = M.Reference_protein_list),
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, reference_protein_names = M.SCG_protein_list),
     output:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all.tsv"),
     threads: M.T('cat_ribo_proteins_to_one_fasta')
@@ -407,16 +407,16 @@ rule make_fasta_txt:
 
     version: 1.0
     input:
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_subset.tsv"), reference_protein_names = M.Reference_protein_list),
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_references_for_mapping_NT.fa"), reference_protein_names = M.Reference_protein_list),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_subset.tsv"), reference_protein_names = M.SCG_protein_list),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_references_for_mapping_NT.fa"), reference_protein_names = M.SCG_protein_list),
     output:
         fasta_txt = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "fasta.txt"),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
-        fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_references_for_mapping_NT.fa') for r in M.Reference_protein_list]
-        external_gene_calls = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_subset.tsv') for r in M.Reference_protein_list]
+        fastas = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_references_for_mapping_NT.fa') for r in M.SCG_protein_list]
+        external_gene_calls = [os.path.join("..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], r + "/" + r + '_external_gene_calls_subset.tsv') for r in M.SCG_protein_list]
 
-        list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.Reference_protein_list, fastas, external_gene_calls)]
+        list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.SCG_protein_list, fastas, external_gene_calls)]
 
         shell('echo -e "name\tpath\texternal_gene_calls" > {output.fasta_txt}')
         shell('echo -n "%s" >> {output.fasta_txt}' % ''.join(list_of_strings))
