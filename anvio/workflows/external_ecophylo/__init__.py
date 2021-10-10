@@ -207,20 +207,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.tsv")
             target_files.append(target_file)
 
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_all.fna")
-            # target_files.append(target_file)
-
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
-            # target_files.append(target_file)
-
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_subset.tsv")
-            # target_files.append(target_file)
-            # for sample_name in self.names_list:
-            #     target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}_{external_hmm}-contigs-hmmsearch.done")
-            #     target_files.append(target_file)
-
-
-
             # Count num sequences removed per step
             tail_path = f"{external_hmm}_stats.tsv"
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], external_hmm, tail_path)
@@ -231,11 +217,11 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             # Reformat names to match splits in interactive interface
-            # target_file = os.path.join(f"{external_hmm}_combined.done")
-            # target_files.append(target_file)
+            target_file = os.path.join(f"{external_hmm}_combined.done")
+            target_files.append(target_file)
 
-            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
-            # target_files.append(target_file)
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
+            target_files.append(target_file)
 
             # The FINAL trees :)
             # iq-tree
@@ -248,7 +234,5 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 tail_path = "%s.nwk" % (external_hmm)
                 target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
                 target_files.append(target_file)
-
-            print(target_files)
 
         return target_files

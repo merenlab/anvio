@@ -129,28 +129,6 @@ rule anvi_get_sequences_for_hmm_hits_SCGs_nt:
                                                -o {output.fna} 2> {log}")
 
 
-# rule get_external_gene_calls_file:
-#     """Extract external_gene_calls table fromsamples"""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{external_hmm}.log")
-#     input:
-#         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_hmm_hits.fna.done"),
-#         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
-#     output:
-#         external_gene_calls_ed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_external_gene_calls_ed.tsv")
-#     params:
-#         fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_orfs.fna")),
-#         external_gene_calls = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_orfs.fna"))
-#     threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs')
-#     shell:
-#           """
-#           anvi-get-sequences-for-gene-calls -c {input.contigsDB} \
-#                                             --external-gene-calls {params.external_gene_calls} \
-#                                             -o {params.fasta} 2> {log};
-#           awk -v sample="{wildcards.sample_name}" 'NR==1 {{print}} NR>1 {{$2=sample"_"$2; print}}' {params.external_gene_calls} > {output.external_gene_calls_ed}
-#           """
-
 rule get_external_gene_calls_file:
     """Extract external_gene_calls table fromsamples"""
 
@@ -407,10 +385,13 @@ def get_misc_data_about_clusters(mmseqs_cluster_rep_index, final_sequences_heade
                                     sep="\t", \
                                     index_col=False, \
                                     header=None)
-
     # If metagenome_name is in external_genomes_names_list then it's a genome
     #------------------------------------------------------------------------
-    misc_data["contig_db_type"] = np.where(misc_data["metagenome_name"].isin(M.external_genomes_names_list), "genome", "metagenome")
+    # print(cluster_rep_index.head())
+    # print()
+    # reformat_report['old_header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(int)
+    cluster_rep_index['sample_name'] = cluster_rep_index["representative"].str.split("_").str[:-2].str.join("_").astype(str)
+    cluster_rep_index["contig_db_type"] = np.where(cluster_rep_index["sample_name"].isin(M.external_genomes_names_list), "genome", "metagenome")
 
     # Detect if there is a genomic reference protein in cluster
     #----------------------------------------------------------
@@ -425,21 +406,23 @@ def get_misc_data_about_clusters(mmseqs_cluster_rep_index, final_sequences_heade
                 sup_list.append(seq)
 
 
-    misc_data['has_genomic_reference_protein_in_cluster'] = np.where(misc_data['identifier'].isin(sup_list), 'yes', 'no')
+    cluster_rep_index['has_genomic_reference_protein_in_cluster'] = np.where(cluster_rep_index['representative'].isin(sup_list), 'yes', 'no')
 
     # Make split name column for mapping
     #-----------------------------------
-    misc_data['split_name'] = misc_data['identifier'].astype(str) + '_split_00001'
-    first_column = misc_data.pop('split_name')
-    misc_data.insert(0, 'split_name', first_column)
+    cluster_rep_index['split_name'] = cluster_rep_index['representative'].astype(str) + '_split_00001'
+    first_column = cluster_rep_index.pop('split_name')
+    cluster_rep_index.insert(0, 'split_name', first_column)
 
     # Count size of clusters
     #-----------------------
     df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
 
-    misc_data = pd.merge(misc_data, df, left_on='identifier', right_on='cluster_members')
+    misc_data = pd.merge(cluster_rep_index, df, on='cluster_members')
 
-    misc_data = misc_data[['split_name', 'identifier', 'percent_identity', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size', 't_domain', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species']]
+    misc_data = misc_data.rename(columns={'representative': 'identifier', 'oldName2': 'newName2'})
+
+    misc_data = misc_data[['split_name', 'identifier', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size']].drop_duplicates()
 
     # Export
     #-------
@@ -455,24 +438,23 @@ def count_cluster_size(group):
     return group
 
 
-# rule add_misc_data_to_taxonomy:
-#     """Add simplified fasta headers to the misc data file"""
+rule add_misc_data_to_taxonomy:
+    """Add simplified fasta headers to the misc data file"""
 
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{external_hmm}.log")
-#     input:
-#         taxonomy = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.taxonomy,
-#         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{external_hmm}/{external_hmm}_headers.tmp")
-#     output:
-#         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{external_hmm}_misc.tsv")
-#     params:
-#         cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}", "{external_hmm}_mmseqs_NR_cluster.tsv")
-#     threads: M.T('anvi_get_external_gene_calls_file')
-#     run:
-#         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
-#         get_misc_data_about_clusters(mmseqs_cluster_rep_index = params.cluster_rep_index,
-#                                      final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
-#                                      output = output.misc_data_final)
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{external_hmm}.log")
+    input:
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{external_hmm}/{external_hmm}_headers.tmp")
+    output:
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{external_hmm}_misc.tsv")
+    params:
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}", "{external_hmm}_mmseqs_NR_cluster.tsv")
+    threads: M.T('anvi_get_external_gene_calls_file')
+    run:
+        """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
+        get_misc_data_about_clusters(mmseqs_cluster_rep_index = params.cluster_rep_index,
+                                     final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                                     output = output.misc_data_final)
 
 
 rule anvi_get_external_gene_calls_file:
@@ -492,38 +474,6 @@ rule anvi_get_external_gene_calls_file:
         shell('anvi-get-sequences-for-gene-calls -c {input.contigsDB} \
                                                  --external-gene-calls {output.external_gene_calls} \
                                                  -o {params.fasta} 2> {log}')
-
-
-# rule rename_and_filter_external_gene_calls_file:
-#     """
-#     Create primary key from external-gene-calls.txt to join with references sequences to make
-#     a contigsDB for the metagenomics workflow
-#     """
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{sample_name}_{external_hmm}.log")
-#     input:
-#         done = rules.anvi_estimate_scg_taxonomy_for_SCGs.output,
-#         external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_external_gene_calls.tsv")
-#     output:
-#         external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_external_gene_calls_renamed.tsv")
-#     threads: 5
-#     script:
-#         "scripts/rename_external_gene_calls_file.py"
-
-
-# rule cat_external_gene_calls_file:
-#     """Cat all external_gene_calls files from all samples into one file"""
-
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{external_hmm}.log")
-#     input:
-#         external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{external_hmm}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, external_hmms = M.external_HMM_dict.keys()),
-#     output:
-#         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
-#     threads: M.T('cat_ribo_proteins_to_one_fasta')
-#     run:
-#         shell("cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")
 
 
 rule subset_external_gene_calls_file_all:
@@ -933,29 +883,29 @@ rule anvi_summarize:
         """
 
 
-# rule rename_tree_tips:
-#     """Joins read recruitment and taxonomy data for interactive interface"""
+rule rename_tree_tips:
+    """Joins read recruitment and taxonomy data for interactive interface"""
 
-#     version: 1.0
-#     log: os.path.join(dirs_dict['LOGS_DIR'], "combine_data_{external_hmm}.log")
-#     input:
-#         done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{external_hmm}_summarize.done"),
-#         tree = rules.calculate_tree.output.tree
-#     output:
-#         done = os.path.join("{external_hmm}_combined.done"),
-#         tree = os.path.join(dirs_dict['TREES'], "{external_hmm}/{external_hmm}_renamed.nwk")
-#     threads: 2
-#     run:
-#         from ete3 import Tree
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "combine_data_{external_hmm}.log")
+    input:
+        done = os.path.join("METAGENOMICS_WORKFLOW/07_SUMMARY", "{external_hmm}_summarize.done"),
+        tree = rules.calculate_tree.output.tree
+    output:
+        done = os.path.join("{external_hmm}_combined.done"),
+        tree = os.path.join(dirs_dict['TREES'], "{external_hmm}/{external_hmm}_renamed.nwk")
+    threads: 2
+    run:
+        from ete3 import Tree
 
-#         t = Tree(input.tree)
+        t = Tree(input.tree)
 
-#         for leaf in t:
-#             leaf.name = leaf.name + "_split_00001"
+        for leaf in t:
+            leaf.name = leaf.name + "_split_00001"
 
-#         t.write(format = 1, outfile = output.tree)
+        t.write(format = 1, outfile = output.tree)
 
-#         shell('touch {output}')
+        shell('touch {output}')
 
 
 rule anvi_import_state:
