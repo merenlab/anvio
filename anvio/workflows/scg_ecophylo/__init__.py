@@ -35,23 +35,29 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
                            'filter_hmm_hits_by_query_coverage',
-                           'anvi_get_sequences_for_hmm_hits_SCGs',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
-                           'filter_for_scg_sequences_and_metadata',
-                           'cat_ribo_proteins_to_one_fasta',
-                           'anvi_script_reformat_fasta',
-                           'cat_misc_data_to_one_file',
-                           'join_renamed_fasta_with_misc_data',
-                           'remove_redundant_sequences_mmseqs',
-                           'align_muscle',
+                           'add_misc_data_to_taxonomy',
+                           'anvi_get_external_gene_calls_file',
+                           'rename_and_filter_external_gene_calls_file'
+                           'cat_external_gene_calls_file',
+                           'subset_external_gene_calls_file_all',
+                           'cluster_X_percent_sim_mmseqs',
+                           'subset_AA_seqs_with_mmseqs_reps',
+                           'align_sequences',
                            'trim_alignment',
                            'remove_sequences_with_X_percent_gaps',
-                           'get_gap_count_distribution',
-                           'filter_out_outlier_sequences',
-                           'anvi_get_sequences_for_gene_calls',
+                           'count_num_sequences_filtered',
+                           'subset_DNA_reps_with_QCd_AA_reps_for_mapping',
+                           'make_fasta_txt',
+                           'make_metagenomics_config_file',
+                           'run_metagenomics_workflow',
+                           'make_anvio_state_file'
+                           'add_default_collection',
+                           'anvi_summarize',
+                           'rename_tree_tips',
+                           'anvi_import_state',
                            'fasttree',
-                           'iqtree',
-                           'run_metagenomics_workflow'
+                           'iqtree'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -63,12 +69,10 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['--installed-hmm-profile']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage', 'additional_params']
-        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
-        rule_acceptable_params_dict['remove_redundant_sequences_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
-        rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
         rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params']
@@ -79,23 +83,29 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         self.default_config.update({
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
-            'anvi_script_reformat_fasta': {'threads': 5},
             'SCG_protein_list': 'SCG_protein_list.txt',
             'anvi_run_hmms_hmmsearch': {'threads': 5, '--installed-hmm-profile': 'Bacteria_71'},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
-            'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
-            'filter_for_scg_sequences_and_metadata': {'threads': 5},
-            'cat_ribo_proteins_to_one_fasta': {'threads': 5},
-            'anvi_get_sequences_for_hmm_hits_SCGs': {'threads': 5, '--hmm-source': 'Bacteria_71'},
-            'join_renamed_fasta_with_misc_data': {'threads': 5},
-            'remove_redundant_sequences_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
-            'align_muscle': {'threads': 5},
+            'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5},
+            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
+            'align_sequences': {'threads': 5},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
-            'get_gap_count_distribution': {'threads': 5},
-            'filter_out_outlier_sequences': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'fasttree': {'run': True, 'threads': 5},
             'iqtree': {'threads': 5,'-m': "MFP"},
+            'add_misc_data_to_taxonomy': {'threads': 5},
+            'anvi_get_external_gene_calls_file': {'threads': 5},
+            'rename_and_filter_external_gene_calls_file': {'threads': 5},
+            'cat_external_gene_calls_file': {'threads': 5},
+            'subset_external_gene_calls_file_all': {'threads': 5},
+            'trim_alignment': {'threads': 10},
+            'make_fasta_txt': {'threads': 2},
+            'make_metagenomics_config_file': {'threads': 5},
+            'make_anvio_state_file': {'threads': 2},
+            'add_default_collection': {'threads': 2},
+            'anvi_summarize': {'threads': 10},
+            'rename_tree_tips': {'threads': 2},
+            'anvi_import_state': {'threads': 2},
             'run_metagenomics_workflow': {'threads': 10, 'clusterize': False}
             })
 
