@@ -300,8 +300,8 @@ function loadAll(loadType) {
 
   color_db = $('#gene_color_order').val();
 
+  buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
   if(loadType == 'init'){
-    buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
     drawScale();
     setEventListeners()
     generateColorTable(fn_colors = null, fn_type = color_db);
