@@ -38,7 +38,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_estimate_scg_taxonomy_for_SCGs',
                            'add_misc_data_to_taxonomy',
                            'anvi_get_external_gene_calls_file',
-                           'rename_and_filter_external_gene_calls_file'
+                           'rename_and_filter_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'subset_external_gene_calls_file_all',
                            'cluster_X_percent_sim_mmseqs',
@@ -51,7 +51,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
                            'make_fasta_txt',
                            'make_metagenomics_config_file',
                            'run_metagenomics_workflow',
-                           'make_anvio_state_file'
+                           'make_anvio_state_file',
                            'add_default_collection',
                            'anvi_summarize',
                            'rename_tree_tips',
@@ -95,7 +95,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             'iqtree': {'threads': 5,'-m': "MFP"},
             'add_misc_data_to_taxonomy': {'threads': 5},
             'anvi_get_external_gene_calls_file': {'threads': 5},
-            'rename_and_filter_external_gene_calls_file': {'threads': 5},
+            # 'rename_and_filter_external_gene_calls_file': {'threads': 5},
             'cat_external_gene_calls_file': {'threads': 5},
             'subset_external_gene_calls_file_all': {'threads': 5},
             'trim_alignment': {'threads': 10},
