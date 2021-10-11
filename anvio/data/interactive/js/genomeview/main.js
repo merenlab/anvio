@@ -83,7 +83,7 @@ $(document).ready(function () {
   initData();
   loadAdditionalDataLayers()
   processState('default', stateData)
-  loadAll();
+  loadAll('init');
 });
 
 function initData() {
@@ -136,7 +136,7 @@ function loadState() {
     success: function (response) {
       try {
         processState(state_name, response['content']);
-        loadAll()
+        loadAll('reload')
       } catch (e) {
         console.error("Exception thrown", e.stack);
         toastr.error('Failed to parse state data, ' + e);
@@ -214,6 +214,7 @@ function processState(stateName, stateData) {
     maxGroupSize += 1 // increase group size if GC layer exists
   }
 
+  $('#tbody_additionalDataLayers').html('') // clear div before reprocess
   settings['group-layer-order'].map(layer => {
     buildGroupLayersTable(layer)
   })
@@ -259,8 +260,7 @@ function processState(stateName, stateData) {
   }
 }
 
-function loadAll() {
-  buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
+function loadAll(loadType) {
   canvas = new fabric.Canvas('myCanvas');
   canvas.clear() // clear existing canvas if loadAll is being called from loadState
   canvas.setWidth(VIEWER_WIDTH * 0.85);
@@ -271,10 +271,7 @@ function loadAll() {
     xDisps[genome[0]] = xDisplacement;
   }
 
-  // Find max length genome
   calculateMaxGenomeLength()
-
-  drawScale();
 
   if (showGeneLabels && arrowStyle != 3) {
     marginTop = 60;
@@ -292,14 +289,20 @@ function loadAll() {
       text: fn
     }));
   }
+
   color_db = $('#gene_color_order').val();
-  generateColorTable(fn_colors = null, fn_type = color_db);
+
+  if(loadType == 'init'){
+    buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
+    drawScale();
+    setEventListeners()
+    generateColorTable(fn_colors = null, fn_type = color_db);
+  }
 
   brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
   updateRenderWindow();
 
-  setEventListeners()
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
   drawer.draw()
