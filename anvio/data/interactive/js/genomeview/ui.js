@@ -282,6 +282,7 @@ function toggleSettingsPanel() {
 }
 
 function buildGenomesTable(genomes, order){
+  $("#tbody_genomes").empty() // clear table before redraw
   genomes.map(genome => {
     var height = '50';
     var margin = '15';
