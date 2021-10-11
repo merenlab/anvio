@@ -90,23 +90,23 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
     """Get SCG taxonomy for SCGs in SCG_protein_list.txt and the associated NT and AA sequences for each HMM hit"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_estimate_scg_taxonomy_for_SCGs_{SCG_protein_name}.log")
     input:
         done_files = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}_contigsDB_filtered.done"), sample_names = M.names_list),
         metagenomes_txt = M.get_param_value_from_config(['metagenomes'])
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_anvi_estimate_scg_taxonomy_for_SCGs.done"),
-        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
-        DNA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_DNA.fa"),
-        AA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_AA.fa")
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}_anvi_estimate_scg_taxonomy_for_SCGs.done"),
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
+        DNA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}_DNA.fa"),
+        AA_fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}_AA.fa")
     params:
-        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}"),
-        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{reference_protein_name}_estimate_scg_taxonomy_results"),
+        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}"),
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{SCG_protein_name}_estimate_scg_taxonomy_results"),
     threads: M.T('anvi_estimate_scg_taxonomy_for_SCGs')
     run:
         shell('anvi-estimate-scg-taxonomy -M {input.metagenomes_txt} \
                                           --metagenome-mode \
-                                          --scg-name-for-metagenome-mode {wildcards.reference_protein_name} \
+                                          --scg-name-for-metagenome-mode {wildcards.SCG_protein_name} \
                                           --report-scg-sequences-file-prefix {params.fasta_prefix} \
                                           -T {threads} \
                                           --raw-output \
@@ -183,14 +183,14 @@ rule add_misc_data_to_taxonomy:
     """Add simplified fasta headers to the misc data file"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{SCG_protein_name}.log")
     input:
         taxonomy = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.taxonomy,
-        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     output:
-        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{reference_protein_name}_misc.tsv")
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{SCG_protein_name}_misc.tsv")
     params:
-        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_cluster.tsv")
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}_mmseqs_NR_cluster.tsv")
     threads: M.T('filter_hmm_hits_by_query_coverage')
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
@@ -204,14 +204,14 @@ rule anvi_get_external_gene_calls_file:
     """Extract external_gene_calls table from all samples"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{SCG_protein_name}.log")
     input:
         done = rules.filter_hmm_hits_by_query_coverage.output,
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
-        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls.tsv")
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{SCG_protein_name}_external_gene_calls.tsv")
     params:
-        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_orfs.fna")),
+        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{SCG_protein_name}_orfs.fna")),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
         shell('anvi-get-sequences-for-gene-calls -c {input.contigsDB} \
@@ -226,12 +226,12 @@ rule rename_and_filter_external_gene_calls_file:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{sample_name}_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{sample_name}_{SCG_protein_name}.log")
     input:
         done = rules.anvi_estimate_scg_taxonomy_for_SCGs.output,
-        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls.tsv")
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{SCG_protein_name}_external_gene_calls.tsv")
     output:
-        external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{reference_protein_name}_external_gene_calls_renamed.tsv")
+        external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{SCG_protein_name}_external_gene_calls_renamed.tsv")
     threads: M.T('rename_and_filter_external_gene_calls_file')
     script:
         "scripts/rename_external_gene_calls_file.py"
@@ -241,11 +241,11 @@ rule cat_external_gene_calls_file:
     """Cat all external_gene_calls files from all samples into one file"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_external_gene_calls_file_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_external_gene_calls_file_{SCG_protein_name}.log")
     input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{reference_protein_name}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, reference_protein_names = M.SCG_protein_list),
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{SCG_protein_name}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, SCG_protein_names = M.SCG_protein_list),
     output:
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all.tsv"),
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_all.tsv"),
     threads: M.T('cat_external_gene_calls_file')
     run:
         shell("cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")
@@ -255,12 +255,12 @@ rule subset_external_gene_calls_file_all:
     """"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{SCG_protein_name}.log")
     input:
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_all.tsv"),
-        headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_all.tsv"),
+        headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     output:
-        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_external_gene_calls_subset.tsv"),
+        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_subset.tsv"),
     threads: M.T('subset_external_gene_calls_file_all')
     script:
         "scripts/subset_external_gene_calls_file.py"
@@ -273,12 +273,12 @@ rule cluster_X_percent_sim_mmseqs:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{SCG_protein_name}.log")
     input: rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR_rep_seq.fasta")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}_mmseqs_NR_rep_seq.fasta")
     params:
-        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_mmseqs_NR"),
-        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}", "{reference_protein_name}_tmp"),
+        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}_mmseqs_NR"),
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}_tmp"),
         min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     shell:
@@ -293,13 +293,13 @@ rule subset_AA_seqs_with_mmseqs_reps:
     """Subset AA sequences for the mmseqs cluster representatives"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_reformat_fasta_ribosomal_protein_file_{SCG_protein_name}.log")
     input:
         fa = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.AA_fasta,
         reps = rules.cluster_X_percent_sim_mmseqs.output
     output:
-        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_AA_subset.fa"),
-        headers = temp(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_headers.tmp"))
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_AA_subset.fa"),
+        headers = temp(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_headers.tmp"))
     threads: M.T('subset_AA_seqs_with_mmseqs_reps')
     shell:
         """
@@ -313,9 +313,9 @@ rule align_sequences:
     """MSA of AA sequences subset."""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{SCG_protein_name}.log")
 	input: rules.subset_AA_seqs_with_mmseqs_reps.output.fasta
-	output: os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_aligned.fa")
+	output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned.fa")
 	threads: M.T('align_sequences')
 	shell:
 		"muscle -in {input} -out {output} -maxiters 2 -verbose 2> {log}"
@@ -325,9 +325,9 @@ rule trim_alignment:
     """Trim alignment"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{SCG_protein_name}.log")
     input: rules.align_sequences.output
-    output: os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_aligned_trimmed.fa")
+    output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed.fa")
     params:
         gt = M.get_param_value_from_config(['trim_alignment', '-gt']),
         gappyout = M.get_rule_param('trim_alignment', '-gappyout'),
@@ -343,11 +343,11 @@ rule remove_sequences_with_X_percent_gaps:
     """Removing sequences that have Z > X% gaps"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{SCG_protein_name}.log")
     input: rules.trim_alignment.output
-    output: os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_aligned_trimmed_filtered.fa")
+    output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed_filtered.fa")
     params:
-        seq_counts_tsv = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_gaps_counts"),
+        seq_counts_tsv = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
 	shell:
@@ -361,12 +361,12 @@ rule count_num_sequences_filtered:
     """Record the number of sequences filtered at each step of the workflow"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{SCG_protein_name}.log")
     input:
         step1 = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta,
         step2 = rules.cluster_X_percent_sim_mmseqs.output,
         step3 = rules.remove_sequences_with_X_percent_gaps.output
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{reference_protein_name}/{reference_protein_name}_stats.tsv")
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{SCG_protein_name}/{SCG_protein_name}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
     shell:
         """
@@ -395,8 +395,8 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
         fasta = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta,
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
-        NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_name}/{reference_protein_name}_references_for_mapping_NT.fa"),
-        headers = os.path.join(dirs_dict['MSA'], "MSA/{reference_protein_name}/{reference_protein_name}_headers.tmp")
+        NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_references_for_mapping_NT.fa"),
+        headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     threads: M.T('subset_DNA_reps_with_QCd_AA_reps_for_mapping')
     run:
         shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
@@ -408,8 +408,8 @@ rule make_fasta_txt:
 
     version: 1.0
     input:
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_external_gene_calls_subset.tsv"), reference_protein_names = M.SCG_protein_list),
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{reference_protein_names}/{reference_protein_names}_references_for_mapping_NT.fa"), reference_protein_names = M.SCG_protein_list),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_names}/{SCG_protein_names}_external_gene_calls_subset.tsv"), SCG_protein_names = M.SCG_protein_list),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_names}/{SCG_protein_names}_references_for_mapping_NT.fa"), SCG_protein_names = M.SCG_protein_list),
     output:
         fasta_txt = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
     threads: M.T('make_fasta_txt')
@@ -490,9 +490,9 @@ rule make_anvio_state_file:
     version: 1.0
     input:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
-        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done")
+        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{SCG_protein_name}_summarize.done")
     output:
-        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
+        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{SCG_protein_name}_ECO_PHYLO_WORKFLOW_state.json")
     threads: M.T('make_anvio_state_file')
     run:
         state_dict = {}
@@ -582,13 +582,13 @@ if M.run_iqtree == True:
       """Calculate a phylogenetic tree using iqtree"""
 
       version: 1.0
-      log: os.path.join(dirs_dict['LOGS_DIR'], "iqtree_{reference_protein_name}.log")
+      log: os.path.join(dirs_dict['LOGS_DIR'], "iqtree_{SCG_protein_name}.log")
       input: rules.remove_sequences_with_X_percent_gaps.output
       output: 
-          tree = os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}.iqtree"),
-          done = touch(os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}_tree.done"))
+          tree = os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}.iqtree"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}_tree.done"))
       params:
-          outfile=os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}"),
+          outfile=os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}"),
           model = M.get_param_value_from_config(['iqtree', '-m']),
           additional_params = M.get_param_value_from_config(['iqtree', 'additional_params'])
       threads: M.T('iqtree')
@@ -605,11 +605,11 @@ elif M.run_fasttree == True:
       """Want to go faster?? Then Fasttree"""
 
       version: 1.0
-      log: os.path.join(dirs_dict['LOGS_DIR'], "fasttree_{reference_protein_name}.log")
+      log: os.path.join(dirs_dict['LOGS_DIR'], "fasttree_{SCG_protein_name}.log")
       input: rules.remove_sequences_with_X_percent_gaps.output
       output:
-          tree = os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}.nwk"),
-          done = touch(os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}_tree.done"))
+          tree = os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}.nwk"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}_tree.done"))
       params:
           additional_params = M.get_param_value_from_config(['fasttree', 'additional_params'])
       threads: M.T('fasttree')
@@ -620,12 +620,12 @@ rule add_default_collection:
     """"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{SCG_protein_name}.log")
     input: metagenomics_workflow_done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
     params:
-        contigsDB = ancient(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{reference_protein_name}-contigs.db")),
-        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
-    output: touch(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{reference_protein_name}_add_default_collection.done"))
+        contigsDB = ancient(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{SCG_protein_name}-contigs.db")),
+        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{SCG_protein_name}", "PROFILE.db")
+    output: touch(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{SCG_protein_name}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     shell:
         """
@@ -638,14 +638,14 @@ rule anvi_summarize:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{SCG_protein_name}.log")
     input: 
-        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{reference_protein_name}_add_default_collection.done")
+        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{SCG_protein_name}_add_default_collection.done")
     params:
-        contigsDB = ancient(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{reference_protein_name}-contigs.db")),
-        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db"),
-        output_dir = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}")
-    output: touch(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done"))
+        contigsDB = ancient(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{SCG_protein_name}-contigs.db")),
+        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{SCG_protein_name}", "PROFILE.db"),
+        output_dir = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{SCG_protein_name}")
+    output: touch(os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{SCG_protein_name}_summarize.done"))
     threads: M.T('anvi_summarize')
     shell:
         """
@@ -663,13 +663,13 @@ rule rename_tree_tips:
     """Joins read recruitment and taxonomy data for interactive interface"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_tree_tips_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_tree_tips_{SCG_protein_name}.log")
     input:
-        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{reference_protein_name}_summarize.done"),
+        done = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{SCG_protein_name}_summarize.done"),
         tree = rules.calculate_tree.output.tree
     output:
-        done = os.path.join("{reference_protein_name}_combined.done"),
-        tree = os.path.join(dirs_dict['TREES'], "{reference_protein_name}/{reference_protein_name}_renamed.nwk")
+        done = os.path.join("{SCG_protein_name}_combined.done"),
+        tree = os.path.join(dirs_dict['TREES'], "{SCG_protein_name}/{SCG_protein_name}_renamed.nwk")
     threads: M.T('rename_tree_tips')
     run:
         from ete3 import Tree
@@ -688,17 +688,17 @@ rule anvi_import_state:
     """Import state file for interactive interface"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{reference_protein_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{SCG_protein_name}.log")
     input:
         rules.make_anvio_state_file.output
     params:
-        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{reference_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
-        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{reference_protein_name}", "PROFILE.db")
-    output: touch(os.path.join("{reference_protein_name}_state_imported.done"))
+        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{SCG_protein_name}_ECO_PHYLO_WORKFLOW_state.json"),
+        profileDB = os.path.join("SCG_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{SCG_protein_name}", "PROFILE.db")
+    output: touch(os.path.join("{SCG_protein_name}_state_imported.done"))
     threads: M.T('anvi_import_state')
     shell:
         """
         anvi-import-state -p {params.profileDB} \
                           -s {params.state_file} \
-                          -n {wildcards.reference_protein_name}
+                          -n {wildcards.SCG_protein_name}
         """
