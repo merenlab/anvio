@@ -114,6 +114,17 @@ function loadAdditionalDataLayers(){
     success: function (resp) {
       settings['additional-data-layers'] = resp
       settings['additional-data-layers']['layers'].push('ruler') // add ruler by default
+      settings['group-layer-order'] = ['Genome', 'Ruler']
+
+      if (settings['additional-data-layers']['layers'].includes('Coverage')) {
+        settings['group-layer-order'].unshift('Coverage')
+        maxGroupSize += 1 // increase group size if coverage layer exists
+      }
+
+      if (settings['additional-data-layers']['layers'].includes('GC_content')) {
+        settings['group-layer-order'].unshift('GC_Content')
+        maxGroupSize += 1 // increase group size if GC layer exists
+      }
     }
   });
 }
@@ -196,22 +207,10 @@ function processState(stateName, stateData) {
   calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
     settings['group-layer-order'] = stateData['group-layer-order']
-  } else {
-    settings['group-layer-order'] = ['Genome', 'Ruler']
   }
 
   if (stateData.hasOwnProperty('additional-data-layers')) {
     settings['additional-data-layers'] = stateData['additional-data-layers']
-  }
-
-  if (settings['additional-data-layers'] && settings['additional-data-layers']['layers'].includes('Coverage')) {
-    settings['group-layer-order'].unshift('Coverage')
-    maxGroupSize += 1 // increase group size if coverage layer exists
-  }
-
-  if (settings['additional-data-layers'] && settings['additional-data-layers']['layers'].includes('GC_content')) {
-    settings['group-layer-order'].unshift('GC_Content')
-    maxGroupSize += 1 // increase group size if GC layer exists
   }
 
   $('#tbody_additionalDataLayers').html('') // clear div before reprocess
