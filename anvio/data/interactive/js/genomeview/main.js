@@ -248,6 +248,10 @@ function processState(stateName, stateData) {
     settings['display']['additional-data-layers'] = {}
   }
 
+  if (stateData.hasOwnProperty('genome-spacing')){
+    settings['display']['genome-spacing'] = stateData['genome-spacing']
+  }
+
   if (stateData['display'] && stateData['display'].hasOwnProperty('bookmarks')) {
     settings['display']['bookmarks'] = stateData['bookmarks']
     settings['display']['bookmarks'].map(bookmark => {
@@ -279,7 +283,7 @@ function loadAll(loadType) {
 
   if (showGeneLabels && arrowStyle != 3) {
     marginTop = 60;
-    spacing = 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
+    spacing = settings['display']['genome-spacing'] ? settings['display']['genome-spacing'] : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
   }
 
