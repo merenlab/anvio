@@ -174,6 +174,7 @@ function serializeSettings() {
   state['arrow-stype'] = $('#arrow_style').val()
   state['group-layer-order'] = settings['group-layer-order']
   state['bookmarks'] = settings['display']['bookmarks']
+  state['genome-order'] = settings['genomeData']['genomes']
   state['gene-link-style'] = $('#link_style').val()
   state['gene-shade-style'] = $('#shade_by').val()
   state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
@@ -228,6 +229,10 @@ function processState(stateName, stateData) {
     settings['genome-order-method'].forEach(orderMethod => {
       $('#genome_order_select').append((new Option(orderMethod["name"], orderMethod["name"]))) // set display + value of new select option.
     })
+  }
+
+  if (stateData.hasOwnProperty('genome-order')){
+    settings['genomeData']['genomes'] = stateData['genome-order']
   }
 
   if (stateData.hasOwnProperty('display')) {
