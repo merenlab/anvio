@@ -140,7 +140,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         lockScaling: true,
         hoverCursor: 'text'
       });
-      if(arrowStyle == 3) {
+      if(this.settings['display']['arrow-style'] == 3) {
         label.set({
           top: geneLabelPos == "inside" ? y-5 : y-30,
           selectionColor:'rgba(128,128,128,.5)'
