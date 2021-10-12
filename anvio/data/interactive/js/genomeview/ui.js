@@ -159,7 +159,8 @@ function setEventListeners(){
     $(this).blur();
   });
   $('#arrow_style').on('change', function () {
-    arrowStyle = parseInt($(this).val());
+    // arrowStyle = parseInt($(this).val());
+    settings['display']['arrow-style'] = parseInt($(this).val());
     drawer.draw()
     $(this).blur();
   });
