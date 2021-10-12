@@ -391,9 +391,16 @@ function createBookmark(){
         description : $('#create_bookmark_description').val(),
       }
     )
-    alert('bookmark successfully created :)')
+    toastr.success('bookmark successfully created :)')
+    $('#create_bookmark_input').val('')
+    $('#create_bookmark_description').val('')
+    $('#bookmarks-select').empty()
+
+    settings['display']['bookmarks'].map(bookmark => {
+      $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
+    })
   } catch (error) {
-    alert(`anvi'o was unable to save your bookmark because of an error ${error} :/`)
+    toastr.error(`anvi'o was unable to save your bookmark because of an error ${error} :/`)
     // throw to error landing page?
   }
 }
