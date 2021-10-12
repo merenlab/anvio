@@ -58,6 +58,7 @@ rule anvi_run_hmms_hmmsearch:
                            --just-do-it \
                            -T {threads} 2> {log}" % (contigsDB, hmmer_output_dir))
 
+
 rule filter_hmm_hits_by_query_coverage:
     """Filter hmm_hits table by query coverage using domtblout"""
 
@@ -111,6 +112,7 @@ rule anvi_estimate_scg_taxonomy_for_SCGs:
                                           --raw-output \
                                           -O {params.taxonomy} &> {log}')
         shell('touch {output.done}')
+
 
 def extract_misc_from_taxonomy_file(input_taxonomy, mmseqs_cluster_rep_index, final_sequences_headers, output):
     """Add contig_db_type to misc data"""
@@ -251,7 +253,7 @@ rule cat_external_gene_calls_file:
 
 
 rule subset_external_gene_calls_file_all:
-    """"""
+    """Subset external gene calls for only SCG sequences"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{SCG_protein_name}.log")
