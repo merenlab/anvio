@@ -76,7 +76,7 @@ function getGenesOfGC(genomeID, gc) {
 function checkGeneLabels() {
   var labels = canvas.getObjects().filter(obj => obj.id == 'geneLabel');
   for(var i = 0; i < labels.length-1; i++) {
-    if(arrowStyle == 3) {
+    if(this.settings['display']['arrow-style'] == 3) {
       // hide labels that don't fit inside pentagon arrows
       if(labels[i].width/2 > canvas.getObjects().filter(obj => obj.id == 'arrow')[i].width) {
         labels[i].visible = false;
