@@ -2669,7 +2669,7 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('begins-from-branch')) {
-        $('#begins_from_branch').val(state['begins-from-branch'])
+        $('#begins_from_branch').prop('checked', state['begins-from-branch'])
     }
 
     // bootstrap values
