@@ -254,8 +254,10 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('arrow-style')){
     settings['display']['arrow-style'] = stateData['arrow-style']
+    $('#arrow_style').val(stateData['arrow-style'])
   } else {
     settings['display']['arrow-style'] = '1' // default
+    $('#arrow_style').val(settings['display']['arrow-style'])
   }
 
   if (stateData['display'] && stateData['display'].hasOwnProperty('bookmarks')) {
@@ -287,7 +289,7 @@ function loadAll(loadType) {
 
   calculateMaxGenomeLength()
 
-  if (showGeneLabels && arrowStyle != 3) {
+  if (showGeneLabels && parseInt(settings['display']['arrow-style']) != 3) {
     marginTop = 60;
     spacing = settings['display']['genome-spacing'] ? settings['display']['genome-spacing'] : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
