@@ -187,6 +187,31 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 raise ConfigError(f"Please do not use underscores in your external HMM names in: "
                                   f"{self.external_hmm_list_path}")
 
+        # Load samples.txt
+        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+
+        if not self.samples_txt_file:
+            if os.path.exists('samples.txt'):
+                self.samples_txt_file = 'samples.txt'
+            else:
+                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
+                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
+                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
+                                  "around either. So please add a `samples.txt` directive.")
+
+        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
+        try:
+            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
+            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+        except IndexError as e:
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                              "This is what we know: '%s'" % (self.samples_txt_file, e))
+        if 'sample' not in list(self.samples_information.columns):
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
+
+        self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
