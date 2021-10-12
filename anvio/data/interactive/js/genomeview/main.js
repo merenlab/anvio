@@ -36,7 +36,6 @@ var genomeMax = 0;
 var yOffset = 0 // vertical space between additional data layers
 var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
-var arrowStyle = 1; // gene arrow cosmetics. 1 (default) = 'inspect-page', 2 = thicker arrows, 3 = pentagon, 4 = rect
 var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
 var genomeLabelSize = 15; // font size of genome labels
 var marginTop = 20; // vertical margin at the top of the genome display
@@ -171,7 +170,7 @@ function serializeSettings() {
   state['order-method'] = $('#genome_order_select').val()
   state['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked')
   state['genome-scale-interval'] = $('#genome_scale_interval').val()
-  state['arrow-stype'] = $('#arrow_style').val()
+  state['arrow-style'] = $('#arrow_style').val()
   state['group-layer-order'] = settings['group-layer-order']
   state['bookmarks'] = settings['display']['bookmarks']
   state['genome-order'] = settings['genomeData']['genomes']
@@ -203,6 +202,7 @@ function serializeSettings() {
 }
 
 function processState(stateName, stateData) {
+  console.log(stateData)
   settings['state-name'] = stateName
 
   calculateMaxGenomeLength()
@@ -250,6 +250,12 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('genome-spacing')){
     settings['display']['genome-spacing'] = stateData['genome-spacing']
+  }
+
+  if (stateData.hasOwnProperty('arrow-style')){
+    settings['display']['arrow-style'] = stateData['arrow-style']
+  } else {
+    settings['display']['arrow-style'] = '1' // default
   }
 
   if (stateData['display'] && stateData['display'].hasOwnProperty('bookmarks')) {
