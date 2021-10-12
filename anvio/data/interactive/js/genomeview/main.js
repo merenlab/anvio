@@ -260,18 +260,14 @@ function processState(stateName, stateData) {
     $('#arrow_style').val(settings['display']['arrow-style'])
   }
 
-  if (stateData['display'] && stateData['display'].hasOwnProperty('bookmarks')) {
+  if (stateData.hasOwnProperty('bookmarks')) {
     settings['display']['bookmarks'] = stateData['bookmarks']
     settings['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
     })
     respondToBookmarkSelect()
   } else {
-    calculateMaxGenomeLength() // remove later, only here to set max length for bookmark
-    settings['display']['bookmarks'] = generateMockBookmarks()
-    settings['display']['bookmarks'].map(bookmark => {
-      $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
-    })
+    settings['display']['bookmarks'] = []
     respondToBookmarkSelect() // set listener for user bookmark selection
   }
 }
