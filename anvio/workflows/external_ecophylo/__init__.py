@@ -183,9 +183,10 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 raise ConfigError("The external_hmm_list.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
-            if any("_" in s for s in self.external_HMM_dict.keys()):
-                raise ConfigError(f"Please do not use underscores in your external HMM names in: "
-                                  f"{self.external_hmm_list_path}")
+            if any("-" in s for s in self.external_HMM_dict.keys()):
+                raise ConfigError(f"Please do not use "-" in your external HMM names in: "
+                                  f"{self.external_hmm_list_path}. It will make our lives "
+                                  f"easier with Snakemake wildcards :)")
 
         # Load samples.txt
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
@@ -260,4 +261,5 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                 target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
                 target_files.append(target_file)
 
+            # anvio.P(target_files)
         return target_files
