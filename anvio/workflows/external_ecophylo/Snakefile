@@ -1,6 +1,5 @@
 # -*- coding: utf-8
 import os
-import glob
 import json
 import os.path
 import argparse
@@ -210,10 +209,9 @@ rule change_names_scg_hits_nt:
         fasta_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_hmm_hits_renamed_final.fna"),
     threads: M.T('anvi_script_reformat_fasta')
     run:
-        import pandas as pd
-        import numpy as np
-        import glob
         import os.path
+        import numpy as np
+        import pandas as pd
 
         from Bio import SeqIO
         from snakemake.shell import shell
@@ -263,10 +261,9 @@ rule change_names_scg_hits_aa:
         fasta_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_hmm_hits_renamed_final.faa"),
     threads: M.T('anvi_script_reformat_fasta')
     run:
-        import pandas as pd
-        import numpy as np
-        import glob
         import os.path
+        import numpy as np
+        import pandas as pd
 
         from Bio import SeqIO
         from snakemake.shell import shell
