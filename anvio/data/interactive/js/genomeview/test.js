@@ -62,33 +62,3 @@ function generateMockGenomeOrder() {
     'ordering': 'beaks to tails'
   }]
 }
-
-function generateMockBookmarks(){
-  let bookmarks = [
-    {
-      name: 'entire seq',
-      start: '0',
-      stop: genomeMax,
-      description: 'a mighty fine placeholder'
-    },
-    {
-      name: 'shindig',
-      start: '5000',
-      stop: '9000',
-      description: 'a beautiful placeholder'
-    },
-    {
-      name: 'fiesta',
-      start: '15000',
-      stop: '19000',
-      description: 'an adequate placeholder'
-    },
-    {
-      name: 'party',
-      start: '25000',
-      stop: '29000',
-      description: 'the very best placeholder'
-    },
-  ]
-  return bookmarks
-}
