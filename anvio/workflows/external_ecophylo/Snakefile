@@ -564,7 +564,7 @@ rule count_num_sequences_filtered:
         """
         # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
         step1=$(grep -c '>' {input.step1})
-        echo -e "anvi_estimate_scg_taxonomy_for_SCGs.output.DNA_fasta\t$step1\t{input.step1}\n" > {output}
+        echo -e "num_input_seqs\t$step1\t{input.step1}\n" > {output}
 
         # How many SCGs do we have after we cluster them at the nt level and pick representatives?
         step2=$(grep -c '>' {input.step2})
