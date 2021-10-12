@@ -122,7 +122,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
     if(gene.start < ntStart) continue;
     if(gene.stop > ntStop) return;
-    var geneObj = this.geneArrow(gene,geneID,y,genomeID,arrowStyle);
+    var geneObj = this.geneArrow(gene,geneID,y,genomeID,this.settings['display']['arrow-style']);
     canvas.add(geneObj);
 
     if(showGeneLabels) {
@@ -309,7 +309,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
   let stemLength = length-25 > 0 ? length-25 : 0;
 
   var arrowPathStr;
-  switch(style) {
+  switch(parseInt(style)) {
     case 2: // thicker arrows
       arrowPathStr = 'M ' + stemLength + ' -5 L 0 -5 L 0 15 L ' + stemLength + ' 15 L ' + stemLength + ' 15 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
       break;
