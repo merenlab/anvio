@@ -239,9 +239,9 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         for reference_protein_name in self.SCG_protein_list:
 
             # Count num sequences removed per step
-            tail_path = "%s_stats.tsv" % (reference_protein_name)
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
-            target_files.append(target_file)
+            # tail_path = "%s_stats.tsv" % (reference_protein_name)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
+            # target_files.append(target_file)
 
             # Import state file to customize interactive interface
             target_file = os.path.join(f"{reference_protein_name}_state_imported.done")

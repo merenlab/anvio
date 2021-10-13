@@ -275,7 +275,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         target_files = []
 
         for external_hmm in self.external_HMM_dict.keys():
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.tsv")
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv")
             target_files.append(target_file)
 
             # Count num sequences removed per step

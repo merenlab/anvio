@@ -130,7 +130,7 @@ rule cat_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{external_hmm}.log")
     input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{external_hmm}}_external_gene_calls.tsv"), sample_names = M.names_list, external_hmms = M.external_HMM_dict.keys()),
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{external_hmm}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list, external_hmms = M.external_HMM_dict.keys()),
     output:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
     threads: M.T('cat_external_gene_calls_file')
@@ -138,20 +138,20 @@ rule cat_external_gene_calls_file:
         "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}"
 
 
-rule rename_and_filter_external_gene_calls_file_all:
-    """"""
+# rule rename_and_filter_external_gene_calls_file_all:
+#     """"""
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{external_hmm}.log")
-    input:
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
-        reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_reformat_report_all.txt"),
-    output:
-        external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.tsv"),
-        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.done"))
-    threads: M.T('rename_and_filter_external_gene_calls_file_all')
-    script:
-        "scripts/rename_external_gene_calls_file.py"
+#     version: 1.0
+#     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{external_hmm}.log")
+#     input:
+#         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
+#         reformat_file_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_reformat_report_all.txt"),
+#     output:
+#         external_gene_calls_renamed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.tsv"),
+#         done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all_renamed.done"))
+#     threads: M.T('rename_and_filter_external_gene_calls_file_all')
+#     script:
+#         "scripts/rename_external_gene_calls_file.py"
 
 
 rule simplify_names_from_scg_hits_nt:
@@ -441,14 +441,30 @@ rule anvi_get_external_gene_calls_file:
                                                  --external-gene-calls {output.external_gene_calls} \
                                                  -o {params.fasta} 2> {log}')
 
+rule rename_and_filter_external_gene_calls_file:
+    """
+    Create primary key from external-gene-calls.txt to join with references sequences to make
+    a contigsDB for the metagenomics workflow
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_{sample_name}_{external_hmm}.log")
+    input:
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_external_gene_calls.tsv")
+    output:
+        external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{external_hmm}_external_gene_calls_renamed.tsv")
+    threads: M.T('rename_and_filter_external_gene_calls_file')
+    script:
+        "scripts/rename_external_gene_calls_file.py"
+
 
 rule subset_external_gene_calls_file_all:
     """"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_all_{external_hmm}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{external_hmm}.log")
     input:
-        external_gene_calls_all = rules.rename_and_filter_external_gene_calls_file_all.output.external_gene_calls_renamed,
+        external_gene_calls_all = rules.cat_external_gene_calls_file.output.external_gene_calls_all,
         headers = os.path.join(dirs_dict['MSA'], "MSA/{external_hmm}/{external_hmm}_headers.tmp")
     output:
         external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_subset.tsv"),
