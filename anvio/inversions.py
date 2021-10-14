@@ -278,35 +278,36 @@ class Inversions:
                 ################################################################################
                 self.progress.update(f"{contig_name}[{start}:{stop}]: testing constructs")
                 ################################################################################
-                true_inversions = []
+                true_inversion = None
+
                 for read in bam_file.fetch_only(contig_name, start=start, end=stop):
-                    hit = False
                     for inversion_candidate in inversion_candidates:
                         if inversion_candidate.v1_left in read.query_sequence:
-                            hit = True
+                            true_inversion = inversion_candidate
+                            break
                         elif inversion_candidate.v1_right in read.query_sequence:
-                            hit = True
+                            true_inversion = inversion_candidate
+                            break
                         elif inversion_candidate.v2_left in read.query_sequence:
-                            hit = True
+                            true_inversion = inversion_candidate
+                            break
                         elif inversion_candidate.v2_right in read.query_sequence:
-                            hit = True
-                    if hit:
-                        true_inversions.append(inversion_candidate)
-                        break
+                            true_inversion = inversion_candidate
+                            break
 
                 if anvio.DEBUG or self.verbose:
-                    if not len(true_inversions):
+                    if true_inversion:
+                        self.progress.reset()
+                        self.run.info_single(f"Of the {PL('inversion candidate', len(inversion_candidates))} above, "
+                                             f"the one below had at least one perfect matches to their constructs in REV/REV or "
+                                             f"FWD/FWD reads from the BAM file:", mc="green", nl_before=1)
+
+                        true_inversion.display()
+                    else:
                         self.progress.reset()
                         self.run.info_single(f"No true inversions in this one: none of the REV/REV or FWD/FWD reads "
                                              f"had any of the constructs in {PL('inversion candidate', len(inversion_candidates))}.",
                                              mc="red", nl_before=1)
-                    else:
-                        self.progress.reset()
-                        self.run.info_single(f"The following {PL('inversion candidate', len(inversion_candidates))} "
-                                             f"had one or more perfect matches to their constructs in REV/REV or "
-                                             f"FWD/FWD reads from the BAM file:", mc="green", nl_before=1)
-                        for true_inversion in true_inversions:
-                            true_inversion.display()
 
         self.progress.end()
 
