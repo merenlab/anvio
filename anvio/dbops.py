@@ -3634,15 +3634,20 @@ class ProfileDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
+        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'num_splits', 'total_length']:
+                    'min_coverage_for_variability', 'max_contig_length', 'num_splits', 'total_length']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
         self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+        for key in ['min_percent_identity', 'min_indel_fraction']:
+            try:
+                self.meta[key] = float(self.meta[key])
+            except:
+                pass
 
 
         # open the database
