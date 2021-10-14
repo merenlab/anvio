@@ -1,7 +1,14 @@
 [general]
 
 [TNF !CONTIGS.db::kmer_contigs]
+table_form = matrix
 
-[Abundance PROFILE.db::atomic_data_contigs]
-normalize=False
-columns_to_use = abundance,mean_coverage_Q2Q3,mean_coverage
+[Abundance PROFILE.db::abundance_contigs]
+normalize = False
+log = False
+table_form = view
+
+[Coverage_Q2Q3 PROFILE.db::mean_coverage_Q2Q3_contigs]
+normalize = False
+log = True
+table_form = view

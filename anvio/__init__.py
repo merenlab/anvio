@@ -27,6 +27,8 @@ QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
+DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
 
@@ -359,9 +361,13 @@ D = {
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     "requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you "
-                     "if you were a rebel and have used `--external-gene-callers` or something." % constants.default_gene_caller}
+             'default': constants.default_gene_caller,
+             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
+                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
+                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
+                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
+                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
@@ -607,6 +613,16 @@ D = {
              'help': "When declared, this flag tells the interface to split every gene found in HMM "
                      "searches that were performed against non-singlecopy gene HMM profiles into "
                      "their own layer. Please see the documentation for details."}
+                ),
+    'annotation-source-for-per-split-summary': (
+            ['-F', '--annotation-source-for-per-split-summary'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FUNCTION ANNOTATION SOURCE',
+             'help': "Using this parameter with a functional annotation source that (1) is in the contigs database "
+                     "and (2) has a maximum of 10 different function names, will dynamically add a new layer to the "
+                     "intearctive interface where proportions of functions in that source will be shown per split "
+                     "as stacked bar charts."}
                 ),
     'show-all-layers': (
             ['--show-all-layers'],
@@ -1032,10 +1048,18 @@ D = {
             ['--return-best-hit'],
             {'default': False,
              'action': 'store_true',
-             'help': "A bin may contain more than one hit for a gene name in a given HMM source. For instance, there may "
+             'help': "A bin (or genome) may contain more than one hit for a gene name in a given HMM source. For instance, there may "
                      "be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of "
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'unique-genes': (
+            ['--unique-genes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "An HMM source may contain multiple models that can hit the same gene in a given bin or genome. "
+                     "Using this flag, you can ask anvi'o to go through all genes, identify those with multiple hits "
+                     "and report only the most significant hit for each unique gene."}
                 ),
     'max-num-genes-missing-from-bin': (
             ['--max-num-genes-missing-from-bin'],
@@ -1433,6 +1457,11 @@ D = {
             {'metavar': 'SPLIT_NAME',
              'help': "Split name."}
                 ),
+    'contig-name': (
+            ['--contig-name'],
+            {'metavar': 'CONTIG_NAME',
+             'help': "Contig name."}
+                ),
     'program': (
             ['--program'],
             {'metavar': 'PROGRAM_NAME',
@@ -1648,15 +1677,26 @@ D = {
             ['--quince-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "The default behavior is to report base frequencies of nucleotide positions only if there "
-                     "is any variation reported during profiling (which by default uses some heuristics to minimize "
+             'help': "The default behavior is to report allele frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize "
                      "the impact of error-driven variation). So, if there are 10 samples, and a given position has been "
                      "reported as a variable site during profiling in only one of those samples, there will be no "
                      "information will be stored in the database for the remaining 9. When this flag is "
-                     "used, we go back to each sample, and report base frequencies for each sample at this position "
+                     "used, we go back to each sample, and report allele frequencies for each sample at this position, "
                      "even if they do not vary. It will take considerably longer to report when this flag is on, and the use "
                      "of it will increase the file size dramatically, however it is inevitable for some statistical approaches "
-                     "(as well as for some beautiful visualizations)."}
+                     "and visualizations."}
+                ),
+    'kiefl-mode': (
+            ['--kiefl-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The default behavior is to report codon/amino-acid frequencies only at positions where variation was reported "
+                     "during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). "
+                     "When this flag is used, all positions are reported, regardless of whether they contained variation in any "
+                     "sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka "
+                     "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
+                     "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
     'include-contig-names': (
             ['--include-contig-names'],
@@ -1686,8 +1726,9 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag if you want per-site pN and pS added as additional columns. Synonymity "
-                     "will be calculate with respect to the reference, with respect to the consenus, and with respect to the "
-                     "most common consensus seen at that site across samples (popular consensus). This makes a total of 6 "
+                     "will be calculated with respect to the reference, to the consenus, and to the "
+                     "most common consensus seen at that site across samples (popular consensus). The number "
+                     "of synonymous and nonsynonymous sites will also be stored for each case. This makes a total of 12 "
                      "added columns. This flag will be ignored if --engine is not CDN."}
                 ),
     'engine': (
@@ -1913,6 +1954,13 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Don't be verbose, print less messages whenever possible."}
+                ),
+    'report-minimal': (
+            ['--report-minimal'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report minimum amount of data for higher performance whenever possible. This flag turn "
+                     "your output files into bare minimums for speed gains."}
                 ),
     'just-do-it': (
             ['--just-do-it'],
@@ -2238,13 +2286,6 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
-    'domtblout': (
-            ['-F', '--domtblout'],
-            {'metavar': 'HMM OUTPUT FORMAT',
-             'type': str,
-             'help': "This flag will provide the domain hits table (protein search only) from hmmsearch to a specified path."
-                     "The output file will contain the suffix '_domtable.txt'."}
-                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
@@ -2256,10 +2297,10 @@ D = {
                      "in this directory. Please note that this will only work if you are running on only one "
                      "profile using the -I flag."}
                 ),
-    'get-domtable-output': (
-            ['--get-domtable-output'],
+    'domain-hits-table': (
+            ['--domain-hits-table'],
             {'default': False,
-             'type': str,
+             'action': 'store_true',
              'help': "Use this flag in conjunction with --hmmer-output-dir to request domain table output "
                      "from HMMER (i.e., the file specified by the --domtblout flag from hmmsearch or hmmscan). Otherwise, only the regular "
                      "--tblout file will be stored in the specified directory. Please note that even if you use "
@@ -2873,20 +2914,20 @@ D = {
                 ),
     'load-checkpoint': (
             ['--load-checkpoint'],
-            {'choices': ['profile', 'normalize', 'map_fragments'],
-             'help': "Use this option to restart anvi-trnaseq from a checkpoint. "
-                     "This can be useful for saving time if anvi'o crashed "
-                     "or in comparing the results of different advanced program parameterizations "
-                     "involved in later stages of the analytical pipeline after the checkpoint, "
-                     "such as --min-trna-fragment-size and --agglomeration-max-mismatch-freq. "
-                     "Use of this option requires that anvi-trnaseq was previously run with the flag, "
-                     "--write-checkpoints, so that intermediate files were generated. "
-                     "Checkpoint \"profile\" restarts after tRNA have been profiled and dereplicated. "
-                     "\"normalize\" restarts after trimming and normalizing tRNA. "
-                     "\"map_fragment\" restarts after unprofiled tRNA fragments have been mapped to normalized tRNA sequences. "
-                     "To overwrite subsequent checkpoints after loading a checkpoint "
-                     "(e.g., to overwrite \"map_fragment\" intermediate files after loading from \"normalize\"), "
-                     "remember to also use the flag, --write-checkpoints."}
+            {'choices': constants.TRNASEQ_CHECKPOINTS,
+             'help': "This option restarts `anvi-trnaseq` from the specified checkpoint. "
+                     "It can be useful for saving time if anvi'o crashed after the checkpoint. "
+                     "It can also be useful in comparing the results of different advanced program parameterizations "
+                     "that are only involved in stages of the analytical pipeline after the checkpoint. "
+                     "`anvi-trnaseq` must previously have been run with the flag, "
+                     "`--write-checkpoints`, so that intermediate checkpoint files were generated. "
+                     "Checkpoint \"profile\" restarts after tRNA profiling. "
+                     "\"normalize\" restarts after sequence trimming and normalization. "
+                     "\"map_fragments\" restarts after non-3' fragments have been mapped to normalized tRNA sequences. "
+                     "\"substitutions\" restarts after potential modification-induced substitutions have been found. "
+                     "\"indels\" restarts after modification-induced indels have been found, the last step in tRNA identification. "
+                     "If `--write-checkpoints` is used in conjunction with `--load-checkpoint` "
+                     "then all existing intermediate files from checkpoints following the one being loaded will be overwritten."}
                 ),
     'feature-param-file': (
             ['--feature-param-file'],
@@ -2968,105 +3009,60 @@ D = {
                 ),
     'agglomeration-max-mismatch-freq': (
             ['--agglomeration-max-mismatch-freq'],
-            {'default': 2/71,
+            {'default': 0.03,
              'metavar': 'FLOAT',
              'type': float,
              'help': "Anvi'o finds potential tRNA modifications by first agglomerating sequences "
                      "differing from one or more other sequences in the cluster by mismatches at a certain fraction of nucleotides. "
-                     "This parameter sets the maximum mismatch fraction that is allowed, by default 2/71. "
-                     "This number represents 2 mismatches in a full-length tRNA of length 74, not 71, "
+                     "This parameter sets the maximum mismatch fraction that is allowed, by default 0.03. "
+                     "The value of this parameter is rounded to the nearest hundredth. "
+                     "The default approximates 2/71, representing 2 mismatches in a full-length tRNA of length 74, not 71, "
                      "as 3' sequence variants, including the canonical 3'-CCA, are trimmed off prior to sequences being agglomerated. "
                      "(Average non-mitochondrial tRNAs range in length from 74-95.) "
-                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 70, D. "
-                     "If A differs from B by a substitution at position 1, and C differs from B at positions 10 and 20, "
-                     "such that C differs from A by 3 substitutions, then A, B, and C will still agglomerate into a single cluster, "
-                     "as each differs by no more than 2 substitutions from some other sequence in the cluster. "
-                     "In contrast, sequence D differs from B at positions 30 and 40, "
-                     "exceeding the 2/71 fraction required to agglomerate (2/70 > 2/71), "
-                     "so D forms its own cluster and is not consolidated into a single modified sequence with the others."}
+                     "For example, consider 3 trimmed sequences of length 71 -- A, B and C -- and 1 sequence of length 65, D. "
+                     "If A differs from B by a substitution at position 1 when aligned (mismatch frequency of 0.014), "
+                     "and C differs from B at positions 10 and 20 (mismatch frequency of 0.028), "
+                     "such that C differs from A by 3 substitutions (mismatch frequency of 0.042), "
+                     "then A, B, and C will still agglomerate into a single cluster, "
+                     "as each differs by no more than 2 substitutions from *some other sequence* in the cluster. "
+                     "In contrast, sequence D differs from B at positions 30 and 40 (mismatch frequency of 0.031), "
+                     "exceeding the 0.03 limit needed to agglomerate. "
+                     "D forms its own cluster and is not consolidated into a single modified sequence with the others."}
                 ),
-    'fiveprimemost-deletion-start': (
-            ['--fiveprimemost-deletion-start'],
-            {'default': -2,
+    'max-indel-freq': (
+            ['--max-indel-freq'],
+            {'default': 0.05,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "The maximum indel frequency constrains the number and length of modification-induced indels that can be found. "
+                     "The value of this parameter is rounded to the nearest hundredth. "
+                     "Anvi'o identifies tRNAs with potential modification-induced substitutions before finding indels. "
+                     "tRNAs with substitutions are aligned with other sequences to find sequences differing only by indels. "
+                     "The default parameter value of 0.05 allows 1 indel of length 3 to be found in a modified sequence of length 71. "
+                     "(Modified sequences have the canonical 3'-CCA trimmed off, "
+                     "so a sequence of length 71 represents the low end of the non-mitochondrial tRNA length range of 74-95.) "
+                     "The default equivalently allows 2 indels of lengths 1 and 2 or 3 indels of length 1 in a sequence of length 71. "
+                     "An indel of length 4 would result in a frequency of 0.056 and so would not be considered."}
+                ),
+    'left-indel-buffer': (
+            ['--left-indel-buffer'],
+            {'default': 3,
              'metavar': 'INT',
              'type': int,
-             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
-                     "The default value of -2 means deletions can start at most 2 nucleotides 5' of a modification. "
-                     "Logically, the parameter value must be less than or equal to the value of --threeprimemost-deletion-start "
-                     "and less than or equal to the value of --fiveprimemost-deletion-stop."}
+             'help': "This parameter sets the distance an indel must lie from the left end of a sequence alignment "
+                     "in the search for modification-induced indels."
+                     "The default buffer of 3 matches was chosen to prevent nontemplated and variant nucleotides "
+                     "at the 5' end of tRNA reads from being mistakenly identified as indels."}
                 ),
-    'threeprimemost-deletion-start': (
-            ['--threeprimemost-deletion-start'],
-            {'default': 0,
+    'right-indel-buffer': (
+            ['--right-indel-buffer'],
+            {'default': 3,
              'metavar': 'INT',
              'type': int,
-             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can begin. "
-                     "The default value of 0 means the 3'-most start position of a deletion is the modification site itself. "
-                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
-                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
-                ),
-    'fiveprimemost-deletion-stop': (
-            ['--fiveprimemost-deletion-stop'],
-            {'default': -1,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The 5'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
-                     "The default value of -1 means deletions can end at most 1 nucleotide 5' of a modification. "
-                     "Logically, the parameter value must be greater than or equal to the value of --fiveprimemost-deletion-start "
-                     "and less than or equal to the value of --threeprimemost-deletion-stop."}
-                ),
-    'threeprimemost-deletion-stop': (
-            ['--threeprimemost-deletion-stop'],
-            {'default': 0,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The 3'-most position relative to a potential modified nucleotide at which prospective deletions can end. "
-                     "The default value of 0 means the 3'-most stop position of a deletion is the modification site itself. "
-                     "Logically, the parameter value must be greater than or equal to the value of --threeprimemost-deletion-start "
-                     "and greater than or equal to the value of --fiveprimemost-deletion-stop."}
-                ),
-    'max-distinct-deletions': (
-            ['--max-distinct-deletions'],
-            {'default': 2,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The maximum number of distinct deletions -- which can be of varying size -- "
-                     "that can be introduced around potential modifications in the search for deletions. "
-                     "Higher values of this parameter may lead to identification of more deletions (at the expense of runtime). "
-                     "For example, with the default value of 2 and a sequence containing 3 potential substitutions positions, "
-                     "then some in silico template sequences will be produced containing deletions around the first position; "
-                     "others will be produced containing deletions at the first and second positions; "
-                     "the first and third positions; the second position; the second and third; and the third."}
-                ),
-    'min-distance-between-deletions': (
-            ['--min-distance-between-deletions'],
-            {'default': 4,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The minimum number of nucleotides that must exist between distinct deletions "
-                     "introduced around potential modifications in the search for deletions. "
-                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
-                     "In silico deletions introduced around nearby substitutions in this smear "
-                     "can produce unconstrained, potentially erroneous matches to the search pool of sequences that may be tRNA with deletions. "
-                     "Separation of in silico deletions using this parameter quashes this problem. "
-                     "The default value was determined by inspection of deletions predicted from large datasets. "
-                     "It is hard to envision a case where the user would adjust this parameter downward."}
-                ),
-    'max-deletion-configurations': (
-            ['--max-deletion-configurations'],
-            {'default': 10000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The maximum number of in silico sequences with distinct configurations of deletions "
-                     "that can be generated from a single sequence with potential modifications. "
-                     "There is often a \"smear\" of associated substitutions around the main substitution site at a modified nucleotide. "
-                     "Sometimes, this effect manifests over a majority of nucleotides in the tRNA, "
-                     "producing a vast number of configurations of in silico deletions that can take forever to search -- "
-                     "especially when multiple deletions are allowed in a single sequence (set by --max-distinct-deletions), "
-                     "and deletions can be of varying lengths (set by --fiveprimemost-deletion-start/stop and --threeprimemost-deletion-start/stop). "
-                     "If a template sequence spawns more sequences with in silico deletions than this parameter allows, "
-                     "the maximum number of distinct deletions, the parameter with the biggest effect, "
-                     "is decremented for the sequence and in silico deletions are again introduced."}
+             'help': "This parameter sets the distance an indel must lie from the right end of a sequence alignment "
+                     "in the search for modification-induced indels. "
+                     "The default buffer of 3 matches was chosen to prevent variant nucleotides "
+                     "at the 3' end of tRNA reads from being mistakenly identified as indels."}
                 ),
     'skip-fasta-check': (
             ['--skip-fasta-check'],
@@ -3098,49 +3094,6 @@ D = {
                      "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
                      "Ideally, we would set this parameter using a heuristic function "
                      "parameterized with the numbers and lengths of query and target sequences..."}
-                ),
-    'fragment-mapping-query-chunk-length': (
-            ['--fragment-mapping-query-chunk-length'],
-            {'default': 20,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Mapping potential tRNA fragments to profiled tRNA can generate massive data structures. "
-                     "To manage memory consumption, the fragment queries are chunked and run as separate alignment tasks. "
-                     "Queries are chunked based on sequence length, as longer k-mers can be used with longer queries to speed up mapping. "
-                     "This parameter sets the sequence length interval used to chunk queries. "
-                     "For a standard tRNA-seq dataset with --min-trna-fragment-size set to the default of 25 "
-                     "and a maximum unprofiled query length of, say, 170, "
-                     "the default length interval would result in 8 chunks: 25-44 nts, 45-64 nts, etc. "
-                     "Adjust this parameter downward if your system runs out of memory during alignment; "
-                     "adjust this parameter upward to speed up alignment if you find that you are not memory-limited. "
-                     "Ideally, we would set this parameter using a heuristic function "
-                     "parameterized with the numbers and lengths of query and target sequences..."}
-                ),
-    'profiling-progress-interval': (
-            ['--profiling-progress-interval'],
-            {'default': 500000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress in the tRNA feature profiling of unique input sequences "
-                     "is reported after a certain number of sequences have been processed."}
-                ),
-    'alignment-progress-interval': (
-            ['--alignment-progress-interval'],
-            {'default': 500000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress is reported after a certain number of queries have been processed "
-                     "in mapping unprofiled sequences to profiled tRNA to find interior and 5' tRNA fragments "
-                     "and in mapping sequences to each other in agglomeration, a stage in the identification of modifications."}
-                ),
-    'modification-progress-interval': (
-            ['--modification-progress-interval'],
-            {'default': 10000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Progress in identifying modifications is reported after a certain number of sequences have been processed. "
-                     "Progress is reported in two distinct stages of this process, "
-                     "sequence agglomeration and cluster decomposition, with the same interval used in each."}
                 ),
     'default-feature-param-file': (
             ['--default-feature-param-file'],
@@ -3255,14 +3208,24 @@ D = {
                      "to inspect seeds for undisplayed variants (possible SNVs) "
                      "with a low level of third and fourth nucleotides."}
                 ),
-    'min-deletion-fraction': (
-            ['--min-deletion-fraction'],
-            {'default': 0.002,
+    'min-indel-fraction': (
+            ['--min-indel-fraction'],
+            {'default': 0.001,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This parameter controls which deletions are reported in the tRNA-seq profile database. "
-                     "Coverage of a deletion in a sample must meet the minimum fraction of specific coverage. "
-                     "Deletion coverages are calculated separately for specific, nonspecific, and summed coverages."}
+             'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
+                     "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
+                     "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
+    ),
+    'stats-to-summarize': (
+            ['--stats-to-summarize', '-S'],
+            {'default': None,
+             'metavar': 'STATS',
+             'type': str,
+             'help': "Use this flag to indicate which statistics you want summarized, as "
+                     "a comma-separated list. The default stats are 'detection' and "
+                     "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
+                     "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     )
 }
 

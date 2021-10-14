@@ -13,8 +13,7 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Iva Veseli"
-__email__ = "iveseli@uchicago.edu"
+__authors__ = ['ivagljiva']
 __provides__ = ["kegg-data", "modules-db"]
 __description__ = "Download and setup KEGG KOfam HMM profiles and KEGG MODULE data"
 

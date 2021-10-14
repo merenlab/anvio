@@ -61,9 +61,9 @@ class Aligners:
         _aligner = self.aligners[aligner]
 
         if not quiet:
-          self.run.warning("Anvi'o will use '%s' by %s (%s) to align your sequences. If you publish your findings, \
-                            please do not forget to properly credit their work." % (aligner, _aligner().citation, _aligner().web),
-                            lc='green', header="CITATION")
+          self.run.warning("The workflow you are using will likely use '%s' by %s (%s) to align your sequences. "
+                           "If you publish your findings, please do not forget to properly credit this tool." \
+                                % (aligner, _aligner().citation, _aligner().web), lc='yellow', header="CITATION")
 
         return self.aligners[aligner]
 

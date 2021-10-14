@@ -424,6 +424,31 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+class CoverageStats:
+    """This class should replace `coverage_c` function in bamops"""
+
+    def __init__(self, coverage, skip_outliers=False):
+        self.min = np.amin(coverage)
+        self.max = np.amax(coverage)
+        self.median = np.median(coverage)
+        self.mean = np.mean(coverage)
+        self.std = np.std(coverage)
+        self.detection = np.sum(coverage > 0) / len(coverage)
+
+        if coverage.size < 4:
+            self.mean_Q2Q3 = self.mean
+        else:
+            sorted_c = sorted(coverage)
+            Q = int(coverage.size * 0.25)
+            Q2Q3 = sorted_c[Q:-Q]
+            self.mean_Q2Q3 = np.mean(Q2Q3)
+
+        if skip_outliers:
+            self.is_outlier = None
+        else:
+            self.is_outlier = utils.get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+
 class RunInDirectory(object):
     """ Run any block of code in a specified directory. Return to original directory
 
@@ -488,6 +513,32 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
             return ret_val
     except OSError as e:
         raise ConfigError("command was failed for the following reason: '%s' ('%s')" % (e, cmdline))
+
+
+def start_command(cmdline, log_file_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
+    """Start a command using subprocess.Popen, returning an object that can be monitored."""
+    cmdline = format_cmdline(cmdline)
+
+    if anvio.DEBUG:
+        Progress().reset()
+        Run().info("[DEBUG] `start_command`",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
+                   nl_before=1, nl_after=1, mc='red', lc='yellow')
+
+    filesnpaths.is_output_file_writable(log_file_path)
+
+    if remove_log_file_if_exists and os.path.exists(log_file_path):
+        os.remove(log_file_path)
+
+    try:
+        if first_line_of_log_is_cmdline:
+            with open(log_file_path, 'a') as log_file:
+                log_file.write(f"# DATE: {get_date()}\n# CMD LINE: {' '.join(cmdline)}\n")
+
+        p = subprocess.Popen(cmdline, stdout=stdout, stderr=stderr)
+        return p
+    except OSError as e:
+        raise ConfigError("The command failed for the following reason: '%s' ('%s')" % (e, cmdline))
 
 
 def run_command_STDIN(cmdline, log_file_path, input_data, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
@@ -1129,6 +1180,11 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         The enrichment analysis results
     """
 
+    run.warning("This program will compute enrichment scores using an R script developed by Amy Willis. "
+                "You can find more information about it in the following paper: Shaiber, Willis et al "
+                "(https://doi.org/10.1186/s13059-020-02195-w). When you publish your findings, please "
+                "do not forget to properly credit this work. :)", lc='green', header="CITATION")
+
     # sanity check for R packages
     package_dict = get_required_packages_for_enrichment_test()
     check_R_packages_are_installed(package_dict)
@@ -1139,9 +1195,9 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     if not enrichment_output_file_path:
         enrichment_output_file_path = filesnpaths.get_temp_file_path()
     elif filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
-        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/"
-                           "Please either delete the existing file, or provide another file path before re-running this "
-                           "program again.")
+        raise ConfigError(f"The file {enrichment_output_file_path} already exists and anvi'o doesn't like to overwrite it :/ "
+                          f"Please either delete the existing file, or provide another file path before re-running this "
+                          f"program again.")
 
     log_file_path = filesnpaths.get_temp_file_path()
 
@@ -1555,9 +1611,10 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
-        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end "
-                          "with a stop codon and is therefore probably not what you want. If you "
-                          "want to continue anyways, use the just_do_it flag")
+        raise ConfigError("The sequence `get_synonymous_and_non_synonymous_potential` received does "
+                          "end with a stop codon and may be irrelevant for this analysis. If you "
+                          "want to continue anyways, include the flag `--just-do-it` in your call "
+                          "(if you are a programmer see the function header).")
 
     synonymous_potential = 0
     num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG
@@ -3754,10 +3811,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")
             return set([])
-        elif int(database.get_meta_value('merged')):
-            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
         else:
-            all_items = set(database.get_single_column_from_table('atomic_data_splits', 'contig'))
+            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':

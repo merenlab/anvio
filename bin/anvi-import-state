@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import datetime
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -18,8 +17,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren']
 __requires__ = ['pan-db', 'profile-db', 'state-json']
 __provides__ = ['state']
 __description__ = "Import an anvi'o state into a profile database"
@@ -34,13 +32,7 @@ def main(args):
     filesnpaths.is_file_json_formatted(args.state)
     utils.is_this_name_OK_for_database('--name parameter', args.name)
 
-    states_table = TablesForStates(args.pan_or_profile_db)
-
-    name = args.name
-    content = open(args.state).read()
-    last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-
-    states_table.store_state(name, content, last_modified)
+    TablesForStates(args.pan_or_profile_db).store_state(args.name, open(args.state).read())
 
     run.info('Done', 'State "%s" is added to the database' % args.name)
 

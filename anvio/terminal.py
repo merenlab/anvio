@@ -142,6 +142,7 @@ class Progress:
 
         self.get_terminal_width()
 
+        self.msg = None
         self.current = None
 
         self.progress_total_items = None
@@ -426,9 +427,10 @@ class Run:
                                              c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
-            progress.clear()
+            progress.reset()
             self.write(info_line, overwrite_verbose=False, quiet=quiet)
-            progress.update(progress.msg)
+            if progress.msg and progress.pid:
+                progress.update(progress.msg)
         else:
             self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
@@ -448,14 +450,15 @@ class Run:
         message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 
         if progress:
-            progress.clear()
+            progress.reset()
             self.write(message_line, overwrite_verbose=False)
-            progress.update(progress.msg)
+            if progress.msg and progress.pid:
+                progress.update(progress.msg)
         else:
             self.write(message_line, overwrite_verbose=False)
 
 
-    def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0):
+    def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0, progress=None):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -467,7 +470,13 @@ class Run:
         else:
             message_line = c("%s\n\n%s" % (textwrap.fill(str(message), 80), '\n' * nl_after), lc)
 
-        self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
+        if progress:
+            progress.clear()
+            self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
+            if progress.msg and progress.pid:
+                progress.update(progress.msg)
+        else:
+            self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 
 
     def store_info_dict(self, destination, strip_prefix=None):

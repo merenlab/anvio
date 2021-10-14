@@ -12,19 +12,59 @@
 // */
 
 let ERROR_COUNT = 0
-let FAILED_DEPENDENCIES = []
+
+const issueCategories = [
+    {
+        'category' : 'Dependencies failed to load', 
+        'content' : `This can occur when git submodules that Anvi'o relies on fail to load. If you are tracking the main development branch of Anvi'o,
+        try running <b> git submodule update --init </b>`
+    },
+    {
+        'category' : 'ReferenceError - ___ is not defined', 
+        'content' : `This can occur when Anvi'o wants to utilize some variable which it cannot resolve. Until we get some better troubleshooting advice here, 
+        try running your interactive session with the <b>--debug</b> flag`
+    },
+]
 
 function alertDependencyError(dependencyError, isFinalDependency){
-
     if(dependencyError){
         ERROR_COUNT += 1
-        FAILED_DEPENDENCIES.push(dependencyError)
     }
-    
     if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
-        ERROR_COUNT === 1 ? 
-        alert(`${ERROR_COUNT} dependency failed to load :(. The culprit is: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
-        :
-        alert(`${ERROR_COUNT} dependencies failed to load :(. These are the culprits: ${FAILED_DEPENDENCIES}. If you are tracking the active codebase, did you remember to run git submodule update --init?`)
+        displayAlert('dependencies')
     }
+}
+
+function displayAlert(error){
+    let reason; 
+
+    if(error == 'dependencies'){
+        reason = 'loading dependencies'
+    } else if (error.includes('is not defined')){
+        reason = 'a variable reference error'
+    }
+
+    alert(`Anvi'o has encountered an error, possibly related to ${reason}. Anvi'o would like to offer some guidance in a new browser tab. Please make sure popups are enabled :)`)
+    window.open('error-landing.html', '_blank')
+}
+
+function errorLandingContext(){ // onload function called by error-landing.html, generate help 'docs' from object above
+    issueCategories.map((issue, idx) => {
+        document.querySelector('#content-div').innerHTML += 
+        `
+            <h1 class='dropdown-category closed'>${issue.category} <span class='icon'>∆</span></h1>
+            <div class='dropdown-content'>
+                <p>${issue.content}</p>
+            </div>
+        `
+    })
+    document.addEventListener('click', (e) => {
+        if(e.target.parentNode.classList.contains('closed')){
+            e.target.parentNode.classList.remove('closed')
+            e.target.parentNode.classList.add('open')
+        } else {
+            e.target.parentNode.classList.add('closed')
+            e.target.parentNode.classList.remove('open')
+        }
+    })
 }

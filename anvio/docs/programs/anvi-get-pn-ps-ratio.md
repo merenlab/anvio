@@ -15,9 +15,9 @@ Firstly, you'll need to run %(anvi-gen-variability-profile)s using the flag `--e
 Then you can run this program like so:
 
 {{ codestart }}
-anvi-script-calculate-pn-ps-ratio -V SCVs.txt \
-                                  -c %(contigs-db)s \
-                                  -o output_dir 
+anvi-get-pn-ps-ratio -V SCVs.txt \
+                     -c %(contigs-db)s \
+                     -o output_dir
 {{ codestop }}
 
 A pN/pS value is calculated for each (gene, sample) combo. This will result in a directory called `output_dir` that contains several tables that describe each of your genes. See %(pn-ps-data)s for more information.

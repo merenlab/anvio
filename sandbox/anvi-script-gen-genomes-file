@@ -22,15 +22,14 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
-__maintainer__ = "Iva Veseli"
-__email__ = "iveseli@uchicago.edu"
+__authors__ = ['ivagljiva']
 __provides__ = ["external-genomes", "internal-genomes"]
 __requires__ = ["contigs-db", "profile-db", "collection"]
 __description__ = "Generate an external genomes or internal genomes file"
 
 
 def main(args):
-    if not args.input_dir or args.profile_db:
+    if not (args.input_dir or args.profile_db):
         raise ConfigError("You must provide either an input directory (for an external genomes file) or a "
                           "profile db/contigs db/collection name set (for an internal genomes file). Also, "
                           "just so you don't forget, we also need an output file path in either case.")
