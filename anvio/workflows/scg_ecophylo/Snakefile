@@ -512,6 +512,14 @@ rule make_anvio_state_file:
         state_dict['tree-type'] = 'phylogram'
 
         # height and width
+        # FIXME: It's unclear to me how the interactive interface determines
+        # height and width of a tree when the input value is 0. There has to 
+        # be some kind of calculation to determine the tree shape in the backend
+        # of the interface because even after I export a "default" state file
+        # the height and width are still "0". However, if you change the height and width
+        # values within the interface to "" the tree will disappear. I need to sort this 
+        # out eventually to have a clean way of changing the tree shape to 
+        # match the dimensions of the number of SCGs vs metagenomes. 
         num_tree_tips = pd.read_csv(input.num_tree_tips, \
                                     sep="\t", \
                                     index_col=None)
@@ -521,10 +529,7 @@ rule make_anvio_state_file:
 
         X = 1
         Y = 20
-        if num_SCGs < 50:
-            state_dict['tree-height'] = '0'
-            state_dict['tree-width'] = '0'
-        else:
+        if num_SCGs > 50:
             state_dict['tree-height'] = X * num_SCGs
             state_dict['tree-width'] = Y * num_SCGs
 

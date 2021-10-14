@@ -727,10 +727,7 @@ rule make_anvio_state_file:
 
         X = 1
         Y = 20
-        if num_SCGs < 50:
-            state_dict['tree-height'] = '0'
-            state_dict['tree-width'] = '0'
-        else:
+        if num_SCGs > 50:
             state_dict['tree-height'] = X * num_SCGs
             state_dict['tree-width'] = Y * num_SCGs
 
